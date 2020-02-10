@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/sliceutils"
@@ -160,10 +161,11 @@ func ReadFile(thread *starlark.Thread, p string) ([]byte, error) {
 }
 
 func RecordReadFile(t *starlark.Thread, files ...string) error {
-	return starkit.SetState(t, func(s ReadState) ReadState {
+	err := starkit.SetState(t, func(s ReadState) ReadState {
 		s.Files = sliceutils.AppendWithoutDupes(s.Files, files...)
 		return s
 	})
+	return errors.Wrap(err, "error recording read file")
 }
 
 var _ starkit.StatefulExtension = Extension{}

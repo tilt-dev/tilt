@@ -61,7 +61,7 @@ func (e *Environment) SetArgUnpacker(unpackArgs ArgUnpacker) {
 // All builtins will be wrapped to invoke OnBuiltinCall on every extension.
 //
 // All builtins should use starkit.UnpackArgs to get instrumentation.
-func (e *Environment) AddBuiltin(name string, b func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)) error {
+func (e *Environment) AddBuiltin(name string, f Function) error {
 	wrapped := starlark.NewBuiltin(name, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		for _, ext := range e.extensions {
 			onBuiltinCallExt, ok := ext.(OnBuiltinCallExtension)
@@ -70,7 +70,7 @@ func (e *Environment) AddBuiltin(name string, b func(thread *starlark.Thread, fn
 			}
 		}
 
-		return b(thread, fn, args, kwargs)
+		return f(thread, fn, args, kwargs)
 	})
 
 	return e.AddValue(name, wrapped)

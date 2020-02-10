@@ -2,7 +2,6 @@ package tiltfile
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +13,6 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 	"github.com/windmilleng/tilt/pkg/logger"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -254,152 +252,4 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 
 	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("helm: %s", localPath)), nil
-}
-
-func (s *tiltfileState) decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var contents starlark.String
-	if err := s.unpackArgs(fn.Name(), args, kwargs, "json", &contents); err != nil {
-		return nil, err
-	}
-
-	var decodedJSON interface{}
-
-	if err := json.Unmarshal([]byte(contents), &decodedJSON); err != nil {
-		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, contents.GoString())
-	}
-
-	v, err := convertStructuredDataToStarlark(decodedJSON)
-	if err != nil {
-		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, contents.GoString())
-	}
-	return v, nil
-}
-
-func (s *tiltfileState) readJson(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.String
-	var defaultValue starlark.Value
-	if err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
-		return nil, err
-	}
-
-	localPath, err := value.ValueToAbsPath(thread, path)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
-	}
-
-	contents, err := tiltfile_io.ReadFile(thread, localPath)
-	if err != nil {
-		// Return the default value if the file doesn't exist AND a default value was given
-		if os.IsNotExist(err) && defaultValue != nil {
-			return defaultValue, nil
-		}
-		return nil, err
-	}
-
-	var decodedJSON interface{}
-
-	if err := json.Unmarshal(contents, &decodedJSON); err != nil {
-		return nil, fmt.Errorf("JSON parsing error: %v in %s", err, path.GoString())
-	}
-
-	v, err := convertStructuredDataToStarlark(decodedJSON)
-	if err != nil {
-		return nil, fmt.Errorf("error converting JSON to Starlark: %v in %s", err, path.GoString())
-	}
-	return v, nil
-}
-
-func (s *tiltfileState) decodeYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var contents starlark.String
-	if err := s.unpackArgs(fn.Name(), args, kwargs, "yaml", &contents); err != nil {
-		return nil, err
-	}
-
-	var decodedYAML interface{}
-	if err := yaml.Unmarshal([]byte(contents), &decodedYAML); err != nil {
-		return nil, fmt.Errorf("error parsing YAML: %v in %s", err, contents.GoString())
-	}
-
-	v, err := convertStructuredDataToStarlark(decodedYAML)
-	if err != nil {
-		return nil, fmt.Errorf("error converting YAML to Starlark: %v in %s", err, contents.GoString())
-	}
-	return v, nil
-}
-
-func (s *tiltfileState) readYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.String
-	var defaultValue starlark.Value
-	if err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
-		return nil, err
-	}
-
-	localPath, err := value.ValueToAbsPath(thread, path)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
-	}
-
-	contents, err := tiltfile_io.ReadFile(thread, localPath)
-	if err != nil {
-		// Return the default value if the file doesn't exist AND a default value was given
-		if os.IsNotExist(err) && defaultValue != nil {
-			return defaultValue, nil
-		}
-		return nil, err
-	}
-
-	var decodedYAML interface{}
-	err = yaml.Unmarshal(contents, &decodedYAML)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing YAML: %v in %s", err, path.GoString())
-	}
-
-	v, err := convertStructuredDataToStarlark(decodedYAML)
-	if err != nil {
-		return nil, fmt.Errorf("error converting YAML to Starlark: %v in %s", err, path.GoString())
-	}
-	return v, nil
-}
-
-func convertStructuredDataToStarlark(j interface{}) (starlark.Value, error) {
-	switch j := j.(type) {
-	case bool:
-		return starlark.Bool(j), nil
-	case string:
-		return starlark.String(j), nil
-	case float64:
-		return starlark.Float(j), nil
-	case []interface{}:
-		listOfValues := []starlark.Value{}
-
-		for _, v := range j {
-			convertedValue, err := convertStructuredDataToStarlark(v)
-			if err != nil {
-				return nil, err
-			}
-			listOfValues = append(listOfValues, convertedValue)
-		}
-
-		return starlark.NewList(listOfValues), nil
-	case map[string]interface{}:
-		mapOfValues := &starlark.Dict{}
-
-		for k, v := range j {
-			convertedValue, err := convertStructuredDataToStarlark(v)
-			if err != nil {
-				return nil, err
-			}
-
-			err = mapOfValues.SetKey(starlark.String(k), convertedValue)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		return mapOfValues, nil
-	case nil:
-		return starlark.None, nil
-	}
-
-	return nil, errors.New(fmt.Sprintf("Unable to convert json to starlark value, unexpected type %T", j))
 }
