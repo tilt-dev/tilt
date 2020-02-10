@@ -6,6 +6,7 @@ package extension
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -44,6 +45,12 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 	}
 	if !strings.HasPrefix(arg, extensionPrefix) {
 		return "", nil
+	}
+
+	loadIsHappeningInTopLevel := t.CallStackDepth() == 1
+
+	if !loadIsHappeningInTopLevel {
+		return "", fmt.Errorf("Illegal extension load: extensions must be loaded from the root Tiltfile. This extension was loaded from %s", t.CallFrame(t.CallStackDepth()-1).Pos.Filename())
 	}
 
 	moduleName := strings.TrimPrefix(arg, extensionPrefix)
