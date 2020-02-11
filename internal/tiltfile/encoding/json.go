@@ -46,13 +46,8 @@ func decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 		return nil, err
 	}
 
-	var s string
-	switch x := contents.(type) {
-	case starlark.String:
-		s = x.GoString()
-	case tiltfile_io.Blob:
-		s = x.Text
-	default:
+	s, ok := value.AsString(contents)
+	if !ok {
 		return nil, fmt.Errorf("%s arg must be a string or blob. got %s", fn.Name(), contents.Type())
 	}
 
