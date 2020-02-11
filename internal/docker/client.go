@@ -473,7 +473,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	opts.Context = options.Context
 	opts.BuildArgs = options.BuildArgs
 	opts.Dockerfile = options.Dockerfile
-	opts.Tags = options.Tags
+	opts.Tags = append([]string{}, options.ExtraTags...)
 	opts.Target = options.Target
 	opts.NetworkMode = options.Network
 
