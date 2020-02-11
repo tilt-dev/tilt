@@ -48,6 +48,20 @@ func TestCustomBuildSuccessClusterRefTaggedWithDigest(t *testing.T) {
 	assert.Equal(f.t, container.MustParseNamed("registry:1234/foo_bar:tilt-11cd0eb38bc3ceb9"), refs.ClusterRef)
 }
 
+func TestCustomBuildSuccessClusterRefWithCustomTag(t *testing.T) {
+	f := newFakeCustomBuildFixture(t)
+	defer f.teardown()
+
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.dCli.Images["gcr.io/foo/bar:my-tag"] = types.ImageInspect{ID: string(sha)}
+	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: "true", Tag: "my-tag"}
+	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("gcr.io/foo/bar", TwoURLRegistry), cb)
+	require.NoError(t, err)
+
+	assert.Equal(f.t, container.MustParseNamed("localhost:1234/gcr.io_foo_bar:tilt-11cd0eb38bc3ceb9"), refs.LocalRef)
+	assert.Equal(f.t, container.MustParseNamed("registry:1234/gcr.io_foo_bar:tilt-11cd0eb38bc3ceb9"), refs.ClusterRef)
+}
+
 func TestCustomBuildSuccessSkipsLocalDocker(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 	defer f.teardown()

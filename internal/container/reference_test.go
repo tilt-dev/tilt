@@ -72,6 +72,15 @@ func TestDeriveRefs(t *testing.T) {
 	}
 }
 
+func TestWithoutRegistry(t *testing.T) {
+	reg := MustNewRegistryWithHostFromCluster("localhost:5000", "registry:5000")
+	refs, err := NewRefSet(MustParseSelector("foo"), reg)
+	require.NoError(t, err)
+
+	assert.Equal(t, "localhost:5000/foo", FamiliarString(refs.LocalRef()))
+	assert.Equal(t, "foo", FamiliarString(refs.WithoutRegistry().LocalRef()))
+}
+
 func assertNewRefSetError(t *testing.T, selector RefSelector, reg Registry, expectedErr string) {
 	_, err := NewRefSet(selector, reg)
 	require.Error(t, err)
