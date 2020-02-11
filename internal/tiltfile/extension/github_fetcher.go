@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"time"
 )
 
@@ -19,11 +18,15 @@ func NewGithubFetcher() *GithubFetcher {
 const githubTemplate = "https://raw.githubusercontent.com/windmilleng/tilt-extensions/master/%s/Tiltfile"
 
 func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
+	err := ValidateName(moduleName)
+	if err != nil {
+		return ModuleContents{}, err
+	}
 	c := &http.Client{
 		Timeout: 20 * time.Second,
 	}
 
-	urlText := fmt.Sprintf(githubTemplate, url.PathEscape(moduleName))
+	urlText := fmt.Sprintf(githubTemplate, moduleName)
 	resp, err := c.Get(urlText)
 	if err != nil {
 		return ModuleContents{}, err
