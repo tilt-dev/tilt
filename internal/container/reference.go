@@ -42,6 +42,10 @@ func MustSimpleRefSet(ref RefSelector) RefSet {
 	return r
 }
 
+func (rs RefSet) WithoutRegistry() RefSet {
+	return MustSimpleRefSet(rs.ConfigurationRef)
+}
+
 func (rs RefSet) MustWithRegistry(reg Registry) RefSet {
 	rs.registry = reg
 	err := rs.Validate()
