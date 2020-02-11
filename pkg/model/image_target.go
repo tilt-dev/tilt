@@ -224,6 +224,10 @@ type DockerBuild struct {
 	// https://docs.docker.com/develop/develop-images/build_enhancements/#using-ssh-to-access-private-data-in-builds
 	SSHSpecs []string
 
+	// Pass secrets to docker
+	// https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information
+	SecretSpecs []string
+
 	Network string
 
 	// By default, Tilt creates a new temporary image reference for each build.

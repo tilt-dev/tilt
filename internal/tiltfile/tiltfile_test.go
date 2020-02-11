@@ -397,6 +397,20 @@ docker_build("gcr.io/foo", "foo", ssh='default')
 	assert.Equal(t, []string{"default"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).SSHSpecs)
 }
 
+func TestDockerBuildSecret(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", secret='id=shibboleth')
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, []string{"id=shibboleth"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).SecretSpecs)
+}
+
 func TestDockerBuildNetwork(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

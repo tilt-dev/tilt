@@ -285,7 +285,7 @@ type dockerCreds struct {
 	sessionID   string
 }
 
-func (c *Cli) startBuildkitSession(ctx context.Context, key string, sshSpecs []string) (*session.Session, error) {
+func (c *Cli) startBuildkitSession(ctx context.Context, key string, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
 	session, err := session.NewSession(ctx, "tilt", key)
 	if err != nil {
 		return nil, err
@@ -294,6 +294,14 @@ func (c *Cli) startBuildkitSession(ctx context.Context, key string, sshSpecs []s
 
 	provider := authprovider.NewDockerAuthProvider(logger.Get(ctx).Writer(logger.InfoLvl))
 	session.Allow(provider)
+
+	if len(secretSpecs) > 0 {
+		ss, err := buildkit.ParseSecretSpecs(secretSpecs)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not parse secret: %v", secretSpecs)
+		}
+		session.Allow(ss)
+	}
 
 	if len(sshSpecs) > 0 {
 		sshp, err := buildkit.ParseSSHSpecs(sshSpecs)
@@ -335,7 +343,7 @@ func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 	creds := dockerCreds{}
 
 	if c.builderVersion == types.BuilderBuildKit {
-		session, err := c.startBuildkitSession(ctx, sessionSharedKey, nil)
+		session, err := c.startBuildkitSession(ctx, sessionSharedKey, nil, nil)
 		if err != nil {
 			logger.Get(ctx).Warnf("Docker BuildKit session failed to init: %v", err)
 		} else if session != nil {
@@ -451,14 +459,14 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 
 	var oneTimeSession *session.Session
 	sessionID := c.creds.sessionID
-	if len(options.SSHSpecs) > 0 {
+	if len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0 {
 		if c.builderVersion != types.BuilderBuildKit {
 			return types.ImageBuildResponse{},
 				fmt.Errorf("Docker SSH secrets only work on Buildkit, but Buildkit has been disabled")
 		}
 
 		var err error
-		oneTimeSession, err = c.startBuildkitSession(ctx, identity.NewID(), options.SSHSpecs)
+		oneTimeSession, err = c.startBuildkitSession(ctx, identity.NewID(), options.SSHSpecs, options.SecretSpecs)
 		if err != nil {
 			return types.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
 		}

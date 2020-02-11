@@ -28,6 +28,7 @@ type dockerImage struct {
 	configurationRef container.RefSelector
 	matchInEnvVars   bool
 	sshSpecs         []string
+	secretSpecs      []string
 	ignores          []string
 	onlys            []string
 	entrypoint       model.Cmd // optional: if specified, we override the image entrypoint/k8s command with this
@@ -93,6 +94,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		ignoreVal,
 		onlyVal,
 		sshVal,
+		secretVal,
 		networkVal,
 		entrypoint,
 		extraTagsVal starlark.Value
@@ -113,6 +115,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"container_args?", &containerArgsVal,
 		"target?", &targetStage,
 		"ssh?", &sshVal,
+		"secret?", &secretVal,
 		"network?", &networkVal,
 		"extra_tag?", &extraTagsVal,
 	); err != nil {
@@ -194,6 +197,11 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, fmt.Errorf("Argument 'ssh' must be string or list of strings. Actual: %T", sshVal)
 	}
 
+	secret, ok := value.AsStringOrStringList(secretVal)
+	if !ok {
+		return nil, fmt.Errorf("Argument 'secret' must be string or list of strings. Actual: %T", secretVal)
+	}
+
 	network := ""
 	if networkVal != nil {
 		network, ok = value.AsString(networkVal)
@@ -238,6 +246,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
 		sshSpecs:         ssh,
+		secretSpecs:      secret,
 		ignores:          ignores,
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
