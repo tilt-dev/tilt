@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/windmilleng/tilt/internal/tiltfile/io"
 )
 
 func TestReadYAML(t *testing.T) {
@@ -99,8 +99,14 @@ func TestDecodeYAML(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.File("Tiltfile", `
-observed = decode_yaml('- "foo"\n- baz:\n  - "bar"\n  - ""\n  - 1\n  - 2')
+	for _, blob := range []bool{false, true} {
+		t.Run(fmt.Sprintf("blob: %v", blob), func(t *testing.T) {
+			d := `'- "foo"\n- baz:\n  - "bar"\n  - ""\n  - 1\n  - 2'`
+			if blob {
+				d = fmt.Sprintf("blob(%s)", d)
+			}
+			d = fmt.Sprintf("observed = decode_yaml(%s)", d)
+			tf := d + `
 expected = [
   "foo",
   {
@@ -116,6 +122,53 @@ def test():
 
 test()
 
+`
+			f.File("Tiltfile", tf)
+
+			_, err := f.ExecFile("Tiltfile")
+			if err != nil {
+				fmt.Println(f.PrintOutput())
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestEncodeYAML(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+expected = '''key1: foo
+key2:
+  key3: bar
+  key4: true
+key5: 3
+key6:
+- foo
+- 7
+'''
+observed = encode_yaml({
+  'key1': 'foo',
+  'key2': {
+    'key3': 'bar',
+    'key4': True
+  },
+  'key5': 3,
+  'key6': [
+    'foo',
+    7
+  ]
+})
+
+def test():
+	if expected != str(observed):
+		print('expected: %s' % (expected))
+		print('observed: %s' % (observed))
+		fail()
+
+test()
+
 `)
 
 	_, err := f.ExecFile("Tiltfile")
@@ -123,4 +176,28 @@ test()
 		fmt.Println(f.PrintOutput())
 	}
 	require.NoError(t, err)
+}
+
+func TestEncodeYAMLNonStringMapKey(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `encode_yaml({1: 'hello'})`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "only string keys are supported in maps. found key '1' of type int64")
+}
+
+func TestEncodeYAMLNonYAMLable(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+encode_yaml(blob('hello'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported type io.Blob")
 }

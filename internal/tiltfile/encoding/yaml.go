@@ -40,12 +40,17 @@ func readYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 
 // reads yaml from a string
 func decodeYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var contents starlark.String
+	var contents starlark.Value
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "yaml", &contents); err != nil {
 		return nil, err
 	}
 
-	return yamlStringToStarlark(contents.GoString(), "")
+	s, ok := value.AsString(contents)
+	if !ok {
+		return nil, fmt.Errorf("%s arg must be a string or blob. got %s", fn.Name(), contents.Type())
+	}
+
+	return yamlStringToStarlark(s, "")
 }
 
 func yamlStringToStarlark(s string, source string) (starlark.Value, error) {
@@ -68,4 +73,33 @@ func yamlStringToStarlark(s string, source string) (starlark.Value, error) {
 		return nil, errors.Wrap(err, errmsg)
 	}
 	return v, nil
+}
+
+// dumps yaml to a string
+func encodeYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var obj starlark.Value
+	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "obj", &obj); err != nil {
+		return nil, err
+	}
+
+	ret, err := starlarkToYAMLString(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return tiltfile_io.NewBlob(ret, "encode_yaml"), nil
+}
+
+func starlarkToYAMLString(obj starlark.Value) (string, error) {
+	v, err := convertStarlarkToStructuredData(obj)
+	if err != nil {
+		return "", errors.Wrap(err, "error converting object from starlark")
+	}
+
+	b, err := yaml.Marshal(v)
+	if err != nil {
+		return "", errors.Wrap(err, "error serializing object to yaml")
+	}
+
+	return string(b), nil
 }

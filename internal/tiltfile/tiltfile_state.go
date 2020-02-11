@@ -356,7 +356,7 @@ func starlarkTriggerModeToModel(triggerMode triggerMode, autoInit bool) (model.T
 	}
 }
 
-// count how many times each builtin is called, for analytics
+// count how many times each Builtin is called, for analytics
 func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 	s.builtinCallCounts[name]++
 }
