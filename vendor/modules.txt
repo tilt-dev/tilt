@@ -347,6 +347,8 @@ github.com/moby/buildkit/identity
 github.com/moby/buildkit/session
 github.com/moby/buildkit/session/auth
 github.com/moby/buildkit/session/auth/authprovider
+github.com/moby/buildkit/session/secrets
+github.com/moby/buildkit/session/secrets/secretsprovider
 github.com/moby/buildkit/session/sshforward
 github.com/moby/buildkit/session/sshforward/sshprovider
 github.com/moby/buildkit/solver/pb
