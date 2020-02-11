@@ -2,10 +2,11 @@
 // This is not the internal Starkit abstraction, but the user-visible feature.
 // In a Tiltfile, you can write `load("ext://foo", "bar")` to load the function bar
 // from the extension foo.
-package extension
+package tiltextension
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -44,6 +45,12 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 	}
 	if !strings.HasPrefix(arg, extensionPrefix) {
 		return "", nil
+	}
+
+	loadIsHappeningInTopLevel := t.CallStackDepth() == 1
+
+	if !loadIsHappeningInTopLevel {
+		return "", fmt.Errorf("extensions cannot be loaded from `load`ed Tiltfiles")
 	}
 
 	moduleName := strings.TrimPrefix(arg, extensionPrefix)

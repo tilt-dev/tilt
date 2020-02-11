@@ -1,4 +1,4 @@
-package extension
+package tiltextension
 
 import (
 	"context"
@@ -61,6 +61,19 @@ printFoo()
 	f.assertError("unfetchable can't be fetched")
 }
 
+func TestExtensionCantIncludeExtension(t *testing.T) {
+	f := newExtensionFixture(t)
+	defer f.tearDown()
+
+	f.tiltfile(`
+load("ext://fetchable", "printFoo")
+printFoo()
+`)
+	f.writeModuleLocally("fetchable", extensionThatLoadsExtension)
+
+	f.assertError("cannot load ext://unfetchable: extensions cannot be loaded from `load`ed Tiltfiles")
+}
+
 type extensionFixture struct {
 	t   *testing.T
 	skf *starkit.Fixture
@@ -119,6 +132,14 @@ func (f *extensionFixture) writeModuleLocally(name string, contents string) {
 const libText = `
 def printFoo():
   print("foo")
+`
+
+const extensionThatLoadsExtension = `
+load("ext://unfetchable", "printBar")
+
+def printFoo():
+	print("foo")
+	printBar()
 `
 
 type fakeFetcher struct{}
