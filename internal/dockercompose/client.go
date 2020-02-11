@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -30,6 +31,7 @@ type DockerComposeClient interface {
 
 type cmdDCClient struct {
 	env docker.Env
+	mu  *sync.Mutex
 }
 
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
@@ -37,10 +39,16 @@ type cmdDCClient struct {
 func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	return &cmdDCClient{
 		env: docker.Env(env),
+		mu:  &sync.Mutex{},
 	}
 }
 
 func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
+	// docker-compose up is not thread-safe, because network operations are non-atomic. See:
+	// https://github.com/windmilleng/tilt/issues/2817
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	var args []string
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		args = []string{"--verbose"}
@@ -71,6 +79,11 @@ func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName 
 }
 
 func (c *cmdDCClient) Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error {
+	// To be safe, we try not to run two docker-compose downs in parallel,
+	// because we know docker-compose up is not thread-safe.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	var args []string
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		args = []string{"--verbose"}
