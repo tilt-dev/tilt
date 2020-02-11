@@ -50,7 +50,7 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 	loadIsHappeningInTopLevel := t.CallStackDepth() == 1
 
 	if !loadIsHappeningInTopLevel {
-		return "", fmt.Errorf("Illegal extension load: extensions must be loaded from the root Tiltfile.")
+		return "", fmt.Errorf("extensions cannot be loaded from `load`ed Tiltfiles")
 	}
 
 	moduleName := strings.TrimPrefix(arg, extensionPrefix)

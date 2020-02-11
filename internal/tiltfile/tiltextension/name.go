@@ -1,5 +1,8 @@
 package tiltextension
 
+// Most of the code in this file is adopted from NPM's module name rules
+// https://github.com/npm/validate-npm-package-name/blob/master/index.js
+
 import (
 	"fmt"
 	"net/url"

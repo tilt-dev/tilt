@@ -71,7 +71,7 @@ printFoo()
 `)
 	f.writeModuleLocally("fetchable", extensionThatLoadsExtension)
 
-	f.assertError("cannot load ext://unfetchable: Illegal extension load: extensions must be loaded from the root Tiltfile")
+	f.assertError("cannot load ext://unfetchable: extensions cannot be loaded from `load`ed Tiltfiles")
 }
 
 type extensionFixture struct {
