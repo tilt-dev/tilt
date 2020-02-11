@@ -178,11 +178,11 @@ func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named
 	return entity, replaced, nil
 }
 
-func InjectCommand(entity K8sEntity, ref reference.Named, cmd model.Cmd) (K8sEntity, error) {
+func InjectCommandAndArgs(entity K8sEntity, ref reference.Named, cmd model.Cmd, args model.OverrideArgs) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 
 	selector := container.NewRefSelector(ref)
-	e, injected, err := injectCommandInContainers(entity, selector, cmd)
+	e, injected, err := injectCommandInContainers(entity, selector, cmd, args)
 	if err != nil {
 		return e, err
 	}
@@ -197,7 +197,7 @@ func InjectCommand(entity K8sEntity, ref reference.Named, cmd model.Cmd) (K8sEnt
 	return e, nil
 }
 
-func injectCommandInContainers(entity K8sEntity, selector container.RefSelector, cmd model.Cmd) (K8sEntity, bool, error) {
+func injectCommandInContainers(entity K8sEntity, selector container.RefSelector, cmd model.Cmd, args model.OverrideArgs) (K8sEntity, bool, error) {
 	var injected bool
 	containers, err := extractContainers(&entity)
 	if err != nil {
@@ -211,8 +211,16 @@ func injectCommandInContainers(entity K8sEntity, selector container.RefSelector,
 		}
 
 		if selector.Matches(existingRef) {
-			c.Command = cmd.Argv
-			c.Args = nil // clear the "args" param.
+			// The override rules of entrypoint and Command and Args are surprisingly complex!
+			// See this github thread:
+			// https://github.com/windmilleng/tilt/issues/2918
+			if !cmd.Empty() {
+				c.Command = cmd.Argv
+			}
+
+			if args.ShouldOverride {
+				c.Args = args.Args
+			}
 
 			injected = true
 		}

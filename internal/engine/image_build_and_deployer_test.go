@@ -605,7 +605,7 @@ func TestDeployPodTemplateSpecHashChangesWhenImageChanges(t *testing.T) {
 	require.NotEqual(t, hash1, hash2)
 }
 
-func TestDeployInjectOverrideCommandClearsOldCommandAndArgs(t *testing.T) {
+func TestDeployInjectOverrideCommandClearsOldCommandButNotArgs(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
@@ -635,7 +635,41 @@ func TestDeployInjectOverrideCommandClearsOldCommandAndArgs(t *testing.T) {
 
 	c := d.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, cmd.Argv, c.Command)
-	assert.Empty(t, c.Args)
+	assert.Equal(t, []string{"something", "something_else"}, c.Args)
+}
+
+func TestDeployInjectOverrideCommandAndArgs(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	cmd := model.ToShellCmd("./foo.sh bar")
+	manifest := NewSanchoDockerBuildManifestWithYaml(f, testyaml.SanchoYAMLWithCommand)
+	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
+	iTarg.OverrideArgs = model.OverrideArgs{ShouldOverride: true}
+	manifest = manifest.WithImageTarget(iTarg)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entities, err := k8s.ParseYAMLFromString(f.k8s.Yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !assert.Equal(t, 1, len(entities)) {
+		return
+	}
+
+	d := entities[0].Obj.(*v1.Deployment)
+	if !assert.Equal(t, 1, len(d.Spec.Template.Spec.Containers)) {
+		return
+	}
+
+	c := d.Spec.Template.Spec.Containers[0]
+	assert.Equal(t, cmd.Argv, c.Command)
+	assert.Equal(t, []string(nil), c.Args)
 }
 
 func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {

@@ -17,6 +17,10 @@ type ImageTarget struct {
 	// (i.e. overrides k8s yaml "command", container ENTRYPOINT, etc.)
 	OverrideCmd Cmd
 
+	// User-supplied args override when the container runs.
+	// (i.e. overrides k8s yaml "args")
+	OverrideArgs OverrideArgs
+
 	cachePaths []string
 
 	// TODO(nick): It might eventually make sense to represent
@@ -26,6 +30,13 @@ type ImageTarget struct {
 	dockerignores []Dockerignore
 	repos         []LocalGitRepo
 	dependencyIDs []TargetID
+}
+
+// Represent OverrideArgs as a special struct, to cleanly distinguish
+// "replace with 0 args" from "don't replace"
+type OverrideArgs struct {
+	ShouldOverride bool
+	Args           []string
 }
 
 func MustNewImageTarget(ref container.RefSelector) ImageTarget {

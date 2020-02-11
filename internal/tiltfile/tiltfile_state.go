@@ -1085,6 +1085,10 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			iTarget = iTarget.WithOverrideCommand(image.entrypoint)
 		}
 
+		if image.containerArgs.ShouldOverride {
+			iTarget.OverrideArgs = image.containerArgs
+		}
+
 		lu := image.liveUpdate
 
 		switch image.Type() {
