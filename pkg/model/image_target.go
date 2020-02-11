@@ -214,6 +214,15 @@ type DockerBuild struct {
 	SSHSpecs []string
 
 	Network string
+
+	// By default, Tilt creates a new temporary image reference for each build.
+	// The user can also specify their own reference, to integrate with other tooling
+	// (like build IDs for Jenkins build pipelines)
+	//
+	// Equivalent to the docker build --tag flag.
+	// Named 'tag' for consistency with how it's used throughout the docker API,
+	// even though this is really more like a reference.NamedTagged
+	ExtraTags []string
 }
 
 func (DockerBuild) buildDetails() {}

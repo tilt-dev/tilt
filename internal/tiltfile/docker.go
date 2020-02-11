@@ -33,6 +33,7 @@ type dockerImage struct {
 	entrypoint       model.Cmd // optional: if specified, we override the image entrypoint/k8s command with this
 	targetStage      string    // optional: if specified, we build a particular target in the dockerfile
 	network          string
+	extraTags        []string // Extra tags added at build-time.
 
 	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
@@ -78,7 +79,18 @@ func (d *dockerImage) Type() dockerImageBuildType {
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef, targetStage string
-	var contextVal, dockerfilePathVal, buildArgs, dockerfileContentsVal, cacheVal, liveUpdateVal, ignoreVal, onlyVal, sshVal, networkVal, entrypoint starlark.Value
+	var contextVal,
+		dockerfilePathVal,
+		buildArgs,
+		dockerfileContentsVal,
+		cacheVal,
+		liveUpdateVal,
+		ignoreVal,
+		onlyVal,
+		sshVal,
+		networkVal,
+		entrypoint,
+		extraTagsVal starlark.Value
 	var matchInEnvVars bool
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -95,6 +107,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"target?", &targetStage,
 		"ssh?", &sshVal,
 		"network?", &networkVal,
+		"extra_tag?", &extraTagsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -187,6 +200,18 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
+	extraTags, ok := value.AsStringOrStringList(extraTagsVal)
+	if !ok {
+		return nil, fmt.Errorf("Argument 'extra_tag' must be string or list of strings. Actual: %T", extraTagsVal)
+	}
+
+	for _, extraTag := range extraTags {
+		_, err := container.ParseNamed(extraTag)
+		if err != nil {
+			return nil, fmt.Errorf("Argument extra_tag=%q not a valid image reference: %v", extraTag, err)
+		}
+	}
+
 	r := &dockerImage{
 		workDir:          starkit.CurrentExecPath(thread),
 		dbDockerfilePath: dockerfilePath,
@@ -202,6 +227,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		entrypoint:       entrypointCmd,
 		targetStage:      targetStage,
 		network:          network,
+		extraTags:        extraTags,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {

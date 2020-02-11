@@ -397,6 +397,62 @@ docker_build("gcr.io/foo", "foo", ssh='default')
 	assert.Equal(t, []string{"default"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).SSHSpecs)
 }
 
+func TestDockerBuildNetwork(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", network='default')
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, "default", m.ImageTargets[0].BuildDetails.(model.DockerBuild).Network)
+}
+
+func TestDockerBuildExtraTagString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", extra_tag='foo:latest')
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, []string{"foo:latest"},
+		m.ImageTargets[0].BuildDetails.(model.DockerBuild).ExtraTags)
+}
+
+func TestDockerBuildExtraTagList(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", extra_tag=['foo:latest', 'foo:jenkins-1234'])
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, []string{"foo:latest", "foo:jenkins-1234"},
+		m.ImageTargets[0].BuildDetails.(model.DockerBuild).ExtraTags)
+}
+
+func TestDockerBuildExtraTagListInvalid(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", extra_tag='cherry bomb')
+`)
+	f.loadErrString("Argument extra_tag=\"cherry bomb\" not a valid image reference: invalid reference format")
+}
+
 func TestDockerBuildCache(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

@@ -17,6 +17,7 @@ func Options(archive io.Reader, db model.DockerBuild) docker.BuildOptions {
 		Target:     string(db.TargetStage),
 		SSHSpecs:   db.SSHSpecs,
 		Network:    db.Network,
+		ExtraTags:  db.ExtraTags,
 	}
 }
 

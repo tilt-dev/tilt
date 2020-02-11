@@ -6,6 +6,7 @@ package build
 import (
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -76,4 +77,32 @@ ADD $some_variable_name /test.txt`)
 		expectedFile{Path: "/test.txt", Contents: "hi im an awesome variable"},
 	}
 	f.assertFilesInImage(refs.LocalRef, expected)
+}
+
+func TestDockerBuildWithExtraTags(t *testing.T) {
+	f := newDockerBuildFixture(t)
+	defer f.teardown()
+
+	df := dockerfile.Dockerfile(`
+FROM alpine
+WORKDIR /src
+ADD a.txt .`)
+
+	f.WriteFile("a.txt", "a")
+
+	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{
+		Dockerfile: df.String(),
+		BuildPath:  f.Path(),
+		ExtraTags:  []string{"fe:jenkins-1234"},
+	}, model.EmptyMatcher)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertImageHasLabels(refs.LocalRef, docker.BuiltByTiltLabel)
+
+	pcs := []expectedFile{
+		expectedFile{Path: "/src/a.txt", Contents: "a"},
+	}
+	f.assertFilesInImage(container.MustParseNamedTagged("fe:jenkins-1234"), pcs)
 }

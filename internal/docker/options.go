@@ -7,8 +7,8 @@ type BuildOptions struct {
 	Dockerfile string
 	Remove     bool
 	BuildArgs  map[string]*string
-	Tags       []string
 	Target     string
 	SSHSpecs   []string
 	Network    string
+	ExtraTags  []string
 }
