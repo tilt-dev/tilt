@@ -35,7 +35,7 @@ func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleCon
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return ModuleContents{}, fmt.Errorf("error fetching Tiltfile %q: %v", urlText, err)
+		return ModuleContents{}, fmt.Errorf("error fetching Tiltfile %q: %v", urlText, resp.Status)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -43,6 +43,7 @@ func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleCon
 		return ModuleContents{}, err
 	}
 
+	// TODO(dmiller): populate the other fields
 	return ModuleContents{
 		Name:             moduleName,
 		TiltfileContents: string(body),

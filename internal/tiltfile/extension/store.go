@@ -11,6 +11,7 @@ import (
 )
 
 const extensionDirName = "tilt_modules"
+const extensionFileName = "Tiltfile"
 
 type Store interface {
 	// ModulePath is used to check if an extension exists before fetching it
@@ -39,7 +40,7 @@ func NewLocalStore(baseDir string) *LocalStore {
 }
 
 func (s *LocalStore) ModulePath(ctx context.Context, moduleName string) (string, error) {
-	tiltfilePath := filepath.Join(s.baseDir, moduleName, "Tiltfile")
+	tiltfilePath := filepath.Join(s.baseDir, moduleName, extensionFileName)
 
 	_, err := os.Stat(tiltfilePath)
 	if err != nil {
@@ -55,7 +56,7 @@ func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string
 		return "", errors.Wrapf(err, "couldn't create module directory %s at path %s", contents.Name, moduleDir)
 	}
 
-	tiltfilePath := filepath.Join(moduleDir, "Tiltfile")
+	tiltfilePath := filepath.Join(moduleDir, extensionFileName)
 	// TODO(dmiller): store hash, source, time fetched
 	if err := ioutil.WriteFile(tiltfilePath, []byte(contents.TiltfileContents), os.FileMode(0600)); err != nil {
 		return "", errors.Wrapf(err, "couldn't store module %s at path %s", contents.Name, tiltfilePath)

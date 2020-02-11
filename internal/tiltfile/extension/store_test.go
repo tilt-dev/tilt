@@ -92,7 +92,7 @@ func (f *fixture) assertModulePathDoesntExist(moduleName string) {
 }
 
 func (f *fixture) assertExtension(moduleName, contents, hash, source string) {
-	tiltfileContents, err := ioutil.ReadFile(f.tempdir.JoinPath(extensionDirName, moduleName, "Tiltfile"))
+	tiltfileContents, err := ioutil.ReadFile(f.tempdir.JoinPath(extensionDirName, moduleName, extensionFileName))
 	require.NoError(f.t, err)
 
 	assert.Equal(f.t, contents, string(tiltfileContents))
@@ -100,7 +100,7 @@ func (f *fixture) assertExtension(moduleName, contents, hash, source string) {
 }
 
 func (f *fixture) assertPath(path string) {
-	assert.Equal(f.t, f.tempdir.JoinPath("tilt_modules", "test", "Tiltfile"), path)
+	assert.Equal(f.t, f.tempdir.JoinPath("tilt_modules", "test", extensionFileName), path)
 }
 
 func (f *fixture) tearDown() {
