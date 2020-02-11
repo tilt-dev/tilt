@@ -23,7 +23,6 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/config"
 	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
 	"github.com/windmilleng/tilt/internal/tiltfile/encoding"
-	"github.com/windmilleng/tilt/internal/tiltfile/extension"
 	"github.com/windmilleng/tilt/internal/tiltfile/git"
 	"github.com/windmilleng/tilt/internal/tiltfile/include"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
@@ -32,6 +31,7 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
 	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
+	"github.com/windmilleng/tilt/internal/tiltfile/tiltextension"
 	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
 	"github.com/windmilleng/tilt/internal/tiltfile/version"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -169,7 +169,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		telemetry.NewExtension(),
 		updatesettings.NewExtension(),
 		encoding.NewExtension(),
-		extension.NewExtension(extension.NewGithubFetcher(), extension.NewLocalStore(filepath.Dir(absFilename))),
+		tiltextension.NewExtension(tiltextension.NewGithubFetcher(), tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)

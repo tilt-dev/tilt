@@ -1,4 +1,4 @@
-package extension
+package tiltextension
 
 import (
 	"fmt"

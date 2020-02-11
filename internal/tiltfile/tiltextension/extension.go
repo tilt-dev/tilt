@@ -2,7 +2,7 @@
 // This is not the internal Starkit abstraction, but the user-visible feature.
 // In a Tiltfile, you can write `load("ext://foo", "bar")` to load the function bar
 // from the extension foo.
-package extension
+package tiltextension
 
 import (
 	"context"
