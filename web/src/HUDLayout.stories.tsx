@@ -33,6 +33,7 @@ let mainLorem = (
     <br />
     dolore eu fugiat nulla pariatur.
     <br />
+    <div style={{ textAlign: "right" }}>Initial Build - blog-site</div>
     <br />
     Excepteur sint occaecat cupidatat non proident,
     <br />

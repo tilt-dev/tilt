@@ -57,6 +57,7 @@ let Root = styled.div`
   padding-bottom: ${s.Height.statusbar}px;
   width: 100%;
   transition: padding-right ${s.AnimDuration.default} ease;
+  box-sizing: border-box;
 
   &.is-sidebarCollapsed {
     padding-right: ${s.Width.sidebarCollapsed}px;
