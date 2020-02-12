@@ -10,14 +10,15 @@ import (
 
 func Options(archive io.Reader, db model.DockerBuild) docker.BuildOptions {
 	return docker.BuildOptions{
-		Context:    archive,
-		Dockerfile: "Dockerfile",
-		Remove:     shouldRemoveImage(),
-		BuildArgs:  manifestBuildArgsToDockerBuildArgs(db.BuildArgs),
-		Target:     string(db.TargetStage),
-		SSHSpecs:   db.SSHSpecs,
-		Network:    db.Network,
-		ExtraTags:  db.ExtraTags,
+		Context:     archive,
+		Dockerfile:  "Dockerfile",
+		Remove:      shouldRemoveImage(),
+		BuildArgs:   manifestBuildArgsToDockerBuildArgs(db.BuildArgs),
+		Target:      string(db.TargetStage),
+		SSHSpecs:    db.SSHSpecs,
+		Network:     db.Network,
+		ExtraTags:   db.ExtraTags,
+		SecretSpecs: db.SecretSpecs,
 	}
 }
 
