@@ -469,8 +469,8 @@ func TestLiveUpdateDiffImgMultipleContainersFallBackIfFilesDoesntMatchAnySyncs(t
 		expectK8sExecCount: 0,
 
 		// fallback message for 1+ files not matching a sync
-		logsContain: []string{"found file(s) not matching a LiveUpdate sync",
-			f.JoinPath("doesnt_match.txt")},
+		logsContain: []string{"found file(s) not matching any sync",
+			"doesnt_match.txt"},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -954,7 +954,7 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 		expectDockerExecCount:    0,
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
-		logsContain:              []string{"detected change to fall_back_on file", f.JoinPath("a.txt")},
+		logsContain:              []string{"detected change to fall_back_on file", "a.txt"},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -978,7 +978,7 @@ func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		expectSyncletDeploy:      true, // (and expect that yaml to have contained the synclet)
-		logsContain:              []string{"detected change to fall_back_on file", f.JoinPath("a.txt")},
+		logsContain:              []string{"detected change to fall_back_on file", "a.txt"},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -1008,8 +1008,7 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
 
-		logsContain: []string{"found file(s) not matching a LiveUpdate sync",
-			f.JoinPath("a.txt")},
+		logsContain:     []string{"found file(s) not matching any sync", "a.txt"},
 		logsDontContain: []string{"unexpected error"},
 	}
 	runTestCase(t, f, tCase)
@@ -1041,8 +1040,7 @@ func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		expectSyncletDeploy:      true, // (and expect that yaml to have contained the synclet)
 
-		logsContain: []string{"found file(s) not matching a LiveUpdate sync",
-			f.JoinPath("a.txt")},
+		logsContain:     []string{"found file(s) not matching any sync", "a.txt"},
 		logsDontContain: []string{"unexpected error"},
 	}
 	runTestCase(t, f, tCase)
@@ -1074,8 +1072,7 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
 
-		logsContain: []string{"found file(s) not matching a LiveUpdate sync",
-			f.JoinPath("a.txt")},
+		logsContain:     []string{"found file(s) not matching any sync", "a.txt"},
 		logsDontContain: []string{"unexpected error"},
 	}
 	runTestCase(t, f, tCase)
