@@ -4287,6 +4287,48 @@ print("fact: %d" % (fact(10)))
 	require.Contains(t, f.out.String(), fmt.Sprintf("fact: %d", 10*9*8*7*6*5*4*3*2*1))
 }
 
+func TestBuiltinAnalytics(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	// covering:
+	// 1. a positional arg
+	// 2. a keyword arg
+	// 3. a mix of both for the same arg
+	// 4. a builtin from a starkit extension
+	f.file("Tiltfile", `
+local('echo hi')
+local(command='echo hi')
+local('echo hi', quiet=True)
+allow_k8s_contexts("hello")
+`)
+
+	f.load()
+
+	// get the exactly one CountEvent named tiltfile.loaded
+	var countEvent analytics.CountEvent
+	for _, ce := range f.an.Counts {
+		if ce.Name == "tiltfile.loaded" {
+			require.Equal(t, "", countEvent.Name, "two count events named tiltfile.loaded")
+			countEvent = ce
+		}
+	}
+	require.NotEqual(t, "", countEvent.Name, "no count event named tiltfile.loaded")
+
+	// make sure it has all the expected builtin call counts
+	expectedCounts := map[string]string{
+		"tiltfile.invoked.local":                           "3",
+		"tiltfile.invoked.local.arg.command":               "3",
+		"tiltfile.invoked.local.arg.quiet":                 "1",
+		"tiltfile.invoked.allow_k8s_contexts":              "1",
+		"tiltfile.invoked.allow_k8s_contexts.arg.contexts": "1",
+	}
+
+	for k, v := range expectedCounts {
+		require.Equal(t, v, countEvent.Tags[k], "count for %s", k)
+	}
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer

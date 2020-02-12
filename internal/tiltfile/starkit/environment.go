@@ -22,11 +22,11 @@ const ctxKey = "starkit.Ctx"
 
 // Unpacks args, using the arg unpacker on the current thread.
 func UnpackArgs(t *starlark.Thread, fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error {
-	env, ok := t.Local(argUnpackerKey).(*Environment)
+	unpacker, ok := t.Local(argUnpackerKey).(ArgUnpacker)
 	if !ok {
 		return starlark.UnpackArgs(fnName, args, kwargs, pairs...)
 	}
-	return env.unpackArgs(fnName, args, kwargs, pairs...)
+	return unpacker(fnName, args, kwargs, pairs...)
 }
 
 // A starlark execution environment.
