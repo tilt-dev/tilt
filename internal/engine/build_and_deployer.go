@@ -74,18 +74,22 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			return br, err
 		}
 
+		_, isLiveUpdate := builder.(*LiveUpdateBuildAndDeployer)
+		l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
+
 		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
-			l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
 			s := fmt.Sprintf("Falling back to next update method…\nREASON: %v\n", err)
-			if _, ok := builder.(*LiveUpdateBuildAndDeployer); ok && redirectErr.UserFacing() {
-				// TODO(maia): differentiate btwn "won't do LU" and "tried and failed to LU"?
+			if isLiveUpdate && redirectErr.UserFacing() {
 				s = fmt.Sprintf("Will not perform Live Update because:\n\t%v\n"+
 					"Falling back to a full image build + deploy\n", err)
 			}
 			l.Write(redirectErr.Level, []byte(s))
 		} else {
 			lastUnexpectedErr = err
-			if i+1 < len(composite.builders) {
+			if isLiveUpdate {
+				l.Warnf("Live Update failed with unexpected error:\n\t%v\n"+
+					"Falling back to a full image build + deploy\n", err)
+			} else if i+1 < len(composite.builders) {
 				logger.Get(ctx).Infof("got unexpected error during build/deploy: %v", err)
 			}
 		}
