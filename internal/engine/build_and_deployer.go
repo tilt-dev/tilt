@@ -84,7 +84,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			//   e.g. "couldn't perform Live Update, falling back to Full Build and Deploy."
 			//   (We can't do this until we can guarantee that there are no nonsense builders in
 			//   the build order, i.e. calculate build order per set of targets to operate on).
-			s := fmt.Sprintf("Couldn't perform update via method: %s because--\n\t%v\n"+
+			s := fmt.Sprintf("Will not perform update via method %q because:\n\t%v\n"+
 				"Falling back to next update method\n", builder.MethodName(), err)
 			l.Write(redirectErr.Level, []byte(s))
 		} else {
