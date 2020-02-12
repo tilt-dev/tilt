@@ -102,8 +102,6 @@ func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
 	ibd.injectSynclet = inject
 }
 
-func (ibd *ImageBuildAndDeployer) MethodName() string { return "[Image Build and] k8s Deploy]" }
-
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) != 1 {

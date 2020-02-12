@@ -62,8 +62,6 @@ type liveUpdInfo struct {
 
 func (lui liveUpdInfo) Empty() bool { return lui.iTarget.ID() == model.ImageTarget{}.ID() }
 
-func (lubad *LiveUpdateBuildAndDeployer) MethodName() string { return "Live Update" }
-
 func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
 	if err != nil {

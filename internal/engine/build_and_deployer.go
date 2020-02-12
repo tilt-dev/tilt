@@ -25,18 +25,14 @@ type BuildAndDeployer interface {
 	BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error)
 }
 
-type BuildAndDeployerMethodNamer interface {
-	BuildAndDeployer
-	MethodName() string // Human-readable name for when we message users about this update method
-}
-type BuildOrder []BuildAndDeployerMethodNamer
+type BuildOrder []BuildAndDeployer
 
 func (bo BuildOrder) String() string {
 	var output strings.Builder
-	output.WriteString("UpdateMethodOrder{")
+	output.WriteString("BuildOrder{")
 
 	for _, b := range bo {
-		output.WriteString(fmt.Sprintf(" %s", b.MethodName()))
+		output.WriteString(fmt.Sprintf(" %T", b))
 	}
 
 	output.WriteString(" }")
@@ -68,7 +64,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 	logger.Get(ctx).Debugf("Building with BuildOrder: %s", composite.builders.String())
 	for i, builder := range composite.builders {
-		logger.Get(ctx).Debugf("Trying to update with method: %s", builder.MethodName())
+		logger.Get(ctx).Debugf("Trying to build and deploy with %T", builder)
 		br, err := builder.BuildAndDeploy(ctx, st, specs, currentState)
 		if err == nil {
 			return br, err
@@ -80,12 +76,12 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
 			l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
-			// TODO(maia): if possible, print name of method we're falling back to,
-			//   e.g. "couldn't perform Live Update, falling back to Full Build and Deploy."
-			//   (We can't do this until we can guarantee that there are no nonsense builders in
-			//   the build order, i.e. calculate build order per set of targets to operate on).
-			s := fmt.Sprintf("Will not perform update via method %q because:\n\t%v\n"+
-				"Falling back to next update method\n", builder.MethodName(), err)
+			s := fmt.Sprintf("Falling back to next update method…\nREASON: %v\n", err)
+			if _, ok := builder.(*LiveUpdateBuildAndDeployer); ok && redirectErr.UserFacing() {
+				// TODO(maia): differentiate btwn "won't do LU" and "tried and failed to LU"?
+				s = fmt.Sprintf("Will not perform Live Update because:\n\t%v\n"+
+					"Falling back to a full image build + deploy\n", err)
+			}
 			l.Write(redirectErr.Level, []byte(s))
 		} else {
 			lastUnexpectedErr = err
