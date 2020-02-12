@@ -57,3 +57,7 @@ yarn-error.log*
 
 # http caches from running kubectl in integration tests
 integration/.kube
+
+### Files owned by indivual developers
+# I want to be able to play with my Tiltfile w/o committing on unrelated projects
+Tiltfile.maia

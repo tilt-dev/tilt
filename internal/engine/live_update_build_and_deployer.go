@@ -8,6 +8,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/windmilleng/tilt/internal/ospath"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
@@ -72,7 +73,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	liveUpdInfos := make([]liveUpdInfo, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
-		return nil, buildcontrol.SilentRedirectToNextBuilderf("no targets for LiveUpdate found")
+		return nil, buildcontrol.SilentRedirectToNextBuilderf("no targets for Live Update found")
 	}
 
 	for _, luStateTree := range liveUpdateStateSet {
@@ -212,8 +213,9 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 			return liveUpdInfo{}, err
 		}
 		if len(pathsMatchingNoSync) > 0 {
-			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof("found file(s) not matching a LiveUpdate sync, so "+
-				"performing a full build. (Files: %s)", strings.Join(pathsMatchingNoSync, ", "))
+			prettyPaths := ospath.FileListDisplayNames(iTarget.LocalPaths(), pathsMatchingNoSync)
+			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
+				"found file(s) not matching a sync (files: %s)", strings.Join(prettyPaths, ", "))
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
@@ -230,12 +232,12 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		hotReload = !luInfo.ShouldRestart()
 	} else {
 		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
-		panic(fmt.Sprintf("did not find LiveUpdate info on target %s, "+
-			"which should have already been validated for LiveUpdate", iTarget.ID()))
+		panic(fmt.Sprintf("did not find Live Update info on target %s, "+
+			"which should have already been validated for Live Update", iTarget.ID()))
 	}
 
 	if len(fileMappings) == 0 {
-		// No files matched a sync for this image, no LiveUpdate to run
+		// No files matched a sync for this image, no Live Update to run
 		return liveUpdInfo{}, nil
 	}
 

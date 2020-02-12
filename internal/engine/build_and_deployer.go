@@ -81,7 +81,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
 			l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
 			// TODO(maia): if possible, print name of method we're falling back to,
-			//   e.g. "couldn't perform LiveUpdate, falling back to Full Build and Deploy."
+			//   e.g. "couldn't perform Live Update, falling back to Full Build and Deploy."
 			//   (We can't do this until we can guarantee that there are no nonsense builders in
 			//   the build order, i.e. calculate build order per set of targets to operate on).
 			s := fmt.Sprintf("Couldn't perform update via method: %s because--\n\t%v\n"+
