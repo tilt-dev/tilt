@@ -8,6 +8,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+
 	"github.com/windmilleng/tilt/internal/ospath"
 
 	"github.com/windmilleng/tilt/internal/analytics"
