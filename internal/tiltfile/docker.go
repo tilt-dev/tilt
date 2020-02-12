@@ -35,6 +35,11 @@ type dockerImage struct {
 	network          string
 	extraTags        []string // Extra tags added at build-time.
 
+	// Overrides the container args. Used as an escape hatch in case people want the old entrypoint behavior.
+	// See discussion here:
+	// https://github.com/windmilleng/tilt/pull/2933
+	containerArgs model.OverrideArgs
+
 	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
 	dbBuildPath      string
@@ -92,6 +97,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		entrypoint,
 		extraTagsVal starlark.Value
 	var matchInEnvVars bool
+	var containerArgsVal starlark.Sequence
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
@@ -104,6 +110,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"ignore?", &ignoreVal,
 		"only?", &onlyVal,
 		"entrypoint?", &entrypoint,
+		"container_args?", &containerArgsVal,
 		"target?", &targetStage,
 		"ssh?", &sshVal,
 		"network?", &networkVal,
@@ -200,6 +207,15 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
+	var containerArgs model.OverrideArgs
+	if containerArgsVal != nil {
+		args, err := value.SequenceToStringSlice(containerArgsVal)
+		if err != nil {
+			return nil, fmt.Errorf("Argument 'container_args': %v", err)
+		}
+		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
+	}
+
 	extraTags, ok := value.AsStringOrStringList(extraTagsVal)
 	if !ok {
 		return nil, fmt.Errorf("Argument 'extra_tag' must be string or list of strings. Actual: %T", extraTagsVal)
@@ -225,6 +241,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		ignores:          ignores,
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
+		containerArgs:    containerArgs,
 		targetStage:      targetStage,
 		network:          network,
 		extraTags:        extraTags,
@@ -266,6 +283,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var liveUpdateVal, ignoreVal starlark.Value
 	var matchInEnvVars bool
 	var entrypoint starlark.Value
+	var containerArgsVal starlark.Sequence
 	var skipsLocalDocker bool
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -279,6 +297,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"match_in_env_vars?", &matchInEnvVars,
 		"ignore?", &ignoreVal,
 		"entrypoint?", &entrypoint,
+		"container_args?", &containerArgsVal,
 	)
 	if err != nil {
 		return nil, err
@@ -324,6 +343,15 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
+	var containerArgs model.OverrideArgs
+	if containerArgsVal != nil {
+		args, err := value.SequenceToStringSlice(containerArgsVal)
+		if err != nil {
+			return nil, fmt.Errorf("Argument 'container_args': %v", err)
+		}
+		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
+	}
+
 	img := &dockerImage{
 		workDir:          starkit.AbsWorkingDir(thread),
 		configurationRef: container.NewRefSelector(ref),
@@ -336,6 +364,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		matchInEnvVars:   matchInEnvVars,
 		ignores:          ignores,
 		entrypoint:       entrypointCmd,
+		containerArgs:    containerArgs,
 	}
 
 	err = s.buildIndex.addImage(img)

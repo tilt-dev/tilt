@@ -3574,6 +3574,25 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint(model.ToShellCmd("/bin/the_app"))))
 }
 
+func TestDockerBuildContainerArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', container_args=["bar"])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	m := f.assertNextManifest("foo")
+	assert.Equal(t,
+		model.OverrideArgs{ShouldOverride: true, Args: []string{"bar"}},
+		m.ImageTargets[0].OverrideArgs)
+}
+
 func TestDockerBuildEntrypointArray(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3628,6 +3647,24 @@ k8s_yaml('foo.yaml')
 		cmd("docker build -t $EXPECTED_REF foo"),
 		entrypoint(model.ToShellCmd("/bin/the_app"))),
 	)
+}
+
+func TestCustomBuildContainerArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
+ ['foo'], container_args=['bar'])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	assert.Equal(t,
+		model.OverrideArgs{ShouldOverride: true, Args: []string{"bar"}},
+		f.assertNextManifest("foo").ImageTargets[0].OverrideArgs)
 }
 
 func TestDuplicateResource(t *testing.T) {

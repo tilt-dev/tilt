@@ -333,8 +333,8 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			if replaced {
 				injectedDepIDs[depID] = true
 
-				if !iTarget.OverrideCmd.Empty() {
-					e, err = k8s.InjectCommand(e, ref, iTarget.OverrideCmd)
+				if !iTarget.OverrideCmd.Empty() || iTarget.OverrideArgs.ShouldOverride {
+					e, err = k8s.InjectCommandAndArgs(e, ref, iTarget.OverrideCmd, iTarget.OverrideArgs)
 					if err != nil {
 						return nil, err
 					}
