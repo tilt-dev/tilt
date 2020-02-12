@@ -93,7 +93,7 @@ func FilterMappings(mappings []PathMapping, matcher model.PathMatcher) ([]PathMa
 // that it cannot associate with a sync.
 func FilesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, []string, error) {
 	pms := make([]PathMapping, 0, len(files))
-	skipped := []string{}
+	pathsMatchingNoSync := []string{}
 	for _, f := range files {
 		pm, couldMap, err := fileToPathMapping(f, syncs)
 		if err != nil {
@@ -103,11 +103,11 @@ func FilesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, []s
 		if couldMap {
 			pms = append(pms, pm)
 		} else {
-			skipped = append(skipped, f)
+			pathsMatchingNoSync = append(pathsMatchingNoSync, f)
 		}
 	}
 
-	return pms, skipped, nil
+	return pms, pathsMatchingNoSync, nil
 }
 
 func fileToPathMapping(file string, sync []model.Sync) (pm PathMapping, couldMap bool, err error) {

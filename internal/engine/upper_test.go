@@ -202,6 +202,8 @@ func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deploy
 	return result
 }
 
+func (b *fakeBuildAndDeployer) MethodName() string { return "Fake Update" }
+
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
 	b.mu.Lock()
 	b.buildCount++

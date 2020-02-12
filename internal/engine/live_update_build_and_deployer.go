@@ -60,6 +60,8 @@ type liveUpdInfo struct {
 
 func (lui liveUpdInfo) Empty() bool { return lui.iTarget.ID() == model.ImageTarget{}.ID() }
 
+func (lubad *LiveUpdateBuildAndDeployer) MethodName() string { return "Live Update" }
+
 func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
 	if err != nil {
@@ -204,14 +206,14 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 	var hotReload bool
 
 	if luInfo := iTarget.LiveUpdateInfo(); !luInfo.Empty() {
-		var skipped []string
-		fileMappings, skipped, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
+		var pathsMatchingNoSync []string
+		fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
-		if len(skipped) > 0 {
+		if len(pathsMatchingNoSync) > 0 {
 			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof("found file(s) not matching a LiveUpdate sync, so "+
-				"performing a full build. (Files: %s)", strings.Join(skipped, ", "))
+				"performing a full build. (Files: %s)", strings.Join(pathsMatchingNoSync, ", "))
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
@@ -228,8 +230,8 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		hotReload = !luInfo.ShouldRestart()
 	} else {
 		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
-		panic(fmt.Sprintf("found neither FastBuild nor LiveUpdate info on target %s, "+
-			"which should have already been validated", iTarget.ID()))
+		panic(fmt.Sprintf("did not find LiveUpdate info on target %s, "+
+			"which should have already been validated for LiveUpdate", iTarget.ID()))
 	}
 
 	if len(fileMappings) == 0 {

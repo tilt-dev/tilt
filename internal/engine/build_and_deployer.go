@@ -25,14 +25,18 @@ type BuildAndDeployer interface {
 	BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error)
 }
 
-type BuildOrder []BuildAndDeployer
+type BuildAndDeployerMethodNamer interface {
+	BuildAndDeployer
+	MethodName() string // Human-readable name for when we message users about this update method
+}
+type BuildOrder []BuildAndDeployerMethodNamer
 
 func (bo BuildOrder) String() string {
 	var output strings.Builder
-	output.WriteString("BuildOrder{")
+	output.WriteString("UpdateMethodOrder{")
 
 	for _, b := range bo {
-		output.WriteString(fmt.Sprintf(" %T", b))
+		output.WriteString(fmt.Sprintf(" %s", b.MethodName()))
 	}
 
 	output.WriteString(" }")
@@ -61,9 +65,10 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	ctx, span := composite.tracer.Start(ctx, "update")
 	defer span.End()
 	var lastErr, lastUnexpectedErr error
+
 	logger.Get(ctx).Debugf("Building with BuildOrder: %s", composite.builders.String())
 	for i, builder := range composite.builders {
-		logger.Get(ctx).Debugf("Trying to build and deploy with %T", builder)
+		logger.Get(ctx).Debugf("Trying to update with method: %s", builder.MethodName())
 		br, err := builder.BuildAndDeploy(ctx, st, specs, currentState)
 		if err == nil {
 			return br, err
@@ -75,7 +80,12 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
 			l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
-			s := fmt.Sprintf("Falling back to next update method…\nREASON: %v\n", err)
+			// TODO(maia): if possible, print name of method we're falling back to,
+			//   e.g. "couldn't perform LiveUpdate, falling back to Full Build and Deploy."
+			//   (We can't do this until we can guarantee that there are no nonsense builders in
+			//   the build order, i.e. calculate build order per set of targets to operate on).
+			s := fmt.Sprintf("Couldn't perform update via method: %s because--\n\t%v\n"+
+				"Falling back to next update method\n", builder.MethodName(), err)
 			l.Write(redirectErr.Level, []byte(s))
 		} else {
 			lastUnexpectedErr = err
