@@ -69,7 +69,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		}
 
 		if state.RunningContainerError != nil {
-			return nil, buildcontrol.RedirectToNextBuilderInfof("%v", state.RunningContainerError)
+			return nil, buildcontrol.RedirectToNextBuilderInfof("Error retrieving container info: %v", state.RunningContainerError)
 		}
 
 		// Now that we have live update information, we know this CAN be updated in

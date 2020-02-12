@@ -224,8 +224,9 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 			return liveUpdInfo{}, err
 		}
 		if anyMatch {
+			prettyFile := ospath.FileListDisplayNames(iTarget.LocalPaths(), []string{file})[0]
 			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
-				"detected change to fall_back_on file '%s'", file)
+				"detected change to fall_back_on file %q", prettyFile)
 		}
 
 		runs = luInfo.RunSteps()
