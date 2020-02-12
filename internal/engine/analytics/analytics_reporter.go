@@ -16,6 +16,7 @@ const analyticsReportingInterval = time.Minute * 15
 type AnalyticsReporter struct {
 	a       *analytics.TiltAnalytics
 	store   *store.Store
+	kClient k8s.Client
 	env     k8s.Env
 	started bool
 }
@@ -33,8 +34,8 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 		ar.started = true
 		go func() {
 			select {
-			case <-time.After(time.Minute * 2):
-				ar.report() // report once pretty soon after startup...
+			case <-time.After(10 * time.Second):
+				ar.report(ctx) // report once pretty soon after startup...
 			case <-ctx.Done():
 				return
 			}
@@ -43,7 +44,7 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 				select {
 				case <-time.After(analyticsReportingInterval):
 					// and once every <interval> thereafter
-					ar.report()
+					ar.report(ctx)
 				case <-ctx.Done():
 					return
 				}
@@ -54,16 +55,17 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 
 var _ store.Subscriber = &AnalyticsReporter{}
 
-func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store, env k8s.Env) *AnalyticsReporter {
+func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store, kClient k8s.Client, env k8s.Env) *AnalyticsReporter {
 	return &AnalyticsReporter{
 		a:       a,
 		store:   st,
+		kClient: kClient,
 		env:     env,
 		started: false,
 	}
 }
 
-func (ar *AnalyticsReporter) report() {
+func (ar *AnalyticsReporter) report(ctx context.Context) {
 	st := ar.store.RLockState()
 	defer ar.store.RUnlockState()
 	var dcCount, k8sCount, liveUpdateCount, unbuiltCount,
@@ -108,6 +110,18 @@ func (ar *AnalyticsReporter) report() {
 		// env should really be a global tag, but there's a circular dependency
 		// between the global tags and env initialization, so we add it manually.
 		"env": string(ar.env),
+	}
+
+	if k8sCount > 1 {
+		registry := ar.kClient.LocalRegistry(ctx)
+		if registry.Host != "" {
+			stats["k8s.registry.host"] = "1"
+		}
+		if registry.HostFromCluster() != registry.Host {
+			stats["k8s.registry.hostFromCluster"] = "1"
+		}
+
+		stats["k8s.runtime"] = string(ar.kClient.ContainerRuntime(ctx))
 	}
 
 	tiltfileIsInError := "false"
