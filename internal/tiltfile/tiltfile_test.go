@@ -4231,6 +4231,25 @@ func TestMaxParallelUpdates(t *testing.T) {
 	}
 }
 
+// recursion is disabled by default in Starlark. Make sure we've enabled it for Tiltfiles.
+func TestRecursionEnabled(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+def fact(n):
+  if not n:
+    return 1
+  return n * fact(n - 1)
+
+print("fact: %d" % (fact(10)))
+`)
+
+	f.load()
+
+	require.Contains(t, f.out.String(), fmt.Sprintf("fact: %d", 10*9*8*7*6*5*4*3*2*1))
+}
+
 func TestBuiltinAnalytics(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

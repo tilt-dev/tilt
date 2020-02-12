@@ -38,6 +38,7 @@ func init() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
 	resolve.AllowGlobalReassign = true
+	resolve.AllowRecursion = true
 }
 
 type TiltfileLoadResult struct {
