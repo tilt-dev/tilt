@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"go.opentelemetry.io/otel/api/core"
 	"go.opentelemetry.io/otel/api/trace"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -63,10 +64,12 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	var lastErr, lastUnexpectedErr error
 	logger.Get(ctx).Debugf("Building with BuildOrder: %s", composite.builders.String())
 	for i, builder := range composite.builders {
-		logger.Get(ctx).Debugf("Trying to build and deploy with %T", builder)
+		buildType := fmt.Sprintf("%T", builder)
+		logger.Get(ctx).Debugf("Trying to build and deploy with %s", buildType)
 		br, err := builder.BuildAndDeploy(ctx, st, specs, currentState)
 		if err == nil {
-			return br, err
+			span.SetAttributes(core.KeyValue{Key: "buildType", Value: core.String(buildType)})
+			return br, nil
 		}
 
 		if !buildcontrol.ShouldFallBackForErr(err) {
