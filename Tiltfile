@@ -31,10 +31,10 @@ def get_all_ts_files(path):
   return str(local('cd %s && find . -type f -name "*.ts*" | grep -v node_modules | grep -v __snapshots__' % path)).split("\n")
 
 def yarn_install():
-  local_resource("yarn_install", "cd web && yarn")
+  local_resource("yarn_install", "cd web && yarn", deps=['web/package.json', 'web/yarn.lock'])
 
 def jest(path):
-  local_resource("web_jest", "", serve_cmd="cd %s && yarn test" % path, resource_deps=["yarn_install"])
+  local_resource("web_jest", "", serve_cmd="cd %s && yarn run test --bail" % path, resource_deps=["yarn_install"])
 
 def web_lint():
   ts_deps = get_all_ts_files("web")

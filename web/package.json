@@ -37,6 +37,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "ci": "react-scripts test --runInBand --reporters=default --reporters=jest-junit",
+    "test-bail": "react-scripts test --bail",
     "test-debug": "react-scripts --inspect-brk test --runInBand --no-cache",
     "eject": "react-scripts eject",
     "check": "prettier --check \"src/**/*.ts*\" && tsc -p . && eslint 'src/**/*.ts*'",
