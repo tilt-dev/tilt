@@ -66,13 +66,15 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	for i, builder := range composite.builders {
 		buildType := fmt.Sprintf("%T", builder)
 		logger.Get(ctx).Debugf("Trying to build and deploy with %s", buildType)
-		span.SetAttributes(core.KeyValue{Key: "buildType", Value: core.String(buildType)})
+
 		br, err := builder.BuildAndDeploy(ctx, st, specs, currentState)
 		if err == nil {
-			span.SetAttributes(core.KeyValue{Key: "success", Value: core.Bool(true)})
+			buildTypes := br.BuildTypes()
+			for _, bt := range buildTypes {
+				span.SetAttributes(core.KeyValue{core.Key(fmt.Sprintf("buildType.%s", bt)), core.Bool(true)})
+			}
 			return br, nil
 		}
-		defer span.SetAttributes(core.KeyValue{Key: "success", Value: core.Bool(false)})
 
 		if !buildcontrol.ShouldFallBackForErr(err) {
 			return br, err
