@@ -9,6 +9,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
+	"github.com/windmilleng/tilt/internal/ospath"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 
@@ -70,7 +72,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	liveUpdInfos := make([]liveUpdInfo, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
-		return nil, buildcontrol.SilentRedirectToNextBuilderf("no targets for LiveUpdate found")
+		return nil, buildcontrol.SilentRedirectToNextBuilderf("no targets for Live Update found")
 	}
 
 	for _, luStateTree := range liveUpdateStateSet {
@@ -204,14 +206,15 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 	var hotReload bool
 
 	if luInfo := iTarget.LiveUpdateInfo(); !luInfo.Empty() {
-		var skipped []string
-		fileMappings, skipped, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
+		var pathsMatchingNoSync []string
+		fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
-		if len(skipped) > 0 {
-			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof("found file(s) not matching a LiveUpdate sync, so "+
-				"performing a full build. (Files: %s)", strings.Join(skipped, ", "))
+		if len(pathsMatchingNoSync) > 0 {
+			prettyPaths := ospath.FileListDisplayNames(iTarget.LocalPaths(), pathsMatchingNoSync)
+			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
+				"Found file(s) not matching any sync (files: %s)", strings.Join(prettyPaths, ", "))
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
@@ -220,20 +223,21 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 			return liveUpdInfo{}, err
 		}
 		if anyMatch {
+			prettyFile := ospath.FileListDisplayNames(iTarget.LocalPaths(), []string{file})[0]
 			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
-				"detected change to fall_back_on file '%s'", file)
+				"Detected change to fall_back_on file %q", prettyFile)
 		}
 
 		runs = luInfo.RunSteps()
 		hotReload = !luInfo.ShouldRestart()
 	} else {
 		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
-		panic(fmt.Sprintf("found neither FastBuild nor LiveUpdate info on target %s, "+
-			"which should have already been validated", iTarget.ID()))
+		panic(fmt.Sprintf("did not find Live Update info on target %s, "+
+			"which should have already been validated for Live Update", iTarget.ID()))
 	}
 
 	if len(fileMappings) == 0 {
-		// No files matched a sync for this image, no LiveUpdate to run
+		// No files matched a sync for this image, no Live Update to run
 		return liveUpdInfo{}, nil
 	}
 

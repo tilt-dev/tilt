@@ -397,6 +397,61 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	}
 }
 
+func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	lu := assembleLiveUpdate([]model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{Source: f.Path(), Dest: "/blah"}},
+		nil, false, []string{f.JoinPath("fall_back.txt")}, f)
+	manifest := manifestbuilder.New(f, "foobar").
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		WithLiveUpdate(lu).
+		WithK8sYAML(SanchoYAML).
+		Build()
+
+	changed := f.WriteFile("fall_back.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertContainerRestarts(0)
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	assert.Contains(t, f.logs.String(), "Will not perform Live Update because",
+		"expect logs to contain Live Update-specific fallback message")
+}
+
+func TestLiveUpdateFallbackMessagingUnexpectedError(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	defer f.TearDown()
+
+	f.docker.SetExecError(errors.New("some random error"))
+
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+
+	manifest := NewSanchoLiveUpdateManifest(f)
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.assertContainerRestarts(0)
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	assert.Contains(t, f.logs.String(), "Live Update failed with unexpected error",
+		"expect logs to contain Live Update-specific fallback message")
+}
+
 func TestLiveUpdateTwice(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()

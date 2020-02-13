@@ -17,6 +17,13 @@ type RedirectToNextBuilder struct {
 	Level logger.Level
 }
 
+// UserFacing indicates whether this error should be messaged to the user by default.
+// Should be `true` for messages we always want the user to read, e.g. "couldn't Live Update
+// because we matched a fall_back_on file".
+func (redir RedirectToNextBuilder) UserFacing() bool {
+	return redir.Level.AsSevereAs(logger.InfoLvl)
+}
+
 func WrapRedirectToNextBuilder(err error, level logger.Level) RedirectToNextBuilder {
 	return RedirectToNextBuilder{err, level}
 }
