@@ -70,6 +70,7 @@ declare namespace Proto {
     localResourceInfo?: webviewLocalResourceInfo;
     runtimeStatus?: string;
     isTiltfile?: boolean;
+    targetTypes?: string[];
     showBuildStatus?: boolean;
     /**
      * Obsoleted by crash_log_span_id.

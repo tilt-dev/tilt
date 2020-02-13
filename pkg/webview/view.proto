@@ -104,6 +104,7 @@ message Resource {
   LocalResourceInfo local_resource_info = 17;
   string runtime_status = 18;
   bool is_tiltfile = 19;
+  repeated BuildType target_types = 27;
   bool show_build_status = 20;
 
   // Resource logs are now stored in the log store.

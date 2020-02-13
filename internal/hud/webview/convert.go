@@ -91,6 +91,11 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			return nil, err
 		}
 
+		targetTypes, err := TargetsToProtoBuildTypes(mt.Manifest.TargetSpecs())
+		if err != nil {
+			return nil, err
+		}
+
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the
 		// "most interesting" pod that's crash looping, or show logs from all pods
@@ -113,6 +118,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			CurrentBuild:       cb,
 			Endpoints:          endpoints,
 			PodID:              podID.String(),
+			TargetTypes:        targetTypes,
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			CrashLog:           ms.CrashLog.String(),
 			TriggerMode:        int32(mt.Manifest.TriggerMode),

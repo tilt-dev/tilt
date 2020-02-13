@@ -397,6 +397,12 @@
           "type": "boolean",
           "format": "boolean"
         },
+        "target_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewBuildType"
+          }
+        },
         "show_build_status": {
           "type": "boolean",
           "format": "boolean"
