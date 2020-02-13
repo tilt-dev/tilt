@@ -76,7 +76,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		// a container(s). Check to see if we have enough information about the
 		// container(s) that would need to be updated.
 		if len(state.RunningContainers) == 0 {
-			return nil, buildcontrol.RedirectToNextBuilderInfof("don't have info for running container of image %q "+
+			return nil, buildcontrol.RedirectToNextBuilderInfof("Don't have info for running container of image %q "+
 				"(often a result of the deployment not yet being ready)", container.FamiliarString(iTarget.Refs.ClusterRef()))
 		}
 
