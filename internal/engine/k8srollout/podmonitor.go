@@ -119,7 +119,7 @@ func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1.Po
 		return
 	}
 
-	l.Infof("%s┣ Not %s%s(%s):\n%s%s", prefix, name, spacer, reason, prefix, message)
+	l.Infof("%s┃ Not %s%s(%s):\n%s┃ %s", prefix, name, spacer, reason, prefix, message)
 }
 
 type podStatus struct {
