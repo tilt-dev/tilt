@@ -22,7 +22,7 @@ class SidebarItem {
   isTiltfile: boolean
   status: ResourceStatus
   hasEndpoints: boolean
-  lastBuildDur: string
+  lastBuildDur: Date | null
   lastDeployTime: string
   pendingBuildSince: string
   currentBuildStartTime: string
@@ -43,7 +43,7 @@ class SidebarItem {
     this.isTiltfile = !!res.isTiltfile
     this.status = combinedStatus(res)
     this.hasEndpoints = (res.endpoints || []).length > 0
-    this.lastBuildDur = lastBuild && lastBuild.startTime && lastBuild.finishTime ? timeDiffSeconds(lastBuild.startTime, lastBuild.finishTime) : ""
+    this.lastBuildDur = lastBuild && lastBuild.startTime && lastBuild.finishTime ? timeDiff(lastBuild.startTime, lastBuild.finishTime) : null
     this.lastDeployTime = res.lastDeployTime ?? ""
     this.pendingBuildSince = res.pendingBuildSince ?? ""
     this.currentBuildStartTime = res.currentBuild?.startTime ?? ""
@@ -113,7 +113,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
       let hasBuilt = item.lastBuild !== null
       let building = !isZeroTime(item.currentBuildStartTime)
-      let buildDur = item.lastBuildDur
+      let buildDur = item.lastBuildDur ? formatDuration(item.lastBuildDur) : ""
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter}/>
       let isSelected = this.props.selected === item.name
 
@@ -184,11 +184,14 @@ class Sidebar extends PureComponent<SidebarProps> {
   }
 }
 
-function timeDiffSeconds(start: string, end: string): string {
+function timeDiff(start: string, end: string): Date {
   let t1 = moment(start)
   let t2 = moment(end)
-  let diff = t2.diff(t1, 'seconds')
-  return diff + 's'
+  return t2.diff(t1)
+}
+
+function formatDuration(dur: Date): string {
+  return moment(dur).format("s.S")+"s"
 }
 
 export default Sidebar
