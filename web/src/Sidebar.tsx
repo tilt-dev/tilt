@@ -109,7 +109,8 @@ class Sidebar extends PureComponent<SidebarProps> {
       let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
       let hasBuilt = item.lastBuild !== null
       let building = !isZeroTime(item.currentBuildStartTime)
-      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+      let buildDur = "1m"
+      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter}/>
       let isSelected = this.props.selected === item.name
 
       let classes = "SidebarItem"
@@ -134,6 +135,13 @@ class Sidebar extends PureComponent<SidebarProps> {
             ) : (
               ""
             )}
+            <span
+                className={`SidebarItem-lastDur ${
+                    hasSuccessfullyDeployed ? "" : "empty"
+                }`}
+            >
+              {hasSuccessfullyDeployed ? buildDur : "—"}
+            </span>
             <span
               className={`SidebarItem-timeAgo ${
                 hasSuccessfullyDeployed ? "" : "empty"

@@ -111,6 +111,7 @@
   min-width: $spacing-unit * 0.8;
   text-align: right;
   font-weight: normal;
+  padding-left: $spacing-unit * 0.2;
   color: rgba($color-white, $translucent-ish);
 }
 .SidebarItem.is-selected .SidebarItem-timeAgo {
@@ -118,6 +119,21 @@
 }
 .SidebarItem-timeAgo.empty {
   color: rgba($color-white, $translucent) !important;
+}
+
+.SidebarItem-lastDur {
+  min-width: $spacing-unit * 0.8;
+  font-weight: normal;
+  color: rgba($color-white, $translucent-ish);
+}
+.SidebarItem-lastDur:not(.empty)::after {
+  content: " |"
+}
+.SidebarItem.is-selected .SidebarItem-lastDur {
+  color: $color-gray;
+}
+.SidebarItem-lastDur.empty {
+  display: none;
 }
 
 // Collapse/Expand
