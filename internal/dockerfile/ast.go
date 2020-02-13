@@ -12,6 +12,7 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/dockerfile2llb"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
+	"github.com/moby/buildkit/frontend/dockerfile/shell"
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -34,16 +35,49 @@ func ParseAST(df Dockerfile) (AST, error) {
 	}, nil
 }
 
+func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, metaArgs []instructions.ArgCommand) string {
+	if node.Next == nil {
+		return ""
+	}
+
+	inst, err := instructions.ParseInstruction(node)
+	if err != nil {
+		return node.Next.Value // if there's a parsing error, fallback to the first arg
+	}
+
+	fromInst, ok := inst.(*instructions.Stage)
+	if !ok || fromInst.BaseName == "" {
+		return ""
+	}
+
+	// The base image name may have ARG expansions in it. Do the default
+	// substitution.
+	argsMap := fakeArgsMap(shlex, metaArgs)
+	baseName, err := shlex.ProcessWordWithMap(fromInst.BaseName, argsMap)
+	if err != nil {
+		// If anything fails, just use the hard-coded BaseName.
+		return fromInst.BaseName
+	}
+	return baseName
+
+}
+
 // Find all images referenced in this dockerfile and call the visitor function.
 // If the visitor function returns a new image, subsitute that image into the dockerfile.
 func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Named) reference.Named) error {
+	// Parse the instructions for ARG expansions. It's not a big deal if it doesn't parse.
+	_, metaArgs, _ := instructions.Parse(a.result.AST)
+	shlex := shell.NewLex(a.result.EscapeToken)
+
 	return a.Traverse(func(node *parser.Node) error {
 		switch node.Value {
 		case command.From:
-			if node.Next == nil {
-				return nil
+			baseName := a.extractBaseNameInFromCommand(node, shlex, metaArgs)
+			if baseName == "" {
+				return nil // ignore parsing error
 			}
-			ref, err := container.ParseNamed(node.Next.Value)
+
+			ref, err := container.ParseNamed(baseName)
 			if err != nil {
 				return nil // drop the error, we don't care about malformed images
 			}
@@ -252,4 +286,18 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// Loosely adapted from the buildkit code for turning args into a map.
+// Iterate through them and do substitutions in order.
+func fakeArgsMap(shlex *shell.Lex, args []instructions.ArgCommand) map[string]string {
+	m := make(map[string]string)
+	for _, a := range args {
+		val := ""
+		if a.Value != nil {
+			val, _ = shlex.ProcessWordWithMap(*(a.Value), m)
+		}
+		m[a.Key] = val
+	}
+	return m
 }

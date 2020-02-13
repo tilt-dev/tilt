@@ -187,3 +187,15 @@ func TestFindImagesCopyFrom(t *testing.T) {
 		assert.Equal(t, "gcr.io/image-a", images[0].String())
 	}
 }
+
+func TestFindImagesWithArg(t *testing.T) {
+	df := Dockerfile(`
+ARG TAG="latest"
+FROM gcr.io/image-a:${TAG}
+`)
+	images, err := df.FindImages()
+	assert.NoError(t, err)
+	if assert.Equal(t, 1, len(images)) {
+		assert.Equal(t, "gcr.io/image-a:latest", images[0].String())
+	}
+}
