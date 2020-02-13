@@ -120,6 +120,9 @@ type archiveEntry struct {
 // e.g. tarring my_dir --> dest d: d/file_a, d/file_b
 // If source path does not exist, quietly skips it and returns no err
 func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string) ([]archiveEntry, error) {
+	// (PL) convert \ to / in case of windows path
+	source = filepath.ToSlash(source)
+
 	sourceInfo, err := os.Stat(source)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -136,13 +139,25 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 		}
 	}
 
-	dest = strings.TrimPrefix(dest, "/")
+	// (PL) convert \ to / in case of windows path
+	dest = filepath.ToSlash(dest)
+
+	// (PL) remove volume name + / so if we got a windows path C:\foo it becomes foo
+	dest = strings.TrimPrefix(dest, filepath.VolumeName(dest)+"/")
+
+	destWithSlash := dest
+	if !strings.HasSuffix(destWithSlash, "/") {
+		destWithSlash += "/"
+	}
 
 	result := make([]archiveEntry, 0)
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return errors.Wrapf(err, "error walking to %s", path)
 		}
+
+		// (PL) convert \ to / in case of windows path
+		path = filepath.ToSlash(path)
 
 		matches, err := a.filter.Matches(path)
 		if err != nil {
@@ -179,16 +194,18 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 
 		if sourceIsDir {
 			// Name of file in tar should be relative to source directory...
-			header.Name = strings.TrimPrefix(path, source)
+			tmp, err := filepath.Rel(source, path)
+			if err != nil {
+				return errors.Wrapf(err, "making rel path source:%s path:%s", source, path)
+			}
 			// ...and live inside `dest`
-			header.Name = filepath.Join(dest, header.Name)
-		} else if strings.HasSuffix(dest, string(filepath.Separator)) {
-			header.Name = filepath.Join(dest, filepath.Base(source))
+			header.Name = destWithSlash + tmp //strings.TrimPrefix(path, source)
+		} else if strings.HasSuffix(dest, "/") {
+			header.Name = dest + filepath.Base(path)
 		} else {
 			header.Name = dest
 		}
-
-		header.Name = filepath.Clean(header.Name)
+		header.Name = filepath.ToSlash(filepath.Clean(header.Name))
 		result = append(result, archiveEntry{
 			path:   path,
 			info:   info,
