@@ -12,7 +12,7 @@ import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { numberOfAlerts } from "./alerts"
 
-const moment = require('moment');
+const moment = require("moment")
 
 type Resource = Proto.webviewResource
 type Build = Proto.webviewBuildRecord
@@ -37,13 +37,16 @@ class SidebarItem {
    */
   constructor(res: Resource) {
     let buildHistory = res.buildHistory || []
-    let lastBuild  = (buildHistory.length > 0) ? buildHistory[0] : null
+    let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
 
     this.name = res.name ?? ""
     this.isTiltfile = !!res.isTiltfile
     this.status = combinedStatus(res)
     this.hasEndpoints = (res.endpoints || []).length > 0
-    this.lastBuildDur = lastBuild && lastBuild.startTime && lastBuild.finishTime ? timeDiff(lastBuild.startTime, lastBuild.finishTime) : null
+    this.lastBuildDur =
+      lastBuild && lastBuild.startTime && lastBuild.finishTime
+        ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
+        : null
     this.lastDeployTime = res.lastDeployTime ?? ""
     this.pendingBuildSince = res.pendingBuildSince ?? ""
     this.currentBuildStartTime = res.currentBuild?.startTime ?? ""
@@ -114,7 +117,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       let hasBuilt = item.lastBuild !== null
       let building = !isZeroTime(item.currentBuildStartTime)
       let buildDur = item.lastBuildDur ? formatDuration(item.lastBuildDur) : ""
-      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter}/>
+      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
       let isSelected = this.props.selected === item.name
 
       let classes = "SidebarItem"
@@ -140,9 +143,9 @@ class Sidebar extends PureComponent<SidebarProps> {
               ""
             )}
             <span
-                className={`SidebarItem-lastDur ${
-                    hasSuccessfullyDeployed ? "" : "empty"
-                }`}
+              className={`SidebarItem-lastDur ${
+                hasSuccessfullyDeployed ? "" : "empty"
+              }`}
             >
               {hasSuccessfullyDeployed ? buildDur : "—"}
             </span>
@@ -191,7 +194,7 @@ function timeDiff(start: string, end: string): Date {
 }
 
 function formatDuration(dur: Date): string {
-  return moment(dur).format("s.S")+"s"
+  return moment(dur).format("s.S") + "s"
 }
 
 export default Sidebar
