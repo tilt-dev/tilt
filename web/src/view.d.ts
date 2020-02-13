@@ -156,12 +156,12 @@ declare namespace Proto {
     warnings?: string[];
     startTime?: string;
     finishTime?: string;
+    buildTypes?: string[];
     isCrashRebuild?: boolean;
     /**
      * The span id for this build record's logs in the main logstore.
      */
     spanId?: string;
-    buildTypes?: string[];
   }
   export interface webviewAckWebsocketResponse {}
   export interface webviewAckWebsocketRequest {

@@ -38,8 +38,8 @@ func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
 	return ts, nil
 }
 
-func buildTypesToProto(bts []model.BuildType) ([]proto_webview.BuildRecord_BuildType, error) {
-	result := make([]proto_webview.BuildRecord_BuildType, len(bts))
+func buildTypesToProto(bts []model.BuildType) ([]proto_webview.BuildType, error) {
+	result := make([]proto_webview.BuildType, len(bts))
 	for i, bt := range bts {
 		webviewTyp, err := buildTypeToProto(bt)
 		if err != nil {
@@ -50,20 +50,20 @@ func buildTypesToProto(bts []model.BuildType) ([]proto_webview.BuildRecord_Build
 	return result, nil
 }
 
-func buildTypeToProto(bt model.BuildType) (proto_webview.BuildRecord_BuildType, error) {
+func buildTypeToProto(bt model.BuildType) (proto_webview.BuildType, error) {
 	switch bt {
 	case model.BuildTypeImage:
-		return proto_webview.BuildRecord_IMAGE, nil
+		return proto_webview.BuildType_IMAGE, nil
 	case model.BuildTypeLiveUpdate:
-		return proto_webview.BuildRecord_LIVE_UPDATE, nil
+		return proto_webview.BuildType_LIVE_UPDATE, nil
 	case model.BuildTypeDockerCompose:
-		return proto_webview.BuildRecord_DOCKER_COMPOSE, nil
+		return proto_webview.BuildType_DOCKER_COMPOSE, nil
 	case model.BuildTypeK8s:
-		return proto_webview.BuildRecord_K8S, nil
+		return proto_webview.BuildType_K8S, nil
 	case model.BuildTypeLocal:
-		return proto_webview.BuildRecord_LOCAL, nil
+		return proto_webview.BuildType_LOCAL, nil
 	default:
-		return proto_webview.BuildRecord_IMAGE, fmt.Errorf("unknown build type '%v'", bt)
+		return proto_webview.BuildType_IMAGE, fmt.Errorf("unknown build type '%v'", bt)
 	}
 }
 
@@ -98,9 +98,9 @@ func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*pro
 		Warnings:       warnings,
 		StartTime:      start,
 		FinishTime:     finish,
+		BuildTypes:     types,
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 		SpanId:         string(br.SpanID),
-		BuildTypes:     types,
 	}, nil
 }
 

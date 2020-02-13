@@ -85,17 +85,6 @@
     }
   },
   "definitions": {
-    "BuildRecordBuildType": {
-      "type": "string",
-      "enum": [
-        "IMAGE",
-        "LIVE_UPDATE",
-        "DOCKER_COMPOSE",
-        "K8S",
-        "LOCAL"
-      ],
-      "default": "IMAGE"
-    },
     "webviewAckWebsocketRequest": {
       "type": "object",
       "properties": {
@@ -141,6 +130,12 @@
           "type": "string",
           "format": "date-time"
         },
+        "build_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewBuildType"
+          }
+        },
         "is_crash_rebuild": {
           "type": "boolean",
           "format": "boolean"
@@ -148,14 +143,19 @@
         "span_id": {
           "type": "string",
           "description": "The span id for this build record's logs in the main logstore."
-        },
-        "build_types": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/BuildRecordBuildType"
-          }
         }
       }
+    },
+    "webviewBuildType": {
+      "type": "string",
+      "enum": [
+        "IMAGE",
+        "LIVE_UPDATE",
+        "DOCKER_COMPOSE",
+        "K8S",
+        "LOCAL"
+      ],
+      "default": "IMAGE"
     },
     "webviewDCResourceInfo": {
       "type": "object",

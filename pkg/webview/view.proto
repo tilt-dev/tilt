@@ -8,12 +8,22 @@ import "pkg/webview/log.proto";
 
 option go_package = "github.com/windmilleng/tilt/pkg/webview";
 
+enum BuildType {
+  IMAGE = 0;
+  LIVE_UPDATE = 1;
+  DOCKER_COMPOSE = 2;
+  K8S = 3;
+  LOCAL = 4;
+}
+
 message BuildRecord {
   repeated string edits = 1;
   string error = 2;
   repeated string warnings = 3;
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp finish_time  = 5;
+
+  repeated BuildType build_types = 9;
 
   reserved "log";
   reserved 6;
@@ -23,14 +33,6 @@ message BuildRecord {
   // The span id for this build record's logs in the main logstore.
   string span_id = 8;
 
-  enum BuildType {
-    IMAGE = 0;
-    LIVE_UPDATE = 1;
-    DOCKER_COMPOSE = 2;
-    K8S = 3;
-    LOCAL = 4;
-  }
-  repeated BuildType build_types = 9;
 }
 
 message K8sResourceInfo {
