@@ -149,3 +149,21 @@ ADD . .
 `, string(newDf))
 	}
 }
+
+func TestInjectBuildArg(t *testing.T) {
+	df := Dockerfile(`
+ARG TAG="latest"
+FROM gcr.io/windmill/foo:${TAG}
+ADD . .
+`)
+	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref)
+	if assert.NoError(t, err) {
+		assert.True(t, modified)
+		assert.Equal(t, `
+ARG TAG="latest"
+FROM gcr.io/windmill/foo:deadbeef
+ADD . .
+`, string(newDf))
+	}
+}
