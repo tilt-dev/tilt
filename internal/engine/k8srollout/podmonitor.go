@@ -76,7 +76,7 @@ func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore) {
 
 func (m *PodMonitor) print(ctx context.Context, update podStatus) {
 	if !m.trackingStarted[update.podID] {
-		logger.Get(ctx).Infof("Tracking new pod rollout (%s):", update.podID)
+		logger.Get(ctx).Infof("\nTracking new pod rollout (%s):", update.podID)
 		m.trackingStarted[update.podID] = true
 	}
 
@@ -88,7 +88,7 @@ func (m *PodMonitor) print(ctx context.Context, update podStatus) {
 func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1.PodCondition, startTime time.Time) {
 	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameProgressID: name})
 
-	prefix := "     "
+	indent := "     "
 	duration := ""
 	spacerMax := 16
 	spacer := ""
@@ -108,18 +108,20 @@ func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1.Po
 	}
 
 	if cond.Status == v1.ConditionTrue {
-		l.Infof("%s┊ %s%s- %s", prefix, name, spacer, duration)
+		l.Infof("%s┊ %s%s- %s", indent, name, spacer, duration)
 		return
 	}
 
 	message := cond.Message
 	reason := cond.Reason
 	if cond.Status == "" || reason == "" || message == "" {
-		l.Infof("%s┊ %s%s- (…) Pending", prefix, name, spacer)
+		l.Infof("%s┊ %s%s- (…) Pending", indent, name, spacer)
 		return
 	}
 
-	l.Infof("%s┃ Not %s%s(%s):\n%s┃ %s", prefix, name, spacer, reason, prefix, message)
+	prefix := "Not "
+	spacer = strings.Repeat(" ", spacerMax-len(name)-len(prefix))
+	l.Infof("%s┃ %s%s%s- (%s): %s", indent, prefix, name, spacer, reason, message)
 }
 
 type podStatus struct {
