@@ -3,6 +3,7 @@ package k8srollout
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -87,29 +88,38 @@ func (m *PodMonitor) print(ctx context.Context, update podStatus) {
 func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1.PodCondition, startTime time.Time) {
 	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameProgressID: name})
 
-	suffix := ""
+	prefix := "     "
+	duration := ""
+	spacerMax := 16
+	spacer := ""
+	if len(name) > spacerMax {
+		name = name[:spacerMax-1] + "…"
+	} else {
+		spacer = strings.Repeat(" ", spacerMax-len(name))
+	}
+
 	dur := cond.LastTransitionTime.Sub(startTime)
 	if !startTime.IsZero() && !cond.LastTransitionTime.IsZero() {
 		if dur == 0 {
-			suffix = " [<1s]"
+			duration = "<1s"
 		} else {
-			suffix = fmt.Sprintf(" [%s]", dur.Truncate(time.Millisecond))
+			duration = fmt.Sprint(dur.Truncate(time.Millisecond))
 		}
 	}
 
 	if cond.Status == v1.ConditionTrue {
-		l.Infof("✔️ OK %s%s", name, suffix)
+		l.Infof("%s┊ %s%s- %s", prefix, name, spacer, duration)
 		return
 	}
 
 	message := cond.Message
 	reason := cond.Reason
 	if cond.Status == "" || reason == "" || message == "" {
-		l.Infof("⌛ Pending %s", name)
+		l.Infof("%s┊ %s%s- (…) Pending", prefix, name, spacer)
 		return
 	}
 
-	l.Infof("❌ Not %s (%s): %s", name, reason, message)
+	l.Infof("%s┣ Not %s%s(%s):\n%s%s", prefix, name, spacer, reason, prefix, message)
 }
 
 type podStatus struct {

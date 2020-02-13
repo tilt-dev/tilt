@@ -2,11 +2,12 @@ package k8srollout
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -17,6 +18,10 @@ import (
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
+
+// NOTE(han): set at runtime with:
+// go test -ldflags="-X 'github.com/windmilleng/tilt/internal/engine/k8srollout.PodmonitorWriteGoldenMaster=1'" ./internal/engine/k8srollout
+var PodmonitorWriteGoldenMaster = "0"
 
 func TestMonitorReady(t *testing.T) {
 	f := newPMFixture(t)
@@ -51,11 +56,8 @@ func TestMonitorReady(t *testing.T) {
 	f.store.SetState(*state)
 
 	f.pm.OnChange(f.ctx, f.store)
-	assert.Equal(t, `Tracking new pod rollout (pod-id):
-✔️ OK Scheduled [1s]
-✔️ OK Initialized [4s]
-✔️ OK Ready [5s]
-`, f.out.String())
+
+	assertSnapshot(t, f.out.String())
 }
 
 type pmFixture struct {
@@ -111,5 +113,24 @@ func (s *testStore) Dispatch(action store.Action) {
 	logAction, ok := action.(store.LogAction)
 	if ok {
 		_, _ = s.out.Write(logAction.Message())
+	}
+}
+
+func assertSnapshot(t *testing.T, output string) {
+	d1 := []byte(output)
+	gmPath := fmt.Sprintf("testdata/%s_master", t.Name())
+	if PodmonitorWriteGoldenMaster == "1" {
+		err := ioutil.WriteFile(gmPath, d1, 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	expected, err := ioutil.ReadFile(gmPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(expected) != output {
+		t.Errorf("Expected: %s != Output: %s", expected, output)
 	}
 }
