@@ -7,11 +7,7 @@ package engine
 
 import (
 	"context"
-
 	"github.com/google/wire"
-	"github.com/windmilleng/wmclient/pkg/dirs"
-	"go.opentelemetry.io/otel/sdk/trace"
-
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -24,6 +20,8 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/tracer"
+	"github.com/windmilleng/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 // Injectors from wire.go:

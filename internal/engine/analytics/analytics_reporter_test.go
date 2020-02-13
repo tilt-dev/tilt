@@ -1,6 +1,7 @@
 package analytics
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -60,6 +61,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 	state.CompletedBuildCount = 3
 
 	tf.ar.store.UnlockMutableState()
+	tf.kClient.Registry, _ = container.NewRegistryWithHostFromCluster("localhost:5000", "registry:5000")
 
 	tf.run()
 
@@ -75,6 +77,9 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"tiltfile.error":                                      "false",
 		"up.starttime":                                        state.TiltStartTime.Format(time.RFC3339),
 		"env":                                                 string(k8s.EnvDockerDesktop),
+		"k8s.runtime":                                         "docker",
+		"k8s.registry.host":                                   "1",
+		"k8s.registry.hostFromCluster":                        "1",
 	}
 
 	tf.assertStats(t, expectedTags)
@@ -154,6 +159,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 		"tiltfile.error":         "true",
 		"up.starttime":           state.TiltStartTime.Format(time.RFC3339),
 		"env":                    string(k8s.EnvDockerDesktop),
+		"k8s.runtime":            "docker",
 	}
 
 	tf.assertStats(t, expectedTags)
@@ -163,17 +169,20 @@ type analyticsReporterTestFixture struct {
 	manifestCount int
 	ar            *AnalyticsReporter
 	ma            *analytics.MemoryAnalytics
+	kClient       *k8s.FakeK8sClient
 }
 
 func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	st, _ := store.NewStoreForTesting()
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
-	ar := ProvideAnalyticsReporter(a, st, k8s.EnvDockerDesktop)
+	kClient := k8s.NewFakeK8sClient()
+	ar := ProvideAnalyticsReporter(a, st, kClient, k8s.EnvDockerDesktop)
 	return &analyticsReporterTestFixture{
 		manifestCount: 0,
 		ar:            ar,
 		ma:            ma,
+		kClient:       kClient,
 	}
 }
 
@@ -189,7 +198,7 @@ func (artf *analyticsReporterTestFixture) nextManifest() model.Manifest {
 }
 
 func (artf *analyticsReporterTestFixture) run() {
-	artf.ar.report()
+	artf.ar.report(context.Background())
 
 	artf.ar.a.Flush(500 * time.Second)
 }
