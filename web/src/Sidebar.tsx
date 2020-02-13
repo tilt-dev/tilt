@@ -12,6 +12,8 @@ import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { numberOfAlerts } from "./alerts"
 
+const moment = require('moment');
+
 type Resource = Proto.webviewResource
 type Build = Proto.webviewBuildRecord
 
@@ -20,6 +22,7 @@ class SidebarItem {
   isTiltfile: boolean
   status: ResourceStatus
   hasEndpoints: boolean
+  lastBuildDur: string
   lastDeployTime: string
   pendingBuildSince: string
   currentBuildStartTime: string
@@ -33,10 +36,14 @@ class SidebarItem {
    * Create a pared down SidebarItem from a ResourceView
    */
   constructor(res: Resource) {
+    let buildHistory = res.buildHistory || []
+    let lastBuild  = (buildHistory.length > 0) ? buildHistory[0] : null
+
     this.name = res.name ?? ""
     this.isTiltfile = !!res.isTiltfile
     this.status = combinedStatus(res)
     this.hasEndpoints = (res.endpoints || []).length > 0
+    this.lastBuildDur = lastBuild && lastBuild.startTime && lastBuild.finishTime ? timeDiffSeconds(lastBuild.startTime, lastBuild.finishTime) : ""
     this.lastDeployTime = res.lastDeployTime ?? ""
     this.pendingBuildSince = res.pendingBuildSince ?? ""
     this.currentBuildStartTime = res.currentBuild?.startTime ?? ""
@@ -44,10 +51,7 @@ class SidebarItem {
     this.triggerMode = res.triggerMode ?? TriggerMode.TriggerModeAuto
     this.hasPendingChanges = !!res.hasPendingChanges
     this.queued = !!res.queued
-    let buildHistory = res.buildHistory || []
-    if (buildHistory.length > 0) {
-      this.lastBuild = buildHistory[0]
-    }
+    this.lastBuild = lastBuild
   }
 }
 
@@ -109,7 +113,7 @@ class Sidebar extends PureComponent<SidebarProps> {
       let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
       let hasBuilt = item.lastBuild !== null
       let building = !isZeroTime(item.currentBuildStartTime)
-      let buildDur = "1m"
+      let buildDur = item.lastBuildDur
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter}/>
       let isSelected = this.props.selected === item.name
 
@@ -178,6 +182,13 @@ class Sidebar extends PureComponent<SidebarProps> {
       </section>
     )
   }
+}
+
+function timeDiffSeconds(start: string, end: string): string {
+  let t1 = moment(start)
+  let t2 = moment(end)
+  let diff = t2.diff(t1, 'seconds')
+  return diff + 's'
 }
 
 export default Sidebar
