@@ -22,6 +22,15 @@ message BuildRecord {
 
   // The span id for this build record's logs in the main logstore.
   string span_id = 8;
+
+  enum BuildType {
+    IMAGE = 0;
+    LIVE_UPDATE = 1;
+    DOCKER_COMPOSE = 2;
+    K8S = 3;
+    LOCAL = 4;
+  }
+  repeated BuildType build_types = 9;
 }
 
 message K8sResourceInfo {

@@ -2,6 +2,7 @@ package webview
 
 // TODO(dmiller): delete these tests once StateToWebView is deleted
 import (
+	"fmt"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -37,6 +38,35 @@ func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
 	return ts, nil
 }
 
+func buildTypesToProto(bts []model.BuildType) ([]proto_webview.BuildRecord_BuildType, error) {
+	result := make([]proto_webview.BuildRecord_BuildType, len(bts))
+	for i, bt := range bts {
+		webviewTyp, err := buildTypeToProto(bt)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = webviewTyp
+	}
+	return result, nil
+}
+
+func buildTypeToProto(bt model.BuildType) (proto_webview.BuildRecord_BuildType, error) {
+	switch bt {
+	case model.BuildTypeImage:
+		return proto_webview.BuildRecord_IMAGE, nil
+	case model.BuildTypeLiveUpdate:
+		return proto_webview.BuildRecord_LIVE_UPDATE, nil
+	case model.BuildTypeDockerCompose:
+		return proto_webview.BuildRecord_DOCKER_COMPOSE, nil
+	case model.BuildTypeK8s:
+		return proto_webview.BuildRecord_K8S, nil
+	case model.BuildTypeLocal:
+		return proto_webview.BuildRecord_LOCAL, nil
+	default:
+		return proto_webview.BuildRecord_IMAGE, fmt.Errorf("unknown build type '%v'", bt)
+	}
+}
+
 func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*proto_webview.BuildRecord, error) {
 	e := ""
 	if br.Error != nil {
@@ -57,6 +87,10 @@ func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*pro
 		warnings = logStore.Warnings(br.SpanID)
 	}
 
+	types, err := buildTypesToProto(br.BuildTypes)
+	if err != nil {
+		return nil, err
+	}
 	return &proto_webview.BuildRecord{
 		Edits: br.Edits,
 		Error: e,
@@ -66,6 +100,7 @@ func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*pro
 		FinishTime:     finish,
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 		SpanId:         string(br.SpanID),
+		BuildTypes:     types,
 	}, nil
 }
 

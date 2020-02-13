@@ -85,6 +85,17 @@
     }
   },
   "definitions": {
+    "BuildRecordBuildType": {
+      "type": "string",
+      "enum": [
+        "IMAGE",
+        "LIVE_UPDATE",
+        "DOCKER_COMPOSE",
+        "K8S",
+        "LOCAL"
+      ],
+      "default": "IMAGE"
+    },
     "webviewAckWebsocketRequest": {
       "type": "object",
       "properties": {
@@ -137,6 +148,12 @@
         "span_id": {
           "type": "string",
           "description": "The span id for this build record's logs in the main logstore."
+        },
+        "build_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BuildRecordBuildType"
+          }
         }
       }
     },
