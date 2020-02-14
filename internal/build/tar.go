@@ -194,7 +194,7 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 				return errors.Wrapf(err, "making rel path source:%s path:%s", source, path)
 			}
 			// ...and live inside `dest`
-			header.Name = dest + tmp
+			header.Name = filepath.Join(dest, tmp)
 		} else if strings.HasSuffix(dest, "/") {
 			header.Name = dest + filepath.Base(path)
 		} else {
