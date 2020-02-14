@@ -145,11 +145,6 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 	// (PL) remove volume name + / so if we got a windows path C:\foo it becomes foo
 	dest = strings.TrimPrefix(dest, filepath.VolumeName(dest)+"/")
 
-	destWithSlash := dest
-	if !strings.HasSuffix(destWithSlash, "/") {
-		destWithSlash += "/"
-	}
-
 	result := make([]archiveEntry, 0)
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -199,7 +194,7 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, source, dest string
 				return errors.Wrapf(err, "making rel path source:%s path:%s", source, path)
 			}
 			// ...and live inside `dest`
-			header.Name = destWithSlash + tmp //strings.TrimPrefix(path, source)
+			header.Name = dest + tmp
 		} else if strings.HasSuffix(dest, "/") {
 			header.Name = dest + filepath.Base(path)
 		} else {
