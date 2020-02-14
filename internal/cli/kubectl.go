@@ -36,8 +36,9 @@ import (
 // in the kubectl commands we need and shell out.
 func newKubectlCmd() *cobra.Command {
 	result := &cobra.Command{
-		Use:   "kubectl",
-		Short: "kubectl controls the Kubernetes cluster manager",
+		Use:    "kubectl",
+		Short:  "kubectl controls the Kubernetes cluster manager",
+		Hidden: true,
 	}
 
 	genericFlags := genericclioptions.NewConfigFlags(true)
