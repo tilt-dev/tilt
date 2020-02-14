@@ -277,11 +277,11 @@ class LogStore {
         let span = spansToLog[spanId]
         if (
           earliestStartIndex == -1 ||
-          span.firstLineIndex < earliestStartIndex
+          (span.firstLineIndex !== -1 && span.firstLineIndex < earliestStartIndex)
         ) {
           earliestStartIndex = span.firstLineIndex
         }
-        if (latestEndIndex == -1 || span.lastLineIndex > latestEndIndex) {
+        if (latestEndIndex == -1 || (span.lastLineIndex !== -1 && span.lastLineIndex > latestEndIndex)) {
           latestEndIndex = span.lastLineIndex
         }
       }

@@ -119,6 +119,20 @@ describe("LogStore", () => {
     expect(logLinesToString(logs.manifestLog("fe"), false)).toEqual("line2")
   })
 
+  it("handles manifest spans with no segments", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: { "": {}, fe: { manifestName: "fe" }, "foo": { manifestName: "fe" } },
+      segments: [
+        newGlobalSegment("line1\n"),
+        newManifestSegment("fe", "line2\n"),
+        newGlobalSegment("line3\n"),
+      ],
+    })
+
+    expect(logLinesToString(logs.manifestLog("fe"), false)).toEqual("line2")
+  })
+
   it("handles multi-span manifest logs", () => {
     let logs = new LogStore()
     logs.append({
