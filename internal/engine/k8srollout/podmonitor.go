@@ -3,6 +3,7 @@ package k8srollout
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -75,7 +76,7 @@ func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore) {
 
 func (m *PodMonitor) print(ctx context.Context, update podStatus) {
 	if !m.trackingStarted[update.podID] {
-		logger.Get(ctx).Infof("Tracking new pod rollout (%s):", update.podID)
+		logger.Get(ctx).Infof("\nTracking new pod rollout (%s):", update.podID)
 		m.trackingStarted[update.podID] = true
 	}
 
@@ -87,29 +88,40 @@ func (m *PodMonitor) print(ctx context.Context, update podStatus) {
 func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1.PodCondition, startTime time.Time) {
 	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameProgressID: name})
 
-	suffix := ""
+	indent := "     "
+	duration := ""
+	spacerMax := 16
+	spacer := ""
+	if len(name) > spacerMax {
+		name = name[:spacerMax-1] + "…"
+	} else {
+		spacer = strings.Repeat(" ", spacerMax-len(name))
+	}
+
 	dur := cond.LastTransitionTime.Sub(startTime)
 	if !startTime.IsZero() && !cond.LastTransitionTime.IsZero() {
 		if dur == 0 {
-			suffix = " [<1s]"
+			duration = "<1s"
 		} else {
-			suffix = fmt.Sprintf(" [%s]", dur.Truncate(time.Millisecond))
+			duration = fmt.Sprint(dur.Truncate(time.Millisecond))
 		}
 	}
 
 	if cond.Status == v1.ConditionTrue {
-		l.Infof("✔️ OK %s%s", name, suffix)
+		l.Infof("%s┊ %s%s- %s", indent, name, spacer, duration)
 		return
 	}
 
 	message := cond.Message
 	reason := cond.Reason
 	if cond.Status == "" || reason == "" || message == "" {
-		l.Infof("⌛ Pending %s", name)
+		l.Infof("%s┊ %s%s- (…) Pending", indent, name, spacer)
 		return
 	}
 
-	l.Infof("❌ Not %s (%s): %s", name, reason, message)
+	prefix := "Not "
+	spacer = strings.Repeat(" ", spacerMax-len(name)-len(prefix))
+	l.Infof("%s┃ %s%s%s- (%s): %s", indent, prefix, name, spacer, reason, message)
 }
 
 type podStatus struct {
