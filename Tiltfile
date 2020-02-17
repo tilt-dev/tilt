@@ -12,7 +12,7 @@ def get_all_go_files(path):
   return str(local('cd %s && find . -type f -name "*.go" | grep -v vendor' % path)).split("\n")
 
 def get_deps_for_pkg(pkg):
-  cmd = """go list -f '{{ join .GoFiles "\\n" }} {{ join .TestGoFiles "\\n" }} {{ join .XTestGoFiles "\\n"}}' %s""" % pkg
+  cmd = """go list -f '{{ join .GoFiles "\\n" }} {{ join .TestGoFiles "\\n" }} {{ join .XTestGoFiles "\\n"}}' '%s'""" % pkg
   split = str(local(cmd)).split("\n")
   return remove_all_empty_and_whitespace(split)
 
