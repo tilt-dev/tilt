@@ -34,7 +34,7 @@ def yarn_install():
   local_resource("yarn_install", "cd web && yarn", deps=['web/package.json', 'web/yarn.lock'])
 
 def jest(path):
-  local_resource("web_jest", "", serve_cmd="cd %s && yarn run test --bail" % path, resource_deps=["yarn_install"])
+  local_resource("web_jest", serve_cmd="cd %s && yarn run test --notify " % path, resource_deps=["yarn_install"])
 
 def web_lint():
   ts_deps = get_all_ts_files("web")
