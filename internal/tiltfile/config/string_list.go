@@ -1,8 +1,6 @@
 package config
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"strings"
@@ -26,15 +24,6 @@ func (s *stringList) starlark() starlark.Value {
 
 func (s *stringList) IsSet() bool {
 	return s.isSet
-}
-
-func (s *stringList) MarshalJSON() ([]byte, error) {
-	ret := &bytes.Buffer{}
-	err := json.NewEncoder(ret).Encode(s.Values)
-	if err != nil {
-		return nil, err
-	}
-	return ret.Bytes(), nil
 }
 
 func (s *stringList) setFromInterface(i interface{}) error {

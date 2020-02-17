@@ -430,3 +430,109 @@ func NewFixture(tb testing.TB, userConfigState model.UserConfigState) *starkit.F
 	ret.UseRealFS()
 	return ret
 }
+
+type typeTestCase struct {
+	name          string
+	define        string
+	arg           string
+	configFile    string
+	expectedVal   string
+	expectedError string
+}
+
+func newTypeTestCase(name string, define string) typeTestCase {
+	return typeTestCase{
+		name:   name,
+		define: define,
+	}
+}
+
+func (ttc typeTestCase) withExpectedVal(expectedVal string) typeTestCase {
+	ttc.expectedVal = expectedVal
+	return ttc
+}
+
+func (ttc typeTestCase) withExpectedError(expectedError string) typeTestCase {
+	ttc.expectedError = expectedError
+	return ttc
+}
+
+func (ttc typeTestCase) withArgs(args string) typeTestCase {
+	ttc.arg = args
+	return ttc
+}
+
+func (ttc typeTestCase) withConfigFile(cfg string) typeTestCase {
+	ttc.configFile = cfg
+	return ttc
+}
+
+func TestTypes(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		define        string
+		arg           string
+		configFile    string
+		expectedVal   string
+		expectedError string
+	}{
+		newTypeTestCase("string_list from args", "config.define_string_list('foo')").withArgs("--foo 1 --foo 2").withExpectedVal("['1', '2']"),
+		newTypeTestCase("string_list from config", "config.define_string_list('foo')").withConfigFile(`{"foo": ["1", "2"]}`).withExpectedVal("['1', '2']"),
+		newTypeTestCase("invalid string_list from config", "config.define_string_list('foo')").withConfigFile(`{"foo": [1, 2]}`).withExpectedError("expected string, got float64"),
+
+		newTypeTestCase("string from args", "config.define_string('foo')").withArgs("--foo bar").withExpectedVal("'bar'"),
+		newTypeTestCase("string from config", "config.define_string('foo')").withConfigFile(`{"foo": "bar"}`).withExpectedVal("'bar'"),
+		newTypeTestCase("string defined multiple times", "config.define_string('foo')").withArgs("--foo bar --foo baz").withExpectedError("string settings can only be specified once"),
+		newTypeTestCase("invalid string from config", "config.define_string('foo')").withConfigFile(`{"foo": 5}`).withExpectedError("expected string, found float64"),
+
+		newTypeTestCase("bool from args", "config.define_bool('foo')").withArgs("--foo").withExpectedVal("True"),
+		newTypeTestCase("bool from config", "config.define_bool('foo')").withConfigFile(`{"foo": true}`).withExpectedVal("True"),
+		newTypeTestCase("bool defined multiple times", "config.define_bool('foo')").withArgs("--foo --foo").withExpectedError("bool settings can only be specified once"),
+		newTypeTestCase("invalid bool from config", "config.define_bool('foo')").withConfigFile(`{"foo": 5}`).withExpectedError("expected bool, found float64"),
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var args []string
+			if tc.arg != "" {
+				args = strings.Split(tc.arg, " ")
+			}
+			f := NewFixture(t, model.UserConfigState{
+				Args: args,
+			})
+			defer f.TearDown()
+
+			tf := fmt.Sprintf(`
+%s
+
+cfg = config.parse()
+`, tc.define)
+			if tc.expectedVal != "" {
+				tf += fmt.Sprintf(`
+observed = cfg['foo']
+expected = %s
+
+def test():
+	if expected != observed:
+		print('expected: %%s' %% expected)
+		print('observed: %%s' %% observed)
+		fail('did not get expected value out of config')
+
+test()
+`, tc.expectedVal)
+			}
+			f.File("Tiltfile", tf)
+
+			if tc.configFile != "" {
+				f.File("tilt_config.json", tc.configFile)
+			}
+
+			_, err := f.ExecFile("Tiltfile")
+			if tc.expectedError == "" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expectedError)
+			}
+		})
+	}
+
+}

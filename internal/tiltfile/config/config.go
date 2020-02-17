@@ -66,6 +66,12 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 		{"config.define_string_list", configSettingDefinitionBuiltin(func() configValue {
 			return &stringList{}
 		})},
+		{"config.define_string", configSettingDefinitionBuiltin(func() configValue {
+			return &stringSetting{}
+		})},
+		{"config.define_bool", configSettingDefinitionBuiltin(func() configValue {
+			return &boolSetting{}
+		})},
 	} {
 		err := env.AddBuiltin(b.name, b.f)
 		if err != nil {
