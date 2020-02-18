@@ -2,6 +2,7 @@ package tiltextension
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 
 const extensionDirName = "tilt_modules"
 const extensionFileName = "Tiltfile"
+const metadataFileName = "extensions.json"
 
 type Store interface {
 	// ModulePath is used to check if an extension exists before fetching it
@@ -33,6 +35,17 @@ type LocalStore struct {
 	baseDir string
 }
 
+type Metadata struct {
+	Name              string
+	GitCommitHash     string
+	ExtensionRegistry string
+	TimeFetched       time.Time
+}
+
+type MetadataFile struct {
+	Extensions []Metadata
+}
+
 func NewLocalStore(baseDir string) *LocalStore {
 	return &LocalStore{
 		baseDir: filepath.Join(baseDir, extensionDirName),
@@ -50,6 +63,7 @@ func (s *LocalStore) ModulePath(ctx context.Context, moduleName string) (string,
 	return tiltfilePath, nil
 }
 
+// TODO(dmiller): handle atomic writes to the metadata file and the modules?
 func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string, error) {
 	moduleDir := filepath.Join(s.baseDir, contents.Name)
 	if err := os.MkdirAll(moduleDir, os.FileMode(0700)); err != nil {
@@ -57,9 +71,44 @@ func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string
 	}
 
 	tiltfilePath := filepath.Join(moduleDir, extensionFileName)
-	// TODO(dmiller): store hash, source, time fetched
+	// TODO(dmiller): store hash, source, time fetched in metadata file?
 	if err := ioutil.WriteFile(tiltfilePath, []byte(contents.TiltfileContents), os.FileMode(0600)); err != nil {
 		return "", errors.Wrapf(err, "couldn't store module %s at path %s", contents.Name, tiltfilePath)
+	}
+
+	metadata := Metadata{
+		Name:              contents.Name,
+		GitCommitHash:     contents.GitCommitHash,
+		ExtensionRegistry: contents.ExtensionRegistry,
+		TimeFetched:       contents.TimeFetched,
+	}
+
+	// read file if it exists, append extension, write out the file
+	var metadataFile MetadataFile
+	extensionMetadataFilePath := filepath.Join(s.baseDir, metadataFileName)
+	b, err := ioutil.ReadFile(extensionMetadataFilePath)
+	if os.IsNotExist(err) {
+		metadataFile = MetadataFile{
+			Extensions: []Metadata{metadata},
+		}
+	} else if err != nil {
+		return "", errors.Wrapf(err, "unable to open extension metadata file at path %s", extensionMetadataFilePath)
+	} else {
+		err = json.Unmarshal(b, &metadataFile)
+		if err != nil {
+			return "", errors.Wrapf(err, "Unable to unmarshal metadata file at path %s", extensionMetadataFilePath)
+		}
+		metadataFile.Extensions = append(metadataFile.Extensions, metadata)
+	}
+
+	js, err := json.MarshalIndent(metadataFile, "", "  ")
+	if err != nil {
+		return "", errors.Wrap(err, "unable marshal metadataFile as JSON")
+	}
+
+	err = ioutil.WriteFile(extensionMetadataFilePath, js, 0700)
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to write extension metadata file at path %s", extensionMetadataFilePath)
 	}
 
 	return tiltfilePath, nil
