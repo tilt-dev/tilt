@@ -64,6 +64,10 @@ func (s *LocalStore) ModulePath(ctx context.Context, moduleName string) (string,
 }
 
 // TODO(dmiller): handle atomic writes to the metadata file and the modules?
+// Right now if a write to the metadata file fails the module will still be written
+
+// TODO(dmiller): should this error if we try to write an extension with the same name as
+// one that already exists?
 func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string, error) {
 	moduleDir := filepath.Join(s.baseDir, contents.Name)
 	if err := os.MkdirAll(moduleDir, os.FileMode(0700)); err != nil {
@@ -71,7 +75,6 @@ func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string
 	}
 
 	tiltfilePath := filepath.Join(moduleDir, extensionFileName)
-	// TODO(dmiller): store hash, source, time fetched in metadata file?
 	if err := ioutil.WriteFile(tiltfilePath, []byte(contents.TiltfileContents), os.FileMode(0600)); err != nil {
 		return "", errors.Wrapf(err, "couldn't store module %s at path %s", contents.Name, tiltfilePath)
 	}
