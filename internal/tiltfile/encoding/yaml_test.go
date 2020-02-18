@@ -134,6 +134,37 @@ test()
 	}
 }
 
+func TestDecodeYAMLEmptyString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	tf := `
+observed = decode_yaml('')
+expected = [
+  "foo",
+  {
+    "baz": [ "bar", "", 1, 2],
+  }
+]
+
+def test():
+	if expected != observed:
+		print('expected: %s' % (expected))
+		print('observed: %s' % (observed))
+		fail()
+
+test()
+
+`
+	f.File("Tiltfile", tf)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
+}
+
 const yamlStream = `- foo
 - baz:
   - bar
