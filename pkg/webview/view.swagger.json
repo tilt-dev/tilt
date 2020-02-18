@@ -130,6 +130,12 @@
           "type": "string",
           "format": "date-time"
         },
+        "update_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewUpdateType"
+          }
+        },
         "is_crash_rebuild": {
           "type": "boolean",
           "format": "boolean"
@@ -380,6 +386,12 @@
           "type": "boolean",
           "format": "boolean"
         },
+        "specs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/webviewTargetSpec"
+          }
+        },
         "show_build_status": {
           "type": "boolean",
           "format": "boolean"
@@ -439,6 +451,33 @@
         }
       }
     },
+    "webviewTargetSpec": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/webviewTargetType"
+        },
+        "has_live_update": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "webviewTargetType": {
+      "type": "string",
+      "enum": [
+        "TARGET_TYPE_UNSPECIFIED",
+        "TARGET_TYPE_IMAGE",
+        "TARGET_TYPE_K8S",
+        "TARGET_TYPE_DOCKER_COMPOSE",
+        "TARGET_TYPE_LOCAL"
+      ],
+      "default": "TARGET_TYPE_UNSPECIFIED",
+      "title": "Correspond to implementations of the TargetSpec interface"
+    },
     "webviewTiltBuild": {
       "type": "object",
       "properties": {
@@ -456,6 +495,19 @@
           "format": "boolean"
         }
       }
+    },
+    "webviewUpdateType": {
+      "type": "string",
+      "enum": [
+        "UPDATE_TYPE_UNSPECIFIED",
+        "UPDATE_TYPE_IMAGE",
+        "UPDATE_TYPE_LIVE_UPDATE",
+        "UPDATE_TYPE_DOCKER_COMPOSE",
+        "UPDATE_TYPE_K8S",
+        "UPDATE_TYPE_LOCAL"
+      ],
+      "default": "UPDATE_TYPE_UNSPECIFIED",
+      "title": "Correspond to BuildAndDeployers"
     },
     "webviewUploadSnapshotResponse": {
       "type": "object",
