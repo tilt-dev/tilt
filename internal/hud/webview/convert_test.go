@@ -239,9 +239,7 @@ func TestBuildHistory(t *testing.T) {
 		[]proto_webview.UpdateType{proto_webview.UpdateType_UT_IMAGE, proto_webview.UpdateType_UT_K8S},
 	}
 
-	m := model.Manifest{
-		Name: "foo",
-	}.WithDeployTarget(model.K8sTarget{})
+	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
 	state := newState([]model.Manifest{m})
 	state.ManifestTargets[m.Name].State.BuildHistory = buildRecords
 
