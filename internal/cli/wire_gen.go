@@ -7,8 +7,15 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
+	"github.com/windmilleng/wmclient/pkg/dirs"
+	trace2 "go.opentelemetry.io/otel/sdk/trace"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/cloud"
@@ -40,11 +47,6 @@ import (
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/wmclient/pkg/dirs"
-	trace2 "go.opentelemetry.io/otel/sdk/trace"
-	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
-	"time"
 )
 
 // Injectors from wire.go:
