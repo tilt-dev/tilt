@@ -86,7 +86,7 @@ func targetToProtoBuildTypes(targ model.TargetSpec) ([]proto_webview.BuildType, 
 }
 
 func TargetsToProtoBuildTypes(targs []model.TargetSpec) ([]proto_webview.BuildType, error) {
-	var set map[proto_webview.BuildType]bool
+	seen := make(map[proto_webview.BuildType]bool)
 	var result []proto_webview.BuildType
 	for _, targ := range targs {
 		webviewTypes, err := targetToProtoBuildTypes(targ)
@@ -94,8 +94,8 @@ func TargetsToProtoBuildTypes(targs []model.TargetSpec) ([]proto_webview.BuildTy
 			return nil, err
 		}
 		for _, t := range webviewTypes {
-			if !set[t] {
-				set[t] = true
+			if !seen[t] {
+				seen[t] = true
 				result = append(result, t)
 			}
 		}
