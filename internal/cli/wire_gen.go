@@ -49,11 +49,11 @@ import (
 
 // Injectors from wire.go:
 
-func wireTiltfile(ctx context.Context, analytics2 *analytics.TiltAnalytics) (dumpTiltfileDeps, error) {
+func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics) (tiltfileResultDeps, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
-		return dumpTiltfileDeps{}, err
+		return tiltfileResultDeps{}, err
 	}
 	env := k8s.ProvideEnv(ctx, config)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
@@ -62,7 +62,7 @@ func wireTiltfile(ctx context.Context, analytics2 *analytics.TiltAnalytics) (dum
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(config)
 	if err != nil {
-		return dumpTiltfileDeps{}, err
+		return tiltfileResultDeps{}, err
 	}
 	int2 := provideKubectlLogLevel()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
@@ -72,18 +72,18 @@ func wireTiltfile(ctx context.Context, analytics2 *analytics.TiltAnalytics) (dum
 	minikubeClient := minikube.ProvideMinikubeClient()
 	clusterEnv, err := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
 	if err != nil {
-		return dumpTiltfileDeps{}, err
+		return tiltfileResultDeps{}, err
 	}
 	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
 	if err != nil {
-		return dumpTiltfileDeps{}, err
+		return tiltfileResultDeps{}, err
 	}
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	modelWebHost := provideWebHost()
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, dockerComposeClient, modelWebHost, defaults, env)
-	cliTfDeps := newDumpTiltfileDeps(tiltfileLoader)
-	return cliTfDeps, nil
+	cliTiltfileResultDeps := newTiltfileResultDeps(tiltfileLoader)
+	return cliTiltfileResultDeps, nil
 }
 
 var (

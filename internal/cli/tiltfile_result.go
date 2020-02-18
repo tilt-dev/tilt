@@ -16,12 +16,12 @@ import (
 
 const TiltfileErrExitCode = 5
 
-type dumpTiltfileDeps struct {
+type tiltfileResultDeps struct {
 	tfl tiltfile.TiltfileLoader
 }
 
-func newDumpTiltfileDeps(tfl tiltfile.TiltfileLoader) dumpTiltfileDeps {
-	return dumpTiltfileDeps{
+func newTiltfileResultDeps(tfl tiltfile.TiltfileLoader) tiltfileResultDeps {
+	return tiltfileResultDeps{
 		tfl: tfl,
 	}
 }
@@ -49,7 +49,7 @@ func tiltfileResultPrintJSON(cmd *cobra.Command, args []string) {
 
 	ctx = tiltanalytics.WithAnalytics(ctx, a)
 
-	deps, err := wireTiltfile(ctx, a)
+	deps, err := wireTiltfileResult(ctx, a)
 	if err != nil {
 		failWithUnexpectedError(errors.Wrap(err, "wiring dependencies"))
 	}
