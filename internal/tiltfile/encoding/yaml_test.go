@@ -95,12 +95,12 @@ key5: 3
 
 }
 
-func TestDecodeYAML(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
+func TestDecodeYAMLDocument(t *testing.T) {
 	for _, blob := range []bool{false, true} {
 		t.Run(fmt.Sprintf("blob: %v", blob), func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
 			d := `'- "foo"\n- baz:\n  - "bar"\n  - ""\n  - 1\n  - 2'`
 			if blob {
 				d = fmt.Sprintf("blob(%s)", d)
@@ -132,6 +132,124 @@ test()
 			require.NoError(t, err)
 		})
 	}
+}
+
+const yamlStream = `- foo
+- baz:
+  - bar
+  - ""
+  - 1
+  - 2
+---
+quu:
+- qux
+- a:
+  - 3
+`
+
+const yamlStreamAsStarlark = `[
+  [
+    "foo",
+    {
+      "baz": [ "bar", "", 1, 2],
+    }
+  ],
+  {
+    "quu": [
+      "qux",
+      {
+		"a": [3],
+      }
+    ]
+  },
+]`
+
+func TestReadYAMLStream(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.UseRealFS()
+
+	f.File("test.yaml", yamlStream)
+	d := "observed = read_yaml_stream('test.yaml')\n"
+	d += fmt.Sprintf("expected = %s\n", yamlStreamAsStarlark)
+	tf := d + `
+def test():
+	if expected != observed:
+		print('expected: %s' % (expected))
+		print('observed: %s' % (observed))
+		fail()
+
+test()
+
+`
+	f.File("Tiltfile", tf)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
+}
+
+// call read_yaml on a stream, get an error
+func TestReadYAMLUnexpectedStream(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.UseRealFS()
+
+	f.File("test.yaml", yamlStream)
+	tf := "observed = read_yaml('test.yaml')\n"
+	f.File("Tiltfile", tf)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "expected a yaml document but found a yaml stream")
+}
+
+func TestDecodeYAMLStream(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	d := yamlStream
+	d = fmt.Sprintf("observed = decode_yaml_stream('''%s''')\n", d)
+	d += fmt.Sprintf("expected = %s\n", yamlStreamAsStarlark)
+	tf := d + `
+def test():
+	if expected != observed:
+		print('expected: %s' % (expected))
+		print('observed: %s' % (observed))
+		fail()
+
+test()
+
+`
+	f.File("Tiltfile", tf)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
+}
+
+func TestDecodeYAMLUnexpectedStream(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	tf := fmt.Sprintf("observed = decode_yaml('''%s''')\n", yamlStream)
+	f.File("Tiltfile", tf)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "expected a yaml document but found a yaml stream")
 }
 
 func TestEncodeYAML(t *testing.T) {
@@ -170,6 +288,31 @@ def test():
 test()
 
 `)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
+}
+
+func TestEncodeYAMLStream(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	tf := fmt.Sprintf("expected = '''%s'''\n", yamlStream)
+	tf += fmt.Sprintf("observed = encode_yaml_stream(%s)\n", yamlStreamAsStarlark)
+	tf += `
+def test():
+	if expected != str(observed):
+		print('expected: %s' % (expected))
+		print('observed: %s' % (observed))
+		fail()
+
+test()
+`
+
+	f.File("Tiltfile", tf)
 
 	_, err := f.ExecFile("Tiltfile")
 	if err != nil {
