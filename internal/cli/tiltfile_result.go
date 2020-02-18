@@ -68,7 +68,7 @@ func tiltfileResultPrintJSON(cmd *cobra.Command, args []string) {
 			failWithUnexpectedError(errors.Wrap(err, "dump tlr.Error JSON"))
 		}
 
-		cmdFailWithCode(errors.Wrap(tlr.Error, "Tiltfile evaluated with error"), TiltfileErrExitCode)
+		os.Exit(TiltfileErrExitCode)
 	}
 
 	j, err := json.Marshal(tlr)
