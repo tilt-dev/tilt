@@ -53,17 +53,17 @@ func buildTypesToProtoUpdateTypes(bts []model.BuildType) ([]proto_webview.Update
 func buildTypeToProto(bt model.BuildType) (proto_webview.UpdateType, error) {
 	switch bt {
 	case model.BuildTypeImage:
-		return proto_webview.UpdateType_UT_IMAGE, nil
+		return proto_webview.UpdateType_UPDATE_TYPE_IMAGE, nil
 	case model.BuildTypeLiveUpdate:
-		return proto_webview.UpdateType_UT_LIVE_UPDATE, nil
+		return proto_webview.UpdateType_UPDATE_TYPE_LIVE_UPDATE, nil
 	case model.BuildTypeDockerCompose:
-		return proto_webview.UpdateType_UT_DOCKER_COMPOSE, nil
+		return proto_webview.UpdateType_UPDATE_TYPE_DOCKER_COMPOSE, nil
 	case model.BuildTypeK8s:
-		return proto_webview.UpdateType_UT_K8S, nil
+		return proto_webview.UpdateType_UPDATE_TYPE_K8S, nil
 	case model.BuildTypeLocal:
-		return proto_webview.UpdateType_UT_LOCAL, nil
+		return proto_webview.UpdateType_UPDATE_TYPE_LOCAL, nil
 	default:
-		return proto_webview.UpdateType_UT_UNSPECIFIED, fmt.Errorf("unknown build type '%v'", bt)
+		return proto_webview.UpdateType_UPDATE_TYPE_UNSPECIFIED, fmt.Errorf("unknown build type '%v'", bt)
 	}
 }
 
@@ -72,23 +72,23 @@ func targetSpecToProto(spec model.TargetSpec) (proto_webview.TargetSpec, error) 
 	case model.ImageTarget:
 		return proto_webview.TargetSpec{
 			Id:            typ.ID().String(),
-			Type:          proto_webview.TargetType_TT_IMAGE,
+			Type:          proto_webview.TargetType_TARGET_TYPE_IMAGE,
 			HasLiveUpdate: !typ.LiveUpdateInfo().Empty(),
 		}, nil
 	case model.DockerComposeTarget:
 		return proto_webview.TargetSpec{
 			Id:   typ.ID().String(),
-			Type: proto_webview.TargetType_TT_DOCKER_COMPOSE,
+			Type: proto_webview.TargetType_TARGET_TYPE_DOCKER_COMPOSE,
 		}, nil
 	case model.K8sTarget:
 		return proto_webview.TargetSpec{
 			Id:   typ.ID().String(),
-			Type: proto_webview.TargetType_TT_K8S,
+			Type: proto_webview.TargetType_TARGET_TYPE_K8S,
 		}, nil
 	case model.LocalTarget:
 		return proto_webview.TargetSpec{
 			Id:   typ.ID().String(),
-			Type: proto_webview.TargetType_TT_LOCAL,
+			Type: proto_webview.TargetType_TARGET_TYPE_LOCAL,
 		}, nil
 	default:
 		return proto_webview.TargetSpec{}, fmt.Errorf("unknown TargetSpec type %T for spec: '%v'", spec, spec)

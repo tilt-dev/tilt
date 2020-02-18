@@ -10,21 +10,21 @@ option go_package = "github.com/windmilleng/tilt/pkg/webview";
 
 // Correspond to BuildAndDeployers
 enum UpdateType {
-  UT_UNSPECIFIED = 0;
-  UT_IMAGE = 1;
-  UT_LIVE_UPDATE = 2;
-  UT_DOCKER_COMPOSE = 3;
-  UT_K8S = 4;
-  UT_LOCAL = 5;
+  UPDATE_TYPE_UNSPECIFIED = 0;
+  UPDATE_TYPE_IMAGE = 1;
+  UPDATE_TYPE_LIVE_UPDATE = 2;
+  UPDATE_TYPE_DOCKER_COMPOSE = 3;
+  UPDATE_TYPE_K8S = 4;
+  UPDATE_TYPE_LOCAL = 5;
 }
 
 // Correspond to implementations of the TargetSpec interface
 enum TargetType {
-  TT_UNSPECIFIED = 0;
-  TT_IMAGE = 1;
-  TT_K8S = 2;
-  TT_DOCKER_COMPOSE = 3;
-  TT_LOCAL = 4;
+  TARGET_TYPE_UNSPECIFIED = 0;
+  TARGET_TYPE_IMAGE = 1;
+  TARGET_TYPE_K8S = 2;
+  TARGET_TYPE_DOCKER_COMPOSE = 3;
+  TARGET_TYPE_LOCAL = 4;
 }
 
 message TargetSpec {

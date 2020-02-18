@@ -208,7 +208,7 @@ func TestLocalResource(t *testing.T) {
 	assert.Equal(t, model.RuntimeStatusNotApplicable, model.RuntimeStatus(r.RuntimeStatus))
 	require.Len(t, r.Specs, 1)
 	spec := r.Specs[0]
-	require.Equal(t, proto_webview.TargetType_TT_LOCAL, spec.Type)
+	require.Equal(t, proto_webview.TargetType_TARGET_TYPE_LOCAL, spec.Type)
 	require.False(t, spec.HasLiveUpdate)
 }
 
@@ -234,9 +234,9 @@ func TestBuildHistory(t *testing.T) {
 	}
 	buildRecords := []model.BuildRecord{br1, br2, br3}
 	expectedUpdateTypes := [][]proto_webview.UpdateType{
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UT_IMAGE, proto_webview.UpdateType_UT_K8S},
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UT_LIVE_UPDATE},
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UT_IMAGE, proto_webview.UpdateType_UT_K8S},
+		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_IMAGE, proto_webview.UpdateType_UPDATE_TYPE_K8S},
+		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_LIVE_UPDATE},
+		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_IMAGE, proto_webview.UpdateType_UPDATE_TYPE_K8S},
 	}
 
 	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
@@ -274,9 +274,9 @@ func TestSpecs(t *testing.T) {
 		targetTypes   []proto_webview.TargetType
 		hasLiveUpdate bool
 	}{
-		{"noLiveUpd", []proto_webview.TargetType{proto_webview.TargetType_TT_IMAGE, proto_webview.TargetType_TT_K8S}, false},
-		{"liveUpd", []proto_webview.TargetType{proto_webview.TargetType_TT_IMAGE, proto_webview.TargetType_TT_K8S}, true},
-		{"local", []proto_webview.TargetType{proto_webview.TargetType_TT_LOCAL}, false},
+		{"noLiveUpd", []proto_webview.TargetType{proto_webview.TargetType_TARGET_TYPE_IMAGE, proto_webview.TargetType_TARGET_TYPE_K8S}, false},
+		{"liveUpd", []proto_webview.TargetType{proto_webview.TargetType_TARGET_TYPE_IMAGE, proto_webview.TargetType_TARGET_TYPE_K8S}, true},
+		{"local", []proto_webview.TargetType{proto_webview.TargetType_TARGET_TYPE_LOCAL}, false},
 	}
 	state := newState([]model.Manifest{mNoLiveUpd, mLiveUpd, mLocal})
 	v := stateToProtoView(t, *state)
@@ -292,7 +292,7 @@ func TestSpecs(t *testing.T) {
 		var iTargHasLU bool
 		for _, spec := range r.Specs {
 			observedTypes = append(observedTypes, spec.Type)
-			if spec.Type == proto_webview.TargetType_TT_IMAGE {
+			if spec.Type == proto_webview.TargetType_TARGET_TYPE_IMAGE {
 				iTargHasLU = spec.HasLiveUpdate
 			}
 		}

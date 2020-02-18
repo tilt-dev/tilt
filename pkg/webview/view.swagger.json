@@ -469,13 +469,13 @@
     "webviewTargetType": {
       "type": "string",
       "enum": [
-        "TT_UNSPECIFIED",
-        "TT_IMAGE",
-        "TT_K8S",
-        "TT_DOCKER_COMPOSE",
-        "TT_LOCAL"
+        "TARGET_TYPE_UNSPECIFIED",
+        "TARGET_TYPE_IMAGE",
+        "TARGET_TYPE_K8S",
+        "TARGET_TYPE_DOCKER_COMPOSE",
+        "TARGET_TYPE_LOCAL"
       ],
-      "default": "TT_UNSPECIFIED",
+      "default": "TARGET_TYPE_UNSPECIFIED",
       "title": "Correspond to implementations of the TargetSpec interface"
     },
     "webviewTiltBuild": {
@@ -499,14 +499,14 @@
     "webviewUpdateType": {
       "type": "string",
       "enum": [
-        "UT_UNSPECIFIED",
-        "UT_IMAGE",
-        "UT_LIVE_UPDATE",
-        "UT_DOCKER_COMPOSE",
-        "UT_K8S",
-        "UT_LOCAL"
+        "UPDATE_TYPE_UNSPECIFIED",
+        "UPDATE_TYPE_IMAGE",
+        "UPDATE_TYPE_LIVE_UPDATE",
+        "UPDATE_TYPE_DOCKER_COMPOSE",
+        "UPDATE_TYPE_K8S",
+        "UPDATE_TYPE_LOCAL"
       ],
-      "default": "UT_UNSPECIFIED",
+      "default": "UPDATE_TYPE_UNSPECIFIED",
       "title": "Correspond to BuildAndDeployers"
     },
     "webviewUploadSnapshotResponse": {
