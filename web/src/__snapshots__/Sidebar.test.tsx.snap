@@ -5,80 +5,77 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
   className="Sidebar"
 >
   <nav
-    className="Sidebar-resources"
+    className="sc-htpNat ilDLPD"
   >
     <ul
-      className="Sidebar-list"
+      className="sc-bxivhb fcqCpQ"
     >
       <li
-        className="SidebarItem SidebarItem--all is-selected"
+        className="sc-ifAKCX sc-bZQynM lmgRuG isSelected"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan"
           href="/"
           onClick={[Function]}
-          title="All"
         >
           <div
-            className="SidebarItem-allIcon"
+            className="sc-bdVaJa jgoXzo isNone"
           >
-            ┌
+            <span
+              className="sc-bwzfXH jBiaPF"
+            >
+              7
+            </span>
           </div>
           <span
-            className="SidebarItem-name"
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             All
-          </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            7
           </span>
         </a>
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/resource4"
           onClick={[Function]}
           title="resource4"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             resource4
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:36:03.000Z"
-              title="2017-12-21T15:36:03.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;5s
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:36:03.000Z"
+                title="2017-12-21T15:36:03.000Z"
+              >
+                &lt;5s ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -89,48 +86,47 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/resource9"
           onClick={[Function]}
           title="resource9"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             resource9
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:35:58.000Z"
-              title="2017-12-21T15:35:58.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;15s
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:35:58.000Z"
+                title="2017-12-21T15:35:58.000Z"
+              >
+                &lt;15s ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -141,48 +137,47 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/resource19"
           onClick={[Function]}
           title="resource19"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             resource19
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:35:48.000Z"
-              title="2017-12-21T15:35:48.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;30s
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:35:48.000Z"
+                title="2017-12-21T15:35:48.000Z"
+              >
+                &lt;30s ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -193,48 +188,47 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/resource29"
           onClick={[Function]}
           title="resource29"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             resource29
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:35:38.000Z"
-              title="2017-12-21T15:35:38.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;30s
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:35:38.000Z"
+                title="2017-12-21T15:35:38.000Z"
+              >
+                &lt;30s ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -245,48 +239,47 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/resource39"
           onClick={[Function]}
           title="resource39"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             resource39
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:35:28.000Z"
-              title="2017-12-21T15:35:28.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;45s
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:35:28.000Z"
+                title="2017-12-21T15:35:28.000Z"
+              >
+                &lt;45s ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -297,48 +290,47 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/resource49"
           onClick={[Function]}
           title="resource49"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             resource49
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:35:18.000Z"
-              title="2017-12-21T15:35:18.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;1m
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:35:18.000Z"
+                title="2017-12-21T15:35:18.000Z"
+              >
+                &lt;1m ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -349,48 +341,47 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/resource54"
           onClick={[Function]}
           title="resource54"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             resource54
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:35:13.000Z"
-              title="2017-12-21T15:35:13.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;1m
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:35:13.000Z"
+                title="2017-12-21T15:35:13.000Z"
+              >
+                &lt;1m ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -419,31 +410,31 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
   className="Sidebar is-closed"
 >
   <nav
-    className="Sidebar-resources"
+    className="sc-htpNat ilDLPD"
   >
     <ul
-      className="Sidebar-list"
+      className="sc-bxivhb fcqCpQ"
     >
       <li
-        className="SidebarItem SidebarItem--all is-selected"
+        className="sc-ifAKCX sc-bZQynM lmgRuG isSelected"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan"
           href="/"
           onClick={[Function]}
-          title="All"
         >
           <div
-            className="SidebarItem-allIcon"
+            className="sc-bdVaJa jgoXzo isNone"
           >
-            ┌
+            <span>
+               
+            </span>
           </div>
           <span
-            className="SidebarItem-name"
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             All
           </span>
-          
         </a>
       </li>
     </ul>
@@ -465,80 +456,77 @@ exports[`sidebar renders list of resources 1`] = `
   className="Sidebar"
 >
   <nav
-    className="Sidebar-resources"
+    className="sc-htpNat ilDLPD"
   >
     <ul
-      className="Sidebar-list"
+      className="sc-bxivhb fcqCpQ"
     >
       <li
-        className="SidebarItem SidebarItem--all is-selected"
+        className="sc-ifAKCX sc-bZQynM lmgRuG isSelected"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan"
           href="/"
           onClick={[Function]}
-          title="All"
         >
           <div
-            className="SidebarItem-allIcon"
+            className="sc-bdVaJa jgoXzo isNone"
           >
-            ┌
+            <span
+              className="sc-bwzfXH jBiaPF"
+            >
+              2
+            </span>
           </div>
           <span
-            className="SidebarItem-name"
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             All
-          </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            2
           </span>
         </a>
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
           title="vigoda"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             vigoda
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:36:07.000Z"
-              title="2017-12-21T15:36:07.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;5s
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:36:07.000Z"
+                title="2017-12-21T15:36:07.000Z"
+              >
+                &lt;5s ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -549,48 +537,47 @@ exports[`sidebar renders list of resources 1`] = `
         />
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
           title="snack"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             snack
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo "
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            <time
-              dateTime="2017-12-21T15:35:57.000Z"
-              title="2017-12-21T15:35:57.000Z"
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
             >
-              &lt;15s
-            </time>
-          </span>
+              
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            >
+              <time
+                dateTime="2017-12-21T15:35:57.000Z"
+                title="2017-12-21T15:35:57.000Z"
+              >
+                &lt;15s ago
+              </time>
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -619,75 +606,72 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
   className="Sidebar"
 >
   <nav
-    className="Sidebar-resources"
+    className="sc-htpNat ilDLPD"
   >
     <ul
-      className="Sidebar-list"
+      className="sc-bxivhb fcqCpQ"
     >
       <li
-        className="SidebarItem SidebarItem--all is-selected"
+        className="sc-ifAKCX sc-bZQynM lmgRuG isSelected"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan"
           href="/"
           onClick={[Function]}
-          title="All"
         >
           <div
-            className="SidebarItem-allIcon"
+            className="sc-bdVaJa jgoXzo isNone"
           >
-            ┌
+            <span
+              className="sc-bwzfXH jBiaPF"
+            >
+              2
+            </span>
           </div>
           <span
-            className="SidebarItem-name"
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             All
-          </span>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            2
           </span>
         </a>
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
           title="vigoda"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             vigoda
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo empty"
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            —
-          </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY empty"
+            >
+              —
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK isEmpty"
+            >
+              —
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
@@ -698,43 +682,42 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         />
       </li>
       <li
-        className="SidebarItem SidebarItem--building"
+        className="sc-ifAKCX gQJOvT  isBuilding"
       >
         <a
-          className="SidebarItem-link"
+          className="sc-EHOje bnvzan SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
           title="snack"
         >
           <div
-            className="SidebarIcon"
+            className="sc-bdVaJa jgoXzo isBuilding"
           >
-            <svg
-              className="building"
-              style={
-                Object {
-                  "animation": "spin 1s linear infinite",
-                }
-              }
+            <span
+              className="sc-bwzfXH jBiaPF"
             >
-              indicator-auto-building.svg
-            </svg>
+              1
+            </span>
           </div>
-          <p
-            className="SidebarItem-name"
+          <span
+            className="sc-htoDjs sc-dnqmqq jjaDsB"
           >
             snack
-          </p>
-          <span
-            className="SidebarItem-alertBadge"
-          >
-            1
           </span>
-          <span
-            className="SidebarItem-timeAgo empty"
+          <div
+            className="sc-iwsKbI fEZOaG"
           >
-            —
-          </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY empty"
+            >
+              —
+            </span>
+            <span
+              className="sc-htoDjs sc-gqjmRU kNfbHK isEmpty"
+            >
+              —
+            </span>
+          </div>
         </a>
         <button
           className="SidebarTriggerButton 
