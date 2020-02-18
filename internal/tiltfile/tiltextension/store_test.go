@@ -2,6 +2,7 @@ package tiltextension
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -20,11 +21,11 @@ func TestWrite(t *testing.T) {
 		Name:              "test",
 		TiltfileContents:  "print('hi')",
 		GitCommitHash:     "aaaaaa",
-		ExtensionRegistry: "https://github.com/windmill/extensions",
+		ExtensionRegistry: "https://github.com/windmill/tilt-extensions",
 	})
 
 	f.assertPath(path)
-	f.assertExtension("test", "print('hi')", "aaaaaa", "https://github.com/windmill/extensions")
+	f.assertExtension("test", "print('hi')", "aaaaaa", "https://github.com/windmill/tilt-extensions")
 }
 
 func TestWriteAndStat(t *testing.T) {
@@ -35,10 +36,10 @@ func TestWriteAndStat(t *testing.T) {
 		Name:              "test",
 		TiltfileContents:  "print('hi')",
 		GitCommitHash:     "aaaaaa",
-		ExtensionRegistry: "https://github.com/windmill/extensions",
+		ExtensionRegistry: "https://github.com/windmill/tilt-extensions",
 	})
 
-	f.assertExtension("test", "print('hi')", "aaaaaa", "https://github.com/windmill/extensions")
+	f.assertExtension("test", "print('hi')", "aaaaaa", "https://github.com/windmill/tilt-extensions")
 
 	path := f.modulePath("test")
 	f.assertPath(path)
@@ -49,6 +50,29 @@ func TestStatModuleDoesntExist(t *testing.T) {
 	defer f.tearDown()
 
 	f.assertModulePathDoesntExist("test")
+}
+
+func TestTwoExtensions(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.writeModule(ModuleContents{
+		Name:              "test1",
+		TiltfileContents:  "print('hi')",
+		GitCommitHash:     "aaaaaa",
+		ExtensionRegistry: "https://github.com/windmill/tilt-extensions",
+	})
+
+	f.assertExtension("test1", "print('hi')", "aaaaaa", "https://github.com/windmill/tilt-extensions")
+
+	f.writeModule(ModuleContents{
+		Name:              "test2",
+		TiltfileContents:  "print('hi')",
+		GitCommitHash:     "aaaaaa",
+		ExtensionRegistry: "https://github.com/windmill/tilt-extensions",
+	})
+
+	f.assertExtension("test2", "print('hi')", "aaaaaa", "https://github.com/windmill/tilt-extensions")
 }
 
 type fixture struct {
@@ -96,7 +120,28 @@ func (f *fixture) assertExtension(moduleName, contents, hash, source string) {
 	require.NoError(f.t, err)
 
 	assert.Equal(f.t, contents, string(tiltfileContents))
-	// TODO(dmiller): assert on hash and source
+	b, err := ioutil.ReadFile(f.tempdir.JoinPath(extensionDirName, metadataFileName))
+	require.NoError(f.t, err)
+
+	var mf MetadataFile
+	err = json.Unmarshal(b, &mf)
+	require.NoError(f.t, err)
+
+	foundModule := false
+	for _, e := range mf.Extensions {
+		if e.Name == moduleName {
+			if foundModule == true {
+				f.t.Fatalf("Two modules named %s found in %+v", moduleName, mf)
+			}
+			foundModule = true
+			assert.Equal(f.t, hash, e.GitCommitHash)
+			assert.Equal(f.t, source, e.ExtensionRegistry)
+		}
+	}
+
+	if !foundModule {
+		f.t.Errorf("Unable to find module %s in extension metadata file", moduleName)
+	}
 }
 
 func (f *fixture) assertPath(path string) {

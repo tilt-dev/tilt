@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/Azure/azure-sdk-for-go v16.2.1+incompatible // indirect
 	github.com/Azure/go-autorest v10.8.1+incompatible // indirect
+	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
 	github.com/Shopify/sarama v1.18.0 // indirect
 	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
@@ -12,7 +13,9 @@ require (
 	github.com/aws/aws-sdk-go v1.15.11 // indirect
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/bugsnag/bugsnag-go v1.5.3 // indirect
 	github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b // indirect
+	github.com/bugsnag/panicwrap v1.2.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/cloudflare/cfssl v1.4.1 // indirect
@@ -32,6 +35,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.4.0
+	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/eapache/go-resiliency v1.1.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
@@ -41,11 +45,12 @@ require (
 	github.com/gentlemanautomaton/graceful v0.0.0-20170727140743-803ae396410c
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
+	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/google/go-cmp v0.3.1
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/google/go-github/v29 v29.0.3
 	github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf // indirect
 	github.com/google/uuid v1.1.1
 	github.com/google/wire v0.3.0
@@ -59,6 +64,7 @@ require (
 	github.com/jmespath/go-jmespath v0.0.0-20160803190731-bd40a432e4c7 // indirect
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/json-iterator/go v1.1.8
+	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/lightstep/lightstep-tracer-go v0.15.6
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/marstr/guid v1.1.0 // indirect
