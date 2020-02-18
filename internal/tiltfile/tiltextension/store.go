@@ -106,7 +106,7 @@ func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string
 		return "", errors.Wrap(err, "internal error: unable to marshal metadataFile as JSON")
 	}
 
-	err = ioutil.WriteFile(extensionMetadataFilePath, js, 0700)
+	err = ioutil.WriteFile(extensionMetadataFilePath, js, 0600)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to write extension metadata file at path %s", extensionMetadataFilePath)
 	}
