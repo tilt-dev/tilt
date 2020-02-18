@@ -87,6 +87,8 @@ github.com/containerd/continuity/syscallx
 github.com/containerd/continuity/sysx
 # github.com/containerd/ttrpc v0.0.0-20191028202541-4f1b8fe65a5c
 github.com/containerd/ttrpc
+# github.com/cpuguy83/go-md2man v1.0.10
+github.com/cpuguy83/go-md2man/md2man
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/denisbrodbeck/machineid v1.0.0
@@ -425,6 +427,7 @@ github.com/schollz/closestmatch
 github.com/sirupsen/logrus
 # github.com/spf13/cobra v0.0.5
 github.com/spf13/cobra
+github.com/spf13/cobra/doc
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
 # github.com/stretchr/testify v1.4.0

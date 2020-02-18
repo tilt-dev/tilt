@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -16,7 +15,6 @@ import (
 
 type configValue interface {
 	flag.Value
-	json.Marshaler
 	starlark() starlark.Value
 	setFromInterface(interface{}) error
 	IsSet() bool

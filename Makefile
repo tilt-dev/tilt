@@ -184,3 +184,8 @@ ensure: vendor
 
 vendor:
 	go mod vendor
+
+cli-docs:
+	rm -fR ../tilt.build/docs/cli
+	mkdir ../tilt.build/docs/cli
+	tilt dump cli-docs --dir=../tilt.build/docs/cli

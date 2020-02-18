@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 )
 
-func newDumpCmd() *cobra.Command {
+func newDumpCmd(rootCmd *cobra.Command) *cobra.Command {
 	result := &cobra.Command{
 		Use:   "dump",
 		Short: "dump internal Tilt state",
@@ -27,6 +29,7 @@ and may change frequently.
 	result.AddCommand(newDumpWebviewCmd())
 	result.AddCommand(newDumpEngineCmd())
 	result.AddCommand(newDumpLogStoreCmd())
+	result.AddCommand(newDumpCliDocsCmd(rootCmd))
 
 	return result
 }
@@ -42,7 +45,8 @@ The webview is the JSON used to render the React UX.
 The format of the dump state does not make any API or compatibility promises,
 and may change frequently.
 `,
-		Run: dumpWebview,
+		Run:  dumpWebview,
+		Args: cobra.NoArgs,
 	}
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
 	return cmd
@@ -62,7 +66,8 @@ and may change frequently.
 
 Excludes logs.
 `,
-		Run: dumpEngine,
+		Run:  dumpEngine,
+		Args: cobra.NoArgs,
 	}
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
 	return cmd
@@ -80,10 +85,53 @@ store before display. Dumps the JSON representation of this store.
 The format of the dump state does not make any API or compatibility promises,
 and may change frequently.
 `,
-		Run: dumpLogStore,
+		Run:  dumpLogStore,
+		Args: cobra.NoArgs,
 	}
 	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
 	return cmd
+}
+
+type dumpCliDocsCmd struct {
+	rootCmd *cobra.Command
+	dir     string
+}
+
+func newDumpCliDocsCmd(rootCmd *cobra.Command) *cobra.Command {
+	c := &dumpCliDocsCmd{rootCmd: rootCmd}
+
+	cmd := &cobra.Command{
+		Use:   "cli-docs",
+		Short: "Dumps markdown docs of the CLI",
+		Args:  cobra.NoArgs,
+		Run:   c.run,
+	}
+	cmd.Flags().StringVar(&c.dir, "dir", ".", "The directory to dump to")
+	return cmd
+}
+
+func (c *dumpCliDocsCmd) filePrepender(path string) string {
+	return `---
+title: Tilt CLI Reference
+layout: docs
+hideEditButton: true
+---
+`
+}
+
+func (c *dumpCliDocsCmd) linkHandler(link string) string {
+	if strings.HasSuffix(link, ".md") {
+		return strings.TrimSuffix(link, ".md") + ".html"
+	}
+	return link
+}
+
+func (c *dumpCliDocsCmd) run(cmd *cobra.Command, args []string) {
+	err := doc.GenMarkdownTreeCustom(c.rootCmd, c.dir, c.filePrepender, c.linkHandler)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error generating CLI docs: %v", err)
+		os.Exit(1)
+	}
 }
 
 func dumpWebview(cmd *cobra.Command, args []string) {

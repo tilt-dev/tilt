@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	pkgtiltextension "github.com/windmilleng/tilt/pkg/tiltextension"
 )
 
 type GithubFetcher struct {
@@ -18,7 +20,7 @@ func NewGithubFetcher() *GithubFetcher {
 const githubTemplate = "https://raw.githubusercontent.com/windmilleng/tilt-extensions/master/%s/Tiltfile"
 
 func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
-	err := ValidateName(moduleName)
+	err := pkgtiltextension.ValidateName(moduleName)
 	if err != nil {
 		return ModuleContents{}, err
 	}

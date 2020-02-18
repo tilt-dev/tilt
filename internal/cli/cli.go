@@ -37,7 +37,16 @@ func logLevel(verbose, debug bool) logger.Level {
 func Execute() {
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
-		Short: "tilt creates Kubernetes Live Deploys that reflect changes seconds after they’re made",
+		Short: "Multi-service development with no stress",
+		Long: `
+Tilt helps you develop your microservices locally.
+Run 'tilt up' to start working on your services in a complete dev environment
+configured for your team.
+
+Tilt watches your files for edits, automatically builds your container images,
+and applies any changes to bring your environment
+up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compose up'.
+`,
 	}
 
 	addCommand(rootCmd, &upCmd{})
@@ -50,7 +59,7 @@ func Execute() {
 
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newKubectlCmd())
-	rootCmd.AddCommand(newDumpCmd())
+	rootCmd.AddCommand(newDumpCmd(rootCmd))
 	rootCmd.AddCommand(newTriggerCmd())
 
 	if len(os.Args) > 2 && os.Args[1] == "kubectl" {
