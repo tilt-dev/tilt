@@ -45,6 +45,8 @@ let PortForward = styled.span`
 let PortForwardLabel = styled.span`
   color: ${s.Color.grayLight};
   margin-right: ${s.SizeUnit(0.25)};
+
+  ${s.mixinHideOnSmallScreen}
 `
 let PortForwardLink = styled.a``
 
@@ -111,7 +113,6 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
         </PortForwardLabel>
         {endpoints?.map(ep => (
           <PortForwardLink
-            className="resourceInfo-value"
             href={ep}
             target="_blank"
             rel="noopener noreferrer"
