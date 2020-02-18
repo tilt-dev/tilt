@@ -13,8 +13,6 @@ func TestReadYAML(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.UseRealFS()
-
 	var document = `
 key1: foo
 key2:
@@ -24,7 +22,7 @@ key5: 3
 `
 	f.File("options.yaml", document)
 	f.File("Tiltfile", `
-result = read_yaml("options.yaml")
+observed = read_yaml("options.yaml")
 
 expected = {
   'key1': 'foo',
@@ -35,13 +33,8 @@ expected = {
   'key5': 3,
 }
 
-def test():
-	if expected != result:
-		print('expected: %s' % (expected))
-		print('observed: %s' % (result))
-		fail()
-
-test()
+load('assert.tilt', 'assert')
+assert.equals(expected, observed)
 `)
 
 	result, err := f.ExecFile("Tiltfile")
@@ -53,6 +46,42 @@ test()
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
 	require.Contains(t, rs.Files, f.JoinPath("options.yaml"))
+}
+
+func TestReadYAMLDefaultValue(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+result = read_yaml("dne.yaml", "hello")
+
+load('assert.tilt', 'assert')
+assert.equals('hello', result)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
+}
+
+func TestReadYAMLStreamDefaultValue(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+result = read_yaml_stream("dne.yaml", ["hello", "goodbye"])
+
+load('assert.tilt', 'assert')
+assert.equals(['hello', 'goodbye'], result)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
 }
 
 func TestYAMLDoesNotExist(t *testing.T) {
@@ -114,14 +143,8 @@ expected = [
   }
 ]
 
-def test():
-	if expected != observed:
-		print('expected: %s' % (expected))
-		print('observed: %s' % (observed))
-		fail()
-
-test()
-
+load('assert.tilt', 'assert')
+assert.equals(expected, observed)
 `
 			f.File("Tiltfile", tf)
 
@@ -140,21 +163,10 @@ func TestDecodeYAMLEmptyString(t *testing.T) {
 
 	tf := `
 observed = decode_yaml('')
-expected = [
-  "foo",
-  {
-    "baz": [ "bar", "", 1, 2],
-  }
-]
+expected = None
 
-def test():
-	if expected != observed:
-		print('expected: %s' % (expected))
-		print('observed: %s' % (observed))
-		fail()
-
-test()
-
+load('assert.tilt', 'assert')
+assert.equals(expected, observed)
 `
 	f.File("Tiltfile", tf)
 
@@ -250,13 +262,8 @@ func TestDecodeYAMLStream(t *testing.T) {
 	d = fmt.Sprintf("observed = decode_yaml_stream('''%s''')\n", d)
 	d += fmt.Sprintf("expected = %s\n", yamlStreamAsStarlark)
 	tf := d + `
-def test():
-	if expected != observed:
-		print('expected: %s' % (expected))
-		print('observed: %s' % (observed))
-		fail()
-
-test()
+load('assert.tilt', 'assert')
+assert.equals(expected, observed)
 
 `
 	f.File("Tiltfile", tf)
@@ -306,18 +313,12 @@ observed = encode_yaml({
   'key5': 3,
   'key6': [
     'foo',
-    7
+    7,
   ]
 })
 
-def test():
-	if expected != str(observed):
-		print('expected: %s' % (expected))
-		print('observed: %s' % (observed))
-		fail()
-
-test()
-
+load('assert.tilt', 'assert')
+assert.equals(expected, str(observed))
 `)
 
 	_, err := f.ExecFile("Tiltfile")
@@ -334,13 +335,8 @@ func TestEncodeYAMLStream(t *testing.T) {
 	tf := fmt.Sprintf("expected = '''%s'''\n", yamlStream)
 	tf += fmt.Sprintf("observed = encode_yaml_stream(%s)\n", yamlStreamAsStarlark)
 	tf += `
-def test():
-	if expected != str(observed):
-		print('expected: %s' % (expected))
-		print('observed: %s' % (observed))
-		fail()
-
-test()
+load('assert.tilt', 'assert')
+assert.equals(expected, str(observed))
 `
 
 	f.File("Tiltfile", tf)

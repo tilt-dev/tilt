@@ -16,14 +16,22 @@ import (
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
 )
 
-// reads yaml from a file
-func readYAMLStream(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.String
-	var defaultValue starlark.Value
-	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
-		return nil, err
+// takes a list of objects that came from deserializing a potential starlark stream
+// ensures there's only one, and returns it
+func singleYAMLDoc(l *starlark.List) (starlark.Value, error) {
+	switch l.Len() {
+	case 0:
+		// if there are zero documents in the stream, that's actually an empty yaml document, which is a yaml
+		// document with a scalar value of NULL
+		return starlark.None, nil
+	case 1:
+		return l.Index(0), nil
+	default:
+		return nil, fmt.Errorf("expected a yaml document but found a yaml stream (documents separated by `---`). use %s instead to decode a yaml stream", decodeYAMLStreamN)
 	}
+}
 
+func readYAMLStreamAsStarlarkList(thread *starlark.Thread, path starlark.String, defaultValue *starlark.List) (*starlark.List, error) {
 	localPath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
@@ -41,23 +49,37 @@ func readYAMLStream(thread *starlark.Thread, fn *starlark.Builtin, args starlark
 	return yamlStreamToStarlark(string(contents), path.GoString())
 }
 
+func readYAMLStream(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.String
+	var defaultValue *starlark.List
+	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
+		return nil, err
+	}
+
+	return readYAMLStreamAsStarlarkList(thread, path, defaultValue)
+}
+
 func readYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	v, err := readYAMLStream(thread, fn, args, kwargs)
+	var path starlark.String
+	var defaultValue starlark.Value
+	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
+		return nil, err
+	}
+
+	var defaultValueList *starlark.List
+	if defaultValue != nil {
+		defaultValueList = starlark.NewList([]starlark.Value{defaultValue})
+	}
+
+	l, err := readYAMLStreamAsStarlarkList(thread, path, defaultValueList)
 	if err != nil {
 		return nil, err
 	}
-	l, ok := v.(*starlark.List)
-	if !ok {
-		return nil, fmt.Errorf("internal error: expected readYAMLStream to return a %T, but it returned a %T", starlark.List{}, l)
-	}
-	if l.Len() != 1 {
-		return nil, fmt.Errorf("expected a yaml document but found a yaml stream (documents separated by `---`). use %s instead to read a yaml stream", readYAMLStreamN)
-	}
-	return l.Index(0), nil
+
+	return singleYAMLDoc(l)
 }
 
-// reads yaml from a string
-func decodeYAMLStream(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func decodeYAMLStreamAsStarlarkList(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (*starlark.List, error) {
 	var contents starlark.Value
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "yaml", &contents); err != nil {
 		return nil, err
@@ -71,19 +93,17 @@ func decodeYAMLStream(thread *starlark.Thread, fn *starlark.Builtin, args starla
 	return yamlStreamToStarlark(s, "")
 }
 
+func decodeYAMLStream(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return decodeYAMLStreamAsStarlarkList(thread, fn, args, kwargs)
+}
+
 func decodeYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	v, err := decodeYAMLStream(thread, fn, args, kwargs)
+	l, err := decodeYAMLStreamAsStarlarkList(thread, fn, args, kwargs)
 	if err != nil {
 		return nil, err
 	}
-	l, ok := v.(*starlark.List)
-	if !ok {
-		return nil, fmt.Errorf("internal error: expected decodeYAMLStream to return a %T, but it returned a %T", starlark.List{}, l)
-	}
-	if l.Len() != 1 {
-		return nil, fmt.Errorf("expected a yaml document but found a yaml stream (documents separated by `---`). use %s instead to decode a yaml stream", decodeYAMLStreamN)
-	}
-	return l.Index(0), nil
+
+	return singleYAMLDoc(l)
 }
 
 func yamlStreamToStarlark(s string, source string) (*starlark.List, error) {
