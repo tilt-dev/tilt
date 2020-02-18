@@ -103,7 +103,7 @@ func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string
 
 	js, err := json.MarshalIndent(metadataFile, "", "  ")
 	if err != nil {
-		return "", errors.Wrap(err, "unable marshal metadataFile as JSON")
+		return "", errors.Wrap(err, "internal error: unable to marshal metadataFile as JSON")
 	}
 
 	err = ioutil.WriteFile(extensionMetadataFilePath, js, 0700)
