@@ -8,12 +8,29 @@ import "pkg/webview/log.proto";
 
 option go_package = "github.com/windmilleng/tilt/pkg/webview";
 
-enum BuildType {
-  IMAGE = 0;
-  LIVE_UPDATE = 1;
-  DOCKER_COMPOSE = 2;
-  K8S = 3;
-  LOCAL = 4;
+// Correspond to BuildAndDeployers
+enum UpdateType {
+  UT_UNSPECIFIED = 0;
+  UT_IMAGE = 1;
+  UT_LIVE_UPDATE = 2;
+  UT_DOCKER_COMPOSE = 3;
+  UT_K8S = 4;
+  UT_LOCAL = 5;
+}
+
+// Correspond to implementations of the TargetSpec interface
+enum TargetType {
+  TT_UNSPECIFIED = 0;
+  TT_IMAGE = 1;
+  TT_K8S = 2;
+  TT_DOCKER_COMPOSE = 3;
+  TT_LOCAL = 4;
+}
+
+message TargetSpec {
+  string id = 1;
+  TargetType type = 2;
+  bool has_live_update = 3;
 }
 
 message BuildRecord {
@@ -23,7 +40,7 @@ message BuildRecord {
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp finish_time  = 5;
 
-  repeated BuildType build_types = 9;
+  repeated UpdateType update_types = 9;
 
   reserved "log";
   reserved 6;
@@ -32,7 +49,6 @@ message BuildRecord {
 
   // The span id for this build record's logs in the main logstore.
   string span_id = 8;
-
 }
 
 message K8sResourceInfo {
@@ -104,7 +120,7 @@ message Resource {
   LocalResourceInfo local_resource_info = 17;
   string runtime_status = 18;
   bool is_tiltfile = 19;
-  repeated BuildType target_types = 27;
+  repeated TargetSpec specs = 27;
   bool show_build_status = 20;
 
   // Resource logs are now stored in the log store.

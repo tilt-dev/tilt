@@ -38,67 +38,71 @@ func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
 	return ts, nil
 }
 
-func buildTypesToProto(bts []model.BuildType) ([]proto_webview.BuildType, error) {
-	result := make([]proto_webview.BuildType, len(bts))
+func buildTypesToProtoUpdateTypes(bts []model.BuildType) ([]proto_webview.UpdateType, error) {
+	result := make([]proto_webview.UpdateType, len(bts))
 	for i, bt := range bts {
-		webviewType, err := buildTypeToProto(bt)
+		protoType, err := buildTypeToProto(bt)
 		if err != nil {
 			return nil, err
 		}
-		result[i] = webviewType
+		result[i] = protoType
 	}
 	return result, nil
 }
 
-func buildTypeToProto(bt model.BuildType) (proto_webview.BuildType, error) {
+func buildTypeToProto(bt model.BuildType) (proto_webview.UpdateType, error) {
 	switch bt {
 	case model.BuildTypeImage:
-		return proto_webview.BuildType_IMAGE, nil
+		return proto_webview.UpdateType_UT_IMAGE, nil
 	case model.BuildTypeLiveUpdate:
-		return proto_webview.BuildType_LIVE_UPDATE, nil
+		return proto_webview.UpdateType_UT_LIVE_UPDATE, nil
 	case model.BuildTypeDockerCompose:
-		return proto_webview.BuildType_DOCKER_COMPOSE, nil
+		return proto_webview.UpdateType_UT_DOCKER_COMPOSE, nil
 	case model.BuildTypeK8s:
-		return proto_webview.BuildType_K8S, nil
+		return proto_webview.UpdateType_UT_K8S, nil
 	case model.BuildTypeLocal:
-		return proto_webview.BuildType_LOCAL, nil
+		return proto_webview.UpdateType_UT_LOCAL, nil
 	default:
-		return proto_webview.BuildType_IMAGE, fmt.Errorf("unknown build type '%v'", bt)
+		return proto_webview.UpdateType_UT_UNSPECIFIED, fmt.Errorf("unknown build type '%v'", bt)
 	}
 }
 
-func targetToProtoBuildTypes(targ model.TargetSpec) ([]proto_webview.BuildType, error) {
-	switch typ := targ.(type) {
+func targetSpecToProto(spec model.TargetSpec) (proto_webview.TargetSpec, error) {
+	switch typ := spec.(type) {
 	case model.ImageTarget:
-		if !typ.LiveUpdateInfo().Empty() {
-			return []proto_webview.BuildType{proto_webview.BuildType_IMAGE, proto_webview.BuildType_LIVE_UPDATE}, nil
-		}
-		return []proto_webview.BuildType{proto_webview.BuildType_IMAGE}, nil
+		return proto_webview.TargetSpec{
+			Id:            typ.ID().String(),
+			Type:          proto_webview.TargetType_TT_IMAGE,
+			HasLiveUpdate: !typ.LiveUpdateInfo().Empty(),
+		}, nil
 	case model.DockerComposeTarget:
-		return []proto_webview.BuildType{proto_webview.BuildType_DOCKER_COMPOSE}, nil
+		return proto_webview.TargetSpec{
+			Id:   typ.ID().String(),
+			Type: proto_webview.TargetType_TT_DOCKER_COMPOSE,
+		}, nil
 	case model.K8sTarget:
-		return []proto_webview.BuildType{proto_webview.BuildType_K8S}, nil
+		return proto_webview.TargetSpec{
+			Id:   typ.ID().String(),
+			Type: proto_webview.TargetType_TT_K8S,
+		}, nil
 	case model.LocalTarget:
-		return []proto_webview.BuildType{proto_webview.BuildType_LOCAL}, nil
+		return proto_webview.TargetSpec{
+			Id:   typ.ID().String(),
+			Type: proto_webview.TargetType_TT_LOCAL,
+		}, nil
 	default:
-		return nil, fmt.Errorf("unknown build type '%v'", targ)
+		return proto_webview.TargetSpec{}, fmt.Errorf("unknown TargetSpec type %T for spec: '%v'", spec, spec)
 	}
 }
 
-func TargetsToProtoBuildTypes(targs []model.TargetSpec) ([]proto_webview.BuildType, error) {
-	seen := make(map[proto_webview.BuildType]bool)
-	var result []proto_webview.BuildType
-	for _, targ := range targs {
-		webviewTypes, err := targetToProtoBuildTypes(targ)
+func TargetSpecsToProto(specs []model.TargetSpec) ([]*proto_webview.TargetSpec, error) {
+	result := make([]*proto_webview.TargetSpec, len(specs))
+	for i, spec := range specs {
+		protoSpec, err := targetSpecToProto(spec)
 		if err != nil {
 			return nil, err
 		}
-		for _, t := range webviewTypes {
-			if !seen[t] {
-				seen[t] = true
-				result = append(result, t)
-			}
-		}
+		result[i] = &protoSpec
 	}
 
 	return result, nil
@@ -124,7 +128,7 @@ func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*pro
 		warnings = logStore.Warnings(br.SpanID)
 	}
 
-	types, err := buildTypesToProto(br.BuildTypes)
+	updateTypes, err := buildTypesToProtoUpdateTypes(br.BuildTypes)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +139,7 @@ func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*pro
 		Warnings:       warnings,
 		StartTime:      start,
 		FinishTime:     finish,
-		BuildTypes:     types,
+		UpdateTypes:    updateTypes,
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 		SpanId:         string(br.SpanID),
 	}, nil

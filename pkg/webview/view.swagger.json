@@ -130,10 +130,10 @@
           "type": "string",
           "format": "date-time"
         },
-        "build_types": {
+        "update_types": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/webviewBuildType"
+            "$ref": "#/definitions/webviewUpdateType"
           }
         },
         "is_crash_rebuild": {
@@ -145,17 +145,6 @@
           "description": "The span id for this build record's logs in the main logstore."
         }
       }
-    },
-    "webviewBuildType": {
-      "type": "string",
-      "enum": [
-        "IMAGE",
-        "LIVE_UPDATE",
-        "DOCKER_COMPOSE",
-        "K8S",
-        "LOCAL"
-      ],
-      "default": "IMAGE"
     },
     "webviewDCResourceInfo": {
       "type": "object",
@@ -397,10 +386,10 @@
           "type": "boolean",
           "format": "boolean"
         },
-        "target_types": {
+        "specs": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/webviewBuildType"
+            "$ref": "#/definitions/webviewTargetSpec"
           }
         },
         "show_build_status": {
@@ -462,6 +451,33 @@
         }
       }
     },
+    "webviewTargetSpec": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/webviewTargetType"
+        },
+        "has_live_update": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "webviewTargetType": {
+      "type": "string",
+      "enum": [
+        "TT_UNSPECIFIED",
+        "TT_IMAGE",
+        "TT_K8S",
+        "TT_DOCKER_COMPOSE",
+        "TT_LOCAL"
+      ],
+      "default": "TT_UNSPECIFIED",
+      "title": "Correspond to implementations of the TargetSpec interface"
+    },
     "webviewTiltBuild": {
       "type": "object",
       "properties": {
@@ -479,6 +495,19 @@
           "format": "boolean"
         }
       }
+    },
+    "webviewUpdateType": {
+      "type": "string",
+      "enum": [
+        "UT_UNSPECIFIED",
+        "UT_IMAGE",
+        "UT_LIVE_UPDATE",
+        "UT_DOCKER_COMPOSE",
+        "UT_K8S",
+        "UT_LOCAL"
+      ],
+      "default": "UT_UNSPECIFIED",
+      "title": "Correspond to BuildAndDeployers"
     },
     "webviewUploadSnapshotResponse": {
       "type": "object",

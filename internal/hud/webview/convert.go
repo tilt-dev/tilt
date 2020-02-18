@@ -91,7 +91,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			return nil, err
 		}
 
-		targetTypes, err := TargetsToProtoBuildTypes(mt.Manifest.TargetSpecs())
+		specs, err := TargetSpecsToProto(mt.Manifest.TargetSpecs())
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +118,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			CurrentBuild:       cb,
 			Endpoints:          endpoints,
 			PodID:              podID.String(),
-			TargetTypes:        targetTypes,
+			Specs:              specs,
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			CrashLog:           ms.CrashLog.String(),
 			TriggerMode:        int32(mt.Manifest.TriggerMode),

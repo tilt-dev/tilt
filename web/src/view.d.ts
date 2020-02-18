@@ -38,6 +38,11 @@ declare namespace Proto {
     date?: string;
     dev?: boolean;
   }
+  export interface webviewTargetSpec {
+    id?: string;
+    type?: string;
+    hasLiveUpdate?: boolean;
+  }
   export interface webviewSnapshotHighlight {
     beginningLogID?: string;
     endingLogID?: string;
@@ -70,7 +75,7 @@ declare namespace Proto {
     localResourceInfo?: webviewLocalResourceInfo;
     runtimeStatus?: string;
     isTiltfile?: boolean;
-    targetTypes?: string[];
+    specs?: webviewTargetSpec[];
     showBuildStatus?: boolean;
     /**
      * Obsoleted by crash_log_span_id.
@@ -157,7 +162,7 @@ declare namespace Proto {
     warnings?: string[];
     startTime?: string;
     finishTime?: string;
-    buildTypes?: string[];
+    updateTypes?: string[];
     isCrashRebuild?: boolean;
     /**
      * The span id for this build record's logs in the main logstore.
