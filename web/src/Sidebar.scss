@@ -7,8 +7,7 @@
   right: 0;
   bottom: $statusbar-height;
   width: $sidebar-width;
-  background-color: $color-gray-dark;
-  border-left: 1px solid $color-gray-light;
+  background-color: $color-gray-darkest;
   box-sizing: border-box;
   overflow-y: auto;
   transform: translateX(0%);
@@ -16,131 +15,16 @@
   font-size: $font-size;
   display: flex;
   flex-direction: column;
-  box-shadow: -1px 0px 6px 0px $color-gray-darkest;
   z-index: $z-sidebar;
 }
 .Sidebar.is-closed {
   transform: translateX(calc(100% - #{$sidebar-collapsed-width}));
 }
 
-// Resource List
-.Sidebar-resources {
-  flex: 1 0 auto;
-  font-weight: bold;
-}
-.Sidebar-list {
-  list-style: none;
-}
-
-.SidebarItem {
-  border-bottom: 1px solid rgba($color-gray-lightest, $translucent);
-  width: 100%;
-  color: $color-white;
-  background-color: $color-gray;
-  display: flex;
-  align-items: center;
-  height: $sidebar-item;
-  transition: color $animation-timing linear, background-color $animation-timing linear;
-}
-.SidebarItem-link {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  width: calc(100% - #{$sidebar-item});
-}
-.SidebarItem:hover {
-  background-color: rgba($color-gray-dark, $translucent);
-  color: $color-blue-light;
-}
-.SidebarItem.is-selected {
-  background-color: $color-white;
-  color: $color-gray;
-}
-
-.SidebarItem--building {
-  background: repeating-linear-gradient(
-    225deg,
-    rgba($color-gray-light, $translucent),
-    rgba($color-gray-light, $translucent) 1px,
-    rgba(0, 0, 0, 0) 1px,
-    rgba(0, 0, 0, 0) 6px
-  );
-  background-size: 200% 200%;
-  animation: barberpole 8s linear infinite;
-}
-
-.SidebarItem-allIcon {
-  color: $color-gray-light;
-  margin-top: $spacing-unit / 4; // Visually center
-  width: $sidebar-item;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.SidebarItem-name {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.SidebarItem--all .SidebarItem-name {
-  text-transform: uppercase;
-}
-
-.SidebarItem-alertBadge {
-  font-family: $font-sans-serif;
-  font-size: $font-size-smallest;
-  background-color: $color-white;
-  color: $color-gray-darkest;
-  border-radius: $alert-badge;
-  width: $alert-badge;
-  height: $alert-badge;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: $spacing-unit / 2;
-}
-
-.SidebarItem.is-selected .SidebarItem-alertBadge {
-  background-color: $color-gray-darkest;
-  color: $color-white;
-}
-
-.SidebarItem-timeAgo {
-  min-width: $spacing-unit * 0.8;
-  text-align: right;
-  font-weight: normal;
-  padding-left: $spacing-unit * 0.2;
-  color: rgba($color-white, $translucent-ish);
-}
-.SidebarItem.is-selected .SidebarItem-timeAgo {
-  color: $color-gray;
-}
-.SidebarItem-timeAgo.empty {
-  color: rgba($color-white, $translucent) !important;
-}
-
-.SidebarItem-lastDur {
-  min-width: $spacing-unit * 0.8;
-  font-weight: normal;
-  color: rgba($color-white, $translucent-ish);
-}
-.SidebarItem-lastDur:not(.empty)::after {
-  content: " |"
-}
-.SidebarItem.is-selected .SidebarItem-lastDur {
-  color: $color-gray;
-}
-.SidebarItem-lastDur.empty {
-  display: none;
-}
-
 // Collapse/Expand
 .Sidebar-toggle {
-  background-color: $color-gray;
+  background-color: $color-gray-darkest;
   border: 0 none;
-  border-top: 1px solid $color-gray-light;
   color: inherit;
   font-size: inherit;
   font-family: inherit;
@@ -156,12 +40,11 @@
   transition-timing-function: ease;
 }
 .Sidebar-toggle:hover {
-  background-color: $color-gray-dark;
   color: $color-blue-light;
 }
 .Sidebar-toggle > svg {
   fill: $color-white;
-  width: $spacing-unit * 1.5;
+  width: $sidebar-collapsed-width;
   transition: transform $animation-timing ease-in, fill $animation-timing ease;
 }
 .Sidebar-toggle:hover > svg {
