@@ -1,34 +1,26 @@
 import React from "react"
-import { mount } from "enzyme"
+import {mount, shallow} from "enzyme"
 import SidebarIcon, { IconType } from "./SidebarIcon"
 import { ResourceStatus } from "./types"
 import { Color } from "./style-helpers"
 
-type Ignore = boolean
-
 const cases: Array<[
   string,
   ResourceStatus,
-  Color | Ignore,
-  IconType | Ignore
+  Color
 ]> = [
-  ["pending", ResourceStatus.Pending, false, IconType.StatusPending],
-  ["healthy", ResourceStatus.Healthy, Color.green, IconType.StatusDefault],
-  ["unhealthy", ResourceStatus.Unhealthy, Color.red, IconType.StatusDefault],
-  ["building", ResourceStatus.Building, false, IconType.StatusBuilding],
-  ["warning", ResourceStatus.Warning, Color.yellow, IconType.StatusDefault],
-  ["none", ResourceStatus.None, Color.gray, IconType.StatusDefault],
+  ["isPending", ResourceStatus.Pending, Color.white],
+  ["isHealthy", ResourceStatus.Healthy, Color.green],
+  ["isUnhealthy", ResourceStatus.Unhealthy, Color.red],
+  ["isBuilding", ResourceStatus.Building, Color.white],
+  ["isWarning", ResourceStatus.Warning, Color.yellow],
+  ["isNone", ResourceStatus.None, Color.white],
 ]
 
-test.each(cases)("%s", (_, status, fillColor, iconType) => {
-  const root = mount(<SidebarIcon status={status} />)
-
-  if (fillColor !== false) {
-    expect(root.find(`svg[fill="${fillColor}"]`)).toHaveLength(1)
-  }
-
-  if (iconType !== false) {
-    let path = `svg.${iconType}`
-    expect(root.find(path)).toHaveLength(1)
-  }
+test.each(cases)("renders correctly - %s", (className, status, color) => {
+  // TODO(han) - need to check that background-color is as expected
+  // Since we're using styled-components, we should test individual style rules with
+  // jest-styled-components, which requires an upgrade to styled-components v5
+  const wrapper = shallow(<SidebarIcon status={status} alertCount={0} />)
+  expect(wrapper).toMatchSnapshot();
 })
