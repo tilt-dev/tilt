@@ -1,14 +1,10 @@
 import React from "react"
-import {mount, shallow} from "enzyme"
+import { mount, shallow } from "enzyme"
 import SidebarIcon, { IconType } from "./SidebarIcon"
 import { ResourceStatus } from "./types"
 import { Color } from "./style-helpers"
 
-const cases: Array<[
-  string,
-  ResourceStatus,
-  Color
-]> = [
+const cases: Array<[string, ResourceStatus, Color]> = [
   ["isPending", ResourceStatus.Pending, Color.white],
   ["isHealthy", ResourceStatus.Healthy, Color.green],
   ["isUnhealthy", ResourceStatus.Unhealthy, Color.red],
@@ -22,5 +18,5 @@ test.each(cases)("renders correctly - %s", (className, status, color) => {
   // Since we're using styled-components, we should test individual style rules with
   // jest-styled-components, which requires an upgrade to styled-components v5
   const wrapper = shallow(<SidebarIcon status={status} alertCount={0} />)
-  expect(wrapper).toMatchSnapshot();
+  expect(wrapper).toMatchSnapshot()
 })
