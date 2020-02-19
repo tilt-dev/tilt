@@ -9,7 +9,7 @@ def remove_all_empty_and_whitespace(my_list):
 
  #TODO(dmiller): can I memoize this or something?
 def get_all_go_files(path):
-  return str(local('cd %s && find . -type f -name "*.go" | grep -v vendor' % path)).split("\n")
+  return str(local('cd %s && find . -type f -name "*.go"' % path)).split("\n")
 
 def get_deps_for_pkg(pkg):
   cmd = """go list -f '{{ join .GoFiles "\\n" }} {{ join .TestGoFiles "\\n" }} {{ join .XTestGoFiles "\\n"}}' '%s'""" % pkg
@@ -17,7 +17,7 @@ def get_deps_for_pkg(pkg):
   return remove_all_empty_and_whitespace(split)
 
 def go(name, entrypoint, all_go_files, srv=""):
-  all_packages = remove_all_empty_and_whitespace(str(local('go list ./...')).split("\n"))
+  all_packages = remove_all_empty_and_whitespace(str(local('go list ./...')).rstrip().split("\n"))
   # for pkg in all_packages:
   #   pkg_deps = get_deps_for_pkg(pkg)
   #   local_resource("go_test_%s" % pkg, "go test %s" % pkg, deps=pkg_deps)
@@ -28,9 +28,7 @@ def go_lint(all_go_files):
   local_resource("go_lint", "make lint", deps=all_go_files)
 
 def get_all_ts_files(path):
-  res = str(local('cd %s && find . -type f -name "*.ts*" | grep -v node_modules | grep -v __snapshots__' % path)).split("\n")
-  # TODO(dmiller): this thing always has a spare `""` hanging out at the end. Just `pop()` it off
-  res.pop()
+  res = str(local('cd %s && find . -type f -name "*.ts*" | grep -v node_modules | grep -v __snapshots__' % path)).rstrip().split("\n")
   return res
 
 def yarn_install():
