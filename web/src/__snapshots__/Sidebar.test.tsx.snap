@@ -5,7 +5,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
   className="Sidebar"
 >
   <nav
-    className="sc-htpNat ilDLPD"
+    className="sc-htpNat ilDLPD Sidebar-resources"
   >
     <ul
       className="sc-bxivhb fcqCpQ"
@@ -410,7 +410,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
   className="Sidebar is-closed"
 >
   <nav
-    className="sc-htpNat ilDLPD"
+    className="sc-htpNat ilDLPD Sidebar-resources"
   >
     <ul
       className="sc-bxivhb fcqCpQ"
@@ -456,7 +456,7 @@ exports[`sidebar renders list of resources 1`] = `
   className="Sidebar"
 >
   <nav
-    className="sc-htpNat ilDLPD"
+    className="sc-htpNat ilDLPD Sidebar-resources"
   >
     <ul
       className="sc-bxivhb fcqCpQ"
@@ -606,7 +606,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
   className="Sidebar"
 >
   <nav
-    className="sc-htpNat ilDLPD"
+    className="sc-htpNat ilDLPD Sidebar-resources"
   >
     <ul
       className="sc-bxivhb fcqCpQ"

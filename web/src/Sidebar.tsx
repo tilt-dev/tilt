@@ -274,7 +274,7 @@ class Sidebar extends PureComponent<SidebarProps> {
 
     return (
       <section className={classes.join(" ")}>
-        <SidebarResources>
+        <SidebarResources className="Sidebar-resources">
           <SidebarList>
             {allItem}
             {listItems}
