@@ -295,6 +295,8 @@ function timeDiff(start: string, end: string): Date {
 }
 
 function formatDuration(dur: Date): string {
+  // TODO(han) — hacky for now. The duration should count up during building!
+  // We also need to display durations of 1m+ (ex: mm:ss)
   return moment(dur).format("s.S") + "s"
 }
 
