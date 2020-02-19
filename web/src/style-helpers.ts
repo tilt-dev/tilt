@@ -66,7 +66,13 @@ export enum Width {
   secondaryNavItem = unit * 5,
   sidebarCollapsed = unit, // sync with constants.scss > $sidebar-collapsed-width
   badge = unit * 0.6,
+  smallScreen = 1500,
 }
+
+export const mixinHideOnSmallScreen = `
+@media screen and (max-width: ${Width.smallScreen}px) {
+  display: none;
+}`
 
 export enum ZIndex {
   HUDheader = 500,
