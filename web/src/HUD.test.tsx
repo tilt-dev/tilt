@@ -309,3 +309,34 @@ it("loads logs incrementally", async () => {
     ],
   })
 })
+it("renders logs to snapshot", async () => {
+  const root = mount(emptyHUD())
+  const hud = root.find(HUD).instance() as HUD
+
+  let now = new Date().toString()
+  let resourceView = oneResourceView()
+  resourceView.logList = {
+    spans: {
+      "": {},
+    },
+    segments: [
+      { text: "line1\n", time: now, level: "WARN" },
+      { text: "line2\n", time: now, fields: { buildEvent: "1" } },
+    ],
+    fromCheckpoint: 0,
+    toCheckpoint: 2,
+  }
+  hud.setAppState({ view: resourceView })
+
+  root.update()
+  let snapshot = hud.snapshotFromState(hud.state)
+  expect(snapshot.view?.logList).toEqual({
+    spans: {
+      _: { manifestName: "" },
+    },
+    segments: [
+      { text: "line1\n", time: now, spanId: "_", level: "WARN" },
+      { text: "line2\n", time: now, spanId: "_", fields: { buildEvent: "1" } },
+    ],
+  })
+})

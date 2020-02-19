@@ -102,7 +102,7 @@ class LogStore {
         let text = segment.text
         let level = segment.level
         let fields = segment.fields
-        return { spanId, time, text, level }
+        return { spanId, time, text, level, fields }
       }
     )
     return {
