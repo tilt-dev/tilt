@@ -265,13 +265,9 @@ const (
 	workloadToResourceFunctionN = "workload_to_resource_function"
 
 	// file functions
-	localN      = "local"
-	kustomizeN  = "kustomize"
-	helmN       = "helm"
-	decodeJSONN = "decode_json"
-	decodeYAMLN = "decode_yaml"
-	readJSONN   = "read_json"
-	readYAMLN   = "read_yaml"
+	localN     = "local"
+	kustomizeN = "kustomize"
+	helmN      = "helm"
 
 	// live update functions
 	fallBackOnN       = "fall_back_on"
