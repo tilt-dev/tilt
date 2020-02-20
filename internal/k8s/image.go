@@ -74,7 +74,7 @@ func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectR
 		}
 	}
 
-	entity, r, err = injectImageDigestInUnstructured(entity, injectRef)
+	entity, r, err = injectImageDigestInUnstructured(entity, selector, injectRef)
 	if err != nil {
 		return K8sEntity{}, false, err
 	}
@@ -130,12 +130,12 @@ func injectImageDigestInEnvVars(entity K8sEntity, selector container.RefSelector
 	return entity, replaced, nil
 }
 
-func injectImageInUnstructuredInterface(ui interface{}, injectRef reference.Named) (interface{}, bool) {
+func injectImageInUnstructuredInterface(ui interface{}, selector container.RefSelector, injectRef reference.Named) (interface{}, bool) {
 	switch x := ui.(type) {
 	case map[string]interface{}:
 		replaced := false
 		for k, v := range x {
-			newV, r := injectImageInUnstructuredInterface(v, injectRef)
+			newV, r := injectImageInUnstructuredInterface(v, selector, injectRef)
 			x[k] = newV
 			if r {
 				replaced = true
@@ -145,7 +145,7 @@ func injectImageInUnstructuredInterface(ui interface{}, injectRef reference.Name
 	case []interface{}:
 		replaced := false
 		for i, v := range x {
-			newV, r := injectImageInUnstructuredInterface(v, injectRef)
+			newV, r := injectImageInUnstructuredInterface(v, selector, injectRef)
 			x[i] = newV
 			if r {
 				replaced = true
@@ -154,7 +154,7 @@ func injectImageInUnstructuredInterface(ui interface{}, injectRef reference.Name
 		return x, replaced
 	case string:
 		ref, err := container.ParseNamed(x)
-		if err == nil && ref.Name() == injectRef.Name() {
+		if err == nil && selector.Matches(ref) {
 			return container.FamiliarString(injectRef), true
 		} else {
 			return x, false
@@ -164,13 +164,13 @@ func injectImageInUnstructuredInterface(ui interface{}, injectRef reference.Name
 	}
 }
 
-func injectImageDigestInUnstructured(entity K8sEntity, injectRef reference.Named) (K8sEntity, bool, error) {
+func injectImageDigestInUnstructured(entity K8sEntity, selector container.RefSelector, injectRef reference.Named) (K8sEntity, bool, error) {
 	u, ok := entity.Obj.(runtime.Unstructured)
 	if !ok {
 		return entity, false, nil
 	}
 
-	n, replaced := injectImageInUnstructuredInterface(u.UnstructuredContent(), injectRef)
+	n, replaced := injectImageInUnstructuredInterface(u.UnstructuredContent(), selector, injectRef)
 
 	u.SetUnstructuredContent(n.(map[string]interface{}))
 
