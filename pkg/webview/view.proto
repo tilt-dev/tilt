@@ -8,12 +8,39 @@ import "pkg/webview/log.proto";
 
 option go_package = "github.com/windmilleng/tilt/pkg/webview";
 
+// Correspond to BuildAndDeployers
+enum UpdateType {
+  UPDATE_TYPE_UNSPECIFIED = 0;
+  UPDATE_TYPE_IMAGE = 1;
+  UPDATE_TYPE_LIVE_UPDATE = 2;
+  UPDATE_TYPE_DOCKER_COMPOSE = 3;
+  UPDATE_TYPE_K8S = 4;
+  UPDATE_TYPE_LOCAL = 5;
+}
+
+// Correspond to implementations of the TargetSpec interface
+enum TargetType {
+  TARGET_TYPE_UNSPECIFIED = 0;
+  TARGET_TYPE_IMAGE = 1;
+  TARGET_TYPE_K8S = 2;
+  TARGET_TYPE_DOCKER_COMPOSE = 3;
+  TARGET_TYPE_LOCAL = 4;
+}
+
+message TargetSpec {
+  string id = 1;
+  TargetType type = 2;
+  bool has_live_update = 3;
+}
+
 message BuildRecord {
   repeated string edits = 1;
   string error = 2;
   repeated string warnings = 3;
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp finish_time  = 5;
+
+  repeated UpdateType update_types = 9;
 
   reserved "log";
   reserved 6;
@@ -93,6 +120,7 @@ message Resource {
   LocalResourceInfo local_resource_info = 17;
   string runtime_status = 18;
   bool is_tiltfile = 19;
+  repeated TargetSpec specs = 27;
   bool show_build_status = 20;
 
   // Resource logs are now stored in the log store.

@@ -3207,6 +3207,27 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 	})
 }
 
+func TestAnalyticsTiltfileOpt(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.Start([]model.Manifest{}, true)
+
+	f.withState(func(state store.EngineState) {
+		assert.Equal(t, analytics.OptDefault, state.AnalyticsEffectiveOpt())
+	})
+
+	f.store.Dispatch(configs.ConfigsReloadedAction{AnalyticsTiltfileOpt: analytics.OptIn})
+
+	f.WaitUntil("analytics tiltfile opt-in", func(state store.EngineState) bool {
+		return state.AnalyticsTiltfileOpt == analytics.OptIn
+	})
+
+	f.withState(func(state store.EngineState) {
+		assert.Equal(t, analytics.OptIn, state.AnalyticsEffectiveOpt())
+	})
+}
+
 func TestConfigArgsChangeCausesTiltfileRerun(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

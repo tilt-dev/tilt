@@ -8,18 +8,34 @@ func NewExtension() Extension {
 	return Extension{}
 }
 
+const (
+	readYAMLN         = "read_yaml"
+	readYAMLStreamN   = "read_yaml_stream"
+	decodeYAMLN       = "decode_yaml"
+	decodeYAMLStreamN = "decode_yaml_stream"
+	encodeYAMLN       = "encode_yaml"
+	encodeYAMLStreamN = "encode_yaml_stream"
+
+	readJSONN   = "read_json"
+	decodeJSONN = "decode_json"
+	encodeJSONN = "encode_json"
+)
+
 func (Extension) OnStart(env *starkit.Environment) error {
 	for _, b := range []struct {
 		name string
 		f    starkit.Function
 	}{
-		{"read_yaml", readYAML},
-		{"decode_yaml", decodeYAML},
-		{"encode_yaml", encodeYAML},
+		{readYAMLN, readYAML},
+		{readYAMLStreamN, readYAMLStream},
+		{decodeYAMLN, decodeYAML},
+		{decodeYAMLStreamN, decodeYAMLStream},
+		{encodeYAMLN, encodeYAML},
+		{encodeYAMLStreamN, encodeYAMLStream},
 
-		{"read_json", readJSON},
-		{"decode_json", decodeJSON},
-		{"encode_json", encodeJSON},
+		{readJSONN, readJSON},
+		{decodeJSONN, decodeJSON},
+		{encodeJSONN, encodeJSON},
 	} {
 		err := env.AddBuiltin(b.name, b.f)
 		if err != nil {

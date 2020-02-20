@@ -221,6 +221,12 @@ update the [install](https://github.com/windmilleng/tilt.build/tree/master/docs/
 the [default dev version](internal/cli/build.go),
 and the [installer version](scripts/install.sh).
 
+To auto-generate new CLI docs, make sure you have tilt.build in a sibling directory of tilt, and run:
+
+```
+make cli-docs
+```
+
 ### Version numbers
 For pre-v1.0:
 * If adding backwards-compatible functionality increment the patch version (0.x.Y).
