@@ -251,4 +251,51 @@ describe("LogStore", () => {
 
     expect(logLinesToString(logs.allLog(), true)).toEqual("layer 1: Finished")
   })
+
+  it("handles last trace", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: {
+        "": {},
+        "build:1": { manifestName: "fe" },
+        "pod:1": { manifestName: "fe" },
+        "build:2": { manifestName: "foo" },
+        "pod:2": { manifestName: "foo" },
+      },
+      segments: [
+        newManifestSegment("build:1", "build 1\n"),
+        newManifestSegment("pod:1", "pod 1\n"),
+        newManifestSegment("build:2", "build 2\n"),
+        newManifestSegment("pod:2", "pod 2\n"),
+        newManifestSegment("pod:1", "pod 1 line 2\n"),
+      ],
+    })
+
+    expect(logLinesToString(logs.traceLog("build:1"), false)).toEqual(
+      "build 1\npod 1\npod 1 line 2"
+    )
+  })
+
+  it("handles trace ends at next build", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: {
+        "": {},
+        "build:1": { manifestName: "fe" },
+        "pod:1": { manifestName: "fe" },
+        "build:2": { manifestName: "fe" },
+        "pod:2": { manifestName: "fe" },
+      },
+      segments: [
+        newManifestSegment("build:1", "build 1\n"),
+        newManifestSegment("pod:1", "pod 1\n"),
+        newManifestSegment("build:2", "build 2\n"),
+        newManifestSegment("pod:2", "pod 2\n"),
+      ],
+    })
+
+    expect(logLinesToString(logs.traceLog("build:1"), false)).toEqual(
+      "build 1\npod 1"
+    )
+  })
 })

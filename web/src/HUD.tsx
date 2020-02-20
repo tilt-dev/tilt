@@ -326,6 +326,7 @@ class HUD extends Component<HudProps, HudState> {
       props: RouteComponentProps<any>
     ) => {
       let name = props.match.params?.name ?? ""
+      let span = props.match.params?.span ?? ""
       let numAlerts = 0
       let logUrl = name === "" ? this.path("/") : this.path(`/r/${name}`)
       let alertsUrl =
@@ -334,6 +335,9 @@ class HUD extends Component<HudProps, HudState> {
       let isFacetsEnabled = this.getFeatures().isEnabled("facets")
       let facetsUrl =
         name !== "" && isFacetsEnabled ? this.path(`/r/${name}/facets`) : null
+
+      let traceUrl =
+        name !== "" && span != "" ? this.path(`/r/${name}/trace/${span}`) : null
 
       if (name) {
         let selectedResource = resources.find(r => r.name === name)
@@ -353,6 +357,8 @@ class HUD extends Component<HudProps, HudState> {
           resourceView={t}
           numberOfAlerts={numAlerts}
           facetsUrl={facetsUrl}
+          traceUrl={traceUrl}
+          span={span}
         />
       )
     }
@@ -366,6 +372,10 @@ class HUD extends Component<HudProps, HudState> {
         <Route
           path={this.path("/r/:name/facets")}
           render={secondaryNavRoute.bind(null, ResourceView.Facets)}
+        />
+        <Route
+          path={this.path("/r/:name/trace/:span")}
+          render={secondaryNavRoute.bind(null, ResourceView.Trace)}
         />
         <Route
           path={this.path("/r/:name")}
@@ -428,6 +438,34 @@ class HUD extends Component<HudProps, HudState> {
     let snapshotHighlight = this.state.snapshotHighlight || null
     let showSnapshotModal = !!this.state.showSnapshotModal
     let isSnapshot = this.pathBuilder.isSnapshot()
+
+    let traceRoute = (props: RouteComponentProps<any>) => {
+      let name = props.match.params?.name ?? ""
+      let span = props.match.params?.span ?? ""
+
+      let r = resources.find(r => r.name === name)
+      if (r === undefined) {
+        return <Route component={NotFound} />
+      }
+
+      let logLines: LogLine[] = []
+      if (span && logStore) {
+        logLines = logStore.traceLog(span)
+      }
+
+      return (
+        <LogPane
+          logLines={logLines}
+          showManifestPrefix={false}
+          manifestName={name}
+          handleSetHighlight={this.handleSetHighlight}
+          handleClearHighlight={this.handleClearHighlight}
+          highlight={snapshotHighlight}
+          isSnapshot={isSnapshot}
+        />
+      )
+    }
+
     let logsRoute = (props: RouteComponentProps<any>) => {
       let name =
         props.match.params && props.match.params.name
@@ -516,6 +554,11 @@ class HUD extends Component<HudProps, HudState> {
           )}
         />
         <Route exact path={this.path("/r/:name")} render={logsRoute} />
+        <Route
+          exact
+          path={this.path("/r/:name/trace/:span")}
+          render={traceRoute}
+        />
         <Route
           exact
           path={this.path("/r/:name/k8s")}
