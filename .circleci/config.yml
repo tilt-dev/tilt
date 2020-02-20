@@ -17,6 +17,7 @@ jobs:
             - golangci_lint_{{ .Revision }}
             - golangci_lint_ # Else find the most recently generated cache
       - run: make lint
+      - run: make test_install_version_check
       - save_cache:
           paths:
             - /home/circleci/.cache/golangci-lint

@@ -189,3 +189,6 @@ cli-docs:
 	rm -fR ../tilt.build/docs/cli
 	mkdir ../tilt.build/docs/cli
 	tilt dump cli-docs --dir=../tilt.build/docs/cli
+
+test_install_version_check: install
+	NO_INSTALL=1 PATH="~/go/bin:$$PATH" scripts/install.sh
