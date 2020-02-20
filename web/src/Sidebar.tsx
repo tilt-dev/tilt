@@ -246,16 +246,16 @@ class Sidebar extends PureComponent<SidebarProps> {
             <SidebarIcon status={item.status} alertCount={item.alertCount} />
             <SidebarItemName>{item.name}</SidebarItemName>
             <SidebarTiming>
-              <SidebarItemDuration
-                className={hasSuccessfullyDeployed ? "" : "empty"}
-              >
-                {hasSuccessfullyDeployed ? buildDur : "—"}
-              </SidebarItemDuration>
               <SidebarItemTimeAgo
                 className={hasSuccessfullyDeployed ? "" : "isEmpty"}
               >
                 {hasSuccessfullyDeployed ? timeAgo : "—"}
               </SidebarItemTimeAgo>
+              <SidebarItemDuration
+                className={hasSuccessfullyDeployed ? "" : "isEmpty"}
+              >
+                {hasSuccessfullyDeployed ? buildDur : "—"}
+              </SidebarItemDuration>
             </SidebarTiming>
           </SidebarItemLink>
           <SidebarTriggerButton
