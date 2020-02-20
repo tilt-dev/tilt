@@ -184,3 +184,6 @@ ensure: vendor
 
 vendor:
 	go mod vendor
+
+test_install_version_check: install
+	NO_INSTALL=1 PATH="~/go/bin:$$PATH" scripts/install.sh
