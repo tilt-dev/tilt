@@ -161,10 +161,6 @@ func (r Resource) DefaultCollapse() bool {
 		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackOff" || k8sInfo.PodStatus == "Error"
 	}
 
-	if r.IsYAML() {
-		autoExpand = true
-	}
-
 	if r.IsDC() && r.DockerComposeTarget().Status() == string(dockercompose.StatusCrash) {
 		autoExpand = true
 	}
