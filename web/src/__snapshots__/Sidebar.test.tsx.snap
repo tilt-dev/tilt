@@ -11,7 +11,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
       className="sc-bxivhb fcqCpQ"
     >
       <li
-        className="sc-ifAKCX sc-bZQynM lmgRuG isSelected"
+        className="sc-ifAKCX sc-bZQynM jATamM isSelected"
       >
         <a
           className="sc-EHOje bnvzan"
@@ -35,7 +35,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         </a>
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -86,7 +86,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -137,7 +137,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -188,7 +188,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -239,7 +239,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -290,7 +290,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -341,7 +341,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -416,7 +416,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
       className="sc-bxivhb fcqCpQ"
     >
       <li
-        className="sc-ifAKCX sc-bZQynM lmgRuG isSelected"
+        className="sc-ifAKCX sc-bZQynM jATamM isSelected"
       >
         <a
           className="sc-EHOje bnvzan"
@@ -462,7 +462,7 @@ exports[`sidebar renders list of resources 1`] = `
       className="sc-bxivhb fcqCpQ"
     >
       <li
-        className="sc-ifAKCX sc-bZQynM lmgRuG isSelected"
+        className="sc-ifAKCX sc-bZQynM jATamM isSelected"
       >
         <a
           className="sc-EHOje bnvzan"
@@ -486,7 +486,7 @@ exports[`sidebar renders list of resources 1`] = `
         </a>
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -537,7 +537,7 @@ exports[`sidebar renders list of resources 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -612,7 +612,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       className="sc-bxivhb fcqCpQ"
     >
       <li
-        className="sc-ifAKCX sc-bZQynM lmgRuG isSelected"
+        className="sc-ifAKCX sc-bZQynM jATamM isSelected"
       >
         <a
           className="sc-EHOje bnvzan"
@@ -636,7 +636,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         </a>
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
@@ -682,7 +682,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX gQJOvT  isBuilding"
+        className="sc-ifAKCX kXLQyu  isBuilding"
       >
         <a
           className="sc-EHOje bnvzan SidebarItem-link"
