@@ -61,11 +61,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -74,6 +69,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;5s ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -112,11 +112,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -125,6 +120,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;15s ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -163,11 +163,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -176,6 +171,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;30s ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -214,11 +214,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -227,6 +222,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;30s ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -265,11 +265,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -278,6 +273,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;45s ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -316,11 +316,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -329,6 +324,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;1m ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -367,11 +367,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -380,6 +375,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;1m ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -512,11 +512,6 @@ exports[`sidebar renders list of resources 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -525,6 +520,11 @@ exports[`sidebar renders list of resources 1`] = `
               >
                 &lt;5s ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -563,11 +563,6 @@ exports[`sidebar renders list of resources 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
-            >
-              
-            </span>
-            <span
               className="sc-htoDjs sc-gqjmRU kNfbHK"
             >
               <time
@@ -576,6 +571,11 @@ exports[`sidebar renders list of resources 1`] = `
               >
                 &lt;15s ago
               </time>
+            </span>
+            <span
+              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            >
+              
             </span>
           </div>
         </a>
@@ -662,12 +662,12 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY empty"
+              className="sc-htoDjs sc-gqjmRU kNfbHK isEmpty"
             >
               —
             </span>
             <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK isEmpty"
+              className="sc-htoDjs sc-gZMcBi gdzMjY isEmpty"
             >
               —
             </span>
@@ -708,12 +708,12 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             className="sc-iwsKbI fEZOaG"
           >
             <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY empty"
+              className="sc-htoDjs sc-gqjmRU kNfbHK isEmpty"
             >
               —
             </span>
             <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK isEmpty"
+              className="sc-htoDjs sc-gZMcBi gdzMjY isEmpty"
             >
               —
             </span>
