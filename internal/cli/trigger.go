@@ -9,7 +9,7 @@ import (
 func newTriggerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trigger [RESOURCE_NAME]",
-		Short: "trigger an update for the specified resource",
+		Short: "Trigger an update for the specified resource",
 		Long: `Trigger an update for the specified resource.
 
 If the resource has Trigger Mode: Manual and has pending changes, this command will cause those pending changes to be applied.
