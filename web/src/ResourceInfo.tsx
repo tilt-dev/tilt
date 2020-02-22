@@ -48,7 +48,10 @@ let PortForwardLabel = styled.span`
 
   ${s.mixinHideOnSmallScreen}
 `
-let PortForwardLink = styled.a``
+
+let PortForwardLink = styled.a`
+  margin-right: ${s.SizeUnit(0.25)};
+`
 
 let SnapshotButton = styled.button`
   border: 1px solid transparent;
