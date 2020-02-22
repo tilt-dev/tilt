@@ -36,7 +36,7 @@ func newDPDeps(dCli docker.Client, tfl tiltfile.TiltfileLoader) dpDeps {
 func (c *dockerPruneCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "docker-prune",
-		Short: "run docker prune as Tilt does",
+		Short: "Run docker prune as Tilt does",
 	}
 
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
