@@ -13,7 +13,7 @@ type versionCmd struct {
 func (c *versionCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "current Tilt version",
+		Short: "Current Tilt version",
 	}
 	return cmd
 }
