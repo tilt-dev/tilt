@@ -15,7 +15,7 @@ import (
 func newDumpCmd(rootCmd *cobra.Command) *cobra.Command {
 	result := &cobra.Command{
 		Use:   "dump",
-		Short: "dump internal Tilt state",
+		Short: "Dump internal Tilt state",
 		Long: `Dumps internal Tilt state to stdout.
 
 Intended to help Tilt developers inspect Tilt when things go wrong,
