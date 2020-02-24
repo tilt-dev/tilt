@@ -93,6 +93,7 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 	}()
 
 	screenEvents, err := h.r.SetUp()
+
 	if err != nil {
 		return errors.Wrap(err, "setting up screen")
 	}
@@ -110,9 +111,8 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 			err := ctx.Err()
 			if err != context.Canceled {
 				return err
-			} else {
-				return nil
 			}
+			return nil
 		case e := <-screenEvents:
 			done := h.handleScreenEvent(ctx, dispatch, e)
 			if done {
@@ -325,7 +325,7 @@ func (h *Hud) Update(v view.View, vs view.ViewState) error {
 }
 
 func (h *Hud) resetResourceSelection() {
-	rty := h.r.rty
+	rty := h.r.RTY()
 	if rty == nil {
 		return
 	}
@@ -335,7 +335,7 @@ func (h *Hud) resetResourceSelection() {
 }
 
 func (h *Hud) refreshSelectedIndex() {
-	rty := h.r.rty
+	rty := h.r.RTY()
 	if rty == nil {
 		return
 	}

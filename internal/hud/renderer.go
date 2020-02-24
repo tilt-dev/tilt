@@ -20,23 +20,24 @@ const defaultLogPaneHeight = 8
 type Renderer struct {
 	rty    rty.RTY
 	screen tcell.Screen
-	mu     *sync.Mutex
+	mu     *sync.RWMutex
 	clock  func() time.Time
 }
 
 func NewRenderer(clock func() time.Time) *Renderer {
 	return &Renderer{
-		mu:    new(sync.Mutex),
+		mu:    new(sync.RWMutex),
 		clock: clock,
 	}
 }
 
 func (r *Renderer) Render(v view.View, vs view.ViewState) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.rty != nil {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	rty := r.rty
+	if rty != nil {
 		layout := r.layout(v, vs)
-		err := r.rty.Render(layout)
+		err := rty.Render(layout)
 		if err != nil {
 			return err
 		}
@@ -317,6 +318,13 @@ func (r *Renderer) SetUp() (chan tcell.Event, error) {
 	r.screen = screen
 
 	return screenEvents, nil
+}
+
+func (r *Renderer) RTY() rty.RTY {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	return r.rty
 }
 
 func (r *Renderer) Reset() {
