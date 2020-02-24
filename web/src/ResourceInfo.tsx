@@ -50,7 +50,11 @@ let PortForwardLabel = styled.span`
 `
 
 let PortForwardLink = styled.a`
-  margin-right: ${s.SizeUnit(0.25)};
+  & + &  {
+    padding-left: ${s.SizeUnit(0.25)};
+    border-left: 1px dotted ${s.Color.grayLight};
+    margin-left: ${s.SizeUnit(0.25)};
+  }
 `
 
 let SnapshotButton = styled.button`
