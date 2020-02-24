@@ -51,7 +51,7 @@ const choiceFile = "analytics/user/choice.txt"
 func NewCommand() *cobra.Command {
 	analytics := &cobra.Command{
 		Use:   "analytics",
-		Short: "Info and status about windmill analytics",
+		Short: "info and status about windmill analytics",
 		RunE:  analyticsStatus,
 	}
 
