@@ -59,8 +59,11 @@ export function SizeUnit(multiplier: number) {
 // Set sizes expressed in pixels:
 export enum Height {
   unit = unit,
-  HUDheader = unit * 3,
+  statusHeader = unit * 1.8, // The bar at the top with Pod ID and status
   secondaryNav = unit * 1.2,
+  secondaryNavLower = unit * 0.8,
+  secondaryNavOverlap = unit * -0.2,
+  secondaryNavTwoLevel = unit * 1.8,
   sidebarItem = unit * 1.4, // sync with constants.scss > $sidebar-item
   resourceBar = unit * 1.5,
   statusbar = unit * 1.5,
@@ -80,7 +83,7 @@ export const mixinHideOnSmallScreen = `
 }`
 
 export enum ZIndex {
-  HUDheader = 500,
+  HUDHeader = 500,
 }
 
 export enum AnimDuration {

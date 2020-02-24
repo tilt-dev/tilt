@@ -94,6 +94,19 @@ function layoutWithSidebarCollapsed() {
   )
 }
 
+function layoutTwoLevelNav() {
+  return (
+    <HUDLayout
+      header={<Header>Header</Header>}
+      isSidebarClosed={false}
+      isTwoLevelHeader={true}
+    >
+      <Main>{mainLorem}</Main>
+    </HUDLayout>
+  )
+}
+
 storiesOf("HUDLayout", module)
   .add("default", layoutDefault)
   .add("sidebar-collapsed", layoutWithSidebarCollapsed)
+  .add("two-level-nav", layoutTwoLevelNav)

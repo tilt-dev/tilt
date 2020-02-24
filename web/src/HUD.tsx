@@ -37,6 +37,7 @@ import * as _ from "lodash"
 import FacetsPane from "./FacetsPane"
 import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
+import { traceNav } from "./trace"
 
 type HudProps = {
   history: History
@@ -255,6 +256,12 @@ class HUD extends Component<HudProps, HudState> {
       hudClasses.push("is-snapshot")
     }
 
+    let matchTrace = matchPath(String(this.props.history.location.pathname), {
+      path: this.path("/r/:name/trace/:span"),
+    })
+    let matchTraceParams: any = matchTrace?.params
+    let isTwoLevelHeader = !!matchTraceParams?.span
+
     return (
       <div className={hudClasses.join(" ")}>
         <AnalyticsNudge needsNudge={needsNudge} />
@@ -268,6 +275,7 @@ class HUD extends Component<HudProps, HudState> {
         <HUDLayout
           header={this.renderHUDHeader()}
           isSidebarClosed={!!this.state.isSidebarClosed}
+          isTwoLevelHeader={isTwoLevelHeader}
         >
           {this.renderMainPaneSwitch()}
         </HUDLayout>
@@ -338,8 +346,10 @@ class HUD extends Component<HudProps, HudState> {
       let facetsUrl =
         name !== "" && isFacetsEnabled ? this.path(`/r/${name}/facets`) : null
 
-      let traceUrl =
-        name !== "" && span != "" ? this.path(`/r/${name}/trace/${span}`) : null
+      let currentTraceNav =
+        span && this.state.logStore
+          ? traceNav(this.state.logStore, this.pathBuilder, span)
+          : null
 
       if (name) {
         let selectedResource = resources.find(r => r.name === name)
@@ -359,8 +369,7 @@ class HUD extends Component<HudProps, HudState> {
           resourceView={t}
           numberOfAlerts={numAlerts}
           facetsUrl={facetsUrl}
-          traceUrl={traceUrl}
-          span={span}
+          traceNav={currentTraceNav}
         />
       )
     }
