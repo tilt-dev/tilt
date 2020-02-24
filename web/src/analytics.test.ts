@@ -35,3 +35,7 @@ it("maps errors to errors", () => {
   actual = pathToTag(path)
   expect(actual).toBe(expected)
 })
+
+it("maps trace", () => {
+  expect(pathToTag("/r/fe/trace/build:1")).toBe("trace")
+})

@@ -6,8 +6,10 @@ import * as s from "./style-helpers"
 
 type NavProps = {
   logUrl: string
+  traceUrl: string | null
   alertsUrl: string
   facetsUrl: string | null
+  span: string
   resourceView: ResourceView
   numberOfAlerts: number
 }
@@ -71,6 +73,37 @@ class SecondaryNav extends PureComponent<NavProps> {
     let logIsSelected = this.props.resourceView === ResourceView.Log
     let alertsIsSelected = this.props.resourceView === ResourceView.Alerts
     let facetsIsSelected = this.props.resourceView === ResourceView.Facets
+    let traceIsSelected = this.props.resourceView === ResourceView.Trace
+    let spanId = this.props.span
+
+    // Only show the trace view when it's selected.
+    let traceItem = null
+    if (traceIsSelected && this.props.traceUrl) {
+      traceItem = (
+        <NavListItem>
+          <NavLink
+            className={traceIsSelected ? "isSelected" : ""}
+            to={this.props.traceUrl}
+          >
+            {spanId}
+          </NavLink>
+        </NavListItem>
+      )
+    }
+
+    let facetItem = null
+    if (this.props.facetsUrl) {
+      facetItem = (
+        <NavListItem>
+          <NavLink
+            className={`tabLink ${facetsIsSelected ? "isSelected" : ""}`}
+            to={this.props.facetsUrl}
+          >
+            Facets
+          </NavLink>
+        </NavListItem>
+      )
+    }
 
     // The number of alerts should be for the selected resource
     return (
@@ -84,6 +117,7 @@ class SecondaryNav extends PureComponent<NavProps> {
               Logs
             </NavLink>
           </NavListItem>
+          {traceItem}
           <NavListItem>
             <NavLink
               className={`secondaryNavLink--alerts ${
@@ -97,16 +131,7 @@ class SecondaryNav extends PureComponent<NavProps> {
               )}
             </NavLink>
           </NavListItem>
-          {this.props.facetsUrl === null ? null : (
-            <NavListItem>
-              <NavLink
-                className={`tabLink ${facetsIsSelected ? "isSelected" : ""}`}
-                to={this.props.facetsUrl}
-              >
-                Facets
-              </NavLink>
-            </NavListItem>
-          )}
+          {facetItem}
         </NavList>
       </Root>
     )

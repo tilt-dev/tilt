@@ -11,7 +11,8 @@ export enum SocketState {
 export enum ResourceView {
   Log,
   Alerts,
-  Facets = 2,
+  Facets,
+  Trace,
 }
 
 export enum TriggerMode {
