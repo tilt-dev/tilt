@@ -320,7 +320,7 @@ func (r *Renderer) SetUp() (chan tcell.Event, error) {
 	return screenEvents, nil
 }
 
-func (r Renderer) RTY() rty.RTY {
+func (r *Renderer) RTY() rty.RTY {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
