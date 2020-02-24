@@ -40,12 +40,12 @@ var webHost = DefaultWebHost
 var webDevPort = 0
 var noBrowser bool = false
 var logActionsFlag bool = false
-var fileName string = tiltfile.FileName
 
 type upCmd struct {
 	watch     bool
 	traceTags string
 	hud       bool
+	fileName  string
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -80,7 +80,7 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 	cmd.Flags().StringVar(&webHost, "host", DefaultWebHost, "Host for the Tilt HTTP server and default host for any port-forwards. Set to 0.0.0.0 to listen on all interfaces.")
 	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
 	cmd.Flags().Lookup("logactions").Hidden = true
-	cmd.Flags().StringVar(&fileName, "file", tiltfile.FileName, "Path to Tiltfile")
+	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
 
 	return cmd
@@ -148,7 +148,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, fileName, hudEnabled, a.UserOpt(), threads.token, string(threads.cloudAddress))
+		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, hudEnabled, a.UserOpt(), threads.token, string(threads.cloudAddress))
 	})
 
 	err = g.Wait()

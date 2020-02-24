@@ -42,12 +42,8 @@ func apiPostJson(webPort int, path string, payload []byte) (body io.ReadCloser) 
 }
 
 func cmdFail(err error) {
-	cmdFailWithCode(err, 1)
-}
-
-func cmdFailWithCode(err error, code int) {
 	_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
-	os.Exit(code)
+	os.Exit(1)
 }
 
 func failWithNonOKResponse(url string, res *http.Response) {

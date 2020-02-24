@@ -8,11 +8,11 @@ func newAlphaCmd() *cobra.Command {
 		Short: "unstable/advanced commands still in alpha",
 		Long: `Unstable/advanced commands still in alpha; for advanced users only.
 
-The API of these commands may change frequently.
+The APIs of these commands may change frequently.
 `,
 	}
 
-	result.AddCommand(newTiltfileResultCmd())
+	addCommand(result, newTiltfileResultCmd())
 
 	return result
 }

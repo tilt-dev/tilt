@@ -159,7 +159,7 @@ func dumpEngine(cmd *cobra.Command, args []string) {
 		delete(obj, "LogStore")
 	}
 
-	err = encodeJSON(obj)
+	err = encodeJSONToStdout(obj)
 	if err != nil {
 		cmdFail(fmt.Errorf("dump engine: %v", err))
 	}
@@ -186,7 +186,7 @@ func dumpLogStore(cmd *cobra.Command, args []string) {
 		cmdFail(fmt.Errorf("No LogStore in engine: %v", err))
 	}
 
-	err = encodeJSON(logStore)
+	err = encodeJSONToStdout(logStore)
 	if err != nil {
 		cmdFail(fmt.Errorf("dump LogStore: %v", err))
 	}
@@ -197,7 +197,7 @@ func dumpJSON(reader io.Reader) error {
 	if err != nil {
 		return err
 	}
-	return encodeJSON(result)
+	return encodeJSONToStdout(result)
 }
 
 func decodeJSON(reader io.Reader) (interface{}, error) {
@@ -211,8 +211,12 @@ func decodeJSON(reader io.Reader) (interface{}, error) {
 	return result, err
 }
 
-func encodeJSON(result interface{}) error {
-	encoder := json.NewEncoder(os.Stdout)
+func encodeJSONToStdout(result interface{}) error {
+	return encodeJSON(result, os.Stdout)
+}
+
+func encodeJSON(result interface{}, out io.Writer) error {
+	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	err := encoder.Encode(result)
 	if err != nil {

@@ -1,17 +1,15 @@
 package cli
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/tiltfile"
-	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -19,72 +17,59 @@ import (
 // Tilt errors and Tiltfile errors
 const TiltfileErrExitCode = 5
 
-type tiltfileResultDeps struct {
+type tiltfileResultCmd struct {
+	fileName string
+}
+
+var _ tiltCmd = &tiltfileResultCmd{}
+
+type cmdTiltfileResultDeps struct {
 	tfl tiltfile.TiltfileLoader
 }
 
-func newTiltfileResultDeps(tfl tiltfile.TiltfileLoader) tiltfileResultDeps {
-	return tiltfileResultDeps{
+func newTiltfileResultDeps(tfl tiltfile.TiltfileLoader) cmdTiltfileResultDeps {
+	return cmdTiltfileResultDeps{
 		tfl: tfl,
 	}
 }
 
-func newTiltfileResultCmd() *cobra.Command {
+func newTiltfileResultCmd() *tiltfileResultCmd {
+	return &tiltfileResultCmd{}
+}
+
+func (c *tiltfileResultCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tiltfile-result",
 		Short: "Exec the Tiltfile and print results as JSON (note: the API is unstable and may change)",
-
-		Run: tiltfileResultPrintJSON,
 	}
 
-	cmd.Flags().StringVar(&fileName, "file", tiltfile.FileName, "Path to Tiltfile")
+	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 
 	return cmd
 }
 
-func tiltfileResultPrintJSON(cmd *cobra.Command, args []string) {
-	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
-	ctx := logger.WithLogger(context.Background(), l)
-	a, err := newAnalytics(l)
+func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
+	deps, err := wireTiltfileResult(ctx, analytics.Get(ctx))
 	if err != nil {
-		failWithUnexpectedError(errors.Wrap(err, "Fatal error initializing analytics: %v"))
+		return wrapUnexpectedError(errors.Wrap(err, "wiring dependencies"))
 	}
 
-	ctx = tiltanalytics.WithAnalytics(ctx, a)
-
-	deps, err := wireTiltfileResult(ctx, a)
-	if err != nil {
-		failWithUnexpectedError(errors.Wrap(err, "wiring dependencies"))
-	}
-
-	tlr := deps.tfl.Load(ctx, fileName, model.NewUserConfigState(args))
+	tlr := deps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
 	if tlr.Error != nil {
-		// Some errors won't JSONify properly--instead of messing with that, print the error
-		// and indicate what's going on via status code
-		j, err := json.Marshal(struct{ Error string }{Error: tlr.Error.Error()})
-		if err != nil {
-			failWithUnexpectedError(errors.Wrap(err, "marshaling tlr.Error JSON"))
-		}
-
-		err = dumpJSON(bytes.NewReader(j))
-		if err != nil {
-			failWithUnexpectedError(errors.Wrap(err, "dump tlr.Error JSON"))
-		}
-
+		// Some errors won't JSONify properly by default, so just print it
+		// to STDERR and use the exit code to indicate that it's an error
+		// from Tiltfile parsing.
+		fmt.Fprintln(os.Stderr, tlr.Error)
 		os.Exit(TiltfileErrExitCode)
 	}
 
-	j, err := json.Marshal(tlr)
+	err = encodeJSON(tlr, os.Stderr)
 	if err != nil {
-		failWithUnexpectedError(errors.Wrap(err, "marshaling JSON"))
+		return wrapUnexpectedError(errors.Wrap(err, "encoding JSON"))
 	}
-
-	err = dumpJSON(bytes.NewReader(j))
-	if err != nil {
-		failWithUnexpectedError(errors.Wrap(err, "dump TiltfileLoadResult"))
-	}
+	return nil
 }
 
-func failWithUnexpectedError(err error) {
-	cmdFailWithCode(errors.Wrap(err, "unexpected error evaluating Tiltfile"), 1)
+func wrapUnexpectedError(err error) error {
+	return errors.Wrap(err, "unexpected error evaluating Tiltfile")
 }

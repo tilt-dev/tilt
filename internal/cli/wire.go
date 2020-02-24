@@ -130,9 +130,9 @@ var BaseWireSet = wire.NewSet(
 	wire.Value(feature.MainDefaults),
 )
 
-func wireTiltfileResult(ctx context.Context, analytics *analytics.TiltAnalytics) (tiltfileResultDeps, error) {
+func wireTiltfileResult(ctx context.Context, analytics *analytics.TiltAnalytics) (cmdTiltfileResultDeps, error) {
 	wire.Build(BaseWireSet, newTiltfileResultDeps)
-	return tiltfileResultDeps{}, nil
+	return cmdTiltfileResultDeps{}, nil
 }
 
 func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics) (dpDeps, error) {
