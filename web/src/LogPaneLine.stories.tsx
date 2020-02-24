@@ -1,6 +1,7 @@
 import React from "react"
 import { storiesOf } from "@storybook/react"
 import LogPaneLine from "./LogPaneLine"
+import { MemoryRouter } from "react-router"
 
 function infoLine() {
   return (
@@ -68,7 +69,56 @@ function threeLines() {
   )
 }
 
+function buildEventInit() {
+  return (
+    <MemoryRouter>
+      <div className="LogPane">
+        <LogPaneLine
+          text="Initial build - fe"
+          manifestName="fe"
+          level="INFO"
+          lineId={1}
+          shouldHighlight={false}
+          showManifestPrefix={true}
+          isContextChange={false}
+          buildEvent={"init"}
+          traceUrl={"/"}
+        />
+      </div>
+    </MemoryRouter>
+  )
+}
+
+function buildEventFallback() {
+  return (
+    <div className="LogPane" style={{ marginTop: "100px" }}>
+      <LogPaneLine
+        text="Falling back"
+        manifestName="fe"
+        level="INFO"
+        lineId={1}
+        shouldHighlight={false}
+        showManifestPrefix={true}
+        isContextChange={false}
+        buildEvent={"fallback"}
+      />
+      <LogPaneLine
+        text="Falling back line 2"
+        manifestName="fe"
+        level="INFO"
+        lineId={1}
+        shouldHighlight={false}
+        showManifestPrefix={true}
+        isContextChange={false}
+        buildEvent={"fallback"}
+      />
+    </div>
+  )
+}
+
 storiesOf("LogPaneLine", module)
   .add("infoLine", infoLine)
   .add("warnLine", warnLine)
   .add("threeLines", threeLines)
+  .add("buildEventInit", buildEventInit)
+  .add("buildEventFallback", buildEventFallback)

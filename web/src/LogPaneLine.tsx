@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react"
+import { Link } from "react-router-dom"
 import AnsiLine from "./AnsiLine"
 import "./LogPaneLine.scss"
 
@@ -11,6 +12,7 @@ type LogPaneProps = {
   shouldHighlight: boolean
   showManifestPrefix: boolean
   isContextChange: boolean
+  traceUrl?: string
 }
 
 let LogLinePrefix = React.memo((props: { name: string }) => {
@@ -60,6 +62,19 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
       classes.push("is-buildEvent-fallback")
     }
 
+    let suffix = null
+    if (props.buildEvent == "init" && props.traceUrl) {
+      suffix = (
+        <span className="LogPaneLine-suffix">
+          &nbsp;(
+          <Link className="LogPaneLine-suffixLink" to={props.traceUrl}>
+            view
+          </Link>
+          )
+        </span>
+      )
+    }
+
     return (
       <span
         ref={this.ref}
@@ -68,6 +83,7 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
       >
         {prefix}
         <AnsiLine className="LogPaneLine-content" line={text} />
+        {suffix}
       </span>
     )
   }

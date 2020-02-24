@@ -78,3 +78,17 @@
     border-left: $logLine-gutter-width solid $color-blue-dark;
   }
 }
+
+.LogPaneLine.is-buildEvent-init .LogPaneLine-suffix {
+  padding-top: $spacing-unit * 0.2;
+  padding-bottom: $spacing-unit * 0.2;
+}
+.LogPaneLine-suffixLink {
+  text-decoration: none;
+  color: $color-blue;
+  transition: color 300ms ease;
+}
+.LogPaneLine-suffixLink:hover {
+  color: $color-blue-light;
+}
+

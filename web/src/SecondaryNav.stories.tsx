@@ -3,6 +3,13 @@ import { storiesOf } from "@storybook/react"
 import SecondaryNav from "./SecondaryNav"
 import { MemoryRouter } from "react-router"
 import { ResourceView } from "./types"
+import s from "styled-components"
+
+let BG = s.div`
+  background-color: #001b20;
+  width: 100%;
+  padding-top: 32px;
+`
 
 function openModal() {
   console.log("openModal")
@@ -11,15 +18,16 @@ function openModal() {
 function topBarDefault() {
   return (
     <MemoryRouter>
-      <SecondaryNav
-        logUrl="/r/foo"
-        alertsUrl="/r/foo/alerts"
-        resourceView={ResourceView.Alerts}
-        numberOfAlerts={1}
-        facetsUrl="/r/foo/facets"
-        traceUrl={""}
-        span={""}
-      />
+      <BG>
+        <SecondaryNav
+          logUrl="/r/foo"
+          alertsUrl="/r/foo/alerts"
+          resourceView={ResourceView.Alerts}
+          numberOfAlerts={1}
+          facetsUrl="/r/foo/facets"
+          traceNav={null}
+        />
+      </BG>
     </MemoryRouter>
   )
 }
@@ -27,15 +35,33 @@ function topBarDefault() {
 function topBarTeam() {
   return (
     <MemoryRouter>
-      <SecondaryNav
-        logUrl="/r/foo"
-        alertsUrl="/r/foo/alerts"
-        resourceView={ResourceView.Alerts}
-        numberOfAlerts={1}
-        facetsUrl="/r/foo/facets"
-        traceUrl={""}
-        span={""}
-      />
+      <BG>
+        <SecondaryNav
+          logUrl="/r/foo"
+          alertsUrl="/r/foo/alerts"
+          resourceView={ResourceView.Alerts}
+          numberOfAlerts={1}
+          facetsUrl="/r/foo/facets"
+          traceNav={null}
+        />
+      </BG>
+    </MemoryRouter>
+  )
+}
+
+function traceTab() {
+  return (
+    <MemoryRouter>
+      <BG>
+        <SecondaryNav
+          logUrl="/r/foo"
+          alertsUrl="/r/foo/alerts"
+          resourceView={ResourceView.Alerts}
+          numberOfAlerts={1}
+          facetsUrl="/r/foo/facets"
+          traceNav={null}
+        />
+      </BG>
     </MemoryRouter>
   )
 }

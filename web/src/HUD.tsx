@@ -17,12 +17,14 @@ import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
   LogLine,
+  LogTrace,
+  LogTraceNav,
   ResourceView,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
 } from "./types"
-import { logLinesFromString } from "./logs"
+import { logLinesFromString, isBuildSpanId } from "./logs"
 import HudState from "./HudState"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -155,6 +157,42 @@ class HUD extends Component<HudProps, HudState> {
 
   path(relPath: string) {
     return this.pathBuilder.path(relPath)
+  }
+
+  traceData(
+    span: { spanId: string; manifestName: string },
+    index: number
+  ): LogTrace {
+    let url = this.path(`/r/${span.manifestName}/trace/${span.spanId}`)
+    let label = `Build #${index + 1}`
+    return { url, label }
+  }
+
+  // Build navigational data for the trace we're currently looking at.
+  traceNav(spanId: string): LogTraceNav | null {
+    // Currently, we only support tracing of build logs.
+    let logStore = this.state.logStore
+    if (!isBuildSpanId(spanId) || !logStore) {
+      return null
+    }
+
+    let spans = logStore.getOrderedBuildSpans(spanId)
+    let currentIndex = spans.findIndex(span => span.spanId == spanId)
+    let span = spans[currentIndex]
+    if (!span) {
+      return null
+    }
+    let nav: LogTraceNav = {
+      current: this.traceData(span, currentIndex),
+    }
+
+    if (currentIndex < spans.length - 1) {
+      nav.next = this.traceData(spans[currentIndex + 1], currentIndex + 1)
+    }
+    if (currentIndex > 0) {
+      nav.prev = this.traceData(spans[currentIndex - 1], currentIndex - 1)
+    }
+    return nav
   }
 
   snapshotFromState(state: HudState): Proto.webviewSnapshot {
@@ -336,8 +374,7 @@ class HUD extends Component<HudProps, HudState> {
       let facetsUrl =
         name !== "" && isFacetsEnabled ? this.path(`/r/${name}/facets`) : null
 
-      let traceUrl =
-        name !== "" && span != "" ? this.path(`/r/${name}/trace/${span}`) : null
+      let traceNav = span ? this.traceNav(span) : null
 
       if (name) {
         let selectedResource = resources.find(r => r.name === name)
@@ -357,8 +394,7 @@ class HUD extends Component<HudProps, HudState> {
           resourceView={t}
           numberOfAlerts={numAlerts}
           facetsUrl={facetsUrl}
-          traceUrl={traceUrl}
-          span={span}
+          traceNav={traceNav}
         />
       )
     }
@@ -448,6 +484,8 @@ class HUD extends Component<HudProps, HudState> {
         return <Route component={NotFound} />
       }
 
+      let traceNav = span ? this.traceNav(span) : null
+
       let logLines: LogLine[] = []
       if (span && logStore) {
         logLines = logStore.traceLog(span)
@@ -462,16 +500,13 @@ class HUD extends Component<HudProps, HudState> {
           handleClearHighlight={this.handleClearHighlight}
           highlight={snapshotHighlight}
           isSnapshot={isSnapshot}
+          traceNav={traceNav}
         />
       )
     }
 
     let logsRoute = (props: RouteComponentProps<any>) => {
-      let name =
-        props.match.params && props.match.params.name
-          ? props.match.params.name
-          : ""
-
+      let name = props.match.params?.name ?? ""
       let r = resources.find(r => r.name === name)
       if (r === undefined) {
         return <Route component={NotFound} />
@@ -491,6 +526,7 @@ class HUD extends Component<HudProps, HudState> {
           handleClearHighlight={this.handleClearHighlight}
           highlight={snapshotHighlight}
           isSnapshot={isSnapshot}
+          traceNav={null}
         />
       )
     }
@@ -535,6 +571,7 @@ class HUD extends Component<HudProps, HudState> {
           handleClearHighlight={this.handleClearHighlight}
           highlight={this.state.snapshotHighlight}
           isSnapshot={isSnapshot}
+          traceNav={null}
         />
       )
     }

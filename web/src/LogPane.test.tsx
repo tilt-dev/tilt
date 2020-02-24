@@ -352,6 +352,7 @@ it("renders without crashing", () => {
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={null}
       isSnapshot={false}
+      traceNav={null}
     />,
     div
   )
@@ -370,6 +371,7 @@ it("renders logs", () => {
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
         isSnapshot={false}
+        traceNav={null}
       />
     )
     .toJSON()
@@ -388,6 +390,7 @@ it("renders logs with leading whitespace and ANSI codes", () => {
         handleClearHighlight={fakeHandleClearHighlight}
         highlight={null}
         isSnapshot={false}
+        traceNav={null}
       />
     )
     .toJSON()
@@ -411,6 +414,7 @@ it("renders highlighted lines", () => {
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
       isSnapshot={false}
+      traceNav={null}
     />
   )
   const tree = renderer.create(el).toJSON()
@@ -440,6 +444,7 @@ it("scrolls to highlighted lines in snapshot", () => {
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
       isSnapshot={true}
+      traceNav={null}
     />
   )
 
@@ -470,6 +475,7 @@ it("does not scroll to highlighted lines if not snapshot", () => {
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
       isSnapshot={false}
+      traceNav={null}
     />
   )
 
@@ -502,6 +508,7 @@ it("doesn't set selection event handler if snapshot", () => {
       handleClearHighlight={fakeHandleClearHighlight}
       highlight={highlight}
       isSnapshot={true}
+      traceNav={null}
     />
   )
 

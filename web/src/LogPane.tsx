@@ -1,12 +1,20 @@
 import React, { Component, PureComponent } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import ReactDOM from "react-dom"
-import { LogLine, SnapshotHighlight } from "./types"
+import { LogLine, LogTraceNav, SnapshotHighlight } from "./types"
 import LogPaneLine from "./LogPaneLine"
 import findLogLineID from "./findLogLine"
 import styled, { keyframes } from "styled-components"
-import { Color, ColorRGBA, ColorAlpha, SizeUnit } from "./style-helpers"
+import PathBuilder from "./PathBuilder"
+import {
+  Color,
+  ColorRGBA,
+  ColorAlpha,
+  SizeUnit,
+  AnimDuration,
+} from "./style-helpers"
 import selection from "./selection"
+import { Link } from "react-router-dom"
 import "./LogPane.scss"
 
 type LogPaneProps = {
@@ -18,6 +26,7 @@ type LogPaneProps = {
   handleClearHighlight: () => void
   highlight: SnapshotHighlight | null | undefined
   isSnapshot: boolean
+  traceNav: LogTraceNav | null
 }
 
 type LogPaneState = {
@@ -51,6 +60,20 @@ const blink = keyframes`
 }
 `
 
+let LogHeader = styled.div`
+  margin-top: ${SizeUnit(0.5)};
+  margin-left: ${SizeUnit(0.5)};
+`
+
+let LogHeaderLink = styled(Link)`
+  text-decoration: none;
+  color: ${Color.blue};
+  transition: color ${AnimDuration.default} ease;
+  &:hover {
+    color: ${Color.blueLight};
+  }
+`
+
 let LogEnd = styled.div`
   animation: ${blink} 1s infinite;
   animation-timing-function: ease;
@@ -61,6 +84,7 @@ let LogEnd = styled.div`
 class LogPane extends Component<LogPaneProps, LogPaneState> {
   highlightRef: React.RefObject<LogPaneLine> = React.createRef()
   private lastElement: React.RefObject<HTMLParagraphElement> = React.createRef()
+  private pathBuilder: PathBuilder
   private autoscrollRafID: number | null = null
   private renderWindowRafID: number | null = null
 
@@ -81,6 +105,14 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 
     this.onScroll = this.onScroll.bind(this)
     this.handleSelectionChange = this.handleSelectionChange.bind(this)
+    this.pathBuilder = new PathBuilder(
+      window.location.host,
+      window.location.pathname
+    )
+  }
+
+  path(relPath: string) {
+    return this.pathBuilder.path(relPath)
   }
 
   componentDidMount() {
@@ -143,7 +175,10 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
-    if (prevProps.manifestName != this.props.manifestName) {
+    if (
+      prevProps.manifestName != this.props.manifestName ||
+      prevProps.traceNav?.current.url != this.props.traceNav?.current.url
+    ) {
       this.setState({ renderWindow: renderWindowDefault })
       this.autoscroll = true
       this.pageYOffset = -1
@@ -320,6 +355,21 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     let lastManifestName = ""
     let renderWindowStart = this.renderWindowStart()
     let blankWindowHeight = this.blankWindowHeight()
+
+    if (this.props.traceNav?.prev) {
+      let url = this.props.traceNav.prev.url
+      let label = this.props.traceNav.prev.label
+      logLineEls.push(
+        <LogHeader key="logPrev">
+          Previous:
+          <LogHeaderLink to={url}>
+            {" "}
+            {this.props.manifestName} {label}
+          </LogHeaderLink>
+        </LogHeader>
+      )
+    }
+
     logLineEls.push(
       <div key="blank" style={{ height: blankWindowHeight + "px" }}>
         &nbsp;
@@ -346,6 +396,10 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       }
 
       let isContextChange = i > 0 && l.manifestName != lastManifestName
+      let linkToTrace = l.spanId && l.buildEvent == "init"
+      let traceUrl = linkToTrace
+        ? this.path(`/r/${l.manifestName}/trace/${l.spanId}`)
+        : ""
       let el = (
         <LogPaneLine
           ref={maybeHighlightRef}
@@ -358,6 +412,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
           lineId={i}
           showManifestPrefix={this.props.showManifestPrefix}
           shouldHighlight={shouldHighlight}
+          traceUrl={traceUrl}
         />
       )
       logLineEls.push(el)
@@ -365,11 +420,25 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       lastManifestName = l.manifestName
     }
 
-    logLineEls.push(
-      <LogEnd key="logEnd" className="logEnd" ref={this.lastElement}>
-        &#9608;
-      </LogEnd>
-    )
+    if (this.props.traceNav?.next) {
+      let url = this.props.traceNav.next.url
+      let label = this.props.traceNav.next.label
+      logLineEls.push(
+        <LogHeader key="logNext" ref={this.lastElement}>
+          Next:
+          <LogHeaderLink to={url}>
+            {" "}
+            {this.props.manifestName} {label}
+          </LogHeaderLink>
+        </LogHeader>
+      )
+    } else {
+      logLineEls.push(
+        <LogEnd key="logEnd" className="logEnd" ref={this.lastElement}>
+          &#9608;
+        </LogEnd>
+      )
+    }
 
     return <LogPaneRoot className="LogPane">{logLineEls}</LogPaneRoot>
   }

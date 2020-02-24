@@ -1,15 +1,14 @@
 import React, { PureComponent } from "react"
 import styled from "styled-components"
 import { Link } from "react-router-dom"
-import { ResourceView } from "./types"
+import { LogTraceNav, ResourceView } from "./types"
 import * as s from "./style-helpers"
 
 type NavProps = {
   logUrl: string
-  traceUrl: string | null
+  traceNav: LogTraceNav | null
   alertsUrl: string
   facetsUrl: string | null
-  span: string
   resourceView: ResourceView
   numberOfAlerts: number
 }
@@ -74,18 +73,18 @@ class SecondaryNav extends PureComponent<NavProps> {
     let alertsIsSelected = this.props.resourceView === ResourceView.Alerts
     let facetsIsSelected = this.props.resourceView === ResourceView.Facets
     let traceIsSelected = this.props.resourceView === ResourceView.Trace
-    let spanId = this.props.span
 
     // Only show the trace view when it's selected.
     let traceItem = null
-    if (traceIsSelected && this.props.traceUrl) {
+    if (traceIsSelected && this.props.traceNav) {
+      let current = this.props.traceNav.current
       traceItem = (
         <NavListItem>
           <NavLink
             className={traceIsSelected ? "isSelected" : ""}
-            to={this.props.traceUrl}
+            to={current.url}
           >
-            {spanId}
+            {current.label}
           </NavLink>
         </NavListItem>
       )

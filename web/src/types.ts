@@ -69,4 +69,18 @@ export type LogLine = {
   manifestName: string
   level: string
   buildEvent?: string
+  spanId: string
+}
+
+// Display data about the current log trace.
+export type LogTrace = {
+  url: string
+  label: string
+}
+
+// Display data that lets us navigate between log traces.
+export type LogTraceNav = {
+  current: LogTrace
+  prev?: LogTrace
+  next?: LogTrace
 }

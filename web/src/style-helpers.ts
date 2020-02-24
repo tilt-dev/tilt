@@ -2,6 +2,7 @@ export enum Color {
   // Brand Colors
   green = "#20ba31",
   blue = "#03c7d3",
+  blueLight = "#5edbe3",
   blueDark = "#007d82",
   red = "#f6685c",
   yellow = "#fcb41e",
