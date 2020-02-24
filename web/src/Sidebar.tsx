@@ -115,6 +115,7 @@ let SidebarItemStyle = styled.li`
   &.isBuilding::after {
     content: "";
     position: absolute;
+    pointer-events: none;
     width: 100%;
     top: 0;
     bottom: 0;
