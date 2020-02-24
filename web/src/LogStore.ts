@@ -5,6 +5,7 @@
 // but with better support for incremental updates and rendering.
 
 import { LogLine } from "./types"
+import { isBuildSpanId } from "./logs"
 
 // Firestore doesn't properly handle maps with keys equal to the empty string, so
 // we normalize all empty span ids to '_' client-side.
@@ -12,6 +13,7 @@ const defaultSpanId = "_"
 const fieldNameProgressId = "progressID"
 
 type LogSpan = {
+  spanId: string
   manifestName: string
   firstLineIndex: number
   lastLineIndex: number
@@ -135,6 +137,7 @@ class LogStore {
       let existingSpan = this.spans[spanId]
       if (!existingSpan) {
         this.spans[spanId] = {
+          spanId: spanId,
           manifestName: newSpans[key].manifestName ?? "",
           firstLineIndex: -1,
           lastLineIndex: -1,
@@ -246,36 +249,44 @@ class LogStore {
     return result
   }
 
-  // Given a build span in the current manifest, find the next build span.
-  nextBuildSpan(span: LogSpan): LogSpan | null {
-    let nextBuild = null
-    for (let key in this.spans) {
-      if (!this.isBuildSpanId(key)) {
-        continue
-      }
-
-      let candidate = this.spans[key]
-      if (candidate.manifestName != span.manifestName) {
-        continue
-      }
-
-      if (candidate.firstLineIndex <= span.firstLineIndex) {
-        continue
-      }
-
-      if (
-        nextBuild == null ||
-        candidate.firstLineIndex < nextBuild.firstLineIndex
-      ) {
-        nextBuild = candidate
-      }
+  getOrderedBuildSpanIds(spanId: string): string[] {
+    let startSpan = this.spans[spanId]
+    if (!startSpan) {
+      return []
     }
 
-    return nextBuild
+    let manifestName = startSpan.manifestName
+    let spansById: { [key: string]: LogSpan } = {}
+    for (let key in this.spans) {
+      if (!isBuildSpanId(key)) {
+        continue
+      }
+
+      let span = this.spans[key]
+      if (span.manifestName != manifestName) {
+        continue
+      }
+
+      spansById[key] = span
+    }
+
+    return Object.keys(spansById).sort((a, b) => {
+      return spansById[a].firstLineIndex - spansById[b].firstLineIndex
+    })
   }
 
-  isBuildSpanId(spanId: string): boolean {
-    return spanId.indexOf("build:") != -1
+  getOrderedBuildSpans(spanId: string): LogSpan[] {
+    return this.getOrderedBuildSpanIds(spanId).map(spanId => this.spans[spanId])
+  }
+
+  // Given a build span in the current manifest, find the next build span.
+  nextBuildSpan(spanId: string): LogSpan | null {
+    let spanIds = this.getOrderedBuildSpanIds(spanId)
+    let currentIndex = spanIds.indexOf(spanId)
+    if (currentIndex == -1 || currentIndex == spanIds.length - 1) {
+      return null
+    }
+    return this.spans[spanIds[currentIndex + 1]]
   }
 
   // Find all the logs "caused" by a particular build.
@@ -287,7 +298,7 @@ class LogStore {
   // and when they showed up.
   traceLog(spanId: string): LogLine[] {
     // Currently, we only support tracing of build logs.
-    if (!this.isBuildSpanId(spanId)) {
+    if (!isBuildSpanId(spanId)) {
       return []
     }
 
@@ -295,7 +306,7 @@ class LogStore {
     let spans: { [key: string]: LogSpan } = {}
     spans[spanId] = startSpan
 
-    let nextBuildSpan = this.nextBuildSpan(startSpan)
+    let nextBuildSpan = this.nextBuildSpan(spanId)
 
     // Grab all the spans that start between this span and the next build.
     //
@@ -393,6 +404,7 @@ class LogStore {
           level: storedLine.level,
           manifestName: span.manifestName,
           buildEvent: storedLine.fields?.buildEvent,
+          spanId: spanId,
         }
 
         this.lineCache[i] = line
