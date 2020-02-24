@@ -92,9 +92,7 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 		h.mu.Unlock()
 	}()
 
-	h.mu.RLock()
 	screenEvents, err := h.r.SetUp()
-	h.mu.RUnlock()
 
 	if err != nil {
 		return errors.Wrap(err, "setting up screen")
