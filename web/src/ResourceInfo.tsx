@@ -50,7 +50,7 @@ let PortForwardLabel = styled.span`
 `
 
 let PortForwardLink = styled.a`
-  & + &  {
+  & + & {
     padding-left: ${s.SizeUnit(0.25)};
     border-left: 1px dotted ${s.Color.grayLight};
     margin-left: ${s.SizeUnit(0.25)};
