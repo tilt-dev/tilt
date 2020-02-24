@@ -967,7 +967,7 @@ func (c *Command) validateRequiredFlags() error {
 func (c *Command) InitDefaultHelpFlag() {
 	c.mergePersistentFlags()
 	if c.Flags().Lookup("help") == nil {
-		usage := "Help for "
+		usage := "help for "
 		if c.Name() == "" {
 			usage += "this command"
 		} else {
