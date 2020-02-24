@@ -15,6 +15,8 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+// arbitrary non-1 value chosen to allow callers to distinguish between
+// Tilt errors and Tiltfile errors
 const TiltfileErrExitCode = 5
 
 type tiltfileResultDeps struct {
@@ -30,7 +32,7 @@ func newTiltfileResultDeps(tfl tiltfile.TiltfileLoader) tiltfileResultDeps {
 func newTiltfileResultCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tiltfile-result",
-		Short: "exec the tiltfile and print results as json",
+		Short: "Exec the Tiltfile and print results as JSON (note: the API is unstable and may change)",
 
 		Run: tiltfileResultPrintJSON,
 	}
