@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor
+.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor shellcheck
 
 all: check-go check-js test-js
 
@@ -192,3 +192,6 @@ cli-docs:
 
 test_install_version_check: install
 	NO_INSTALL=1 PATH="~/go/bin:$$PATH" scripts/install.sh
+
+shellcheck:
+	find ./scripts -type f -name '*.sh' -exec docker run --rm -it -v $$(pwd):/mnt nlknguyen/alpine-shellcheck {} \;

@@ -8,7 +8,7 @@
 # When releasing Tilt, the releaser should update this version number
 # AFTER they upload new binaries.
 VERSION="0.12.4"
-BREW=$(which brew)
+BREW=$(command -v brew)
 
 set -e
 
@@ -61,7 +61,7 @@ function version_check() {
     echo "Tilt installed! Run \`tilt up\` to start."
   fi
 }
-  
+
 # so that we can skip installation in CI and just test the version check
 if [[ -z $NO_INSTALL ]]; then
   install_tilt
