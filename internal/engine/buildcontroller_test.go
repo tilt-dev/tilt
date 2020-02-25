@@ -264,7 +264,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *testing.T) {
+func TestBuildControllerWillContainerBuildWithSomeButNotAllReadyContainers(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
@@ -291,7 +291,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 	// full rebuild, so don't return ANY RunningContainers.
 	call = f.nextCall()
 	runningContainers := call.oneState().RunningContainers
-	assert.Empty(t, runningContainers)
+	assert.NotEmpty(t, runningContainers)
 
 	err := f.Stop()
 	assert.NoError(t, err)
