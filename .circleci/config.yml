@@ -88,7 +88,7 @@ jobs:
       - run: docker kill portforward || exit 0
       - run: docker rm portforward || exit 0
       - run: /go/portforward.sh start
-      - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh
+      - run: KIND_CLUSTER_NAME=integration kind-with-registry.sh && export KUBECONFIG="$(kind get kubeconfig-path --name="integration")"
       - run: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
              /go/portforward.sh -wait $APISERVER_PORT &&
              kubectl get nodes &&
