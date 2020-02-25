@@ -486,7 +486,7 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
           className="LastEditStatus-name"
           data-tip="main.go[+ 1 more]"
         >
-          vigoda
+          snack
         </span>
         <span
           className="LastEditStatus-details"

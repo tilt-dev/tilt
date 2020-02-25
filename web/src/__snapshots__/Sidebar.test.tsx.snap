@@ -5,16 +5,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
   className="Sidebar"
 >
   <nav
-    className="sc-htpNat ilDLPD Sidebar-resources"
+    className="sc-bxivhb iGpUBS Sidebar-resources"
   >
     <ul
-      className="sc-bxivhb fcqCpQ"
+      className="sc-ifAKCX gwNVWo"
     >
       <li
-        className="sc-ifAKCX sc-bZQynM jATamM isSelected"
+        className="sc-EHOje sc-gzVnrw aRIxx isSelected"
       >
         <a
-          className="sc-EHOje bnvzan"
+          className="sc-bZQynM pgkFq"
           href="/"
           onClick={[Function]}
         >
@@ -27,18 +27,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               7
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             All
-          </span>
+          </p>
         </a>
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/resource4"
           onClick={[Function]}
           title="resource4"
@@ -52,16 +52,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             resource4
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:36:03.000Z"
@@ -69,16 +69,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;5s ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              12.3s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -86,10 +86,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/resource9"
           onClick={[Function]}
           title="resource9"
@@ -103,16 +103,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             resource9
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:35:58.000Z"
@@ -120,16 +120,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;15s ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              12.3s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -137,10 +137,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/resource19"
           onClick={[Function]}
           title="resource19"
@@ -154,16 +154,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             resource19
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:35:48.000Z"
@@ -171,16 +171,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;30s ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              12.3s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -188,10 +188,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/resource29"
           onClick={[Function]}
           title="resource29"
@@ -205,16 +205,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             resource29
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:35:38.000Z"
@@ -222,16 +222,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;30s ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              12.3s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -239,10 +239,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/resource39"
           onClick={[Function]}
           title="resource39"
@@ -256,16 +256,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             resource39
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:35:28.000Z"
@@ -273,16 +273,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;45s ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              12.3s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -290,10 +290,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/resource49"
           onClick={[Function]}
           title="resource49"
@@ -307,16 +307,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             resource49
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:35:18.000Z"
@@ -324,16 +324,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;1m ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              12.3s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -341,10 +341,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/resource54"
           onClick={[Function]}
           title="resource54"
@@ -358,16 +358,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             resource54
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:35:13.000Z"
@@ -375,16 +375,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               >
                 &lt;1m ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              12.3s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -410,16 +410,16 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
   className="Sidebar is-closed"
 >
   <nav
-    className="sc-htpNat ilDLPD Sidebar-resources"
+    className="sc-bxivhb iGpUBS Sidebar-resources"
   >
     <ul
-      className="sc-bxivhb fcqCpQ"
+      className="sc-ifAKCX gwNVWo"
     >
       <li
-        className="sc-ifAKCX sc-bZQynM jATamM isSelected"
+        className="sc-EHOje sc-gzVnrw aRIxx isSelected"
       >
         <a
-          className="sc-EHOje bnvzan"
+          className="sc-bZQynM pgkFq"
           href="/"
           onClick={[Function]}
         >
@@ -430,11 +430,11 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
                
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             All
-          </span>
+          </p>
         </a>
       </li>
     </ul>
@@ -456,16 +456,16 @@ exports[`sidebar renders list of resources 1`] = `
   className="Sidebar"
 >
   <nav
-    className="sc-htpNat ilDLPD Sidebar-resources"
+    className="sc-bxivhb iGpUBS Sidebar-resources"
   >
     <ul
-      className="sc-bxivhb fcqCpQ"
+      className="sc-ifAKCX gwNVWo"
     >
       <li
-        className="sc-ifAKCX sc-bZQynM jATamM isSelected"
+        className="sc-EHOje sc-gzVnrw aRIxx isSelected"
       >
         <a
-          className="sc-EHOje bnvzan"
+          className="sc-bZQynM pgkFq"
           href="/"
           onClick={[Function]}
         >
@@ -478,18 +478,18 @@ exports[`sidebar renders list of resources 1`] = `
               2
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             All
-          </span>
+          </p>
         </a>
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
           title="vigoda"
@@ -503,16 +503,16 @@ exports[`sidebar renders list of resources 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             vigoda
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:36:07.000Z"
@@ -520,16 +520,16 @@ exports[`sidebar renders list of resources 1`] = `
               >
                 &lt;5s ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              12.3s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -537,10 +537,10 @@ exports[`sidebar renders list of resources 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
           title="snack"
@@ -554,16 +554,16 @@ exports[`sidebar renders list of resources 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             snack
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi"
             >
               <time
                 dateTime="2017-12-21T15:35:57.000Z"
@@ -571,16 +571,16 @@ exports[`sidebar renders list of resources 1`] = `
               >
                 &lt;15s ago
               </time>
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz"
             >
-              
-            </span>
+              50.0s
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -606,16 +606,16 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
   className="Sidebar"
 >
   <nav
-    className="sc-htpNat ilDLPD Sidebar-resources"
+    className="sc-bxivhb iGpUBS Sidebar-resources"
   >
     <ul
-      className="sc-bxivhb fcqCpQ"
+      className="sc-ifAKCX gwNVWo"
     >
       <li
-        className="sc-ifAKCX sc-bZQynM jATamM isSelected"
+        className="sc-EHOje sc-gzVnrw aRIxx isSelected"
       >
         <a
-          className="sc-EHOje bnvzan"
+          className="sc-bZQynM pgkFq"
           href="/"
           onClick={[Function]}
         >
@@ -628,18 +628,18 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               2
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             All
-          </span>
+          </p>
         </a>
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
           title="vigoda"
@@ -653,28 +653,28 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             vigoda
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK isEmpty"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi isEmpty"
             >
               —
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY isEmpty"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz isEmpty"
             >
               —
-            </span>
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
@@ -682,10 +682,10 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         />
       </li>
       <li
-        className="sc-ifAKCX kXLQyu  isBuilding"
+        className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-EHOje bnvzan SidebarItem-link"
+          className="sc-bZQynM pgkFq SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
           title="snack"
@@ -699,28 +699,28 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               1
             </span>
           </div>
-          <span
-            className="sc-htoDjs sc-dnqmqq jjaDsB"
+          <p
+            className="sc-dnqmqq sc-iwsKbI esoWBa"
           >
             snack
-          </span>
+          </p>
           <div
-            className="sc-iwsKbI fEZOaG"
+            className="sc-gZMcBi gZOvNJ"
           >
-            <span
-              className="sc-htoDjs sc-gqjmRU kNfbHK isEmpty"
+            <p
+              className="sc-dnqmqq sc-VigVT coNkYi isEmpty"
             >
               —
-            </span>
-            <span
-              className="sc-htoDjs sc-gZMcBi gdzMjY isEmpty"
+            </p>
+            <p
+              className="sc-dnqmqq sc-gqjmRU jmnxMz isEmpty"
             >
               —
-            </span>
+            </p>
           </div>
         </a>
         <button
-          className="SidebarTriggerButton 
+          className="sc-htpNat fZgzFb SidebarTriggerButton 
           "
           disabled={true}
           onClick={[Function]}
