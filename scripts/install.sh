@@ -12,11 +12,21 @@ BREW=$(command -v brew)
 
 set -e
 
+function copy_binary() {
+  if [[ ":$PATH:" == *":$HOME/.local/bin:"* ]]; then
+      mv tilt "$HOME/.local/bin/tilt"
+  else
+      echo "Installing Tilt to /usr/local/bin which is write protected"
+      echo "If you'd prefer to install Tilt without sudo permissions, add \$HOME/.local/bin to your \$PATH and rerun the installer"
+      sudo mv tilt /usr/local/bin/tilt
+  fi
+}
+
 function install_tilt() {
   if [[ "$OSTYPE" == "linux-gnu" ]]; then
       set -x
       curl -fsSL https://github.com/windmilleng/tilt/releases/download/v$VERSION/tilt.$VERSION.linux.x86_64.tar.gz | tar -xzv tilt
-      sudo mv tilt /usr/local/bin/tilt
+      copy_binary
   elif [[ "$OSTYPE" == "darwin"* ]]; then
       if [[ "$BREW" != "" ]]; then
           set -x
@@ -25,7 +35,7 @@ function install_tilt() {
       else
           set -x
           curl -fsSL https://github.com/windmilleng/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.x86_64.tar.gz | tar -xzv tilt
-          sudo mv tilt /usr/local/bin/tilt
+          copy_binary
       fi
   else
       set +x
