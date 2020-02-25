@@ -143,14 +143,6 @@ let SidebarItemAll = styled(SidebarItemStyle)`
   margin-top: ${SizeUnit(0.5)};
   margin-bottom: ${SizeUnit(0.2)};
 `
-
-let SidebarItemAllIcon = styled.span`
-  color: ${Color.grayLight};
-  width: ${Width.sidebarCollapsed}px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`
 let SidebarItemText = styled.span`
   color: inherit;
   display: flex;
