@@ -13,12 +13,11 @@ BREW=$(command -v brew)
 set -e
 
 function copy_binary() {
-  if [[ ":$PATH:" == *":$HOME/bin:"* ]]; then
-      mv tilt "$HOME/bin/tilt"
+  if [[ ":$PATH:" == *":$HOME/.local/bin:"* ]]; then
+      mv tilt "$HOME/.local/bin/tilt"
   else
       echo "Installing Tilt to /usr/local/bin which is write protected"
-      echo "Asking for sudo permissions"
-      echo "If you'd prefer to install Tilt without sudo permissions, add \$HOME/bin to your \$PATH and rerun the installer"
+      echo "If you'd prefer to install Tilt without sudo permissions, add \$HOME/.local/bin to your \$PATH and rerun the installer"
       sudo mv tilt /usr/local/bin/tilt
   fi
 }
