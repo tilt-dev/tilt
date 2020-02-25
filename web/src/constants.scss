@@ -38,7 +38,7 @@ $spacing-unit: 32px;
 
 $tablet-width: 1500px;
 
-$sidebar-width: $spacing-unit * 10.5;
+$sidebar-width: $spacing-unit * 10.5; // sync with style-helpers.ts > Width.sidebar
 $sidebar-maxWidth: 25vw;
 $sidebar-item: $spacing-unit * 1.4; // sync with style-helpers.ts > Height.sidebarItem
 $sidebar-collapsed-width: $spacing-unit; // sync with style-helpers.ts > Width.sidebarCollapsed
