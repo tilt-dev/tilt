@@ -61,6 +61,7 @@ func (i *InteractiveTester) Run(name string, width int, height int, c Component)
 	if err != nil {
 		i.t.Errorf("error rendering %s: %v", name, err)
 	}
+	i.dummyScreen.Clear()
 }
 
 func (i *InteractiveTester) render(width int, height int, c Component) (canvas Canvas, err error) {
