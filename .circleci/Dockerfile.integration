@@ -27,7 +27,7 @@ RUN apt update && apt install -y apt-transport-https \
   && echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list \
   && apt update && apt install -y kubectl
   # Install cluster script, which downloads the necessary containers.
-  
+
 # Grab a script from the DIND kubernetes cluster that uses socat to do port-forwarding
 ENV KUBEADM_SHA=30a2033581adf53161fe1cdc76f1550193927db4
 ADD https://raw.githubusercontent.com/kubernetes-sigs/kubeadm-dind-cluster/${KUBEADM_SHA}/build/portforward.sh .
@@ -44,3 +44,6 @@ RUN apt update && apt install -y jq
 RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/v0.7.0/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /go/bin/kind
+
+# script for creating Kind clusters with local image registry enabled
+RUN curl https://raw.githubusercontent.com/windmilleng/kind-local/master/kind-with-registry.sh > /usr/local/bin/kind-with-registry.sh && chmod a+x /usr/local/bin/kind-with-registry.sh

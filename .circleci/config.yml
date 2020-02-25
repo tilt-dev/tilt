@@ -78,7 +78,7 @@ jobs:
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:da50861fa4e8caaecefbd82986e1d13ad97cd1264d24ea7c1889e1aa91728ae5
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:90db2a02e174d4109e415e84ec78a89c2a6da09b3578d135002b702dd575ed56
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
@@ -88,7 +88,7 @@ jobs:
       - run: docker kill portforward || exit 0
       - run: docker rm portforward || exit 0
       - run: /go/portforward.sh start
-      - run: kind create cluster --name=integration
+      - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh
       - run: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
              /go/portforward.sh -wait $APISERVER_PORT &&
              kubectl get nodes &&
