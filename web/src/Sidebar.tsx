@@ -3,7 +3,7 @@ import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import { Link } from "react-router-dom"
 import { combinedStatus } from "./status"
 import "./Sidebar.scss"
-import { ResourceView, TriggerMode, ResourceStatus } from "./types"
+import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 import TimeAgo from "react-timeago"
 import { timeAgoFormatter } from "./timeFormatters"
 import { isZeroTime } from "./time"
@@ -135,21 +135,23 @@ let SidebarItemLink = styled(Link)`
   display: flex;
   align-items: stretch;
   text-decoration: none;
-  flex: 1;
+  // To truncate long names, all parents need explicit width (not flex: 1)
+  width: calc(100% - ${Width.sidebarTriggerButton}px); 
 `
-
 let SidebarItemAll = styled(SidebarItemStyle)`
   text-transform: uppercase;
   margin-top: ${SizeUnit(0.5)};
   margin-bottom: ${SizeUnit(0.2)};
 `
-let SidebarItemText = styled.span`
+let SidebarItemName = styled.p`
   color: inherit;
   display: flex;
   align-items: center;
-`
-let SidebarItemName = styled(SidebarItemText)`
   flex: 1;
+  overflow: hidden; // Reinforce truncation
+`
+// This child element helps truncated names show ellipses properly:
+let SidebarItemNameTruncate = styled.span`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -163,10 +165,13 @@ let SidebarTiming = styled.div`
   align-items: flex-end;
   flex-basis: auto;
 `
-let SidebarItemDuration = styled(SidebarItemText)`
+let SidebarItemDuration = styled.span`
   opacity: ${ColorAlpha.almostOpaque};
+  color: inherit;
 `
-let SidebarItemTimeAgo = styled(SidebarItemText)``
+let SidebarItemTimeAgo = styled.span`
+  color: inherit;
+`
 
 type SidebarProps = {
   isClosed: boolean
@@ -237,7 +242,9 @@ class Sidebar extends PureComponent<SidebarProps> {
             title={item.name}
           >
             <SidebarIcon status={item.status} alertCount={item.alertCount} />
-            <SidebarItemName>{item.name}</SidebarItemName>
+            <SidebarItemName>
+              <SidebarItemNameTruncate>{item.name}</SidebarItemNameTruncate>
+            </SidebarItemName>
             <SidebarTiming>
               <SidebarItemTimeAgo
                 className={hasSuccessfullyDeployed ? "" : "isEmpty"}
