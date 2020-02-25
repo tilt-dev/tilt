@@ -14,7 +14,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-EHOje sc-gzVnrw aRIxx isSelected"
       >
         <a
-          className="sc-bZQynM EoOdQ"
+          className="sc-bZQynM jDbYMP"
           href="/"
           onClick={[Function]}
         >
@@ -38,7 +38,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/resource4"
           onClick={[Function]}
           title="resource4"
@@ -93,7 +93,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/resource9"
           onClick={[Function]}
           title="resource9"
@@ -148,7 +148,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/resource19"
           onClick={[Function]}
           title="resource19"
@@ -203,7 +203,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/resource29"
           onClick={[Function]}
           title="resource29"
@@ -258,7 +258,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/resource39"
           onClick={[Function]}
           title="resource39"
@@ -313,7 +313,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/resource49"
           onClick={[Function]}
           title="resource49"
@@ -368,7 +368,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/resource54"
           onClick={[Function]}
           title="resource54"
@@ -447,7 +447,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
         className="sc-EHOje sc-gzVnrw aRIxx isSelected"
       >
         <a
-          className="sc-bZQynM EoOdQ"
+          className="sc-bZQynM jDbYMP"
           href="/"
           onClick={[Function]}
         >
@@ -493,7 +493,7 @@ exports[`sidebar renders list of resources 1`] = `
         className="sc-EHOje sc-gzVnrw aRIxx isSelected"
       >
         <a
-          className="sc-bZQynM EoOdQ"
+          className="sc-bZQynM jDbYMP"
           href="/"
           onClick={[Function]}
         >
@@ -517,7 +517,7 @@ exports[`sidebar renders list of resources 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
           title="vigoda"
@@ -572,7 +572,7 @@ exports[`sidebar renders list of resources 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
           title="snack"
@@ -651,7 +651,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         className="sc-EHOje sc-gzVnrw aRIxx isSelected"
       >
         <a
-          className="sc-bZQynM EoOdQ"
+          className="sc-bZQynM jDbYMP"
           href="/"
           onClick={[Function]}
         >
@@ -675,7 +675,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/vigoda"
           onClick={[Function]}
           title="vigoda"
@@ -725,7 +725,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         className="sc-EHOje hBWvIm  isBuilding"
       >
         <a
-          className="sc-bZQynM EoOdQ SidebarItem-link"
+          className="sc-bZQynM jDbYMP SidebarItem-link"
           href="/r/snack"
           onClick={[Function]}
           title="snack"
