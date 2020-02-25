@@ -136,7 +136,7 @@ let SidebarItemLink = styled(Link)`
   align-items: stretch;
   text-decoration: none;
   // To truncate long names, all parents need explicit width (not flex: 1)
-  width: calc(100% - ${Width.sidebarTriggerButton}px); 
+  width: calc(100% - ${Width.sidebarTriggerButton}px);
 `
 let SidebarItemAll = styled(SidebarItemStyle)`
   text-transform: uppercase;
