@@ -135,7 +135,7 @@ let SidebarItemLink = styled(Link)`
   display: flex;
   align-items: stretch;
   text-decoration: none;
-  // To truncate long names, all parents need explicit width (not flex: 1)
+  // To truncate long names, root element needs an explicit width (i.e., not flex: 1)
   width: calc(100% - ${Width.sidebarTriggerButton}px);
 `
 let SidebarItemAll = styled(SidebarItemStyle)`
