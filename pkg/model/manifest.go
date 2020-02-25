@@ -142,7 +142,9 @@ func (m Manifest) TargetSpecs() []TargetSpec {
 	for _, t := range m.ImageTargets {
 		result = append(result, t)
 	}
-	result = append(result, m.deployTarget)
+	if m.deployTarget != nil {
+		result = append(result, m.deployTarget)
+	}
 	return result
 }
 

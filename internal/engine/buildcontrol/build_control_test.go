@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
@@ -59,6 +60,39 @@ func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 
 	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
+}
+
+func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	baseImage := model.MustNewImageTarget(container.MustParseSelector("sancho-base"))
+	sanchoOneImage := model.MustNewImageTarget(container.MustParseSelector("sancho-one")).
+		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+	sanchoTwoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-two")).
+		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+
+	sanchoOne := f.upsertManifest(manifestbuilder.New(f, "sancho-one").
+		WithImageTargets(baseImage, sanchoOneImage).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build())
+	f.upsertManifest(manifestbuilder.New(f, "sancho-two").
+		WithImageTargets(baseImage, sanchoTwoImage).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build())
+
+	f.assertNextTargetToBuild("sancho-one")
+
+	sanchoOne.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+
+	f.assertNoTargetNextToBuild()
+	sanchoOne.State.CurrentBuild = model.BuildRecord{}
+	sanchoOne.State.AddCompletedBuild(model.BuildRecord{
+		StartTime:  time.Now(),
+		FinishTime: time.Now(),
+	})
+
+	f.assertNextTargetToBuild("sancho-two")
 }
 
 type testFixture struct {
