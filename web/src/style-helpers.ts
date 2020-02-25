@@ -1,10 +1,14 @@
 export enum Color {
   // Brand Colors
   green = "#20ba31",
+  greenLight = "#70d37b",
   blue = "#03c7d3",
+  blueLight = "#5edbe3",
   blueDark = "#007d82",
   red = "#f6685c",
+  redLight = "#f7aaa4",
   yellow = "#fcb41e",
+  yellowLight = "#fdcf6f",
   white = "#ffffff",
 
   offWhite = "#eef1f1",

@@ -1,7 +1,6 @@
 import React from "react"
 import styled, { keyframes } from "styled-components"
-import color from "./color"
-import opacity from "./opacity"
+import { Color, ColorAlpha, ColorRGBA } from "./style-helpers"
 import { SocketState } from "./types"
 
 type SocketBarProps = {
@@ -10,28 +9,29 @@ type SocketBarProps = {
 
 let pulse = keyframes`
   0% {
-    background-color: ${color.yellow};
+    background-color: ${Color.yellow};
   }
   50% {
-    background-color: ${color.yellowLight};
+    background-color: ${Color.yellowLight};
   }
   100% {
-    background-color: ${color.yellow};
+    background-color: ${Color.yellow};
   }
 `
 
 let Bar = styled.div`
   position: fixed;
   z-index: 1000;
-  color: ${color.grayDarkest};
-  background-color: ${color.yellow};
+  color: ${Color.grayDarkest};
+  background-color: ${Color.yellow};
   width: 256px;
   margin-left: -128px;
   top: 128px;
   left: 50%;
   padding: 8px 16px;
   border-radius: 3px;
-  box-shadow: -5px 5px 0 0 ${color.rgba(color.grayDarkest, opacity.obscured)};
+  box-shadow: -5px 5px 0 0
+    ${ColorRGBA(Color.grayDarkest, ColorAlpha.almostOpaque)};
   text-align: center;
   animation: ${pulse} 3s ease infinite;
 `
