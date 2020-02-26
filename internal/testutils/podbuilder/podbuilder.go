@@ -314,10 +314,17 @@ func (b PodBuilder) buildContainerStatuses(spec v1.PodSpec) []v1.ContainerStatus
 		// if not specified, default to true
 		ready = !ok || ready
 
+		state := v1.ContainerState{
+			Running: &v1.ContainerStateRunning{
+				StartedAt: metav1.NewTime(time.Now()),
+			},
+		}
+
 		result[i] = v1.ContainerStatus{
 			Name:         cSpec.Name,
 			Image:        b.buildImage(cSpec.Image, i),
 			Ready:        ready,
+			State:        state,
 			ContainerID:  b.buildContainerID(i),
 			RestartCount: int32(restartCount),
 		}
