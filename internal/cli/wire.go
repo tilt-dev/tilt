@@ -87,6 +87,7 @@ var BaseWireSet = wire.NewSet(
 	cloud.WireSet,
 	cloudurl.ProvideAddress,
 	k8srollout.NewPodMonitor,
+	telemetry.NewStartTracker,
 
 	provideClock,
 	hud.WireSet,
