@@ -9,17 +9,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/windmilleng/tilt/pkg/model"
 	v1 "k8s.io/api/core/v1"
-
-	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/hud/server"
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
+	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 	"github.com/windmilleng/tilt/internal/watch"
-	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestBuildControllerOnePod(t *testing.T) {
@@ -227,15 +227,22 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	// container already on this pod matches the image built by this manifest
 	pod := podbuilder.New(f.T(), manifest).Build()
 	imgName := pod.Status.ContainerStatuses[0].Image
+	runningState := v1.ContainerState{
+		Running: &v1.ContainerStateRunning{
+			StartedAt: metav1.NewTime(time.Now()),
+		},
+	}
 	pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, v1.ContainerStatus{
 		Name:        "same image",
 		Image:       imgName, // matches image built by this manifest
 		Ready:       true,
+		State:       runningState,
 		ContainerID: "docker://cID-same-image",
 	}, v1.ContainerStatus{
 		Name:        "different image",
 		Image:       "different-image", // does NOT match image built by this manifest
 		Ready:       false,
+		State:       runningState,
 		ContainerID: "docker://cID-different-image",
 	})
 	f.podEvent(pod, manifest.Name)
