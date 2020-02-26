@@ -9,17 +9,17 @@ import (
 )
 
 type StartTracker struct {
-	tracer            trace.Tracer
-	span              trace.Span
-	coldStartFinished bool
+	tracer        trace.Tracer
+	span          trace.Span
+	startFinished bool
 }
 
 func NewStartTracker(tracer trace.Tracer) *StartTracker {
-	return &StartTracker{tracer: tracer, coldStartFinished: false}
+	return &StartTracker{tracer: tracer, startFinished: false}
 }
 
 func (c *StartTracker) OnChange(ctx context.Context, st store.RStore) {
-	if c.coldStartFinished {
+	if c.startFinished {
 		return
 	}
 
@@ -33,6 +33,6 @@ func (c *StartTracker) OnChange(ctx context.Context, st store.RStore) {
 
 	if state.InitialBuildsCompleted() && c.span != nil {
 		c.span.End()
-		c.coldStartFinished = true
+		c.startFinished = true
 	}
 }
