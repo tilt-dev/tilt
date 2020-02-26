@@ -211,11 +211,17 @@ func containerForStatus(ctx context.Context, pod *v1.Pod, cStatus v1.ContainerSt
 		ports = append(ports, cPort.ContainerPort)
 	}
 
+	isRunning := false
+	if cStatus.State.Running != nil && !cStatus.State.Running.StartedAt.IsZero() {
+		isRunning = true
+	}
+
 	return store.Container{
 		Name:     cName,
 		ID:       cID,
 		Ports:    ports,
 		Ready:    cStatus.Ready,
+		Running:  isRunning,
 		ImageRef: cRef,
 		Restarts: int(cStatus.RestartCount),
 	}, nil

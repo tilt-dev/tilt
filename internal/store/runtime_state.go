@@ -158,6 +158,7 @@ type Container struct {
 	ID       container.ID
 	Ports    []int32
 	Ready    bool
+	Running  bool
 	ImageRef reference.Named
 	Restarts int
 }
