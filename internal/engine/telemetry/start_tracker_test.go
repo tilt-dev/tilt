@@ -15,10 +15,10 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-func TestColdStart(t *testing.T) {
+func TestStart(t *testing.T) {
 	ctx := context.Background()
 	ft := newFakeTracer()
-	cst := NewColdStartTracker(ft)
+	cst := NewStartTracker(ft)
 
 	st := store.NewTestingStore()
 	manifest := model.Manifest{Name: "test"}
@@ -29,12 +29,12 @@ func TestColdStart(t *testing.T) {
 	st.SetState(engineState)
 	cst.OnChange(ctx, st)
 
-	// cold start span should be started
+	// first run span should be started
 	span, exists := ft.spans["first_run"]
 	require.True(t, exists)
 	assert.False(t, span.ended)
 
-	// cold start should still not be ended
+	// first run span should still not be ended
 	cst.OnChange(ctx, st)
 	span, exists = ft.spans["first_run"]
 	require.True(t, exists)
@@ -45,14 +45,14 @@ func TestColdStart(t *testing.T) {
 	st.SetState(engineState)
 	cst.OnChange(ctx, st)
 
-	// cold start span should be ended
+	// first run span should be ended
 	span, exists = ft.spans["first_run"]
 	require.True(t, exists)
 	assert.True(t, span.ended)
 
 	cst.OnChange(ctx, st)
 
-	// cold start should still be ended
+	// first run span should still be ended
 	span, exists = ft.spans["first_run"]
 	require.True(t, exists)
 	assert.True(t, span.ended)

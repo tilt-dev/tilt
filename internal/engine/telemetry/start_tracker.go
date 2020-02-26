@@ -8,17 +8,17 @@ import (
 	"github.com/windmilleng/tilt/internal/store"
 )
 
-type ColdStartTracker struct {
+type StartTracker struct {
 	tracer            trace.Tracer
 	span              trace.Span
 	coldStartFinished bool
 }
 
-func NewColdStartTracker(tracer trace.Tracer) *ColdStartTracker {
-	return &ColdStartTracker{tracer: tracer, coldStartFinished: false}
+func NewStartTracker(tracer trace.Tracer) *StartTracker {
+	return &StartTracker{tracer: tracer, coldStartFinished: false}
 }
 
-func (c *ColdStartTracker) OnChange(ctx context.Context, st store.RStore) {
+func (c *StartTracker) OnChange(ctx context.Context, st store.RStore) {
 	if c.coldStartFinished {
 		return
 	}
