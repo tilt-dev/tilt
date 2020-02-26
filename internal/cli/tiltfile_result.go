@@ -51,7 +51,7 @@ func (c *tiltfileResultCmd) register() *cobra.Command {
 func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 	deps, err := wireTiltfileResult(ctx, analytics.Get(ctx))
 	if err != nil {
-		return wrapUnexpectedError(errors.Wrap(err, "wiring dependencies"))
+		return errors.Wrap(err, "wiring dependencies")
 	}
 
 	tlr := deps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
@@ -65,11 +65,7 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 
 	err = encodeJSON(tlr, os.Stderr)
 	if err != nil {
-		return wrapUnexpectedError(errors.Wrap(err, "encoding JSON"))
+		return errors.Wrap(err, "encoding JSON")
 	}
 	return nil
-}
-
-func wrapUnexpectedError(err error) error {
-	return errors.Wrap(err, "unexpected error evaluating Tiltfile")
 }
