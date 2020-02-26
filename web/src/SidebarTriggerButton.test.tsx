@@ -51,7 +51,7 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find(".SidebarTriggerButton")
+    let element = root.find("button.SidebarTriggerButton")
     expect(element).toHaveLength(1)
     element.simulate("click")
 
@@ -79,7 +79,7 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find(".SidebarTriggerButton")
+    let element = root.find("button.SidebarTriggerButton")
     expect(element).toHaveLength(1)
     element.simulate("click")
 
@@ -102,7 +102,7 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find(".SidebarTriggerButton")
+    let element = root.find("button.SidebarTriggerButton")
     expect(element).toHaveLength(1)
     element.simulate("click")
 
@@ -138,7 +138,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(".SidebarTriggerButton")
+    let buttons = root.find("button.SidebarTriggerButton")
     expect(buttons).toHaveLength(2)
 
     let b0 = buttons.at(0) // Manual resource with pending changes
@@ -179,7 +179,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(".SidebarTriggerButton")
+    let buttons = root.find("button.SidebarTriggerButton")
     expect(buttons).toHaveLength(2)
 
     expectIsSelected(buttons.at(0), true) // Selected resource
@@ -215,7 +215,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(".SidebarTriggerButton")
+    let buttons = root.find("button.SidebarTriggerButton")
     expect(buttons).toHaveLength(2)
     let b0 = buttons.at(0) // Automatic resource with pending changes
     let b1 = buttons.at(1) // Automatic resource, no pending changes
@@ -248,7 +248,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(".SidebarTriggerButton")
+    let button = root.find("button.SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
@@ -279,7 +279,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(".SidebarTriggerButton")
+    let button = root.find("button.SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
@@ -307,7 +307,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(".SidebarTriggerButton")
+    let button = root.find("button.SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
@@ -337,7 +337,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(".SidebarTriggerButton")
+    let button = root.find("button.SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
     expectClickable(button, true)
@@ -369,7 +369,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(".SidebarTriggerButton")
+    let button = root.find("button.SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)

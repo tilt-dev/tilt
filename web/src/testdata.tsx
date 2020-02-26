@@ -59,6 +59,7 @@ function getMockRouterProps<P>(data: P) {
 
 function oneResource(): Resource {
   const ts = new Date(Date.now()).toISOString()
+  const tsPast = new Date(Date.now() - 12300).toISOString()
   const resource: Resource = {
     name: "vigoda",
     directoriesWatched: ["foo", "bar"],
@@ -68,7 +69,7 @@ function oneResource(): Resource {
         edits: ["main.go", "cli.go"],
         error: "the build failed!",
         finishTime: ts,
-        startTime: ts,
+        startTime: tsPast,
       },
     ],
     pendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
@@ -232,7 +233,7 @@ function twoResourceView(): view {
       {
         edits: ["main.go", "cli.go"],
         error: "the build failed!",
-        finishTime: ts,
+        finishTime: new Date(time - 10000).toISOString(),
         startTime: ts,
       },
     ],
