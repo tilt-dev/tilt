@@ -6,6 +6,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/windmilleng/tilt/internal/analytics"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -134,6 +135,7 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 			reg := r.inferRegistryFromMicrok8s(ctx)
 			if !reg.Empty() {
 				r.registry = reg
+				analytics.Get(ctx).Incr("registry.infer.microk8s", nil)
 				return
 			}
 		}
@@ -141,6 +143,7 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		reg := r.inferRegistryFromTiltNodeAnnotations(ctx)
 		if !reg.Empty() {
 			r.registry = reg
+			analytics.Get(ctx).Incr("registry.infer.tiltNodeAnnotations", map[string]string{"env": string(r.env)})
 		}
 	})
 	return r.registry
