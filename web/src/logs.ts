@@ -12,6 +12,7 @@ export function logLinesFromString(
       text: text,
       manifestName: manifestName ?? "",
       level: "INFO",
+      spanId: "",
     }
   })
 }
@@ -43,4 +44,8 @@ export function sourcePrefix(n: string) {
     spaces = " ".repeat(max - n.length)
   }
   return n + spaces + "┊ "
+}
+
+export function isBuildSpanId(spanId: string): boolean {
+  return spanId.indexOf("build:") != -1
 }

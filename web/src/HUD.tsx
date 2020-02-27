@@ -17,12 +17,14 @@ import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
   LogLine,
+  LogTrace,
+  LogTraceNav,
   ResourceView,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
 } from "./types"
-import { logLinesFromString } from "./logs"
+import { logLinesFromString, isBuildSpanId } from "./logs"
 import HudState from "./HudState"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -467,11 +469,7 @@ class HUD extends Component<HudProps, HudState> {
     }
 
     let logsRoute = (props: RouteComponentProps<any>) => {
-      let name =
-        props.match.params && props.match.params.name
-          ? props.match.params.name
-          : ""
-
+      let name = props.match.params?.name ?? ""
       let r = resources.find(r => r.name === name)
       if (r === undefined) {
         return <Route component={NotFound} />
