@@ -43,6 +43,13 @@ func (c *tiltfileResultCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tiltfile-result",
 		Short: "Exec the Tiltfile and print results as JSON (note: the API is unstable and may change)",
+		Long: `Exec the Tiltfile and print results as JSON (note: the API is unstable and may change).
+
+Exit code 0: successful Tiltfile evaluation (JSON printed to stdout)
+Exit code 1: some failure in setup, printing results, etc. (any logs printed to stderr)
+Exit code 5: error when evaluating the Tiltfile, such as syntax error, illegal Tiltfile operation, etc. (any logs printed to stderr)
+
+Run with -v | --verbose to print Tiltfile execution logs on stderr, regardless of whether there was an error.`,
 	}
 
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
