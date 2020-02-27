@@ -87,7 +87,8 @@ type FuncLoggerWriter struct {
 var _ io.Writer = FuncLoggerWriter{}
 
 func (fw FuncLoggerWriter) Write(b []byte) (int, error) {
-	return len(b), fw.l.write(fw.level, fw.l.fields, b)
+	fw.l.Write(fw.level, b)
+	return len(b), nil
 }
 
 func (l funcLogger) Writer(level Level) io.Writer {
