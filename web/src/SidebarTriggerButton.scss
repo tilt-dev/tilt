@@ -1,18 +1,6 @@
 @import "constants";
 @import "animations";
 
-.SidebarTriggerButton {
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-color: transparent;
-  border: 0 none;
-  height: $sidebar-item;
-  width: $sidebar-item;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 $trigger-button-color: $color-gray-light;
 $trigger-button-hover-color: $color-white;
 $trigger-button-active-color: $color-green;

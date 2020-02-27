@@ -228,7 +228,8 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`)
 			K8sResources: []string{"sancho:deployment"},
 		},
 	})
-	rtf.run("unresourced yaml manifest", 70, 20, v, plainVs)
+	rtf.run("no collapse unresourced yaml manifest", 70, 20, v, plainVs)
+	rtf.run("default collapse unresourced yaml manifest", 70, 20, v, fakeViewState(1, view.CollapseAuto))
 
 	alertVs := plainVs
 	alertVs.AlertMessage = "this is only a test"

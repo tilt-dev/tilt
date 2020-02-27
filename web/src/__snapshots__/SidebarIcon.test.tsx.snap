@@ -1,0 +1,61 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`renders correctly - isBuilding 1`] = `
+<styled.div
+  className="isBuilding"
+>
+  <span>
+     
+  </span>
+</styled.div>
+`;
+
+exports[`renders correctly - isHealthy 1`] = `
+<styled.div
+  className="isHealthy"
+>
+  <span>
+     
+  </span>
+</styled.div>
+`;
+
+exports[`renders correctly - isNone 1`] = `
+<styled.div
+  className="isNone"
+>
+  <span>
+     
+  </span>
+</styled.div>
+`;
+
+exports[`renders correctly - isPending 1`] = `
+<styled.div
+  className="isPending"
+>
+  <span>
+     
+  </span>
+</styled.div>
+`;
+
+exports[`renders correctly - isUnhealthy 1`] = `
+<styled.div
+  className="isUnhealthy"
+>
+  <span>
+     
+  </span>
+</styled.div>
+`;
+
+exports[`renders correctly - isWarning 1`] = `
+<styled.div
+  className="isWarning"
+>
+  <span>
+     
+  </span>
+</styled.div>
+`;

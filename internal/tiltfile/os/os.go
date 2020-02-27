@@ -22,6 +22,11 @@ func NewExtension() Extension {
 }
 
 func (e Extension) OnStart(env *starkit.Environment) error {
+	err := env.AddBuiltin("os.getcwd", cwd)
+	if err != nil {
+		return err
+	}
+
 	environValue, err := environ()
 	if err != nil {
 		return err
@@ -41,4 +46,18 @@ func environ() (starlark.Value, error) {
 	}
 	result.Freeze()
 	return result, nil
+}
+
+// Fetch the working directory of current Tiltfile execution.
+// All built-ins will be executed relative to this directory (e.g., local(), docker_build(), etc)
+// Intended to mirror the API of Python's getcwd
+// https://docs.python.org/3/library/os.html#os.getcwd
+func cwd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs)
+	if err != nil {
+		return nil, err
+	}
+
+	dir := starkit.AbsWorkingDir(t)
+	return starlark.String(dir), nil
 }

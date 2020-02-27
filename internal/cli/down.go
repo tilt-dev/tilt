@@ -27,7 +27,7 @@ func (c *downCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "down [<tilt flags>] [-- <Tiltfile args>]",
 		DisableFlagsInUseLine: true,
-		Short:                 "delete resources created by 'tilt up'",
+		Short:                 "Delete resources created by 'tilt up'",
 		Long: `
 Deletes resources specified in the Tiltfile
 

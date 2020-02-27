@@ -32,7 +32,7 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		targets = RemoveLocalTargets(targets)
 	}
 
-	targets = RemoveCurrentlyBuildingTargets(targets)
+	targets = RemoveTargetsWithBuildingComponents(targets)
 	targets = RemoveTargetsWaitingOnDependencies(state, targets)
 
 	// If any of the manifest targets haven't been built yet, build them now.
@@ -86,10 +86,34 @@ func isWaitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) 
 	return false
 }
 
-func RemoveCurrentlyBuildingTargets(mts []*store.ManifestTarget) []*store.ManifestTarget {
+func RemoveTargetsWithBuildingComponents(mts []*store.ManifestTarget) []*store.ManifestTarget {
+	building := make(map[model.TargetID]bool)
+
+	for _, mt := range mts {
+		if mt.State.IsBuilding() {
+			building[mt.Manifest.ID()] = true
+			for _, spec := range mt.Manifest.TargetSpecs() {
+				building[spec.ID()] = true
+			}
+		}
+	}
+
+	isBuilding := func(m model.Manifest) bool {
+		if building[m.ID()] {
+			return true
+		}
+
+		for _, spec := range m.TargetSpecs() {
+			if building[spec.ID()] {
+				return true
+			}
+		}
+		return false
+	}
+
 	var ret []*store.ManifestTarget
 	for _, mt := range mts {
-		if !mt.State.IsBuilding() {
+		if !isBuilding(mt.Manifest) {
 			ret = append(ret, mt)
 		}
 	}

@@ -63,6 +63,13 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	defer span.End()
 	var lastErr, lastUnexpectedErr error
 
+	specNames := []string{}
+
+	for _, s := range specs {
+		specNames = append(specNames, s.ID().String())
+	}
+	span.SetAttributes(core.KeyValue{Key: core.Key("targetNames"), Value: core.String(strings.Join(specNames, ","))})
+
 	logger.Get(ctx).Debugf("Building with BuildOrder: %s", composite.builders.String())
 	for i, builder := range composite.builders {
 		buildType := fmt.Sprintf("%T", builder)

@@ -102,7 +102,7 @@ class LogStore {
         let text = segment.text
         let level = segment.level
         let fields = segment.fields
-        return { spanId, time, text, level }
+        return { spanId, time, text, level, fields }
       }
     )
     return {
@@ -244,6 +244,80 @@ class LogStore {
       }
     }
     return result
+  }
+
+  // Given a build span in the current manifest, find the next build span.
+  nextBuildSpan(span: LogSpan): LogSpan | null {
+    let nextBuild = null
+    for (let key in this.spans) {
+      if (!this.isBuildSpanId(key)) {
+        continue
+      }
+
+      let candidate = this.spans[key]
+      if (candidate.manifestName != span.manifestName) {
+        continue
+      }
+
+      if (candidate.firstLineIndex <= span.firstLineIndex) {
+        continue
+      }
+
+      if (
+        nextBuild == null ||
+        candidate.firstLineIndex < nextBuild.firstLineIndex
+      ) {
+        nextBuild = candidate
+      }
+    }
+
+    return nextBuild
+  }
+
+  isBuildSpanId(spanId: string): boolean {
+    return spanId.indexOf("build:") != -1
+  }
+
+  // Find all the logs "caused" by a particular build.
+  //
+  // Eventually, we should add causality links between spans to the
+  // data model itself! c.f., Links in open-tracing
+  // https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#add-links
+  // But for now, we just hack some spans together based on their manifest name
+  // and when they showed up.
+  traceLog(spanId: string): LogLine[] {
+    // Currently, we only support tracing of build logs.
+    if (!this.isBuildSpanId(spanId)) {
+      return []
+    }
+
+    let startSpan = this.spans[spanId]
+    let spans: { [key: string]: LogSpan } = {}
+    spans[spanId] = startSpan
+
+    let nextBuildSpan = this.nextBuildSpan(startSpan)
+
+    // Grab all the spans that start between this span and the next build.
+    //
+    // TODO(nick): This currently skips any events that happen
+    // because they're part of an "events" span where the causality
+    // is uncertain. We should be more intelligent about sucking in events.
+    for (let key in this.spans) {
+      let candidate = this.spans[key]
+      if (candidate.manifestName != startSpan.manifestName) {
+        continue
+      }
+
+      if (
+        candidate.firstLineIndex > startSpan.firstLineIndex &&
+        (nextBuildSpan == null ||
+          candidate.firstLineIndex < nextBuildSpan.firstLineIndex)
+      ) {
+        spans[key] = candidate
+      }
+    }
+
+    return this.logHelper(spans)
   }
 
   manifestLog(mn: string): LogLine[] {

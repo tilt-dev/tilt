@@ -567,6 +567,7 @@ func handleConfigsReloaded(
 	state.TeamName = event.TeamName
 	state.TelemetrySettings = event.TelemetrySettings
 	state.VersionSettings = event.VersionSettings
+	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
 
 	state.MaxParallelUpdates = event.UpdateSettings.MaxParallelUpdatesMinOne()
 

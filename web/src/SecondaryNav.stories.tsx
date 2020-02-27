@@ -17,6 +17,8 @@ function topBarDefault() {
         resourceView={ResourceView.Alerts}
         numberOfAlerts={1}
         facetsUrl="/r/foo/facets"
+        traceUrl={""}
+        span={""}
       />
     </MemoryRouter>
   )
@@ -31,6 +33,8 @@ function topBarTeam() {
         resourceView={ResourceView.Alerts}
         numberOfAlerts={1}
         facetsUrl="/r/foo/facets"
+        traceUrl={""}
+        span={""}
       />
     </MemoryRouter>
   )

@@ -14,13 +14,18 @@ const timeAgoFormatter = (
   _nextFormatter?: Formatter,
   now?: any
 ) => {
+  let str = ""
   if (unit === "second") {
     for (let threshold of [5, 15, 30, 45]) {
-      if (value < threshold) return `<${threshold}s`
+      if (value < threshold) {
+        str = `<${threshold}s`
+        break
+      } else {
+        str = "<1m"
+      }
     }
-    return "<1m"
   } else {
-    return minutePlusFormatter(
+    str = minutePlusFormatter(
       value,
       unit,
       suffix,
@@ -29,6 +34,7 @@ const timeAgoFormatter = (
       now
     )
   }
+  return `${str} ago`
 }
 
 export { timeAgoFormatter }

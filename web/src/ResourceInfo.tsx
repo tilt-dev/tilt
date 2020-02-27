@@ -45,8 +45,17 @@ let PortForward = styled.span`
 let PortForwardLabel = styled.span`
   color: ${s.Color.grayLight};
   margin-right: ${s.SizeUnit(0.25)};
+
+  ${s.mixinHideOnSmallScreen}
 `
-let PortForwardLink = styled.a``
+
+let PortForwardLink = styled.a`
+  & + & {
+    padding-left: ${s.SizeUnit(0.25)};
+    border-left: 1px dotted ${s.Color.grayLight};
+    margin-left: ${s.SizeUnit(0.25)};
+  }
+`
 
 let SnapshotButton = styled.button`
   border: 1px solid transparent;
@@ -111,7 +120,6 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
         </PortForwardLabel>
         {endpoints?.map(ep => (
           <PortForwardLink
-            className="resourceInfo-value"
             href={ep}
             target="_blank"
             rel="noopener noreferrer"

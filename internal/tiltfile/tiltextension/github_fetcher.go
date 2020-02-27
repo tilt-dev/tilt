@@ -7,20 +7,32 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/go-github/v29/github"
+
 	pkgtiltextension "github.com/windmilleng/tilt/pkg/tiltextension"
 )
 
 type GithubFetcher struct {
 }
 
+// TODO(dmiller): DI github
+// TODO(dmiller): DI HTTP client
 func NewGithubFetcher() *GithubFetcher {
 	return &GithubFetcher{}
 }
 
-const githubTemplate = "https://raw.githubusercontent.com/windmilleng/tilt-extensions/master/%s/Tiltfile"
+const githubTemplate = "https://raw.githubusercontent.com/windmilleng/tilt-extensions/%s/%s/Tiltfile"
 
 func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
-	err := pkgtiltextension.ValidateName(moduleName)
+	client := github.NewClient(nil)
+	masterBranch, _, err := client.Repositories.GetBranch(ctx, "windmilleng", "tilt-extensions", "master")
+	if err != nil {
+		return ModuleContents{}, err
+	}
+	headOfMaster := masterBranch.GetCommit()
+	masterSHA := headOfMaster.GetSHA()
+
+	err = pkgtiltextension.ValidateName(moduleName)
 	if err != nil {
 		return ModuleContents{}, err
 	}
@@ -28,7 +40,7 @@ func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleCon
 		Timeout: 20 * time.Second,
 	}
 
-	urlText := fmt.Sprintf(githubTemplate, moduleName)
+	urlText := fmt.Sprintf(githubTemplate, masterSHA, moduleName)
 	resp, err := c.Get(urlText)
 	if err != nil {
 		return ModuleContents{}, err
@@ -45,10 +57,12 @@ func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleCon
 		return ModuleContents{}, err
 	}
 
-	// TODO(dmiller): populate the other fields
 	return ModuleContents{
-		Name:             moduleName,
-		TiltfileContents: string(body),
+		Name:              moduleName,
+		TiltfileContents:  string(body),
+		GitCommitHash:     masterSHA,
+		ExtensionRegistry: "https://github.com/windmilleng/tilt-extensions",
+		TimeFetched:       time.Now(),
 	}, nil
 }
 

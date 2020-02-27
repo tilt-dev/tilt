@@ -225,14 +225,14 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	}
 
 	pr, pw := io.Pipe()
-	go func() {
+	go func(ctx context.Context) {
 		err := tarContextAndUpdateDf(ctx, pw, dockerfile.Dockerfile(db.Dockerfile), paths, filter)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		} else {
 			_ = pw.Close()
 		}
-	}()
+	}(ctx)
 
 	ps.StartBuildStep(ctx, "Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")

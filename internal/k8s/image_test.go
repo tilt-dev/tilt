@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 
@@ -187,9 +188,19 @@ func TestInjectDigestBlorgBackendYAML(t *testing.T) {
 	}
 }
 
-// Returns: the new entity, whether anything was replaced, and an error.
+// the same as InjectImageDigestInjectRefWithStrings, but with original == inject (the normal case with no default_registry)
 func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest string, policy v1.PullPolicy) (K8sEntity, bool, error) {
+	return InjectImageDigestInjectRefWithStrings(entity, original, original, newDigest, policy)
+}
+
+// Returns: the new entity, whether anything was replaced, and an error.
+func InjectImageDigestInjectRefWithStrings(entity K8sEntity, original string, inject string, newDigest string, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	originalRef, err := reference.ParseNamed(original)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+
+	injectRef, err := reference.ParseNamed(inject)
 	if err != nil {
 		return K8sEntity{}, false, err
 	}
@@ -199,7 +210,7 @@ func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest s
 		return K8sEntity{}, false, err
 	}
 
-	canonicalRef, err := reference.WithDigest(originalRef, d)
+	canonicalRef, err := reference.WithDigest(injectRef, d)
 	if err != nil {
 		return K8sEntity{}, false, err
 	}
@@ -328,6 +339,39 @@ func testInjectDigestCRD(t *testing.T, yaml string, expectedDigestPrefix string)
 	}
 
 	if !strings.Contains(result, fmt.Sprintf("%s%s@%s", expectedDigestPrefix, name, digest)) {
+		t.Errorf("image name did not appear in serialized yaml: %s", result)
+	}
+}
+
+// e.g., using a crd w/ a default_registry
+func TestInjectDigestCRDSelectorDoesntMatchInjectRef(t *testing.T) {
+	yaml := `
+apiversion: foo/v1
+kind: Foo
+spec:
+    image: gcr.io/foo:stable
+`
+
+	entities, err := ParseYAMLFromString(yaml)
+	require.NoError(t, err)
+
+	if len(entities) != 1 {
+		t.Fatalf("Unexpected entities: %+v", entities)
+	}
+
+	entity := entities[0]
+	originalName := "gcr.io/foo"
+	injectionName := "localhost:3000/gcr_io_foo"
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	newEntity, replaced, err := InjectImageDigestInjectRefWithStrings(entity, originalName, injectionName, digest, v1.PullIfNotPresent)
+	require.NoError(t, err)
+
+	require.Truef(t, replaced, "expected replaced: true. actual: %v", replaced)
+
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
+	require.NoError(t, err)
+
+	if !strings.Contains(result, fmt.Sprintf("%s%s@%s", "image: ", injectionName, digest)) {
 		t.Errorf("image name did not appear in serialized yaml: %s", result)
 	}
 }

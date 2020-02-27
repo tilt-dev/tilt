@@ -21,7 +21,6 @@ type rty struct {
 type renderState map[string]interface{}
 
 func (r *rty) Render(c Component) (err error) {
-	r.screen.Clear()
 	g := &renderGlobals{
 		prev: r.state,
 		next: make(renderState),

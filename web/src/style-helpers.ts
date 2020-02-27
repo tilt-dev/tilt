@@ -1,10 +1,14 @@
 export enum Color {
   // Brand Colors
   green = "#20ba31",
+  greenLight = "#70d37b",
   blue = "#03c7d3",
+  blueLight = "#5edbe3",
   blueDark = "#007d82",
   red = "#f6685c",
+  redLight = "#f7aaa4",
   yellow = "#fcb41e",
+  yellowLight = "#fdcf6f",
   white = "#ffffff",
 
   offWhite = "#eef1f1",
@@ -57,15 +61,23 @@ export enum Height {
   unit = unit,
   HUDheader = unit * 3,
   secondaryNav = unit * 1.2,
+  sidebarItem = unit * 1.4, // sync with constants.scss > $sidebar-item
   resourceBar = unit * 1.5,
   statusbar = unit * 1.5,
 }
 export enum Width {
-  sidebar = unit * 10,
-  sidebarCollapsed = unit * 1.5,
+  sidebar = unit * 10.5, // Sync with constants.scss > $sidebar-width
   secondaryNavItem = unit * 5,
+  sidebarTriggerButton = unit * 1.4,
+  sidebarCollapsed = unit, // sync with constants.scss > $sidebar-collapsed-width
   badge = unit * 0.6,
+  smallScreen = 1500,
 }
+
+export const mixinHideOnSmallScreen = `
+@media screen and (max-width: ${Width.smallScreen}px) {
+  display: none;
+}`
 
 export enum ZIndex {
   HUDheader = 500,

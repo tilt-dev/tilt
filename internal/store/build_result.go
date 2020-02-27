@@ -442,9 +442,9 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 		if c.ImageRef == nil || iTarget.Refs.ClusterRef().Name() != c.ImageRef.Name() {
 			continue
 		}
-		if c.ID == "" || c.Name == "" || !c.Ready {
+		if c.ID == "" || c.Name == "" || !c.Running {
 			// If we're missing any relevant info for this container, OR if the
-			// container isn't ready, we can't update it in place.
+			// container isn't running, we can't update it in place.
 			// (Since we'll need to fully rebuild this image, we shouldn't bother
 			// in-place updating ANY containers on this pod -- they'll all
 			// be recreated when we image build. So don't return ANY ContainerInfos.)

@@ -23,6 +23,21 @@ func TestFuncLogger_Level(t *testing.T) {
 	require.NotContains(t, s, "debug")
 }
 
+func TestFuncLoggerWriter_Level(t *testing.T) {
+	out := &bytes.Buffer{}
+	fl := NewFuncLogger(true, InfoLvl, func(level Level, fields Fields, b []byte) error {
+		_, err := out.Write(b)
+		return err
+	})
+
+	_, _ = fl.Writer(InfoLvl).Write([]byte("info\n"))
+	_, _ = fl.Writer(DebugLvl).Write([]byte("debug\n"))
+
+	s := out.String()
+	require.Contains(t, s, "info")
+	require.NotContains(t, s, "debug")
+}
+
 func TestOneField(t *testing.T) {
 	out := &bytes.Buffer{}
 	fl := NewFuncLogger(true, InfoLvl, func(level Level, fields Fields, b []byte) error {

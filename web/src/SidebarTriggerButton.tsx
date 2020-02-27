@@ -1,6 +1,20 @@
 import React, { PureComponent } from "react"
 import { TriggerMode } from "./types"
 import "./SidebarTriggerButton.scss"
+import styled from "styled-components"
+import { Height, Width } from "./style-helpers"
+
+let SidebarTriggerButtonStyle = styled.button`
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-color: transparent;
+  border: 0 none;
+  height: ${Height.sidebarItem}px;
+  width: ${Width.sidebarTriggerButton}px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`
 
 export const TriggerButtonTooltip = {
   AlreadyQueued:
@@ -61,7 +75,7 @@ export default class SidebarTriggerButton extends PureComponent<
     if (props.isTiltfile) {
       // can't force update the Tiltfile
       return (
-        <button
+        <SidebarTriggerButtonStyle
           className={`SidebarTriggerButton ${
             props.isSelected ? "isSelected" : ""
           }`}
@@ -85,7 +99,7 @@ export default class SidebarTriggerButton extends PureComponent<
     let clickMe = props.hasPendingChanges && isManualTriggerMode
 
     return (
-      <button
+      <SidebarTriggerButtonStyle
         onClick={() => {
           triggerUpdate(props.resourceName)
         }}
