@@ -51,10 +51,12 @@ func (c *tiltfileResultCmd) register() *cobra.Command {
 }
 
 func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
+	// HACK(maia): we're overloading the -v|--verbose flags here, which isn't ideal,
+	// but eh, it's fast. Might be cleaner to do --logs=true or something.
 	logLvl := logger.Get(ctx).Level()
-	verbose := logLvl.ShouldDisplay(logger.VerboseLvl)
+	showTiltfileLogs := logLvl.ShouldDisplay(logger.VerboseLvl)
 
-	if !verbose {
+	if !showTiltfileLogs {
 		// defer Tiltfile output -- only print on error
 		l := logger.NewDeferredLogger(ctx)
 		ctx = logger.WithLogger(ctx, l)
@@ -65,13 +67,13 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 
 	deps, err := wireTiltfileResult(ctx, analytics.Get(ctx))
 	if err != nil {
-		maybePrintDeferredLogsToStderr(ctx, verbose)
+		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 		return errors.Wrap(err, "wiring dependencies")
 	}
 
 	tlr := deps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
 	if tlr.Error != nil {
-		maybePrintDeferredLogsToStderr(ctx, verbose)
+		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 
 		// Some errors won't JSONify properly by default, so just print it
 		// to STDERR and use the exit code to indicate that it's an error
@@ -82,14 +84,14 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 
 	err = encodeJSON(tlr)
 	if err != nil {
-		maybePrintDeferredLogsToStderr(ctx, verbose)
+		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 		return errors.Wrap(err, "encoding JSON")
 	}
 	return nil
 }
 
-func maybePrintDeferredLogsToStderr(ctx context.Context, verbose bool) {
-	if verbose {
+func maybePrintDeferredLogsToStderr(ctx context.Context, showTiltfileLogs bool) {
+	if showTiltfileLogs {
 		// We've already printed the logs elsewhere, do nothing
 		return
 	}
