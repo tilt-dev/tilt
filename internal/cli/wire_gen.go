@@ -51,6 +51,47 @@ import (
 
 // Injectors from wire.go:
 
+func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics) (cmdTiltfileResultDeps, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return cmdTiltfileResultDeps{}, err
+	}
+	env := k8s.ProvideEnv(ctx, config)
+	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
+	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
+	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
+	if err != nil {
+		return cmdTiltfileResultDeps{}, err
+	}
+	int2 := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
+	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, kubectlRunner, clientConfig)
+	extension := k8scontext.NewExtension(kubeContext, env)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	minikubeClient := minikube.ProvideMinikubeClient()
+	clusterEnv, err := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
+	if err != nil {
+		return cmdTiltfileResultDeps{}, err
+	}
+	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
+	if err != nil {
+		return cmdTiltfileResultDeps{}, err
+	}
+	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
+	modelWebHost := provideWebHost()
+	defaults := _wireDefaultsValue
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, dockerComposeClient, modelWebHost, defaults, env)
+	cliTiltfileResultDeps := newTiltfileResultDeps(tiltfileLoader)
+	return cliTiltfileResultDeps, nil
+}
+
+var (
+	_wireDefaultsValue = feature.MainDefaults
+)
+
 func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics) (dpDeps, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
@@ -93,10 +134,6 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics) (
 	cliDpDeps := newDPDeps(switchCli, tiltfileLoader)
 	return cliDpDeps, nil
 }
-
-var (
-	_wireDefaultsValue = feature.MainDefaults
-)
 
 func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analytics.TiltAnalytics, cmdUpTags analytics2.CmdUpTags) (CmdUpDeps, error) {
 	v := provideClock()
