@@ -91,9 +91,9 @@ jobs:
       - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh -s init && export KUBECONFIG="$(kind get kubeconfig-path --name="integration")"
       - run: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
              /go/portforward.sh -wait $APISERVER_PORT &&
-             kubectl get nodes &&
-             make integration"
+             kubectl get nodes"
       - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh -s annotate
+      - run: make integration
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
