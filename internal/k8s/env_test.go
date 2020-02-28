@@ -21,14 +21,29 @@ func TestProvideEnv(t *testing.T) {
 			Cluster: "minikube",
 		},
 	}
+	minikubePrefixContexts := map[string]*api.Context{
+		"minikube-dev-cluster-1": &api.Context{
+			Cluster: "minikube-dev-cluster-1",
+		},
+	}
 	dockerDesktopContexts := map[string]*api.Context{
 		"docker-for-desktop": &api.Context{
 			Cluster: "docker-for-desktop-cluster",
 		},
 	}
+	dockerDesktopPrefixContexts := map[string]*api.Context{
+		"docker-for-desktop-dev-cluster-1": &api.Context{
+			Cluster: "docker-for-desktop-cluster-dev-cluster-1",
+		},
+	}
 	dockerDesktopEdgeContexts := map[string]*api.Context{
 		"docker-for-desktop": &api.Context{
 			Cluster: "docker-desktop",
+		},
+	}
+	dockerDesktopEdgePrefixContexts := map[string]*api.Context{
+		"docker-for-desktop-dev-cluster-1": &api.Context{
+			Cluster: "docker-desktop-dev-cluster-1",
 		},
 	}
 	gkeContexts := map[string]*api.Context{
@@ -44,6 +59,11 @@ func TestProvideEnv(t *testing.T) {
 	microK8sContexts := map[string]*api.Context{
 		"microk8s": &api.Context{
 			Cluster: "microk8s-cluster",
+		},
+	}
+	microK8sPrefixContexts := map[string]*api.Context{
+		"microk8s-dev-cluster-1": &api.Context{
+			Cluster: "microk8s-cluster-dev-cluster-1",
 		},
 	}
 
@@ -70,11 +90,15 @@ func TestProvideEnv(t *testing.T) {
 		{EnvNone, &api.Config{}},
 		{EnvUnknown, &api.Config{CurrentContext: "aws"}},
 		{EnvMinikube, &api.Config{CurrentContext: "minikube", Contexts: minikubeContexts}},
+		{EnvMinikube, &api.Config{CurrentContext: "minikube-dev-cluster-1", Contexts: minikubePrefixContexts}},
 		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop", Contexts: dockerDesktopContexts}},
+		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop-dev-cluster-1", Contexts: dockerDesktopPrefixContexts}},
 		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop", Contexts: dockerDesktopEdgeContexts}},
+		{EnvDockerDesktop, &api.Config{CurrentContext: "docker-for-desktop-dev-cluster-1", Contexts: dockerDesktopEdgePrefixContexts}},
 		{EnvGKE, &api.Config{CurrentContext: "gke_blorg-dev_us-central1-b_blorg", Contexts: gkeContexts}},
 		{EnvKIND5, &api.Config{CurrentContext: "kubernetes-admin@kind-1", Contexts: kind5Contexts}},
 		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s", Contexts: microK8sContexts}},
+		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s-dev-cluster-1", Contexts: microK8sPrefixContexts}},
 		{EnvK3D, &api.Config{CurrentContext: "default", Contexts: k3dContexts}},
 		{EnvKIND5, &api.Config{CurrentContext: "default", Contexts: kind5NamedClusterContexts}},
 		{EnvKIND6, &api.Config{CurrentContext: "kind-custom-name", Contexts: kind6Contexts}},

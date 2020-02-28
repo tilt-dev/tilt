@@ -75,9 +75,9 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 	}
 
 	cn := c.Cluster
-	if Env(cn) == EnvMinikube {
+	if strings.HasPrefix(cn, string(EnvMinikube)) {
 		return EnvMinikube
-	} else if cn == "docker-for-desktop-cluster" || cn == "docker-desktop" {
+	} else if strings.HasPrefix(cn, "docker-for-desktop-cluster") || strings.HasPrefix(cn, "docker-desktop") {
 		return EnvDockerDesktop
 	} else if strings.HasPrefix(cn, string(EnvGKE)) {
 		// GKE cluster strings look like:
@@ -89,7 +89,7 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 		// As of KinD 0.6.0, KinD uses a context name prefix
 		// https://github.com/kubernetes-sigs/kind/issues/1060
 		return EnvKIND6
-	} else if cn == "microk8s-cluster" {
+	} else if strings.HasPrefix(cn, "microk8s-cluster") {
 		return EnvMicroK8s
 	}
 
