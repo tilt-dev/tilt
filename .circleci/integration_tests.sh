@@ -46,6 +46,7 @@ containerdConfigPatches:
 EOF
 
 echo "> port-forwarding k8s API server"
+/go/portforward.sh start
 APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -)
 /go/portforward.sh -wait $APISERVER_PORT
 kubectl get nodes # make sure it worked
