@@ -19,12 +19,6 @@
 
 set -oe errexit
 
-# Grab a script from the DIND kubernetes cluster that uses socat to do port-forwarding
-KUBEADM_SHA=30a2033581adf53161fe1cdc76f1550193927db4
-curl https://raw.githubusercontent.com/kubernetes-sigs/kubeadm-dind-cluster/${KUBEADM_SHA}/build/portforward.sh > /tmp/portforward.sh
-apt install -y curl ca-certificates git liblz4-tool rsync socat \
-  && chmod a+x /tmp/portforward.sh
-
 # desired cluster name; default is "kind"
 KIND_CLUSTER_NAME="integration"
 
@@ -53,11 +47,11 @@ EOF
 
 echo "> port-forwarding k8s API server"
 APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -)
-/tmp/portforward.sh -wait $APISERVER_PORT
+/go/portforward.sh -wait $APISERVER_PORT
 kubectl get nodes # make sure it worked
 
 echo "> port-forwarding local registry"
-/tmp/portforward.sh -wait $reg_port
+/go/portforward.sh -wait $reg_port
 
 echo "> annotating nodes"
 # add the registry to /etc/hosts on each node
