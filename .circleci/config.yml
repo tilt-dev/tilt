@@ -78,21 +78,25 @@ jobs:
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:90db2a02e174d4109e415e84ec78a89c2a6da09b3578d135002b702dd575ed56
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:132dd09f30d3b5f9b70899e900c2cc48cf0d6f5c9caf2b99e19615793a21a357
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
-      # Delete any existing clusters, for `circleci local execute` mode
       - run: kind delete cluster --name=integration || exit 0
       - run: docker kill portforward || exit 0
       - run: docker rm portforward || exit 0
       - run: /go/portforward.sh start
-      - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh -s init && export KUBECONFIG="$(kind get kubeconfig-path --name="integration")"
-      - run: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
+      - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh -s init
+      - run:
+          command: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
              /go/portforward.sh -wait $APISERVER_PORT &&
-             kubectl get nodes"
+             kubectl get nodes && echo $APISERVER_PORT"
+          background: true
       - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh -s annotate
+      - run:
+          command: "/go/portforward.sh -wait 5000"
+          background: true
       - run: make integration
       - store_test_results:
           path: test-results
