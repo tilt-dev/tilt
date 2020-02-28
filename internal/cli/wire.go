@@ -43,7 +43,6 @@ import (
 
 var K8sWireSet = wire.NewSet(
 	k8s.ProvideEnv,
-	k8s.DetectNodeIP,
 	k8s.ProvideClusterName,
 	k8s.ProvideKubeContext,
 	k8s.ProvideKubeConfig,

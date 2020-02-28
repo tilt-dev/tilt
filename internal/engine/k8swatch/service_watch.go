@@ -18,18 +18,16 @@ type ServiceWatcher struct {
 	kCli         k8s.Client
 	ownerFetcher k8s.OwnerFetcher
 	watching     bool
-	nodeIP       k8s.NodeIP
 
 	mu                sync.RWMutex
 	knownDeployedUIDs map[types.UID]model.ManifestName
 	knownServices     map[types.UID]*v1.Service
 }
 
-func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, nodeIP k8s.NodeIP) *ServiceWatcher {
+func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *ServiceWatcher {
 	return &ServiceWatcher{
 		kCli:              kCli,
 		ownerFetcher:      ownerFetcher,
-		nodeIP:            nodeIP,
 		knownDeployedUIDs: make(map[types.UID]model.ManifestName),
 		knownServices:     make(map[types.UID]*v1.Service),
 	}
@@ -89,7 +87,7 @@ func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newU
 			continue
 		}
 
-		err := DispatchServiceChange(st, service, mn, w.nodeIP)
+		err := DispatchServiceChange(st, service, mn, w.kCli.NodeIP(ctx))
 		if err != nil {
 			logger.Get(ctx).Infof("error resolving service url %s: %v", service.Name, err)
 		}
@@ -128,7 +126,7 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 				continue
 			}
 
-			err := DispatchServiceChange(st, service, manifestName, w.nodeIP)
+			err := DispatchServiceChange(st, service, manifestName, w.kCli.NodeIP(ctx))
 			if err != nil {
 				logger.Get(ctx).Infof("error resolving service url %s: %v", service.Name, err)
 			}

@@ -16,10 +16,7 @@ import (
 
 func WireSynclet(ctx context.Context, runtime container.Runtime) (*Synclet, error) {
 	clusterEnv := docker.ProvideEmptyClusterEnv()
-	localEnv, err := docker.ProvideLocalEnv(ctx, clusterEnv)
-	if err != nil {
-		return nil, err
-	}
+	localEnv := docker.ProvideLocalEnv(ctx, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	client := docker.ProvideLocalAsDefault(localClient)
 	synclet := NewSynclet(client)

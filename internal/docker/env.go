@@ -23,6 +23,10 @@ type Env struct {
 	// Minikube's docker client has a bug where it can't use buildkit. See:
 	// https://github.com/kubernetes/minikube/issues/4143
 	IsMinikube bool
+
+	// If the env failed to load for some reason, propagate that error
+	// so that we can report it when the user tries to do a docker_build.
+	Error error
 }
 
 // Serializes this back to environment variables for os.Environ
@@ -47,11 +51,8 @@ func (e Env) AsEnviron() []string {
 type ClusterEnv Env
 type LocalEnv Env
 
-func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) (LocalEnv, error) {
-	result, err := overlayOSEnvVars(Env{})
-	if err != nil {
-		return LocalEnv{}, err
-	}
+func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) LocalEnv {
+	result := overlayOSEnvVars(Env{})
 
 	// The user may have already configured their local docker client
 	// to use Minikube's docker server. We check for that by comparing
@@ -60,10 +61,10 @@ func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) (LocalEnv, error) {
 		result.IsMinikube = cEnv.IsMinikube
 	}
 
-	return LocalEnv(result), err
+	return LocalEnv(result)
 }
 
-func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient minikube.Client) (ClusterEnv, error) {
+func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient minikube.Client) ClusterEnv {
 	result := Env{}
 
 	if runtime == container.RuntimeDocker {
@@ -71,7 +72,7 @@ func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runti
 			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
 			envMap, err := minikubeClient.DockerEnv(ctx)
 			if err != nil {
-				return ClusterEnv{}, errors.Wrap(err, "ProvideDockerEnv")
+				return ClusterEnv{Error: err}
 			}
 
 			host := envMap["DOCKER_HOST"]
@@ -101,19 +102,15 @@ func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runti
 		}
 	}
 
-	resultEnv, err := overlayOSEnvVars(Env(result))
-	if err != nil {
-		return ClusterEnv{}, err
-	}
-	return ClusterEnv(resultEnv), nil
+	return ClusterEnv(overlayOSEnvVars(Env(result)))
 }
 
-func overlayOSEnvVars(result Env) (Env, error) {
+func overlayOSEnvVars(result Env) Env {
 	host := os.Getenv("DOCKER_HOST")
 	if host != "" {
 		host, err := opts.ParseHost(true, host)
 		if err != nil {
-			return Env{}, errors.Wrap(err, "ProvideDockerEnv")
+			return Env{Error: errors.Wrap(err, "ProvideDockerEnv")}
 		}
 
 		// If the docker host is set from the env and different from the cluster host,
@@ -138,5 +135,5 @@ func overlayOSEnvVars(result Env) (Env, error) {
 		result.TLSVerify = tlsVerify
 	}
 
-	return result, nil
+	return result
 }

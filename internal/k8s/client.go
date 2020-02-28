@@ -104,6 +104,9 @@ type Client interface {
 	// Some clusters support a local image registry that we can push to.
 	LocalRegistry(ctx context.Context) container.Registry
 
+	// Some clusters support a node IP where all servers are reachable.
+	NodeIP(ctx context.Context) NodeIP
+
 	Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error
 }
 
@@ -118,6 +121,7 @@ type K8sClient struct {
 	dynamic           dynamic.Interface
 	runtimeAsync      *runtimeAsync
 	registryAsync     *registryAsync
+	nodeIPAsync       *nodeIPAsync
 	drm               meta.RESTMapper
 }
 
@@ -150,6 +154,7 @@ func ProvideK8sClient(
 	core := clientset.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
 	registryAsync := newRegistryAsync(env, core, runtimeAsync)
+	nodeIPAsync := newNodeIPAsync(env)
 
 	di, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
@@ -178,6 +183,7 @@ func ProvideK8sClient(
 		clientset:         clientset,
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,
+		nodeIPAsync:       nodeIPAsync,
 		dynamic:           di,
 		drm:               drm,
 	}
