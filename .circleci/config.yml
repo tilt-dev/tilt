@@ -81,23 +81,9 @@ jobs:
       - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:132dd09f30d3b5f9b70899e900c2cc48cf0d6f5c9caf2b99e19615793a21a357
     steps:
       - checkout
-      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
+      - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
-      - run: kind delete cluster --name=integration || exit 0
-      - run: docker kill portforward || exit 0
-      - run: docker rm portforward || exit 0
-      - run: /go/portforward.sh start
-      - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh -s init
-      - run:
-          command: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
-             /go/portforward.sh -wait $APISERVER_PORT &&
-             kubectl get nodes && echo $APISERVER_PORT"
-          background: true
-      - run: KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh -s annotate
-      - run:
-          command: "/go/portforward.sh -wait 5000"
-          background: true
-      - run: make integration
+      - run: .circleci/integration_tests.sh
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
