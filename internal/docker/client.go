@@ -137,6 +137,10 @@ type Cli struct {
 }
 
 func NewDockerClient(ctx context.Context, env Env) Client {
+	if env.Error != nil {
+		return newExplodingClient(env.Error)
+	}
+
 	opts, err := CreateClientOpts(ctx, env)
 	if err != nil {
 		return newExplodingClient(err)

@@ -60,8 +60,9 @@ type FakeK8sClient struct {
 	UpsertError      error
 	LastUpsertResult []K8sEntity
 
-	Runtime  container.Runtime
-	Registry container.Registry
+	Runtime    container.Runtime
+	Registry   container.Registry
+	FakeNodeIP NodeIP
 
 	entityByName            map[string]K8sEntity
 	getByReferenceCallCount int
@@ -347,6 +348,10 @@ func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime 
 
 func (c *FakeK8sClient) LocalRegistry(ctx context.Context) container.Registry {
 	return c.Registry
+}
+
+func (c *FakeK8sClient) NodeIP(ctx context.Context) NodeIP {
+	return c.FakeNodeIP
 }
 
 func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {

@@ -3451,7 +3451,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	kCli := k8s.NewFakeK8sClient()
 	of := k8s.ProvideOwnerFetcher(kCli)
 	pw := k8swatch.NewPodWatcher(kCli, of)
-	sw := k8swatch.NewServiceWatcher(kCli, of, "")
+	sw := k8swatch.NewServiceWatcher(kCli, of)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))

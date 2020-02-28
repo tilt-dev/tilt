@@ -253,15 +253,11 @@ func TestProvideEnv(t *testing.T) {
 			}()
 
 			mkClient := minikube.FakeClient{DockerEnvMap: c.mkEnv}
-			cluster, err := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient)
-			if assert.NoError(t, err) {
-				assert.Equal(t, c.expectedCluster, Env(cluster))
-			}
+			cluster := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient)
+			assert.Equal(t, c.expectedCluster, Env(cluster))
 
-			local, err := ProvideLocalEnv(context.Background(), cluster)
-			if assert.NoError(t, err) {
-				assert.Equal(t, c.expectedLocal, Env(local))
-			}
+			local := ProvideLocalEnv(context.Background(), cluster)
+			assert.Equal(t, c.expectedLocal, Env(local))
 		})
 	}
 }
