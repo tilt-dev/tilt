@@ -27,7 +27,7 @@ RUN apt update && apt install -y apt-transport-https \
   && echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list \
   && apt update && apt install -y kubectl
   # Install cluster script, which downloads the necessary containers.
-  
+
 # Grab a script from the DIND kubernetes cluster that uses socat to do port-forwarding
 ENV KUBEADM_SHA=30a2033581adf53161fe1cdc76f1550193927db4
 ADD https://raw.githubusercontent.com/kubernetes-sigs/kubeadm-dind-cluster/${KUBEADM_SHA}/build/portforward.sh .

@@ -80,21 +80,12 @@ jobs:
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:da50861fa4e8caaecefbd82986e1d13ad97cd1264d24ea7c1889e1aa91728ae5
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:132dd09f30d3b5f9b70899e900c2cc48cf0d6f5c9caf2b99e19615793a21a357
     steps:
       - checkout
-      - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
+      - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
-      # Delete any existing clusters, for `circleci local execute` mode
-      - run: kind delete cluster --name=integration || exit 0
-      - run: docker kill portforward || exit 0
-      - run: docker rm portforward || exit 0
-      - run: /go/portforward.sh start
-      - run: kind create cluster --name=integration
-      - run: "export APISERVER_PORT=$(kubectl config view -o jsonpath='{.clusters[].cluster.server}' | cut -d: -f 3 -) &&
-             /go/portforward.sh -wait $APISERVER_PORT &&
-             kubectl get nodes &&
-             make integration"
+      - run: .circleci/integration_tests.sh
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
