@@ -179,6 +179,14 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 	}
 }
 
+func (w *PodWatcher) upsertPod(pod *v1.Pod) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	uid := pod.UID
+	w.knownPods[uid] = pod
+}
+
 // Check to see if this pod corresponds to any of our manifests.
 //
 // Currently, we do this by comparing the pod UID and its owner UIDs against
@@ -187,12 +195,11 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 //
 // If the pod doesn't match an existing deployed resource, keep it in local
 // state, so we can match it later if the owner UID shows up.
-func (w *PodWatcher) triagePodUpdate(pod *v1.Pod, objTree k8s.ObjectRefTree) (model.ManifestName, types.UID) {
+func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) (model.ManifestName, types.UID) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	uid := pod.UID
-	w.knownPods[uid] = pod
 
 	// Set up the descendent pod UID index
 	for _, ownerUID := range objTree.UIDs() {
@@ -242,12 +249,17 @@ func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st stor
 		return
 	}
 
-	mn, ancestorUID := w.triagePodUpdate(pod, objTree)
+	mn, ancestorUID := w.triagePodTree(pod, objTree)
 	if mn == "" {
 		return
 	}
 
-	st.Dispatch(NewPodChangeAction(pod, mn, ancestorUID))
+	w.mu.Lock()
+	freshPod, ok := w.knownPods[pod.UID]
+	if ok {
+		st.Dispatch(NewPodChangeAction(freshPod, mn, ancestorUID))
+	}
+	w.mu.Unlock()
 }
 
 func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.ObjectUpdate, st store.RStore) {
@@ -260,6 +272,8 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.O
 
 			pod, ok := obj.AsPod()
 			if ok {
+				w.upsertPod(pod)
+
 				go w.dispatchPodChange(ctx, pod, st)
 				continue
 			}

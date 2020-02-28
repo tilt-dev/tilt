@@ -3,12 +3,15 @@ package k8swatch
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -177,6 +180,44 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	assert.Equal(t, []model.ManifestName{manifest2.Name, manifest2.Name}, f.manifestNames)
 }
 
+func TestPodsDispatchedInOrder(t *testing.T) {
+	f := newPWFixture(t)
+	defer f.TearDown()
+	manifest := f.addManifestWithSelectors("server")
+
+	f.pw.OnChange(f.ctx, f.store)
+
+	ls := k8s.ManagedByTiltSelector()
+	pb := podbuilder.New(t, manifest)
+
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+
+	count := 20
+	pods := []*v1.Pod{}
+	for i := 0; i < count; i++ {
+		pod := pb.WithResourceVersion(fmt.Sprintf("%d", i)).Build()
+		pods = append(pods, pod)
+	}
+
+	for _, pod := range pods {
+		f.kClient.EmitPod(ls, pod)
+	}
+
+	f.waitForPodActionCount(count)
+
+	// Make sure the pods showed up in order.
+	for i := 1; i < count; i++ {
+		pod := f.pods[i]
+		lastPod := f.pods[i-1]
+		podV, _ := strconv.Atoi(pod.ResourceVersion)
+		lastPodV, _ := strconv.Atoi(lastPod.ResourceVersion)
+		if lastPodV > podV {
+			t.Fatalf("Pods appeared out of order\nPod %d: %v\nPod %d: %v\n", i-1, lastPod, i, pod)
+		}
+	}
+}
+
 type podStatusTestCase struct {
 	pod      corev1.PodStatus
 	status   string
@@ -263,9 +304,13 @@ type pwFixture struct {
 	store         *store.Store
 	pods          []*corev1.Pod
 	manifestNames []model.ManifestName
+	mu            sync.Mutex
 }
 
 func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, action store.Action) {
+	pw.mu.Lock()
+	defer pw.mu.Unlock()
+
 	a, ok := action.(PodChangeAction)
 	if !ok {
 		pw.t.Errorf("Expected action type PodLogAction. Actual: %T", action)
@@ -321,14 +366,25 @@ func (f *pwFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 	runtimeState.DeployedUIDSet[uid] = true
 }
 
-func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
+func (f *pwFixture) waitForPodActionCount(count int) {
 	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
-		if len(pods) == len(f.pods) {
-			break
+	for time.Since(start) < time.Second {
+		f.mu.Lock()
+		podCount := len(f.pods)
+		f.mu.Unlock()
+
+		if podCount >= count {
+			return
 		}
+
+		time.Sleep(100 * time.Millisecond)
 	}
 
+	f.t.Fatalf("Timeout waiting for %d pod actions", count)
+}
+
+func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
+	f.waitForPodActionCount(len(pods))
 	require.ElementsMatch(f.t, pods, f.pods)
 }
 
