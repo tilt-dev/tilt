@@ -14,7 +14,7 @@ func BenchmarkNestedFlexLayouts(b *testing.B) {
 	assert.NoError(b, err)
 	sc.SetSize(100, 100)
 
-	r := NewRTY(sc)
+	r := NewRTY(sc, b)
 
 	run := func() {
 
@@ -27,8 +27,7 @@ func BenchmarkNestedFlexLayouts(b *testing.B) {
 		}
 
 		innerF.Add(TextString("hello"))
-		err = r.Render(topF)
-		assert.NoError(b, err)
+		r.Render(topF)
 	}
 	for i := 0; i < b.N; i++ {
 		run()

@@ -871,7 +871,7 @@ func (rtf rendererTestFixture) run(name string, w int, h int, v view.View, vs vi
 	}
 
 	r := NewRenderer(clockForTest)
-	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
+	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""), rtf.i.T())
 	c := r.layout(v, vs)
 	rtf.i.Run(name, w, h, c)
 }

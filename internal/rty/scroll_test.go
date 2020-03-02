@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestElementScroll(t *testing.T) {
@@ -139,19 +137,16 @@ func (f *elementScrollTestFixture) run(name string) {
 }
 
 func (f *elementScrollTestFixture) down() {
-	_, err := f.i.render(20, 10, f.layout())
-	require.NoError(f.t, err)
+	_ = f.i.render(20, 10, f.layout())
 	f.scroller().Down()
 }
 
 func (f *elementScrollTestFixture) up() {
-	_, err := f.i.render(20, 10, f.layout())
-	require.NoError(f.t, err)
+	_ = f.i.render(20, 10, f.layout())
 	f.scroller().Up()
 }
 
 func (f *elementScrollTestFixture) bottom() {
-	_, err := f.i.render(20, 10, f.layout())
-	require.NoError(f.t, err)
+	_ = f.i.render(20, 10, f.layout())
 	f.scroller().Bottom()
 }
