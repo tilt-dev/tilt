@@ -271,6 +271,7 @@ type BuildState struct {
 	FilesChangedSet map[string]bool
 
 	// Whether there was a manual trigger
+	// TODO(nick): Replace this with a BuildReason
 	NeedsForceUpdate bool
 
 	RunningContainers []ContainerInfo

@@ -175,7 +175,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case DockerComposeEventAction:
 		handleDockerComposeEvent(ctx, state, action)
 	case server.AppendToTriggerQueueAction:
-		appendToTriggerQueue(state, action.Name)
+		appendToTriggerQueue(state, action.Name, action.Reason)
 	case hud.StartProfilingAction:
 		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
@@ -393,14 +393,20 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	return nil
 }
 
-func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
-	_, ok := state.ManifestState(mn)
+func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName, reason model.BuildReason) {
+	ms, ok := state.ManifestState(mn)
 	if !ok {
 		return
 	}
 
-	for _, triggerName := range state.TriggerQueue {
-		if mn == triggerName {
+	if reason == 0 {
+		reason = model.BuildReasonFlagTriggerUnknown
+	}
+
+	ms.TriggerReason = ms.TriggerReason.With(reason)
+
+	for _, queued := range state.TriggerQueue {
+		if mn == queued {
 			return
 		}
 	}
@@ -408,6 +414,11 @@ func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName) {
 }
 
 func removeFromTriggerQueue(state *store.EngineState, mn model.ManifestName) {
+	mState, ok := state.ManifestState(mn)
+	if ok {
+		mState.TriggerReason = model.BuildReasonNone
+	}
+
 	for i, triggerName := range state.TriggerQueue {
 		if triggerName == mn {
 			state.TriggerQueue = append(state.TriggerQueue[:i], state.TriggerQueue[i+1:]...)

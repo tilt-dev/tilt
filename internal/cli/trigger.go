@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func newTriggerCmd() *cobra.Command {
@@ -28,7 +30,7 @@ func triggerUpdate(cmd *cobra.Command, args []string) {
 
 	// TODO(maia): this should probably be the triggerPayload struct, but seems
 	//   like a lot of code to move over (to avoid import cycles) for one call.
-	payload := []byte(fmt.Sprintf(`{"manifest_names":[%q]}`, resource))
+	payload := []byte(fmt.Sprintf(`{"manifest_names":[%q], "build_reason": %d}`, resource, model.BuildReasonFlagTriggerCLI))
 
 	body := apiPostJson(webPort, "trigger", payload)
 	_ = body.Close()
