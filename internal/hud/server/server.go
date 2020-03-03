@@ -43,7 +43,8 @@ type analyticsOptPayload struct {
 }
 
 type triggerPayload struct {
-	ManifestNames []string `json:"manifest_names"`
+	ManifestNames []string          `json:"manifest_names"`
+	BuildReason   model.BuildReason `json:"build_reason"`
 }
 
 type actionPayload struct {
@@ -271,14 +272,14 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	err = SendToTriggerQueue(s.store, payload.ManifestNames[0])
+	err = SendToTriggerQueue(s.store, payload.ManifestNames[0], payload.BuildReason)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 }
 
-func SendToTriggerQueue(st store.RStore, name string) error {
+func SendToTriggerQueue(st store.RStore, name string, buildReason model.BuildReason) error {
 	mName := model.ManifestName(name)
 
 	state := st.RLockState()
@@ -289,7 +290,7 @@ func SendToTriggerQueue(st store.RStore, name string) error {
 		return fmt.Errorf("no manifest found with name '%s'", mName)
 	}
 
-	st.Dispatch(AppendToTriggerQueueAction{Name: mName})
+	st.Dispatch(AppendToTriggerQueueAction{Name: mName, Reason: buildReason})
 	return nil
 }
 

@@ -314,7 +314,7 @@ func TestSendToTriggerQueue_manualManifest(t *testing.T) {
 	state.UpsertManifestTarget(&mt)
 	f.st.UnlockMutableState()
 
-	err := server.SendToTriggerQueue(f.st, "foobar")
+	err := server.SendToTriggerQueue(f.st, "foobar", model.BuildReasonFlagTriggerWeb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,6 +325,7 @@ func TestSendToTriggerQueue_manualManifest(t *testing.T) {
 		t.Fatalf("Action was not of type 'AppendToTriggerQueueAction': %+v", action)
 	}
 	assert.Equal(t, "foobar", action.Name.String())
+	assert.Equal(t, model.BuildReasonFlagTriggerWeb, action.Reason)
 }
 
 func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
@@ -340,7 +341,7 @@ func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
 	state.UpsertManifestTarget(&mt)
 	f.st.UnlockMutableState()
 
-	err := server.SendToTriggerQueue(f.st, "foobar")
+	err := server.SendToTriggerQueue(f.st, "foobar", model.BuildReasonFlagTriggerWeb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,7 +357,7 @@ func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
 func TestSendToTriggerQueue_noManifestWithName(t *testing.T) {
 	f := newTestFixture(t)
 
-	err := server.SendToTriggerQueue(f.st, "foobar")
+	err := server.SendToTriggerQueue(f.st, "foobar", model.BuildReasonFlagTriggerWeb)
 
 	assert.EqualError(t, err, "no manifest found with name 'foobar'")
 	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)

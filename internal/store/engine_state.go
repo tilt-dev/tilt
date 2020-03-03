@@ -325,6 +325,9 @@ type ManifestState struct {
 
 	// If this manifest was changed, which config files led to the most recent change in manifest definition
 	ConfigFilesThatCausedChange []string
+
+	// If the build was manually triggered, record why.
+	TriggerReason model.BuildReason
 }
 
 func NewState() *EngineState {
@@ -471,7 +474,8 @@ func (ms *ManifestState) HasPendingFileChanges() bool {
 }
 
 func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
-	reason := model.BuildReasonNone
+	state := mt.State
+	reason := state.TriggerReason
 	if mt.State.HasPendingFileChanges() {
 		reason = reason.With(model.BuildReasonFlagChangedFiles)
 	}
