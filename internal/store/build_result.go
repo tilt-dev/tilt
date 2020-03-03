@@ -270,9 +270,21 @@ type BuildState struct {
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
 	FilesChangedSet map[string]bool
 
-	// Whether there was a manual trigger
-	// TODO(nick): Replace this with a BuildReason
-	NeedsForceUpdate bool
+	// There are three kinds of triggers:
+	//
+	// 1) If a resource is in trigger_mode=TRIGGER_MODE_AUTO, then the resource auto-builds.
+	//    Pressing the trigger will always do a full image build.
+	//
+	// 2) If a resource is in trigger_mode=TRIGGER_MODE_MANUAL and there are no pending changes,
+	//    then pressing the trigger will do a full image build.
+	//
+	// 3) If a resource is in trigger_mode=TRIGGER_MODE_MANUAL, and there are
+	//    pending changes, then pressing the trigger will do a live_update (if one
+	//    is configured; otherwise, will do an image build as normal)
+	//
+	// This field indicates case 1 || case 2 -- i.e. that we should skip
+	// live_update, and force an image build (even if there are no changed files)
+	ImageBuildTriggered bool
 
 	RunningContainers []ContainerInfo
 
@@ -301,8 +313,8 @@ func (b BuildState) WithRunningContainerError(err error) BuildState {
 	return b
 }
 
-func (b BuildState) WithNeedsForceUpdate(needsForceUpdate bool) BuildState {
-	b.NeedsForceUpdate = needsForceUpdate
+func (b BuildState) WithImageBuildTriggered(isImageBuildTrigger bool) BuildState {
+	b.ImageBuildTriggered = isImageBuildTrigger
 	return b
 }
 
@@ -349,7 +361,7 @@ func (b BuildState) HasLastSuccessfulResult() bool {
 func (b BuildState) NeedsImageBuild() bool {
 	lastBuildWasImgBuild := b.LastSuccessfulResult != nil &&
 		b.LastSuccessfulResult.BuildType() == model.BuildTypeImage
-	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0 || b.NeedsForceUpdate
+	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0 || b.ImageBuildTriggered
 }
 
 type BuildStateSet map[model.TargetID]BuildState
