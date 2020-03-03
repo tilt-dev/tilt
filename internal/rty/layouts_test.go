@@ -14,13 +14,12 @@ func TestFlexLayoutOverflow(t *testing.T) {
 	err := sc.Init()
 	assert.NoError(t, err)
 
-	r := NewRTY(sc)
+	r := NewRTY(sc, t)
 
 	f := NewFlexLayout(DirHor)
 	f.Add(TextString("hello"))
 	f.Add(TextString("world"))
-	err = r.Render(f)
-	assert.NoError(t, err)
+	r.Render(f)
 
 	i := NewInteractiveTester(t, screen)
 	i.Run("text overflow", 8, 1, f)
@@ -87,7 +86,7 @@ func TestNestedConcatLayoutOverflow(t *testing.T) {
 	err := sc.Init()
 	assert.NoError(t, err)
 
-	r := NewRTY(sc)
+	r := NewRTY(sc, t)
 
 	f1 := NewConcatLayout(DirHor)
 	for i := 0; i < 10; i++ {
@@ -102,8 +101,7 @@ func TestNestedConcatLayoutOverflow(t *testing.T) {
 		f2.AddDynamic(NewFillerString(' '))
 	}
 
-	err = r.Render(NewFixedSize(f1, 8, 1))
-	assert.NoError(t, err)
+	r.Render(NewFixedSize(f1, 8, 1))
 
 	i := NewInteractiveTester(t, screen)
 	i.Run("concat text overflow", 8, 1, f1)
@@ -114,7 +112,7 @@ func TestMinWidthInNestedConcatLayoutOverflow(t *testing.T) {
 	err := sc.Init()
 	assert.NoError(t, err)
 
-	r := NewRTY(sc)
+	r := NewRTY(sc, t)
 
 	f1 := NewConcatLayout(DirHor)
 	for i := 0; i < 10; i++ {
@@ -125,8 +123,7 @@ func TestMinWidthInNestedConcatLayoutOverflow(t *testing.T) {
 	f2 := NewConcatLayout(DirHor)
 	f2.Add(f1)
 
-	err = r.Render(f2)
-	assert.NoError(t, err)
+	r.Render(f2)
 
 	i := NewInteractiveTester(t, screen)
 	i.Run("min width concat text overflow", 8, 1, f2)

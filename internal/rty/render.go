@@ -1,39 +1,39 @@
 package rty
 
 import (
-	"fmt"
-
 	"github.com/gdamore/tcell"
 )
 
-func NewRTY(screen tcell.Screen) RTY {
+func NewRTY(screen tcell.Screen, handler ErrorHandler) RTY {
 	return &rty{
-		screen: screen,
-		state:  make(renderState),
+		screen:  screen,
+		state:   make(renderState),
+		handler: handler,
 	}
 }
 
 type rty struct {
-	screen tcell.Screen
-	state  renderState
+	screen  tcell.Screen
+	state   renderState
+	handler ErrorHandler
 }
 
 type renderState map[string]interface{}
 
-func (r *rty) Render(c Component) (err error) {
+func (r *rty) Render(c Component) {
 	g := &renderGlobals{
 		prev: r.state,
 		next: make(renderState),
 	}
 	f := renderFrame{
-		canvas:  newScreenCanvas(r.screen),
+		canvas:  newScreenCanvas(r.screen, r.handler),
 		globals: g,
+		handler: r.handler,
 	}
 
 	f.RenderChild(c)
 	r.screen.Show()
 	r.state = g.next
-	return g.err
 }
 
 func (r *rty) RegisterElementScroll(name string, children []string) (l *ElementScrollLayout, selectedChild string) {
@@ -64,7 +64,6 @@ func (r *rty) TextScroller(name string) TextScroller {
 }
 
 type renderGlobals struct {
-	err  error
 	prev renderState
 	next renderState
 }
@@ -77,19 +76,14 @@ func (g *renderGlobals) Set(key string, d interface{}) {
 	g.next[key] = d
 }
 
-func (g *renderGlobals) errorf(format string, a ...interface{}) {
-	if g.err != nil {
-		return
-	}
-	g.err = fmt.Errorf(format, a...)
-}
-
 type renderFrame struct {
 	canvas Canvas
 
 	style tcell.Style
 
 	globals *renderGlobals
+
+	handler ErrorHandler
 }
 
 var _ Writer = renderFrame{}
@@ -98,15 +92,13 @@ func (f renderFrame) SetContent(x int, y int, mainc rune, combc []rune) {
 	if mainc == 0 {
 		mainc = ' '
 	}
-	if err := f.canvas.SetContent(x, y, mainc, combc, f.style); err != nil {
-		f.error(err)
-	}
+	f.canvas.SetContent(x, y, mainc, combc, f.style)
 }
 
 func (f renderFrame) Fill() (Writer, error) {
 	width, height := f.canvas.Size()
 	var err error
-	f.canvas, err = newSubCanvas(f.canvas, 0, 0, width, height, f.style)
+	f.canvas, err = newSubCanvas(f.canvas, 0, 0, width, height, f.style, f.handler)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +107,7 @@ func (f renderFrame) Fill() (Writer, error) {
 
 func (f renderFrame) Divide(x, y, width, height int) (Writer, error) {
 	var err error
-	f.canvas, err = newSubCanvas(f.canvas, x, y, width, height, f.style)
+	f.canvas, err = newSubCanvas(f.canvas, x, y, width, height, f.style, f.handler)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +129,10 @@ func (f renderFrame) Invert() Writer {
 	return f
 }
 
+func (f renderFrame) error(err error) {
+	f.handler.Errorf("%v", err)
+}
+
 func (f renderFrame) RenderChild(c Component) int {
 	width, height := f.canvas.Size()
 	if err := c.Render(f, width, height); err != nil {
@@ -149,7 +145,7 @@ func (f renderFrame) RenderChild(c Component) int {
 
 func (f renderFrame) RenderChildInTemp(c Component) Canvas {
 	width, _ := f.canvas.Size()
-	tmp := newTempCanvas(width, GROW, f.style)
+	tmp := newTempCanvas(width, GROW, f.style, f.handler)
 	f.canvas = tmp
 
 	if err := c.Render(f, width, GROW); err != nil {
@@ -169,13 +165,8 @@ func (f renderFrame) Embed(src Canvas, srcY int, srcHeight int) error {
 
 	for i := 0; i < numLines; i++ {
 		for j := 0; j < width; j++ {
-			mainc, combc, style, _, err := src.GetContent(j, srcY+i)
-			if err != nil {
-				return err
-			}
-			if err := f.canvas.SetContent(j, i, mainc, combc, style); err != nil {
-				f.error(err)
-			}
+			mainc, combc, style, _ := src.GetContent(j, srcY+i)
+			f.canvas.SetContent(j, i, mainc, combc, style)
 		}
 	}
 
@@ -192,12 +183,4 @@ func (f renderFrame) RenderStateful(c StatefulComponent, name string) {
 	}
 
 	f.globals.Set(name, next)
-}
-
-func (f renderFrame) errorf(fmt string, a ...interface{}) {
-	f.globals.errorf(fmt, a...)
-}
-
-func (f renderFrame) error(err error) {
-	f.globals.errorf("%s", err.Error())
 }

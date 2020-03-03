@@ -66,13 +66,13 @@ func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics
 	}, nil
 }
 
-func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) error {
+func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	currentViewState := h.currentViewState
 	currentViewState.ShowNarration = true
 	currentViewState.NarrationMessage = msg
-	return h.setViewState(ctx, currentViewState)
+	h.setViewState(ctx, currentViewState)
 }
 
 func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
@@ -119,10 +119,7 @@ func (h *Hud) Run(ctx context.Context, dispatch func(action store.Action), refre
 				return nil
 			}
 		case <-ticker.C:
-			err := h.Refresh(ctx)
-			if err != nil {
-				return err
-			}
+			h.Refresh(ctx)
 		}
 	}
 }
@@ -258,11 +255,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 		// just marking this as where sigwinch gets handled
 	}
 
-	err := h.refresh(ctx)
-	if err != nil {
-		dispatch(NewExitAction(err))
-	}
-
+	h.refresh(ctx)
 	return false
 }
 
@@ -294,20 +287,20 @@ func (h *Hud) OnChange(ctx context.Context, st store.RStore) {
 	h.refreshSelectedIndex()
 }
 
-func (h *Hud) Refresh(ctx context.Context) error {
+func (h *Hud) Refresh(ctx context.Context) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.refresh(ctx)
+	h.refresh(ctx)
 }
 
 // Must hold the lock
-func (h *Hud) setViewState(ctx context.Context, currentViewState view.ViewState) error {
+func (h *Hud) setViewState(ctx context.Context, currentViewState view.ViewState) {
 	h.currentViewState = currentViewState
-	return h.refresh(ctx)
+	h.refresh(ctx)
 }
 
 // Must hold the lock
-func (h *Hud) refresh(ctx context.Context) error {
+func (h *Hud) refresh(ctx context.Context) {
 	// TODO: We don't handle the order of resources changing
 	for len(h.currentViewState.Resources) < len(h.currentView.Resources) {
 		h.currentViewState.Resources = append(h.currentViewState.Resources, view.ResourceViewState{})
@@ -316,12 +309,7 @@ func (h *Hud) refresh(ctx context.Context) error {
 	vs := h.currentViewState
 	vs.Resources = append(vs.Resources, h.currentViewState.Resources...)
 
-	return h.Update(h.currentView, h.currentViewState)
-}
-
-func (h *Hud) Update(v view.View, vs view.ViewState) error {
-	err := h.r.Render(v, vs)
-	return errors.Wrap(err, "error rendering hud")
+	h.r.Render(h.currentView, h.currentViewState)
 }
 
 func (h *Hud) resetResourceSelection() {

@@ -21,10 +21,9 @@ func TestRenderInit(t *testing.T) {
 
 	clockForTest := func() time.Time { return time.Date(2017, 1, 1, 12, 0, 0, 0, time.UTC) }
 	r := NewRenderer(clockForTest)
-	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""))
+	r.rty = rty.NewRTY(tcell.NewSimulationScreen(""), t)
 	webURL, _ := url.Parse("http://localhost:10350")
 	hud, err := ProvideHud(true, r, model.WebURL(*webURL), ta, NewIncrementalPrinter(logs))
 	require.NoError(t, err)
-	err = hud.(*Hud).refresh(ctx)
-	require.NoError(t, err)
+	hud.(*Hud).refresh(ctx) // Ensure we render without error
 }

@@ -9,7 +9,7 @@ import (
 // Components are able to render themselves onto a screen
 
 type RTY interface {
-	Render(c Component) error
+	Render(c Component)
 
 	// Register must be called before Render
 	RegisterElementScroll(name string, children []string) (l *ElementScrollLayout, selectedChild string)

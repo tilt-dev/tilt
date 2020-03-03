@@ -31,18 +31,14 @@ func NewRenderer(clock func() time.Time) *Renderer {
 	}
 }
 
-func (r *Renderer) Render(v view.View, vs view.ViewState) error {
+func (r *Renderer) Render(v view.View, vs view.ViewState) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	rty := r.rty
 	if rty != nil {
 		layout := r.layout(v, vs)
-		err := rty.Render(layout)
-		if err != nil {
-			return err
-		}
+		rty.Render(layout)
 	}
-	return nil
 }
 
 var cText = tcell.Color232
@@ -313,7 +309,7 @@ func (r *Renderer) SetUp() (chan tcell.Event, error) {
 		}
 	}()
 
-	r.rty = rty.NewRTY(screen)
+	r.rty = rty.NewRTY(screen, rty.SkipErrorHandler{})
 
 	r.screen = screen
 

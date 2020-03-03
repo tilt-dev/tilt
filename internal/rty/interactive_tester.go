@@ -47,7 +47,7 @@ func NewInteractiveTester(t ErrorReporter, screen tcell.Screen) InteractiveTeste
 		usedNames:         make(map[string]bool),
 		dummyScreen:       dummyScreen,
 		interactiveScreen: screen,
-		rty:               NewRTY(dummyScreen),
+		rty:               NewRTY(dummyScreen, t),
 		t:                 t,
 	}
 }
@@ -64,16 +64,16 @@ func (i *InteractiveTester) Run(name string, width int, height int, c Component)
 	i.dummyScreen.Clear()
 }
 
-func (i *InteractiveTester) render(width int, height int, c Component) (canvas Canvas, err error) {
-	actual := newScreenCanvas(i.dummyScreen)
+func (i *InteractiveTester) render(width int, height int, c Component) Canvas {
+	actual := newScreenCanvas(i.dummyScreen, i.t)
 	i.dummyScreen.SetSize(width, height)
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("panic rendering: %v %s", e, debug.Stack())
+			i.t.Fatalf("panic rendering: %v %s", e, debug.Stack())
 		}
 	}()
-	err = i.rty.Render(c)
-	return actual, err
+	i.rty.Render(c)
+	return actual
 }
 
 // Returns an error if rendering failed.
@@ -88,17 +88,10 @@ func (i *InteractiveTester) runCaptureError(name string, width int, height int, 
 		i.t.Fatalf("test name has invalid characters: %s", name)
 	}
 
-	actual, err := i.render(width, height, c)
-	if err != nil {
-		return errors.Wrapf(err, "error rendering %s", name)
-	}
-
+	actual := i.render(width, height, c)
 	expected := i.loadGoldenFile(name)
 
-	eq, err := canvasesEqual(actual, expected)
-	if err != nil {
-		return errors.Wrapf(err, "error comparing canvases for %s", name)
-	}
+	eq := canvasesEqual(actual, expected)
 	if !eq {
 		updated, err := i.displayAndMaybeWrite(name, actual, expected)
 		if err == nil {
@@ -113,30 +106,24 @@ func (i *InteractiveTester) runCaptureError(name string, width int, height int, 
 	return nil
 }
 
-func canvasesEqual(actual, expected Canvas) (bool, error) {
+func canvasesEqual(actual, expected Canvas) bool {
 	actualWidth, actualHeight := actual.Size()
 	expectedWidth, expectedHeight := expected.Size()
 	if actualWidth != expectedWidth || actualHeight != expectedHeight {
-		return false, nil
+		return false
 	}
 
 	for x := 0; x < actualWidth; x++ {
 		for y := 0; y < actualHeight; y++ {
-			actualCh, _, actualStyle, _, err := actual.GetContent(x, y)
-			if err != nil {
-				return false, err
-			}
-			expectedCh, _, expectedStyle, _, err := expected.GetContent(x, y)
-			if err != nil {
-				return false, err
-			}
+			actualCh, _, actualStyle, _ := actual.GetContent(x, y)
+			expectedCh, _, expectedStyle, _ := expected.GetContent(x, y)
 			if actualCh != expectedCh || actualStyle != expectedStyle {
-				return false, nil
+				return false
 			}
 		}
 	}
 
-	return true, nil
+	return true
 }
 
 func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual, expected Canvas, highlightDiff bool) error {
@@ -158,15 +145,9 @@ func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual,
 
 	for y := 0; y < actualHeight; y++ {
 		for x := 0; x < actualWidth; x++ {
-			ch, _, style, _, err := actual.GetContent(x, y)
-			if err != nil {
-				return err
-			}
+			ch, _, style, _ := actual.GetContent(x, y)
 			if highlightDiff {
-				expectedCh, _, expectedStyle, _, err := expected.GetContent(x, y)
-				if err != nil {
-					return err
-				}
+				expectedCh, _, expectedStyle, _ := expected.GetContent(x, y)
 				if ch != expectedCh || style != expectedStyle {
 					style = style.Reverse(true)
 				}
@@ -185,15 +166,9 @@ func (i *InteractiveTester) renderDiff(screen tcell.Screen, name string, actual,
 
 	for y := 0; y < expectedHeight; y++ {
 		for x := 0; x < expectedWidth; x++ {
-			ch, _, style, _, err := expected.GetContent(x, y)
-			if err != nil {
-				return err
-			}
+			ch, _, style, _ := expected.GetContent(x, y)
 			if highlightDiff {
-				actualCh, _, actualStyle, _, err := actual.GetContent(x, y)
-				if err != nil {
-					return err
-				}
+				actualCh, _, actualStyle, _ := actual.GetContent(x, y)
 				if ch != actualCh || style != actualStyle {
 					style = style.Reverse(true)
 				}
@@ -266,7 +241,7 @@ func (i *InteractiveTester) filename(name string) string {
 func (i *InteractiveTester) loadGoldenFile(name string) Canvas {
 	fi, err := os.Open(i.filename(name))
 	if err != nil {
-		return newTempCanvas(1, 1, tcell.StyleDefault)
+		return newTempCanvas(1, 1, tcell.StyleDefault, i.t)
 	}
 	defer func() {
 		err := fi.Close()
@@ -279,17 +254,14 @@ func (i *InteractiveTester) loadGoldenFile(name string) Canvas {
 	var d caseData
 	err = dec.Decode(&d)
 	if err != nil {
-		return newTempCanvas(1, 1, tcell.StyleDefault)
+		return newTempCanvas(1, 1, tcell.StyleDefault, i.t)
 	}
 
-	c := newTempCanvas(d.Width, d.Height, tcell.StyleDefault)
+	c := newTempCanvas(d.Width, d.Height, tcell.StyleDefault, i.t)
 	for i, cell := range d.Cells {
 		x := i % d.Width
 		y := i / d.Width
-		err := c.SetContent(x, y, cell.Ch, nil, cell.Style)
-		if err != nil {
-			log.Printf("error setting content at %d, %d\n", x, y)
-		}
+		c.SetContent(x, y, cell.Ch, nil, cell.Style)
 	}
 
 	return c
@@ -319,10 +291,7 @@ func (i *InteractiveTester) writeGoldenFile(name string, actual Canvas) error {
 	// iterative over y first so we write by rows
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			ch, _, style, _, err := actual.GetContent(x, y)
-			if err != nil {
-				return err
-			}
+			ch, _, style, _ := actual.GetContent(x, y)
 			d.Cells = append(d.Cells, caseCell{Ch: ch, Style: style})
 		}
 	}
