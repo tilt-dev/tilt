@@ -7,10 +7,11 @@ import "strings"
 type Runtime string
 
 const (
-	RuntimeDocker     Runtime = "docker"
-	RuntimeContainerd Runtime = "containerd"
-	RuntimeCrio       Runtime = "cri-o"
-	RuntimeUnknown    Runtime = "unknown"
+	RuntimeDocker      Runtime = "docker"
+	RuntimeContainerd  Runtime = "containerd"
+	RuntimeCrio        Runtime = "cri-o"
+	RuntimeUnknown     Runtime = "unknown"
+	RuntimeReadFailure Runtime = "read-failure"
 )
 
 func RuntimeFromVersionString(s string) Runtime {

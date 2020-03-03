@@ -27,6 +27,6 @@ func TestRuntimeForbidden(t *testing.T) {
 	l := logger.NewLogger(logger.InfoLvl, out)
 	ctx := logger.WithLogger(context.Background(), l)
 	runtime := runtimeAsync.Runtime(ctx)
-	assert.Equal(t, container.RuntimeUnknown, runtime)
+	assert.Equal(t, container.RuntimeReadFailure, runtime)
 	assert.Contains(t, out.String(), "Tilt could not read your node configuration")
 }
