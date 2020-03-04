@@ -38,14 +38,15 @@ func (r *runtimeAsync) Runtime(ctx context.Context) container.Runtime {
 			if isStatusErr {
 				status := statusErr.ErrStatus
 				if status.Code == http.StatusForbidden {
-					logger.Get(ctx).Infof(
-						"ERROR: Tilt could not read your node configuration\n"+
+					logger.Get(ctx).Warnf(
+						"Tilt could not read your node configuration\n"+
 							"  Ask your Kubernetes admin for access to run `kubectl get nodes`.\n"+
 							"  Detail: %v", err)
 				}
 			}
 		}
 		if nodeList == nil || len(nodeList.Items) == 0 {
+			r.runtime = container.RuntimeReadFailure
 			return
 		}
 
