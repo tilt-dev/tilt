@@ -34,7 +34,7 @@ func TestHudEnabled(t *testing.T) {
 				expectedType = &hud.DisabledHud{}
 			}
 
-			assert.IsType(t, expectedType, threads.hud)
+			assert.IsType(t, expectedType, threads.Hud)
 		})
 	}
 }

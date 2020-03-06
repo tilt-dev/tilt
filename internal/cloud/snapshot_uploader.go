@@ -19,6 +19,14 @@ import (
 
 type SnapshotID string
 
+func ToSnapshot(state store.EngineState) (*proto_webview.Snapshot, error) {
+	view, err := webview.StateToProtoView(state, 0)
+	if err != nil {
+		return nil, err
+	}
+	return &proto_webview.Snapshot{View: view}, nil
+}
+
 type SnapshotUploader interface {
 	TakeAndUpload(state store.EngineState) (SnapshotID, error)
 	Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error)
@@ -54,11 +62,11 @@ type snapshotIDResponse struct {
 }
 
 func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, error) {
-	view, err := webview.StateToProtoView(state, 0)
+	snapshot, err := ToSnapshot(state)
 	if err != nil {
 		return "", err
 	}
-	return s.Upload(state.Token, state.TeamName, &proto_webview.Snapshot{View: view})
+	return s.Upload(state.Token, state.TeamName, snapshot)
 }
 
 func (s snapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error) {
