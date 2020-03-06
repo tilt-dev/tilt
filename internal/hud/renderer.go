@@ -45,7 +45,7 @@ var cText = tcell.Color232
 var cLightText = tcell.Color243
 var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
-var cPending = tcell.ColorYellow
+var cPending = tcell.Color243
 
 var statusColors = map[string]tcell.Color{
 	"Running":                                cGood,
@@ -210,7 +210,7 @@ func keyLegend(v view.View, vs view.ViewState) string {
 }
 
 func isInError(res view.Resource) bool {
-	return statusColor(res) == cBad
+	return statusDisplayOptions(res).color == cBad
 }
 
 func isCrashing(res view.Resource) bool {
