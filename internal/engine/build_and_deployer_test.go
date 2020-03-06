@@ -42,9 +42,18 @@ var imageTargetID = model.TargetID{
 	Type: model.TargetTypeImage,
 	Name: "gcr.io/some-project-162817/sancho",
 }
+var k8sTargetID = model.TargetID{
+	Type: model.TargetTypeK8s,
+	Name: "sancho",
+}
 
 var alreadyBuilt = store.NewImageBuildResultSingleRef(imageTargetID, testImageRef)
-var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
+
+// TODO(nick): Move this out of global state.
+var alreadyBuiltSet = store.BuildResultSet{
+	imageTargetID: alreadyBuilt,
+	k8sTargetID:   store.NewK8sDeployResult(k8sTargetID, nil, nil, nil, true),
+}
 
 type expectedFile = testutils.ExpectedFile
 
@@ -987,7 +996,12 @@ func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, st
 	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed}).
 		WithRunningContainers([]store.ContainerInfo{sidecarCInfo})
 
-	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
+	k8sTargetID := manifest.K8sTarget().ID()
+	bs := store.BuildStateSet{
+		sanchoTarg.ID():  sanchoState,
+		sidecarTarg.ID(): sidecarState,
+		k8sTargetID:      store.NewBuildState(store.NewK8sDeployResult(k8sTargetID, nil, nil, nil, true), nil),
+	}
 
 	return manifest, bs
 }
@@ -1118,6 +1132,11 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 			state = state.WithRunningContainers([]store.ContainerInfo{testContainerInfo})
 		}
 		bs[iTarget.ID()] = state
+	}
+
+	if manifest.IsK8s() {
+		k8sTarget := manifest.K8sTarget()
+		bs[k8sTarget.ID()] = store.NewBuildState(store.NewK8sDeployResult(k8sTarget.ID(), nil, nil, nil, true), nil)
 	}
 
 	if len(consumedFiles) != len(changedFiles) {
