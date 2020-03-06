@@ -336,7 +336,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.podEvent(pb.WithContainerID("funnyContainerID").Build(), manifest.Name)
 	call = f.nextCall()
 	assert.True(t, call.oneState().OneContainerInfo().Empty())
-	assert.False(t, call.oneState().NeedsForceUpdate)
+	assert.False(t, call.oneState().ImageBuildTriggered)
 	f.waitForCompletedBuildCount(3)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {
@@ -508,13 +508,18 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 	}
 }
 
-func TestBuildControllerManualTriggerWithFileChanges(t *testing.T) {
+func TestBuildControllerImageBuildTrigger(t *testing.T) {
 	for _, tc := range []struct {
-		name        string
-		triggerMode model.TriggerMode
+		name               string
+		triggerMode        model.TriggerMode
+		filesChanged       bool
+		expectedImageBuild bool
 	}{
-		{"manual including initial", model.TriggerModeManualIncludingInitial},
-		{"manual after initial", model.TriggerModeManualAfterInitial},
+		{name: "manual including initial with change", triggerMode: model.TriggerModeManualIncludingInitial, filesChanged: true, expectedImageBuild: false},
+		{name: "manual after initial with change", triggerMode: model.TriggerModeManualAfterInitial, filesChanged: true, expectedImageBuild: false},
+		{name: "manual including initial without change", triggerMode: model.TriggerModeManualIncludingInitial, filesChanged: false, expectedImageBuild: true},
+		{name: "manual after initial without change", triggerMode: model.TriggerModeManualAfterInitial, filesChanged: false, expectedImageBuild: true},
+		{name: "auto without change", triggerMode: model.TriggerModeAuto, filesChanged: false, expectedImageBuild: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
@@ -530,17 +535,24 @@ func TestBuildControllerManualTriggerWithFileChanges(t *testing.T) {
 				f.nextCallComplete()
 			}
 
-			f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+			expectedFiles := []string{}
+			if tc.filesChanged {
+				expectedFiles = append(expectedFiles, f.JoinPath("main.go"))
+				f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+			}
 			f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-				return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) > 0
+				return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) >= len(expectedFiles)
 			})
-			f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
+
+			if manifest.TriggerMode.AutoOnChange() {
+				f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
+			}
 
 			f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 			call := f.nextCallComplete()
 			state := call.oneState()
-			assert.Equal(t, []string{f.JoinPath("main.go")}, state.FilesChanged())
-			assert.False(t, state.NeedsForceUpdate) // it was NOT a force update, b/c there were changed files
+			assert.Equal(t, expectedFiles, state.FilesChanged())
+			assert.Equal(t, tc.expectedImageBuild, state.ImageBuildTriggered)
 
 			f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
 				for _, mn := range st.TriggerQueue {
@@ -552,35 +564,6 @@ func TestBuildControllerManualTriggerWithFileChanges(t *testing.T) {
 			})
 		})
 	}
-}
-
-func TestBuildControllerManualTriggerWithoutFileChangesForceUpdates(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	mName := model.ManifestName("foobar")
-
-	manifest := f.newManifest(mName.String())
-	manifests := []model.Manifest{manifest}
-	f.Start(manifests, true)
-
-	f.nextCall()
-	f.waitForCompletedBuildCount(1)
-
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
-	call := f.nextCall()
-	state := call.oneState()
-	assert.Empty(t, state.FilesChanged())
-	assert.True(t, state.NeedsForceUpdate)
-	f.waitForCompletedBuildCount(2)
-
-	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
-		for _, mn := range st.TriggerQueue {
-			if mn == mName {
-				return false
-			}
-		}
-		return true
-	})
 }
 
 // it should be a force update if there have been no file changes since the last build
@@ -604,7 +587,7 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 	call := f.nextCallComplete()
 	state := call.oneState()
 	assert.Equal(t, []string{f.JoinPath("main.go")}, state.FilesChanged())
-	assert.True(t, state.NeedsForceUpdate)
+	assert.True(t, state.ImageBuildTriggered)
 
 	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
 		for _, mn := range st.TriggerQueue {

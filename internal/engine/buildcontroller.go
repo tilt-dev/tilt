@@ -63,7 +63,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	buildReason := mt.NextBuildReason()
 	targets := buildTargets(manifest)
-	buildStateSet := buildStateSet(ctx, manifest, targets, ms)
+	buildStateSet := buildStateSet(ctx, manifest, targets, ms, buildReason)
 
 	return buildEntry{
 		name:          manifest.Name,
@@ -182,10 +182,9 @@ func buildTargets(manifest model.Manifest) []model.TargetSpec {
 }
 
 // Extract a set of build states from a manifest for BuildAndDeploy.
-func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.TargetSpec, ms *store.ManifestState) store.BuildStateSet {
+func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.TargetSpec,
+	ms *store.ManifestState, reason model.BuildReason) store.BuildStateSet {
 	result := store.BuildStateSet{}
-
-	anyFilesChangedSinceLastBuild := false
 
 	for _, spec := range specs {
 		id := spec.ID()
@@ -195,11 +194,8 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 
 		status := ms.BuildStatus(id)
 		var filesChanged []string
-		for file, ts := range status.PendingFileChanges {
+		for file := range status.PendingFileChanges {
 			filesChanged = append(filesChanged, file)
-			if ms.LastBuild().Empty() || ts.After(ms.LastBuild().StartTime) {
-				anyFilesChangedSinceLastBuild = true
-			}
 		}
 		sort.Strings(filesChanged)
 
@@ -234,16 +230,13 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 		result[id] = buildState
 	}
 
-	// If there are no files changed across the entire state set, then this is a force update.
-	// We want to do an image build of each image.
-	// TODO(maia): I think that instead of storing this on every build state, we can can figure
-	//  out that it's a force update when creating the BuildEntry (in `needsBuild`), store that
-	//  as the BuildReason, and pass the whole BuildEntry to the builder (so the builder can
-	//  know whether to skip in-place builds)
-	// if we're on a crash rebuild, then there won't have been any files changed for that reason
-	if !ms.NeedsRebuildFromCrash && !anyFilesChangedSinceLastBuild {
+	isLiveUpdateEligibleTrigger := reason.HasTrigger() &&
+		reason.Has(model.BuildReasonFlagChangedFiles) &&
+		manifest.TriggerMode != model.TriggerModeAuto
+	isImageBuildTrigger := reason.HasTrigger() && !isLiveUpdateEligibleTrigger
+	if isImageBuildTrigger {
 		for k, v := range result {
-			result[k] = v.WithNeedsForceUpdate(true)
+			result[k] = v.WithImageBuildTriggered(true)
 		}
 	}
 

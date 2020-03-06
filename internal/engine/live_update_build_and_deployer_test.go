@@ -334,7 +334,7 @@ func TestSkipLiveUpdateIfForceUpdate(t *testing.T) {
 	state := store.BuildState{
 		LastSuccessfulResult: alreadyBuilt,
 		RunningContainers:    []store.ContainerInfo{cInfo},
-		NeedsForceUpdate:     true, // should make us skip LiveUpdate
+		ImageBuildTriggered:  true, // should make us skip LiveUpdate
 	}
 
 	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): state}

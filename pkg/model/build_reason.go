@@ -28,6 +28,15 @@ func (r BuildReason) Has(flag BuildReason) bool {
 	return r&flag == flag
 }
 
+func (r BuildReason) HasTrigger() bool {
+	for _, v := range triggerBuildReasons {
+		if r.Has(v) {
+			return true
+		}
+	}
+	return false
+}
+
 func (r BuildReason) IsCrashOnly() bool {
 	return r == BuildReasonFlagCrash
 }
