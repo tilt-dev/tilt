@@ -147,7 +147,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		assert.Equal(t, tCase.expectSyncletDeploy, strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName), "expected synclet-deploy = %t (deployed yaml was: %s)", tCase.expectSyncletDeploy, f.k8s.Yaml)
 		return
 	} else {
-		require.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
+		require.Empty(t, f.k8s.Yaml, "expected no k8s deploy")
 	}
 
 	expectUpdatedTargs := make(map[model.TargetID]bool)

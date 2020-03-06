@@ -1549,3 +1549,18 @@ items:
           image: gcr.io/windmill-public-containers/servantes/doggos
           command: ["/go/bin/doggos"]
 `
+
+const ArgoSanchoWorkflow = `
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: hello-world-
+spec:
+  entrypoint: whalesay
+  templates:
+  - name: whalesay
+    container:
+      image: gcr.io/some-project-162817/sancho
+      command: [cowsay]
+      args: ["hello world"]
+`

@@ -68,7 +68,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, err
 	}
 
-	containerUpdater := lubad.containerUpdaterForSpecs(specs)
+	containerUpdater := lubad.containerUpdaterForSpecs(specs, stateSet)
 	liveUpdInfos := make([]liveUpdInfo, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
@@ -250,7 +250,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 	}, nil
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec) containerupdate.ContainerUpdater {
+func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec, stateSet store.BuildStateSet) containerupdate.ContainerUpdater {
 	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
 	if isDC || lubad.updMode == buildcontrol.UpdateModeContainer {
 		return lubad.dcu
@@ -264,7 +264,7 @@ func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.
 		return lubad.ecu
 	}
 
-	if shouldUseSynclet(lubad.updMode, lubad.env, lubad.runtime) {
+	if lubad.shouldUseSynclet(specs, stateSet) {
 		return lubad.scu
 	}
 
@@ -273,4 +273,32 @@ func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.
 	}
 
 	return lubad.ecu
+}
+
+func (lubad *LiveUpdateBuildAndDeployer) shouldUseSynclet(specs []model.TargetSpec, stateSet store.BuildStateSet) bool {
+	if !shouldUseSynclet(lubad.updMode, lubad.env, lubad.runtime) {
+		return false
+	}
+
+	k8sTargets := model.ExtractK8sTargets(specs)
+	if len(k8sTargets) == 0 {
+		return false
+	}
+
+	for _, t := range k8sTargets {
+		state := stateSet[t.ID()]
+		result := state.LastSuccessfulResult
+		k8sResult, ok := result.(store.K8sBuildResult)
+		if !ok {
+			return false
+		}
+
+		if !k8sResult.HasEligibleSynclet {
+			// If we failed to inject the synclet in one of the resources,
+			// then don't try to use this as an update method.
+			return false
+		}
+	}
+
+	return true
 }
