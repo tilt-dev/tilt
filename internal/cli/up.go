@@ -16,6 +16,7 @@ import (
 	"k8s.io/klog"
 
 	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/windmilleng/tilt/internal/cloud"
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/hud"
@@ -42,10 +43,11 @@ var noBrowser bool = false
 var logActionsFlag bool = false
 
 type upCmd struct {
-	watch     bool
-	traceTags string
-	hud       bool
-	fileName  string
+	watch                bool
+	traceTags            string
+	hud                  bool
+	fileName             string
+	outputSnapshotOnExit string
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -82,6 +84,7 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
+	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 
 	return cmd
 }
@@ -114,18 +117,21 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}
 
 	hudEnabled := c.hud && isatty.IsTerminal(os.Stdout.Fd())
-	threads, err := wireCmdUp(ctx, hud.HudEnabled(hudEnabled), a, cmdUpTags)
+	cmdUpDeps, err := wireCmdUp(ctx, hud.HudEnabled(hudEnabled), a, cmdUpTags)
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
 	}
 
-	upper := threads.upper
-	h := threads.hud
+	upper := cmdUpDeps.Upper
+	h := cmdUpDeps.Hud
 
 	l := store.NewLogActionLogger(ctx, upper.Dispatch)
 	deferred.SetOutput(l)
 	ctx = redirectLogs(ctx, l)
+	if c.outputSnapshotOnExit != "" {
+		defer cloud.WriteSnapshot(ctx, cmdUpDeps.Store, c.outputSnapshotOnExit)
+	}
 
 	if trace {
 		traceID, err := tracer.TraceID(ctx)
@@ -148,7 +154,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, threads.tiltBuild, c.watch, c.fileName, hudEnabled, a.UserOpt(), threads.token, string(threads.cloudAddress))
+		return upper.Start(ctx, args, cmdUpDeps.TiltBuild, c.watch, c.fileName, hudEnabled, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
 	})
 
 	err = g.Wait()

@@ -124,7 +124,7 @@ var BaseWireSet = wire.NewSet(
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,
 
-	provideCmdUpDeps,
+	wire.Struct(new(CmdUpDeps), "*"),
 	engine.NewKINDLoader,
 
 	wire.Value(feature.MainDefaults),
@@ -146,15 +146,12 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics *analyt
 }
 
 type CmdUpDeps struct {
-	hud          hud.HeadsUpDisplay
-	upper        engine.Upper
-	tiltBuild    model.TiltBuild
-	token        token.Token
-	cloudAddress cloudurl.Address
-}
-
-func provideCmdUpDeps(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token token.Token, cloudAddress cloudurl.Address) CmdUpDeps {
-	return CmdUpDeps{h, upper, b, token, cloudAddress}
+	Hud          hud.HeadsUpDisplay
+	Upper        engine.Upper
+	TiltBuild    model.TiltBuild
+	Token        token.Token
+	CloudAddress cloudurl.Address
+	Store        *store.Store
 }
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {

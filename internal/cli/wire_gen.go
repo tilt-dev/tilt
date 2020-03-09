@@ -259,7 +259,14 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	cmdUpDeps := provideCmdUpDeps(headsUpDisplay, upper, tiltBuild, tokenToken, address)
+	cmdUpDeps := CmdUpDeps{
+		Hud:          headsUpDisplay,
+		Upper:        upper,
+		TiltBuild:    tiltBuild,
+		Token:        tokenToken,
+		CloudAddress: address,
+		Store:        storeStore,
+	}
 	return cmdUpDeps, nil
 }
 
@@ -446,19 +453,16 @@ var BaseWireSet = wire.NewSet(
 	provideWebURL,
 	provideWebPort,
 	provideWebHost,
-	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, tracer.NewSpanCollector, wire.Bind(new(trace2.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseWindmillDir, token.GetOrCreateToken, provideCmdUpDeps, engine.NewKINDLoader, wire.Value(feature.MainDefaults),
+	provideNoBrowserFlag, server.ProvideHeadsUpServer, provideAssetServer, server.ProvideHeadsUpServerController, tracer.NewSpanCollector, wire.Bind(new(trace2.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseWindmillDir, token.GetOrCreateToken, wire.Struct(new(CmdUpDeps), "*"), engine.NewKINDLoader, wire.Value(feature.MainDefaults),
 )
 
 type CmdUpDeps struct {
-	hud          hud.HeadsUpDisplay
-	upper        engine.Upper
-	tiltBuild    model.TiltBuild
-	token        token.Token
-	cloudAddress cloudurl.Address
-}
-
-func provideCmdUpDeps(h hud.HeadsUpDisplay, upper engine.Upper, b model.TiltBuild, token2 token.Token, cloudAddress cloudurl.Address) CmdUpDeps {
-	return CmdUpDeps{h, upper, b, token2, cloudAddress}
+	Hud          hud.HeadsUpDisplay
+	Upper        engine.Upper
+	TiltBuild    model.TiltBuild
+	Token        token.Token
+	CloudAddress cloudurl.Address
+	Store        *store.Store
 }
 
 type DownDeps struct {
