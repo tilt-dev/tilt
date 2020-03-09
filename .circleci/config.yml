@@ -5,7 +5,7 @@ orbs:
 jobs:
   build-linux:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:0868ccf686cba2adf4c6c82b9a5c7062eeea123de49283676b066060f3381d3a
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:62d0b5b9668e41165b132a86a599b34331f199c95a4e4d8ba82d64a97f654c7c
 
     steps:
       - checkout
@@ -31,7 +31,7 @@ jobs:
           only_for_branches: master
   helm2:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:125580447b213fbb1d66522f9b0efb76ed736e49e95130f8a6fdcd868a05b645
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:62d0b5b9668e41165b132a86a599b34331f199c95a4e4d8ba82d64a97f654c7c
     steps:
       - checkout
       - run: sudo mv /usr/bin/helm2 /usr/bin/helm
@@ -59,7 +59,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:168fcc4ab364bf330a7a524b07da56cf54c2fe134b2e78be78f6b7c2791a5d2f
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:62d0b5b9668e41165b132a86a599b34331f199c95a4e4d8ba82d64a97f654c7c
     steps:
       - checkout
       - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json
@@ -80,7 +80,7 @@ jobs:
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:132dd09f30d3b5f9b70899e900c2cc48cf0d6f5c9caf2b99e19615793a21a357
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:67d6cb938c2333c1483cfc6afbf2ef08a95e937ef4feafe15f8a0adf02596a89
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV

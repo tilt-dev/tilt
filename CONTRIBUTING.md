@@ -19,7 +19,7 @@ features that we have in mind and might already be in-progress.
 If you just want to build Tilt:
 
 - **[make](https://www.gnu.org/software/make/)**
-- **[go 1.13](https://golang.org/dl/)**
+- **[go 1.14](https://golang.org/dl/)**
 - **[golangci-lint](https://github.com/golangci/golangci-lint)** (to run lint)
 - [yarn](https://yarnpkg.com/lang/en/docs/install/) (for JS resources)
 
