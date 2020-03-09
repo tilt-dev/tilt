@@ -106,29 +106,36 @@ func (e K8sEntity) GVK() schema.GroupVersionKind {
 }
 
 func (e K8sEntity) meta() k8sMeta {
-	unstruct, ok := e.Obj.(*unstructured.Unstructured)
-	if ok {
+	if unstruct := e.maybeUnstructuredMeta(); unstruct != nil {
 		return unstruct
 	}
 
-	if structured := e.maybeStructuredMeta(); structured != nil {
+	if structured, _ := e.maybeStructuredMeta(); structured != nil {
 		return structured
 	}
 
 	return emptyMeta{}
 }
 
-func (e K8sEntity) maybeStructuredMeta() *metav1.ObjectMeta {
+func (e K8sEntity) maybeUnstructuredMeta() *unstructured.Unstructured {
+	unstruct, isUnstructured := e.Obj.(*unstructured.Unstructured)
+	if isUnstructured {
+		return unstruct
+	}
+	return nil
+}
+
+func (e K8sEntity) maybeStructuredMeta() (meta *metav1.ObjectMeta, fieldIndex int) {
 	objVal := reflect.ValueOf(e.Obj)
 	if objVal.Kind() == reflect.Ptr {
 		if objVal.IsNil() {
-			return nil
+			return nil, -1
 		}
 		objVal = objVal.Elem()
 	}
 
 	if objVal.Kind() != reflect.Struct {
-		return nil
+		return nil, -1
 	}
 
 	// Find a field with type ObjectMeta
@@ -148,25 +155,35 @@ func (e K8sEntity) maybeStructuredMeta() *metav1.ObjectMeta {
 			continue
 		}
 
-		return metadata
+		return metadata, i
 	}
-	return nil
+	return nil, -1
 }
 
 func SetUID(e *K8sEntity, UID string) error {
-	unstruct, ok := e.Obj.(*unstructured.Unstructured)
-	if ok {
-		unstruct.SetUID(types.UID(UID))
-		return nil
+	unstruct := e.maybeUnstructuredMeta()
+	if unstruct != nil {
+		return fmt.Errorf("SetUIDForTesting not yet implemented for unstructured metadata")
 	}
 
-	structured := e.maybeStructuredMeta()
-	if structured != nil {
-		structured.SetUID(types.UID(UID))
-		return nil
+	structured, i := e.maybeStructuredMeta()
+	if structured == nil {
+		return fmt.Errorf("Cannot set UID -- entity has neither unstructured nor structured metadata. k8s entity: %+v", e)
 	}
 
-	return fmt.Errorf("Cannot set UID -- entity has neither unstructured nor structured metadata. k8s entity: %+v", e)
+	structured.SetUID(types.UID(UID))
+	objVal := reflect.ValueOf(e.Obj)
+	if objVal.Kind() == reflect.Ptr {
+		if objVal.IsNil() {
+			return fmt.Errorf("Cannot set UID -- e.Obj is a pointer. k8s entity: %+v", e)
+		}
+		objVal = objVal.Elem()
+	}
+
+	fieldVal := objVal.Field(i)
+	metaVal := reflect.ValueOf(*structured)
+	fieldVal.Set(metaVal)
+	return nil
 }
 
 func SetUIDForTest(t *testing.T, e *K8sEntity, UID string) {

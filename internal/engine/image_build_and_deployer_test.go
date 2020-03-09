@@ -110,27 +110,6 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, "gcr.io/windmill-public-containers/tilt-synclet:"),
 		"Expected synclet to be injected once in YAML: %s", f.k8s.Yaml)
-	assert.True(t, result[kTarget.ID()].(store.K8sBuildResult).HasEligibleSynclet)
-}
-
-func TestDeployWorkflow(t *testing.T) {
-	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
-	f.ibd.injectSynclet = true
-
-	iTarget := NewSanchoLiveUpdateImageTarget(f)
-	kTarget := model.K8sTarget{Name: "hello-world", YAML: testyaml.ArgoSanchoWorkflow}.
-		WithDependencyIDs([]model.TargetID{iTarget.ID()})
-	targets := []model.TargetSpec{iTarget, kTarget}
-
-	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equalf(t, 0, strings.Count(f.k8s.Yaml, "gcr.io/windmill-public-containers/tilt-synclet:"),
-		"Expected no synclet in the YAML: %s", f.k8s.Yaml)
-	assert.False(t, result[kTarget.ID()].(store.K8sBuildResult).HasEligibleSynclet)
 }
 
 func TestNoImageTargets(t *testing.T) {
