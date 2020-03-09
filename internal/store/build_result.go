@@ -122,8 +122,6 @@ type K8sBuildResult struct {
 	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
 
 	AppliedEntitiesText string
-
-	HasEligibleSynclet bool
 }
 
 func (r K8sBuildResult) TargetID() model.TargetID   { return r.id }
@@ -139,7 +137,7 @@ func (r K8sBuildResult) Facets() []model.Facet {
 }
 
 // For kubernetes deploy targets.
-func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity, hasEligibleSynclet bool) BuildResult {
+func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
 	appliedEntitiesText, err := k8s.SerializeSpecYAML(appliedEntities)
 	if err != nil {
 		appliedEntitiesText = fmt.Sprintf("unable to serialize entities to yaml: %s", err.Error())
@@ -150,7 +148,6 @@ func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTem
 		DeployedUIDs:          uids,
 		PodTemplateSpecHashes: hashes,
 		AppliedEntitiesText:   appliedEntitiesText,
-		HasEligibleSynclet:    hasEligibleSynclet,
 	}
 }
 

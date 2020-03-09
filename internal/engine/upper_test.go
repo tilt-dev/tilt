@@ -277,7 +277,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			templateSpecHashes = b.nextPodTemplateSpecHashes
 			b.nextPodTemplateSpecHashes = nil
 		}
-		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids, templateSpecHashes, nil, false)
+		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids, templateSpecHashes, nil)
 	}
 
 	b.nextLiveUpdateContainerIDs = nil
@@ -4121,7 +4121,7 @@ func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTem
 		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 	}
 	ktID := manifest.K8sTarget().ID()
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, hashes, nil, false)
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, hashes, nil)
 	return resultSet
 }
 

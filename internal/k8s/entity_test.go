@@ -268,20 +268,6 @@ func TestMutableAndImmutableEntities(t *testing.T) {
 	}
 }
 
-func TestSetUIDPod(t *testing.T) {
-	entity := NewK8sEntity(&v1.Pod{})
-	err := SetUID(&entity, "abc")
-	assert.NoError(t, err)
-	assert.Equal(t, "abc", string(entity.meta().GetUID()))
-}
-
-func TestSetUIDWorkflow(t *testing.T) {
-	entity := mustParseYAML(t, testyaml.ArgoSanchoWorkflow)[0]
-	err := SetUID(&entity, "abc")
-	assert.NoError(t, err)
-	assert.Equal(t, "abc", string(entity.meta().GetUID()))
-}
-
 func entitiesWithKinds(kinds []string) []K8sEntity {
 	entities := make([]K8sEntity, len(kinds))
 	for i, k := range kinds {
