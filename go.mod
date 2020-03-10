@@ -1,6 +1,6 @@
 module github.com/windmilleng/tilt
 
-go 1.13
+go 1.14
 
 require (
 	github.com/Azure/azure-sdk-for-go v16.2.1+incompatible // indirect

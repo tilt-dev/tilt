@@ -1,4 +1,4 @@
-FROM circleci/golang:1.13
+FROM circleci/golang:1.14
 
 RUN go get -u github.com/kisielk/errcheck
 
@@ -41,7 +41,7 @@ RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/google-
 
 RUN /tmp/google-cloud-sdk/install.sh
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.22.2
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.23.8
 
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.19.0
 
