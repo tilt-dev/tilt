@@ -181,7 +181,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span>TiltCloud</span>
+            <span>Tilt Cloud</span>
             <ArrowSvg />
           </a>
         </p>
