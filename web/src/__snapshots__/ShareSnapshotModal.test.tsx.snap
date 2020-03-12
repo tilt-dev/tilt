@@ -211,7 +211,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
           target="_blank"
         >
           <span>
-            TiltCloud
+            Tilt Cloud
           </span>
           <svg>
             arrow.svg
