@@ -90,7 +90,7 @@ exports[`ShareSnapshotModal renders team link 1`] = `
           target="_blank"
         >
           <span>
-            TiltCloud
+            Tilt Cloud
           </span>
           <svg>
             arrow.svg
