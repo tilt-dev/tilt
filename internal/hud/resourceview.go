@@ -70,40 +70,49 @@ func (v *ResourceView) resourceTitle() rty.Component {
 	return rty.OneLine(l)
 }
 
-func statusColor(res view.Resource) tcell.Color {
+type statusDisplay struct {
+	color   tcell.Color
+	spinner bool
+}
+
+func statusDisplayOptions(res view.Resource) statusDisplay {
 	if res.IsTiltfile {
 		if !res.CurrentBuild.Empty() {
-			return cPending
+			return statusDisplay{color: cPending, spinner: true}
 		} else if res.CrashLog.Empty() {
-			return cGood
+			return statusDisplay{color: cGood}
 		} else {
-			return cBad
+			return statusDisplay{color: cBad}
 		}
 	}
 
 	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
-		return cPending
+		return statusDisplay{color: cPending, spinner: true}
 	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
 		if res.TriggerMode.AutoOnChange() {
-			return cPending
+			return statusDisplay{color: cPending, spinner: true}
 		} else {
-			return cLightText
+			return statusDisplay{color: cLightText}
 		}
 	} else if isCrashing(res) {
-		return cBad
+		return statusDisplay{color: cBad}
 	} else if res.LastBuild().Error != nil {
-		return cBad
+		return statusDisplay{color: cBad}
 	} else if res.IsYAML() && !res.LastDeployTime.IsZero() {
-		return cGood
+		return statusDisplay{color: cGood}
 	} else if !res.LastBuild().FinishTime.IsZero() && res.ResourceInfo.Status() == "" {
-		return cPending // pod status hasn't shown up yet
+		// pod status hasn't shown up yet
+		return statusDisplay{color: cPending, spinner: true}
 	} else {
 		if res.ResourceInfo != nil {
 			if statusColor, ok := statusColors[res.ResourceInfo.Status()]; ok {
-				return statusColor
+				// Comparing colors is ok here because they only colors in statusColors
+				// are cGood, cBad, and cPending, and they're unique colors.
+				spinner := statusColor == cPending
+				return statusDisplay{color: statusColor, spinner: spinner}
 			}
 		}
-		return cLightText
+		return statusDisplay{color: cLightText}
 	}
 }
 
@@ -119,12 +128,20 @@ func (v *ResourceView) titleTextName() rty.Component {
 		p = "▶"
 	}
 
-	color := statusColor(v.res)
+	display := statusDisplayOptions(v.res)
 	sb.Text(p)
-	sb.Fg(color).Textf(" ● ")
+
+	switch display.color {
+	case cGood:
+		sb.Fg(display.color).Textf(" ● ")
+	case cBad:
+		sb.Fg(display.color).Textf(" ✖ ")
+	default:
+		sb.Fg(display.color).Textf(" ○ ")
+	}
 
 	name := v.res.Name.String()
-	if color == cPending {
+	if display.spinner {
 		name = fmt.Sprintf("%s %s", v.res.Name, v.spinner())
 	}
 	if len(v.warnings()) > 0 {

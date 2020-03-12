@@ -355,14 +355,16 @@ func TestPodPending(t *testing.T) {
 	vs := fakeViewState(1, view.CollapseAuto)
 
 	rtf.run("pending pod no status", 80, 20, v, vs)
-	assert.Equal(t, cPending, statusColor(v.Resources[0]))
+	assert.Equal(t, statusDisplay{color: cPending, spinner: true},
+		statusDisplayOptions(v.Resources[0]))
 
 	v.Resources[0].ResourceInfo = view.K8sResourceInfo{
 		PodCreationTime: ts,
 		PodStatus:       "Pending",
 	}
 	rtf.run("pending pod pending status", 80, 20, v, vs)
-	assert.Equal(t, cPending, statusColor(v.Resources[0]))
+	assert.Equal(t, statusDisplay{color: cPending, spinner: true},
+		statusDisplayOptions(v.Resources[0]))
 }
 
 func TestCrashingPodInlineCrashLog(t *testing.T) {
