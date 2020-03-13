@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
@@ -13,14 +14,16 @@ import (
 type NodeIP string
 
 type nodeIPAsync struct {
-	env    Env
-	once   sync.Once
-	nodeIP NodeIP
+	mkClient minikube.Client
+	env      Env
+	once     sync.Once
+	nodeIP   NodeIP
 }
 
-func newNodeIPAsync(env Env) *nodeIPAsync {
+func newNodeIPAsync(env Env, mkClient minikube.Client) *nodeIPAsync {
 	return &nodeIPAsync{
-		env: env,
+		env:      env,
+		mkClient: mkClient,
 	}
 }
 
