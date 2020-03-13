@@ -34,6 +34,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
@@ -135,7 +136,8 @@ func ProvideK8sClient(
 	pfClient PortForwardClient,
 	configNamespace Namespace,
 	runner kubectlRunner,
-	clientLoader clientcmd.ClientConfig) Client {
+	clientLoader clientcmd.ClientConfig,
+	minikubeClient minikube.Client) Client {
 	if env == EnvNone {
 		// No k8s, so no need to get any further configs
 		return &explodingClient{err: fmt.Errorf("Kubernetes context not set in %s", clientLoader.ConfigAccess().GetLoadingPrecedence())}

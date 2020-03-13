@@ -7,11 +7,7 @@ package engine
 
 import (
 	"context"
-
 	"github.com/google/wire"
-	"github.com/windmilleng/wmclient/pkg/dirs"
-	"go.opentelemetry.io/otel/sdk/trace"
-
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/build"
 	"github.com/windmilleng/tilt/internal/containerupdate"
@@ -24,6 +20,8 @@ import (
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/synclet/sidecar"
 	"github.com/windmilleng/tilt/internal/tracer"
+	"github.com/windmilleng/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 // Injectors from wire.go:
@@ -118,8 +116,9 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	}
 	int2 := provideKubectlLogLevelInfo()
 	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, kubectlRunner, clientConfig)
-	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	client := minikube.ProvideMinikubeClient()
+	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, kubectlRunner, clientConfig, client)
+	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	updateMode, err := buildcontrol.ProvideUpdateMode(updateModeFlag, env, runtime)
 	if err != nil {
 		return nil, err

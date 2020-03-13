@@ -34,6 +34,7 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/token"
@@ -183,6 +184,7 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	wire.Build(
 		K8sWireSet,
 		provideKubectlLogLevel,
+		minikube.ProvideMinikubeClient,
 	)
 	return "", nil
 }
