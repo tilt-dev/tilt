@@ -47,12 +47,13 @@ type HUDLayoutProps = {
   header: React.ReactNode
   children: React.ReactNode // Main pane
   isSidebarClosed: boolean
+  isTwoLevelHeader?: boolean
 }
 
 let Root = styled.div`
   display: flex;
   flex-direction: column;
-  padding-top: ${s.Height.HUDheader}px;
+  padding-top: ${s.Height.statusHeader + s.Height.secondaryNav}px;
   padding-right: ${s.Width.sidebar}px;
   padding-bottom: ${s.Height.statusbar}px;
   width: 100%;
@@ -62,6 +63,9 @@ let Root = styled.div`
   &.is-sidebarCollapsed {
     padding-right: ${s.Width.sidebarCollapsed}px;
   }
+  &.is-twoLevelHeader {
+    padding-top: ${s.Height.statusHeader + s.Height.secondaryNavTwoLevel}px;
+  }
 `
 
 let Header = styled.header`
@@ -70,21 +74,32 @@ let Header = styled.header`
   left: 0;
   right: 0;
   padding-right: ${s.Width.sidebar}px;
-  height: ${s.Height.HUDheader}px;
+  height: ${s.Height.statusHeader + s.Height.secondaryNav}px;
   background-color: ${s.Color.grayDarkest};
   transition: padding-right ${s.AnimDuration.default} ease;
-  z-index: ${s.ZIndex.HUDheader};
+  z-index: ${s.ZIndex.HUDHeader};
 
   .is-sidebarCollapsed & {
     padding-right: ${s.Width.sidebarCollapsed}px;
+  }
+
+  .is-twoLevelHeader & {
+    height: ${s.Height.statusHeader + s.Height.secondaryNavTwoLevel}px;
   }
 `
 
 let Main = styled.main``
 
 export default function HUDLayout(props: HUDLayoutProps) {
+  let classes = []
+  if (props.isSidebarClosed) {
+    classes.push("is-sidebarCollapsed")
+  }
+  if (props.isTwoLevelHeader) {
+    classes.push("is-twoLevelHeader")
+  }
   return (
-    <Root className={props.isSidebarClosed ? "is-sidebarCollapsed" : ""}>
+    <Root className={classes.join(" ")}>
       <Header>{props.header}</Header>
       <Main>{props.children}</Main>
     </Root>

@@ -16,7 +16,7 @@ type HUDHeaderProps = {
 let Root = styled.div`
   display: flex;
   align-items: center;
-  height: ${s.Height.HUDheader - s.Height.secondaryNav}px;
+  height: ${s.Height.statusHeader}px;
   padding-left: ${s.SizeUnit(0.5)};
   padding-right: ${s.SizeUnit(0.25)};
 `

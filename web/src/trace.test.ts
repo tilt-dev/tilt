@@ -34,22 +34,24 @@ it("generates trace nav data", () => {
 
   let pb = new PathBuilder("localhost:10350", "/r/fe")
   expect(traceNav(logs, pb, "build:1")).toEqual({
+    count: 2,
     current: {
-      label: "Build #1",
+      index: 0,
       url: "/r/fe/trace/build:1",
     },
     next: {
-      label: "Build #2",
+      index: 1,
       url: "/r/fe/trace/build:2",
     },
   })
   expect(traceNav(logs, pb, "build:2")).toEqual({
+    count: 2,
     prev: {
-      label: "Build #1",
+      index: 0,
       url: "/r/fe/trace/build:1",
     },
     current: {
-      label: "Build #2",
+      index: 1,
       url: "/r/fe/trace/build:2",
     },
   })

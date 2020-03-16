@@ -11,11 +11,10 @@ it("shows logs", () => {
         <SecondaryNav
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
-          traceUrl={null}
+          traceNav={null}
           facetsUrl={null}
           resourceView={ResourceView.Log}
           numberOfAlerts={0}
-          span={""}
         />
       </MemoryRouter>
     )
@@ -32,10 +31,9 @@ it("shows error pane", () => {
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
           facetsUrl={null}
-          traceUrl={null}
+          traceNav={null}
           resourceView={ResourceView.Alerts}
           numberOfAlerts={0}
-          span={""}
         />
       </MemoryRouter>
     )
@@ -52,10 +50,9 @@ it("shows the number of errors in the error tab", () => {
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
           facetsUrl={null}
-          traceUrl={null}
+          traceNav={null}
           resourceView={ResourceView.Alerts}
           numberOfAlerts={27}
-          span={""}
         />
       </MemoryRouter>
     )
@@ -72,10 +69,9 @@ it("shows a facets tab", () => {
           logUrl="/r/foo"
           alertsUrl="/r/foo/alerts"
           facetsUrl="/r/foo/facets"
-          traceUrl={null}
+          traceNav={null}
           resourceView={ResourceView.Facets}
           numberOfAlerts={0}
-          span={""}
         />
       </MemoryRouter>
     )
