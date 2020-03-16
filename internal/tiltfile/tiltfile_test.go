@@ -916,6 +916,24 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+func TestCustomBuildGitPathFilter(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+custom_build('gcr.io/foo', 'docker build -t gcr.io/foo .', ['.'])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		fileChangeFilters(".git"),
+	)
+}
+
 func TestDockerignorePathFilter(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
