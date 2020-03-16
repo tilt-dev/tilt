@@ -189,6 +189,59 @@ We write our docs in Markdown and generate static HTML with [Jekyll](https://jek
 Netlify will automatically deploy the docs to [the public site](https://docs.tilt.dev/)
 when you merge to master.
 
+## Wire
+
+Tilt uses [wire](https://github.com/google/wire) for dependency injection. It
+generates all the code in the wire_gen.go files.
+
+`make wire-dev` runs `wire` locally and ensures you have fast feedback when
+rebuilding the generated code.
+
+`make wire` runs `wire` in a container, to ensure you're using the correct
+version.
+
+What do you do if you added a dependency, and `make wire` is failing?
+
+### A Practical Guide to Fixing Your Dependency Injector
+
+(This guide will work with any Dependency Injector - Dagger, Guice, etc - but is
+written for Wire)
+
+Step 1) DON'T PANIC. Fixing a dependency injector is like untangling a hair
+knot. If you start pushing and pulling dependencies in the middle of the graph,
+you will make it much worse.
+
+Step 2) Run `make wire-dev`
+
+Step 3) Look closely at the error message. Identify the "top" of the dependency
+graph that is failing. So if your error message is:
+
+```
+wire: /go/src/github.com/windmilleng/tilt/internal/cli/wire.go:182:1: inject wireRuntime: no provider found for github.com/windmilleng/tilt/internal/k8s.MinikubeClient
+	needed by github.com/windmilleng/tilt/internal/k8s.Client in provider set "K8sWireSet" (/go/src/github.com/windmilleng/tilt/internal/cli/wire.go:44:18)
+	needed by github.com/windmilleng/tilt/internal/container.Runtime in provider set "K8sWireSet" (/go/src/github.com/windmilleng/tilt/internal/cli/wire.go:44:18)
+wire: github.com/windmilleng/tilt/internal/cli: generate failed
+wire: at least one generate failure
+```
+
+then the "top" is the function wireRuntime at wire.go:182.
+
+Step 4) Identify the dependency that is missing. In the above example, that
+dependency is MinikubeClient.
+
+Step 5) At the top-level provider function, add a provider for the missing
+dependency. In this example, that means we add ProvideMinikubeClient to the
+wire.Build call in wireRuntime.
+
+Step 6) Go back to Step (2), and repeat until all errors are gone
+
+Final Note: All dependency injection systems have a notion of groups of common
+dependencies (in Wire, they're called WireSets). When fixing an injection error,
+you generally want to move providers "up" the graph. i.e., remove them from
+WireSets and add them to wire.Build calls. It's OK if this leads to lots of
+duplication. Later, you can refactor them back down into common WireSets once
+you've got it working.
+
 ## Releasing
 
 We use [goreleaser](https://goreleaser.com) for releases.
