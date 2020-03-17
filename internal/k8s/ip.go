@@ -2,8 +2,6 @@ package k8s
 
 import (
 	"context"
-	"os/exec"
-	"strings"
 	"sync"
 
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -13,14 +11,16 @@ import (
 type NodeIP string
 
 type nodeIPAsync struct {
-	env    Env
-	once   sync.Once
-	nodeIP NodeIP
+	mkClient MinikubeClient
+	env      Env
+	once     sync.Once
+	nodeIP   NodeIP
 }
 
-func newNodeIPAsync(env Env) *nodeIPAsync {
+func newNodeIPAsync(env Env, mkClient MinikubeClient) *nodeIPAsync {
 	return &nodeIPAsync{
-		env: env,
+		env:      env,
+		mkClient: mkClient,
 	}
 }
 
@@ -28,23 +28,11 @@ func (a *nodeIPAsync) detectNodeIP(ctx context.Context) NodeIP {
 	if a.env != EnvMinikube {
 		return ""
 	}
-
-	// TODO(nick): Should this be part of MinikubeClient?
-	cmd := exec.CommandContext(ctx, "minikube", "ip")
-	out, err := cmd.Output()
+	nodeIP, err := a.mkClient.NodeIP(ctx)
 	if err != nil {
-		exitErr, isExitErr := err.(*exec.ExitError)
-		if isExitErr {
-			// TODO(nick): Maybe we should automatically run minikube start?
-			logger.Get(ctx).Warnf("Could not read node IP from minikube.\n"+
-				"Did you forget to run `minikube start`?\n%s", string(exitErr.Stderr))
-		} else {
-			logger.Get(ctx).Warnf("Could not read node IP from minikube")
-		}
-		return ""
+		logger.Get(ctx).Warnf(err.Error())
 	}
-
-	return NodeIP(strings.TrimSpace(string(out)))
+	return nodeIP
 }
 
 func (a *nodeIPAsync) NodeIP(ctx context.Context) NodeIP {

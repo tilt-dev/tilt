@@ -183,6 +183,7 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	wire.Build(
 		K8sWireSet,
 		provideKubectlLogLevel,
+		k8s.ProvideMinikubeClient,
 	)
 	return "", nil
 }
