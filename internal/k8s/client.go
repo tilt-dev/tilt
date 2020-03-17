@@ -357,6 +357,9 @@ func (k K8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (
 	group := getGroup(ref)
 	kind := ref.Kind
 	namespace := ref.Namespace
+	if namespace == "" {
+		namespace = "default"
+	}
 	name := ref.Name
 	resourceVersion := ref.ResourceVersion
 	uid := ref.UID

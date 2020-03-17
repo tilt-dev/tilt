@@ -9,6 +9,7 @@ import (
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -73,8 +74,27 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
 
-	if len(entities) > 0 {
-		err = downDeps.kClient.Delete(ctx, entities)
+	var toDelete []k8s.K8sEntity
+	for _, e := range entities {
+		ref := e.ToObjectReference()
+		actual, err := downDeps.kClient.GetByReference(ctx, ref)
+		if err != nil {
+			logger.Get(ctx).Warnf("Unable to retrieve entity %s to see if Tilt should delete it, skipping: %v", ref.Name, err)
+			continue
+		}
+		matches, err := actual.MatchesMetadataLabels(k8s.NewTiltLabelMap())
+		if err != nil {
+			logger.Get(ctx).Warnf("Unable to check if %s matches tilt managed by label (%v), skipping: %v", ref.Name, k8s.NewTiltLabelMap(), err)
+			continue
+		}
+
+		if matches {
+			toDelete = append(toDelete, e)
+		}
+	}
+
+	if len(toDelete) > 0 {
+		err = downDeps.kClient.Delete(ctx, toDelete)
 		if err != nil {
 			return errors.Wrap(err, "Deleting k8s entities")
 		}

@@ -3,6 +3,7 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"sync"
@@ -249,7 +250,9 @@ func (c *FakeK8sClient) InjectEntityByName(entities ...K8sEntity) {
 		c.entityByName = make(map[string]K8sEntity)
 	}
 	for _, entity := range entities {
-		c.entityByName[entity.Name()] = entity
+		name := entity.Name()
+		fmt.Printf("Adding entity name %s\n", name)
+		c.entityByName[name] = entity
 	}
 }
 

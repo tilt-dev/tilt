@@ -14,6 +14,7 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -22,7 +23,9 @@ func TestDown(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
+	manifests := f.newK8sManifest()
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	assert.NoError(t, err)
 	assert.Contains(t, f.kCli.DeletedYaml, "sancho")
@@ -32,7 +35,7 @@ func TestDownK8sFails(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: f.newK8sManifest()}
 	f.kCli.DeleteError = fmt.Errorf("GARBLEGARBLE")
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	if assert.Error(t, err) {
@@ -69,8 +72,38 @@ func TestDownArgs(t *testing.T) {
 	require.Equal(t, []string{"foo", "bar"}, f.tfl.PassedUserConfigState().Args)
 }
 
-func newK8sManifest() []model.Manifest {
-	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{YAML: testyaml.SanchoYAML})}
+func TestDownDoesNotDeleteStuffThatTiltDidntCreate(t *testing.T) {
+	f := newDownFixture(t)
+	defer f.TearDown()
+
+	manifests := f.newK8sManifestWithoutManagedByTiltLabels()
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	assert.NoError(t, err)
+	assert.NotContains(t, f.kCli.DeletedYaml, "sancho")
+}
+
+func (f *downFixture) newK8sManifest() []model.Manifest {
+	manifests := []model.Manifest{model.Manifest{Name: "sancho"}.WithDeployTarget(model.K8sTarget{YAML: testyaml.SanchoYAML})}
+	for _, m := range manifests {
+		pb := podbuilder.New(f.t, m).WithPodLabel(k8s.ManagedByLabel, k8s.ManagedByValue)
+		newEntities := []k8s.K8sEntity{}
+		for _, e := range pb.ObjectTreeEntities() {
+			newE, err := k8s.InjectLabels(e, []model.LabelPair{k8s.TiltManagedByLabel()})
+			if err != nil {
+				f.t.Fatal(err)
+			}
+			newEntities = append(newEntities, newE)
+		}
+		f.kCli.InjectEntityByName(newEntities...)
+	}
+
+	return manifests
+}
+
+func (f *downFixture) newK8sManifestWithoutManagedByTiltLabels() []model.Manifest {
+	return []model.Manifest{model.Manifest{Name: "sancho"}.WithDeployTarget(model.K8sTarget{YAML: testyaml.SanchoYAML})}
 }
 
 func newDCManifest() []model.Manifest {
