@@ -1,4 +1,4 @@
-package minikube
+package k8s
 
 import "testing"
 

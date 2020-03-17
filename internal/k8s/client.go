@@ -135,6 +135,7 @@ func ProvideK8sClient(
 	pfClient PortForwardClient,
 	configNamespace Namespace,
 	runner kubectlRunner,
+	mkClient MinikubeClient,
 	clientLoader clientcmd.ClientConfig) Client {
 	if env == EnvNone {
 		// No k8s, so no need to get any further configs
@@ -154,7 +155,7 @@ func ProvideK8sClient(
 	core := clientset.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
 	registryAsync := newRegistryAsync(env, core, runtimeAsync)
-	nodeIPAsync := newNodeIPAsync(env)
+	nodeIPAsync := newNodeIPAsync(env, mkClient)
 
 	di, err := dynamic.NewForConfig(restConfig)
 	if err != nil {

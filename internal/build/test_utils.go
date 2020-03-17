@@ -21,7 +21,6 @@ import (
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/minikube"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/bufsync"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
@@ -51,7 +50,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	env := k8s.EnvGKE
 
-	dEnv := docker.ProvideClusterEnv(ctx, env, wmcontainer.RuntimeDocker, minikube.FakeClient{})
+	dEnv := docker.ProvideClusterEnv(ctx, env, wmcontainer.RuntimeDocker, k8s.FakeMinkube{})
 	dCli := docker.NewDockerClient(ctx, docker.Env(dEnv))
 	_, ok := dCli.(*docker.Cli)
 	// If it wasn't an actual Docker client, it's an exploding client

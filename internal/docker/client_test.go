@@ -11,7 +11,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/minikube"
 )
 
 type buildkitTestCase struct {
@@ -252,7 +251,7 @@ func TestProvideEnv(t *testing.T) {
 				}
 			}()
 
-			mkClient := minikube.FakeClient{DockerEnvMap: c.mkEnv}
+			mkClient := k8s.FakeMinkube{DockerEnvMap: c.mkEnv}
 			cluster := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient)
 			assert.Equal(t, c.expectedCluster, Env(cluster))
 

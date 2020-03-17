@@ -10,7 +10,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/minikube"
 )
 
 // See notes on CreateClientOpts. These environment variables are standard docker env configs.
@@ -64,7 +63,7 @@ func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) LocalEnv {
 	return LocalEnv(result)
 }
 
-func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient minikube.Client) ClusterEnv {
+func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient k8s.MinikubeClient) ClusterEnv {
 	result := Env{}
 
 	if runtime == container.RuntimeDocker {
