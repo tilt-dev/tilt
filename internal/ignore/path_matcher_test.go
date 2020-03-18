@@ -63,9 +63,8 @@ func TestIgnores(t *testing.T) {
 		dockerignore: "**/ignored.txt",
 	}
 	targetWithDependencies := FakeTarget{
-		path: f.Path(),
+		path:         f.Path(),
 		dependencies: []string{f.JoinPath("foo", "bar"), f.JoinPath("..", "baz")},
-		
 	}
 
 	cases := []ignoreTestCase{
@@ -130,10 +129,10 @@ func TestIgnores(t *testing.T) {
 			ignoreInFileChange:   true,
 		},
 		{
-			target: targetWithDependencies,
-			change: "foo/bar/.git/hi",
+			target:               targetWithDependencies,
+			change:               "foo/bar/.git/hi",
 			ignoreInBuildContext: false,
-			ignoreInFileChange: true,
+			ignoreInFileChange:   true,
 		},
 	}
 
