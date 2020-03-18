@@ -69,7 +69,7 @@ func cwd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs [
 }
 
 func realpath(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.String
+	var path string
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"path", &path,
 	)
@@ -77,7 +77,7 @@ func realpath(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwa
 		return nil, err
 	}
 
-	absPath, err := filepath.Abs(path.GoString())
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
