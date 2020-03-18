@@ -38,3 +38,27 @@ docker_build('gcr.io/fe', '.', live_update=[
 		},
 		m.ImageTargetAt(0).Dockerignores())
 }
+
+func TeseCustomBuldDepsAreLocalRepos(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
+	f.file("Dockerfile", `
+FROM alpine
+ADD . .
+`)
+	f.file("Tiltfile", `
+k8s_yaml('fe.yaml')
+custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', ['src'])
+`)
+	f.file(".dockerignore", "build")
+	f.file("src/index.html", "Hello world!")
+	f.file("src/.git/hi", "hi")
+
+	f.load()
+
+	m := f.assertNextManifest("fe")
+
+	assert.Contains(t, m.LocalPaths(), f.JoinPath("src", ".git"))
+}
