@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 )
@@ -72,6 +73,18 @@ print(get_cwd_wrapper())
 	// not the Tiltfile where the function was evaluated.
 	// https://app.clubhouse.io/windmill/story/4708/extensions-are-executed-with-a-working-directory-in-the-tilt-modules-dir
 	assert.Equal(t, fmt.Sprintf("%s/foo\n", f.Path()), f.PrintOutput())
+}
+
+func TestRealpath(t *testing.T) {
+	f := NewFixture(t)
+
+	f.File("Tiltfile", `
+print(os.realpath('.'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s\n", f.Path()), f.PrintOutput())
 }
 
 func NewFixture(tb testing.TB) *starkit.Fixture {
