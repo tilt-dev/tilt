@@ -8,8 +8,8 @@ import (
 
 // A frozen starlark module object. Can only be changed from Go.
 type Module struct {
-	name  string
-	attrs starlark.StringDict
+	fullName string
+	attrs    starlark.StringDict
 }
 
 func (m Module) Freeze() {}
@@ -38,7 +38,7 @@ func (m Module) Truth() starlark.Bool {
 }
 
 func (m Module) String() string {
-	return fmt.Sprintf("[module: %s]", m.name)
+	return fmt.Sprintf("[module: %s]", m.fullName)
 }
 
 var _ starlark.HasAttrs = Module{}
