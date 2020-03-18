@@ -2,6 +2,7 @@ package os
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"go.starlark.net/starlark"
@@ -23,6 +24,11 @@ func NewExtension() Extension {
 
 func (e Extension) OnStart(env *starkit.Environment) error {
 	err := env.AddBuiltin("os.getcwd", cwd)
+	if err != nil {
+		return err
+	}
+
+	err = env.AddBuiltin("os.realpath", realpath)
 	if err != nil {
 		return err
 	}
@@ -60,4 +66,20 @@ func cwd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs [
 
 	dir := starkit.AbsWorkingDir(t)
 	return starlark.String(dir), nil
+}
+
+func realpath(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var path starlark.String
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"path", &path,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	absPath, err := filepath.Abs(path.GoString())
+	if err != nil {
+		return nil, err
+	}
+	return starlark.String(absPath), nil
 }
