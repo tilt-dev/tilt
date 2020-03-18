@@ -39,7 +39,7 @@ docker_build('gcr.io/fe', '.', live_update=[
 		m.ImageTargetAt(0).Dockerignores())
 }
 
-func TeseCustomBuldDepsAreLocalRepos(t *testing.T) {
+func TestCustomBuldDepsAreLocalRepos(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -59,6 +59,12 @@ custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', ['src'])
 	f.load()
 
 	m := f.assertNextManifest("fe")
+	it := m.ImageTargets[0]
 
-	assert.Contains(t, m.LocalPaths(), f.JoinPath("src", ".git"))
+	var localPathStrings []string
+	for _, r := range it.LocalRepos() {
+		localPathStrings = append(localPathStrings, r.LocalPath)
+	}
+
+	assert.Contains(t, localPathStrings, f.JoinPath("src"))
 }
