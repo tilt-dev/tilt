@@ -79,7 +79,7 @@ func TestRealpath(t *testing.T) {
 	f := NewFixture(t)
 
 	f.File("Tiltfile", `
-print(os.realpath('.'))
+print(os.path.realpath('.'))
 `)
 
 	_, err := f.ExecFile("Tiltfile")
