@@ -43,6 +43,7 @@ func CreateBuildContextFilter(m repoTarget) model.PathMatcher {
 type IgnorableTarget interface {
 	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
+	Dependencies() []string
 
 	// These directories and their children will not trigger file change events
 	IgnoredLocalDirectories() []string
@@ -53,6 +54,10 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 	matchers := []model.PathMatcher{}
 	for _, r := range m.LocalRepos() {
 		matchers = append(matchers, git.NewRepoIgnoreTester(context.Background(), r.LocalPath))
+	}
+	// Also filter out any git directories in any dependencies
+	for _, p := range m.Dependencies() {
+		matchers = append(matchers, git.NewRepoIgnoreTester(context.Background(), p))
 	}
 	for _, di := range m.Dockerignores() {
 		dim, err := dockerignore.DockerIgnoreTesterFromContents(di.LocalPath, di.Contents)

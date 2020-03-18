@@ -14,6 +14,7 @@ import (
 type FakeTarget struct {
 	path         string
 	dockerignore string
+	dependencies []string
 }
 
 func (t FakeTarget) LocalRepos() []model.LocalGitRepo {
@@ -39,6 +40,10 @@ func (t FakeTarget) IgnoredLocalDirectories() []string {
 	return nil
 }
 
+func (t FakeTarget) Dependencies() []string {
+	return t.dependencies
+}
+
 type ignoreTestCase struct {
 	target               FakeTarget
 	change               string
@@ -56,6 +61,11 @@ func TestIgnores(t *testing.T) {
 	targetWithIgnores := FakeTarget{
 		path:         f.Path(),
 		dockerignore: "**/ignored.txt",
+	}
+	targetWithDependencies := FakeTarget{
+		path: f.Path(),
+		dependencies: []string{f.JoinPath("foo", "bar"), f.JoinPath("..", "baz")},
+		
 	}
 
 	cases := []ignoreTestCase{
@@ -118,6 +128,12 @@ func TestIgnores(t *testing.T) {
 			change:               "dir/.#my-machine.yaml.swx",
 			ignoreInBuildContext: false,
 			ignoreInFileChange:   true,
+		},
+		{
+			target: targetWithDependencies,
+			change: "foo/bar/.git/hi",
+			ignoreInBuildContext: false,
+			ignoreInFileChange: true,
 		},
 	}
 
