@@ -506,6 +506,7 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 		image.dbDockerfilePath,
 		image.dbBuildPath,
 		image.workDir)
+	paths = append(paths, image.customDeps...)
 
 	return reposForPaths(paths)
 }
