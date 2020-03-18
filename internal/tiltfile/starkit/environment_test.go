@@ -74,18 +74,51 @@ func (failLoadInterceptor) LocalPath(t *starlark.Thread, path string) (string, e
 	return "", fmt.Errorf("I'm an error look at me!")
 }
 
-func NewExtensionWithIdentifier(id string) Extension {
-	return TestExtension{id}
+func NewExtensionWithIdentifier(id string) *TestExtension {
+	return &TestExtension{identifier: id, callCount: 0}
 }
 
 type TestExtension struct {
 	identifier string
+
+	// Generally, extensions shouldn't store state this way.
+	// They should store it on the Thread object with SetState and friends.
+	// But this is OK for testing.
+	callCount int
 }
 
-func (te TestExtension) OnStart(e *Environment) error {
+func (te *TestExtension) OnStart(e *Environment) error {
 	return e.AddBuiltin(te.identifier, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+		te.callCount++
 		return starlark.None, nil
 	})
+}
+
+func TestTopLevelBuiltin(t *testing.T) {
+	e := NewExtensionWithIdentifier("hi")
+	f := NewFixture(t, e)
+	f.File("Tiltfile", "hi()")
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, e.callCount)
+}
+
+func TestModuleBuiltin(t *testing.T) {
+	e := NewExtensionWithIdentifier("oh.hai")
+	f := NewFixture(t, e)
+	f.File("Tiltfile", "oh.hai()")
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, e.callCount)
+}
+
+func TestNestedModuleBuiltin(t *testing.T) {
+	e := NewExtensionWithIdentifier("oh.hai.cat")
+	f := NewFixture(t, e)
+	f.File("Tiltfile", "oh.hai.cat()")
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, e.callCount)
 }
 
 func TestDuplicateGlobalName(t *testing.T) {
@@ -97,7 +130,7 @@ func TestDuplicateGlobalName(t *testing.T) {
 	_, err := f.ExecFile("Tiltfile")
 	require.Errorf(t, err, "Tiltfile exec should fail")
 	require.Contains(t, err.Error(), "multiple values added named foo")
-	require.Contains(t, err.Error(), "internal error: starkit.TestExtension")
+	require.Contains(t, err.Error(), "internal error: *starkit.TestExtension")
 }
 
 func TestDuplicateNameWithinModule(t *testing.T) {
@@ -109,5 +142,5 @@ func TestDuplicateNameWithinModule(t *testing.T) {
 	_, err := f.ExecFile("Tiltfile")
 	require.Errorf(t, err, "Tiltfile exec should fail")
 	require.Contains(t, err.Error(), "multiple values added named bar.foo")
-	require.Contains(t, err.Error(), "internal error: starkit.TestExtension")
+	require.Contains(t, err.Error(), "internal error: *starkit.TestExtension")
 }
