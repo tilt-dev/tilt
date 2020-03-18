@@ -28,7 +28,7 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 		return err
 	}
 
-	err = env.AddBuiltin("os.realpath", realpath)
+	err = env.AddBuiltin("os.path.realpath", realpath)
 	if err != nil {
 		return err
 	}
