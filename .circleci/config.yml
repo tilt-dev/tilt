@@ -70,7 +70,7 @@ jobs:
 
   build-windows:
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.14
     steps:
       - checkout
       # Currently, we only check to make sure Windows binaries compile
