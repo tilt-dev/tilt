@@ -806,7 +806,6 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 
 	// Now add a second resource
 	f.WriteConfigFiles("Tiltfile", `
-k8s_resource_assembly_version(2)
 docker_build("gcr.io/windmill-public-containers/servantes/snack", "./snack", dockerfile="Dockerfile1")
 docker_build("gcr.io/windmill-public-containers/servantes/doggos", "./doggos", dockerfile="Dockerfile2")
 

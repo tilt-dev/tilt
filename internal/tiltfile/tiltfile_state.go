@@ -254,7 +254,6 @@ const (
 	dcResourceN    = "dc_resource"
 
 	// k8s functions
-	k8sResourceAssemblyVersionN = "k8s_resource_assembly_version"
 	k8sYamlN                    = "k8s_yaml"
 	filterYamlN                 = "filter_yaml"
 	k8sResourceN                = "k8s_resource"
@@ -434,7 +433,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{defaultRegistryN, s.defaultRegistry},
 		{dockerComposeN, s.dockerCompose},
 		{dcResourceN, s.dcResource},
-		{k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn},
 		{k8sYamlN, s.k8sYaml},
 		{filterYamlN, s.filterYaml},
 		{k8sResourceN, s.k8sResource},
@@ -495,12 +493,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		return resourceSet{}, nil, err
 	}
 
-	switch s.k8sResourceAssemblyVersion {
-	case 1:
-		err = s.assembleK8sV1()
-	case 2:
-		err = s.assembleK8sV2()
-	}
+	err = s.assembleK8s()
 	if err != nil {
 		return resourceSet{}, nil, err
 	}
@@ -568,27 +561,7 @@ func (s *tiltfileState) assembleDC() error {
 	return nil
 }
 
-func (s *tiltfileState) assembleK8sV1() error {
-	err := s.assembleK8sWithImages()
-	if err != nil {
-		return err
-	}
-
-	err = s.assembleK8sUnresourced()
-	if err != nil {
-		return err
-	}
-
-	for _, r := range s.k8s {
-		if err := s.validateK8s(r); err != nil {
-			return err
-		}
-	}
-	return nil
-
-}
-
-func (s *tiltfileState) assembleK8sV2() error {
+func (s *tiltfileState) assembleK8s() error {
 	err := s.assembleK8sByWorkload()
 	if err != nil {
 		return err

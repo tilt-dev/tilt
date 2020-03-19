@@ -84,26 +84,6 @@ hfb = custom_build(
 	f.loadErrString("Error: custom_build has no .asdf field or method")
 }
 
-func TestSimpleV1(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
-docker_build('gcr.io/foo', 'foo')
-k8s_resource('foo', 'foo.yaml')
-`)
-
-	f.loadResourceAssemblyV1("foo")
-
-	f.assertNextManifest("foo",
-		db(image("gcr.io/foo")),
-		deployment("foo"))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
-}
-
 func TestSimple(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -138,7 +118,6 @@ func TestLocalImageRef(t *testing.T) {
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
 docker_build('fooimage', 'foo')
 k8s_yaml('foo.yaml')
 `)
@@ -331,7 +310,7 @@ func TestKustomize(t *testing.T) {
 	f.file("deployment.yaml", kustomizeDeploymentText)
 	f.file("service.yaml", kustomizeServiceText)
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build("gcr.io/foo", "foo")
 k8s_yaml(kustomize("."))
 k8s_resource("the-deployment", "foo")
@@ -359,7 +338,7 @@ func TestKustomization(t *testing.T) {
 	f.file("deployment.yaml", kustomizeDeploymentText)
 	f.file("service.yaml", kustomizeServiceText)
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build("gcr.io/foo", "foo")
 k8s_yaml(kustomize("."))
 k8s_resource("the-deployment", "foo")
@@ -485,7 +464,7 @@ func TestDuplicateResourceNames(t *testing.T) {
 
 	f.setupExpand()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('all.yaml')
 k8s_resource('a')
 k8s_resource('a')
@@ -648,26 +627,6 @@ docker_build('gcr.io/a', 'a')
 	f.assertNextManifestUnresourced("a-secret")
 }
 
-func TestExpandExplicit(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupExpand()
-	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
-k8s_yaml('all.yaml')
-docker_build('gcr.io/a', 'a')
-docker_build('gcr.io/b', 'b')
-docker_build('gcr.io/c', 'c')
-docker_build('gcr.io/d', 'd')
-k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
-`)
-	f.loadResourceAssemblyV1()
-	f.assertNextManifest("explicit_a", db(image("gcr.io/a")), deployment("a"), []model.PortForward{{LocalPort: 8000}})
-	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
-	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
-	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
-}
-
 func TestUnresourcedPodCreatorYamlAsManifest(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -762,7 +721,7 @@ func TestK8sGroupedWhenAddedToResource(t *testing.T) {
 	)
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('all.yaml')
 docker_build('gcr.io/a', 'a')
 docker_build('gcr.io/b', 'b')
@@ -775,24 +734,12 @@ docker_build('gcr.io/c', 'c')
 	f.assertNextManifest("deployment-c", deployment("deployment-c"), service("service-c1"), service("service-c2"))
 }
 
-func TestK8sResourceWithoutDockerBuild(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupFoo()
-	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
-k8s_resource('foo', yaml='foo.yaml', port_forwards=8000)
-`)
-	f.loadResourceAssemblyV1()
-	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8000}})
-}
-
 func TestImplicitK8sResourceWithoutDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.setupFoo()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('foo', port_forwards=8000)
 `)
@@ -812,7 +759,7 @@ func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
 		deployment("d", image("gcr.io/d")),
 	)
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('all.yaml')
 docker_build('gcr.io/a', 'a')
 docker_build('gcr.io/b', 'b')
@@ -1012,16 +959,15 @@ func TestFilterYamlByLabel(t *testing.T) {
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
+
 labels = {'app': 'doggos'}
 doggos, rest = filter_yaml('k8s.yaml', labels=labels)
-k8s_resource('doggos', yaml=doggos)
-k8s_resource('rest', yaml=rest)
+k8s_yaml(doggos)
 `)
-	f.loadResourceAssemblyV1()
+	f.load()
 
 	f.assertNextManifest("doggos", deployment("doggos"), service("doggos"))
-	f.assertNextManifest("rest", deployment("snack"), deployment("sancho"))
+	f.assertNoMoreManifests()
 }
 
 func TestFilterYamlByName(t *testing.T) {
@@ -1031,15 +977,14 @@ func TestFilterYamlByName(t *testing.T) {
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
+
 doggos, rest = filter_yaml('k8s.yaml', name='doggos')
-k8s_resource('doggos', yaml=doggos)
-k8s_resource('rest', yaml=rest)
+k8s_yaml(doggos)
 `)
-	f.loadResourceAssemblyV1()
+	f.load()
 
 	f.assertNextManifest("doggos", deployment("doggos"), service("doggos"))
-	f.assertNextManifest("rest", deployment("snack"), deployment("sancho"))
+	f.assertNoMoreManifests()
 }
 
 func TestFilterYamlByNameKind(t *testing.T) {
@@ -1049,15 +994,14 @@ func TestFilterYamlByNameKind(t *testing.T) {
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
+
 doggos, rest = filter_yaml('k8s.yaml', name='doggos', kind='deployment')
-k8s_resource('doggos', yaml=doggos)
-k8s_resource('rest', yaml=rest)
+k8s_yaml(doggos)
 `)
-	f.loadResourceAssemblyV1()
+	f.load()
 
 	f.assertNextManifest("doggos", deployment("doggos"))
-	f.assertNextManifest("rest", service("doggos"), deployment("snack"), deployment("sancho"))
+	f.assertNoMoreManifests()
 }
 
 func TestFilterYamlByNamespace(t *testing.T) {
@@ -1067,15 +1011,14 @@ func TestFilterYamlByNamespace(t *testing.T) {
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
+
 doggos, rest = filter_yaml('k8s.yaml', namespace='the-dog-zone')
-k8s_resource('doggos', yaml=doggos)
-k8s_resource('rest', yaml=rest)
+k8s_yaml(doggos)
 `)
-	f.loadResourceAssemblyV1()
+	f.load()
 
 	f.assertNextManifest("doggos", deployment("doggos"))
-	f.assertNextManifest("rest", service("doggos"), deployment("snack"), deployment("sancho"))
+	f.assertNoMoreManifests()
 }
 
 func TestFilterYamlByApiVersion(t *testing.T) {
@@ -1085,15 +1028,14 @@ func TestFilterYamlByApiVersion(t *testing.T) {
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
+
 doggos, rest = filter_yaml('k8s.yaml', name='doggos', api_version='apps/v1')
-k8s_resource('doggos', yaml=doggos)
-k8s_resource('rest', yaml=rest)
+k8s_yaml(doggos)
 `)
-	f.loadResourceAssemblyV1()
+	f.load()
 
 	f.assertNextManifest("doggos", deployment("doggos"))
-	f.assertNextManifest("rest", service("doggos"), deployment("snack"), deployment("sancho"))
+	f.assertNoMoreManifests()
 }
 
 func TestFilterYamlNoMatch(t *testing.T) {
@@ -1101,12 +1043,13 @@ func TestFilterYamlNoMatch(t *testing.T) {
 	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
+
 doggos, rest = filter_yaml('k8s.yaml', namespace='dne', kind='deployment')
-k8s_resource('doggos', yaml=doggos)
-k8s_resource('rest', yaml=rest)
+k8s_yaml(doggos)
 `)
-	f.loadErrString("could not associate any k8s YAML with this resource")
+	f.load()
+
+	f.assertNoMoreManifests()
 }
 
 // These tests are for behavior that we specifically enabled in Starlark
@@ -1496,26 +1439,6 @@ func TestBlobErr(t *testing.T) {
 	f.loadErrString("for parameter input: got int, want string")
 }
 
-func TestImageDependencyV1(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("")
-	f.file("imageA.dockerfile", "FROM golang:1.10")
-	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
-	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
-	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
-docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
-docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
-k8s_yaml('foo.yaml')
-`)
-
-	f.loadResourceAssemblyV1()
-	m := f.assertNextManifest("image-b", deployment("foo"))
-	assert.Equal(t, []string{"gcr.io/image-a", "gcr.io/image-b"}, f.imageTargetNames(m))
-}
-
 func TestImageDependency(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -1525,7 +1448,7 @@ func TestImageDependency(t *testing.T) {
 	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
 docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
 k8s_yaml('foo.yaml')
@@ -1546,7 +1469,7 @@ func TestImageDependencyLiveUpdate(t *testing.T) {
 ADD message.txt /tmp/message.txt`)
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile',
              live_update=[sync('message.txt', '/tmp/message.txt')])
 docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
@@ -1592,7 +1515,7 @@ FROM gcr.io/image-c
 `)
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-d")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
 docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
 docker_build('gcr.io/image-c', '.', dockerfile='imageC.dockerfile')
@@ -1646,7 +1569,7 @@ spec:
         command: ["/go/bin/snack"]
 `)
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
 docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
 k8s_yaml('snack.yaml')
@@ -1692,32 +1615,6 @@ k8s_yaml('auth.yaml')
 	}, f.imageTargetNames(m))
 }
 
-func TestImagesWithSameNameAssemblyV1(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("")
-	f.file("app.dockerfile", "FROM golang:1.10")
-	f.file("app-jessie.dockerfile", "FROM golang:1.10-jessie")
-	f.yaml("app.yaml",
-		deployment("app", image("vandelay/app")),
-		deployment("app-jessie", image("vandelay/app:jessie")))
-	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
-docker_build('vandelay/app', '.', dockerfile='app.dockerfile')
-docker_build('vandelay/app:jessie', '.', dockerfile='app-jessie.dockerfile')
-k8s_yaml('app.yaml')
-`)
-
-	f.loadResourceAssemblyV1()
-
-	m := f.assertNextManifest("app", deployment("app"), deployment("app-jessie"))
-	assert.Equal(t, []string{
-		"vandelay/app",
-		"vandelay/app:jessie",
-	}, f.imageTargetNames(m))
-}
-
 func TestImagesWithSameNameAssembly(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -1729,7 +1626,7 @@ func TestImagesWithSameNameAssembly(t *testing.T) {
 		deployment("app", image("vandelay/app")),
 		deployment("app-jessie", image("vandelay/app:jessie")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('vandelay/app', '.', dockerfile='app.dockerfile')
 docker_build('vandelay/app:jessie', '.', dockerfile='app-jessie.dockerfile')
 k8s_yaml('app.yaml')
@@ -1739,37 +1636,6 @@ k8s_yaml('app.yaml')
 
 	f.assertNextManifest("app", deployment("app", image("vandelay/app")))
 	f.assertNextManifest("app-jessie", deployment("app-jessie", image("vandelay/app:jessie")))
-}
-
-func TestImagesWithSameNameDifferentManifests(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.gitInit("")
-	f.file("app.dockerfile", "FROM golang:1.10")
-	f.file("app-jessie.dockerfile", "FROM golang:1.10-jessie")
-	f.yaml("app.yaml",
-		deployment("app", image("vandelay/app")),
-		deployment("app-jessie", image("vandelay/app:jessie")))
-	f.file("Tiltfile", `
-k8s_resource_assembly_version(1)
-docker_build('vandelay/app', '.', dockerfile='app.dockerfile')
-docker_build('vandelay/app:jessie', '.', dockerfile='app-jessie.dockerfile')
-k8s_yaml('app.yaml')
-k8s_resource('jessie', image='vandelay/app:jessie')
-`)
-
-	f.loadResourceAssemblyV1()
-
-	m := f.assertNextManifest("jessie", deployment("app-jessie"))
-	assert.Equal(t, []string{
-		"vandelay/app:jessie",
-	}, f.imageTargetNames(m))
-
-	m = f.assertNextManifest("app", deployment("app"))
-	assert.Equal(t, []string{
-		"vandelay/app",
-	}, f.imageTargetNames(m))
 }
 
 func TestImageRefSuggestion(t *testing.T) {
@@ -2057,7 +1923,7 @@ func TestExtraImageLocationOneImage(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('crd.yaml')
 k8s_image_json_path(kind='Environment', paths='{.spec.runtime.image}')
 docker_build('test/mycrd-env', 'env')
@@ -2082,7 +1948,7 @@ func TestConflictingWorkloadNames(t *testing.T) {
 	f.yaml("foo2.yaml", deployment("foo", image("gcr.io/foo2"), namespace("ns2")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml(['foo1.yaml', 'foo2.yaml'])
 docker_build('gcr.io/foo1', 'foo1')
 docker_build('gcr.io/foo2', 'foo2')
@@ -2126,7 +1992,7 @@ func TestK8sKind(t *testing.T) {
 				img = "docker_build('test/mycrd-env', 'env')"
 			}
 			f.file("Tiltfile", fmt.Sprintf(`
-k8s_resource_assembly_version(2)
+
 %s
 k8s_yaml('crd.yaml')
 k8s_kind(%s)
@@ -2190,7 +2056,7 @@ func TestExtraImageLocationTwoImages(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('crd.yaml')
 k8s_image_json_path(['{.spec.runtime.image}', '{.spec.builder.image}'], kind='Environment')
 docker_build('test/mycrd-builder', 'builder')
@@ -2570,7 +2436,7 @@ func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
 
 	f.gitInit("")
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo:bar', 'bar')
 docker_build('gcr.io/foo:baz', 'baz')
 k8s_yaml('bar.yaml')
@@ -2631,72 +2497,6 @@ k8s_yaml('foo.yaml')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "hello")
 }
 
-func TestK8sResourceAssemblyVersionAfterYAML(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_resource('foo', 'bar')
-k8s_resource_assembly_version(2)
-`)
-
-	f.loadErrString("k8s_resource_assembly_version can only be called before introducing any k8s resources")
-}
-
-func TestK8sResourceAssemblyK8sResourceYAMLNamedArg(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_resource('foo', yaml='bar')
-`)
-
-	f.loadErrString("kwarg \"yaml\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
-}
-
-func TestK8sResourceAssemblyK8sResourceImage(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_resource('foo', image='bar')
-`)
-
-	f.loadErrString("kwarg \"image\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
-}
-
-func TestK8sResourceAssemblyK8sResourceYAMLPositionalArg(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_resource('foo', 'foo.yaml')
-`)
-
-	f.loadErrString("second arg", "looks like a yaml file name", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
-}
-
-func TestK8sResourceAssemblyK8sResourceNameKeywordArg(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_resource('foo', name='bar')
-`)
-
-	f.loadErrString("kwarg \"name\"", "deprecated", "https://docs.tilt.dev/resource_assembly_migration.html")
-}
-
 func TestAssemblyVersion2Basic(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2725,7 +2525,7 @@ func TestAssemblyVersion2TwoWorkloadsSameImage(t *testing.T) {
 	f.yaml("bar.yaml", deployment("bar", image("gcr.io/foo")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml(['foo.yaml', 'bar.yaml'])
 `)
@@ -2748,7 +2548,7 @@ func TestK8sResourceNoMatch(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
@@ -2762,7 +2562,7 @@ func TestK8sResourceNewName(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('foo', new_name='bar')
 `)
@@ -2778,7 +2578,7 @@ func TestK8sResourceNewNameConflict(t *testing.T) {
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml(['foo.yaml', 'bar.yaml'])
 k8s_resource('foo', new_name='bar')
 `)
@@ -2796,7 +2596,7 @@ func TestK8sResourceRenameConflictingNames(t *testing.T) {
 	f.yaml("foo2.yaml", deployment("foo", image("gcr.io/foo2"), namespace("ns2")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml(['foo1.yaml', 'foo2.yaml'])
 docker_build('gcr.io/foo1', 'foo1')
 docker_build('gcr.io/foo2', 'foo2')
@@ -2815,7 +2615,7 @@ func TestMultipleK8sResourceOptionsForOneResource(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('foo', port_forwards=8001)
 k8s_resource('foo', port_forwards=8000)
@@ -2830,7 +2630,7 @@ func TestK8sResourceEmptyWorkloadSpecifier(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('', port_forwards=8000)
 `)
@@ -2845,7 +2645,7 @@ func TestWorkloadToResourceFunction(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf(id):
@@ -2866,7 +2666,7 @@ func TestWorkloadToResourceFunctionConflict(t *testing.T) {
 	f.setupFooAndBar()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 docker_build('gcr.io/bar', 'bar')
 k8s_yaml(['foo.yaml', 'bar.yaml'])
@@ -2885,7 +2685,7 @@ func TestWorkloadToResourceFunctionError(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf(id):
@@ -2904,7 +2704,7 @@ func TestWorkloadToResourceFunctionReturnsNonString(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf(id):
@@ -2923,7 +2723,7 @@ func TestWorkloadToResourceFunctionTakesNoArgs(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf():
@@ -2942,7 +2742,7 @@ func TestWorkloadToResourceFunctionTakesTwoArgs(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf(a, b):
@@ -3258,7 +3058,7 @@ func TestDockerbuildIgnoreAsString(t *testing.T) {
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', '.', ignore="*.txt")
 k8s_yaml('foo.yaml')
 `)
@@ -3279,7 +3079,7 @@ func TestDockerbuildIgnoreAsArray(t *testing.T) {
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', '.', ignore=["*.txt", "*.md"])
 k8s_yaml('foo.yaml')
 `)
@@ -3303,7 +3103,7 @@ func TestDockerbuildInvalidIgnore(t *testing.T) {
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('fooimage', 'foo', ignore=[127])
 k8s_yaml('foo.yaml')
 `)
@@ -3361,7 +3161,7 @@ func TestDockerbuildInvalidOnly(t *testing.T) {
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('fooimage', 'foo', only=[127])
 k8s_yaml('foo.yaml')
 `)
@@ -3377,7 +3177,7 @@ func TestDockerbuildInvalidOnlyGlob(t *testing.T) {
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('fooimage', 'foo', only=["**/common"])
 k8s_yaml('foo.yaml')
 `)
@@ -3485,7 +3285,7 @@ func TestCustomBuildIgnoresSingular(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
   ['foo'], ignore="a.txt")
 k8s_yaml('foo.yaml')
@@ -3504,7 +3304,7 @@ func TestCustomBuildIgnoresMultiple(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
 
-	f.file("Tiltfile", `k8s_resource_assembly_version(2)
+	f.file("Tiltfile", `
 custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
  ['foo'], ignore=["a.md","a.txt"])
 k8s_yaml('foo.yaml')
@@ -4527,16 +4327,6 @@ func (f *fixture) load(args ...string) {
 	}
 }
 
-func (f *fixture) loadResourceAssemblyV1(names ...string) {
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), model.NewUserConfigState(names))
-	err := tlr.Error
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	f.loadResult = tlr
-	assert.Equal(f.t, []string{deprecatedResourceAssemblyV1Warning + "\n"}, f.warnings)
-}
-
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(args ...string) {
@@ -5305,7 +5095,7 @@ func (f *fixture) setupExtraPodSelectors(s string) {
 	f.setupFoo()
 
 	tiltfile := fmt.Sprintf(`
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 k8s_resource('foo', extra_pod_selectors=%s)

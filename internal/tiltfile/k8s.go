@@ -866,33 +866,6 @@ func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []k8s.JSONPath {
 	return ret
 }
 
-func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var version int
-	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"version", &version,
-	); err != nil {
-		return nil, err
-	}
-
-	if len(s.k8sUnresourced) > 0 || len(s.k8s) > 0 || len(s.k8sResourceOptions) > 0 {
-		return starlark.None, fmt.Errorf("%s can only be called before introducing any k8s resources", fn.Name())
-	}
-
-	if version < 1 || version > 2 {
-		return starlark.None, fmt.Errorf("invalid %s %d. Must be 1 or 2.", fn.Name(), version)
-	}
-
-	if version == 1 && !s.warnedDeprecatedResourceAssembly {
-		s.logger.Warnf("%s", deprecatedResourceAssemblyV1Warning)
-		s.warnedDeprecatedResourceAssembly = true
-	}
-
-	s.k8sResourceAssemblyVersion = version
-	s.k8sResourceAssemblyVersionReason = k8sResourceAssemblyVersionReasonExplicit
-
-	return starlark.None, nil
-}
-
 func (s *tiltfileState) calculateResourceNames(workloads []k8s.K8sEntity) ([]string, error) {
 	if s.workloadToResourceFunction.fn != nil {
 		names, err := s.workloadToResourceFunctionNames(workloads)
