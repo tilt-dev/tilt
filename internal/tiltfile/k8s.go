@@ -296,14 +296,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 }
 
 func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	switch s.k8sResourceAssemblyVersion {
-	case 1:
-		return s.k8sResourceV1(thread, fn, args, kwargs)
-	case 2:
-		return s.k8sResourceV2(thread, fn, args, kwargs)
-	default:
-		return starlark.None, fmt.Errorf("invalid k8s resource assembly version: %v", s.k8sResourceAssemblyVersion)
-	}
+	return s.k8sResourceV2(thread, fn, args, kwargs)
 }
 
 // v1 syntax:

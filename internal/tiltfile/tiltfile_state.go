@@ -69,9 +69,7 @@ type tiltfileState struct {
 	// objects of these types are considered workloads, whether or not they have an image
 	workloadTypes []k8sObjectSelector
 
-	k8sResourceAssemblyVersion       int
-	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
-	workloadToResourceFunction       workloadToResourceFunction
+	workloadToResourceFunction workloadToResourceFunction
 
 	// for assembly
 	usedImages map[string]bool
@@ -102,15 +100,6 @@ type tiltfileState struct {
 	postExecReadFiles                []string
 }
 
-type k8sResourceAssemblyVersionReason int
-
-const (
-	// assembly version is just at the default; the user hasn't set anything
-	k8sResourceAssemblyVersionReasonDefault k8sResourceAssemblyVersionReason = iota
-	// the user has explicit set the assembly version
-	k8sResourceAssemblyVersionReasonExplicit
-)
-
 func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
@@ -119,24 +108,23 @@ func newTiltfileState(
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
-		ctx:                        ctx,
-		dcCli:                      dcCli,
-		webHost:                    webHost,
-		k8sContextExt:              k8sContextExt,
-		localRegistry:              localRegistry,
-		buildIndex:                 newBuildIndex(),
-		k8sByName:                  make(map[string]*k8sResource),
-		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
-		usedImages:                 make(map[string]bool),
-		logger:                     logger.Get(ctx),
-		builtinCallCounts:          make(map[string]int),
-		builtinArgCounts:           make(map[string]map[string]int),
-		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
-		k8sResourceAssemblyVersion: 2,
-		k8sResourceOptions:         make(map[string]k8sResourceOptions),
-		localResources:             []localResource{},
-		triggerMode:                TriggerModeAuto,
-		features:                   features,
+		ctx:                       ctx,
+		dcCli:                     dcCli,
+		webHost:                   webHost,
+		k8sContextExt:             k8sContextExt,
+		localRegistry:             localRegistry,
+		buildIndex:                newBuildIndex(),
+		k8sByName:                 make(map[string]*k8sResource),
+		k8sImageJSONPaths:         make(map[k8sObjectSelector][]k8s.JSONPath),
+		usedImages:                make(map[string]bool),
+		logger:                    logger.Get(ctx),
+		builtinCallCounts:         make(map[string]int),
+		builtinArgCounts:          make(map[string]map[string]int),
+		unconsumedLiveUpdateSteps: make(map[string]liveUpdateStep),
+		k8sResourceOptions:        make(map[string]k8sResourceOptions),
+		localResources:            []localResource{},
+		triggerMode:               TriggerModeAuto,
+		features:                  features,
 	}
 }
 
