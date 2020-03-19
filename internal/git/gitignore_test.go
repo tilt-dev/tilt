@@ -1,7 +1,6 @@
 package git_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,7 +48,6 @@ func TestGitIgnoreTester_GitDirMatches(t *testing.T) {
 type testFixture struct {
 	repoRoots []*tempdir.TempDirFixture
 	tester    model.PathMatcher
-	ctx       context.Context
 	t         *testing.T
 }
 
@@ -57,7 +55,6 @@ type testFixture struct {
 func newTestFixture(t *testing.T) *testFixture {
 	tf := testFixture{}
 	tf.repoRoots = append(tf.repoRoots, tempdir.NewTempDirFixture(t))
-	tf.ctx = context.Background()
 	tf.t = t
 	tf.UseSingleRepoTester()
 	return &tf
@@ -68,7 +65,7 @@ func (tf *testFixture) UseSingleRepoTester() {
 }
 
 func (tf *testFixture) UseSingleRepoTesterWithPath(path string) {
-	tf.tester = git.NewRepoIgnoreTester(tf.ctx, path)
+	tf.tester = git.NewRepoIgnoreTester(path)
 }
 
 func (tf *testFixture) JoinPath(repoNum int, path ...string) string {

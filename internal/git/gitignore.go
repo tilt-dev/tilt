@@ -1,11 +1,10 @@
 package git
 
 import (
-	"context"
-
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-func NewRepoIgnoreTester(ctx context.Context, repoRoot string) model.PathMatcher {
+// NewRepoIgnoreTester filters out changes in .git directories
+func NewRepoIgnoreTester(repoRoot string) model.PathMatcher {
 	return model.NewRelativeFileOrChildMatcher(repoRoot, ".git")
 }
