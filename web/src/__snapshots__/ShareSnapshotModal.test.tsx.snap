@@ -90,7 +90,7 @@ exports[`ShareSnapshotModal renders team link 1`] = `
           target="_blank"
         >
           <span>
-            TiltCloud
+            Tilt Cloud
           </span>
           <svg>
             arrow.svg
@@ -211,7 +211,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
           target="_blank"
         >
           <span>
-            TiltCloud
+            Tilt Cloud
           </span>
           <svg>
             arrow.svg
@@ -307,7 +307,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
           <p
             className="u-inlineBlock"
           >
-            Link Tilt to TiltCloud (just takes a minute)
+            Link Tilt to Tilt Cloud (just takes a minute)
           </p>
           <form
             action="https://cloud.tilt.dev/start_register_token"
@@ -416,7 +416,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
           <p
             className="u-inlineBlock"
           >
-            Link Tilt to TiltCloud (just takes a minute)
+            Link Tilt to Tilt Cloud (just takes a minute)
           </p>
           <form
             action="https://cloud.tilt.dev/start_register_token"

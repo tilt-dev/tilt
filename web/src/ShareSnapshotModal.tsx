@@ -88,7 +88,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
     return (
       <div className="ShareSnapshotModal-getStarted">
         <p className="u-inlineBlock">
-          Link Tilt to TiltCloud (just takes a minute)
+          Link Tilt to Tilt Cloud (just takes a minute)
         </p>
         <form
           action={this.props.tiltCloudSchemeHost + "/start_register_token"}
@@ -181,7 +181,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span>TiltCloud</span>
+            <span>Tilt Cloud</span>
             <ArrowSvg />
           </a>
         </p>
