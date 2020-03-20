@@ -6,7 +6,6 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
 	"sync"
 	"time"
 
@@ -221,8 +220,13 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				break
 			}
 			url := h.webURL
-			url.Path = fmt.Sprintf("/r/%s/", r.Name)
-			h.a.Incr("ui.interactions.open_log", map[string]string{"is_tiltfile": strconv.FormatBool(r.Name == store.TiltfileManifestName)})
+
+			// If the cursor is in the default position (Tiltfile), open the All log.
+			if r.Name != store.TiltfileManifestName {
+				url.Path = fmt.Sprintf("/r/%s/", r.Name)
+			}
+
+			h.a.Incr("ui.interactions.open_log", nil)
 			_ = browser.OpenURL(url.String())
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()

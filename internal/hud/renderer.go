@@ -3,7 +3,6 @@ package hud
 import (
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -158,20 +157,19 @@ func renderPaneHeader(isMax bool) rty.Component {
 	return l
 }
 
-func (r *Renderer) renderStatusBar(v view.View) rty.Component {
-	sb := rty.NewStringBuilder()
-	sb.Text(" ") // Indent
+func (r *Renderer) renderStatusMessage(v view.View) rty.Component {
 	errorCount := 0
 	for _, res := range v.Resources {
 		if isInError(res) {
 			errorCount++
 		}
 	}
+
+	sb := rty.NewStringBuilder()
 	if errorCount == 0 && v.TiltfileErrorMessage() == "" {
-		sb.Fg(cGood).Text("✓").Fg(tcell.ColorDefault).Fg(cText).Text(" OK").Fg(tcell.ColorDefault)
+		sb.Fg(cGood).Text("✓").Fg(cText).Text(" OK")
 	} else {
 		var errorCountMessage string
-		var tiltfileError strings.Builder
 		s := "error"
 		if errorCount > 1 {
 			s = "errors"
@@ -181,12 +179,22 @@ func (r *Renderer) renderStatusBar(v view.View) rty.Component {
 			errorCountMessage = fmt.Sprintf(" %d %s", errorCount, s)
 		}
 
-		if v.TiltfileErrorMessage() != "" {
-			_, _ = tiltfileError.WriteString(" • Tiltfile error")
-		}
-		sb.Fg(cBad).Text("✖").Fg(tcell.ColorDefault).Fg(cText).Textf("%s%s", errorCountMessage, tiltfileError.String()).Fg(tcell.ColorDefault)
+		sb.Fg(cBad).Text("✖").
+			Fg(cText).Textf("%s", errorCountMessage)
 	}
-	return rty.Bg(rty.OneLine(sb.Build()), tcell.ColorWhiteSmoke)
+	return sb.Build()
+}
+
+func (r *Renderer) renderStatusBar(v view.View) rty.Component {
+	l := rty.NewConcatLayout(rty.DirHor)
+	l.Add(rty.TextString(" "))
+	l.Add(r.renderStatusMessage(v))
+	l.Add(rty.TextString(" "))
+	l.AddDynamic(rty.NewFillerString(' '))
+
+	msg := " To explore, open web view (enter) • terminal is limited "
+	l.Add(rty.ColoredString(msg, cText))
+	return rty.Bg(rty.OneLine(l), tcell.ColorWhiteSmoke)
 }
 
 func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
@@ -202,7 +210,7 @@ func (r *Renderer) renderFooter(v view.View, keys string) rty.Component {
 }
 
 func keyLegend(v view.View, vs view.ViewState) string {
-	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log, (b)rowser ┊ (ctrl-C) quit  "
+	defaultKeys := "Browse (↓ ↑), Expand (→) ┊ (enter) log ┊ (ctrl-C) quit  "
 	if vs.AlertMessage != "" {
 		return "Tilt (l)og ┊ (esc) close alert "
 	}
