@@ -142,6 +142,16 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		if !reg.Empty() {
 			r.registry = reg
 		}
+
+		if r.env == EnvKIND6 && r.registry.Empty() {
+			logger.Get(ctx).Warnf("You are running Kind without a local image registry.\n" +
+				"Tilt can use the local registry to speed up builds.\n" +
+				"Instructions: https://github.com/windmilleng/kind-local")
+		} else if r.env == EnvK3D && r.registry.Empty() {
+			logger.Get(ctx).Warnf("You are running K3D without a local image registry.\n" +
+				"Tilt can use the local registry to speed up builds.\n" +
+				"Instructions: https://github.com/windmilleng/k3d-local-registry")
+		}
 	})
 	return r.registry
 }
