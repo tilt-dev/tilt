@@ -8,7 +8,7 @@ import (
 )
 
 type FakeClient struct {
-	Requests []http.Request
+	requests []http.Request
 	Response http.Response
 	Err      error
 
@@ -19,7 +19,7 @@ func (fc *FakeClient) Do(req *http.Request) (*http.Response, error) {
 	fc.mu.Lock()
 	defer fc.mu.Unlock()
 
-	fc.Requests = append(fc.Requests, *req)
+	fc.requests = append(fc.requests, *req)
 	r := fc.Response
 
 	return &r, fc.Err
@@ -32,11 +32,15 @@ func (fc *FakeClient) SetResponse(s string) {
 	}
 }
 
-func (fc *FakeClient) RequestURLs() []string {
-	var ret []string
-	for _, req := range fc.Requests {
-		ret = append(ret, req.URL.String())
+func (fc *FakeClient) Requests() []http.Request {
+	fc.mu.Lock()
+	defer fc.mu.Unlock()
+
+	var ret []http.Request
+	for _, req := range fc.requests {
+		ret = append(ret, req)
 	}
+
 	return ret
 }
 
