@@ -36,11 +36,7 @@ func (fc *FakeClient) Requests() []http.Request {
 	fc.mu.Lock()
 	defer fc.mu.Unlock()
 
-	var ret []http.Request
-	for _, req := range fc.requests {
-		ret = append(ret, req)
-	}
-
+	ret := append([]http.Request{}, fc.requests...)
 	return ret
 }
 

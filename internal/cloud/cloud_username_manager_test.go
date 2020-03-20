@@ -50,7 +50,7 @@ func TestWhoAmI(t *testing.T) {
 			require.Equal(t, "test token", req.Header.Get(TiltTokenHeaderName))
 
 			if tc.teamID == "" {
-				_, ok := req.Header[TiltTeamIDNameHeaderName]
+				_, ok := req.Header[http.CanonicalHeaderKey(TiltTeamIDNameHeaderName)]
 				require.Falsef(t, ok, "request should not have header %s", TiltTeamIDNameHeaderName)
 			} else {
 				require.Equalf(t, "test team id", req.Header.Get(TiltTeamIDNameHeaderName), "header %s", TiltTeamIDNameHeaderName)
