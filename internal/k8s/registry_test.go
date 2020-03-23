@@ -69,6 +69,28 @@ func TestRegistryFoundInLabelsWithClusterHost(t *testing.T) {
 	assert.Equal(t, "registry:5000", registry.HostFromCluster())
 }
 
+func TestKINDWarning(t *testing.T) {
+	cs := &fake.Clientset{}
+	core := cs.CoreV1()
+	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+
+	out := bytes.NewBuffer(nil)
+	registry := registryAsync.Registry(newLoggerCtx(out))
+	assert.True(t, registry.Empty())
+	assert.Contains(t, out.String(), "https://github.com/windmilleng/kind-local")
+}
+
+func TestK3DWarning(t *testing.T) {
+	cs := &fake.Clientset{}
+	core := cs.CoreV1()
+	registryAsync := newRegistryAsync(EnvK3D, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+
+	out := bytes.NewBuffer(nil)
+	registry := registryAsync.Registry(newLoggerCtx(out))
+	assert.True(t, registry.Empty())
+	assert.Contains(t, out.String(), "https://github.com/windmilleng/k3d-local-registry")
+}
+
 func TestRegistryFoundInLabelsWithLocalOnly(t *testing.T) {
 	cs := &fake.Clientset{}
 	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
