@@ -245,6 +245,9 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
 
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
 	result := make([]K8sEntity, 0, len(entities))
 
 	mutable, immutable := MutableAndImmutableEntities(entities)
