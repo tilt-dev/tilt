@@ -179,6 +179,26 @@ spec:
                 key: token
 `
 
+const SanchoStatefulSetBeta1YAML = `
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sancho
+  namespace: sancho-ns
+  labels:
+    app: sancho
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sancho
+    spec:
+      containers:
+      - name: sancho
+        image: gcr.io/some-project-162817/sancho
+`
+
 const SanchoBeta2YAML = `
 apiVersion: apps/v1beta2
 kind: Deployment

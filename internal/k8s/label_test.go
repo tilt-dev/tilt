@@ -130,6 +130,31 @@ func TestInjectLabelDeploymentBeta1(t *testing.T) {
 	})
 }
 
+func TestInjectLabelStatefulSetBeta1(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.SanchoStatefulSetBeta1YAML)
+	lps := []model.LabelPair{
+		{
+			Key:   "owner",
+			Value: "me",
+		},
+	}
+	newEntity, err := InjectLabels(entity, lps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, ok := newEntity.Obj.(*v1beta1.StatefulSet)
+	require.True(t, ok)
+
+	expectedLPs := append(lps, model.LabelPair{Key: "app", Value: "sancho"})
+
+	verifyFields(t, expectedLPs, []field{
+		{"d.Labels", d.Labels},
+		{"d.Spec.Template.Labels", d.Spec.Template.Labels},
+		{"d.Spec.Selector.MatchLabels", d.Spec.Selector.MatchLabels},
+	})
+}
+
 func TestInjectLabelDeploymentBeta2(t *testing.T) {
 	entity := parseOneEntity(t, testyaml.SanchoBeta2YAML)
 	lps := []model.LabelPair{
