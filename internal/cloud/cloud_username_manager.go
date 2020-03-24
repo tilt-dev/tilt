@@ -53,9 +53,15 @@ func (c *CloudUsernameManager) error() {
 	c.mu.Unlock()
 }
 
+type whoAmIRequest struct {
+	TiltVersion string `json:"tilt_version"`
+}
+
 func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStore, blocking bool) {
 	state := st.RLockState()
 	tok := state.Token
+	teamID := state.TeamName
+	tiltVersion := state.TiltBuildInfo.Version
 	st.RUnlockState()
 
 	c.mu.Lock()
@@ -77,13 +83,24 @@ func (c *CloudUsernameManager) CheckUsername(ctx context.Context, st store.RStor
 		u.RawQuery = q.Encode()
 	}
 
-	req, err := http.NewRequest("GET", u.String(), nil)
+	body := &bytes.Buffer{}
+	err := json.NewEncoder(body).Encode(whoAmIRequest{TiltVersion: tiltVersion})
+	if err != nil {
+		logger.Get(ctx).Debugf("error serializing whoami request: %v\n", err)
+		c.error()
+		return
+	}
+
+	req, err := http.NewRequest("GET", u.String(), body)
 	if err != nil {
 		logger.Get(ctx).Debugf("error making whoami request: %v", err)
 		c.error()
 		return
 	}
 	req.Header.Set(TiltTokenHeaderName, string(tok))
+	if teamID != "" {
+		req.Header.Set(TiltTeamIDNameHeaderName, teamID)
+	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := c.client.Do(req)
 	if err != nil {

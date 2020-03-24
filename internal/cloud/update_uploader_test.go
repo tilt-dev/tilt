@@ -35,7 +35,7 @@ func TestOneUpdate(t *testing.T) {
 	assert.Equal(t, 0, len(f.uu.makeUpdates(f.ctx, f.store).updates()))
 
 	f.uu.sendUpdates(f.ctx, task)
-	requests := f.httpClient.Requests
+	requests := f.httpClient.Requests()
 	if assert.Equal(t, 1, len(requests)) {
 		body, err := ioutil.ReadAll(requests[0].Body)
 		assert.NoError(t, err)
@@ -57,7 +57,7 @@ func TestTiltfileUpdate(t *testing.T) {
 	assert.Equal(t, 0, len(f.uu.makeUpdates(f.ctx, f.store).updates()))
 
 	f.uu.sendUpdates(f.ctx, task)
-	requests := f.httpClient.Requests
+	requests := f.httpClient.Requests()
 	if assert.Equal(t, 1, len(requests)) {
 		body, err := ioutil.ReadAll(requests[0].Body)
 		assert.NoError(t, err)
