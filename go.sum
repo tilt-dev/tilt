@@ -699,6 +699,8 @@ github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/errors v0.8.1-0.20171018195549-f15c970de5b7/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6JUPA=
 github.com/pmezard/go-difflib v0.0.0-20151028094244-d8ed2627bdf0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
@@ -850,6 +852,10 @@ github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed h1:xt+hAUJdHN
 github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed/go.mod h1:feHoQi0H+lyL/mtPHePEI0Pan5Vd4LJmo/PaohCewks=
 github.com/windmilleng/fsnotify v1.4.7 h1:9PUoTe3ZaKO9JLtuHQzM8BaCcrDz8rQ7PmEGo6BAbCQ=
 github.com/windmilleng/fsnotify v1.4.7/go.mod h1:h3pBNCM04c2q++yj67m77Mof0ZG/mzQMh+OM7J+Umc0=
+github.com/windmilleng/json-patch v3.0.0+incompatible h1:suCvanVlAvf9cE6cw+oVm4IEL5e/pvpZy2gldDP4wGQ=
+github.com/windmilleng/json-patch v3.0.0+incompatible/go.mod h1:ptw7VpdMlXpl6gg2OB5lY8o3O8eZonTmaqv8NrYVbME=
+github.com/windmilleng/json-patch/v4 v4.8.0 h1:Leq7Yrc0Hbp9+pHk+uE619t9/OJf2pXkWvzKLuqzBO4=
+github.com/windmilleng/json-patch/v4 v4.8.0/go.mod h1:tBHyOH9FEMo/+YnyfBrsWyl5pz0HG9NcCu1FBmm5ZJI=
 github.com/windmilleng/wmclient v0.0.0-20191029142206-4d42565d7ef1 h1:83lkkQIOYfCB0O+pGZwZ+1f3fp0TVSm+DdPclkEuSgs=
 github.com/windmilleng/wmclient v0.0.0-20191029142206-4d42565d7ef1/go.mod h1:KiOUkuhrzEiLKaErC33BRLfxAIE4MGjRGi7G+R3sm7o=
 github.com/windmilleng/wmclient v0.0.0-20200124175229-a66bcbc48340 h1:QFeGATPnLyIvTdf75OuKIFzX0CRgRt5a/lK1M6k16GI=
@@ -1086,6 +1092,8 @@ gopkg.in/d4l3k/messagediff.v1 v1.2.1/go.mod h1:EUzikiKadqXWcD1AzJLagx0j/BeeWGtn+
 gopkg.in/dancannon/gorethink.v3 v3.0.5 h1:/g7PWP7zUS6vSNmHSDbjCHQh1Rqn8Jy6zSMQxAsBSMQ=
 gopkg.in/dancannon/gorethink.v3 v3.0.5/go.mod h1:GXsi1e3N2OcKhcP6nsYABTiUejbWMFO4GY5a4pEaeEc=
 gopkg.in/errgo.v2 v2.1.0/go.mod h1:hNsd1EY+bozCKY1Ytp96fpM3vjJbqLJn88ws8XvfDNI=
+gopkg.in/evanphx/json-patch.v4 v4.5.0 h1:MFA/3y/6L7wj4hG4wS4gsDw+ihxOSu6heF2zB2NUFtU=
+gopkg.in/evanphx/json-patch.v4 v4.5.0/go.mod h1:p8EYWUEYMpynmqDbY58zCKCFZw8pRWMG4EsWvDvM72M=
 gopkg.in/fatih/pool.v2 v2.0.0 h1:xIFeWtxifuQJGk/IEPKsTduEKcKvPmhoiVDGpC40nKg=
 gopkg.in/fatih/pool.v2 v2.0.0/go.mod h1:8xVGeu1/2jr2wm5V9SPuMht2H5AEmf5aFMGSQixtjTY=
 gopkg.in/fsnotify.v1 v1.4.7 h1:xOHLXZwVvI9hhs+cLKq5+I5onOuwQLhQwiu63xxlHs4=
