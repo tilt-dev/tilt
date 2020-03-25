@@ -47,7 +47,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/synclet"
 	"github.com/windmilleng/tilt/internal/testutils"
@@ -2769,15 +2768,19 @@ k8s_yaml('snack.yaml')`
 	f.WriteFile("snack.yaml", testyaml.Deployment("snack", "gcr.io/windmill-public-containers/servantes/snack:new"))
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("snack.yaml"))
 
-	f.WaitUntilManifestState("done", "snack", func(ms store.ManifestState) bool {
-		return sliceutils.StringSliceEquals(ms.LastBuild().Edits, []string{f.JoinPath("snack.yaml")})
+	f.waitForCompletedBuildCount(2)
+
+	f.withManifestState("snack", func(ms store.ManifestState) {
+		require.Equal(t, []string{f.JoinPath("snack.yaml")}, ms.LastBuild().Edits)
 	})
 
 	f.WriteFile("Dockerfile", `FROM iron/go:foobar`)
 	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Dockerfile"))
 
-	f.WaitUntilManifestState("done", "snack", func(ms store.ManifestState) bool {
-		return sliceutils.StringSliceEquals(ms.LastBuild().Edits, []string{f.JoinPath("Dockerfile")})
+	f.waitForCompletedBuildCount(3)
+
+	f.withManifestState("snack", func(ms store.ManifestState) {
+		require.Equal(t, []string{f.JoinPath("Dockerfile")}, ms.LastBuild().Edits)
 	})
 }
 
