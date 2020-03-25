@@ -9,6 +9,7 @@ import (
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -76,12 +77,16 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 	}
 
 	switch obj := entity.Obj.(type) {
-	case *appsv1beta1.Deployment:
-		allowLabelChangesInAppsDeploymentBeta1(obj)
-	case *appsv1beta2.Deployment:
-		allowLabelChangesInAppsDeploymentBeta2(obj)
-	case *extv1beta1.Deployment:
-		allowLabelChangesInExtDeploymentBeta1(obj)
+	case *appsv1beta1.Deployment,
+		*appsv1beta2.Deployment,
+		*extv1beta1.Deployment,
+		*appsv1beta2.ReplicaSet,
+		*extv1beta1.ReplicaSet,
+		*appsv1beta2.DaemonSet,
+		*extv1beta1.DaemonSet,
+		*appsv1beta1.StatefulSet,
+		*appsv1beta2.StatefulSet:
+		allowLabelChangesInOptionalSelector(obj)
 	}
 
 	selectors, err := extractSelectors(&entity, func(v reflect.Value) bool {
@@ -116,59 +121,68 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 // The v1 Deployment fixed this problem by making Selector mandatory.
 // But for old versions of Deployment, we need to auto-infer the selector
 // before we add labels to the pod.
-func allowLabelChangesInAppsDeploymentBeta1(dep *appsv1beta1.Deployment) {
-	selector := dep.Spec.Selector
+func allowLabelChangesInOptionalSelector(obj runtime.Object) {
+	// First, check to make sure this has a Spec object with:
+	// 1) A Selector field of type metav1.LabelSelector
+	// 2) A Template field of type v1.PodTemplateSpec
+	objPtrV := reflect.ValueOf(obj)
+	if objPtrV.Kind() != reflect.Ptr {
+		return
+	}
+
+	objV := objPtrV.Elem()
+	if objV.Kind() != reflect.Struct {
+		return
+	}
+
+	specField := objV.FieldByName("Spec")
+	if specField.Kind() != reflect.Struct {
+		return
+	}
+
+	specType := specField.Type()
+	selectorFieldType, ok := specType.FieldByName("Selector")
+	if !ok || selectorFieldType.Type != reflect.TypeOf(&metav1.LabelSelector{}) {
+		return
+	}
+
+	podTemplateFieldType, ok := specType.FieldByName("Template")
+	if !ok || podTemplateFieldType.Type != reflect.TypeOf(v1.PodTemplateSpec{}) {
+		return
+	}
+
+	selectorField := specField.FieldByName("Selector")
+	var selector *metav1.LabelSelector
+	if selectorField.IsValid() {
+		selector, ok = selectorField.Interface().(*metav1.LabelSelector)
+		if !ok {
+			return
+		}
+	}
+
+	// If the selector is already filled in, we don't need to do anything.
 	if selector != nil &&
 		(len(selector.MatchLabels) > 0 || len(selector.MatchExpressions) > 0) {
 		return
 	}
 
-	podSpecLabels := dep.Spec.Template.Labels
-	matchLabels := make(map[string]string, len(podSpecLabels))
-	for k, v := range podSpecLabels {
-		matchLabels[k] = v
-	}
-	if dep.Spec.Selector == nil {
-		dep.Spec.Selector = &metav1.LabelSelector{}
-	}
-	dep.Spec.Selector.MatchLabels = matchLabels
-}
-
-// see notes on allowLabelChangesInAppsDeploymentBeta1
-func allowLabelChangesInAppsDeploymentBeta2(dep *appsv1beta2.Deployment) {
-	selector := dep.Spec.Selector
-	if selector != nil &&
-		(len(selector.MatchLabels) > 0 || len(selector.MatchExpressions) > 0) {
+	podTemplateField := specField.FieldByName("Template")
+	podTemplate, ok := podTemplateField.Interface().(v1.PodTemplateSpec)
+	if !ok {
 		return
 	}
 
-	podSpecLabels := dep.Spec.Template.Labels
+	podSpecLabels := podTemplate.Labels
 	matchLabels := make(map[string]string, len(podSpecLabels))
 	for k, v := range podSpecLabels {
 		matchLabels[k] = v
 	}
-	if dep.Spec.Selector == nil {
-		dep.Spec.Selector = &metav1.LabelSelector{}
-	}
-	dep.Spec.Selector.MatchLabels = matchLabels
-}
 
-func allowLabelChangesInExtDeploymentBeta1(dep *extv1beta1.Deployment) {
-	selector := dep.Spec.Selector
-	if selector != nil &&
-		(len(selector.MatchLabels) > 0 || len(selector.MatchExpressions) > 0) {
-		return
+	if selector == nil {
+		selector = &metav1.LabelSelector{}
 	}
-
-	podSpecLabels := dep.Spec.Template.Labels
-	matchLabels := make(map[string]string, len(podSpecLabels))
-	for k, v := range podSpecLabels {
-		matchLabels[k] = v
-	}
-	if dep.Spec.Selector == nil {
-		dep.Spec.Selector = &metav1.LabelSelector{}
-	}
-	dep.Spec.Selector.MatchLabels = matchLabels
+	selector.MatchLabels = matchLabels
+	selectorField.Set(reflect.ValueOf(selector))
 }
 
 // SelectorMatchesLabels indicates whether the pod selector of the given entity matches the given label(s).

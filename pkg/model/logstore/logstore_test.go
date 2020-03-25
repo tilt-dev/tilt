@@ -427,7 +427,5 @@ func assertSnapshot(t *testing.T, output string) {
 		t.Fatal(err)
 	}
 
-	if string(expected) != output {
-		t.Errorf("Expected: %s != Output: %s", expected, output)
-	}
+	assert.Equal(t, string(expected), output)
 }
