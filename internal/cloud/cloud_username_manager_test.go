@@ -18,7 +18,7 @@ import (
 
 const testCloudAddress = "tiltcloud.example.com"
 
-func TestLongGet(t *testing.T) {
+func TestLongPost(t *testing.T) {
 	f := newCloudUsernameManagerTestFixture(t)
 
 	f.httpClient.SetResponse(`{"foo": "bar"}`)
@@ -110,6 +110,7 @@ func (f *cloudUsernameManagerTestFixture) waitForRequest(expectedURL string) htt
 			f.t.Fatalf("%T made more than one http request! requests: %v", f.um, urls)
 		} else if len(reqs) == 1 {
 			require.Equal(f.t, expectedURL, reqs[0].URL.String())
+			require.Equal(f.t, "POST", reqs[0].Method)
 			return reqs[0]
 		} else {
 			select {
