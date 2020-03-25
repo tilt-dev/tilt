@@ -34,7 +34,7 @@ func ProvideSubscribers(
 	tvc *TiltVersionChecker,
 	au *analytics.AnalyticsUpdater,
 	ewm *k8swatch.EventWatchManager,
-	tcum *cloud.CloudUsernameManager,
+	tcum *cloud.CloudStatusManager,
 	cuu *cloud.UpdateUploader,
 	dp *dockerprune.DockerPruner,
 	tc *telemetry.Controller,

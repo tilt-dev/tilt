@@ -4,6 +4,6 @@ import "github.com/google/wire"
 
 var WireSet = wire.NewSet(
 	ProvideHttpClient,
-	NewUsernameManager,
+	NewStatusManager,
 	NewSnapshotUploader,
 	NewUpdateUploader)

@@ -95,7 +95,7 @@ type tiltfileState struct {
 	// for error reporting in case it's called twice
 	triggerModeCallPosition syntax.Position
 
-	teamName string
+	teamID string
 
 	logger                           logger.Logger
 	warnedDeprecatedResourceAssembly bool
@@ -1259,21 +1259,21 @@ func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Buil
 }
 
 func (s *tiltfileState) setTeam(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var teamName string
-	err := s.unpackArgs(fn.Name(), args, kwargs, "team_name", &teamName)
+	var teamID string
+	err := s.unpackArgs(fn.Name(), args, kwargs, "team_id", &teamID)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(teamName) == 0 {
-		return nil, errors.New("team_name cannot be empty")
+	if len(teamID) == 0 {
+		return nil, errors.New("team_id cannot be empty")
 	}
 
-	if s.teamName != "" {
-		return nil, fmt.Errorf("team_name set multiple times (to '%s' and '%s')", s.teamName, teamName)
+	if s.teamID != "" {
+		return nil, fmt.Errorf("team_id set multiple times (to '%s' and '%s')", s.teamID, teamID)
 	}
 
-	s.teamName = teamName
+	s.teamID = teamID
 
 	return starlark.None, nil
 }

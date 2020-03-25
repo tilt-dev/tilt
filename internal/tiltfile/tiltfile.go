@@ -46,7 +46,7 @@ type TiltfileLoadResult struct {
 	ConfigFiles         []string
 	TiltIgnoreContents  string
 	FeatureFlags        map[string]bool
-	TeamName            string
+	TeamID              string
 	TelemetrySettings   model.TelemetrySettings
 	Secrets             model.SecretSet
 	Error               error
@@ -182,7 +182,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	tlr.FeatureFlags = s.features.ToEnabled()
 	tlr.Error = err
 	tlr.Manifests = manifests
-	tlr.TeamName = s.teamName
+	tlr.TeamID = s.teamID
 
 	vs, _ := version.GetState(result)
 	tlr.VersionSettings = vs

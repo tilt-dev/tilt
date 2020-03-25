@@ -158,9 +158,9 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 	for k, v := range s.Features {
 		ret.FeatureFlags[k] = v
 	}
-	ret.TiltCloudUsername = s.TiltCloudUsername
+	ret.TiltCloudUsername = s.CloudStatus.Username
 	ret.TiltCloudSchemeHost = cloudurl.URL(s.CloudAddress).String()
-	ret.TiltCloudTeamID = s.TeamName
+	ret.TiltCloudTeamID = s.TeamID
 	if s.FatalError != nil {
 		ret.FatalError = s.FatalError.Error()
 	}
