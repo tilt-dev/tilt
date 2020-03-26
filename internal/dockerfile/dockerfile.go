@@ -2,7 +2,6 @@ package dockerfile
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -147,67 +146,6 @@ func (d Dockerfile) FindImages() ([]reference.Named, error) {
 		return nil, err
 	}
 	return result, nil
-}
-
-// DeriveSyncs finds ADD statements in a Dockerfile and turns them into Tilt model.Sync's.
-// Relative paths in an ADD statement are relative to the build context (passed as an arg)
-// and will appear in the Sync as an abs path.
-//
-// TODO(nick): This code has several bugs and needs to be revisited.
-// In particular, it doesn't properly handle
-// 1) multi-stage builds
-// 2) ADD/COPY flags
-// 3) workdirs
-// 4) relative dirs vs absolute dirs
-//
-// Should probably be reworked to only return local paths,
-// as part of a rethink of slimming down the docker build
-// context in a way that's not docker-compose specific.
-func (d Dockerfile) BUGGY_DeriveSyncs(context string) ([]model.Sync, error) {
-	var nodes []*parser.Node
-	err := d.traverse(func(node *parser.Node) error {
-		switch node.Value {
-		case command.Add, command.Copy:
-			nodes = append(nodes, node)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	syncs := make([]model.Sync, len(nodes))
-	for i, n := range nodes {
-		m, err := nodeToSync(n, context)
-		if err != nil {
-			return nil, err
-		}
-		syncs[i] = m
-	}
-	return syncs, nil
-}
-
-func nodeToSync(node *parser.Node, context string) (model.Sync, error) {
-	cmd := node.Value
-	if !(cmd == command.Add || cmd == command.Copy) {
-		return model.Sync{}, fmt.Errorf("nodeToSyncs works on ADD/COPY nodes; got '%s'", cmd)
-	}
-
-	srcNode := node.Next
-	dstNode := srcNode.Next
-
-	src := srcNode.Value
-	if !filepath.IsAbs(src) {
-		src = filepath.Join(context, src)
-	}
-
-	// TODO(maia): do we support relative ContainerPaths in syncs?
-	// If not, need to either a. make absolute or b. error out here.
-
-	return model.Sync{
-		LocalPath:     src,
-		ContainerPath: dstNode.Value,
-	}, nil
 }
 
 func (d Dockerfile) String() string {

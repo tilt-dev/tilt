@@ -1,12 +1,9 @@
 package dockerfile
 
 import (
-	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/windmilleng/tilt/pkg/model"
 )
 
 func TestAllowEntrypoint(t *testing.T) {
@@ -95,46 +92,6 @@ RUN echo hi
 RUN echo bye
 `, string(b))
 	assert.True(t, ok)
-}
-
-func TestDeriveSyncs(t *testing.T) {
-	df := Dockerfile(`RUN echo 'hi'
-COPY foo /bar
-ADD /abs/bar /baz
-ADD ./beep/boop /blorp`)
-	context := "/context/dir"
-	syncs, err := df.BUGGY_DeriveSyncs(context)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expectedSyncs := []model.Sync{
-		model.Sync{
-			LocalPath:     path.Join(context, "foo"),
-			ContainerPath: "/bar",
-		},
-		model.Sync{
-			LocalPath:     "/abs/bar",
-			ContainerPath: "/baz",
-		},
-		model.Sync{
-			LocalPath:     path.Join(context, "beep/boop"),
-			ContainerPath: "/blorp",
-		},
-	}
-	assert.Equal(t, len(expectedSyncs), len(syncs))
-	for _, s := range expectedSyncs {
-		assert.Contains(t, syncs, s)
-	}
-}
-
-func TestNoAddsToNoSyncs(t *testing.T) {
-	df := Dockerfile(`RUN echo 'hi'`)
-	syncs, err := df.BUGGY_DeriveSyncs("/context/dir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Empty(t, syncs)
 }
 
 func TestFindImages(t *testing.T) {
