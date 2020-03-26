@@ -22,7 +22,7 @@ y = x // 0
 	_, err := f.ExecFile("Tiltfile")
 	if assert.Error(t, err) {
 		backtrace := err.(*starlark.EvalError).Backtrace()
-		assert.Contains(t, backtrace, fmt.Sprintf("%s/Tiltfile:2:1: in <toplevel>", f.Path()))
+		assert.Contains(t, backtrace, fmt.Sprintf("%s:2:1: in <toplevel>", f.JoinPath("Tiltfile")))
 		assert.Contains(t, backtrace, "cannot load ./foo/Tiltfile")
 	}
 }

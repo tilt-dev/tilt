@@ -1,3 +1,5 @@
+// +build !windows
+
 package store
 
 import (
@@ -94,14 +96,4 @@ func TestRelativeTiltfilePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "Tiltfile", actual)
-}
-
-func newState(manifests []model.Manifest) *EngineState {
-	ret := NewState()
-	for _, m := range manifests {
-		ret.ManifestTargets[m.Name] = NewManifestTarget(m)
-		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
-	}
-
-	return ret
 }
