@@ -1,9 +1,19 @@
 package ospath
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
+
+// filepath.Abs for testing
+func MustAbs(path string) string {
+	result, err := filepath.Abs(path)
+	if err != nil {
+		panic(fmt.Errorf("Abs(%s): %v", path, err))
+	}
+	return result
+}
 
 // Given absolute paths `dir` and `file`, returns
 // the relative path of `file` relative to `dir`.
