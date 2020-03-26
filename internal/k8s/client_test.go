@@ -233,7 +233,7 @@ func (c clientTestFixture) addObject(obj runtime.Object) {
 func (c clientTestFixture) getPod(id PodID) *v1.Pod {
 	c.t.Helper()
 
-	pod, err := c.client.core.Pods(DefaultNamespace.String()).Get(id.String(), metav1.GetOptions{})
+	pod, err := c.client.core.Pods(DefaultNamespace.String()).Get(c.ctx, id.String(), metav1.GetOptions{})
 	if err != nil {
 		c.t.Fatal(err)
 	}

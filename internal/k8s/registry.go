@@ -62,7 +62,7 @@ func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container
 
 	// Microk8s might have a registry enabled.
 	// https://microk8s.io/docs/working
-	svc, err := r.core.Services(microk8sRegistryNamespace).Get(microk8sRegistryName, metav1.GetOptions{})
+	svc, err := r.core.Services(microk8sRegistryNamespace).Get(ctx, microk8sRegistryName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Get(ctx).Warnf("You are running microk8s without a local image registry.\n" +
@@ -104,7 +104,7 @@ func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container
 // If this node has the Tilt registry annotations on it, then we can
 // infer it was set up with a Tilt script and thus has a local registry.
 func (r *registryAsync) inferRegistryFromTiltNodeAnnotations(ctx context.Context) container.Registry {
-	nodeList, err := r.core.Nodes().List(metav1.ListOptions{Limit: 1})
+	nodeList, err := r.core.Nodes().List(ctx, metav1.ListOptions{Limit: 1})
 	if err != nil || len(nodeList.Items) == 0 {
 		return container.Registry{}
 	}

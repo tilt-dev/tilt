@@ -66,17 +66,17 @@ func (r ObjectUpdate) AsDeletedKey() (Namespace, string, bool) {
 
 type watcherFactory func(namespace string) watcher
 type watcher interface {
-	Watch(options metav1.ListOptions) (watch.Interface, error)
+	Watch(ctx context.Context, options metav1.ListOptions) (watch.Interface, error)
 }
 
-func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.Interface, Namespace, error) {
+func (kCli K8sClient) makeWatcher(ctx context.Context, f watcherFactory, ls labels.Selector) (watch.Interface, Namespace, error) {
 	// passing "" gets us all namespaces
 	w := f("")
 	if w == nil {
 		return nil, "", nil
 	}
 
-	watcher, err := w.Watch(metav1.ListOptions{LabelSelector: ls.String()})
+	watcher, err := w.Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
 	if err == nil {
 		return watcher, "", nil
 	}
@@ -96,7 +96,7 @@ func (kCli K8sClient) makeWatcher(f watcherFactory, ls labels.Selector) (watch.I
 			return nil, "", nil
 		}
 
-		watcher, err := w.Watch(metav1.ListOptions{LabelSelector: ls.String()})
+		watcher, err := w.Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
 		if err == nil {
 			return watcher, kCli.configNamespace, nil
 		}
@@ -113,7 +113,7 @@ func (kCli K8sClient) makeInformer(
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
 	// throw it away.
-	watcher, ns, err := kCli.makeWatcher(func(ns string) watcher {
+	watcher, ns, err := kCli.makeWatcher(ctx, func(ns string) watcher {
 		return kCli.dynamic.Resource(gvr).Namespace(ns)
 	}, ls)
 	if err != nil {

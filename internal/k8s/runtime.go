@@ -28,7 +28,7 @@ func newRuntimeAsync(core apiv1.CoreV1Interface) *runtimeAsync {
 
 func (r *runtimeAsync) Runtime(ctx context.Context) container.Runtime {
 	r.once.Do(func() {
-		nodeList, err := r.core.Nodes().List(metav1.ListOptions{
+		nodeList, err := r.core.Nodes().List(ctx, metav1.ListOptions{
 			Limit: 1,
 		})
 		if err != nil {

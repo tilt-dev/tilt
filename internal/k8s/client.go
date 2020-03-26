@@ -369,7 +369,7 @@ func (k K8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (
 		return K8sEntity{}, errors.Wrapf(err, "error mapping %s/%s", group, kind)
 	}
 
-	result, err := k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(name, metav1.GetOptions{
+	result, err := k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{
 		ResourceVersion: resourceVersion,
 	})
 	if err != nil {

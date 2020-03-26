@@ -22,7 +22,7 @@ func (k K8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, 
 		Watch:           true,
 		ResourceVersion: pod.ObjectMeta.ResourceVersion,
 	}
-	return podAPI.Watch(watchOptions)
+	return podAPI.Watch(ctx, watchOptions)
 }
 
 func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startWatchTime time.Time) (io.ReadCloser, error) {
@@ -34,11 +34,11 @@ func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container
 		},
 	}
 	req := k.core.Pods(n.String()).GetLogs(pID.String(), options)
-	return req.Stream()
+	return req.Stream(ctx)
 }
 
 func (k K8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
-	pod, err := k.core.Pods(n.String()).Get(pID.String(), metav1.GetOptions{})
+	pod, err := k.core.Pods(n.String()).Get(ctx, pID.String(), metav1.GetOptions{})
 	if pod != nil {
 		FixContainerStatusImages(pod)
 	}
