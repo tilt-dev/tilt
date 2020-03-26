@@ -70,7 +70,7 @@ jobs:
 
   build-windows:
     docker:
-      - image: circleci/golang:1.12
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:62d0b5b9668e41165b132a86a599b34331f199c95a4e4d8ba82d64a97f654c7c
     steps:
       - checkout
       # Currently, we only check to make sure Windows binaries compile
