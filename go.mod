@@ -132,14 +132,14 @@ require (
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
-	// TODO(dmiller) remove this replace once https://github.com/moby/buildkit/pull/1297 is merged
-	github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
 	// This is just evanphx/json-patch v4.6.0 with a fix for
 	// https://github.com/evanphx/json-patch/issues/98
 	// so that we can pull it in correctly
 	github.com/evanphx/json-patch => github.com/windmilleng/json-patch/v4 v4.8.0 // indirect
+	// TODO(dmiller) remove this replace once https://github.com/moby/buildkit/pull/1297 is merged
+	github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
 	k8s.io/client-go => github.com/windmilleng/client-go v0.17.3-0.20200124220244-8b86781afe3b
 )
