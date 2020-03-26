@@ -74,11 +74,12 @@ jobs:
       name: win/default
       size: "medium"
     steps:
+      - run: choco install make
       - run: choco update golang
       - checkout
       # Check to make sure Windows binaries compile
       - run: go install -mod vendor ./cmd/tilt
-      - run: go test ./pkg/...
+      - run: make shorttest
 
   build-integration:
     docker:

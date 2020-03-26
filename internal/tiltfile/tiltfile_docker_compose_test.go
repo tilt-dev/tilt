@@ -1,4 +1,4 @@
-//+build !skipdockercomposetests
+//+build !skipdockercomposetests,!windows
 
 package tiltfile
 

@@ -1,3 +1,5 @@
+// +build !windows
+
 package webview
 
 import (
@@ -10,8 +12,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/windmilleng/wmclient/pkg/analytics"
 
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -324,15 +324,4 @@ func lastBuild(r *proto_webview.Resource) *proto_webview.BuildRecord {
 	}
 
 	return r.BuildHistory[0]
-}
-
-func newState(manifests []model.Manifest) *store.EngineState {
-	ret := store.NewState()
-	ret.AnalyticsEnvOpt = analytics.OptDefault
-	for _, m := range manifests {
-		ret.ManifestTargets[m.Name] = store.NewManifestTarget(m)
-		ret.ManifestDefinitionOrder = append(ret.ManifestDefinitionOrder, m.Name)
-	}
-
-	return ret
 }
