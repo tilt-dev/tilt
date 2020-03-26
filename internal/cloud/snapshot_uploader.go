@@ -66,7 +66,7 @@ func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, er
 	if err != nil {
 		return "", err
 	}
-	return s.Upload(state.Token, state.TeamName, snapshot)
+	return s.Upload(state.Token, state.TeamID, snapshot)
 }
 
 func (s snapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error) {

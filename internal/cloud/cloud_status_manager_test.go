@@ -19,11 +19,11 @@ import (
 const testCloudAddress = "tiltcloud.example.com"
 
 func TestLongPost(t *testing.T) {
-	f := newCloudUsernameManagerTestFixture(t)
+	f := newCloudStatusManagerTestFixture(t)
 
 	f.httpClient.SetResponse(`{"foo": "bar"}`)
 	f.Run(func(state *store.EngineState) {
-		state.WaitingForTiltCloudUsernamePostRegistration = true
+		state.CloudStatus.WaitingForStatusPostRegistration = true
 	})
 
 	f.waitForRequest(fmt.Sprintf("https://%s/api/whoami?wait_for_registration=true", testCloudAddress))
@@ -38,11 +38,11 @@ func TestWhoAmI(t *testing.T) {
 		{"with team id", "test team id"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := newCloudUsernameManagerTestFixture(t)
+			f := newCloudStatusManagerTestFixture(t)
 
 			f.httpClient.SetResponse(`{"foo": "bar"}`)
 			f.Run(func(state *store.EngineState) {
-				state.TeamName = tc.teamID
+				state.TeamID = tc.teamID
 				state.Token = "test token"
 				state.TiltBuildInfo.Version = "test tilt version"
 			})
@@ -64,31 +64,31 @@ func TestWhoAmI(t *testing.T) {
 	}
 }
 
-type cloudUsernameManagerTestFixture struct {
-	um         *CloudUsernameManager
+type cloudStatusManagerTestFixture struct {
+	um         *CloudStatusManager
 	httpClient *httptest.FakeClient
 	st         *store.Store
 	ctx        context.Context
 	t          *testing.T
 }
 
-func newCloudUsernameManagerTestFixture(t *testing.T) *cloudUsernameManagerTestFixture {
+func newCloudStatusManagerTestFixture(t *testing.T) *cloudStatusManagerTestFixture {
 	st, _ := store.NewStoreForTesting()
 
 	httpClient := httptest.NewFakeClient()
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
-	return &cloudUsernameManagerTestFixture{
+	return &cloudStatusManagerTestFixture{
 		st:         st,
 		httpClient: httpClient,
-		um:         NewUsernameManager(httpClient),
+		um:         NewStatusManager(httpClient),
 		ctx:        ctx,
 		t:          t,
 	}
 }
 
-func (f *cloudUsernameManagerTestFixture) Run(mutateState func(state *store.EngineState)) {
+func (f *cloudStatusManagerTestFixture) Run(mutateState func(state *store.EngineState)) {
 	state := f.st.LockMutableStateForTesting()
 	state.Features = make(map[string]bool)
 	state.Features[feature.Snapshots] = true
@@ -98,7 +98,7 @@ func (f *cloudUsernameManagerTestFixture) Run(mutateState func(state *store.Engi
 	f.um.OnChange(f.ctx, f.st)
 }
 
-func (f *cloudUsernameManagerTestFixture) waitForRequest(expectedURL string) http.Request {
+func (f *cloudStatusManagerTestFixture) waitForRequest(expectedURL string) http.Request {
 	timeout := time.After(time.Second)
 	for {
 		reqs := f.httpClient.Requests()

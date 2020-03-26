@@ -188,7 +188,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleAnalyticsUserOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
-	case store.TiltCloudUserLookedUpAction:
+	case store.TiltCloudStatusReceivedAction:
 		handleTiltCloudUserLookedUpAction(state, action)
 	case store.UserStartedTiltCloudRegistrationAction:
 		handleUserStartedTiltCloudRegistrationAction(state)
@@ -575,7 +575,7 @@ func handleConfigsReloaded(
 	state.TiltIgnoreContents = event.TiltIgnoreContents
 
 	state.Features = event.Features
-	state.TeamName = event.TeamName
+	state.TeamID = event.TeamID
 	state.TelemetrySettings = event.TelemetrySettings
 	state.VersionSettings = event.VersionSettings
 	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
@@ -740,19 +740,19 @@ func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.Engine
 	}
 }
 
-func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.TiltCloudUserLookedUpAction) {
+func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.TiltCloudStatusReceivedAction) {
 	if action.IsPostRegistrationLookup {
-		state.WaitingForTiltCloudUsernamePostRegistration = false
+		state.CloudStatus.WaitingForStatusPostRegistration = false
 	}
 	if !action.Found {
-		state.TokenKnownUnregistered = true
-		state.TiltCloudUsername = ""
+		state.CloudStatus.TokenKnownUnregistered = true
+		state.CloudStatus.Username = ""
 	} else {
-		state.TokenKnownUnregistered = false
-		state.TiltCloudUsername = action.Username
+		state.CloudStatus.TokenKnownUnregistered = false
+		state.CloudStatus.Username = action.Username
 	}
 }
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
-	state.WaitingForTiltCloudUsernamePostRegistration = true
+	state.CloudStatus.WaitingForStatusPostRegistration = true
 }

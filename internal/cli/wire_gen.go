@@ -241,7 +241,7 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	tiltVersionChecker := engine.NewTiltVersionChecker(githubClientFactory, timerMaker)
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdUpTags)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher)
-	cloudUsernameManager := cloud.NewUsernameManager(httpClient)
+	cloudUsernameManager := cloud.NewStatusManager(httpClient)
 	updateUploader := cloud.NewUpdateUploader(httpClient, address)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	controller := telemetry.NewController(clock, spanCollector)

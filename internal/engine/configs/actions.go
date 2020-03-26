@@ -26,7 +26,7 @@ type ConfigsReloadedAction struct {
 	Err                  error
 	Warnings             []string
 	Features             map[string]bool
-	TeamName             string
+	TeamID               string
 	TelemetrySettings    model.TelemetrySettings
 	Secrets              model.SecretSet
 	DockerPruneSettings  model.DockerPruneSettings

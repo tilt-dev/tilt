@@ -82,17 +82,21 @@ type EngineState struct {
 
 	CloudAddress string
 	Token        token.Token
-	TeamName     string
+	TeamID       string
 
-	TiltCloudUsername                           string
-	TokenKnownUnregistered                      bool // to distinguish whether an empty TiltCloudUsername means "we haven't checked" or "we checked and the token isn't registered"
-	WaitingForTiltCloudUsernamePostRegistration bool
+	CloudStatus CloudStatus
 
 	DockerPruneSettings model.DockerPruneSettings
 
 	TelemetrySettings model.TelemetrySettings
 
 	UserConfigState model.UserConfigState
+}
+
+type CloudStatus struct {
+	Username                         string
+	TokenKnownUnregistered           bool // to distinguish whether an empty Username means "we haven't checked" or "we checked and the token isn't registered"
+	WaitingForStatusPostRegistration bool
 }
 
 // Merge analytics opt-in status from different sources.

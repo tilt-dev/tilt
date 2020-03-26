@@ -2867,21 +2867,21 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 	})
 }
 
-func TestTeamNameStoredOnState(t *testing.T) {
+func TestTeamIDStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
 
 	f.Start([]model.Manifest{}, true)
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{TeamName: "sharks"})
+	f.store.Dispatch(configs.ConfigsReloadedAction{TeamID: "sharks"})
 
-	f.WaitUntil("teamName is set to sharks", func(state store.EngineState) bool {
-		return state.TeamName == "sharks"
+	f.WaitUntil("teamID is set to sharks", func(state store.EngineState) bool {
+		return state.TeamID == "sharks"
 	})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{TeamName: "jets"})
+	f.store.Dispatch(configs.ConfigsReloadedAction{TeamID: "jets"})
 
-	f.WaitUntil("teamName is set to jets", func(state store.EngineState) bool {
-		return state.TeamName == "jets"
+	f.WaitUntil("teamID is set to jets", func(state store.EngineState) bool {
+		return state.TeamID == "jets"
 	})
 }
 
@@ -3487,7 +3487,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController("localhost", 0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
-	tcum := cloud.NewUsernameManager(httptest.NewFakeClient())
+	tcum := cloud.NewStatusManager(httptest.NewFakeClient())
 	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev")
 	fe := local.NewFakeExecer()
 	lc := local.NewController(fe)

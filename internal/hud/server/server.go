@@ -320,7 +320,7 @@ func (codec timeAllowEmptyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Ite
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
 	st := s.store.RLockState()
 	token := st.Token
-	teamID := st.TeamName
+	teamID := st.TeamID
 	s.store.RUnlockState()
 
 	b, err := ioutil.ReadAll(req.Body)

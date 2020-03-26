@@ -3721,25 +3721,25 @@ k8s_yaml('resource.yaml')
 	assert.Equal(t, []string{"doggos:service:default::0", "doggos:service:default::1"}, displayNames)
 }
 
-func TestSetTeamName(t *testing.T) {
+func TestSetTeamID(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", "set_team('sharks')")
 	f.load()
 
-	assert.Equal(t, "sharks", f.loadResult.TeamName)
+	assert.Equal(t, "sharks", f.loadResult.TeamID)
 }
 
-func TestSetTeamNameEmpty(t *testing.T) {
+func TestSetTeamIDEmpty(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", "set_team('')")
-	f.loadErrString("team_name cannot be empty")
+	f.loadErrString("team_id cannot be empty")
 }
 
-func TestSetTeamNameMultiple(t *testing.T) {
+func TestSetTeamIDMultiple(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3747,7 +3747,7 @@ func TestSetTeamNameMultiple(t *testing.T) {
 set_team('sharks')
 set_team('jets')
 `)
-	f.loadErrString("team_name set multiple times", "'sharks'", "'jets'")
+	f.loadErrString("team_id set multiple times", "'sharks'", "'jets'")
 }
 
 func TestK8SContextAcceptance(t *testing.T) {
