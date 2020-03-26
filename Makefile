@@ -71,9 +71,9 @@ endif
 test: test-go test-js
 
 # skip some tests that are slow and not always relevant
+# TODO(matt) skipdockercomposetests only skips the tiltfile DC tests at the moment
+# we might also want to skip the ones in engine
 shorttest:
-	# TODO(matt) skipdockercomposetests only skips the tiltfile DC tests at the moment
-	# we might also want to skip the ones in engine
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
 
 shorttestsum:
