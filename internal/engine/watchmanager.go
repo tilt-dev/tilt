@@ -18,7 +18,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install.html#system-specific-preparation`
+const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install#system-specific-preparation`
 
 var ConfigsTargetID = model.TargetID{
 	Type: model.TargetTypeConfigs,
