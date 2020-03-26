@@ -117,16 +117,16 @@ require (
 	gopkg.in/dancannon/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
-	gopkg.in/yaml.v2 v2.2.4
-	k8s.io/api v0.17.2
-	k8s.io/apimachinery v0.17.3-beta.0
-	k8s.io/cli-runtime v0.17.2
-	k8s.io/client-go v0.17.2
-	k8s.io/component-base v0.17.2
+	gopkg.in/yaml.v2 v2.2.8
+	k8s.io/api v0.18.0
+	k8s.io/apimachinery v0.18.0
+	k8s.io/cli-runtime v0.18.0
+	k8s.io/client-go v0.18.0
+	k8s.io/component-base v0.18.0
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.17.2
+	k8s.io/kubectl v0.18.0
 	sigs.k8s.io/kustomize v2.0.3+incompatible
-	sigs.k8s.io/yaml v1.1.0
+	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
 )
 
@@ -141,5 +141,5 @@ replace (
 	github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
-	k8s.io/client-go => github.com/windmilleng/client-go v0.17.3-0.20200124220244-8b86781afe3b
+	k8s.io/client-go => github.com/windmilleng/client-go v0.0.0-20200326150806-41017343d309
 )
