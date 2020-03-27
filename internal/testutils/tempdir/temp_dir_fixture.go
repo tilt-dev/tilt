@@ -146,9 +146,12 @@ func (f *TempDirFixture) TempDir(prefix string) string {
 }
 
 func (f *TempDirFixture) TearDown() {
-	defer func() {
-		_ = os.Chdir(f.oldDir)
-	}()
+	if f.oldDir != "" {
+		err := os.Chdir(f.oldDir)
+		if err != nil {
+			f.t.Fatal(err)
+		}
+	}
 
 	err := f.dir.TearDown()
 	if err != nil {
