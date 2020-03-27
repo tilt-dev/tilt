@@ -19,13 +19,21 @@ type TestingStore struct {
 }
 
 func NewTestingStore() *TestingStore {
-	return &TestingStore{}
+	return &TestingStore{
+		state: NewState(),
+	}
 }
 
 func (s *TestingStore) SetState(state EngineState) {
 	s.stateMu.Lock()
 	defer s.stateMu.Unlock()
 	s.state = &state
+}
+
+func (s *TestingStore) WithState(f func(state *EngineState)) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+	f(s.state)
 }
 
 func (s *TestingStore) StateMutex() *sync.RWMutex {

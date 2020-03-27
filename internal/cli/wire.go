@@ -25,6 +25,7 @@ import (
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
+	"github.com/windmilleng/tilt/internal/engine/exit"
 	"github.com/windmilleng/tilt/internal/engine/k8srollout"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/local"
@@ -87,6 +88,7 @@ var BaseWireSet = wire.NewSet(
 	cloudurl.ProvideAddress,
 	k8srollout.NewPodMonitor,
 	telemetry.NewStartTracker,
+	exit.NewController,
 
 	provideClock,
 	hud.WireSet,

@@ -45,6 +45,7 @@ type EngineState struct {
 	MaxParallelUpdates int
 
 	FatalError error
+
 	HUDEnabled bool
 
 	// The user has indicated they want to exit
@@ -52,6 +53,18 @@ type EngineState struct {
 
 	// We recovered from a panic(). We need to clean up the RTY and print the error.
 	PanicExited error
+
+	// Normal process termination. Either Tilt completed all its work,
+	// or it determined that it was unable to complete the work it was assigned.
+	//
+	// Note that ExitSignal/ExitError is never triggered in normal
+	// 'tilt up`/dev mode. It's more for CI modes and tilt up --watch=false modes.
+	//
+	// We don't provide the ability to customize exit codes. Either the
+	// process exited successfully, or with an error. In the future, we might
+	// add the ability to put an exit code in the error.
+	ExitSignal bool
+	ExitError  error
 
 	// All logs in Tilt, stored in a structured format.
 	LogStore *logstore.LogStore `testdiff:"ignore"`

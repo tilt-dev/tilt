@@ -190,13 +190,11 @@ func (s *Store) maybeFinished() (bool, error) {
 		return true, state.FatalError
 	}
 
-	if len(state.ManifestTargets) == 0 {
-		return false, nil
+	if state.ExitSignal {
+		return true, state.ExitError
 	}
 
-	finished := !state.WatchFiles && state.InitialBuildsCompleted()
-
-	return finished, nil
+	return false, nil
 }
 
 func (s *Store) drainActions() {
