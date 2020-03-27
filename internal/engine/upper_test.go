@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/docker/distribution/reference"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -3489,7 +3491,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController("localhost", 0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
-	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON())
+	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clockwork.NewRealClock())
 	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev")
 	fe := local.NewFakeExecer()
 	lc := local.NewController(fe)

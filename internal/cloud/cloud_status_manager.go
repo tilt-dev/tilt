@@ -10,28 +10,47 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
 	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/store"
+	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/windmilleng/tilt/pkg/model"
 )
 
 // to avoid infinitely resubmitting requests on error
 const timeoutAfterError = 5 * time.Minute
 
+// how frequently we'll refresh cloud status, even if nothing changes
+const refreshPeriod = time.Hour
+
 const TiltTokenHeaderName = "X-Tilt-Token"
 const TiltTeamIDNameHeaderName = "X-Tilt-TeamID"
 
-func NewStatusManager(client HttpClient) *CloudStatusManager {
-	return &CloudStatusManager{client: client}
+func NewStatusManager(client HttpClient, clock clockwork.Clock) *CloudStatusManager {
+	return &CloudStatusManager{client: client, clock: clock}
+}
+
+// if any of these fields change, we know we need to do a fresh lookup
+type statusRequestKey struct {
+	tiltToken token.Token
+	teamID    string
+	version   model.TiltBuild
 }
 
 type CloudStatusManager struct {
 	client HttpClient
+	clock  clockwork.Clock
+
+	mu sync.Mutex
 
 	sleepingAfterErrorUntil time.Time
 	currentlyMakingRequest  bool
-	mu                      sync.Mutex
+
+	lastRequestKey       statusRequestKey
+	lastSuccessfulLookup time.Time
 }
 
 func ProvideHttpClient() HttpClient {
@@ -49,7 +68,7 @@ type whoAmIResponse struct {
 
 func (c *CloudStatusManager) error() {
 	c.mu.Lock()
-	c.sleepingAfterErrorUntil = time.Now().Add(timeoutAfterError)
+	c.sleepingAfterErrorUntil = c.clock.Now().Add(timeoutAfterError)
 	c.mu.Unlock()
 }
 
@@ -57,13 +76,7 @@ type whoAmIRequest struct {
 	TiltVersion string `json:"tilt_version"`
 }
 
-func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, blocking bool) {
-	state := st.RLockState()
-	tok := state.Token
-	teamID := state.TeamID
-	tiltVersion := state.TiltBuildInfo.Version
-	st.RUnlockState()
-
+func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, cloudAddress string, requestKey statusRequestKey, blocking bool) {
 	c.mu.Lock()
 	c.currentlyMakingRequest = true
 	c.mu.Unlock()
@@ -74,7 +87,7 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, b
 		c.mu.Unlock()
 	}()
 
-	u := cloudurl.URL(state.CloudAddress)
+	u := cloudurl.URL(cloudAddress)
 	u.Path = "/api/whoami"
 
 	if blocking {
@@ -84,7 +97,7 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, b
 	}
 
 	body := &bytes.Buffer{}
-	err := json.NewEncoder(body).Encode(whoAmIRequest{TiltVersion: tiltVersion})
+	err := json.NewEncoder(body).Encode(whoAmIRequest{TiltVersion: requestKey.version.Version})
 	if err != nil {
 		logger.Get(ctx).Debugf("error serializing whoami request: %v\n", err)
 		c.error()
@@ -97,9 +110,9 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, b
 		c.error()
 		return
 	}
-	req.Header.Set(TiltTokenHeaderName, string(tok))
-	if teamID != "" {
-		req.Header.Set(TiltTeamIDNameHeaderName, teamID)
+	req.Header.Set(TiltTokenHeaderName, string(requestKey.tiltToken))
+	if requestKey.teamID != "" {
+		req.Header.Set(TiltTeamIDNameHeaderName, requestKey.teamID)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := c.client.Do(req)
@@ -135,11 +148,23 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, b
 		return
 	}
 
+	c.mu.Lock()
+	c.lastRequestKey = requestKey
+	c.lastSuccessfulLookup = c.clock.Now()
+	c.sleepingAfterErrorUntil = time.Time{}
+	c.mu.Unlock()
+
 	st.Dispatch(store.TiltCloudStatusReceivedAction{
 		Found:                    r.Found,
 		Username:                 r.Username,
 		IsPostRegistrationLookup: blocking,
 	})
+}
+
+func (c *CloudStatusManager) needsLookup(requestKey statusRequestKey) bool {
+	return c.lastSuccessfulLookup.IsZero() ||
+		c.lastSuccessfulLookup.Add(refreshPeriod).Before(c.clock.Now()) ||
+		requestKey != c.lastRequestKey
 }
 
 func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore) {
@@ -153,10 +178,12 @@ func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore) {
 	c.mu.Lock()
 	sleepingAfterErrorUntil := c.sleepingAfterErrorUntil
 	currentlyMakingRequest := c.currentlyMakingRequest
+	requestKey := statusRequestKey{teamID: state.TeamID, tiltToken: state.Token, version: state.TiltBuildInfo}
+	needsLookup := c.needsLookup(requestKey)
 	c.mu.Unlock()
 
 	if state.CloudStatus.WaitingForStatusPostRegistration && !currentlyMakingRequest {
-		go c.CheckStatus(ctx, st, true)
+		go c.CheckStatus(ctx, st, state.CloudAddress, requestKey, true)
 		return
 	}
 
@@ -166,12 +193,10 @@ func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore) {
 	// 3. request started in (1) finishes, sets TokenKnownUnregistered = true
 	// we never make a request post-(2), where the token was registered
 	// This is mitigated by - a) the window between (1) and (3) is small, and b) the user can just click refresh again
-	if time.Now().Before(sleepingAfterErrorUntil) ||
-		state.CloudStatus.Username != "" ||
-		state.CloudStatus.TokenKnownUnregistered ||
-		currentlyMakingRequest {
+	allowedToPerformLookup := !time.Now().Before(sleepingAfterErrorUntil) && !currentlyMakingRequest
+
+	if needsLookup && allowedToPerformLookup {
+		go c.CheckStatus(ctx, st, state.CloudAddress, requestKey, false)
 		return
 	}
-
-	go c.CheckStatus(ctx, st, false)
 }
