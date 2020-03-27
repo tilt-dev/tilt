@@ -44,7 +44,6 @@ func (l *subscriberList) Add(ctx context.Context, s Subscriber) {
 
 	e := &subscriberEntry{
 		subscriber: s,
-		dirtyBit:   NewDirtyBit(),
 	}
 	l.subscribers = append(l.subscribers, e)
 	if l.setup {
@@ -99,38 +98,75 @@ func (l *subscriberList) NotifyAll(ctx context.Context, store *Store) {
 
 	for _, s := range subscribers {
 		s := s
-		s.dirtyBit.MarkDirty()
-
-		SafeGo(store, func() {
-			s.notify(ctx, store)
-		})
+		isPending := s.claimPending()
+		if isPending {
+			SafeGo(store, func() {
+				s.notify(ctx, store)
+			})
+		}
 	}
 }
 
 type subscriberEntry struct {
 	subscriber Subscriber
-	mu         sync.Mutex
-	dirtyBit   *DirtyBit
+
+	// At any given time, there are at most two goroutines
+	// notifying the subscriber: a pending goroutine and an active goroutine.
+	hasPending bool
+	hasActive  bool
+
+	// The active mutex is held by the goroutine currently notifying the
+	// subscriber. It may be held for a long time if the subscriber
+	// takes a long time.
+	activeMu sync.Mutex
+
+	// The state mutex is just for updating the hasPending/hasActive state.
+	// It should never be held a long time.
+	stateMu sync.Mutex
+}
+
+// Returns true if this is the pending goroutine.
+// Returns false to do nothing.
+func (e *subscriberEntry) claimPending() bool {
+	e.stateMu.Lock()
+	defer e.stateMu.Unlock()
+
+	if e.hasPending {
+		return false
+	}
+	e.hasPending = true
+	return true
+}
+
+func (e *subscriberEntry) movePendingToActive() {
+	e.stateMu.Lock()
+	defer e.stateMu.Unlock()
+
+	e.hasPending = false
+	e.hasActive = true
+}
+
+func (e *subscriberEntry) clearActive() {
+	e.stateMu.Lock()
+	defer e.stateMu.Unlock()
+
+	e.hasActive = false
 }
 
 func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.activeMu.Lock()
+	defer e.activeMu.Unlock()
 
-	startToken, isDirty := e.dirtyBit.StartBuildIfDirty()
-	if !isDirty {
-		return
-	}
-
+	e.movePendingToActive()
 	e.subscriber.OnChange(ctx, store)
-	e.dirtyBit.FinishBuild(startToken)
+	e.clearActive()
 }
 
 func (e *subscriberEntry) maybeSetUp(ctx context.Context) {
 	s, ok := e.subscriber.(SetUpper)
 	if ok {
-		e.mu.Lock()
-		defer e.mu.Unlock()
+		e.activeMu.Lock()
+		defer e.activeMu.Unlock()
 		s.SetUp(ctx)
 	}
 }
@@ -138,8 +174,8 @@ func (e *subscriberEntry) maybeSetUp(ctx context.Context) {
 func (e *subscriberEntry) maybeTeardown(ctx context.Context) {
 	s, ok := e.subscriber.(TearDowner)
 	if ok {
-		e.mu.Lock()
-		defer e.mu.Unlock()
+		e.activeMu.Lock()
+		defer e.activeMu.Unlock()
 		s.TearDown(ctx)
 	}
 }
