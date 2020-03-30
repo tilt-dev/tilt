@@ -37,6 +37,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
+	"github.com/windmilleng/tilt/internal/engine/exit"
 	"github.com/windmilleng/tilt/internal/engine/k8srollout"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/local"
@@ -579,13 +580,25 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f.SetNextBuildFailure(buildFailedToken)
 
 	f.setManifests([]model.Manifest{manifest})
-	err := f.upper.Init(f.ctx, InitAction{
+	f.Init(InitAction{
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		HUDEnabled:   true,
 	})
-	require.Nil(t, err)
+
 	f.WaitUntilManifestState("build has failed", manifest.ManifestName(), func(st store.ManifestState) bool {
 		return st.LastBuild().Error != nil
+	})
+
+	select {
+	case err := <-f.upperInitResult:
+		require.NotNil(t, err)
+		assert.Contains(t, err.Error(), "doesn't compile")
+	case <-time.After(time.Second):
+		t.Fatal("Timed out waiting for exit action")
+	}
+
+	f.withState(func(es store.EngineState) {
+		assert.True(t, es.ExitSignal)
 	})
 }
 
@@ -2683,7 +2696,7 @@ func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
 	go func() {
-		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"), "nonexistent.example.com")
+		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, true, f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"), "nonexistent.example.com")
 		testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
 	}()
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
@@ -3531,8 +3544,9 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 	tc := telemetry.NewController(fakeClock{}, tracer.NewSpanCollector(ctx))
 	podm := k8srollout.NewPodMonitor()
+	ec := exit.NewController()
 
-	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc, lc, podm)
+	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
