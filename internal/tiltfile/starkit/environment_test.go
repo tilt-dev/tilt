@@ -2,6 +2,7 @@ package starkit
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -175,7 +176,7 @@ hello()
 	require.NoError(t, err)
 
 	path := strings.TrimSpace(f.out.String())
-	require.True(t, strings.HasSuffix(path, "foo/Tiltfile"))
+	require.Equal(t, "foo", filepath.Base(filepath.Dir(path)))
 }
 
 // foo loads bar
@@ -195,5 +196,5 @@ load('../bar/Tiltfile', 'unused')
 	require.NoError(t, err)
 
 	path := strings.TrimSpace(f.out.String())
-	require.True(t, strings.HasSuffix(path, "bar/Tiltfile"))
+	require.Equal(t, "bar", filepath.Base(filepath.Dir(path)))
 }
