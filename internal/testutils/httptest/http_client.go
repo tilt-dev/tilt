@@ -34,6 +34,13 @@ func (fc *FakeClient) SetResponse(s string) {
 	fc.responseBody = s
 }
 
+func (fc *FakeClient) ClearRequests() {
+	fc.mu.Lock()
+	defer fc.mu.Unlock()
+
+	fc.requests = nil
+}
+
 func (fc *FakeClient) Requests() []http.Request {
 	fc.mu.Lock()
 	defer fc.mu.Unlock()
