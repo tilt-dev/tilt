@@ -1,9 +1,10 @@
 import React from "react"
 import ReactDOM from "react-dom"
-import LogPane from "./LogPane"
+import LogPane, { logText } from "./LogPane"
 import renderer from "react-test-renderer"
-import { mount } from "enzyme"
+import { mount, render } from "enzyme"
 import { logLinesFromString } from "./logs"
+import { LogLine } from "./types"
 
 const fakeHandleSetHighlight = () => {}
 const fakeHandleClearHighlight = () => {}
@@ -519,4 +520,25 @@ xit("sets highlighted text correctly", () => {
   // as of 2020-03-30, document.getSelection is not supported in Jest ("TypeError: document.getSelection is not a function"),
   // so this isn't really testable
   // https://github.com/jsdom/jsdom/issues/317#issuecomment-570948181
+})
+
+it("extracts the log text w/o resource prefixes", () => {
+  let log = logLinesFromString("l1\nl2", "manifest1")
+  let el = mount(
+    <LogPane
+      manifestName={""}
+      logLines={log}
+      showManifestPrefix={false}
+      handleSetHighlight={fakeHandleSetHighlight}
+      handleClearHighlight={fakeHandleClearHighlight}
+      highlight={null}
+      isSnapshot={true}
+    />
+  )
+
+  let df = document.createDocumentFragment()
+  df.append(el.getDOMNode())
+  let s = logText(df)
+
+  expect(s).toEqual("l1\nl2\n")
 })
