@@ -513,3 +513,10 @@ it("doesn't set selection event handler if snapshot", () => {
   expect(registeredEventHandlers).toEqual(expect.arrayContaining(["scroll"]))
   expect(registeredEventHandlers).not.toEqual(expect.arrayContaining(["wheel"]))
 })
+
+xit("sets highlighted text correctly", () => {
+  // TODO(matt) test LogPane.handleSelectionChange
+  // as of 2020-03-30, document.getSelection is not supported in Jest ("TypeError: document.getSelection is not a function"),
+  // so this isn't really testable
+  // https://github.com/jsdom/jsdom/issues/317#issuecomment-570948181
+})

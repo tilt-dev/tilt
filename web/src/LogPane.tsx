@@ -202,10 +202,21 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         let endingLogLine = findLogLineID(end)
 
         if (beginningLogLine && endingLogLine) {
+          // cut out the resource name prefix
+          // 1. lining up multiple resource name prefixes in a way consistent with the UI is likely to be annoying
+          // 2. presumably most highlights are from a single resource anyway
+          // potentially we should pass prefix + logline as structured data in the future
+          let nodes = sel
+            .getRangeAt(0)
+            .cloneContents()
+            .querySelectorAll("code.LogPaneLine-content span")
+          let s = Array.from(nodes)
+            .map(node => node.textContent)
+            .join("")
           this.props.handleSetHighlight({
             beginningLogID: beginningLogLine,
             endingLogID: endingLogLine,
-            text: selection.toString(),
+            text: s,
           })
         }
       }
