@@ -3157,7 +3157,7 @@ func TestLocalResourceAutoTriggerModeAutoInitFalse(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.file("Tiltfile", fmt.Sprintf(`local_resource("foo", "echo hi", auto_init=False)`))
+	f.file("Tiltfile", `local_resource("foo", "echo hi", auto_init=False)`)
 	f.loadErrString("auto_init=False incompatible with trigger_mode=TRIGGER_MODE_AUTO")
 }
 
@@ -4553,12 +4553,12 @@ func (f *fixture) loadAllowWarnings(args ...string) {
 func unusedImageWarning(unusedImage string, suggestedImages []string) string {
 	ret := fmt.Sprintf("Image not used in any deploy config:\n    ✕ %s", unusedImage)
 	if len(suggestedImages) > 0 {
-		ret = ret + fmt.Sprintf("\nDid you mean…")
+		ret = ret + "\nDid you mean…"
 		for _, s := range suggestedImages {
 			ret = ret + fmt.Sprintf("\n    - %s", s)
 		}
 	}
-	ret = ret + fmt.Sprintf("\nSkipping this image build")
+	ret = ret + "\nSkipping this image build"
 	return ret
 }
 

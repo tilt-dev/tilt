@@ -84,10 +84,12 @@ var (
 	ErrorLvl   = Level{id: 5, severity: 500}
 )
 
-const loggerContextKey = "Logger"
+type contextKey struct{}
+
+var LoggerContextKey = contextKey{}
 
 func Get(ctx context.Context) Logger {
-	val := ctx.Value(loggerContextKey)
+	val := ctx.Value(LoggerContextKey)
 
 	if val != nil {
 		return val.(Logger)
@@ -116,7 +118,7 @@ func NewLogger(minLevel Level, writer io.Writer) Logger {
 }
 
 func WithLogger(ctx context.Context, logger Logger) context.Context {
-	return context.WithValue(ctx, loggerContextKey, logger)
+	return context.WithValue(ctx, LoggerContextKey, logger)
 }
 
 func getColor(l Logger, c color.Attribute) *color.Color {
