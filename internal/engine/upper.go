@@ -7,11 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/engine/local"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 
@@ -20,7 +17,9 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/exit"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
+	"github.com/windmilleng/tilt/internal/engine/local"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/hud/server"
@@ -132,7 +131,7 @@ func (u Upper) Init(ctx context.Context, action InitAction) error {
 func upperReducerFn(ctx context.Context, state *store.EngineState, action store.Action) {
 	// Allow exitAction and dumpEngineStateAction even if there's a fatal error
 	if exitAction, isExitAction := action.(hud.ExitAction); isExitAction {
-		handleExitAction(state, exitAction)
+		handleHudExitAction(state, exitAction)
 		return
 	}
 	if _, isDumpEngineStateAction := action.(hud.DumpEngineStateAction); isDumpEngineStateAction {
@@ -144,14 +143,13 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		return
 	}
 
-	var err error
 	switch action := action.(type) {
 	case InitAction:
-		err = handleInitAction(ctx, state, action)
+		handleInitAction(ctx, state, action)
 	case store.ErrorAction:
-		err = action.Error
+		state.FatalError = action.Error
 	case hud.ExitAction:
-		handleExitAction(state, action)
+		handleHudExitAction(state, action)
 	case targetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case k8swatch.PodChangeAction:
@@ -165,7 +163,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case store.K8sEventAction:
 		handleK8sEvent(ctx, state, action)
 	case buildcontrol.BuildCompleteAction:
-		err = handleBuildCompleted(ctx, state, action)
+		handleBuildCompleted(ctx, state, action)
 	case buildcontrol.BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
 	case configs.ConfigsReloadStartedAction:
@@ -200,13 +198,11 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleLocalServeStatusAction(ctx, state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
+	case exit.Action:
+		handleExitAction(state, action)
 
 	default:
-		err = fmt.Errorf("unrecognized action: %T", action)
-	}
-
-	if err != nil {
-		state.FatalError = err
+		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
 }
 
@@ -256,7 +252,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 	removeFromTriggerQueue(state, mn)
 }
 
-func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) error {
+func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) {
 	defer func() {
 		delete(engineState.CurrentlyBuilding, cb.ManifestName)
 	}()
@@ -265,7 +261,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	mt, ok := engineState.ManifestTargets[cb.ManifestName]
 	if !ok {
-		return nil
+		return
 	}
 
 	err := cb.Error
@@ -294,9 +290,8 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if err != nil {
 		if buildcontrol.IsFatalError(err) {
-			return err
-		} else if !engineState.WatchFiles {
-			return errors.Wrap(err, "Build Failed")
+			engineState.FatalError = err
+			return
 		}
 	} else {
 		// Remove pending file changes that were consumed by this build.
@@ -389,8 +384,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			HasSucceededAtLeastOnce: err == nil,
 		}
 	}
-
-	return nil
 }
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName, reason model.BuildReason) {
@@ -594,6 +587,13 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 	state.LogStore.Append(action, state.Secrets)
 }
 
+func handleExitAction(state *store.EngineState, action exit.Action) {
+	if action.ExitSignal {
+		state.ExitSignal = action.ExitSignal
+		state.ExitError = action.ExitError
+	}
+}
+
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8swatch.ServiceChangeAction) {
 	service := action.Service
 	ms, ok := state.ManifestState(action.ManifestName)
@@ -634,7 +634,7 @@ func handleLatestVersionAction(state *store.EngineState, action LatestVersionAct
 	state.LatestTiltBuild = action.Build
 }
 
-func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) error {
+func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) {
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
@@ -648,11 +648,9 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 
 	// NOTE(dmiller): this kicks off a Tiltfile build
 	engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
-
-	return nil
 }
 
-func handleExitAction(state *store.EngineState, action hud.ExitAction) {
+func handleHudExitAction(state *store.EngineState, action hud.ExitAction) {
 	if action.Err != nil {
 		state.FatalError = action.Err
 	} else {

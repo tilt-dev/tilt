@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -187,6 +188,39 @@ func TestArchiveSymlink(t *testing.T) {
 	f.assertFilesInTar(actual, []expectedFile{
 		expectedFile{Path: "src/a.txt", Contents: "hello world"},
 		expectedFile{Path: "src/b.txt", Linkname: "a.txt"},
+	})
+}
+
+func TestArchiveSocket(t *testing.T) {
+	f := newFixture(t)
+	buf := new(bytes.Buffer)
+	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
+	defer ab.Close()
+	defer f.tearDown()
+
+	f.WriteFile("src/a.txt", "hello world")
+	c, err := net.Listen("unix", f.JoinPath("src/my.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	paths := []PathMapping{
+		PathMapping{
+			LocalPath:     f.JoinPath("src"),
+			ContainerPath: "/src",
+		},
+	}
+
+	err = ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	actual := tar.NewReader(buf)
+	f.assertFilesInTar(actual, []expectedFile{
+		expectedFile{Path: "src/a.txt", Contents: "hello world"},
+		expectedFile{Path: "src/my.sock", Missing: true},
 	})
 }
 
