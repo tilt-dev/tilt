@@ -70,11 +70,7 @@ print(get_cwd_wrapper())
 	_, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
 
-	// NOTE(nick): A bunch of us agree that this behavior is currently wrong.
-	// The working directory should be the currently executing Tiltfile,
-	// not the Tiltfile where the function was evaluated.
-	// https://app.clubhouse.io/windmill/story/4708/extensions-are-executed-with-a-working-directory-in-the-tilt-modules-dir
-	assert.Equal(t, fmt.Sprintf("%s/foo\n", f.Path()), f.PrintOutput())
+	assert.Equal(t, fmt.Sprintf("%s\n", f.Path()), f.PrintOutput())
 }
 
 func TestRealpath(t *testing.T) {

@@ -2,6 +2,7 @@ package starkit
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -143,4 +144,56 @@ func TestDuplicateNameWithinModule(t *testing.T) {
 	require.Errorf(t, err, "Tiltfile exec should fail")
 	require.Contains(t, err.Error(), "multiple values added named bar.foo")
 	require.Contains(t, err.Error(), "internal error: *starkit.TestExtension")
+}
+
+type PwdExtension struct{}
+
+func (e PwdExtension) OnStart(env *Environment) error {
+	return env.AddBuiltin("pwd", pwd)
+}
+
+func pwd(t *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	t.Print(t, CurrentExecPath(t))
+	return starlark.None, nil
+}
+
+// foo loads bar
+// bar defines `hello` and finishes loading
+// foo calls `hello`, which prints foo
+func TestUsePwdOfCallSiteLoadingTiltfile(t *testing.T) {
+	f := NewFixture(t, PwdExtension{})
+	f.File("bar/Tiltfile", `
+def hello():
+	pwd()
+`)
+	f.File("foo/Tiltfile", `
+load('../bar/Tiltfile', 'hello')
+hello()
+`)
+
+	_, err := f.ExecFile("foo/Tiltfile")
+	require.NoError(t, err)
+
+	path := strings.TrimSpace(f.out.String())
+	require.True(t, strings.HasSuffix(path, "foo/Tiltfile"))
+}
+
+// foo loads bar
+// bar calls pwd while it's loading, which prints bar
+func TestUsePwdOfCallSiteLoadedTiltfile(t *testing.T) {
+	f := NewFixture(t, PwdExtension{})
+	f.File("bar/Tiltfile", `
+def unused():
+  pass
+pwd()
+`)
+	f.File("foo/Tiltfile", `
+load('../bar/Tiltfile', 'unused')
+`)
+
+	_, err := f.ExecFile("foo/Tiltfile")
+	require.NoError(t, err)
+
+	path := strings.TrimSpace(f.out.String())
+	require.True(t, strings.HasSuffix(path, "bar/Tiltfile"))
 }

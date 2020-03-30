@@ -19,15 +19,11 @@ func AbsWorkingDir(t *starlark.Thread) string {
 	return filepath.Dir(CurrentExecPath(t))
 }
 
-// Path to the file at the bottom of the call stack.
+// Path to the file that's currently executing
 func CurrentExecPath(t *starlark.Thread) string {
-	depth := t.CallStackDepth()
-	for i := 0; i < depth; i++ {
-		filename := t.CallFrame(i).Pos.Filename()
-		if filename == "<builtin>" {
-			continue
-		}
-		return filename
+	ret := t.Local(execingTiltfileKey)
+	if ret == nil {
+		panic("internal error: currentExecPath must be called from an active starlark thread")
 	}
-	panic("internal error: currentExecPath must be called from an active starlark thread")
+	return ret.(string)
 }
