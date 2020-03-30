@@ -46,8 +46,8 @@ type CloudStatusManager struct {
 
 	mu sync.Mutex
 
-	sleepingAfterErrorUntil time.Time
-	currentlyMakingRequest  bool
+	lastErrorTime          time.Time
+	currentlyMakingRequest bool
 
 	lastRequestKey       statusRequestKey
 	lastSuccessfulLookup time.Time
@@ -68,7 +68,7 @@ type whoAmIResponse struct {
 
 func (c *CloudStatusManager) error() {
 	c.mu.Lock()
-	c.sleepingAfterErrorUntil = c.clock.Now().Add(timeoutAfterError)
+	c.lastErrorTime = c.clock.Now()
 	c.mu.Unlock()
 }
 
@@ -151,7 +151,7 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, c
 	c.mu.Lock()
 	c.lastRequestKey = requestKey
 	c.lastSuccessfulLookup = c.clock.Now()
-	c.sleepingAfterErrorUntil = time.Time{}
+	c.lastErrorTime = time.Time{}
 	c.mu.Unlock()
 
 	st.Dispatch(store.TiltCloudStatusReceivedAction{
@@ -176,7 +176,7 @@ func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	c.mu.Lock()
-	sleepingAfterErrorUntil := c.sleepingAfterErrorUntil
+	lastErrorTime := c.lastErrorTime
 	currentlyMakingRequest := c.currentlyMakingRequest
 	requestKey := statusRequestKey{teamID: state.TeamID, tiltToken: state.Token, version: state.TiltBuildInfo}
 	needsLookup := c.needsLookup(requestKey)
@@ -193,7 +193,7 @@ func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore) {
 	// 3. request started in (1) finishes, sets TokenKnownUnregistered = true
 	// we never make a request post-(2), where the token was registered
 	// This is mitigated by - a) the window between (1) and (3) is small, and b) the user can just click refresh again
-	allowedToPerformLookup := !time.Now().Before(sleepingAfterErrorUntil) && !currentlyMakingRequest
+	allowedToPerformLookup := !time.Now().Before(lastErrorTime.Add(timeoutAfterError)) && !currentlyMakingRequest
 
 	if needsLookup && allowedToPerformLookup {
 		go c.CheckStatus(ctx, st, state.CloudAddress, requestKey, false)
