@@ -2,7 +2,9 @@ package analytics
 
 import "context"
 
-const analyticsContextKey = "Analytics"
+type contextKey struct{}
+
+var analyticsContextKey = contextKey{}
 
 func WithAnalytics(ctx context.Context, a *TiltAnalytics) context.Context {
 	return context.WithValue(ctx, analyticsContextKey, a)

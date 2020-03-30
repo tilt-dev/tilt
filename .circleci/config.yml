@@ -6,7 +6,7 @@ orbs:
 jobs:
   build-linux:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:62d0b5b9668e41165b132a86a599b34331f199c95a4e4d8ba82d64a97f654c7c
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:4463a50592482e4bf1c5269f0230f3eac5b0211fe86afae25270e9cc79d1305f
 
     steps:
       - checkout
@@ -32,7 +32,7 @@ jobs:
           only_for_branches: master
   helm2:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:62d0b5b9668e41165b132a86a599b34331f199c95a4e4d8ba82d64a97f654c7c
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:4463a50592482e4bf1c5269f0230f3eac5b0211fe86afae25270e9cc79d1305f
     steps:
       - checkout
       - run: sudo mv /usr/bin/helm2 /usr/bin/helm
