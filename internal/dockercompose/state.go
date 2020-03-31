@@ -64,6 +64,14 @@ type State struct {
 
 func (State) RuntimeState() {}
 
+func (s State) RuntimeStatus() model.RuntimeStatus {
+	runtimeStatus, ok := runtimeStatusMap[string(s.Status)]
+	if !ok {
+		return model.RuntimeStatusError
+	}
+	return runtimeStatus
+}
+
 func (s State) WithSpanID(spanID model.LogSpanID) State {
 	s.SpanID = spanID
 	return s
@@ -96,4 +104,14 @@ func (s State) WithStopping(stopping bool) State {
 
 func (s State) HasEverBeenReadyOrSucceeded() bool {
 	return !s.LastReadyTime.IsZero()
+}
+
+var runtimeStatusMap = map[string]model.RuntimeStatus{
+	string(StatusInProg): model.RuntimeStatusPending,
+	string(StatusUp):     model.RuntimeStatusOK,
+	string(StatusDown):   model.RuntimeStatusError,
+	string(StatusCrash):  model.RuntimeStatusError,
+
+	// If the runtime status hasn't shown up yet, we assume it's pending.
+	"": model.RuntimeStatusPending,
 }
