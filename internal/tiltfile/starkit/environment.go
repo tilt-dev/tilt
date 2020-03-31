@@ -19,6 +19,7 @@ func ExecFile(path string, extensions ...Extension) (Model, error) {
 const argUnpackerKey = "starkit.ArgUnpacker"
 const modelKey = "starkit.Model"
 const ctxKey = "starkit.Ctx"
+const execingTiltfileKey = "starkit.ExecingTiltfile"
 
 // Unpacks args, using the arg unpacker on the current thread.
 func UnpackArgs(t *starlark.Thread, fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error {
@@ -190,7 +191,13 @@ func (e *Environment) exec(t *starlark.Thread, path string) (starlark.StringDict
 		status: loadStatusExecuting,
 	}
 
+	oldPath := t.Local(execingTiltfileKey)
+	t.SetLocal(execingTiltfileKey, localPath)
+
 	exports, err := e.doLoad(t, localPath)
+
+	t.SetLocal(execingTiltfileKey, oldPath)
+
 	e.loadCache[localPath] = loadCacheEntry{
 		status:  loadStatusDone,
 		exports: exports,
