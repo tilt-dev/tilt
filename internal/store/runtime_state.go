@@ -25,6 +25,8 @@ type RuntimeState interface {
 	// and alter the behavior based on whether the underlying resource is a server
 	// or a task.
 	HasEverBeenReadyOrSucceeded() bool
+
+	RuntimeStatus() model.RuntimeStatus
 }
 
 type LocalRuntimeState struct {
@@ -35,6 +37,10 @@ type LocalRuntimeState struct {
 }
 
 func (LocalRuntimeState) RuntimeState() {}
+
+func (l LocalRuntimeState) RuntimeStatus() model.RuntimeStatus {
+	return l.Status
+}
 
 func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
 	return l.HasSucceededAtLeastOnce
@@ -72,6 +78,21 @@ func NewK8sRuntimeState(pods ...Pod) K8sRuntimeState {
 		DeployedUIDSet:                 NewUIDSet(),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
 	}
+}
+
+func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
+	pod := s.MostRecentPod()
+
+	status := pod.Status
+	if status == "Running" && !pod.AllContainersReady() {
+		status = "Pending"
+	}
+
+	runtimeStatus, ok := runtimeStatusMap[status]
+	if !ok {
+		return model.RuntimeStatusError
+	}
+	return runtimeStatus
 }
 
 func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
@@ -244,4 +265,21 @@ func (s PodTemplateSpecHashSet) Add(hashes ...k8s.PodTemplateSpecHash) {
 
 func (s PodTemplateSpecHashSet) Contains(hash k8s.PodTemplateSpecHash) bool {
 	return s[hash]
+}
+
+var runtimeStatusMap = map[string]model.RuntimeStatus{
+	"Running":           model.RuntimeStatusOK,
+	"ContainerCreating": model.RuntimeStatusPending,
+	"Pending":           model.RuntimeStatusPending,
+	"PodInitializing":   model.RuntimeStatusPending,
+	"Error":             model.RuntimeStatusError,
+	"CrashLoopBackOff":  model.RuntimeStatusError,
+	"ErrImagePull":      model.RuntimeStatusError,
+	"ImagePullBackOff":  model.RuntimeStatusError,
+	"RunContainerError": model.RuntimeStatusError,
+	"StartError":        model.RuntimeStatusError,
+	"Completed":         model.RuntimeStatusOK,
+
+	// If the runtime status hasn't shown up yet, we assume it's pending.
+	"": model.RuntimeStatusPending,
 }
