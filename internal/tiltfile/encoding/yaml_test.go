@@ -1,5 +1,3 @@
-// +build !windows
-
 package encoding
 
 import (
@@ -8,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 )
 
@@ -93,7 +92,8 @@ func TestYAMLDoesNotExist(t *testing.T) {
 	f.File("Tiltfile", `result = read_yaml("dne.yaml")`)
 	result, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "dne.yaml: no such file or directory")
+	require.Contains(t, err.Error(), "dne.yaml")
+	testutils.AssertIsNotExist(t, err)
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)

@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -95,8 +94,7 @@ func (f *Fixture) File(name, contents string) {
 }
 
 func (f *Fixture) UseRealFS() {
-	// '/' is not allowed in filenames, so get that out of there
-	path, err := ioutil.TempDir("", strings.Replace(f.tb.Name(), "/", "_", -1))
+	path, err := ioutil.TempDir("", tempdir.EscapeName(f.tb))
 	require.NoError(f.tb, err)
 	f.path = path
 	f.useRealFS = true

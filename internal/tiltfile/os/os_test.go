@@ -1,5 +1,3 @@
-// +build !windows
-
 package os
 
 import (
@@ -52,7 +50,7 @@ print(cwd)
 
 	_, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%s/foo\n", f.Path()), f.PrintOutput())
+	assert.Equal(t, fmt.Sprintf("%s\n", f.JoinPath("foo")), f.PrintOutput())
 }
 
 func TestGetCwdLoadFunction(t *testing.T) {
@@ -69,7 +67,6 @@ print(get_cwd_wrapper())
 
 	_, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
-
 	assert.Equal(t, fmt.Sprintf("%s\n", f.Path()), f.PrintOutput())
 }
 

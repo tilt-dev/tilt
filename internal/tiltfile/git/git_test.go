@@ -1,5 +1,3 @@
-// +build !windows
-
 package git
 
 import (
@@ -23,7 +21,7 @@ print(local_git_repo('.').paths('.git/index'))
 
 	_, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
-	assert.Contains(t, f.PrintOutput(), "/.git/index")
+	assert.Contains(t, f.PrintOutput(), f.JoinPath(".git", "index"))
 }
 
 func TestGitRepoBadMethodCall(t *testing.T) {

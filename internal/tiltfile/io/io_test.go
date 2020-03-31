@@ -1,5 +1,3 @@
-// +build !windows
-
 package io
 
 import (
@@ -7,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
 )
@@ -85,7 +84,8 @@ s = read_file('dne.txt')
 
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "dne.txt: no such file or directory")
+	testutils.AssertIsNotExist(t, err)
+	require.Contains(t, err.Error(), "dne.txt")
 }
 
 func newFixture(t *testing.T) *starkit.Fixture {

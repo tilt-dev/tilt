@@ -1,5 +1,3 @@
-// +build !windows
-
 package include
 
 import (
@@ -26,8 +24,8 @@ y = x // 0
 	_, err := f.ExecFile("Tiltfile")
 	if assert.Error(t, err) {
 		backtrace := err.(*starlark.EvalError).Backtrace()
-		assert.Contains(t, backtrace, fmt.Sprintf("%s/Tiltfile:2:8: in <toplevel>", f.Path()))
-		assert.Contains(t, backtrace, fmt.Sprintf("%s/foo/Tiltfile:3:7: in <toplevel>", f.Path()))
+		assert.Contains(t, backtrace, fmt.Sprintf("%s:2:8: in <toplevel>", f.JoinPath("Tiltfile")))
+		assert.Contains(t, backtrace, fmt.Sprintf("%s:3:7: in <toplevel>", f.JoinPath("foo", "Tiltfile")))
 	}
 }
 
