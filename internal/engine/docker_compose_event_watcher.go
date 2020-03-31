@@ -24,7 +24,7 @@ func NewDockerComposeEventWatcher(dcc dockercompose.DockerComposeClient) *Docker
 func (w *DockerComposeEventWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
-	return state.WatchFiles && !w.watching
+	return state.EngineMode.WatchesRuntime() && !w.watching
 }
 
 func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStore) {

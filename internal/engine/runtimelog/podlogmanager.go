@@ -43,8 +43,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	// If we're not watching the FS for changes, then don't bother watching logs.
-	if !state.WatchFiles {
+	if !state.EngineMode.WatchesRuntime() {
 		return nil, nil
 	}
 

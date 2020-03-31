@@ -81,7 +81,6 @@ func TestServiceWatchUIDDelayed(t *testing.T) {
 func (f *swFixture) addManifest(manifestName string) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
 	defer f.store.UnlockMutableState()
-	state.WatchFiles = true
 	dt := model.K8sTarget{Name: model.TargetName(manifestName)}
 	m := model.Manifest{Name: model.ManifestName(manifestName)}.WithDeployTarget(dt)
 	state.UpsertManifestTarget(store.NewManifestTarget(m))

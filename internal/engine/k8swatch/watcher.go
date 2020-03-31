@@ -37,7 +37,7 @@ func createWatcherTaskList(state store.EngineState, knownDeployedUIDs map[types.
 		}
 	}
 
-	needsWatch := atLeastOneK8s && state.WatchFiles
+	needsWatch := atLeastOneK8s && state.EngineMode.WatchesRuntime()
 	return watcherTaskList{
 		needsWatch: needsWatch,
 		newUIDs:    newUIDs,

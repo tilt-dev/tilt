@@ -36,7 +36,6 @@ func TestLogs(t *testing.T) {
 	start := time.Now()
 	state := f.store.LockMutableStateForTesting()
 	state.TiltStartTime = start
-	state.WatchFiles = true
 
 	p := store.Pod{
 		PodID: podID,
@@ -59,7 +58,6 @@ func TestLogActions(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchFiles = true
 
 	p := store.Pod{
 		PodID: podID,
@@ -81,7 +79,6 @@ func TestLogsFailed(t *testing.T) {
 	f.kClient.ContainerLogsError = fmt.Errorf("my-error")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchFiles = true
 
 	p := store.Pod{
 		PodID: podID,
@@ -104,7 +101,6 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\n")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchFiles = true
 
 	p := store.Pod{
 		PodID: podID,
@@ -133,7 +129,6 @@ func TestMultiContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, "cont2", "goodbye world!")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchFiles = true
 
 	p := store.Pod{
 		PodID: podID,
@@ -167,7 +162,6 @@ func TestContainerPrefixes(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(pID2, cNameNoPrefix, "hello jupiter!")
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchFiles = true
 
 	podMultiC := store.Pod{
 		PodID: pID1,
@@ -225,7 +219,6 @@ func TestLogsByPodPhase(t *testing.T) {
 			f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
 			state := f.store.LockMutableStateForTesting()
-			state.WatchFiles = true
 
 			p := store.Pod{
 				PodID: podID,

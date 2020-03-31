@@ -91,7 +91,7 @@ func (sm SyncletManager) diff(ctx context.Context, st store.RStore) (setup []syn
 	defer st.RUnlockState()
 
 	// We don't need synclets if we're not watching the FS for changes.
-	if !state.WatchFiles {
+	if !state.EngineMode.WatchesFiles() {
 		return
 	}
 

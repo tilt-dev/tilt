@@ -350,7 +350,10 @@ func TestUpper_Up(t *testing.T) {
 	manifest := f.newManifest("foobar")
 
 	f.setManifests([]model.Manifest{manifest})
-	err := f.upper.Init(f.ctx, InitAction{TiltfilePath: f.JoinPath("Tiltfile")})
+	err := f.upper.Init(f.ctx, InitAction{
+		EngineMode:   store.EngineModeApply,
+		TiltfilePath: f.JoinPath("Tiltfile"),
+	})
 	close(f.b.calls)
 	require.NoError(t, err)
 	var started []model.TargetID
@@ -379,6 +382,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f.WriteFile("postgres.yaml", yaml)
 
 	err = f.upper.Init(f.ctx, InitAction{
+		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 	})
 	require.NoError(t, err)
@@ -406,6 +410,7 @@ func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
 	f.WriteFile("snack.yaml", simpleYAML)
 
 	err := f.upper.Init(f.ctx, InitAction{
+		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		UserArgs:     nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
 	})
@@ -583,6 +588,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 
 	f.setManifests([]model.Manifest{manifest})
 	f.Init(InitAction{
+		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		HUDEnabled:   true,
 	})
@@ -2413,6 +2419,7 @@ func TestInitSetsTiltfilePath(t *testing.T) {
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{})
 	f.store.Dispatch(InitAction{
+		EngineMode:   store.EngineModeApply,
 		TiltfilePath: "/Tiltfile",
 	})
 	f.WaitUntil("tiltfile path gets set on init", func(st store.EngineState) bool {
@@ -2698,7 +2705,9 @@ func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
 	go func() {
-		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, true, f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"), "nonexistent.example.com")
+		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, store.EngineModeUp,
+			f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"),
+			"nonexistent.example.com")
 		testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
 	}()
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
@@ -2723,7 +2732,8 @@ func TestUpperStart(t *testing.T) {
 
 	f.WriteFile("Tiltfile", "")
 	go func() {
-		err := f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{}, false, f.JoinPath("Tiltfile"), true, analytics.OptIn, tok, cloudAddress)
+		err := f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{},
+			store.EngineModeApply, f.JoinPath("Tiltfile"), true, analytics.OptIn, tok, cloudAddress)
 		testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
 	}()
 	f.WaitUntil("init action processed", func(state store.EngineState) bool {
@@ -3580,7 +3590,7 @@ func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOptio
 	f.setManifests(manifests)
 
 	ia := InitAction{
-		WatchFiles:   true,
+		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		HUDEnabled:   true,
 	}
@@ -3614,7 +3624,7 @@ func (f *testFixture) disableEnvAnalyticsOpt() {
 type initOption func(ia InitAction) InitAction
 
 func (f *testFixture) Init(action InitAction) {
-	watchFiles := action.WatchFiles
+	watchFiles := action.EngineMode.WatchesFiles()
 	f.upperInitResult = make(chan error, 10)
 
 	go func() {
@@ -3970,7 +3980,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 
 func (f *testFixture) loadAndStart(initOptions ...initOption) {
 	ia := InitAction{
-		WatchFiles:   true,
+		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		HUDEnabled:   true,
 	}
