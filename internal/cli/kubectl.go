@@ -9,6 +9,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubectl/pkg/cmd/apply"
+	"k8s.io/kubectl/pkg/cmd/create"
 	"k8s.io/kubectl/pkg/cmd/delete"
 	"k8s.io/kubectl/pkg/cmd/replace"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -50,13 +51,15 @@ func newKubectlCmd() *cobra.Command {
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 	cmdApply := apply.NewCmdApply("kubectl", f, ioStreams)
 
-	// TODO(nick): It might make more sense to implement replace and delete with client-go.
+	// TODO(nick): It might make more sense to implement these with client-go.
 	cmdReplace := replace.NewCmdReplace(f, ioStreams)
 	cmdDelete := delete.NewCmdDelete(f, ioStreams)
+	cmdCreate := create.NewCmdCreate(f, ioStreams)
 
 	result.AddCommand(cmdApply)
 	result.AddCommand(cmdReplace)
 	result.AddCommand(cmdDelete)
+	result.AddCommand(cmdCreate)
 	return result
 }
 

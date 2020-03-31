@@ -79,6 +79,30 @@ func TestUpsertMutableAndImmutable(t *testing.T) {
 	require.Equal(t, eJob, call1Entities[0], "expect call 1 to have applied job")
 }
 
+func TestUpsertAnnotationTooLong(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
+
+	f.setStderr(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
+	_, err := f.client.Upsert(f.ctx, postgres)
+	if !assert.Nil(t, err) {
+		t.FailNow()
+	}
+
+	expectedArgs := [][]string{
+		{"apply", "-o", "yaml", "-f", "-"},
+		{"delete", "--ignore-not-found=true", "-f", "-"},
+		{"create", "-o", "yaml", "-f", "-"},
+	}
+	require.Len(t, f.runner.calls, len(expectedArgs))
+
+	for i, call := range f.runner.calls {
+		require.Equalf(t, expectedArgs[i], call.argv, "expected args for call %d", i)
+		observedEntities := mustParseYAML(t, call.stdin)
+		require.Lenf(t, observedEntities, len(postgres), "expect %d entities", len(postgres))
+	}
+}
+
 func TestUpsertStatefulsetForbidden(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
@@ -88,8 +112,8 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	_, err = f.client.Upsert(f.ctx, postgres)
 	if assert.Nil(t, err) && assert.Equal(t, 3, len(f.runner.calls)) {
 		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
-		assert.Equal(t, []string{"delete", "-f", "-"}, f.runner.calls[1].argv)
-		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[2].argv)
+		assert.Equal(t, []string{"delete", "--ignore-not-found=true", "-f", "-"}, f.runner.calls[1].argv)
+		assert.Equal(t, []string{"create", "-o", "yaml", "-f", "-"}, f.runner.calls[2].argv)
 	}
 }
 

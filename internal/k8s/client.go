@@ -285,25 +285,26 @@ func (k K8sClient) forceReplaceEntities(ctx context.Context, entities []K8sEntit
 func (k K8sClient) applyEntitiesAndMaybeForce(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
 	stdout, stderr, err := k.actOnEntities(ctx, []string{"apply", "-o", "yaml"}, entities)
 	if err != nil {
-		shouldTryReplace := maybeImmutableFieldStderr(stderr)
+		reason, shouldTryReplace := maybeShouldTryReplaceReason(stderr)
 
 		if !shouldTryReplace {
 			return nil, errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
 		}
 
-		// If the kubectl apply failed due to an immutable field, fall back to kubectl delete && kubectl apply
-		// NOTE(maia): this is equivalent to `kubecutl replace --force`, but will ensure that all
+		// NOTE(maia): we don't use `kubecutl replace --force`, because we want to ensure that all
 		// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
 		// and recreated so they have all the new labels, etc. of their controlling k8s entity.
-		logger.Get(ctx).Infof("Falling back to 'kubectl delete && apply' on immutable field error")
-		_, stderr, err = k.actOnEntities(ctx, []string{"delete"}, entities)
+		logger.Get(ctx).Infof("Falling back to 'kubectl delete && create': %s", reason)
+		// --ignore-not-found because, e.g., if we fell back due to large metadata.annotations, the object might not exist
+		_, stderr, err = k.actOnEntities(ctx, []string{"delete", "--ignore-not-found=true"}, entities)
 		if err != nil {
-			return nil, errors.Wrapf(err, "kubectl delete (as part of delete && apply):\nstderr: %s", stderr)
+			return nil, errors.Wrapf(err, "kubectl delete (as part of delete && create):\nstderr: %s", stderr)
 		}
-		stdout, stderr, err = k.actOnEntities(ctx, []string{"apply", "-o", "yaml"}, entities)
+		stdout, stderr, err = k.actOnEntities(ctx, []string{"create", "-o", "yaml"}, entities)
 		if err != nil {
-			return nil, errors.Wrapf(err, "kubectl apply (as part of delete && apply):\nstderr: %s", stderr)
+			return nil, errors.Wrapf(err, "kubectl create (as part of delete && create):\nstderr: %s", stderr)
 		}
+		logger.Get(ctx).Infof("Succeeded!")
 	}
 
 	return ParseYAMLFromString(stdout)
@@ -326,6 +327,32 @@ func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
 // immutable field error when it's not).
 func maybeImmutableFieldStderr(stderr string) bool {
 	return strings.Contains(stderr, validation.FieldImmutableErrorMsg) || ForbiddenFieldsRe.Match([]byte(stderr))
+}
+
+var MetadataAnnotationsTooLongRe = regexp.MustCompile(`metadata.annotations: Too long: must have at most \d+ bytes.*`)
+
+// kubectl apply sets an annotation containing the object's previous configuration.
+// However, annotations have a max size of 256k. Large objects such as configmaps can exceed 256k, which makes
+// apply unusable, so we need to fall back to delete/create
+// https://github.com/kubernetes/kubectl/issues/712
+func maybeAnnotationsTooLong(stderr string) (string, bool) {
+	for _, line := range strings.Split(stderr, "\n") {
+		if MetadataAnnotationsTooLongRe.MatchString(line) {
+			return line, true
+		}
+	}
+
+	return "", false
+}
+
+func maybeShouldTryReplaceReason(stderr string) (string, bool) {
+	if maybeImmutableFieldStderr(stderr) {
+		return "immutable field error", true
+	} else if msg, match := maybeAnnotationsTooLong(stderr); match {
+		return fmt.Sprintf("%s (https://github.com/kubernetes/kubectl/issues/712)", msg), true
+	}
+
+	return "", false
 }
 
 // Deletes all given entities.
