@@ -69,7 +69,7 @@ func TestEventWatchManager_watchError(t *testing.T) {
 	expectedErr := errors.Wrap(err, "Error watching k8s events\n")
 	expected := store.ErrorAction{Error: expectedErr}
 	f.assertActions(expected)
-	f.storeLoopErr = nil
+	<-f.storeLoopErrCh // consume the error
 }
 
 func TestEventWatchManager_eventBeforeUID(t *testing.T) {
@@ -136,15 +136,15 @@ func (f *ewmFixture) makeEvent(obj k8s.K8sEntity) *v1.Event {
 
 type ewmFixture struct {
 	*tempdir.TempDirFixture
-	t            *testing.T
-	kClient      *k8s.FakeK8sClient
-	ewm          *EventWatchManager
-	ctx          context.Context
-	cancel       func()
-	store        *store.Store
-	storeLoopErr error
-	getActions   func() []store.Action
-	clock        clockwork.FakeClock
+	t              *testing.T
+	kClient        *k8s.FakeK8sClient
+	ewm            *EventWatchManager
+	ctx            context.Context
+	cancel         func()
+	store          *store.Store
+	storeLoopErrCh chan error
+	getActions     func() []store.Action
+	clock          clockwork.FakeClock
 }
 
 func newEWMFixture(t *testing.T) *ewmFixture {
@@ -157,6 +157,7 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 
 	clock := clockwork.NewFakeClock()
 
+	storeLoopErrCh := make(chan error, 1)
 	ret := &ewmFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		kClient:        kClient,
@@ -165,6 +166,7 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 		cancel:         cancel,
 		t:              t,
 		clock:          clock,
+		storeLoopErrCh: storeLoopErrCh,
 	}
 
 	ret.store, ret.getActions = store.NewStoreForTesting()
@@ -172,17 +174,19 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	state.TiltStartTime = clock.Now()
 	ret.store.UnlockMutableState()
 	go func() {
-		ret.storeLoopErr = ret.store.Loop(ctx)
+		ret.storeLoopErrCh <- ret.store.Loop(ctx)
+		close(ret.storeLoopErrCh)
 	}()
 
 	return ret
 }
 
 func (f *ewmFixture) TearDown() {
-	testutils.FailOnNonCanceledErr(f.t, f.storeLoopErr, "store.Loop returned an error")
+	f.cancel()
+	err := <-f.storeLoopErrCh
+	testutils.FailOnNonCanceledErr(f.t, err, "store.Loop returned an error")
 	f.TempDirFixture.TearDown()
 	f.kClient.TearDown()
-	f.cancel()
 }
 
 func (f *ewmFixture) addManifest(manifestName model.ManifestName) model.Manifest {
@@ -216,7 +220,7 @@ func (f *ewmFixture) assertNoActions() {
 
 func (f *ewmFixture) assertActions(expected ...store.Action) {
 	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
+	for time.Since(start) < time.Second {
 		actions := f.getActions()
 		if len(actions) >= len(expected) {
 			break
