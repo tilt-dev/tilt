@@ -152,9 +152,15 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		})
 	}
 
+	engineMode := store.EngineModeUp
+	if !c.watch {
+		engineMode = store.EngineModeApply
+	}
+
 	g.Go(func() error {
 		defer cancel()
-		return upper.Start(ctx, args, cmdUpDeps.TiltBuild, c.watch, c.fileName, hudEnabled, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
+		return upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
+			c.fileName, hudEnabled, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
 	})
 
 	err = g.Wait()

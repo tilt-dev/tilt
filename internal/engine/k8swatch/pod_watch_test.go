@@ -269,7 +269,6 @@ func TestPodStatus(t *testing.T) {
 
 func (f *pwFixture) addManifestWithSelectors(manifestName string, ls ...labels.Selector) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
-	state.WatchFiles = true
 	m := manifestbuilder.New(f, model.ManifestName(manifestName)).
 		WithK8sYAML(testyaml.SanchoYAML).
 		WithK8sPodSelectors(ls).

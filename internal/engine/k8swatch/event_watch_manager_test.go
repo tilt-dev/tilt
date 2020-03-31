@@ -191,7 +191,6 @@ func (f *ewmFixture) TearDown() {
 
 func (f *ewmFixture) addManifest(manifestName model.ManifestName) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
-	state.WatchFiles = true
 
 	m := manifestbuilder.New(f, manifestName).
 		WithK8sYAML(testyaml.SanchoYAML).

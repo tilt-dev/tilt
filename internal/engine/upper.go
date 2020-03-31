@@ -89,7 +89,7 @@ func (u Upper) Start(
 	ctx context.Context,
 	args []string,
 	b model.TiltBuild,
-	watch bool,
+	engineMode store.EngineMode,
 	fileName string,
 	hudEnabled bool,
 	analyticsUserOpt analytics.Opt,
@@ -110,7 +110,7 @@ func (u Upper) Start(
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		WatchFiles:       watch,
+		EngineMode:       engineMode,
 		TiltfilePath:     absTfPath,
 		ConfigFiles:      configFiles,
 		UserArgs:         args,
@@ -641,7 +641,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.ConfigFiles = action.ConfigFiles
 	engineState.UserConfigState.Args = action.UserArgs
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
-	engineState.WatchFiles = action.WatchFiles
+	engineState.EngineMode = action.EngineMode
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
 	engineState.HUDEnabled = action.HUDEnabled

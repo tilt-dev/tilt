@@ -24,28 +24,25 @@ func (c *Controller) shouldExit(store store.RStore) Action {
 		return Action{}
 	}
 
-	// If we're in dev/interactive mode, there's never a reason to exit.
-	if state.WatchFiles {
-		return Action{}
-	}
-
-	// If the tiltfile failed, exit immediately.
-	err := state.TiltfileState.LastBuild().Error
-	if err != nil {
-		return Action{ExitSignal: true, ExitError: err}
-	}
-
-	// If any of the individual builds failed, exit immediately.
-	for _, mt := range state.ManifestTargets {
-		err := mt.State.LastBuild().Error
+	if state.EngineMode.IsApplyMode() {
+		// If the tiltfile failed, exit immediately.
+		err := state.TiltfileState.LastBuild().Error
 		if err != nil {
 			return Action{ExitSignal: true, ExitError: err}
 		}
-	}
 
-	// If all builds completed, we're done!
-	if len(state.ManifestTargets) > 0 && state.InitialBuildsCompleted() {
-		return Action{ExitSignal: true}
+		// If any of the individual builds failed, exit immediately.
+		for _, mt := range state.ManifestTargets {
+			err := mt.State.LastBuild().Error
+			if err != nil {
+				return Action{ExitSignal: true, ExitError: err}
+			}
+		}
+
+		// If all builds completed, we're done!
+		if len(state.ManifestTargets) > 0 && state.InitialBuildsCompleted() {
+			return Action{ExitSignal: true}
+		}
 	}
 
 	return Action{}

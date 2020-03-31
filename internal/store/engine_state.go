@@ -33,7 +33,7 @@ type EngineState struct {
 	ManifestTargets map[model.ManifestName]*ManifestTarget
 
 	CurrentlyBuilding map[model.ManifestName]bool
-	WatchFiles        bool
+	EngineMode        EngineMode
 
 	// For synchronizing BuildController -- wait until engine records all builds started
 	// so far before starting another build

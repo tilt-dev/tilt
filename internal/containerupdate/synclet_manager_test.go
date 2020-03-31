@@ -26,7 +26,6 @@ func TestSyncletSubscriptions(t *testing.T) {
 	defer f.TearDown()
 
 	state := f.store.LockMutableStateForTesting()
-	state.WatchFiles = true
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"},
 		store.Pod{

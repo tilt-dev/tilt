@@ -16,7 +16,7 @@ import (
 )
 
 func TestExitControlAllSuccess(t *testing.T) {
-	f := newFixture(t)
+	f := newFixture(t, store.EngineModeApply)
 	defer f.TearDown()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -48,7 +48,7 @@ func TestExitControlAllSuccess(t *testing.T) {
 }
 
 func TestExitControlFirstFailure(t *testing.T) {
-	f := newFixture(t)
+	f := newFixture(t, store.EngineModeApply)
 	defer f.TearDown()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -82,10 +82,14 @@ type fixture struct {
 	c     *Controller
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 
 	st := NewTestingStore()
+	st.WithState(func(state *store.EngineState) {
+		state.EngineMode = engineMode
+	})
+
 	c := NewController()
 	ctx := context.Background()
 
