@@ -150,7 +150,7 @@ func (f *ltFixture) localTarget(cmd string) model.LocalTarget {
 
 func (f *ltFixture) localTargetWithWorkdir(cmd string, workdir string) model.LocalTarget {
 	return model.LocalTarget{
-		UpdateCmd: model.ToShellCmd(cmd),
+		UpdateCmd: model.ToHostCmd(cmd),
 		Workdir:   workdir,
 	}
 }

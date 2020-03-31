@@ -7,13 +7,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func IsNotExistMessage() string {
+	if runtime.GOOS == "windows" {
+		return "The system cannot find" // some error messages use "path" and some use "file"
+	} else {
+		return "no such file or directory"
+	}
+
+}
+
 // Asserts the given error indicates a file doesn't exist.
 // Uses string matching instead of type-checking, to workaround
 // libraries that wrap the error.
 func AssertIsNotExist(t *testing.T, err error) {
-	if runtime.GOOS == "windows" {
-		assert.Contains(t, err.Error(), "The system cannot find the file specified")
-	} else {
-		assert.Contains(t, err.Error(), "no such file or directory")
-	}
+	assert.Contains(t, err.Error(), IsNotExistMessage())
 }

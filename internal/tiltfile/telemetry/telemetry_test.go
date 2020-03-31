@@ -17,7 +17,7 @@ func TestTelemetryCmdString(t *testing.T) {
 	result, err := f.ExecFile("Tiltfile")
 
 	assert.NoError(t, err)
-	assert.Equal(t, model.ToShellCmd("foo.sh"), MustState(result).Cmd)
+	assert.Equal(t, model.ToHostCmd("foo.sh"), MustState(result).Cmd)
 }
 
 func TestTelemetryCmdArray(t *testing.T) {

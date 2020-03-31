@@ -516,7 +516,7 @@ func TestDeployInjectsOverrideCommand(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	cmd := model.ToShellCmd("./foo.sh bar")
+	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
 	manifest = manifest.WithImageTarget(iTarg)
@@ -611,7 +611,7 @@ func TestDeployInjectOverrideCommandClearsOldCommandButNotArgs(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	cmd := model.ToShellCmd("./foo.sh bar")
+	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifestWithYaml(f, testyaml.SanchoYAMLWithCommand)
 	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
 	manifest = manifest.WithImageTarget(iTarg)
@@ -644,7 +644,7 @@ func TestDeployInjectOverrideCommandAndArgs(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	cmd := model.ToShellCmd("./foo.sh bar")
+	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifestWithYaml(f, testyaml.SanchoYAMLWithCommand)
 	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
 	iTarg.OverrideArgs = model.OverrideArgs{ShouldOverride: true}
@@ -683,7 +683,7 @@ func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {
 	// expect an error when we try
 	crdYamlWithSanchoImage := strings.ReplaceAll(testyaml.CRDYAML, testyaml.CRDImage, testyaml.SanchoImage)
 
-	cmd := model.ToShellCmd("./foo.sh bar")
+	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifestWithYaml(f, crdYamlWithSanchoImage)
 	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
 	manifest = manifest.WithImageTarget(iTarg)
@@ -698,8 +698,8 @@ func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	cmd1 := model.ToShellCmd("./command1.sh foo")
-	cmd2 := model.ToShellCmd("./command2.sh bar baz")
+	cmd1 := model.ToUnixCmd("./command1.sh foo")
+	cmd2 := model.ToUnixCmd("./command2.sh bar baz")
 
 	iTarget1 := NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd1)
 	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f).WithOverrideCommand(cmd2)

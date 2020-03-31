@@ -210,7 +210,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 
-	entrypointCmd, err := value.ValueToCmd(entrypoint)
+	entrypointCmd, err := value.ValueToUnixCmd(entrypoint)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +347,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	entrypointCmd, err := value.ValueToCmd(entrypoint)
+	entrypointCmd, err := value.ValueToUnixCmd(entrypoint)
 	if err != nil {
 		return nil, err
 	}

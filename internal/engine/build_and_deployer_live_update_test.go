@@ -757,9 +757,9 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 	defer f.TearDown()
 
 	runs := []model.LiveUpdateRunStep{
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo hello")},
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo hello")},
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
 	tCase := testCase{
@@ -783,9 +783,9 @@ func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
 	defer f.TearDown()
 
 	runs := []model.LiveUpdateRunStep{
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo hello")},
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo hello")},
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
 	}
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
 	tCase := testCase{

@@ -164,7 +164,7 @@ func (tcf *tcFixture) run() {
 	}
 
 	ts := model.TelemetrySettings{
-		Cmd:     model.ToShellCmd(tcf.cmd),
+		Cmd:     model.ToHostCmd(tcf.cmd),
 		Workdir: tcf.temp.Path(),
 	}
 	tcf.st.SetState(store.EngineState{

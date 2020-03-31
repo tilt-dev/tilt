@@ -126,7 +126,7 @@ func (f *processExecFixture) startMalformedCommand() {
 }
 
 func (f *processExecFixture) start(cmd string) {
-	c := model.ToShellCmd(cmd)
+	c := model.ToHostCmd(cmd)
 	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
 }
 

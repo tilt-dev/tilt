@@ -142,7 +142,7 @@ func (f *fixture) resource(name string, cmd string, lastDeploy time.Time) {
 	m := model.Manifest{
 		Name: n,
 	}.WithDeployTarget(model.NewLocalTarget(
-		model.TargetName(name), model.Cmd{}, model.ToShellCmd(cmd), nil, ""))
+		model.TargetName(name), model.Cmd{}, model.ToHostCmd(cmd), nil, ""))
 	f.state.UpsertManifestTarget(&store.ManifestTarget{
 		Manifest: m,
 		State: &store.ManifestState{

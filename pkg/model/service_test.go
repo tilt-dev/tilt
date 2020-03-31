@@ -23,7 +23,7 @@ func TestEscapingRun(t *testing.T) {
 }
 
 func TestNormalFormRun(t *testing.T) {
-	cmd := ToShellCmd("echo \"hi\"")
+	cmd := ToUnixCmd("echo \"hi\"")
 	actual := cmd.RunStr()
 	expected := `RUN echo "hi"`
 	if actual != expected {
