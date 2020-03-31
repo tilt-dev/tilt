@@ -22,7 +22,7 @@ func TestHudEnabled(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			threads, err := wireCmdUp(ctx, hud.HudEnabled(test.hudEnabled), ta, analytics.CmdUpTags{})
+			threads, err := wireCmdUp(ctx, hud.HudEnabled(test.hudEnabled), ta, analytics.CmdTags{})
 			if err != nil {
 				t.Fatal(err)
 			}

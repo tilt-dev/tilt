@@ -126,7 +126,6 @@ var BaseWireSet = wire.NewSet(
 	dirs.UseWindmillDir,
 	token.GetOrCreateToken,
 
-	wire.Struct(new(CmdUpDeps), "*"),
 	engine.NewKINDLoader,
 
 	wire.Value(feature.MainDefaults),
@@ -142,13 +141,33 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics) (d
 	return dpDeps{}, nil
 }
 
-func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics *analytics.TiltAnalytics, cmdUpTags engineanalytics.CmdUpTags) (CmdUpDeps, error) {
-	wire.Build(BaseWireSet, build.ProvideClock)
+func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags) (CmdUpDeps, error) {
+	wire.Build(BaseWireSet,
+		build.ProvideClock,
+		wire.Struct(new(CmdUpDeps), "*"))
 	return CmdUpDeps{}, nil
 }
 
 type CmdUpDeps struct {
 	Hud          hud.HeadsUpDisplay
+	Upper        engine.Upper
+	TiltBuild    model.TiltBuild
+	Token        token.Token
+	CloudAddress cloudurl.Address
+	Store        *store.Store
+}
+
+func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics) (CmdCIDeps, error) {
+	wire.Build(BaseWireSet,
+		build.ProvideClock,
+		wire.Value(hud.HudEnabled(false)),
+		wire.Value(engineanalytics.CmdTags(map[string]string{})),
+		wire.Struct(new(CmdCIDeps), "*"),
+	)
+	return CmdCIDeps{}, nil
+}
+
+type CmdCIDeps struct {
 	Upper        engine.Upper
 	TiltBuild    model.TiltBuild
 	Token        token.Token

@@ -3498,7 +3498,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	env := k8s.EnvDockerDesktop
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(kCli)
-	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdUpTags{})
+	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", env)
