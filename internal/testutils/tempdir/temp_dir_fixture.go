@@ -16,10 +16,16 @@ type TempDirFixture struct {
 	oldDir string
 }
 
-func NewTempDirFixture(t testing.TB) *TempDirFixture {
+func EscapeName(t testing.TB) string {
 	name := t.Name()
 	name = strings.Replace(name, "/", "-", -1)
-	dir, err := temp.NewDir(name)
+	name = strings.Replace(name, ":", "-", -1)
+	return name
+
+}
+
+func NewTempDirFixture(t testing.TB) *TempDirFixture {
+	dir, err := temp.NewDir(EscapeName(t))
 	if err != nil {
 		t.Fatalf("Error making temp dir: %v", err)
 	}

@@ -1,11 +1,10 @@
-// +build !windows
-
 package encoding
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/tiltfile/io"
 
 	"github.com/stretchr/testify/require"
@@ -66,7 +65,8 @@ func TestJSONDoesNotExist(t *testing.T) {
 	f.File("Tiltfile", `result = read_json("dne.json")`)
 	result, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "dne.json: no such file or directory")
+	require.Contains(t, err.Error(), "dne.json")
+	testutils.AssertIsNotExist(t, err)
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
