@@ -10,23 +10,23 @@ import (
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
-type CmdUpTags map[string]string
+type CmdTags map[string]string
 
-func (t CmdUpTags) AsMap() map[string]string {
+func (t CmdTags) AsMap() map[string]string {
 	return (map[string]string)(t)
 }
 
 type AnalyticsUpdater struct {
-	ta            *analytics.TiltAnalytics
-	cmdUpTags     CmdUpTags
-	reportedCmdUp bool
+	ta          *analytics.TiltAnalytics
+	cmdTags     CmdTags
+	reportedCmd bool
 }
 
-func NewAnalyticsUpdater(ta *analytics.TiltAnalytics, cmdUpTags CmdUpTags) *AnalyticsUpdater {
+func NewAnalyticsUpdater(ta *analytics.TiltAnalytics, cmdTags CmdTags) *AnalyticsUpdater {
 	return &AnalyticsUpdater{
-		ta:            ta,
-		cmdUpTags:     cmdUpTags,
-		reportedCmdUp: ta.EffectiveOpt() != wmanalytics.OptOut,
+		ta:          ta,
+		cmdTags:     cmdTags,
+		reportedCmd: ta.EffectiveOpt() != wmanalytics.OptOut,
 	}
 }
 
@@ -40,9 +40,15 @@ func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore) {
 		logger.Get(ctx).Infof("error saving analytics opt (tried to record opt: '%s')", state.AnalyticsUserOpt)
 	}
 
-	if sub.ta.EffectiveOpt() != wmanalytics.OptOut && !sub.reportedCmdUp {
-		sub.reportedCmdUp = true
-		sub.ta.Incr("cmd.up", sub.cmdUpTags.AsMap())
+	if sub.ta.EffectiveOpt() != wmanalytics.OptOut && !sub.reportedCmd {
+		sub.reportedCmd = true
+
+		cmd := "cmd.up"
+		if state.EngineMode.IsCIMode() {
+			cmd = "cmd.ci"
+		}
+
+		sub.ta.Incr(cmd, sub.cmdTags.AsMap())
 	}
 }
 

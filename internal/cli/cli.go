@@ -49,6 +49,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 `,
 	}
 
+	addCommand(rootCmd, &ciCmd{})
 	addCommand(rootCmd, &upCmd{})
 	addCommand(rootCmd, &dockerCmd{})
 	addCommand(rootCmd, &doctorCmd{})
