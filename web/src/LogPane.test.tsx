@@ -441,12 +441,12 @@ it.each(["update", "mount"])(
         showManifestPrefix={false}
         handleSetHighlight={fakeHandleSetHighlight}
         handleClearHighlight={fakeHandleClearHighlight}
-        highlight={verb == "mount" ? highlight : null}
+        highlight={verb === "mount" ? highlight : null}
         isSnapshot={true}
       />
     )
 
-    if (verb == "update") {
+    if (verb === "update") {
       fakeScrollIntoView.mockClear()
       root.setProps({ highlight: highlight })
     }
