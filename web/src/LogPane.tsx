@@ -157,7 +157,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     }
 
     if (
-      prevProps.highlight != this.props.highlight &&
+      prevProps.highlight !== this.props.highlight &&
       this.props.highlight &&
       this.props.isSnapshot &&
       this.highlightRef.current
