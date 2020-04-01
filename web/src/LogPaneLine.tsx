@@ -30,7 +30,7 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
 
   scrollIntoView() {
     if (this.ref.current) {
-      this.ref.current.scrollIntoView()
+      this.ref.current.scrollIntoView({ block: "center" })
     }
   }
 

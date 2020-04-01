@@ -423,35 +423,43 @@ it("renders highlighted lines", () => {
   expect(hLines).toHaveLength(2)
 })
 
-it("scrolls to highlighted lines in snapshot", () => {
-  const fakeScrollIntoView = jest.fn()
-  Element.prototype.scrollIntoView = fakeScrollIntoView
+it.each(["update", "mount"])(
+  "scrolls to highlighted lines in snapshot",
+  verb => {
+    const fakeScrollIntoView = jest.fn()
+    Element.prototype.scrollIntoView = fakeScrollIntoView
 
-  const highlight = {
-    beginningLogID: "2",
-    endingLogID: "3",
-    text: "foo\nbar",
+    const highlight = {
+      beginningLogID: "2",
+      endingLogID: "3",
+      text: "foo\nbar",
+    }
+    const root = mount<LogPane>(
+      <LogPane
+        manifestName={""}
+        logLines={logLinesFromString(longLog)}
+        showManifestPrefix={false}
+        handleSetHighlight={fakeHandleSetHighlight}
+        handleClearHighlight={fakeHandleClearHighlight}
+        highlight={verb === "mount" ? highlight : null}
+        isSnapshot={true}
+      />
+    )
+
+    if (verb === "update") {
+      fakeScrollIntoView.mockClear()
+      root.setProps({ highlight: highlight })
+    }
+
+    expect(root.instance().highlightRef.current).not.toBeNull()
+    expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
+    expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(HTMLSpanElement)
+    expect(fakeScrollIntoView.mock.instances[0].innerHTML).toContain(
+      '[Tiltfile] Running `"whoami"`'
+    )
+    expect(fakeScrollIntoView).toBeCalledTimes(1)
   }
-  const root = mount<LogPane>(
-    <LogPane
-      manifestName={""}
-      logLines={logLinesFromString(longLog)}
-      showManifestPrefix={false}
-      handleSetHighlight={fakeHandleSetHighlight}
-      handleClearHighlight={fakeHandleClearHighlight}
-      highlight={highlight}
-      isSnapshot={true}
-    />
-  )
-
-  expect(root.instance().highlightRef.current).not.toBeNull()
-  expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
-  expect(fakeScrollIntoView.mock.instances[0]).toBeInstanceOf(HTMLSpanElement)
-  expect(fakeScrollIntoView.mock.instances[0].innerHTML).toContain(
-    '[Tiltfile] Running `"whoami"`'
-  )
-  expect(fakeScrollIntoView).toBeCalledTimes(1)
-})
+)
 
 it("does not scroll to highlighted lines if not snapshot", () => {
   const fakeScrollIntoView = jest.fn()

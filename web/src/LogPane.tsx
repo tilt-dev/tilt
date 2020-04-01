@@ -156,6 +156,15 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
       this.scrollLastElementIntoView()
     }
 
+    if (
+      prevProps.highlight != this.props.highlight &&
+      this.props.highlight &&
+      this.props.isSnapshot &&
+      this.highlightRef.current
+    ) {
+      this.highlightRef.current.scrollIntoView()
+    }
+
     this.maybeExpandRenderWindow()
   }
 
