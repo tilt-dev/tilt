@@ -28,6 +28,22 @@ func TestDown(t *testing.T) {
 	assert.Contains(t, f.kCli.DeletedYaml, "sancho")
 }
 
+func TestDownPreservesNamespaces(t *testing.T) {
+	f := newDownFixture(t)
+	defer f.TearDown()
+
+	manifests := append([]model.Manifest{}, newK8sManifest()...)
+	manifests = append(manifests, newK8sNamespaceManifest("foo"), newK8sNamespaceManifest("bar"))
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+	require.Contains(t, f.kCli.DeletedYaml, "sancho")
+	for _, ns := range []string{"foo", "bar"} {
+		require.NotContains(t, f.kCli.DeletedYaml, ns)
+	}
+}
+
 func TestDownK8sFails(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
@@ -78,6 +94,17 @@ func newDCManifest() []model.Manifest {
 		Name:        "fe",
 		ConfigPaths: []string{"dc.yaml"},
 	})}
+}
+
+func newK8sNamespaceManifest(name string) model.Manifest {
+	yaml := fmt.Sprintf(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: %s
+spec: {}
+status: {}`, name)
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
 }
 
 type downFixture struct {
