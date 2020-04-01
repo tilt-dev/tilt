@@ -423,7 +423,7 @@ it("renders highlighted lines", () => {
   expect(hLines).toHaveLength(2)
 })
 
-it("scrolls to highlighted lines in snapshot", () => {
+it.each(["update", "mount"])("scrolls to highlighted lines in snapshot", (verb) => {
   const fakeScrollIntoView = jest.fn()
   Element.prototype.scrollIntoView = fakeScrollIntoView
 
@@ -439,10 +439,15 @@ it("scrolls to highlighted lines in snapshot", () => {
       showManifestPrefix={false}
       handleSetHighlight={fakeHandleSetHighlight}
       handleClearHighlight={fakeHandleClearHighlight}
-      highlight={highlight}
+      highlight={verb == "mount" ? highlight : null}
       isSnapshot={true}
     />
   )
+
+  if (verb == "update") {
+    fakeScrollIntoView.mockClear()
+    root.setProps({ highlight: highlight })
+  }
 
   expect(root.instance().highlightRef.current).not.toBeNull()
   expect(fakeScrollIntoView.mock.instances).toHaveLength(1)
