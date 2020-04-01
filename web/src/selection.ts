@@ -21,7 +21,7 @@ function allNodes(selection: Selection): Node[] {
 // the ranges and get the earliest node in document-space.
 function startNode(selection: Selection): Node | null {
   let startNode = selection.focusNode
-  allNodes(selection).map(candidate => {
+  allNodes(selection).forEach(candidate => {
     if (startNode == null) return
     if (
       startNode?.compareDocumentPosition(candidate) &
@@ -40,7 +40,7 @@ function startNode(selection: Selection): Node | null {
 // the ranges and get the last node in document-space.
 function endNode(selection: Selection): Node | null {
   let endNode = selection.focusNode
-  allNodes(selection).map(candidate => {
+  allNodes(selection).forEach(candidate => {
     if (endNode == null) return
     if (
       candidate.compareDocumentPosition(endNode) &

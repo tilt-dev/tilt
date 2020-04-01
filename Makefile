@@ -98,6 +98,8 @@ dev-js:
 
 check-js:
 	cd web && yarn install --frozen-lockfile
+	# make sure there are no compilation errors or lint warnings
+	cd web && CI=true yarn build
 	cd web && yarn run check
 
 build-js:

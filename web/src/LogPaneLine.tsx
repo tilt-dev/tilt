@@ -45,18 +45,18 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
     if (props.shouldHighlight) {
       classes.push("is-highlighted")
     }
-    if (props.level == "WARN") {
+    if (props.level === "WARN") {
       classes.push("is-warning")
-    } else if (props.level == "ERROR") {
+    } else if (props.level === "ERROR") {
       classes.push("is-error")
     }
     if (props.isContextChange) {
       classes.push("is-contextChange")
     }
-    if (props.buildEvent == "init") {
+    if (props.buildEvent === "init") {
       classes.push("is-buildEvent-init")
     }
-    if (props.buildEvent == "fallback") {
+    if (props.buildEvent === "fallback") {
       classes.push("is-buildEvent-fallback")
     }
 

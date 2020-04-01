@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react"
 import styled from "styled-components"
 import { Link } from "react-router-dom"
-import { LogTrace, LogTraceNav, ResourceView } from "./types"
+import { LogTraceNav, ResourceView } from "./types"
 import * as s from "./style-helpers"
 
 type NavProps = {

@@ -7,11 +7,9 @@ import {
   ColorRGBA,
   Font,
   FontSize,
-  SizeUnit,
 } from "./style-helpers"
 import styled, { keyframes } from "styled-components"
 import { Width } from "./style-helpers"
-import { Link } from "react-router-dom"
 
 type SidebarIconProps = {
   status: ResourceStatus
