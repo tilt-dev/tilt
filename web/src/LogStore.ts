@@ -321,7 +321,7 @@ class LogStore {
 
       if (
         candidate.firstLineIndex > startSpan.firstLineIndex &&
-        (nextBuildSpan === null ||
+        (!nextBuildSpan ||
           candidate.firstLineIndex < nextBuildSpan.firstLineIndex)
       ) {
         spans[key] = candidate
