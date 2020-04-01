@@ -33,7 +33,7 @@ export function logLinesToString(
 }
 
 export function sourcePrefix(n: string) {
-  if (n == "" || n == "(Tiltfile)") {
+  if (n === "" || n === "(Tiltfile)") {
     return ""
   }
   let max = 12
@@ -47,5 +47,5 @@ export function sourcePrefix(n: string) {
 }
 
 export function isBuildSpanId(spanId: string): boolean {
-  return spanId.indexOf("build:") != -1
+  return spanId.indexOf("build:") !== -1
 }

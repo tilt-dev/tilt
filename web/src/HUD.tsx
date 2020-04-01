@@ -17,14 +17,12 @@ import SocketBar from "./SocketBar"
 import "./HUD.scss"
 import {
   LogLine,
-  LogTrace,
-  LogTraceNav,
   ResourceView,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
 } from "./types"
-import { logLinesFromString, isBuildSpanId } from "./logs"
+import { logLinesFromString } from "./logs"
 import HudState from "./HudState"
 import AlertPane from "./AlertPane"
 import AnalyticsNudge from "./AnalyticsNudge"
@@ -227,7 +225,6 @@ class HUD extends Component<HudProps, HudState> {
     let view = this.state.view
 
     let needsNudge = view?.needsAnalyticsNudge ?? false
-    let logStore = this.state.logStore ?? null
     let resources = view?.resources ?? []
     if (!resources?.length) {
       return <HeroScreen message={"Loading…"} />
@@ -447,7 +444,6 @@ class HUD extends Component<HudProps, HudState> {
     let view = this.state.view
     let resources = (view && view.resources) || []
     let snapshotHighlight = this.state.snapshotHighlight || null
-    let showSnapshotModal = !!this.state.showSnapshotModal
     let isSnapshot = this.pathBuilder.isSnapshot()
 
     let traceRoute = (props: RouteComponentProps<any>) => {

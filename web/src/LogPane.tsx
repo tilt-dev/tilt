@@ -1,11 +1,11 @@
-import React, { Component, PureComponent } from "react"
+import React, { Component } from "react"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import ReactDOM from "react-dom"
 import { LogLine, SnapshotHighlight } from "./types"
 import LogPaneLine from "./LogPaneLine"
 import findLogLineID from "./findLogLine"
 import styled, { keyframes } from "styled-components"
-import { Color, ColorRGBA, ColorAlpha, SizeUnit } from "./style-helpers"
+import { SizeUnit } from "./style-helpers"
 import selection from "./selection"
 import "./LogPane.scss"
 
@@ -143,7 +143,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
   }
 
   componentDidUpdate(prevProps: LogPaneProps) {
-    if (prevProps.manifestName != this.props.manifestName) {
+    if (prevProps.manifestName !== this.props.manifestName) {
       this.setState({ renderWindow: renderWindowDefault })
       this.autoscroll = true
       this.pageYOffset = -1
@@ -356,7 +356,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
         }
       }
 
-      let isContextChange = i > 0 && l.manifestName != lastManifestName
+      let isContextChange = i > 0 && l.manifestName !== lastManifestName
       let el = (
         <LogPaneLine
           ref={maybeHighlightRef}

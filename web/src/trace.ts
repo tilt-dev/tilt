@@ -24,7 +24,7 @@ function traceNav(
   }
 
   let spans = logStore.getOrderedBuildSpans(spanId)
-  let currentIndex = spans.findIndex(span => span.spanId == spanId)
+  let currentIndex = spans.findIndex(span => span.spanId === spanId)
   let span = spans[currentIndex]
   if (!span) {
     return null

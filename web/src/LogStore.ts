@@ -50,11 +50,11 @@ class StoredLine {
   }
 
   isComplete() {
-    return this.text[this.text.length - 1] == "\n"
+    return this.text[this.text.length - 1] === "\n"
   }
 
   canContinueLine(other: StoredLine) {
-    return this.level == other.level && this.spanId == other.spanId
+    return this.level === other.level && this.spanId === other.spanId
   }
 }
 
@@ -160,7 +160,7 @@ class LogStore {
         return
       }
       let isStartingNewLine = false
-      if (span.lastLineIndex == -1) {
+      if (span.lastLineIndex === -1) {
         isStartingNewLine = true
       } else {
         let line = this.lines[span.lastLineIndex]
@@ -175,7 +175,7 @@ class LogStore {
         }
       }
 
-      if (span.firstLineIndex == -1) {
+      if (span.firstLineIndex === -1) {
         span.firstLineIndex = this.lines.length
       }
 
@@ -197,7 +197,7 @@ class LogStore {
     // Iterate backwards and figure out which line to overwrite.
     for (let i = span.lastLineIndex; i >= span.firstLineIndex; i--) {
       let cur = this.lines[i]
-      if (cur.spanId != candidate.spanId) {
+      if (cur.spanId !== candidate.spanId) {
         // skip lines from other spans
         // TODO(nick): maybe we should track if spans are interleaved, and rearrange the
         // lines to make more sense?
@@ -210,7 +210,7 @@ class LogStore {
         return false
       }
 
-      if (progressId != curProgressId) {
+      if (progressId !== curProgressId) {
         continue
       }
 
@@ -242,7 +242,7 @@ class LogStore {
     let result: { [key: string]: LogSpan } = {}
     for (let spanId in this.spans) {
       let span = this.spans[spanId]
-      if (span.manifestName == mn) {
+      if (span.manifestName === mn) {
         result[spanId] = span
       }
     }
@@ -263,7 +263,7 @@ class LogStore {
       }
 
       let span = this.spans[key]
-      if (span.manifestName != manifestName) {
+      if (span.manifestName !== manifestName) {
         continue
       }
 
@@ -283,7 +283,7 @@ class LogStore {
   nextBuildSpan(spanId: string): LogSpan | null {
     let spanIds = this.getOrderedBuildSpanIds(spanId)
     let currentIndex = spanIds.indexOf(spanId)
-    if (currentIndex == -1 || currentIndex == spanIds.length - 1) {
+    if (currentIndex === -1 || currentIndex === spanIds.length - 1) {
       return null
     }
     return this.spans[spanIds[currentIndex + 1]]
@@ -315,13 +315,13 @@ class LogStore {
     // is uncertain. We should be more intelligent about sucking in events.
     for (let key in this.spans) {
       let candidate = this.spans[key]
-      if (candidate.manifestName != startSpan.manifestName) {
+      if (candidate.manifestName !== startSpan.manifestName) {
         continue
       }
 
       if (
         candidate.firstLineIndex > startSpan.firstLineIndex &&
-        (nextBuildSpan == null ||
+        (!nextBuildSpan ||
           candidate.firstLineIndex < nextBuildSpan.firstLineIndex)
       ) {
         spans[key] = candidate
@@ -354,28 +354,28 @@ class LogStore {
     let startIndex = 0
     let lastIndex = this.lines.length - 1
     let isFilteredLog =
-      Object.keys(spansToLog).length != Object.keys(this.spans).length
+      Object.keys(spansToLog).length !== Object.keys(this.spans).length
     if (isFilteredLog) {
       let earliestStartIndex = -1
       let latestEndIndex = -1
       for (let spanId in spansToLog) {
         let span = spansToLog[spanId]
         if (
-          earliestStartIndex == -1 ||
+          earliestStartIndex === -1 ||
           (span.firstLineIndex !== -1 &&
             span.firstLineIndex < earliestStartIndex)
         ) {
           earliestStartIndex = span.firstLineIndex
         }
         if (
-          latestEndIndex == -1 ||
+          latestEndIndex === -1 ||
           (span.lastLineIndex !== -1 && span.lastLineIndex > latestEndIndex)
         ) {
           latestEndIndex = span.lastLineIndex
         }
       }
 
-      if (earliestStartIndex == -1) {
+      if (earliestStartIndex === -1) {
         return []
       }
 
@@ -383,7 +383,6 @@ class LogStore {
       lastIndex = latestEndIndex
     }
 
-    let currentLine = {}
     for (let i = startIndex; i <= lastIndex; i++) {
       let storedLine = this.lines[i]
       let spanId = storedLine.spanId
@@ -396,7 +395,7 @@ class LogStore {
       if (!line) {
         let text = storedLine.text
         // strip off the newline
-        if (text[text.length - 1] == "\n") {
+        if (text[text.length - 1] === "\n") {
           text = text.substring(0, text.length - 1)
         }
         line = {

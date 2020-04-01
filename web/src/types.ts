@@ -1,6 +1,3 @@
-import { Alert } from "./alerts"
-import { Facet } from "./facets"
-
 export enum SocketState {
   Loading,
   Reconnecting,
