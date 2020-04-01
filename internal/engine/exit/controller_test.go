@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -151,6 +152,34 @@ func TestExitControlCISuccess(t *testing.T) {
 	assert.Nil(t, f.store.exitError)
 }
 
+func TestExitControlCIJobSuccess(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.JobYAML).Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+
+		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(readyPod("pod-a"))
+	})
+
+	f.c.OnChange(f.ctx, f.store)
+	assert.False(t, f.store.exitSignal)
+
+	f.store.WithState(func(state *store.EngineState) {
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(successPod("pod-a"))
+	})
+
+	// Verify that if one pod fails with an error, it fails immediately.
+	f.c.OnChange(f.ctx, f.store)
+	assert.True(t, f.store.exitSignal)
+	assert.Nil(t, f.store.exitError)
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	ctx   context.Context
@@ -207,6 +236,19 @@ func readyPod(podID k8s.PodID) store.Pod {
 			store.Container{
 				ID:    container.ID(podID + "-container"),
 				Ready: true,
+			},
+		},
+	}
+}
+
+func successPod(podID k8s.PodID) store.Pod {
+	return store.Pod{
+		PodID:  podID,
+		Phase:  v1.PodSucceeded,
+		Status: "Completed",
+		Containers: []store.Container{
+			store.Container{
+				ID: container.ID(podID + "-container"),
 			},
 		},
 	}

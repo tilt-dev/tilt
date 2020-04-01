@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pkg/errors"
@@ -36,6 +37,11 @@ func NewTarget(
 		return model.K8sTarget{}, err
 	}
 
+	objectRefs := make([]v1.ObjectReference, 0, len(sorted))
+	for _, e := range sorted {
+		objectRefs = append(objectRefs, e.ToObjectReference())
+	}
+
 	// Use a min component count of 2 for computing names,
 	// so that the resource type appears
 	displayNames := UniqueNames(sorted, 2)
@@ -46,6 +52,7 @@ func NewTarget(
 		PortForwards:      portForwards,
 		ExtraPodSelectors: extraPodSelectors,
 		DisplayNames:      displayNames,
+		ObjectRefs:        objectRefs,
 	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 

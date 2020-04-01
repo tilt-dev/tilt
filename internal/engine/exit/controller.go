@@ -3,6 +3,8 @@ package exit
 import (
 	"context"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -67,8 +69,7 @@ func (c *Controller) shouldExit(store store.RStore) Action {
 				}
 			}
 
-			if status != model.RuntimeStatusOK &&
-				status != model.RuntimeStatusNotApplicable {
+			if !c.isRuntimeDone(mt) {
 				allOK = false
 			}
 		}
@@ -81,6 +82,43 @@ func (c *Controller) shouldExit(store store.RStore) Action {
 	}
 
 	return Action{}
+}
+
+func (c *Controller) isRuntimeDone(mt *store.ManifestTarget) bool {
+	rs := mt.State.RuntimeState
+	if rs == nil {
+		return false
+	}
+
+	status := rs.RuntimeStatus()
+	statusOK := status == model.RuntimeStatusOK || status == model.RuntimeStatusNotApplicable
+	if !statusOK {
+		return false
+	}
+
+	// If this is a job, check to see if it has run to completion
+	//
+	// TODO(nick): This is...not great. Ideally, Tilt would track the status of
+	// every resource type it deploys, then we'd have some general-purpose system
+	// for expressing success criteria on different resource types (like
+	// https://www.openpolicyagent.org/). This is just a hack to make this work
+	// for jobs, until it makes sense to build out that type-independent
+	// infrastructure.
+	isK8s := mt.Manifest.IsK8s()
+	isK8sJob := isK8s && mt.Manifest.K8sTarget().HasJob()
+	if isK8sJob {
+		k8sState, ok := mt.State.RuntimeState.(store.K8sRuntimeState)
+		if !ok {
+			return false
+		}
+
+		pod := k8sState.MostRecentPod()
+		if pod.Phase != v1.PodSucceeded {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (c *Controller) OnChange(ctx context.Context, store store.RStore) {
