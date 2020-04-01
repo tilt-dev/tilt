@@ -2,13 +2,16 @@ package cli
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -71,6 +74,21 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 	entities, err := engine.ParseYAMLFromManifests(tlr.Manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
+	}
+
+	entities, namespaces, err := k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
+		return e.GVK() != schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, nil
+	})
+	if err != nil {
+		return errors.Wrap(err, "filtering out namespaces")
+	}
+
+	if len(namespaces) > 0 {
+		var nsNames []string
+		for _, ns := range namespaces {
+			nsNames = append(nsNames, ns.Name())
+		}
+		logger.Get(ctx).Infof("not deleting namespaces: %s", strings.Join(nsNames, ", "))
 	}
 
 	if len(entities) > 0 {
