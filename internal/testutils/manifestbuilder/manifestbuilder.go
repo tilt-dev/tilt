@@ -5,6 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -111,9 +112,11 @@ func (b ManifestBuilder) Build() model.Manifest {
 	}
 
 	if b.k8sYAML != "" {
+		k8sTarget := k8s.MustTarget(model.TargetName(b.name), b.k8sYAML)
+		k8sTarget.ExtraPodSelectors = b.k8sPodSelectors
 		return assembleK8s(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
-			model.K8sTarget{YAML: b.k8sYAML, ExtraPodSelectors: b.k8sPodSelectors},
+			k8sTarget,
 			b.iTargets...)
 	}
 

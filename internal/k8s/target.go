@@ -1,12 +1,27 @@
 package k8s
 
 import (
+	"fmt"
+	"strings"
+
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/pkg/model"
 )
+
+func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
+	entities, err := ParseYAML(strings.NewReader(yaml))
+	if err != nil {
+		panic(fmt.Errorf("MustTarget: %v", err))
+	}
+	target, err := NewTarget(name, entities, nil, nil, nil, nil)
+	if err != nil {
+		panic(fmt.Errorf("MustTarget: %v", err))
+	}
+	return target
+}
 
 func NewTarget(
 	name model.TargetName,

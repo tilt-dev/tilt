@@ -5,8 +5,6 @@ import (
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/labels"
-
-	"github.com/windmilleng/tilt/internal/yaml"
 )
 
 type K8sTarget struct {
@@ -66,15 +64,6 @@ func (k8s K8sTarget) WithDependencyIDs(ids []TargetID) K8sTarget {
 
 func (k8s K8sTarget) WithRefInjectCounts(ric map[string]int) K8sTarget {
 	k8s.refInjectCounts = ric
-	return k8s
-}
-
-func (k8s K8sTarget) AppendYAML(y string) K8sTarget {
-	if k8s.YAML == "" {
-		k8s.YAML = y
-	} else {
-		k8s.YAML = yaml.ConcatYAML(k8s.YAML, y)
-	}
 	return k8s
 }
 
