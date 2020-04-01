@@ -27,6 +27,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/windmilleng/tilt/internal/yaml"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
@@ -35,7 +36,9 @@ func TestDeployTwinImages(t *testing.T) {
 	defer f.TearDown()
 
 	sancho := NewSanchoDockerBuildManifest(f)
-	manifest := sancho.WithDeployTarget(sancho.K8sTarget().AppendYAML(SanchoTwinYAML))
+	newK8sTarget := k8s.MustTarget("sancho", yaml.ConcatYAML(SanchoYAML, SanchoTwinYAML)).
+		WithDependencyIDs(sancho.K8sTarget().DependencyIDs())
+	manifest := sancho.WithDeployTarget(newK8sTarget)
 	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +58,7 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 
 	iTarget1 := NewSanchoDockerBuildImageTarget(f)
 	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f)
-	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
+	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
@@ -87,7 +90,7 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	iTarget1 := NewSanchoLiveUpdateImageTarget(f)
 	iTarget2 := NewSanchoSidecarLiveUpdateImageTarget(f)
 
-	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
+	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
@@ -120,10 +123,7 @@ func TestNoImageTargets(t *testing.T) {
 
 	targName := "some-k8s-manifest"
 	specs := []model.TargetSpec{
-		model.K8sTarget{
-			Name: model.TargetName(targName),
-			YAML: testyaml.LonelyPodYAML,
-		},
+		k8s.MustTarget(model.TargetName(targName), testyaml.LonelyPodYAML),
 	}
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, specs, store.BuildStateSet{})
@@ -703,7 +703,7 @@ func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
 
 	iTarget1 := NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd1)
 	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f).WithOverrideCommand(cmd2)
-	kTarget := model.K8sTarget{Name: "sancho", YAML: testyaml.SanchoSidecarYAML}.
+	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 

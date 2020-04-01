@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -263,7 +264,7 @@ func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {
 		WithBuildDetails(dbInfo).
 		WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
-	kTarget := model.K8sTarget{YAML: SanchoYAML}.
+	kTarget := k8s.MustTarget("sancho", SanchoYAML).
 		WithDependencyIDs([]model.TargetID{srcImage.ID()})
 
 	return model.Manifest{Name: "sancho"}.

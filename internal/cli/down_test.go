@@ -70,7 +70,7 @@ func TestDownArgs(t *testing.T) {
 }
 
 func newK8sManifest() []model.Manifest {
-	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{YAML: testyaml.SanchoYAML})}
+	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(k8s.MustTarget("fe", testyaml.SanchoYAML))}
 }
 
 func newDCManifest() []model.Manifest {

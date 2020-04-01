@@ -1412,9 +1412,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	defer f.TearDown()
 	manifest := model.Manifest{
 		Name: model.ManifestName("foobar"),
-	}.WithDeployTarget(model.K8sTarget{
-		YAML: SanchoYAML,
-	})
+	}.WithDeployTarget(k8s.MustTarget("foobar", SanchoYAML))
 	ref := container.MustParseNamedTagged("dockerhub/we-didnt-build-this:foo")
 	f.Start([]model.Manifest{manifest})
 
