@@ -13,6 +13,10 @@ var (
 	// "apply" is a dev mode that builds and applies all resources,
 	// but doesn't wait to see if they come up.
 	EngineModeApply = EngineMode{Name: "apply"}
+
+	// "CI" is a mode that builds and applies all resources,
+	// waits until they come up, then exits.
+	EngineModeCI = EngineMode{Name: "ci"}
 )
 
 func (m EngineMode) WatchesFiles() bool {
@@ -20,9 +24,13 @@ func (m EngineMode) WatchesFiles() bool {
 }
 
 func (m EngineMode) WatchesRuntime() bool {
-	return m == EngineModeUp
+	return m == EngineModeUp || m == EngineModeCI
 }
 
 func (m EngineMode) IsApplyMode() bool {
 	return m == EngineModeApply
+}
+
+func (m EngineMode) IsCIMode() bool {
+	return m == EngineModeCI
 }

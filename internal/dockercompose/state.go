@@ -1,6 +1,7 @@
 package dockercompose
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/windmilleng/tilt/pkg/model"
@@ -70,6 +71,14 @@ func (s State) RuntimeStatus() model.RuntimeStatus {
 		return model.RuntimeStatusError
 	}
 	return runtimeStatus
+}
+
+func (s State) RuntimeStatusError() error {
+	status := s.RuntimeStatus()
+	if status != model.RuntimeStatusError {
+		return nil
+	}
+	return fmt.Errorf("Container %s in error state: %s", s.ContainerID, s.Status)
 }
 
 func (s State) WithSpanID(spanID model.LogSpanID) State {

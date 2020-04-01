@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"net/url"
 	"time"
 
@@ -27,6 +28,10 @@ type RuntimeState interface {
 	HasEverBeenReadyOrSucceeded() bool
 
 	RuntimeStatus() model.RuntimeStatus
+
+	// If the runtime status is in Error mode,
+	// RuntimeStatusError() should report a reason.
+	RuntimeStatusError() error
 }
 
 type LocalRuntimeState struct {
@@ -40,6 +45,14 @@ func (LocalRuntimeState) RuntimeState() {}
 
 func (l LocalRuntimeState) RuntimeStatus() model.RuntimeStatus {
 	return l.Status
+}
+
+func (l LocalRuntimeState) RuntimeStatusError() error {
+	status := l.RuntimeStatus()
+	if status != model.RuntimeStatusError {
+		return nil
+	}
+	return fmt.Errorf("Process %d exited with non-zero status", l.PID)
 }
 
 func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
@@ -78,6 +91,15 @@ func NewK8sRuntimeState(pods ...Pod) K8sRuntimeState {
 		DeployedUIDSet:                 NewUIDSet(),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
 	}
+}
+
+func (s K8sRuntimeState) RuntimeStatusError() error {
+	status := s.RuntimeStatus()
+	if status != model.RuntimeStatusError {
+		return nil
+	}
+	pod := s.MostRecentPod()
+	return fmt.Errorf("Pod %s in error state: %s", pod.PodID, pod.Status)
 }
 
 func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
