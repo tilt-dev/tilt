@@ -79,7 +79,7 @@ func TestVersionConstraintsDontClearCheckUpdates(t *testing.T) {
 	f := NewFixture(t)
 	f.File("Tiltfile", `
 version_settings(check_updates=False)
-version_settings(constraint='*')
+version_settings(constraint='0.x')
 `)
 
 	m, err := f.ExecFile("Tiltfile")
