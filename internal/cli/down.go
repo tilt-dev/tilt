@@ -19,6 +19,7 @@ import (
 
 type downCmd struct {
 	fileName         string
+	deleteNamespaces bool
 	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error)
 }
 
@@ -34,6 +35,8 @@ func (c *downCmd) register() *cobra.Command {
 		Long: `
 Deletes resources specified in the Tiltfile
 
+Namespaces are not deleted by default. Use --delete-namespaces to change that.
+
 There are two types of args:
 1) Tilt flags, listed below, which are handled entirely by Tilt.
 2) Tiltfile args, which can be anything, and are potentially accessed by config.parse in your Tiltfile.
@@ -48,6 +51,7 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 	}
 
 	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
+	cmd.Flags().BoolVar(&c.deleteNamespaces, "delete-namespaces", false, "delete namespaces defined in the Tiltfile (by default, don't)")
 
 	return cmd
 }
@@ -76,19 +80,22 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
 
-	entities, namespaces, err := k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
-		return e.GVK() != schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, nil
-	})
-	if err != nil {
-		return errors.Wrap(err, "filtering out namespaces")
-	}
-
-	if len(namespaces) > 0 {
-		var nsNames []string
-		for _, ns := range namespaces {
-			nsNames = append(nsNames, ns.Name())
+	if !c.deleteNamespaces {
+		var namespaces []k8s.K8sEntity
+		entities, namespaces, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
+			return e.GVK() != schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, nil
+		})
+		if err != nil {
+			return errors.Wrap(err, "filtering out namespaces")
 		}
-		logger.Get(ctx).Infof("not deleting namespaces: %s", strings.Join(nsNames, ", "))
+		if len(namespaces) > 0 {
+			var nsNames []string
+			for _, ns := range namespaces {
+				nsNames = append(nsNames, ns.Name())
+			}
+			logger.Get(ctx).Infof("Not deleting namespaces: %s", strings.Join(nsNames, ", "))
+			logger.Get(ctx).Infof("Run with --delete-namespaces to delete namespaces as well.")
+		}
 	}
 
 	if len(entities) > 0 {
