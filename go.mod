@@ -70,7 +70,6 @@ require (
 	github.com/marstr/guid v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.10
 	github.com/mattn/go-sqlite3 v2.0.2+incompatible // indirect
-	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
 	github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/osext v0.0.0-20151018003038-5e2d6d41470f // indirect

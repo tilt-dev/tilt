@@ -47,11 +47,10 @@ func TestVersionConstraints(t *testing.T) {
 		{">=0.5.4", false},
 		{"<=0.5.2", false},
 		{"<=0.3.0", false},
-		{">= 0.5.0, <0.5.3", false},
+		{">=0.5.0 <0.5.3", false},
 		{"=0.5.3", true},
 		{">0.4.1", true},
-		{"0.5.*", true},
-		{"*", true},
+		{"0.5.x", true},
 	} {
 		var verb string
 		if tc.meets {

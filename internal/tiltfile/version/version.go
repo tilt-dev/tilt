@@ -3,7 +3,7 @@ package version
 import (
 	"fmt"
 
-	"github.com/mcuadros/go-version"
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -58,8 +58,15 @@ func (e Extension) setVersionSettings(thread *starlark.Thread, fn *starlark.Buil
 	})
 
 	if constraint != "" {
-		cg := version.NewConstrainGroupFromString(constraint)
-		if !cg.Match(e.tiltVersion) {
+		ver, err := semver.Parse(e.tiltVersion)
+		if err != nil {
+			return nil, errors.Wrapf(err, "internal error parsing tilt version '%s'", e.tiltVersion)
+		}
+		rng, err := semver.ParseRange(constraint)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error parsing version constraint")
+		}
+		if !rng(ver) {
 			return nil, fmt.Errorf("you are running Tilt version %s, which doesn't match the version constraint specified in your Tiltfile: '%s'", e.tiltVersion, constraint)
 		}
 	}

@@ -422,9 +422,6 @@ github.com/mattn/go-runewidth
 ## explicit
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
-## explicit
-github.com/mcuadros/go-version
 # github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e
 ## explicit
 github.com/miekg/pkcs11
