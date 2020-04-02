@@ -94,7 +94,7 @@ func (f *Fixture) File(name, contents string) {
 }
 
 func (f *Fixture) UseRealFS() {
-	path, err := ioutil.TempDir("", tempdir.EscapeName(f.tb))
+	path, err := ioutil.TempDir("", tempdir.SanitizeFileName(f.tb.Name()))
 	require.NoError(f.tb, err)
 	f.path = path
 	f.useRealFS = true

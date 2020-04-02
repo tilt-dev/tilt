@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -16,16 +17,15 @@ type TempDirFixture struct {
 	oldDir string
 }
 
-func EscapeName(t testing.TB) string {
-	name := t.Name()
-	name = strings.Replace(name, "/", "-", -1)
-	name = strings.Replace(name, ":", "-", -1)
-	return name
+// everything not listed in this character class will get replaced by _, so that it's a safe filename
+var sanitizeForFilenameRe = regexp.MustCompile("[^a-zA-Z0-9.]")
 
+func SanitizeFileName(name string) string {
+	return sanitizeForFilenameRe.ReplaceAllString(name, "_")
 }
 
 func NewTempDirFixture(t testing.TB) *TempDirFixture {
-	dir, err := temp.NewDir(EscapeName(t))
+	dir, err := temp.NewDir(SanitizeFileName(t.Name()))
 	if err != nil {
 		t.Fatalf("Error making temp dir: %v", err)
 	}
