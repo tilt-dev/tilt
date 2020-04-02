@@ -52,7 +52,7 @@ Exit code 5: error when evaluating the Tiltfile, such as syntax error, illegal T
 Run with -v | --verbose to print Tiltfile execution logs on stderr, regardless of whether there was an error.`,
 	}
 
-	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
+	addTiltfileFlag(cmd, &c.fileName)
 
 	return cmd
 }

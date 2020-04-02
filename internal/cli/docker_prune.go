@@ -39,7 +39,7 @@ func (c *dockerPruneCmd) register() *cobra.Command {
 		Short: "Run docker prune as Tilt does",
 	}
 
-	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
+	addTiltfileFlag(cmd, &c.fileName)
 
 	return cmd
 }
