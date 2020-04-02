@@ -28,7 +28,7 @@ func TestDown(t *testing.T) {
 	assert.Contains(t, f.kCli.DeletedYaml, "sancho")
 }
 
-func TestDownPreservesNamespacesByDefault(t *testing.T) {
+func TestDownPreservesNamespaces(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
 
@@ -41,22 +41,6 @@ func TestDownPreservesNamespacesByDefault(t *testing.T) {
 	require.Contains(t, f.kCli.DeletedYaml, "sancho")
 	for _, ns := range []string{"foo", "bar"} {
 		require.NotContains(t, f.kCli.DeletedYaml, ns)
-	}
-}
-
-func TestDownDeletesNamespacesIfSpecified(t *testing.T) {
-	f := newDownFixture(t)
-	defer f.TearDown()
-
-	manifests := append([]model.Manifest{}, newK8sManifest()...)
-	manifests = append(manifests, newK8sNamespaceManifest("foo"), newK8sNamespaceManifest("bar"))
-
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
-	f.cmd.deleteNamespaces = true
-	err := f.cmd.down(f.ctx, f.deps, nil)
-	require.NoError(t, err)
-	for _, ns := range []string{"sancho", "foo", "bar"} {
-		require.Contains(t, f.kCli.DeletedYaml, ns)
 	}
 }
 

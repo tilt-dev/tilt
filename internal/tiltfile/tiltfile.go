@@ -105,7 +105,8 @@ func ProvideTiltfileLoader(
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	fDefaults feature.Defaults,
-	env k8s.Env) TiltfileLoader {
+	env k8s.Env,
+	build model.TiltBuild) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:     analytics,
 		kCli:          kCli,
@@ -114,6 +115,7 @@ func ProvideTiltfileLoader(
 		webHost:       webHost,
 		fDefaults:     fDefaults,
 		env:           env,
+		tiltVersion:   build,
 	}
 }
 
@@ -126,6 +128,7 @@ type tiltfileLoader struct {
 	k8sContextExt k8scontext.Extension
 	fDefaults     feature.Defaults
 	env           k8s.Env
+	tiltVersion   model.TiltBuild
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -165,7 +168,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	localRegistry := tfl.kCli.LocalRegistry(ctx)
 
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, localRegistry, feature.FromDefaults(tfl.fDefaults), tfl.tiltVersion)
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)
 
