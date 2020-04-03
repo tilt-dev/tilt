@@ -49,9 +49,9 @@ type tiltfileState struct {
 	dcCli         dockercompose.DockerComposeClient
 	webHost       model.WebHost
 	k8sContextExt k8scontext.Extension
+	versionExt    version.Extension
 	localRegistry container.Registry
 	features      feature.FeatureSet
-	tiltVersion   model.TiltBuild
 
 	// added to during execution
 	buildIndex         *buildIndex
@@ -117,16 +117,16 @@ func newTiltfileState(
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
+	versionExt version.Extension,
 	localRegistry container.Registry,
-	features feature.FeatureSet,
-	tiltVersion model.TiltBuild) *tiltfileState {
+	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                        ctx,
 		dcCli:                      dcCli,
 		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
+		versionExt:                 versionExt,
 		localRegistry:              localRegistry,
-		tiltVersion:                tiltVersion,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
 		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
@@ -166,7 +166,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		s.k8sContextExt,
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
-		version.NewExtension(s.tiltVersion.Version),
+		s.versionExt,
 		config.NewExtension(userConfigState),
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),

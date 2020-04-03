@@ -15,9 +15,9 @@ type Extension struct {
 	tiltVersion string
 }
 
-func NewExtension(tiltVersion string) Extension {
+func NewExtension(tiltBuild model.TiltBuild) Extension {
 	return Extension{
-		tiltVersion: tiltVersion,
+		tiltVersion: tiltBuild.Version,
 	}
 }
 
@@ -32,29 +32,16 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 }
 
 func (e Extension) setVersionSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	// it's awkward to tell from UnpackArgs whether an optional value was set, so let's just make sure it has
-	// the right initial value instead
-	m, err := starkit.ModelFromThread(thread)
-	if err != nil {
-		return nil, errors.Wrap(err, "internal error reading version settings from starkit model")
-	}
-	state, err := GetState(m)
-	if err != nil {
-		return nil, errors.Wrap(err, "internal error reading version settings from starkit model")
-	}
-
-	checkUpdates := state.CheckUpdates
 	var constraint string
-	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
-		"check_updates?", &checkUpdates,
-		"constraint?", &constraint,
-	); err != nil {
-		return nil, err
-	}
 
-	err = starkit.SetState(thread, func(settings model.VersionSettings) model.VersionSettings {
-		settings.CheckUpdates = checkUpdates
-		return settings
+	err := starkit.SetState(thread, func(settings model.VersionSettings) (model.VersionSettings, error) {
+		if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
+			"check_updates?", &settings.CheckUpdates,
+			"constraint?", &constraint,
+		); err != nil {
+			return settings, err
+		}
+		return settings, nil
 	})
 
 	if constraint != "" {

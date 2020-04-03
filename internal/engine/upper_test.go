@@ -18,10 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonboulle/clockwork"
-
 	"github.com/docker/distribution/reference"
 	"github.com/google/uuid"
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/windmilleng/wmclient/pkg/analytics"
@@ -63,6 +62,7 @@ import (
 	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
+	"github.com/windmilleng/tilt/internal/tiltfile/version"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/internal/watch"
@@ -3500,7 +3500,8 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", env)
-	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, fakeDcc, "localhost", feature.MainDefaults, env, model.TiltBuild{})
+	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
+	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, versionExt, fakeDcc, "localhost", feature.MainDefaults, env)
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := NewDockerComposeEventWatcher(fakeDcc)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
