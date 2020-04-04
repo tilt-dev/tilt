@@ -105,16 +105,27 @@ func (s K8sRuntimeState) RuntimeStatusError() error {
 func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 	pod := s.MostRecentPod()
 
-	status := pod.Status
-	if status == "Running" && !pod.AllContainersReady() {
-		status = "Pending"
-	}
+	switch pod.Phase {
+	case v1.PodRunning:
+		if pod.AllContainersReady() {
+			return model.RuntimeStatusOK
+		}
+		return model.RuntimeStatusPending
 
-	runtimeStatus, ok := runtimeStatusMap[status]
-	if !ok {
+	case v1.PodSucceeded:
+		return model.RuntimeStatusOK
+
+	case v1.PodFailed:
 		return model.RuntimeStatusError
 	}
-	return runtimeStatus
+
+	for _, container := range pod.AllContainers() {
+		if container.Status == model.RuntimeStatusError {
+			return model.RuntimeStatusError
+		}
+	}
+
+	return model.RuntimeStatusPending
 }
 
 func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
@@ -185,7 +196,8 @@ type Pod struct {
 
 	HasSynclet bool
 
-	Containers []Container
+	Containers     []Container
+	InitContainers []Container
 
 	// We want to show the user # of restarts since some baseline time
 	// i.e. Total Restarts - BaselineRestarts
@@ -196,6 +208,13 @@ type Pod struct {
 	SpanID model.LogSpanID
 }
 
+func (p Pod) AllContainers() []Container {
+	result := []Container{}
+	result = append(result, p.InitContainers...)
+	result = append(result, p.Containers...)
+	return result
+}
+
 type Container struct {
 	Name     container.Name
 	ID       container.ID
@@ -204,6 +223,7 @@ type Container struct {
 	Running  bool
 	ImageRef reference.Named
 	Restarts int
+	Status   model.RuntimeStatus
 }
 
 func (c Container) Empty() bool {
@@ -287,21 +307,4 @@ func (s PodTemplateSpecHashSet) Add(hashes ...k8s.PodTemplateSpecHash) {
 
 func (s PodTemplateSpecHashSet) Contains(hash k8s.PodTemplateSpecHash) bool {
 	return s[hash]
-}
-
-var runtimeStatusMap = map[string]model.RuntimeStatus{
-	"Running":           model.RuntimeStatusOK,
-	"ContainerCreating": model.RuntimeStatusPending,
-	"Pending":           model.RuntimeStatusPending,
-	"PodInitializing":   model.RuntimeStatusPending,
-	"Error":             model.RuntimeStatusError,
-	"CrashLoopBackOff":  model.RuntimeStatusError,
-	"ErrImagePull":      model.RuntimeStatusError,
-	"ImagePullBackOff":  model.RuntimeStatusError,
-	"RunContainerError": model.RuntimeStatusError,
-	"StartError":        model.RuntimeStatusError,
-	"Completed":         model.RuntimeStatusOK,
-
-	// If the runtime status hasn't shown up yet, we assume it's pending.
-	"": model.RuntimeStatusPending,
 }
