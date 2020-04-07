@@ -269,6 +269,9 @@ goreleaser will build binaries for the latest tag (using semantic version to
 determine "latest"). Check the current releases to figure out what the latest
 release ought to be.
 
+Add a [summary section](https://github.com/windmilleng/company/blob/master/user-support/README.md#releases) 
+in the release notes.
+
 After updating the release notes,
 update the [install](https://github.com/windmilleng/tilt.build/tree/master/docs/install.md) and [upgrade](https://github.com/windmilleng/tilt.build/blob/master/docs/upgrade.md) docs,
 the [default dev version](internal/cli/build.go),
