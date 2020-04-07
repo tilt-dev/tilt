@@ -44,7 +44,12 @@ brews:
   description: "Local Kubernetes development with no stress"
   test: |
     system "#{bin}/tilt version"
-
+dockers:
+- image_templates:
+    - "tiltdev/tilt"
+    - "tiltdev/tilt:{{ .Tag }}"
+  dockerfile: scripts/goreleaser.Dockerfile
+  
 # Uncomment these lines if you want to experiment with other
 # parts of the release process without releasing new binaries.
 # release:
