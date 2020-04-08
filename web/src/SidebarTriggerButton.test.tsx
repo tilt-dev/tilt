@@ -5,9 +5,10 @@ import SidebarTriggerButton, {
 } from "./SidebarTriggerButton"
 import { ResourceView, TriggerMode } from "./types"
 import { oneResource, twoResourceView } from "./testdata"
-import Sidebar, { SidebarItem } from "./Sidebar"
+import SidebarResources, { SidebarItem } from "./SidebarResources"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
+import SidebarResources from "./SidebarResources"
 
 type Resource = Proto.webviewResource
 
@@ -130,11 +131,9 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
-        <Sidebar
-          isClosed={false}
+        <SidebarResources
           items={items}
           selected=""
-          toggleSidebar={null}
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
         />
@@ -171,11 +170,9 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
-        <Sidebar
-          isClosed={false}
+        <SidebarResources
           items={items}
           selected="selected resource"
-          toggleSidebar={null}
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
         />
@@ -207,11 +204,9 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
-        <Sidebar
-          isClosed={false}
+        <SidebarResources
           items={items}
           selected=""
-          toggleSidebar={null}
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
         />
@@ -240,11 +235,9 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
-        <Sidebar
-          isClosed={false}
+        <SidebarResources
           items={items}
           selected=""
-          toggleSidebar={null}
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
         />
@@ -271,11 +264,9 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
-        <Sidebar
-          isClosed={false}
+        <SidebarResources
           items={items}
           selected=""
-          toggleSidebar={null}
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
         />
@@ -299,11 +290,9 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
-        <Sidebar
-          isClosed={false}
+        <SidebarResources
           items={items}
           selected=""
-          toggleSidebar={null}
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
         />
@@ -329,11 +318,9 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
-        <Sidebar
-          isClosed={false}
+        <SidebarResources
           items={items}
           selected=""
-          toggleSidebar={null}
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
         />
@@ -361,11 +348,9 @@ describe("SidebarTriggerButton", () => {
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
-        <Sidebar
-          isClosed={false}
+        <SidebarResources
           items={items}
           selected=""
-          toggleSidebar={null}
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
         />

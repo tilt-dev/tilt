@@ -1,7 +1,8 @@
 import React, { Component } from "react"
 import AppController from "./AppController"
 import NoMatch from "./NoMatch"
-import Sidebar, { SidebarItem } from "./Sidebar"
+import Sidebar from "./Sidebar"
+import SidebarResources, { SidebarItem } from "./SidebarResources"
 import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import HeroScreen from "./HeroScreen"
@@ -36,6 +37,9 @@ import FacetsPane from "./FacetsPane"
 import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 import { traceNav } from "./trace"
+import styled from "styled-components"
+
+let SidebarRoot = styled.div``
 
 type HudProps = {
   history: History
@@ -400,20 +404,21 @@ class HUD extends Component<HudProps, HudState> {
 
   renderSidebarSwitch() {
     let view = this.state.view
+    let tiltCloudSchemeHost = (view && view.tiltCloudSchemeHost) || ""
     let resources = (view && view.resources) || []
     let sidebarItems = resources.map(res => new SidebarItem(res))
     let isSidebarClosed = !!this.state.isSidebarClosed
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
-        <Sidebar
-          selected={name}
-          items={sidebarItems}
-          isClosed={isSidebarClosed}
-          toggleSidebar={this.toggleSidebar}
-          resourceView={t}
-          pathBuilder={this.pathBuilder}
-        />
+        <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
+          <SidebarResources
+            selected={name}
+            items={sidebarItems}
+            resourceView={t}
+            pathBuilder={this.pathBuilder}
+          />
+        </Sidebar>
       )
     }
     return (

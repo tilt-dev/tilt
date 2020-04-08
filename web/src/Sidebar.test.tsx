@@ -2,16 +2,21 @@ import React from "react"
 import { mount } from "enzyme"
 import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
-import Sidebar, { SidebarItem } from "./Sidebar"
+import Sidebar, { SidebarItem } from "./SidebarResources"
 import { oneResource, twoResourceView } from "./testdata"
 import { ResourceView, TriggerMode } from "./types"
 import PathBuilder from "./PathBuilder"
+import SidebarResources from "./SidebarResources"
 
 type Resource = Proto.webviewResource
 
 let pathBuilder = new PathBuilder("localhost", "/")
 
 let realDateNow = Date.now
+
+let fakeToggleAccountMenu = () => {
+  console.log("Toggled Sidebar account menu")
+}
 
 describe("sidebar", () => {
   beforeEach(() => {
@@ -24,11 +29,9 @@ describe("sidebar", () => {
     const tree = renderer
       .create(
         <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={true}
+          <SidebarResources
             items={[]}
             selected=""
-            toggleSidebar={null}
             resourceView={ResourceView.Log}
             pathBuilder={pathBuilder}
           />
@@ -48,11 +51,9 @@ describe("sidebar", () => {
     const tree = renderer
       .create(
         <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={false}
+          <SidebarResources
             items={items}
             selected=""
-            toggleSidebar={null}
             resourceView={ResourceView.Log}
             pathBuilder={pathBuilder}
           />
@@ -74,11 +75,9 @@ describe("sidebar", () => {
     const tree = renderer
       .create(
         <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={false}
+          <SidebarResources
             items={items}
             selected=""
-            toggleSidebar={null}
             resourceView={ResourceView.Log}
             pathBuilder={pathBuilder}
           />
@@ -98,11 +97,9 @@ describe("sidebar", () => {
     const tree = renderer
       .create(
         <MemoryRouter initialEntries={["/"]}>
-          <Sidebar
-            isClosed={false}
+          <SidebarResources
             items={items}
             selected=""
-            toggleSidebar={null}
             resourceView={ResourceView.Log}
             pathBuilder={pathBuilder}
           />
