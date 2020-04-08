@@ -8,7 +8,6 @@ import { oneResource, twoResourceView } from "./testdata"
 import SidebarResources, { SidebarItem } from "./SidebarResources"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
-import SidebarResources from "./SidebarResources"
 
 type Resource = Proto.webviewResource
 

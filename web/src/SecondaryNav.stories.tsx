@@ -11,10 +11,6 @@ let BG = s.div`
   padding-top: 32px;
 `
 
-function openModal() {
-  console.log("openModal")
-}
-
 function topBarDefault() {
   return (
     <MemoryRouter>

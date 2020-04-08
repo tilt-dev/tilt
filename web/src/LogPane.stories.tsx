@@ -1,5 +1,4 @@
 import React from "react"
-import ReactDOM from "react-dom"
 import { storiesOf } from "@storybook/react"
 import LogPane from "./LogPane"
 import { LogLine } from "./types"

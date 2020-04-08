@@ -37,9 +37,6 @@ import FacetsPane from "./FacetsPane"
 import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 import { traceNav } from "./trace"
-import styled from "styled-components"
-
-let SidebarRoot = styled.div``
 
 type HudProps = {
   history: History

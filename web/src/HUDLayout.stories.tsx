@@ -2,7 +2,7 @@ import React from "react"
 import { storiesOf } from "@storybook/react"
 import HUDLayout from "./HUDLayout"
 import styled from "styled-components"
-import { Color, Height, SizeUnit } from "./style-helpers"
+import { Color, SizeUnit } from "./style-helpers"
 
 let Header = styled.header`
   border-right: 1px dashed ${Color.white};
