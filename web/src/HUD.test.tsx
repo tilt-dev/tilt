@@ -73,7 +73,7 @@ it("renders resource", async () => {
   const hud = root.find(HUD)
   hud.setState({ view: oneResourceView() })
   expect(root.find(".Statusbar")).toHaveLength(1)
-  expect(root.find(".Sidebar")).toHaveLength(1)
+  expect(root.find("section.Sidebar")).toHaveLength(1)
 })
 
 it("opens sidebar on click", async () => {
@@ -81,17 +81,17 @@ it("opens sidebar on click", async () => {
   const hud = root.find(HUD)
   hud.setState({ view: oneResourceView() })
 
-  let sidebar = root.find(".Sidebar")
+  let sidebar = root.find("section.Sidebar")
   expect(sidebar).toHaveLength(1)
-  expect(sidebar.hasClass("is-closed")).toBe(false)
+  expect(sidebar.hasClass("isClosed")).toBe(false)
 
   let button = root.find("button.Sidebar-toggle")
   expect(button).toHaveLength(1)
   button.simulate("click")
 
-  sidebar = root.find(".Sidebar")
+  sidebar = root.find("section.Sidebar")
   expect(sidebar).toHaveLength(1)
-  expect(sidebar.hasClass("is-closed")).toBe(true)
+  expect(sidebar.hasClass("isClosed")).toBe(true)
 })
 
 it("doesn't re-render the sidebar when the logs change", async () => {
@@ -100,7 +100,7 @@ it("doesn't re-render the sidebar when the logs change", async () => {
 
   let resourceView = oneResourceView()
   hud.setState({ view: resourceView })
-  let oldDOMNode = root.find(".Sidebar").getDOMNode()
+  let oldDOMNode = root.find("section.Sidebar").getDOMNode()
 
   function now() {
     return new Date().toString()
@@ -116,7 +116,7 @@ it("doesn't re-render the sidebar when the logs change", async () => {
   }
   hud.setState({ view: resourceView })
 
-  let newDOMNode = root.find(".Sidebar").getDOMNode()
+  let newDOMNode = root.find("section.Sidebar").getDOMNode()
   expect(oldDOMNode).toBe(newDOMNode)
 })
 

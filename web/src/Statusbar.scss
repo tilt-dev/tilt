@@ -87,7 +87,6 @@
 // Progress
 .Statusbar-progressPanel {
   width: $sidebar-width - $statusbar-tiltPanel-width;
-  max-width: $sidebar-maxWidth;
   justify-content: space-between;
   display: flex;
   padding-left: $spacing-unit / 2;

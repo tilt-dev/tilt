@@ -1,7 +1,8 @@
 import React, { Component } from "react"
 import AppController from "./AppController"
 import NoMatch from "./NoMatch"
-import Sidebar, { SidebarItem } from "./Sidebar"
+import Sidebar from "./Sidebar"
+import SidebarResources, { SidebarItem } from "./SidebarResources"
 import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import HeroScreen from "./HeroScreen"
@@ -406,14 +407,14 @@ class HUD extends Component<HudProps, HudState> {
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
-        <Sidebar
-          selected={name}
-          items={sidebarItems}
-          isClosed={isSidebarClosed}
-          toggleSidebar={this.toggleSidebar}
-          resourceView={t}
-          pathBuilder={this.pathBuilder}
-        />
+        <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
+          <SidebarResources
+            selected={name}
+            items={sidebarItems}
+            resourceView={t}
+            pathBuilder={this.pathBuilder}
+          />
+        </Sidebar>
       )
     }
     return (

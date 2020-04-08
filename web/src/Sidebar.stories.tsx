@@ -1,6 +1,6 @@
 import React from "react"
 import { storiesOf } from "@storybook/react"
-import Sidebar, { SidebarItem } from "./Sidebar"
+import SidebarResources, { SidebarItem } from "./SidebarResources"
 import {
   oneResourceView,
   oneResourceNoAlerts,
@@ -20,11 +20,9 @@ function twoItemSidebar() {
   items[0].name = "snapshot-frontend-binary-long-name"
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <Sidebar
-        isClosed={false}
+      <SidebarResources
         items={items}
         selected=""
-        toggleSidebar={null}
         resourceView={ResourceView.Log}
         pathBuilder={pathBuilder}
       />
@@ -39,11 +37,9 @@ function twoItemSidebarClosed() {
   items[0].name = "snapshot-frontend-binary-long-name"
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <Sidebar
-        isClosed={true}
+      <SidebarResources
         items={items}
         selected=""
-        toggleSidebar={null}
         resourceView={ResourceView.Log}
         pathBuilder={pathBuilder}
       />
@@ -61,11 +57,9 @@ function oneItemWithTrigger() {
   })
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <Sidebar
-        isClosed={false}
+      <SidebarResources
         items={items}
         selected=""
-        toggleSidebar={null}
         resourceView={ResourceView.Log}
         pathBuilder={pathBuilder}
       />
@@ -86,11 +80,9 @@ function oneItemWithStatus(status: ResourceStatus) {
   let items = [item]
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <Sidebar
-        isClosed={false}
+      <SidebarResources
         items={items}
         selected=""
-        toggleSidebar={null}
         resourceView={ResourceView.Log}
         pathBuilder={pathBuilder}
       />
