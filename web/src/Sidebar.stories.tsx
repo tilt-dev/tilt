@@ -13,10 +13,6 @@ import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 type Resource = Proto.webviewResource
 let pathBuilder = new PathBuilder("localhost", "/")
 
-const fakeToggleAccountMenu = () => {
-  console.log("Toggled account menu")
-}
-
 function twoItemSidebar() {
   let items = twoResourceView().resources.map(
     (res: Resource) => new SidebarItem(res)
