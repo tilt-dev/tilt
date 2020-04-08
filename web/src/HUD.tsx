@@ -401,7 +401,6 @@ class HUD extends Component<HudProps, HudState> {
 
   renderSidebarSwitch() {
     let view = this.state.view
-    let tiltCloudSchemeHost = (view && view.tiltCloudSchemeHost) || ""
     let resources = (view && view.resources) || []
     let sidebarItems = resources.map(res => new SidebarItem(res))
     let isSidebarClosed = !!this.state.isSidebarClosed
