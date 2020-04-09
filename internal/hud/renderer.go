@@ -46,27 +46,6 @@ var cGood = tcell.ColorGreen
 var cBad = tcell.ColorRed
 var cPending = tcell.Color243
 
-var statusColors = map[string]tcell.Color{
-	"Running":                                cGood,
-	string(model.RuntimeStatusOK):            cGood,
-	string(model.RuntimeStatusNotApplicable): cGood,
-	"ContainerCreating":                      cPending,
-	"Pending":                                cPending,
-	"PodInitializing":                        cPending,
-	string(model.RuntimeStatusPending):       cPending,
-	"Error":                                  cBad,
-	"CrashLoopBackOff":                       cBad,
-	"ErrImagePull":                           cBad,
-	"ImagePullBackOff":                       cBad,
-	"RunContainerError":                      cBad,
-	"StartError":                             cBad,
-	string(model.RuntimeStatusError):         cBad,
-	string(dockercompose.StatusInProg):       cPending,
-	string(dockercompose.StatusUp):           cGood,
-	string(dockercompose.StatusDown):         cBad,
-	"Completed":                              cGood,
-}
-
 func (r *Renderer) layout(v view.View, vs view.ViewState) rty.Component {
 	l := rty.NewFlexLayout(rty.DirVert)
 	if vs.ShowNarration {
@@ -218,7 +197,7 @@ func keyLegend(v view.View, vs view.ViewState) string {
 }
 
 func isInError(res view.Resource) bool {
-	return statusDisplayOptions(res).color == cBad
+	return combinedStatus(res).color == cBad
 }
 
 func isCrashing(res view.Resource) bool {
