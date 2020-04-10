@@ -5,12 +5,22 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/blang/semver"
 	"github.com/docker/cli/opts"
 	"github.com/pkg/errors"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/windmilleng/tilt/pkg/logger"
 )
+
+// We didn't pick minikube v1.8.0 for any particular reason, it's just what Nick
+// had on his machine and could verify with. It's hard to tell from the upstream
+// issue when this was fixed.
+//
+// We can move it earlier if someone asks for it, though minikube is pretty good
+// about nudging people to upgrade.
+var minMinikubeVersionBuildkit = semver.MustParse("1.8.0")
 
 // See notes on CreateClientOpts. These environment variables are standard docker env configs.
 type Env struct {
@@ -21,7 +31,7 @@ type Env struct {
 
 	// Minikube's docker client has a bug where it can't use buildkit. See:
 	// https://github.com/kubernetes/minikube/issues/4143
-	IsMinikube bool
+	IsOldMinikube bool
 
 	// If the env failed to load for some reason, propagate that error
 	// so that we can report it when the user tries to do a docker_build.
@@ -57,7 +67,7 @@ func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) LocalEnv {
 	// to use Minikube's docker server. We check for that by comparing
 	// the hosts of the LocalEnv and ClusterEnv.
 	if cEnv.Host == result.Host {
-		result.IsMinikube = cEnv.IsMinikube
+		result.IsOldMinikube = cEnv.IsOldMinikube
 	}
 
 	return LocalEnv(result)
@@ -94,7 +104,7 @@ func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runti
 				result.TLSVerify = tlsVerify
 			}
 
-			result.IsMinikube = true
+			result.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
 		} else if env == k8s.EnvMicroK8s {
 			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
 			result.Host = microK8sDockerHost
@@ -102,6 +112,22 @@ func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runti
 	}
 
 	return ClusterEnv(overlayOSEnvVars(Env(result)))
+}
+
+func isOldMinikube(ctx context.Context, minikubeClient k8s.MinikubeClient) bool {
+	v, err := minikubeClient.Version(ctx)
+	if err != nil {
+		logger.Get(ctx).Debugf("%v", err)
+		return false
+	}
+
+	vParsed, err := semver.ParseTolerant(v)
+	if err != nil {
+		logger.Get(ctx).Debugf("Parsing minikube version: %v", err)
+		return false
+	}
+
+	return minMinikubeVersionBuildkit.GTE(vParsed)
 }
 
 func overlayOSEnvVars(result Env) Env {

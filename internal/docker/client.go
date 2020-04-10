@@ -217,10 +217,9 @@ func getDockerBuilderVersion(v types.Version, env Env) (types.BuilderVersion, er
 // Inferred from release notes
 // https://docs.docker.com/engine/release-notes/
 func SupportsBuildkit(v types.Version, env Env) bool {
-	if env.IsMinikube {
-		// Buildkit for Minikube is currently busted. Follow
+	if env.IsOldMinikube {
+		// Buildkit for Minikube is busted on some versions. See
 		// https://github.com/kubernetes/minikube/issues/4143
-		// for updates.
 		return false
 	}
 
