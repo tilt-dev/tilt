@@ -144,6 +144,26 @@ func (b ManifestBuilder) Build() model.Manifest {
 	return model.Manifest{}
 }
 
+func deployedImageSet(iTargets []model.ImageTarget) map[model.TargetID]model.ImageTarget {
+	// assume that images on which another image depends are base images,
+	// images, i.e. not deployed directly
+	baseImages := make(map[model.TargetID]bool)
+	for _, iTarget := range iTargets {
+		for _, id := range iTarget.DependencyIDs() {
+			baseImages[id] = true
+		}
+	}
+
+	deployed := make(map[model.TargetID]model.ImageTarget)
+	for _, iTarget := range iTargets {
+		if !baseImages[iTarget.ID()] {
+			deployed[iTarget.ID()] = iTarget
+		}
+	}
+
+	return deployed
+}
+
 type Fixture interface {
 	T() testing.TB
 	Path() string
