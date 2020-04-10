@@ -3,8 +3,9 @@ package manifestbuilder
 import (
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/dockercompose"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/windmilleng/tilt/internal/dockercompose"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
