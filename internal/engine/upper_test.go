@@ -4037,7 +4037,8 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	}
 
 	svc := dcConfig.Services["server"]
-	svc.GetBuild().Context = f.Path()
+
+	svc = svc.WithBuildContext(f.Path())
 	dcConfig.Services["server"] = svc
 
 	y, err := yaml.Marshal(dcConfig)

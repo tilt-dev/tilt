@@ -25,11 +25,13 @@ type FakeDCClient struct {
 	DownError error
 }
 
+var _ DockerComposeClient = &FakeDCClient{}
+
 // Represents a single call to Up
 type UpCall struct {
-	PathToConfig []string
-	ServiceName  model.TargetName
-	ShouldBuild  bool
+	ConfigYAML  string
+	ServiceName model.TargetName
+	ShouldBuild bool
 }
 
 func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient {
@@ -41,9 +43,9 @@ func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient
 	}
 }
 
-func (c *FakeDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName,
+func (c *FakeDCClient) Up(ctx context.Context, configYAML []byte, serviceName model.TargetName,
 	shouldBuild bool, stdout, stderr io.Writer) error {
-	c.UpCalls = append(c.UpCalls, UpCall{configPaths, serviceName, shouldBuild})
+	c.UpCalls = append(c.UpCalls, UpCall{string(configYAML), serviceName, shouldBuild})
 	return nil
 }
 

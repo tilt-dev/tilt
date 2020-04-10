@@ -36,6 +36,12 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 type ServiceConfig map[string]interface{}
 
+func (c ServiceConfig) GetImage() string {
+	val, _ := c["image"].(string)
+	// TODO(maia): handle errors??
+	return val
+}
+
 func (c ServiceConfig) GetBuild() BuildConfig {
 	// TODO(maia): handle errors
 	bc := BuildConfig{}
@@ -53,12 +59,21 @@ func (c ServiceConfig) GetBuild() BuildConfig {
 	return bc
 }
 
-func (c ServiceConfig) GetImage() string {
-	val, ok := c["image"].(string)
+func (c ServiceConfig) WithBuildContext(context string) ServiceConfig {
+	build, ok := c["build"]
 	if !ok {
-		return ""
+		c["build"] = map[string]string{"context": context}
+		return c
 	}
-	return val
+	buildMap, ok := build.(map[string]string)
+	if !ok {
+		// TODO(maia): better error handling?
+		//   I thiiink we can assume the format of this value if it exists,
+		//   b/c this is a normalized config, but uh??
+		panic("whelp")
+	}
+	buildMap["context"] = context
+	return c
 }
 
 func (c ServiceConfig) GetVolumes() Volumes {

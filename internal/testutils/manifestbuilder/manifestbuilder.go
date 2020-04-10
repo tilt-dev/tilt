@@ -3,6 +3,7 @@ package manifestbuilder
 import (
 	"testing"
 
+	"github.com/windmilleng/tilt/internal/dockercompose"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/windmilleng/tilt/internal/k8s"
@@ -54,6 +55,27 @@ func (b ManifestBuilder) WithK8sPodSelectors(podSelectors []labels.Selector) Man
 func (b ManifestBuilder) WithDockerCompose() ManifestBuilder {
 	b.dcConfigPaths = []string{b.f.JoinPath("docker-compose.yml")}
 	return b
+}
+
+func (b ManifestBuilder) DCConfigYaml() []byte {
+	conf := dockercompose.ServiceConfig{}
+	deployedImgs := deployedImageSet(b.iTargets)
+	if len(deployedImgs) > 1 {
+		panic("can't have a docker compose config with multiple top-level images")
+	}
+	if len(deployedImgs) == 1 {
+		for _, iTarg := range deployedImgs {
+			conf["image"] = iTarg.Refs.LocalRef()
+			if iTarg.IsDockerBuild() {
+				db := iTarg.DockerBuildInfo()
+				conf["build"] = map[string]string{"context": db.BuildPath}
+				// TODO: ability to set build.Dockerfile
+			}
+		}
+	} else {
+		conf["image"] = "some-great-image"
+	}
+	return conf.EncodeYAML()
 }
 
 func (b ManifestBuilder) WithLocalResource(cmd string, deps []string) ManifestBuilder {
@@ -126,6 +148,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 			model.DockerComposeTarget{
 				Name:        model.TargetName(b.name),
 				ConfigPaths: b.dcConfigPaths,
+				ConfigYAML:  b.DCConfigYaml(),
 			},
 			b.iTargets...)
 	}
