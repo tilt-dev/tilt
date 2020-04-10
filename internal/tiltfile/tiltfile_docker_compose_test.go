@@ -627,7 +627,7 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 		case dcLocalPathsHelper:
 			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths())
 		case dcYAMLRawHelper:
-			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)))
+			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.ConfigYAML)))
 		case dcDfRawHelper:
 			assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)))
 		case dcPublishedPortsHelper:

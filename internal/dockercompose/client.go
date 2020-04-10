@@ -20,7 +20,7 @@ import (
 )
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
+	Up(ctx context.Context, configYAML []byte, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error
 	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error)
 	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
@@ -43,7 +43,7 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	}
 }
 
-func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Up(ctx context.Context, configYAML []byte, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
 	// docker-compose up is not thread-safe, because network operations are non-atomic. See:
 	// https://github.com/windmilleng/tilt/issues/2817
 	c.mu.Lock()
@@ -52,10 +52,6 @@ func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName 
 	var args []string
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		args = []string{"--verbose"}
-	}
-
-	for _, config := range configPaths {
-		args = append(args, "-f", config)
 	}
 
 	args = append(args, "up", "--no-deps", "-d")
@@ -72,6 +68,7 @@ func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName 
 
 	args = append(args, serviceName.String())
 	cmd := c.dcCommand(ctx, args)
+	cmd.Stdin = bytes.NewReader(configYAML)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 

@@ -114,7 +114,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
-	err = bd.dcc.Up(ctx, dcTarget.ConfigPaths, dcTarget.Name, !haveImage, stdout, stderr)
+	err = bd.dcc.Up(ctx, dcTarget.ConfigYAML, dcTarget.Name, !haveImage, stdout, stderr)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}

@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func ReadConfigAndServiceNames(ctx context.Context, dcc DockerComposeClient,
+func ReadConfigsAndServiceNames(ctx context.Context, dcc DockerComposeClient,
 	configPaths []string) (conf Config, svcNames []string, err error) {
 	// calls to `docker-compose config` take a bit, and we need two,
 	// so do them in parallel to make things faster

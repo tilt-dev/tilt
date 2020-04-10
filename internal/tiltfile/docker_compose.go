@@ -19,7 +19,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-// dcResourceSet represents a single docker-compose config file and all its associated services
+// dcResourceSet represents one or more Docker Compose config file and all the services therein
 type dcResourceSet struct {
 	configPaths []string
 
@@ -48,7 +48,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	var services []*dcService
-	tempServices, err := parseDCConfig(s.ctx, s.dcCli, configPaths)
+	tempServices, err := parseDCConfigs(s.ctx, s.dcCli, configPaths)
 	services = append(services, tempServices...)
 	if err != nil {
 		return nil, err
@@ -156,9 +156,11 @@ type dcService struct {
 	imageRefFromConfig reference.Named // from docker-compose.yml `Image` field
 	imageRefFromUser   reference.Named // set via dc_resource
 
+	// Full config info for the service -- will be piped into all `docker-compose` calls via stdin
+	Config dockercompose.ServiceConfig
+
 	// Currently just use these to diff against when config files are edited to see if manifest has changed
-	ServiceConfig []byte
-	DfContents    []byte
+	DfContents []byte
 
 	DependencyIDs  []model.TargetID
 	PublishedPorts []int
@@ -181,8 +183,8 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 		return dcService{}, fmt.Errorf("no service %s found in config", name)
 	}
 
-	buildContext := svcConfig.Build.Context
-	dfPath := svcConfig.Build.Dockerfile
+	buildContext := svcConfig.GetBuild().Context
+	dfPath := svcConfig.GetBuild().Dockerfile
 	if buildContext != "" {
 		if dfPath == "" {
 			// We only expect a Dockerfile if there's a build context specified.
@@ -192,12 +194,12 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 	}
 
 	var mountedLocalDirs []string
-	for _, v := range svcConfig.Volumes {
+	for _, v := range svcConfig.GetVolumes() {
 		mountedLocalDirs = append(mountedLocalDirs, v.Source)
 	}
 
 	var publishedPorts []int
-	for _, portSpec := range svcConfig.Ports {
+	for _, portSpec := range svcConfig.GetPorts() {
 		if portSpec.Published != 0 {
 			publishedPorts = append(publishedPorts, portSpec.Published)
 		}
@@ -209,12 +211,11 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 		DfPath:           dfPath,
 		MountedLocalDirs: mountedLocalDirs,
 
-		ServiceConfig:  svcConfig.RawYAML,
 		PublishedPorts: publishedPorts,
 	}
 
-	if svcConfig.Image != "" {
-		ref, err := container.ParseNamed(svcConfig.Image)
+	if svcConfig.GetImage() != "" {
+		ref, err := container.ParseNamed(svcConfig.GetImage())
 		if err != nil {
 			// TODO(nick): This doesn't seem like the right place to report this
 			// error, but we don't really have a better way right now.
@@ -234,9 +235,9 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 	return svc, nil
 }
 
-func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) ([]*dcService, error) {
+func parseDCConfigs(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) ([]*dcService, error) {
 
-	config, svcNames, err := dockercompose.ReadConfigAndServiceNames(ctx, dcc, configPaths)
+	config, svcNames, err := dockercompose.ReadConfigsAndServiceNames(ctx, dcc, configPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +258,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 	configFiles []string, err error) {
 	dcInfo := model.DockerComposeTarget{
 		ConfigPaths: dcSet.configPaths,
-		YAMLRaw:     service.ServiceConfig,
+		ConfigYAML:  service.Config.EncodeYAML(),
 		DfRaw:       service.DfContents,
 	}.WithDependencyIDs(service.DependencyIDs).
 		WithPublishedPorts(service.PublishedPorts).

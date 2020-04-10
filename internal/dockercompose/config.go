@@ -14,11 +14,10 @@ type Config struct {
 	Services map[string]ServiceConfig
 }
 
-// We use a custom Unmarshal method here so that we can store the RawYAML in addition
-// to unmarshaling the fields we care about into structs.
+// TODO(maia): maybe don't even need a custom func here anymore
 func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	aux := struct {
-		Services map[string]interface{} `yaml:"services"`
+		Services map[string]map[string]interface{} `yaml:"services"`
 	}{}
 	err := unmarshal(&aux)
 	if err != nil {
@@ -30,29 +29,79 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	for k, v := range aux.Services {
-		b, err := yaml.Marshal(v) // so we can unmarshal it again
-		if err != nil {
-			return err
-		}
-
-		svcConf := &ServiceConfig{}
-		err = yaml.Unmarshal(b, svcConf)
-		if err != nil {
-			return err
-		}
-
-		svcConf.RawYAML = b
-		c.Services[k] = *svcConf
+		c.Services[k] = v
 	}
 	return nil
 }
 
-type ServiceConfig struct {
-	RawYAML []byte      // We store this to diff against when docker-compose.yml is edited to see if the manifest has changed
-	Build   BuildConfig `yaml:"build"`
-	Image   string      `yaml:"image"`
-	Volumes Volumes     `yaml:"volumes"`
-	Ports   Ports       `yaml:"ports"`
+type ServiceConfig map[string]interface{}
+
+func (c ServiceConfig) GetBuild() BuildConfig {
+	// TODO(maia): handle errors
+	bc := BuildConfig{}
+
+	val := c["build"]
+	b, err := yaml.Marshal(val)
+	if err != nil {
+		return bc
+	}
+
+	err = yaml.Unmarshal(b, &bc)
+	if err != nil {
+		return bc
+	}
+	return bc
+}
+
+func (c ServiceConfig) GetImage() string {
+	val, ok := c["image"].(string)
+	if !ok {
+		return ""
+	}
+	return val
+}
+
+func (c ServiceConfig) GetVolumes() Volumes {
+	// TODO(maia): handle errors
+	vols := Volumes{}
+
+	val := c["volumes"]
+	b, err := yaml.Marshal(val)
+	if err != nil {
+		return vols
+	}
+
+	err = yaml.Unmarshal(b, &vols)
+	if err != nil {
+		return vols
+	}
+	return vols
+}
+
+func (c ServiceConfig) GetPorts() Ports {
+	// TODO(maia): handle errors
+	ports := Ports{}
+
+	val := c["ports"]
+	b, err := yaml.Marshal(val)
+	if err != nil {
+		return ports
+	}
+
+	err = yaml.Unmarshal(b, &ports)
+	if err != nil {
+		return ports
+	}
+	return ports
+}
+
+func (c *ServiceConfig) EncodeYAML() []byte {
+	// TODO(maia): handle errors
+	b, err := yaml.Marshal(c)
+	if err != nil {
+		return nil
+	}
+	return b
 }
 
 type BuildConfig struct {

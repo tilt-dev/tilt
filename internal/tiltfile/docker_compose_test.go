@@ -143,7 +143,7 @@ func (f dcFixture) parse(configOutput, servicesOutput string) []*dcService {
 	f.dcCli.ConfigOutput = configOutput
 	f.dcCli.ServicesOutput = servicesOutput
 
-	services, err := parseDCConfig(f.ctx, f.dcCli, []string{"doesn't-matter.yml"})
+	services, err := parseDCConfigs(f.ctx, f.dcCli, []string{"doesn't-matter.yml"})
 	if err != nil {
 		f.t.Fatalf("dcFixture.Parse: %v", err)
 	}

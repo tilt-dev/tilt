@@ -3963,7 +3963,7 @@ func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileCon
 		Name: model.ManifestName(name),
 	}.WithDeployTarget(model.DockerComposeTarget{
 		ConfigPaths: []string{f.JoinPath("docker-compose.yml")},
-		YAMLRaw:     []byte(DCYAMLRaw),
+		ConfigYAML:  []byte(DCYAMLRaw),
 		DfRaw:       []byte(dockerfileContents),
 	})
 }
@@ -4037,7 +4037,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	}
 
 	svc := dcConfig.Services["server"]
-	svc.Build.Context = f.Path()
+	svc.GetBuild().Context = f.Path()
 	dcConfig.Services["server"] = svc
 
 	y, err := yaml.Marshal(dcConfig)
