@@ -75,7 +75,7 @@ func TestDockerComposeManifest(t *testing.T) {
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(f.simpleConfigFooYAML()),
+		dcConfigYAML(f.simpleConfigFooYAML()),
 		dcDfRaw(simpleDockerfile),
 		dcPublishedPorts(12312),
 		// TODO(maia): assert m.tiltFilename
@@ -99,7 +99,7 @@ services:
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("bar",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw("image: redis:alpine"),
+		dcConfigYAML("image: redis:alpine"),
 		dcDfRaw(""),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -130,7 +130,7 @@ services:
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("baz",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(dcYAML),
+		dcConfigYAML(dcYAML),
 		dcDfRaw(simpleDockerfile),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -207,7 +207,7 @@ RUN echo hi`
 	configPath := f.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(f.simpleConfigFooYAML()),
+		dcConfigYAML(f.simpleConfigFooYAML()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
 		// TODO(maia): assert m.tiltFilename
@@ -242,7 +242,7 @@ services:
 	configPath := f.JoinPath("foo/docker-compose.yml")
 	f.assertDcManifest("foo",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(f.simpleConfigFooYAML()),
+		dcConfigYAML(f.simpleConfigFooYAML()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
 		dcPublishedPorts(12312),
@@ -626,8 +626,8 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 			assert.Equal(f.t, opt.paths, dcInfo.ConfigPaths)
 		case dcLocalPathsHelper:
 			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths())
-		case dcYAMLRawHelper:
-			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.ConfigYAML)))
+		case dcConfigYAMLHelper:
+			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(dcInfo.ConfigYAML))
 		case dcDfRawHelper:
 			assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)))
 		case dcPublishedPortsHelper:
@@ -647,12 +647,12 @@ func dcConfigPath(paths []string) dcConfigPathHelper {
 	return dcConfigPathHelper{paths}
 }
 
-type dcYAMLRawHelper struct {
+type dcConfigYAMLHelper struct {
 	yaml string
 }
 
-func dcYAMLRaw(yaml string) dcYAMLRawHelper {
-	return dcYAMLRawHelper{yaml}
+func dcConfigYAML(yaml string) dcConfigYAMLHelper {
+	return dcConfigYAMLHelper{yaml}
 }
 
 type dcDfRawHelper struct {

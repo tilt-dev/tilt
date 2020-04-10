@@ -43,9 +43,9 @@ func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient
 	}
 }
 
-func (c *FakeDCClient) Up(ctx context.Context, configYAML []byte, serviceName model.TargetName,
+func (c *FakeDCClient) Up(ctx context.Context, configYAML string, serviceName model.TargetName,
 	shouldBuild bool, stdout, stderr io.Writer) error {
-	c.UpCalls = append(c.UpCalls, UpCall{string(configYAML), serviceName, shouldBuild})
+	c.UpCalls = append(c.UpCalls, UpCall{configYAML, serviceName, shouldBuild})
 	return nil
 }
 

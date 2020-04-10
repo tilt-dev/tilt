@@ -3963,7 +3963,7 @@ func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileCon
 		Name: model.ManifestName(name),
 	}.WithDeployTarget(model.DockerComposeTarget{
 		ConfigPaths: []string{f.JoinPath("docker-compose.yml")},
-		ConfigYAML:  []byte(DCYAMLRaw),
+		ConfigYAML:  DCYAMLRaw,
 		DfRaw:       []byte(dockerfileContents),
 	})
 }

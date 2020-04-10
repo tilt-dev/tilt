@@ -110,13 +110,13 @@ func (c ServiceConfig) GetPorts() Ports {
 	return ports
 }
 
-func (c *ServiceConfig) EncodeYAML() []byte {
+func (c *ServiceConfig) SerializeYAML() string {
 	// TODO(maia): handle errors
 	b, err := yaml.Marshal(c)
 	if err != nil {
-		return nil
+		return ""
 	}
-	return b
+	return string(b)
 }
 
 type BuildConfig struct {

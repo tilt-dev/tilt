@@ -9,7 +9,7 @@ import (
 type DockerComposeTarget struct {
 	Name        TargetName
 	ConfigPaths []string
-	ConfigYAML  []byte // TODO(maia): or mayyybe store as string? eh.
+	ConfigYAML  string
 
 	// The docker context, like in DockerBuild
 	buildPath string

@@ -210,8 +210,8 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 		BuildContext:     buildContext,
 		DfPath:           dfPath,
 		MountedLocalDirs: mountedLocalDirs,
-
-		PublishedPorts: publishedPorts,
+		Config:           svcConfig,
+		PublishedPorts:   publishedPorts,
 	}
 
 	if svcConfig.GetImage() != "" {
@@ -258,7 +258,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 	configFiles []string, err error) {
 	dcInfo := model.DockerComposeTarget{
 		ConfigPaths: dcSet.configPaths,
-		ConfigYAML:  service.Config.EncodeYAML(),
+		ConfigYAML:  service.Config.SerializeYAML(),
 		DfRaw:       service.DfContents,
 	}.WithDependencyIDs(service.DependencyIDs).
 		WithPublishedPorts(service.PublishedPorts).

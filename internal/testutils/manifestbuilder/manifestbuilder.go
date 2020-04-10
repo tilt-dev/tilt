@@ -57,7 +57,7 @@ func (b ManifestBuilder) WithDockerCompose() ManifestBuilder {
 	return b
 }
 
-func (b ManifestBuilder) DCConfigYaml() []byte {
+func (b ManifestBuilder) DCConfigYaml() string {
 	conf := dockercompose.ServiceConfig{}
 	deployedImgs := deployedImageSet(b.iTargets)
 	if len(deployedImgs) > 1 {
@@ -75,7 +75,7 @@ func (b ManifestBuilder) DCConfigYaml() []byte {
 	} else {
 		conf["image"] = "some-great-image"
 	}
-	return conf.EncodeYAML()
+	return conf.SerializeYAML()
 }
 
 func (b ManifestBuilder) WithLocalResource(cmd string, deps []string) ManifestBuilder {
