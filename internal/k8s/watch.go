@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -123,9 +124,10 @@ func (kCli K8sClient) makeInformer(
 
 	options := []informers.SharedInformerOption{}
 	if !ls.Empty() {
-		options = append(options, informers.WithTweakListOptions(func(o *metav1.ListOptions) {
+		addSelector := internalinterfaces.TweakListOptionsFunc(func(o *metav1.ListOptions) {
 			o.LabelSelector = ls.String()
-		}))
+		})
+		options = append(options, informers.WithTweakListOptions(addSelector))
 	}
 	if ns != "" {
 		options = append(options, informers.WithNamespace(ns.String()))
