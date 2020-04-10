@@ -19,7 +19,7 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-// dcResourceSet represents one or more Docker Compose config file and all the services therein
+// dcResourceSet represents one or more Docker Compose config files and all the services therein
 type dcResourceSet struct {
 	configPaths []string
 

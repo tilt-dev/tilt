@@ -43,6 +43,8 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	}
 }
 
+// TODO(maia): call as many DC commands as possible with configs piped via stdin
+
 func (c *cmdDCClient) Up(ctx context.Context, configYAML string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
 	// docker-compose up is not thread-safe, because network operations are non-atomic. See:
 	// https://github.com/windmilleng/tilt/issues/2817

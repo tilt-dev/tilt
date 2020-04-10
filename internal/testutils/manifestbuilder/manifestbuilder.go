@@ -62,7 +62,7 @@ func (b ManifestBuilder) DCConfigYaml() string {
 	conf := dockercompose.ServiceConfig{}
 	deployedImgs := deployedImageSet(b.iTargets)
 	if len(deployedImgs) > 1 {
-		panic("can't have a docker compose config with multiple top-level images")
+		panic("can't have a docker compose config with multiple deployed images")
 	}
 	if len(deployedImgs) == 1 {
 		for _, iTarg := range deployedImgs {
@@ -170,7 +170,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 
 func deployedImageSet(iTargets []model.ImageTarget) map[model.TargetID]model.ImageTarget {
 	// assume that images on which another image depends are base images,
-	// images, i.e. not deployed directly
+	// images, i.e. are not deployed directly
 	baseImages := make(map[model.TargetID]bool)
 	for _, iTarget := range iTargets {
 		for _, id := range iTarget.DependencyIDs() {
