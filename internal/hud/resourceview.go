@@ -75,45 +75,43 @@ type statusDisplay struct {
 	spinner bool
 }
 
-func statusDisplayOptions(res view.Resource) statusDisplay {
-	if res.IsTiltfile {
-		if !res.CurrentBuild.Empty() {
-			return statusDisplay{color: cPending, spinner: true}
-		} else if res.CrashLog.Empty() {
-			return statusDisplay{color: cGood}
-		} else {
-			return statusDisplay{color: cBad}
-		}
+// NOTE: This should be in-sync with combinedStatus in the web UI
+func combinedStatus(res view.Resource) statusDisplay {
+	currentBuild := res.CurrentBuild
+	hasCurrentBuild := !currentBuild.Empty()
+	hasPendingBuild := !res.PendingBuildSince.IsZero() && res.TriggerMode.AutoOnChange()
+	buildHistory := res.BuildHistory
+	lastBuild := res.LastBuild()
+	lastBuildError := lastBuild.Error != nil
+
+	if hasCurrentBuild {
+		return statusDisplay{color: cPending, spinner: true}
+	} else if hasPendingBuild {
+		return statusDisplay{color: cPending}
+	} else if lastBuildError {
+		return statusDisplay{color: cBad}
 	}
 
-	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
-		return statusDisplay{color: cPending, spinner: true}
-	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
-		if res.TriggerMode.AutoOnChange() {
-			return statusDisplay{color: cPending, spinner: true}
-		} else {
-			return statusDisplay{color: cLightText}
-		}
-	} else if isCrashing(res) {
-		return statusDisplay{color: cBad}
-	} else if res.LastBuild().Error != nil {
-		return statusDisplay{color: cBad}
-	} else if res.IsYAML() && !res.LastDeployTime.IsZero() {
-		return statusDisplay{color: cGood}
-	} else if !res.LastBuild().FinishTime.IsZero() && res.ResourceInfo.Status() == "" {
-		// pod status hasn't shown up yet
-		return statusDisplay{color: cPending, spinner: true}
-	} else {
-		if res.ResourceInfo != nil {
-			if statusColor, ok := statusColors[res.ResourceInfo.Status()]; ok {
-				// Comparing colors is ok here because they only colors in statusColors
-				// are cGood, cBad, and cPending, and they're unique colors.
-				spinner := statusColor == cPending
-				return statusDisplay{color: statusColor, spinner: spinner}
-			}
-		}
-		return statusDisplay{color: cLightText}
+	runtimeStatus := model.RuntimeStatusUnknown
+	if res.ResourceInfo != nil {
+		runtimeStatus = res.ResourceInfo.RuntimeStatus()
 	}
+
+	switch runtimeStatus {
+	case model.RuntimeStatusError:
+		return statusDisplay{color: cBad}
+	case model.RuntimeStatusPending:
+		return statusDisplay{color: cPending, spinner: true}
+	case model.RuntimeStatusOK:
+		return statusDisplay{color: cGood}
+	case model.RuntimeStatusNotApplicable:
+		if len(buildHistory) > 0 {
+			return statusDisplay{color: cGood}
+		} else {
+			return statusDisplay{color: cPending}
+		}
+	}
+	return statusDisplay{color: cPending}
 }
 
 func (v *ResourceView) titleTextName() rty.Component {
@@ -128,7 +126,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 		p = "▶"
 	}
 
-	display := statusDisplayOptions(v.res)
+	display := combinedStatus(v.res)
 	sb.Text(p)
 
 	switch display.color {

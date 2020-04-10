@@ -713,6 +713,7 @@ func tiltfileResourceView(s EngineState) view.Resource {
 		IsTiltfile:   true,
 		CurrentBuild: s.TiltfileState.CurrentBuild,
 		BuildHistory: s.TiltfileState.BuildHistory,
+		ResourceInfo: view.TiltfileResourceInfo{},
 	}
 	if !s.TiltfileState.CurrentBuild.Empty() {
 		tr.PendingBuildSince = s.TiltfileState.CurrentBuild.StartTime
@@ -729,6 +730,11 @@ func tiltfileResourceView(s EngineState) view.Resource {
 }
 
 func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
+	runStatus := model.RuntimeStatusUnknown
+	if mt.State.RuntimeState != nil {
+		runStatus = mt.State.RuntimeState.RuntimeStatus()
+	}
+
 	if mt.Manifest.IsUnresourcedYAMLManifest() {
 		return view.YAMLResourceInfo{
 			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
@@ -738,7 +744,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 	switch state := mt.State.RuntimeState.(type) {
 	case dockercompose.State:
 		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths,
-			state.Status, state.ContainerID, state.SpanID, state.StartTime)
+			state.Status, state.ContainerID, state.SpanID, state.StartTime, runStatus)
 	case K8sRuntimeState:
 		pod := state.MostRecentPod()
 		return view.K8sResourceInfo{
@@ -748,9 +754,10 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodStatus:          pod.Status,
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			SpanID:             pod.SpanID,
+			RunStatus:          runStatus,
 		}
 	case LocalRuntimeState:
-		return view.NewLocalResourceInfo(state.Status, state.PID, state.SpanID)
+		return view.NewLocalResourceInfo(runStatus, state.PID, state.SpanID)
 	default:
 		// This is silly but it was the old behavior.
 		return view.K8sResourceInfo{}

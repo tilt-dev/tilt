@@ -71,7 +71,9 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	r, _ := v.Resource(m.Name)
 	assert.Equal(t, nil, r.LastBuild().Error)
 
-	expectedInfo := view.YAMLResourceInfo{K8sResources: []string{"sancho:deployment"}}
+	expectedInfo := view.YAMLResourceInfo{
+		K8sResources: []string{"sancho:deployment"},
+	}
 	assert.Equal(t, expectedInfo, r.ResourceInfo)
 }
 
