@@ -1,6 +1,5 @@
 import React from "react"
 import styled from "styled-components"
-import { Font, FontSize, Color, SizeUnit } from "./style-helpers"
 import { Button } from "./Button"
 
 let ButtonInputRoot = styled.input`

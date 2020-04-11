@@ -1,7 +1,6 @@
 import React from "react"
 import styled from "styled-components"
 import { Button } from "./Button"
-import { Font, FontSize, Color, SizeUnit } from "./style-helpers"
 
 let ButtonLinkRoot = styled.a`
   ${Button}
