@@ -2,6 +2,7 @@ import React, { Component } from "react"
 import AppController from "./AppController"
 import NoMatch from "./NoMatch"
 import Sidebar from "./Sidebar"
+import SidebarAccount from "./SidebarAccount"
 import SidebarResources, { SidebarItem } from "./SidebarResources"
 import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
@@ -404,10 +405,18 @@ class HUD extends Component<HudProps, HudState> {
     let resources = (view && view.resources) || []
     let sidebarItems = resources.map(res => new SidebarItem(res))
     let isSidebarClosed = !!this.state.isSidebarClosed
+    let tiltCloudUsername = (view && view.tiltCloudUsername) || null
+    let tiltCloudSchemeHost = (view && view.tiltCloudSchemeHost) || ""
+    let tiltCloudTeamID = (view && view.tiltCloudTeamID) || null
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
         <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
+          <SidebarAccount
+            tiltCloudUsername={tiltCloudUsername}
+            tiltCloudSchemeHost={tiltCloudSchemeHost}
+            tiltCloudTeamID={tiltCloudTeamID}
+          />
           <SidebarResources
             selected={name}
             items={sidebarItems}
