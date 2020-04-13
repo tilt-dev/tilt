@@ -59,7 +59,7 @@ func (b ManifestBuilder) WithDockerCompose() ManifestBuilder {
 }
 
 func (b ManifestBuilder) DCConfigYaml() string {
-	conf := dockercompose.ServiceConfig{}
+	conf := dockercompose.NewServiceConfig(b.name.String(), nil)
 	deployedImgs := deployedImageSet(b.iTargets)
 	if len(deployedImgs) > 1 {
 		panic("can't have a docker compose config with multiple deployed images")

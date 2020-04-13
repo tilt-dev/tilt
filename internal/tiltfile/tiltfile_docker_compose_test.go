@@ -56,11 +56,13 @@ services:
 // YAML for Foo config looks a little different from the above after being read into
 // a struct and YAML'd back out...
 func (f *fixture) simpleConfigFooYAML() string {
-	return fmt.Sprintf(`build:
-  context: %s
-command: sleep 100
-ports:
-- 12312:80/tcp`, f.JoinPath("foo"))
+	return fmt.Sprintf(`
+foo:
+  build:
+    context: %s
+  command: sleep 100
+  ports:
+  - 12312:80/tcp`, f.JoinPath("foo"))
 }
 
 func TestDockerComposeManifest(t *testing.T) {
@@ -99,7 +101,8 @@ services:
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("bar",
 		dcConfigPath([]string{configPath}),
-		dcConfigYAML("image: redis:alpine"),
+		dcConfigYAML(`bar:
+  image: redis:alpine`),
 		dcDfRaw(""),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -112,9 +115,10 @@ func TestDockerComposeManifestAlternateDockerfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	dcYAML := fmt.Sprintf(`build:
-  context: %s
-  dockerfile: alternate-Dockerfile`,
+	dcYAML := fmt.Sprintf(`baz:
+  build:
+    context: %s
+    dockerfile: alternate-Dockerfile`,
 		f.JoinPath("baz"))
 	f.dockerfile("baz/alternate-Dockerfile")
 	f.file("docker-compose.yml", fmt.Sprintf(`

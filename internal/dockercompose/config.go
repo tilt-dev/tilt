@@ -41,6 +41,9 @@ type ServiceConfig struct {
 type ServiceConfigRaw map[string]interface{}
 
 func NewServiceConfig(name string, raw ServiceConfigRaw) ServiceConfig {
+	if raw == nil {
+		raw = make(ServiceConfigRaw)
+	}
 	return ServiceConfig{
 		name: name,
 		raw:  raw,
