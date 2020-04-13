@@ -51,7 +51,7 @@ func (c *cmdDCClient) Up(ctx context.Context, configYAML string, serviceName mod
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	var args []string
+	args := []string{"-f", "-"}
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		args = []string{"--verbose"}
 	}

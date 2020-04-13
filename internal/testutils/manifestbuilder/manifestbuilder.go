@@ -66,15 +66,15 @@ func (b ManifestBuilder) DCConfigYaml() string {
 	}
 	if len(deployedImgs) == 1 {
 		for _, iTarg := range deployedImgs {
-			conf["image"] = iTarg.Refs.LocalRef()
+			conf = conf.WithImage(iTarg.Refs.LocalRef().String())
 			if iTarg.IsDockerBuild() {
 				db := iTarg.DockerBuildInfo()
-				conf["build"] = map[string]string{"context": db.BuildPath}
+				conf = conf.WithBuildContext(db.BuildPath)
 				// TODO: ability to set build.Dockerfile
 			}
 		}
 	} else {
-		conf["image"] = "some-great-image"
+		conf = conf.WithImage("some-great-image")
 	}
 	return conf.SerializeYAML()
 }

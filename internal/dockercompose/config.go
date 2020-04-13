@@ -29,24 +29,40 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	for k, v := range aux.Services {
-		c.Services[k] = v
+		c.Services[k] = NewServiceConfig(k, v)
 	}
 	return nil
 }
 
-type ServiceConfig map[string]interface{}
+type ServiceConfig struct {
+	name string
+	raw  ServiceConfigRaw
+}
+type ServiceConfigRaw map[string]interface{}
+
+func NewServiceConfig(name string, raw ServiceConfigRaw) ServiceConfig {
+	return ServiceConfig{
+		name: name,
+		raw:  raw,
+	}
+}
 
 func (c ServiceConfig) GetImage() string {
-	val, _ := c["image"].(string)
+	val, _ := c.raw["image"].(string)
 	// TODO(maia): handle errors??
 	return val
+}
+
+func (c ServiceConfig) WithImage(image string) ServiceConfig {
+	c.raw["image"] = image
+	return c
 }
 
 func (c ServiceConfig) GetBuild() BuildConfig {
 	// TODO(maia): handle errors
 	bc := BuildConfig{}
 
-	val := c["build"]
+	val := c.raw["build"]
 	b, err := yaml.Marshal(val)
 	if err != nil {
 		return bc
@@ -60,9 +76,9 @@ func (c ServiceConfig) GetBuild() BuildConfig {
 }
 
 func (c ServiceConfig) WithBuildContext(context string) ServiceConfig {
-	build, ok := c["build"]
+	build, ok := c.raw["build"]
 	if !ok {
-		c["build"] = map[string]string{"context": context}
+		c.raw["build"] = map[string]string{"context": context}
 		return c
 	}
 	buildMap, ok := build.(map[string]string)
@@ -80,7 +96,7 @@ func (c ServiceConfig) GetVolumes() Volumes {
 	// TODO(maia): handle errors
 	vols := Volumes{}
 
-	val := c["volumes"]
+	val := c.raw["volumes"]
 	b, err := yaml.Marshal(val)
 	if err != nil {
 		return vols
@@ -97,7 +113,7 @@ func (c ServiceConfig) GetPorts() Ports {
 	// TODO(maia): handle errors
 	ports := Ports{}
 
-	val := c["ports"]
+	val := c.raw["ports"]
 	b, err := yaml.Marshal(val)
 	if err != nil {
 		return ports
@@ -110,9 +126,11 @@ func (c ServiceConfig) GetPorts() Ports {
 	return ports
 }
 
-func (c *ServiceConfig) SerializeYAML() string {
+func (c ServiceConfig) SerializeYAML() string {
+	services := map[string]ServiceConfigRaw{c.name: c.raw}
+
 	// TODO(maia): handle errors
-	b, err := yaml.Marshal(c)
+	b, err := yaml.Marshal(services)
 	if err != nil {
 		return ""
 	}
