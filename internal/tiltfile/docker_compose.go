@@ -236,7 +236,6 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 }
 
 func parseDCConfigs(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) ([]*dcService, error) {
-
 	config, svcNames, err := dockercompose.ReadConfigsAndServiceNames(ctx, dcc, configPaths)
 	if err != nil {
 		return nil, err

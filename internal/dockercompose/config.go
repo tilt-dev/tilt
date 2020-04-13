@@ -34,6 +34,14 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+func (c Config) MarshalYAML() (interface{}, error) {
+	serviceMap := make(map[string]interface{})
+	for name, config := range c.Services {
+		serviceMap[name] = config.raw
+	}
+	return map[string]interface{}{"services": serviceMap}, nil
+}
+
 type ServiceConfig struct {
 	name string
 	raw  ServiceConfigRaw
