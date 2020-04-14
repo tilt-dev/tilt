@@ -27,6 +27,7 @@ import (
 	"github.com/windmilleng/wmclient/pkg/analytics"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
@@ -353,6 +354,7 @@ func TestUpper_Up(t *testing.T) {
 	err := f.upper.Init(f.ctx, InitAction{
 		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
+		StartTime:    f.Now(),
 	})
 	close(f.b.calls)
 	require.NoError(t, err)
@@ -384,6 +386,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	err = f.upper.Init(f.ctx, InitAction{
 		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
+		StartTime:    f.Now(),
 	})
 	require.NoError(t, err)
 
@@ -413,6 +416,7 @@ func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
 		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		UserArgs:     nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
+		StartTime:    f.Now(),
 	})
 	close(f.b.calls)
 
@@ -591,6 +595,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		HUDEnabled:   true,
+		StartTime:    f.Now(),
 	})
 
 	f.WaitUntilManifestState("build has failed", manifest.ManifestName(), func(st store.ManifestState) bool {
@@ -1081,7 +1086,8 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 	// change the trigger mode
 	foo = foo.WithTriggerMode(model.TriggerModeManualAfterInitial)
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Manifests: []model.Manifest{foo, bar},
+		FinishTime: f.Now(),
+		Manifests:  []model.Manifest{foo, bar},
 	})
 
 	// now that it is a trigger mode that should build on startup, a build should kick off
@@ -1308,8 +1314,8 @@ func TestPodEventOrdering(t *testing.T) {
 
 	manifest := f.newManifest("fe")
 
-	past := time.Now().Add(-time.Minute)
-	now := time.Now()
+	past := f.Now().Add(-time.Minute)
+	now := f.Now()
 	uidPast := types.UID("deployment-uid-past")
 	uidNow := types.UID("deployment-uid-now")
 	pb := podbuilder.New(f.T(), manifest)
@@ -1483,7 +1489,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	spanID0 := SpanIDForBuildLog(0)
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
-		StartTime:    time.Now(),
+		StartTime:    f.Now(),
 		SpanID:       spanID0,
 	})
 
@@ -1533,7 +1539,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	spanID0 := SpanIDForBuildLog(0)
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
-		StartTime:    time.Now(),
+		StartTime:    f.Now(),
 		SpanID:       spanID0,
 	})
 
@@ -1575,10 +1581,10 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	spanID0 := SpanIDForBuildLog(0)
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
-		StartTime:    time.Now(),
+		StartTime:    f.Now(),
 		SpanID:       spanID0,
 	})
-	podStartTime := time.Now()
+	podStartTime := f.Now()
 	ancestorUID := types.UID("fake-uid")
 	pb := podbuilder.New(t, manifest).
 		WithPodID("mypod").
@@ -1604,7 +1610,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	spanID1 := SpanIDForBuildLog(1)
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
-		StartTime:    time.Now(),
+		StartTime:    f.Now(),
 		SpanID:       spanID1,
 	})
 
@@ -1634,7 +1640,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	call := f.nextCall()
 	assert.True(t, call.oneState().IsEmpty())
 
-	firstCreationTime := time.Now()
+	firstCreationTime := f.Now()
 	pod := podbuilder.New(f.T(), manifest).
 		WithCreationTime(firstCreationTime).
 		WithPhase("CrashLoopBackOff").
@@ -1671,7 +1677,7 @@ func TestPodEventDeleted(t *testing.T) {
 	call := f.nextCallComplete()
 	assert.True(t, call.oneState().IsEmpty())
 
-	creationTime := time.Now()
+	creationTime := f.Now()
 	pb := podbuilder.New(f.T(), manifest).
 		WithCreationTime(creationTime)
 	f.podEvent(pb.Build(), manifest.Name)
@@ -1703,7 +1709,7 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	call := f.nextCallComplete()
 	assert.True(t, call.oneState().IsEmpty())
 
-	creationTime := time.Now()
+	creationTime := f.Now()
 	pb := podbuilder.New(f.T(), manifest).
 		WithCreationTime(creationTime).
 		WithPhase("CrashLoopBackOff")
@@ -1740,7 +1746,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	call := f.nextCall()
 	assert.True(t, call.oneState().IsEmpty())
 
-	creationTime := time.Now()
+	creationTime := f.Now()
 	pod := podbuilder.New(f.T(), manifest).
 		WithPodID("my-new-pod").
 		WithPhase("CrashLoopBackOff").
@@ -1780,7 +1786,7 @@ func TestPodContainerStatus(t *testing.T) {
 		return ref != nil
 	})
 
-	startedAt := time.Now()
+	startedAt := f.Now()
 	pb := podbuilder.New(f.T(), manifest).
 		WithCreationTime(startedAt)
 	pod := pb.Build()
@@ -2348,6 +2354,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 		InvolvedObject: objRef,
 		Message:        "something has happened zomg",
 		Type:           v1.EventTypeWarning,
+		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.Now()}},
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
@@ -2377,6 +2384,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 		InvolvedObject: v1.ObjectReference{UID: types.UID("someRandomUID")},
 		Message:        "something has happened zomg",
 		Type:           v1.EventTypeWarning,
+		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.Now()}},
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
@@ -2400,6 +2408,7 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 		InvolvedObject: v1.ObjectReference{UID: f.lastDeployedUID(name)},
 		Message:        "all systems are go",
 		Type:           v1.EventTypeNormal, // we should NOT log this message
+		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.Now()}},
 	}
 	f.kClient.EmitEvent(f.ctx, normalEvt)
 
@@ -2419,6 +2428,7 @@ func TestInitSetsTiltfilePath(t *testing.T) {
 	f.store.Dispatch(InitAction{
 		EngineMode:   store.EngineModeApply,
 		TiltfilePath: "/Tiltfile",
+		StartTime:    f.Now(),
 	})
 	f.WaitUntil("tiltfile path gets set on init", func(st store.EngineState) bool {
 		return st.TiltfilePath == "/Tiltfile"
@@ -2506,7 +2516,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 		return ms.DCRuntimeState().Status == dockercompose.StatusInProg
 	})
 
-	beforeStart := time.Now()
+	beforeStart := f.Now()
 
 	// Send event corresponding to status = "OK"
 	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
@@ -2544,7 +2554,10 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f.Start([]model.Manifest{})
 	time.Sleep(10 * time.Millisecond)
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{Manifests: []model.Manifest{m}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Manifests:  []model.Manifest{m},
+		FinishTime: f.Now(),
+	})
 	f.waitForCompletedBuildCount(1)
 
 	// Is DockerComposeEventWatcher watching for events??
@@ -2879,13 +2892,19 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{Features: map[string]bool{"foo": true}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{
+		FinishTime: f.Now(),
+		Features:   map[string]bool{"foo": true},
+	})
 
 	f.WaitUntil("feature is enabled", func(state store.EngineState) bool {
 		return state.Features["foo"] == true
 	})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{Features: map[string]bool{"foo": false}})
+	f.store.Dispatch(configs.ConfigsReloadedAction{
+		FinishTime: f.Now(),
+		Features:   map[string]bool{"foo": false},
+	})
 
 	f.WaitUntil("feature is disabled", func(state store.EngineState) bool {
 		return state.Features["foo"] == false
@@ -2897,13 +2916,19 @@ func TestTeamIDStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{TeamID: "sharks"})
+	f.store.Dispatch(configs.ConfigsReloadedAction{
+		FinishTime: f.Now(),
+		TeamID:     "sharks",
+	})
 
 	f.WaitUntil("teamID is set to sharks", func(state store.EngineState) bool {
 		return state.TeamID == "sharks"
 	})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{TeamID: "jets"})
+	f.store.Dispatch(configs.ConfigsReloadedAction{
+		FinishTime: f.Now(),
+		TeamID:     "jets",
+	})
 
 	f.WaitUntil("teamID is set to jets", func(state store.EngineState) bool {
 		return state.TeamID == "jets"
@@ -2920,7 +2945,7 @@ func TestBuildLogAction(t *testing.T) {
 
 	f.store.Dispatch(buildcontrol.BuildStartedAction{
 		ManifestName: manifest.Name,
-		StartTime:    time.Now(),
+		StartTime:    f.Now(),
 		SpanID:       SpanIDForBuildLog(1),
 	})
 
@@ -3228,7 +3253,10 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 	vs := model.VersionSettings{
 		CheckUpdates: false,
 	}
-	f.store.Dispatch(configs.ConfigsReloadedAction{VersionSettings: vs})
+	f.store.Dispatch(configs.ConfigsReloadedAction{
+		FinishTime:      f.Now(),
+		VersionSettings: vs,
+	})
 
 	f.WaitUntil("CheckVersionUpdates is set to false", func(state store.EngineState) bool {
 		return state.VersionSettings.CheckUpdates == false
@@ -3245,7 +3273,10 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 		assert.Equal(t, analytics.OptDefault, state.AnalyticsEffectiveOpt())
 	})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{AnalyticsTiltfileOpt: analytics.OptIn})
+	f.store.Dispatch(configs.ConfigsReloadedAction{
+		FinishTime:           f.Now(),
+		AnalyticsTiltfileOpt: analytics.OptIn,
+	})
 
 	f.WaitUntil("analytics tiltfile opt-in", func(state store.EngineState) bool {
 		return state.AnalyticsTiltfileOpt == analytics.OptIn
@@ -3432,6 +3463,7 @@ type testFixture struct {
 	t                          *testing.T
 	ctx                        context.Context
 	cancel                     func()
+	clock                      clockwork.Clock
 	upper                      Upper
 	b                          *fakeBuildAndDeployer
 	fsWatcher                  *fakeMultiWatcher
@@ -3493,6 +3525,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		t.Fatal(err)
 	}
 
+	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
 	pfc := NewPortForwardController(kCli)
@@ -3512,7 +3545,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController("localhost", 0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
 	ghc := &github.FakeClient{}
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
-	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clockwork.NewRealClock())
+	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev")
 	fe := local.NewFakeExecer()
 	lc := local.NewController(fe)
@@ -3525,6 +3558,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		t:                     t,
 		ctx:                   ctx,
 		cancel:                cancel,
+		clock:                 clock,
 		b:                     b,
 		fsWatcher:             watcher,
 		timerMaker:            &timerMaker,
@@ -3552,7 +3586,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		return time.After(ret.tiltVersionCheckDelay)
 	}
 	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
-	tc := telemetry.NewController(fakeClock{}, tracer.NewSpanCollector(ctx))
+	tc := telemetry.NewController(clock, tracer.NewSpanCollector(ctx))
 	podm := k8srollout.NewPodMonitor()
 	ec := exit.NewController()
 
@@ -3565,6 +3599,10 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	}()
 
 	return ret
+}
+
+func (f *testFixture) Now() time.Time {
+	return f.clock.Now()
 }
 
 func (f *testFixture) fakeHud() *hud.FakeHud {
@@ -3591,6 +3629,7 @@ func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOptio
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		HUDEnabled:   true,
+		StartTime:    f.Now(),
 	}
 	for _, o := range initOptions {
 		ia = o(ia)
@@ -3721,6 +3760,8 @@ func (f *testFixture) WaitUntilHUDResource(msg string, name model.ManifestName, 
 
 // Wait until the given engine state test passes.
 func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool) {
+	f.T().Helper()
+
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
 
@@ -3981,6 +4022,7 @@ func (f *testFixture) loadAndStart(initOptions ...initOption) {
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		HUDEnabled:   true,
+		StartTime:    f.Now(),
 	}
 	for _, opt := range initOptions {
 		ia = opt(ia)
