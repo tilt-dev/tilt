@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -70,9 +71,16 @@ func dispatchDockerComposeEventLoop(ctx context.Context, ch <-chan string, st st
 				continue
 			}
 
-			st.Dispatch(DockerComposeEventAction{evt})
+			st.Dispatch(NewDockerComposeEventAction(evt))
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+func NewDockerComposeEventAction(evt dockercompose.Event) DockerComposeEventAction {
+	return DockerComposeEventAction{
+		Event: evt,
+		Time:  time.Now(),
 	}
 }

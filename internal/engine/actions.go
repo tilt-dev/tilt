@@ -56,6 +56,7 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 
 type DockerComposeEventAction struct {
 	Event dockercompose.Event
+	Time  time.Time
 }
 
 func (DockerComposeEventAction) Action() {}
