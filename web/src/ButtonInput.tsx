@@ -1,9 +1,9 @@
 import React from "react"
 import styled from "styled-components"
-import { Button } from "./Button"
+import { ButtonMixin } from "./ButtonMixin"
 
 let ButtonInputRoot = styled.input`
-  ${Button}
+  ${ButtonMixin}
   border: 0;
   width: 100%;
 `
@@ -13,8 +13,8 @@ type ButtonLinkProps = {
   type: string
 }
 
-function ButtonLink(props: ButtonLinkProps) {
+function ButtonInput(props: ButtonLinkProps) {
   return <ButtonInputRoot {...props} />
 }
 
-export default ButtonLink
+export default ButtonInput

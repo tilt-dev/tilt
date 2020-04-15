@@ -1,7 +1,7 @@
 import { css } from "styled-components"
-import { Font, FontSize, Color, SizeUnit } from "./style-helpers"
+import { Font, FontSize, Color, SizeUnit, AnimDuration } from "./style-helpers"
 
-export const Button = css`
+export const ButtonMixin = css`
   display: flex;
   font-family: ${Font.sansSerif};
   font-size: ${FontSize.small};
@@ -18,6 +18,7 @@ export const Button = css`
   line-height: 1;
   cursor: pointer;
   max-width: ${SizeUnit(10)}; // Beyond which it looks less and less button-like
+  transition: background-color ${AnimDuration.default} ease;
 
   &:hover {
     background-color: ${Color.blueLight};

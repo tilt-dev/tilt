@@ -17,7 +17,7 @@ let BG = styled.div`
 
 export const buttonLink = () => (
   <BG>
-    <ButtonLink href="http://cloud.tilt.dev" label="View Tilt Cloud" />
+    <ButtonLink href="http://cloud.tilt.dev">View Tilt Cloud</ButtonLink>
   </BG>
 )
 
