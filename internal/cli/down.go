@@ -12,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/engine"
 	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -50,7 +49,7 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 `,
 	}
 
-	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
+	addTiltfileFlag(cmd, &c.fileName)
 	cmd.Flags().BoolVar(&c.deleteNamespaces, "delete-namespaces", false, "delete namespaces defined in the Tiltfile (by default, don't)")
 
 	return cmd

@@ -18,6 +18,15 @@ import (
 	"github.com/windmilleng/tilt/internal/k8s"
 )
 
+var errorWaitingReasons = map[string]bool{
+	"CrashLoopBackOff":  true,
+	"ErrImagePull":      true,
+	"ImagePullBackOff":  true,
+	"RunContainerError": true,
+	"StartError":        true,
+	"Error":             true,
+}
+
 type PodWatcher struct {
 	kCli         k8s.Client
 	ownerFetcher k8s.OwnerFetcher
@@ -346,6 +355,30 @@ func PodStatusToString(pod v1.Pod) string {
 	return reason
 }
 
+func ContainerStatusToRuntimeState(status v1.ContainerStatus) model.RuntimeStatus {
+	state := status.State
+	if state.Terminated != nil {
+		if state.Terminated.ExitCode == 0 {
+			return model.RuntimeStatusOK
+		} else {
+			return model.RuntimeStatusError
+		}
+	}
+
+	if state.Waiting != nil {
+		if errorWaitingReasons[state.Waiting.Reason] {
+			return model.RuntimeStatusError
+		}
+		return model.RuntimeStatusPending
+	}
+
+	if state.Running != nil {
+		return model.RuntimeStatusOK
+	}
+
+	return model.RuntimeStatusUnknown
+}
+
 // Pull out interesting error messages from the pod status
 func PodStatusErrorMessages(pod v1.Pod) []string {
 	result := []string{}
@@ -372,9 +405,10 @@ func containerStatusErrorMessages(container v1.ContainerStatus) []string {
 			result = append(result, lastState.Terminated.Message)
 		}
 
-		// If we're in CrashLoopBackOff mode, also include the error message
-		// so we know when the pod will get rescheduled.
-		if state.Waiting.Message != "" && state.Waiting.Reason == "CrashLoopBackOff" {
+		// If we're in an error mode, also include the error message.
+		// Many error modes put important information in the error message,
+		// like when the pod will get rescheduled.
+		if state.Waiting.Message != "" && errorWaitingReasons[state.Waiting.Reason] {
 			result = append(result, state.Waiting.Message)
 		}
 	} else if state.Terminated != nil &&

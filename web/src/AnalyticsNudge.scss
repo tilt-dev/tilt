@@ -24,10 +24,10 @@
     display: inline;
     font-weight: bold;
   }
-}
 
-.is-visible {
-  top: 0;
+  &.is-visible {
+    top: 0;
+  }
 }
 
 .AnalyticsNudge-button {
@@ -46,7 +46,7 @@
   cursor: pointer;
 }
 .opt-in {
-  color: $color-green
+  color: $color-green;
 }
 
 .AnalyticsNudge-button + .AnalyticsNudge-button {

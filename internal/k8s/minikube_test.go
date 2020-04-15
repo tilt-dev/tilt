@@ -1,6 +1,19 @@
 package k8s
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestMinikubeVersion(t *testing.T) {
+	v, err := minikubeVersionFromOutput([]byte(`
+minikube version: v1.8.2
+commit: eb13446e786c9ef70cb0a9f85a633194e62396a1
+`))
+	assert.NoError(t, err)
+	assert.Equal(t, v, "1.8.2")
+}
 
 func TestDockerEnv(t *testing.T) {
 	output := []byte(`

@@ -22,7 +22,6 @@ import (
 	"github.com/windmilleng/tilt/internal/hud"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/internal/tracer"
 	"github.com/windmilleng/tilt/pkg/assets"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -79,8 +78,8 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	addWebServerFlags(cmd)
+	addTiltfileFlag(cmd, &c.fileName)
 	cmd.Flags().Lookup("logactions").Hidden = true
-	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 

@@ -1,7 +1,9 @@
 import React, { Component } from "react"
 import AppController from "./AppController"
 import NoMatch from "./NoMatch"
-import Sidebar, { SidebarItem } from "./Sidebar"
+import Sidebar from "./Sidebar"
+import SidebarAccount from "./SidebarAccount"
+import SidebarResources, { SidebarItem } from "./SidebarResources"
 import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import HeroScreen from "./HeroScreen"
@@ -400,20 +402,30 @@ class HUD extends Component<HudProps, HudState> {
 
   renderSidebarSwitch() {
     let view = this.state.view
-    let resources = (view && view.resources) || []
+    let resources = view?.resources || []
     let sidebarItems = resources.map(res => new SidebarItem(res))
     let isSidebarClosed = !!this.state.isSidebarClosed
+    let tiltCloudUsername = view?.tiltCloudUsername || null
+    let tiltCloudSchemeHost = view?.tiltCloudSchemeHost || ""
+    let tiltCloudTeamID = view?.tiltCloudTeamID || null
+    let isSnapshot = this.pathBuilder.isSnapshot()
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
-        <Sidebar
-          selected={name}
-          items={sidebarItems}
-          isClosed={isSidebarClosed}
-          toggleSidebar={this.toggleSidebar}
-          resourceView={t}
-          pathBuilder={this.pathBuilder}
-        />
+        <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
+          <SidebarAccount
+            tiltCloudUsername={tiltCloudUsername}
+            tiltCloudSchemeHost={tiltCloudSchemeHost}
+            tiltCloudTeamID={tiltCloudTeamID}
+            isSnapshot={isSnapshot}
+          />
+          <SidebarResources
+            selected={name}
+            items={sidebarItems}
+            resourceView={t}
+            pathBuilder={this.pathBuilder}
+          />
+        </Sidebar>
       )
     }
     return (

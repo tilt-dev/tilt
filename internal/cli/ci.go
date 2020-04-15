@@ -12,7 +12,6 @@ import (
 	"github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/cloud"
 	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
@@ -40,10 +39,10 @@ While Tilt is running, you can view the UI at %s:%d
 	}
 
 	addWebServerFlags(cmd)
+	addTiltfileFlag(cmd, &c.fileName)
 
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().Lookup("logactions").Hidden = true
-	cmd.Flags().StringVar(&c.fileName, "file", tiltfile.FileName, "Path to Tiltfile")
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "",
 		"If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 

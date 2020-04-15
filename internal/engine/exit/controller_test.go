@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -107,12 +108,16 @@ func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{
 			PodID:  "pod-a",
 			Status: "ErrImagePull",
+			Containers: []store.Container{
+				store.Container{Name: "c1", Status: model.RuntimeStatusError},
+			},
 		})
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
 	f.c.OnChange(f.ctx, f.store)
 	assert.True(t, f.store.exitSignal)
+	require.Error(t, f.store.exitError)
 	assert.Contains(t, f.store.exitError.Error(),
 		"Pod pod-a in error state: ErrImagePull")
 }
@@ -230,8 +235,8 @@ func (s *testStore) Dispatch(action store.Action) {
 
 func readyPod(podID k8s.PodID) store.Pod {
 	return store.Pod{
-		PodID:  podID,
-		Status: "Running",
+		PodID: podID,
+		Phase: v1.PodRunning,
 		Containers: []store.Container{
 			store.Container{
 				ID:    container.ID(podID + "-container"),

@@ -15,8 +15,10 @@ import (
 // This isn't perfect (because it won't unquote the value right) but
 // it's good enough for 99% of cases.
 var envMatcher = regexp.MustCompile(`export (\w+)="([^"]+)"`)
+var versionMatcher = regexp.MustCompile(`^minikube version: v([0-9.]+)$`)
 
 type MinikubeClient interface {
+	Version(ctx context.Context) (string, error)
 	DockerEnv(ctx context.Context) (map[string]string, error)
 	NodeIP(ctx context.Context) (NodeIP, error)
 }
@@ -32,6 +34,34 @@ func ProvideMinikubeClient(context KubeContext) MinikubeClient {
 func (mc minikubeClient) cmd(ctx context.Context, args ...string) *exec.Cmd {
 	args = append([]string{"-p", string(mc.context)}, args...)
 	return exec.CommandContext(ctx, "minikube", args...)
+}
+
+func (mc minikubeClient) Version(ctx context.Context) (string, error) {
+	cmd := mc.cmd(ctx, "version")
+	output, err := cmd.Output()
+	if err != nil {
+		exitErr, isExitErr := err.(*exec.ExitError)
+		if isExitErr {
+			return "", fmt.Errorf("Could not read minikube version.\n%s", string(exitErr.Stderr))
+		}
+		return "", errors.Wrap(err, "Could not read minikube version")
+	}
+	return minikubeVersionFromOutput(output)
+
+}
+
+func minikubeVersionFromOutput(output []byte) (string, error) {
+	scanner := bufio.NewScanner(bytes.NewBuffer(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		match := versionMatcher.FindStringSubmatch(line)
+		if len(match) > 0 {
+			return match[1], nil
+		}
+	}
+
+	return "", fmt.Errorf("version not found in output:\n%s", string(output))
 }
 
 func (mc minikubeClient) DockerEnv(ctx context.Context) (map[string]string, error) {

@@ -22,6 +22,7 @@ type BuildCompleteAction struct {
 	ManifestName model.ManifestName
 	SpanID       logstore.SpanID
 	Result       store.BuildResultSet
+	FinishTime   time.Time
 	Error        error
 }
 
@@ -32,6 +33,7 @@ func NewBuildCompleteAction(mn model.ManifestName, spanID logstore.SpanID, resul
 		ManifestName: mn,
 		SpanID:       spanID,
 		Result:       result,
+		FinishTime:   time.Now(),
 		Error:        err,
 	}
 }

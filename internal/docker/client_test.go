@@ -30,7 +30,7 @@ func TestSupportsBuildkit(t *testing.T) {
 		{types.Version{APIVersion: "1.40", Experimental: true}, Env{}, true},
 		{types.Version{APIVersion: "1.40", Experimental: false}, Env{}, true},
 		{types.Version{APIVersion: "garbage", Experimental: false}, Env{}, false},
-		{types.Version{APIVersion: "1.39", Experimental: true}, Env{IsMinikube: true}, false},
+		{types.Version{APIVersion: "1.39", Experimental: true}, Env{IsOldMinikube: true}, false},
 	}
 
 	for i, c := range cases {
@@ -93,6 +93,7 @@ func TestSupported(t *testing.T) {
 type provideEnvTestCase struct {
 	env             k8s.Env
 	runtime         container.Runtime
+	minikubeV       string
 	osEnv           map[string]string
 	mkEnv           map[string]string
 	expectedCluster Env
@@ -150,11 +151,28 @@ func TestProvideEnv(t *testing.T) {
 				"DOCKER_API_VERSION": "1.35",
 			},
 			expectedCluster: Env{
+				TLSVerify:     "1",
+				Host:          "tcp://192.168.99.100:2376",
+				CertPath:      "/home/nick/.minikube/certs",
+				APIVersion:    "1.35",
+				IsOldMinikube: true,
+			},
+		},
+		{
+			env:       k8s.EnvMinikube,
+			runtime:   container.RuntimeDocker,
+			minikubeV: "1.8.2",
+			mkEnv: map[string]string{
+				"DOCKER_TLS_VERIFY":  "1",
+				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
+				"DOCKER_API_VERSION": "1.35",
+			},
+			expectedCluster: Env{
 				TLSVerify:  "1",
 				Host:       "tcp://192.168.99.100:2376",
 				CertPath:   "/home/nick/.minikube/certs",
 				APIVersion: "1.35",
-				IsMinikube: true,
 			},
 		},
 		{
@@ -192,16 +210,16 @@ func TestProvideEnv(t *testing.T) {
 				"DOCKER_CERT_PATH":  "/home/nick/.minikube/certs",
 			},
 			expectedCluster: Env{
-				TLSVerify:  "1",
-				Host:       "tcp://192.168.99.100:2376",
-				CertPath:   "/home/nick/.minikube/certs",
-				IsMinikube: true,
+				TLSVerify:     "1",
+				Host:          "tcp://192.168.99.100:2376",
+				CertPath:      "/home/nick/.minikube/certs",
+				IsOldMinikube: true,
 			},
 			expectedLocal: Env{
-				TLSVerify:  "1",
-				Host:       "tcp://192.168.99.100:2376",
-				CertPath:   "/home/nick/.minikube/certs",
-				IsMinikube: true,
+				TLSVerify:     "1",
+				Host:          "tcp://192.168.99.100:2376",
+				CertPath:      "/home/nick/.minikube/certs",
+				IsOldMinikube: true,
 			},
 		},
 		{
@@ -251,7 +269,12 @@ func TestProvideEnv(t *testing.T) {
 				}
 			}()
 
-			mkClient := k8s.FakeMinkube{DockerEnvMap: c.mkEnv}
+			minikubeV := c.minikubeV
+			if minikubeV == "" {
+				minikubeV = "1.3.0" // an Old version
+			}
+
+			mkClient := k8s.FakeMinikube{DockerEnvMap: c.mkEnv, FakeVersion: minikubeV}
 			cluster := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient)
 			assert.Equal(t, c.expectedCluster, Env(cluster))
 

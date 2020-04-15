@@ -36,31 +36,31 @@ $translucent-ish: 0.7;
 // LAYOUT
 $spacing-unit: 32px;
 
-$tablet-width: 1500px;
-
-$sidebar-width: $spacing-unit * 10.5; // sync with style-helpers.ts > Width.sidebar
-$sidebar-maxWidth: 25vw;
-$sidebar-item: $spacing-unit * 1.4; // sync with style-helpers.ts > Height.sidebarItem
-$sidebar-collapsed-width: $spacing-unit; // sync with style-helpers.ts > Width.sidebarCollapsed
-$alert-badge: $spacing-unit * 0.75;
-
 $topbar-height: $spacing-unit * 2.25;
-$tabnav-width: 160px; // Fits our current labels
 $tabnav-height: $topbar-height;
-$resourceInfo-height: $spacing-unit * 1.5;
+$tabnav-width: 160px; // Fits our current labels
 $analyticsNudge-height: $tabnav-height * 1.5;
+$alert-badge: $spacing-unit * 0.75;
+$modal-width: $spacing-unit * 15;
 
 $logLine-separator-height: 2px;
 $logLine-gutter-width: 6px;
-$modal-width: $spacing-unit * 15;
 
-$statusbar-height: $spacing-unit * 1.5;
 $statusbar-tiltPanel-width: $spacing-unit * 1.75;
 
+$tablet-width: 1500px;
+
+// These below need to be synchronized with style-helpers.ts
+// We're mid-migration in shifting away from Sass to Styled Components
+// When most styling is via Styled Components, these will be refactored away:
+$sidebar-width: $spacing-unit * 10.5; // Width.sidebar
+$statusbar-height: $spacing-unit * 1.5; // Height.statusbar
+
+// Z-Index
 $z-modal: 3000;
 $z-analyticsNudge: 2000;
 $z-statusbar: 1000;
-$z-sidebar: 1000;
+$z-sidebar: 1000; // Sync
 $z-topBar: 500;
 
 // MISC

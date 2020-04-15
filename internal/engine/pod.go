@@ -57,7 +57,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	prunePods(ms)
 
 	oldRestartTotal := podInfo.AllContainerRestarts()
-	podInfo.Containers = podContainers(ctx, pod)
+	podInfo.Containers = podContainers(ctx, pod, pod.Status.ContainerStatuses)
+	podInfo.InitContainers = podContainers(ctx, pod, pod.Status.InitContainerStatuses)
 	if isNew {
 		// This is the first time we've seen this pod.
 		// Ignore any restarts that happened before Tilt saw it.
@@ -169,9 +170,9 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 }
 
 // Convert a Kubernetes Pod into a list if simpler Container models to store in the engine state.
-func podContainers(ctx context.Context, pod *v1.Pod) []store.Container {
-	result := make([]store.Container, 0, len(pod.Status.ContainerStatuses))
-	for _, cStatus := range pod.Status.ContainerStatuses {
+func podContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.ContainerStatus) []store.Container {
+	result := make([]store.Container, 0, len(containerStatuses))
+	for _, cStatus := range containerStatuses {
 		c, err := containerForStatus(ctx, pod, cStatus)
 		if err != nil {
 			logger.Get(ctx).Debugf(err.Error())
@@ -224,6 +225,7 @@ func containerForStatus(ctx context.Context, pod *v1.Pod, cStatus v1.ContainerSt
 		Running:  isRunning,
 		ImageRef: cRef,
 		Restarts: int(cStatus.RestartCount),
+		Status:   k8swatch.ContainerStatusToRuntimeState(cStatus),
 	}, nil
 }
 

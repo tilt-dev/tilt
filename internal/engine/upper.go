@@ -273,7 +273,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	ms := mt.State
 	bs := ms.CurrentBuild
 	bs.Error = err
-	bs.FinishTime = time.Now()
+	bs.FinishTime = cb.FinishTime
 	bs.BuildTypes = cb.Result.BuildTypes()
 	if bs.SpanID != "" {
 		bs.WarningCount = len(engineState.LogStore.Warnings(bs.SpanID))
@@ -308,7 +308,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			ms.PendingManifestChange = time.Time{}
 		}
 
-		ms.LastSuccessfulDeployTime = time.Now()
+		ms.LastSuccessfulDeployTime = cb.FinishTime
 
 		for id, result := range cb.Result {
 			ms.MutableBuildStatus(id).LastSuccessfulResult = result
@@ -556,7 +556,7 @@ func handleConfigsReloaded(
 			// ensure we do an image build so that we apply the changes
 			ms := mt.State
 			ms.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
-			ms.PendingManifestChange = time.Now()
+			ms.PendingManifestChange = event.FinishTime
 			ms.ConfigFilesThatCausedChange = configFilesThatChanged
 		}
 		state.UpsertManifestTarget(mt)
@@ -647,7 +647,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.HUDEnabled = action.HUDEnabled
 
 	// NOTE(dmiller): this kicks off a Tiltfile build
-	engineState.PendingConfigFileChanges[action.TiltfilePath] = time.Now()
+	engineState.PendingConfigFileChanges[action.TiltfilePath] = action.StartTime
 }
 
 func handleHudExitAction(state *store.EngineState, action hud.ExitAction) {
@@ -705,10 +705,10 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	}
 
 	if evt.IsStartupEvent() {
-		state = state.WithStartTime(time.Now())
+		state = state.WithStartTime(action.Time)
 		state = state.WithStopping(false)
 		// NB: this will differ from StartTime once we support DC health checks
-		state = state.WithLastReadyTime(time.Now())
+		state = state.WithLastReadyTime(action.Time)
 	}
 
 	if evt.IsStopEvent() {

@@ -36,6 +36,7 @@ type InteractiveTester struct {
 type ErrorReporter interface {
 	Errorf(format string, args ...interface{})
 	Fatalf(format string, args ...interface{})
+	Helper()
 }
 
 func NewInteractiveTester(t ErrorReporter, screen tcell.Screen) InteractiveTester {
@@ -57,6 +58,8 @@ func (i *InteractiveTester) T() ErrorReporter {
 }
 
 func (i *InteractiveTester) Run(name string, width int, height int, c Component) {
+	i.t.Helper()
+
 	err := i.runCaptureError(name, width, height, c)
 	if err != nil {
 		i.t.Errorf("error rendering %s: %v", name, err)
@@ -79,6 +82,7 @@ func (i *InteractiveTester) render(width int, height int, c Component) Canvas {
 // Returns an error if rendering failed.
 // If any other failure is encountered, fails via `i.t`'s `testing.T` and returns `nil`.
 func (i *InteractiveTester) runCaptureError(name string, width int, height int, c Component) error {
+	i.t.Helper()
 	_, ok := i.usedNames[name]
 	if ok {
 		i.t.Fatalf("test name '%s' was already used", name)
