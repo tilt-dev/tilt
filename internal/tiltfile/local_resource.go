@@ -69,11 +69,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	updateCmd, err := value.ValueToCmd(updateCmdVal)
+	updateCmd, err := value.ValueToHostCmd(updateCmdVal)
 	if err != nil {
 		return nil, err
 	}
-	serveCmd, err := value.ValueToCmd(serveCmdVal)
+	serveCmd, err := value.ValueToHostCmd(serveCmdVal)
 	if err != nil {
 		return nil, err
 	}

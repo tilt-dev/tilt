@@ -32,7 +32,7 @@ func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 		return starlark.None, err
 	}
 
-	cmd, err := value.ValueToCmd(cmdVal)
+	cmd, err := value.ValueToHostCmd(cmdVal)
 	if err != nil {
 		return nil, err
 	}

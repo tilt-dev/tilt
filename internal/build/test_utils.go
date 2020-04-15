@@ -247,7 +247,7 @@ func containerConfigRunCmd(imgRef reference.NamedTagged, cmd model.Cmd) *contain
 	//
 	// https://github.com/opencontainers/image-spec/blob/master/config.md#properties
 	if cmd.Empty() {
-		config.Cmd = model.ToShellCmd("# NOTE(nick): a fake cmd").Argv
+		config.Cmd = model.ToUnixCmd("# NOTE(nick): a fake cmd").Argv
 	} else {
 		config.Cmd = cmd.Argv
 	}

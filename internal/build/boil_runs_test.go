@@ -13,7 +13,7 @@ import (
 func TestBoilRunsNoTrigger(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
-			Cmd: model.ToShellCmd("echo hello"),
+			Cmd: model.ToUnixCmd("echo hello"),
 		},
 	}
 
@@ -24,7 +24,7 @@ func TestBoilRunsNoTrigger(t *testing.T) {
 		},
 	}
 
-	expected := []model.Cmd{model.ToShellCmd("echo hello")}
+	expected := []model.Cmd{model.ToUnixCmd("echo hello")}
 
 	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
@@ -37,13 +37,13 @@ func TestBoilRunsNoTrigger(t *testing.T) {
 func TestBoilRunsNoFilesChanged(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
-			Cmd: model.ToShellCmd("echo hello"),
+			Cmd: model.ToUnixCmd("echo hello"),
 		},
 	}
 
 	pathMappings := []PathMapping{}
 
-	expected := []model.Cmd{model.ToShellCmd("echo hello")}
+	expected := []model.Cmd{model.ToUnixCmd("echo hello")}
 
 	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
@@ -57,7 +57,7 @@ func TestBoilRunsOneTriggerFilesDontMatch(t *testing.T) {
 	triggers := []string{"bar"}
 	runs := []model.Run{
 		model.Run{
-			Cmd:      model.ToShellCmd("echo hello"),
+			Cmd:      model.ToUnixCmd("echo hello"),
 			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
@@ -83,7 +83,7 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	triggers := []string{"bar"}
 	runs := []model.Run{
 		model.Run{
-			Cmd:      model.ToShellCmd("echo world"),
+			Cmd:      model.ToUnixCmd("echo world"),
 			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
@@ -95,7 +95,7 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 		},
 	}
 
-	expected := []model.Cmd{model.ToShellCmd("echo world")}
+	expected := []model.Cmd{model.ToUnixCmd("echo world")}
 
 	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
@@ -109,7 +109,7 @@ func TestBoilRunsTriggerMatchingAbsPath(t *testing.T) {
 	triggers := []string{"/home/tilt/code/test/bar"}
 	runs := []model.Run{
 		model.Run{
-			Cmd:      model.ToShellCmd("echo world"),
+			Cmd:      model.ToUnixCmd("echo world"),
 			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
@@ -121,7 +121,7 @@ func TestBoilRunsTriggerMatchingAbsPath(t *testing.T) {
 		},
 	}
 
-	expected := []model.Cmd{model.ToShellCmd("echo world")}
+	expected := []model.Cmd{model.ToUnixCmd("echo world")}
 
 	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {
@@ -135,7 +135,7 @@ func TestBoilRunsTriggerNestedPathNoMatch(t *testing.T) {
 	triggers := []string{"bar"}
 	runs := []model.Run{
 		model.Run{
-			Cmd:      model.ToShellCmd("echo world"),
+			Cmd:      model.ToUnixCmd("echo world"),
 			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
 		},
 	}
@@ -163,11 +163,11 @@ func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 	triggers2 := []string{"bar"}
 	runs := []model.Run{
 		model.Run{
-			Cmd:      model.ToShellCmd("echo hello"),
+			Cmd:      model.ToUnixCmd("echo hello"),
 			Triggers: model.NewPathSet(triggers1, wd),
 		},
 		model.Run{
-			Cmd:      model.ToShellCmd("echo world"),
+			Cmd:      model.ToUnixCmd("echo world"),
 			Triggers: model.NewPathSet(triggers2, wd),
 		},
 	}
@@ -183,7 +183,7 @@ func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 		},
 	}
 
-	expected := []model.Cmd{model.ToShellCmd("echo world")}
+	expected := []model.Cmd{model.ToUnixCmd("echo world")}
 
 	actual, err := BoilRuns(runs, pathMappings)
 	if err != nil {

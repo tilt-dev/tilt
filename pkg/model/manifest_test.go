@@ -275,36 +275,36 @@ var equalitytests = []struct {
 	},
 	{
 		"LocalTarget equal",
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
 		true,
 		false,
 	},
 	{
 		"LocalTarget.Name unequal",
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
-		Manifest{}.WithDeployTarget(NewLocalTarget("foooooo", ToShellCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foooooo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
 		false,
 		true,
 	},
 	{
 		"LocalTarget.UpdateCmd unequal",
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("bippity boppity"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("bippity boppity"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
 		false,
 		true,
 	},
 	{
 		"LocalTarget.Deps unequal",
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), Cmd{}, []string{"quux", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"quux", "baz"}, "path/to/tiltfile")),
 		false,
 		true,
 	},
 	{
 		"LocalTarget.workdir unequal",
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToShellCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "some/other/path")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "some/other/path")),
 		false,
 		true,
 	},
@@ -345,4 +345,9 @@ func TestDCTargetValidate(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "missing name")
 	}
+}
+
+func TestHostCmdToString(t *testing.T) {
+	cmd := ToHostCmd("echo hi")
+	assert.Equal(t, "echo hi", cmd.String())
 }

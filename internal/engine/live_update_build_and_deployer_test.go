@@ -25,7 +25,7 @@ import (
 )
 
 var rsf = build.RunStepFailure{
-	Cmd:      model.ToShellCmd("omgwtfbbq"),
+	Cmd:      model.ToUnixCmd("omgwtfbbq"),
 	ExitCode: 123,
 }
 
@@ -48,9 +48,9 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 
 	packageJson := build.PathMapping{LocalPath: f.JoinPath("package.json"), ContainerPath: "/src/package.json"}
 	runs := []model.Run{
-		model.ToRun(model.ToShellCmd("./foo.sh bar")),
-		model.Run{Cmd: model.ToShellCmd("yarn install"), Triggers: f.newPathSet("package.json")},
-		model.Run{Cmd: model.ToShellCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
+		model.ToRun(model.ToUnixCmd("./foo.sh bar")),
+		model.Run{Cmd: model.ToUnixCmd("yarn install"), Triggers: f.newPathSet("package.json")},
+		model.Run{Cmd: model.ToUnixCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
 	}
 
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, TestBuildState, []build.PathMapping{packageJson}, runs, false)
@@ -64,8 +64,8 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 
 	call := f.cu.Calls[0]
 	expectedCmds := []model.Cmd{
-		model.ToShellCmd("./foo.sh bar"), // should always run
-		model.ToShellCmd("yarn install"), // should run b/c we changed `package.json`
+		model.ToUnixCmd("./foo.sh bar"), // should always run
+		model.ToUnixCmd("yarn install"), // should run b/c we changed `package.json`
 		// `pip install` should NOT run b/c we didn't change `requirements.txt`
 	}
 	assert.Equal(t, expectedCmds, call.Cmds)
@@ -167,7 +167,7 @@ func TestUpdateMultipleRunningContainers(t *testing.T) {
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	cmd := model.ToShellCmd("./foo.sh bar")
+	cmd := model.ToUnixCmd("./foo.sh bar")
 	runs := []model.Run{model.ToRun(cmd)}
 
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, state, paths, runs, true)

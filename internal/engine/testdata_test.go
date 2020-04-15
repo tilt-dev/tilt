@@ -62,13 +62,13 @@ func NewSanchoLiveUpdateManifestWithTriggeredRuns(f Fixture, shouldRestart bool)
 		},
 	}
 	runs := []model.LiveUpdateRunStep{
-		model.LiveUpdateRunStep{Command: model.ToShellCmd("echo hello")},
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo hello")},
 		model.LiveUpdateRunStep{
-			Command:  model.ToShellCmd("echo a"),
+			Command:  model.ToUnixCmd("echo a"),
 			Triggers: model.NewPathSet([]string{"a.txt"}, f.Path()),
 		},
 		model.LiveUpdateRunStep{
-			Command:  model.ToShellCmd("echo b"),
+			Command:  model.ToUnixCmd("echo b"),
 			Triggers: model.NewPathSet([]string{"b.txt"}, f.Path()),
 		},
 	}

@@ -1,5 +1,3 @@
-// +build !windows
-
 package tiltfile
 
 import (
@@ -9,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -70,7 +69,7 @@ docker_build('gcr.io/foo', 'foo')
 k8s_resource('foo', 'foo.yaml')
 `)
 
-	f.loadErrString("foo/Dockerfile", "no such file or directory", "error reading dockerfile")
+	f.loadErrString(filepath.Join("foo", "Dockerfile"), testutils.IsNotExistMessage(), "error reading dockerfile")
 }
 
 func TestCustomBuildBadMethodCall(t *testing.T) {
@@ -257,6 +256,9 @@ func TestVerifiesGitRepo(t *testing.T) {
 }
 
 func TestLocal(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("need per-OS local commands")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -279,6 +281,9 @@ k8s_yaml(yaml)
 }
 
 func TestLocalQuiet(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("need per-OS local commands")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -295,6 +300,9 @@ local('echo foobar', quiet=True)
 }
 
 func TestLocalArgvCmd(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("windows doesn't support argv commands. Go converts it to a single string")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -326,6 +334,9 @@ k8s_yaml(yaml)
 }
 
 func TestKustomize(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - install kustomize on windows ci")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -346,6 +357,9 @@ k8s_resource("the-deployment", "foo")
 }
 
 func TestKustomizeError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - install kustomize on windows ci")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -354,6 +368,9 @@ func TestKustomizeError(t *testing.T) {
 }
 
 func TestKustomization(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - install kustomize on windows ci")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1006,7 +1023,11 @@ k8s_yaml(str(read_file('foo.yaml')))
 docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 `)
 
-	f.loadErrString("no such file or directory")
+	if runtime.GOOS == "windows" {
+		f.loadErrString("The filename, directory name, or volume label syntax is incorrect")
+	} else {
+		f.loadErrString("no such file or directory")
+	}
 }
 
 func TestFilterYamlByLabel(t *testing.T) {
@@ -1164,6 +1185,9 @@ x = 2
 }
 
 func TestHelm(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1185,6 +1209,9 @@ k8s_yaml(yml)
 }
 
 func TestHelmArgs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1215,6 +1242,9 @@ k8s_yaml(yml)
 }
 
 func TestHelmNamespaceFlagDoesNotInsertNSEntityIfNSInChart(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1247,6 +1277,9 @@ k8s_yaml(yml)
 }
 
 func TestHelmNamespaceFlagInsertsNSEntityIfDifferentNSInChart(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1269,6 +1302,9 @@ k8s_yaml(yml)
 }
 
 func TestHelmInvalidDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1281,6 +1317,9 @@ k8s_yaml(yml)
 }
 
 func TestHelmFromRepoPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1927,7 +1966,7 @@ func TestYamlErrorFromLocal(t *testing.T) {
 yaml = local('echo hi')
 k8s_yaml(yaml)
 `)
-	f.loadErrString("local: echo hi")
+	f.loadErrString("echo hi")
 }
 
 func TestYamlErrorFromReadFile(t *testing.T) {
@@ -1941,6 +1980,9 @@ k8s_yaml(read_file('foo.yaml'))
 }
 
 func TestYamlErrorFromHelm(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 	f.setupHelm()
@@ -2538,6 +2580,9 @@ k8s_yaml('foo.yaml')
 }
 
 func TestLocalRegistryDockerCompose(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - install docker-compose on windows ci")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3185,6 +3230,9 @@ trigger_mode(TRIGGER_MODE_MANUAL)
 }
 
 func TestHelmSkipsTests(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3217,6 +3265,9 @@ func isBuggyHelm(t *testing.T) bool {
 }
 
 func TestHelmIncludesRequirements(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - get helm in windows build")
+	}
 	if isBuggyHelm(t) {
 		t.Skipf("Helm v2.15.0 has a major regression, skipping test. See: https://github.com/helm/helm/issues/6708")
 	}
@@ -3607,7 +3658,7 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load()
-	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint(model.ToShellCmd("/bin/the_app"))))
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint(model.ToUnixCmd("/bin/the_app"))))
 }
 
 func TestDockerBuildContainerArgs(t *testing.T) {
@@ -3645,6 +3696,9 @@ k8s_yaml('foo.yaml')
 }
 
 func TestDockerBuild_buildArgs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO - windows-specific commands")
+	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3681,7 +3735,7 @@ k8s_yaml('foo.yaml')
 		image("gcr.io/foo"),
 		deps(f.JoinPath("foo")),
 		cmd("docker build -t $EXPECTED_REF foo"),
-		entrypoint(model.ToShellCmd("/bin/the_app"))),
+		entrypoint(model.ToUnixCmd("/bin/the_app"))),
 	)
 }
 
@@ -5218,7 +5272,7 @@ type updateCmdHelper struct {
 }
 
 func updateCmd(cmd string) updateCmdHelper {
-	return updateCmdHelper{model.ToShellCmd(cmd)}
+	return updateCmdHelper{model.ToHostCmd(cmd)}
 }
 
 func updateCmdArray(cmd ...string) updateCmdHelper {
@@ -5230,7 +5284,7 @@ type serveCmdHelper struct {
 }
 
 func serveCmd(cmd string) serveCmdHelper {
-	return serveCmdHelper{model.ToShellCmd(cmd)}
+	return serveCmdHelper{model.ToHostCmd(cmd)}
 }
 
 func serveCmdArray(cmd ...string) serveCmdHelper {
