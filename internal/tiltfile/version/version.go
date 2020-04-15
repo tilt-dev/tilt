@@ -1,16 +1,24 @@
 package version
 
 import (
+	"fmt"
+
+	"github.com/blang/semver"
+	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
-type Extension struct{}
+type Extension struct {
+	tiltVersion string
+}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewExtension(tiltBuild model.TiltBuild) Extension {
+	return Extension{
+		tiltVersion: tiltBuild.Version,
+	}
 }
 
 func (e Extension) NewState() interface{} {
@@ -19,25 +27,36 @@ func (e Extension) NewState() interface{} {
 	}
 }
 
-func (Extension) OnStart(env *starkit.Environment) error {
-	return env.AddBuiltin("version_settings", setVersionSettings)
+func (e Extension) OnStart(env *starkit.Environment) error {
+	return env.AddBuiltin("version_settings", e.setVersionSettings)
 }
 
-func setVersionSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var checkUpdates bool
-	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
-		"check_updates", &checkUpdates); err != nil {
-		return nil, err
-	}
+func (e Extension) setVersionSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var constraint string
 
-	err := starkit.SetState(thread, func(settings model.VersionSettings) model.VersionSettings {
-		if checkUpdates {
-			settings.CheckUpdates = true
-		} else {
-			settings.CheckUpdates = false
+	err := starkit.SetState(thread, func(settings model.VersionSettings) (model.VersionSettings, error) {
+		if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
+			"check_updates?", &settings.CheckUpdates,
+			"constraint?", &constraint,
+		); err != nil {
+			return settings, err
 		}
-		return settings
+		return settings, nil
 	})
+
+	if constraint != "" {
+		ver, err := semver.Parse(e.tiltVersion)
+		if err != nil {
+			return nil, errors.Wrapf(err, "internal error parsing tilt version '%s'", e.tiltVersion)
+		}
+		rng, err := semver.ParseRange(constraint)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error parsing version constraint")
+		}
+		if !rng(ver) {
+			return nil, fmt.Errorf("you are running Tilt version %s, which doesn't match the version constraint specified in your Tiltfile: '%s'", e.tiltVersion, constraint)
+		}
+	}
 
 	return starlark.None, err
 }
