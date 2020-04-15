@@ -44,9 +44,13 @@ var logActionsFlag bool = false
 type upCmd struct {
 	watch                bool
 	traceTags            string
-	hud                  bool
 	fileName             string
 	outputSnapshotOnExit string
+
+	defaultTUI bool
+	hud        bool
+	// whether hud was explicitly set or just got the default value
+	hudFlagExplicitlySet bool
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -83,7 +87,26 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 
+	// this is to test the new behavior before enabling it in Tilt 1.0
+	// https://app.clubhouse.io/windmill/epic/5549/make-tui-hard-to-find-in-tilt-1-0
+	cmd.Flags().BoolVar(&c.defaultTUI, "default-tui", true, "If false, we'll hide the TUI by default")
+	cmd.Flags().Lookup("default-tui").Hidden = true
+
+	cmd.PreRun = func(cmd *cobra.Command, args []string) {
+		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
+	}
+
 	return cmd
+}
+
+func (c *upCmd) isHudEnabledByConfig() bool {
+	ret := c.hud
+	// in non-default-TUI mode, we only show the hud if the user explicitly specified --hud
+	if !c.defaultTUI && !c.hudFlagExplicitlySet {
+		ret = false
+	}
+
+	return ret
 }
 
 func (c *upCmd) run(ctx context.Context, args []string) error {
@@ -113,7 +136,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	hudEnabled := c.hud && isatty.IsTerminal(os.Stdout.Fd())
+	hudEnabled := c.isHudEnabledByConfig() && isatty.IsTerminal(os.Stdout.Fd())
 	cmdUpDeps, err := wireCmdUp(ctx, hud.HudEnabled(hudEnabled), a, cmdUpTags)
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
