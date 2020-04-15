@@ -83,10 +83,13 @@ export const mixinHideOnSmallScreen = `
 }`
 
 export enum ZIndex {
+  SidebarMenu = 2000,
   Sidebar = 1000,
   HUDHeader = 500,
 }
 
 export enum AnimDuration {
+  short = "0.15s",
   default = "0.3s",
+  long = "0.6s",
 }
