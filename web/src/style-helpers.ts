@@ -91,4 +91,5 @@ export enum ZIndex {
 export enum AnimDuration {
   short = "0.15s",
   default = "0.3s",
+  long = "0.6s",
 }

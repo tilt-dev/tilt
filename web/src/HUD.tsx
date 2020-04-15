@@ -402,12 +402,13 @@ class HUD extends Component<HudProps, HudState> {
 
   renderSidebarSwitch() {
     let view = this.state.view
-    let resources = (view && view.resources) || []
+    let resources = view?.resources || []
     let sidebarItems = resources.map(res => new SidebarItem(res))
     let isSidebarClosed = !!this.state.isSidebarClosed
-    let tiltCloudUsername = (view && view.tiltCloudUsername) || null
-    let tiltCloudSchemeHost = (view && view.tiltCloudSchemeHost) || ""
-    let tiltCloudTeamID = (view && view.tiltCloudTeamID) || null
+    let tiltCloudUsername = view?.tiltCloudUsername || null
+    let tiltCloudSchemeHost = view?.tiltCloudSchemeHost || ""
+    let tiltCloudTeamID = view?.tiltCloudTeamID || null
+    let isSnapshot = this.pathBuilder.isSnapshot()
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
       return (
@@ -416,6 +417,7 @@ class HUD extends Component<HudProps, HudState> {
             tiltCloudUsername={tiltCloudUsername}
             tiltCloudSchemeHost={tiltCloudSchemeHost}
             tiltCloudTeamID={tiltCloudTeamID}
+            isSnapshot={isSnapshot}
           />
           <SidebarResources
             selected={name}
