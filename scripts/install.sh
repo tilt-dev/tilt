@@ -55,7 +55,7 @@ function version_check() {
     echo "Tilt installed!"
     echo
     echo "Note: the ruby templating program named 'tilt' (at $(command -v tilt)) appears before tilt.dev's tilt in your \$PATH."
-    echo "You'll need to adjust your \$PATH, uninstall the other tilt, or use an absolute path to run tilt.dev's tilt."
+    echo "You'll need to adjust your \$PATH, uninstall the other tilt, rename tilt, or use an absolute path to run tilt.dev's tilt. See https://docs.tilt.dev/faq.html."
     exit 1
   elif ! [[ $VERSION =~ $TILT_DEV_PATTERN ]]; then
     echo "Tilt installed!"
