@@ -68,8 +68,9 @@ By default:
 This default behavior does not apply if the Tiltfile uses config.parse or config.set_enabled_resources.
 In that case, see https://tilt.dev/user_config.html and/or comments in your Tiltfile
 
-When you exit Tilt (using Ctrl+C), resources previously started continue running.
-Use tilt down (https://docs.tilt.dev/cli/tilt_down.html) to delete cluster resources.
+When you exit Tilt (using Ctrl+C), Kubernetes resources and Docker Compose resources continue running; 
+you can use tilt down (https://docs.tilt.dev/cli/tilt_down.html) to delete these resources. Any long-running 
+local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 `,
 	}
 
