@@ -54,6 +54,15 @@ func (s RefSelector) WithExactMatch() RefSelector {
 	return s
 }
 
+func (s RefSelector) MatchesAny(toMatch []reference.Named) bool {
+	for _, ref := range toMatch {
+		if s.Matches(ref) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s RefSelector) Matches(toMatch reference.Named) bool {
 	if s.ref == nil {
 		return false

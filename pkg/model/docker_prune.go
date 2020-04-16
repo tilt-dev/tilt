@@ -8,11 +8,15 @@ const DockerPruneDefaultMaxAge = time.Hour * 6
 // How often to prune Docker images while Tilt is running
 const DockerPruneDefaultInterval = time.Hour
 
+// Keep the last 2 builds of an image
+const DockerPruneDefaultKeepRecent = 2
+
 type DockerPruneSettings struct {
-	Enabled   bool
-	MaxAge    time.Duration // "prune Docker objects older than X"
-	NumBuilds int           // "prune every Y builds" (takes precedence over "prune every Z hours")
-	Interval  time.Duration // "prune every Z hours"
+	Enabled    bool
+	MaxAge     time.Duration // "prune Docker objects older than X"
+	NumBuilds  int           // "prune every Y builds" (takes precedence over "prune every Z hours")
+	Interval   time.Duration // "prune every Z hours"
+	KeepRecent int           // Keep the most recent N builds of a tag.
 }
 
 func DefaultDockerPruneSettings() DockerPruneSettings {

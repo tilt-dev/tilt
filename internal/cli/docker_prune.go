@@ -68,7 +68,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	dp := dockerprune.NewDockerPruner(deps.dCli)
 
 	// TODO: print the commands being run
-	dp.Prune(ctx, tlr.DockerPruneSettings.MaxAge, imgSelectors)
+	dp.Prune(ctx, tlr.DockerPruneSettings.MaxAge, tlr.DockerPruneSettings.KeepRecent, imgSelectors)
 
 	return nil
 }

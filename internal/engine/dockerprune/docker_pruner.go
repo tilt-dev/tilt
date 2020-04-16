@@ -3,6 +3,7 @@ package dockerprune
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -91,7 +92,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 
 	// Prune as soon after startup as we can (waiting until we've built SOMETHING)
 	if dp.lastPruneTime.IsZero() && curBuildCount > 0 {
-		dp.PruneAndRecordState(ctx, settings.MaxAge, imgSelectors, curBuildCount)
+		dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
 		return
 	}
 
@@ -99,7 +100,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	if settings.NumBuilds != 0 {
 		buildsSince := curBuildCount - dp.lastPruneBuildCount
 		if buildsSince >= settings.NumBuilds {
-			dp.PruneAndRecordState(ctx, settings.MaxAge, imgSelectors, curBuildCount)
+			dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
 		}
 		return
 	}
@@ -110,26 +111,26 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	if time.Since(dp.lastPruneTime) >= interval {
-		dp.PruneAndRecordState(ctx, settings.MaxAge, imgSelectors, curBuildCount)
+		dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
 	}
 }
 
-func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector, curBuildCount int) {
-	dp.Prune(ctx, maxAge, imgSelectors)
+func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Duration, keepRecent int, imgSelectors []container.RefSelector, curBuildCount int) {
+	dp.Prune(ctx, maxAge, keepRecent, imgSelectors)
 	dp.lastPruneTime = time.Now()
 	dp.lastPruneBuildCount = curBuildCount
 }
 
-func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector) {
+func (dp *DockerPruner) Prune(ctx context.Context, maxAge time.Duration, keepRecent int, imgSelectors []container.RefSelector) {
 	// For future: dispatch event with output/errors to be recorded
 	//   in engineState.TiltSystemState on store (analogous to TiltfileState)
-	err := dp.prune(ctx, maxAge, imgSelectors)
+	err := dp.prune(ctx, maxAge, keepRecent, imgSelectors)
 	if err != nil {
 		logger.Get(ctx).Infof("[Docker Prune] error running docker prune: %v", err)
 	}
 }
 
-func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, imgSelectors []container.RefSelector) error {
+func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, keepRecent int, imgSelectors []container.RefSelector) error {
 	l := logger.Get(ctx)
 	if err := dp.sufficientVersionError(); err != nil {
 		l.Debugf("[Docker Prune] skipping Docker prune, Docker API version too low:\t%v", err)
@@ -149,7 +150,7 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, imgSele
 	prettyPrintContainersPruneReport(containerReport, l)
 
 	// PRUNE IMAGES
-	imageReport, err := dp.deleteOldImages(ctx, maxAge, imgSelectors)
+	imageReport, err := dp.deleteOldImages(ctx, maxAge, keepRecent, imgSelectors)
 	if err != nil {
 		return err
 	}
@@ -170,7 +171,91 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, imgSele
 	return nil
 }
 
-func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration, selectors []container.RefSelector) (types.ImagesPruneReport, error) {
+func (dp *DockerPruner) inspectImages(ctx context.Context, imgs []types.ImageSummary) []types.ImageInspect {
+	result := []types.ImageInspect{}
+	for _, imgSummary := range imgs {
+		inspect, _, err := dp.dCli.ImageInspectWithRaw(ctx, imgSummary.ID)
+		if err != nil {
+			logger.Get(ctx).Debugf("[Docker Prune] error inspecting image '%s': %v", imgSummary.ID, err)
+			continue
+		}
+		result = append(result, inspect)
+	}
+	return result
+}
+
+// Return all image objects that exceed the max age threshold.
+func (dp *DockerPruner) filterImageInspectsByMaxAge(ctx context.Context, inspects []types.ImageInspect, maxAge time.Duration, selectors []container.RefSelector) []types.ImageInspect {
+	result := []types.ImageInspect{}
+	for _, inspect := range inspects {
+		namedRefs, err := container.ParseNamedMulti(inspect.RepoTags)
+		if err != nil {
+			logger.Get(ctx).Debugf("[Docker Prune] error parsing repo tags for '%s': %v", inspect.ID, err)
+			continue
+		}
+
+		// LastTagTime indicates the last time the image was built, which is more
+		// meaningful to us than when the image was created.
+		if time.Since(inspect.Metadata.LastTagTime) >= maxAge && container.AnyMatch(namedRefs, selectors) {
+			if len(inspect.RepoTags) > 1 {
+				logger.Get(ctx).Debugf("[Docker Prune] cannot prune image %s (tags: %s); `docker image remove --force` "+
+					"required to remove an image with multiple tags (Docker throws error: "+
+					"\"image is referenced in one or more repositories\")",
+					inspect.ID, strings.Join(inspect.RepoTags, ", "))
+				continue
+			}
+			result = append(result, inspect)
+		}
+	}
+	return result
+}
+
+// Return all image objects that aren't in the N
+// most recently used for each tag.
+func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspects []types.ImageInspect, keepRecent int, selectors []container.RefSelector) []types.ImageInspect {
+	// First, sort the images in order from most recent to least recent.
+	recentFirst := append([]types.ImageInspect{}, inspects...)
+	sort.SliceStable(recentFirst, func(i, j int) bool {
+		// LastTagTime indicates the last time the image was built, which is more
+		// meaningful to us than when the image was created.
+		return recentFirst[i].Metadata.LastTagTime.After(recentFirst[j].Metadata.LastTagTime)
+	})
+
+	// Next, aggregate the images by which selector they match.
+	imgsBySelector := make(map[container.RefSelector][]types.ImageInspect)
+	for _, inspect := range recentFirst {
+		namedRefs, err := container.ParseNamedMulti(inspect.RepoTags)
+		if err != nil {
+			logger.Get(ctx).Debugf("[Docker Prune] error parsing repo tags for '%s': %v", inspect.ID, err)
+			continue
+		}
+
+		for _, sel := range selectors {
+			if sel.MatchesAny(namedRefs) {
+				imgsBySelector[sel] = append(imgsBySelector[sel], inspect)
+				break
+			}
+		}
+	}
+
+	// Finally, keep the N most recent for each tag.
+	idsToKeep := make(map[string]bool)
+	for _, list := range imgsBySelector {
+		for i := 0; i < keepRecent && i < len(list); i++ {
+			idsToKeep[list[i].ID] = true
+		}
+	}
+
+	result := []types.ImageInspect{}
+	for _, inspect := range inspects {
+		if !idsToKeep[inspect.ID] {
+			result = append(result, inspect)
+		}
+	}
+	return result
+}
+
+func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration, keepRecent int, selectors []container.RefSelector) (types.ImagesPruneReport, error) {
 	opts := types.ImageListOptions{
 		Filters: filters.NewArgs(
 			filters.Arg("label", docker.BuiltByTiltLabelStr),
@@ -181,47 +266,25 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 		return types.ImagesPruneReport{}, err
 	}
 
-	toDelete := make(map[string]uint64) // map imageID to size in bytes
-	for _, imgSummary := range imgs {
-		inspect, _, err := dp.dCli.ImageInspectWithRaw(ctx, imgSummary.ID)
-		if err != nil {
-			logger.Get(ctx).Debugf("[Docker Prune] error inspecting image '%s': %v", imgSummary.ID, err)
-			continue
-		}
-
-		namedRefs, err := container.ParseNamedMulti(inspect.RepoTags)
-		if err != nil {
-			logger.Get(ctx).Debugf("[Docker Prune] error parsing repo tags for '%s': %v", imgSummary.ID, err)
-			continue
-		}
-
-		if time.Since(inspect.Metadata.LastTagTime) >= maxAge && container.AnyMatch(namedRefs, selectors) {
-			if len(inspect.RepoTags) > 1 {
-				logger.Get(ctx).Debugf("[Docker Prune] cannot prune image %s (tags: %s); `docker image remove --force` "+
-					"required to remove an image with multiple tags (Docker throws error: "+
-					"\"image is referenced in one or more repositories\")",
-					inspect.ID, strings.Join(inspect.RepoTags, ", "))
-				continue
-			}
-			toDelete[inspect.ID] = uint64(inspect.Size)
-		}
-	}
+	inspects := dp.inspectImages(ctx, imgs)
+	inspects = dp.filterImageInspectsByMaxAge(ctx, inspects, maxAge, selectors)
+	toDelete := dp.filterOutMostRecentInspects(ctx, inspects, keepRecent, selectors)
 
 	rmOpts := types.ImageRemoveOptions{PruneChildren: true}
 	var responseItems []types.ImageDeleteResponseItem
 	var reclaimedBytes uint64
 
-	for imgID, bytes := range toDelete {
-		items, err := dp.dCli.ImageRemove(ctx, imgID, rmOpts)
+	for _, inspect := range toDelete {
+		items, err := dp.dCli.ImageRemove(ctx, inspect.ID, rmOpts)
 		if err != nil {
 			// No good way to detect in-use images from `inspect` output, so just ignore those errors
 			if !strings.Contains(err.Error(), "image is being used by running container") {
-				logger.Get(ctx).Debugf("[Docker Prune] error removing image '%s': %v", imgID, err)
+				logger.Get(ctx).Debugf("[Docker Prune] error removing image '%s': %v", inspect.ID, err)
 			}
 			continue
 		}
 		responseItems = append(responseItems, items...)
-		reclaimedBytes += bytes
+		reclaimedBytes += uint64(inspect.Size)
 	}
 
 	return types.ImagesPruneReport{
