@@ -47,12 +47,12 @@ func TestHudEnabled(t *testing.T) {
 		args             string
 		expectHUDEnabled bool
 	}{
-		{"old behavior: no --hud", "--default-tui", true},
-		{"old behavior: --hud", "--default-tui --hud", true},
-		{"old behavior: --hud=false", "--default-tui --hud=false", false},
-		{"new behavior: no --hud", "--default-tui=false", false},
-		{"new behavior: --hud", "--default-tui=false --hud", true},
-		{"new behavior: --hud=false", "--default-tui=false --hud=false", false},
+		{"old behavior: no --hud", "--default-hud", true},
+		{"old behavior: --hud", "--default-hud --hud", true},
+		{"old behavior: --hud=false", "--default-hud --hud=false", false},
+		{"new behavior: no --hud", "--default-hud=false", false},
+		{"new behavior: --hud", "--default-hud=false --hud", true},
+		{"new behavior: --hud=false", "--default-hud=false --hud=false", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			cmd := upCmd{}

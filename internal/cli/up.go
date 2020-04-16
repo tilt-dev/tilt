@@ -89,8 +89,8 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 
 	// this is to test the new behavior before enabling it in Tilt 1.0
 	// https://app.clubhouse.io/windmill/epic/5549/make-tui-hard-to-find-in-tilt-1-0
-	cmd.Flags().BoolVar(&c.defaultTUI, "default-tui", true, "If false, we'll hide the TUI by default")
-	cmd.Flags().Lookup("default-tui").Hidden = true
+	cmd.Flags().BoolVar(&c.defaultTUI, "default-hud", true, "If false, we'll hide the TUI by default")
+	cmd.Flags().Lookup("default-hud").Hidden = true
 
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
