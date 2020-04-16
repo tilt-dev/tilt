@@ -36,9 +36,6 @@ Deletes resources specified in the Tiltfile
 
 Namespaces are not deleted by default. Use --delete-namespaces to change that.
 
-Local resources (https://docs.tilt.dev/local_resource.html) that are still running
-(with serve_cmd) are not impacted, and need to be stopped separately.
-
 There are two types of args:
 1) Tilt flags, listed below, which are handled entirely by Tilt.
 2) Tiltfile args, which can be anything, and are potentially accessed by config.parse in your Tiltfile.
