@@ -92,6 +92,12 @@ There are plenty of toy projects to play with in the [integration](https://githu
 - [Live Update Examples](https://github.com/windmilleng/live_update): contains Go and Python examples of Tilt's [Live Update](https://docs.tilt.dev/live_update_tutorial.html) functionality
 - [Sidecar Example](https://github.com/windmilleng/sidecar_example): simple Python app and home-rolled logging sidecar
 
+## Remove token to force signing out of Tilt Cloud
+
+Once you've connected Tilt to Tilt Cloud via GitHub, you cannot sign out, breaking the connection. 
+Sometimes during development and testing, you need to this. 
+Remove the token file named `token` at `~/.windmill`. Restart Tilt, and you will be signed out.
+
 ## Performance
 
 ### Go Profile
