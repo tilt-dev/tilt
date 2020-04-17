@@ -30,6 +30,7 @@ var (
 	numImages        = 3
 	maxAge           = 11 * time.Hour
 	refSel           = container.MustParseSelector("some-ref")
+	keep0            = 0
 )
 
 var buildHistory = []model.BuildRecord{
@@ -42,7 +43,7 @@ func twoHrsAgo() time.Time {
 
 func TestPruneFilters(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, keep0, imgSelectors)
 	require.NoError(t, err)
 
 	expectedFilters := filters.NewArgs(
@@ -62,7 +63,7 @@ func TestPruneFilters(t *testing.T) {
 
 func TestPruneOutput(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, keep0, imgSelectors)
 	require.NoError(t, err)
 
 	logs := f.logs.String()
@@ -77,7 +78,7 @@ func TestPruneOutput(t *testing.T) {
 func TestPruneVersionTooLow(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	f.dCli.ThrowNewVersionError = true
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, keep0, imgSelectors)
 	require.NoError(t, err) // should log failure but not throw error
 
 	logs := f.logs.String()
@@ -93,7 +94,7 @@ func TestPruneVersionTooLow(t *testing.T) {
 func TestPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	f.dCli.BuildCachePruneErr = f.dCli.VersionError("1.2.3", "build prune")
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, keep0, imgSelectors)
 	require.NoError(t, err) // should log failure but not throw error
 
 	logs := f.logs.String()
@@ -108,7 +109,7 @@ func TestPruneSkipCachePruneIfVersionTooLow(t *testing.T) {
 func TestPruneReturnsCachePruneError(t *testing.T) {
 	f, imgSelectors := newFixture(t).withPruneOutput(cachesPruned, containersPruned, numImages)
 	f.dCli.BuildCachePruneErr = fmt.Errorf("this is a real error, NOT an API version error")
-	err := f.dp.prune(f.ctx, maxAge, imgSelectors)
+	err := f.dp.prune(f.ctx, maxAge, keep0, imgSelectors)
 	require.NotNil(t, err) // For all errors besides API version error, expect them to return
 	assert.Contains(t, err.Error(), "this is a real error")
 
@@ -124,16 +125,16 @@ func TestPruneReturnsCachePruneError(t *testing.T) {
 func TestDeleteOldImages(t *testing.T) {
 	f := newFixture(t)
 	maxAge := 3 * time.Hour
-	_, _ = f.withImageInspect(0, 25, time.Hour)      // young enough, won't be pruned
-	_, ref := f.withImageInspect(1, 50, 4*time.Hour) // older than max age, will be pruned
-	_, _ = f.withImageInspect(2, 75, 6*time.Hour)    // older than max age but doesn't match passed ref selectors
-	report, err := f.dp.deleteOldImages(f.ctx, maxAge, []container.RefSelector{container.NameSelector(ref)})
+	_, _ = f.withImageInspect(0, 25, time.Hour)       // young enough, won't be pruned
+	id, ref := f.withImageInspect(1, 50, 4*time.Hour) // older than max age, will be pruned
+	_, _ = f.withImageInspect(2, 75, 6*time.Hour)     // older than max age but doesn't match passed ref selectors
+	report, err := f.dp.deleteOldImages(f.ctx, maxAge, keep0, []container.RefSelector{container.NameSelector(ref)})
 	require.NoError(t, err)
 
 	assert.Len(t, report.ImagesDeleted, 1, "expected exactly one deleted image")
 	assert.Equal(t, 50, int(report.SpaceReclaimed), "expected space reclaimed")
 
-	expectedDeleted := []string{"build-id-1"}
+	expectedDeleted := []string{id}
 	assert.Equal(t, expectedDeleted, f.dCli.RemovedImageIDs)
 
 	expectedFilters := filters.NewArgs(filters.Arg("label", docker.BuiltByTiltLabelStr))
@@ -141,6 +142,64 @@ func TestDeleteOldImages(t *testing.T) {
 		assert.Equal(t, expectedFilters, f.dCli.ImageListOpts[0].Filters,
 			"expected ImageList to called with label=builtby:tilt filter")
 	}
+}
+
+func TestKeepRecentImages(t *testing.T) {
+	f := newFixture(t)
+	maxAge := time.Minute
+	_, ref1 := f.withImageInspect(0, 10, time.Hour)
+	idOldest, ref2 := f.withImageInspect(0, 100, 4*time.Hour)
+	_, ref3 := f.withImageInspect(0, 1000, 3*time.Hour)
+	selectors := []container.RefSelector{
+		container.NameSelector(ref1),
+		container.NameSelector(ref2),
+		container.NameSelector(ref3),
+	}
+
+	keep4 := 4
+	report, err := f.dp.deleteOldImages(f.ctx, maxAge, keep4, selectors)
+	require.NoError(t, err)
+	assert.Len(t, report.ImagesDeleted, 0)
+
+	keep2 := 2
+	report, err = f.dp.deleteOldImages(f.ctx, maxAge, keep2, selectors)
+	require.NoError(t, err)
+	assert.Len(t, report.ImagesDeleted, 1)
+
+	// deletes the oldest image
+	expectedDeleted := []string{idOldest}
+	assert.Equal(t, expectedDeleted, f.dCli.RemovedImageIDs)
+}
+
+func TestKeepRecentImagesMultipleTags(t *testing.T) {
+	f := newFixture(t)
+	maxAge := time.Minute
+	_, refA1 := f.withImageInspect(0, 10, time.Hour)
+	idA2, refA2 := f.withImageInspect(0, 100, 2*time.Hour)
+	idA3, refA3 := f.withImageInspect(0, 1000, 3*time.Hour)
+	idB2, refB2 := f.withImageInspect(1, 100, 5*time.Hour)
+	_, refB1 := f.withImageInspect(1, 10, 4*time.Hour)
+	selectors := []container.RefSelector{
+		container.NameSelector(refA1),
+		container.NameSelector(refA2),
+		container.NameSelector(refA3),
+		container.NameSelector(refB1),
+		container.NameSelector(refB2),
+	}
+
+	keep4 := 4
+	report, err := f.dp.deleteOldImages(f.ctx, maxAge, keep4, selectors)
+	require.NoError(t, err)
+	assert.Len(t, report.ImagesDeleted, 0)
+
+	keep1 := 1
+	report, err = f.dp.deleteOldImages(f.ctx, maxAge, keep1, selectors)
+	require.NoError(t, err)
+	assert.Len(t, report.ImagesDeleted, 3)
+
+	// deletes the oldest images from each tag
+	expectedDeleted := []string{idA2, idA3, idB2}
+	assert.Equal(t, expectedDeleted, f.dCli.RemovedImageIDs)
 }
 
 func TestDeleteOldImagesDontRemoveImageWithMultipleTags(t *testing.T) {
@@ -151,7 +210,7 @@ func TestDeleteOldImagesDontRemoveImageWithMultipleTags(t *testing.T) {
 	inspect.RepoTags = append(f.dCli.Images[id].RepoTags, "some-additional-tag")
 	f.dCli.Images[id] = inspect
 
-	report, err := f.dp.deleteOldImages(f.ctx, maxAge, []container.RefSelector{container.NameSelector(ref)})
+	report, err := f.dp.deleteOldImages(f.ctx, maxAge, keep0, []container.RefSelector{container.NameSelector(ref)})
 	require.NoError(t, err) // error is silent
 
 	assert.Len(t, report.ImagesDeleted, 0, "expected no deleted images")
@@ -352,8 +411,8 @@ func (dpf *dockerPruneFixture) withPruneOutput(caches, containers []string, numI
 }
 
 func (dpf *dockerPruneFixture) withImageInspect(i, size int, timeSinceLastTag time.Duration) (id string, ref reference.Named) {
-	id = fmt.Sprintf("build-id-%d", i)
-	tag := fmt.Sprintf("%s-tag", id)
+	tag := fmt.Sprintf("tag-%d", i)
+	id = fmt.Sprintf("build-id-%d", dpf.dCli.ImageListCount)
 	dpf.dCli.Images[id] = types.ImageInspect{
 		ID:       id,
 		RepoTags: []string{tag},

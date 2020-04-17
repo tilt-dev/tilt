@@ -21,9 +21,10 @@ func NewExtension() Extension {
 
 func (e Extension) NewState() interface{} {
 	return model.DockerPruneSettings{
-		Enabled:  true,
-		MaxAge:   model.DockerPruneDefaultMaxAge,
-		Interval: model.DockerPruneDefaultInterval,
+		Enabled:    true,
+		MaxAge:     model.DockerPruneDefaultMaxAge,
+		Interval:   model.DockerPruneDefaultInterval,
+		KeepRecent: model.DockerPruneDefaultKeepRecent,
 	}
 }
 
@@ -33,12 +34,14 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 
 func (e Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var disable bool
+	var keepRecent starlark.Value
 	var intervalHrs, numBuilds, maxAgeMins int
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"disable?", &disable,
 		"max_age_mins?", &maxAgeMins,
 		"num_builds?", &numBuilds,
-		"interval_hrs?", &intervalHrs); err != nil {
+		"interval_hrs?", &intervalHrs,
+		"keep_recent?", &keepRecent); err != nil {
 		return nil, err
 	}
 
@@ -47,7 +50,7 @@ func (e Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Bui
 			"only one of `num_builds` and `interval_hrs`")
 	}
 
-	err := starkit.SetState(thread, func(settings model.DockerPruneSettings) model.DockerPruneSettings {
+	err := starkit.SetState(thread, func(settings model.DockerPruneSettings) (model.DockerPruneSettings, error) {
 		settings.Enabled = !disable
 		if maxAgeMins != 0 {
 			settings.MaxAge = time.Duration(maxAgeMins) * time.Minute
@@ -56,7 +59,14 @@ func (e Extension) dockerPruneSettings(thread *starlark.Thread, fn *starlark.Bui
 		if intervalHrs != 0 {
 			settings.Interval = time.Duration(intervalHrs) * time.Hour
 		}
-		return settings
+		if keepRecent != nil {
+			recent, err := starlark.AsInt32(keepRecent)
+			if err != nil {
+				return settings, err
+			}
+			settings.KeepRecent = recent
+		}
+		return settings, nil
 	})
 
 	return starlark.None, err
