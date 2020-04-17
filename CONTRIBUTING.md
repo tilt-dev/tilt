@@ -95,8 +95,8 @@ There are plenty of toy projects to play with in the [integration](https://githu
 ## Remove token to force signing out of Tilt Cloud
 
 Once you've connected Tilt to Tilt Cloud via GitHub, you cannot sign out to break the connection.
-But sometimes during development and testing, you need to do this.
-Remove the token file named `token` at `~/.windmill`. Restart Tilt, and you will be signed out.
+But sometimes during development and testing, you need to do this. Remove the token file named `token` 
+located at `~/.windmill` on your machine. Restart Tilt, and you will be signed out.
 
 ## Performance
 
