@@ -3,6 +3,7 @@ package os
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"go.starlark.net/starlark"
@@ -37,7 +38,21 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
-	return env.AddValue("os.environ", environValue)
+	err = env.AddValue("os.environ", environValue)
+	if err != nil {
+		return err
+	}
+
+	return env.AddValue("os.name", starlark.String(osName()))
+}
+
+// For consistency with
+// https://docs.python.org/3/library/os.html#os.name
+func osName() string {
+	if runtime.GOOS == "windows" {
+		return "nt"
+	}
+	return "posix"
 }
 
 func environ() (starlark.Value, error) {
