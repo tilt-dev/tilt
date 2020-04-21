@@ -82,6 +82,18 @@ print(os.path.realpath('.'))
 	assert.Equal(t, fmt.Sprintf("%s\n", f.Path()), f.PrintOutput())
 }
 
+func TestName(t *testing.T) {
+	f := NewFixture(t)
+	f.File("Tiltfile", `
+print(os.name)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	assert.Equal(t, fmt.Sprintf("%s\n", osName()), f.PrintOutput())
+}
+
 func NewFixture(tb testing.TB) *starkit.Fixture {
 	return starkit.NewFixture(tb, NewExtension())
 }
