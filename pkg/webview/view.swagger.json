@@ -566,6 +566,9 @@
         "tilt_cloud_username": {
           "type": "string"
         },
+        "tilt_cloud_team_name": {
+          "type": "string"
+        },
         "tilt_cloud_schemeHost": {
           "type": "string"
         },

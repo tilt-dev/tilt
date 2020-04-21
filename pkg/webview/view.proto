@@ -170,6 +170,7 @@ message View {
   VersionSettings version_settings = 12;
 
   string tilt_cloud_username = 8;
+  string tilt_cloud_team_name = 15;
   string tilt_cloud_schemeHost = 9;
   string tilt_cloud_teamID = 10;
 

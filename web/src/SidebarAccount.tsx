@@ -172,6 +172,7 @@ type SidebarAccountProps = {
   tiltCloudUsername: string | null
   tiltCloudSchemeHost: string
   tiltCloudTeamID: string | null
+  tiltCloudTeamName: string | null
 }
 
 function notifyTiltOfRegistration() {
@@ -201,19 +202,28 @@ function SidebarAccount(props: SidebarAccountProps) {
     )
   }
 
-  let signedInMenuContent = (
-    <SidebarAccountMenuContent className="is-signedIn">
-      <p>
-        Signed in as <strong>{props.tiltCloudUsername}</strong>
-      </p>
+  let teamContent = null
+  if (props.tiltCloudTeamID) {
+    teamContent = (
       <MenuContentTeam>
         On team{" "}
-        <MenuContentTeamName>{props.tiltCloudTeamID}</MenuContentTeamName>
+        <MenuContentTeamName>
+          {props.tiltCloudTeamName ?? props.tiltCloudTeamID}
+        </MenuContentTeamName>
         <br />
         <MenuContentTeamInTiltfile>
           From <strong>`set_team()`</strong> in Tiltfile
         </MenuContentTeamInTiltfile>
       </MenuContentTeam>
+    )
+  }
+
+  let signedInMenuContent = (
+    <SidebarAccountMenuContent className="is-signedIn">
+      <p>
+        Signed in as <strong>{props.tiltCloudUsername}</strong>
+      </p>
+      {teamContent}
       <MenuContentButtonTiltCloud
         href={props.tiltCloudSchemeHost}
         target="_blank"

@@ -14,6 +14,7 @@ it("renders nothing on a Tilt Snapshot", () => {
         tiltCloudUsername=""
         tiltCloudSchemeHost="http://cloud.tilt.dev"
         tiltCloudTeamID=""
+        tiltCloudTeamName=""
         isSnapshot={true}
       />
     </MemoryRouter>
@@ -29,6 +30,7 @@ it("renders Sign Up button when user is not signed in", () => {
         tiltCloudUsername=""
         tiltCloudSchemeHost="http://cloud.tilt.dev"
         tiltCloudTeamID=""
+        tiltCloudTeamName=""
         isSnapshot={false}
       />
     </MemoryRouter>
@@ -44,6 +46,7 @@ it("renders TiltCloud button when user is signed in", () => {
         tiltCloudUsername="amaia"
         tiltCloudSchemeHost="http://cloud.tilt.dev"
         tiltCloudTeamID="cactus inc"
+        tiltCloudTeamName=""
         isSnapshot={false}
       />
     </MemoryRouter>

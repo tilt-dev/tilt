@@ -128,6 +128,7 @@ func (AnalyticsNudgeSurfacedAction) Action() {}
 type TiltCloudStatusReceivedAction struct {
 	Found                    bool
 	Username                 string
+	TeamName                 string
 	IsPostRegistrationLookup bool
 }
 

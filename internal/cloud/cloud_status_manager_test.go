@@ -43,7 +43,19 @@ func TestWhoAmI(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newCloudStatusManagerTestFixture(t)
 
-			f.httpClient.SetResponse(`{"foo": "bar"}`)
+			resp := whoAmIResponse{
+				Found:    true,
+				Username: "myusername",
+			}
+
+			if tc.teamID != "" {
+				resp.TeamName = "test team name"
+			}
+
+			respBytes, err := json.Marshal(resp)
+			require.NoError(t, err)
+
+			f.httpClient.SetResponse(string(respBytes))
 			f.Run(func(state *store.EngineState) {
 				state.TeamID = tc.teamID
 				state.Token = "test token"
@@ -60,9 +72,22 @@ func TestWhoAmI(t *testing.T) {
 			}
 
 			var j whoAmIRequest
-			err := json.NewDecoder(req.Body).Decode(&j)
+			err = json.NewDecoder(req.Body).Decode(&j)
 			require.NoError(t, err)
 			require.Equal(t, "test tilt version", j.TiltVersion)
+
+			expectedAction := store.TiltCloudStatusReceivedAction{
+				Found:                    true,
+				Username:                 "myusername",
+				IsPostRegistrationLookup: false,
+			}
+
+			if tc.teamID != "" {
+				expectedAction.TeamName = "test team name"
+			}
+
+			a := store.WaitForAction(t, reflect.TypeOf(store.TiltCloudStatusReceivedAction{}), f.st.Actions).(store.TiltCloudStatusReceivedAction)
+			require.Equal(t, expectedAction, a)
 		})
 	}
 }

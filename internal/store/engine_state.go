@@ -108,6 +108,7 @@ type EngineState struct {
 
 type CloudStatus struct {
 	Username                         string
+	TeamName                         string
 	TokenKnownUnregistered           bool // to distinguish whether an empty Username means "we haven't checked" or "we checked and the token isn't registered"
 	WaitingForStatusPostRegistration bool
 }

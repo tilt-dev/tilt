@@ -408,6 +408,7 @@ class HUD extends Component<HudProps, HudState> {
     let tiltCloudUsername = view?.tiltCloudUsername || null
     let tiltCloudSchemeHost = view?.tiltCloudSchemeHost || ""
     let tiltCloudTeamID = view?.tiltCloudTeamID || null
+    let tiltCloudTeamName = view?.tiltCloudTeamName || null
     let isSnapshot = this.pathBuilder.isSnapshot()
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
       let name = props.match.params.name
@@ -417,6 +418,7 @@ class HUD extends Component<HudProps, HudState> {
             tiltCloudUsername={tiltCloudUsername}
             tiltCloudSchemeHost={tiltCloudSchemeHost}
             tiltCloudTeamID={tiltCloudTeamID}
+            tiltCloudTeamName={tiltCloudTeamName}
             isSnapshot={isSnapshot}
           />
           <SidebarResources
