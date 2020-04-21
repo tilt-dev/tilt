@@ -138,6 +138,10 @@ func TestNoImageTargets(t *testing.T) {
 	expectedLabelStr := fmt.Sprintf("%s: %s", k8s.ManagedByLabel, k8s.ManagedByValue)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedLabelStr),
 		"Expected \"%s\" label to appear once in YAML: %s", expectedLabelStr, f.k8s.Yaml)
+
+	// If we're not making updates in response to an image change, it's OK to
+	// leave the existing image pull policy.
+	assert.Contains(t, f.k8s.Yaml, "imagePullPolicy: Always")
 }
 
 func TestImageIsClean(t *testing.T) {

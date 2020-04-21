@@ -296,15 +296,19 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			return nil, errors.Wrap(err, "deploy")
 		}
 
-		// For development, image pull policy should never be set to "Always",
-		// even if it might make sense to use "Always" in prod. People who
-		// set "Always" for development are shooting their own feet.
-		e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
-		if err != nil {
-			return nil, err
+		// If we're redeploying these workloads in response to image
+		// changes, we make sure image pull policy isn't set to "Always".
+		// Frequent applies don't work well with this setting, and makes things
+		// slower. See discussion:
+		// https://github.com/windmilleng/tilt/issues/3209
+		if len(iTargetMap) > 0 {
+			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		// StatefulSet pods should be managed in parallel. See:
+		// StatefulSet pods should be managed in parallel. See discussion:
 		// https://github.com/windmilleng/tilt/issues/1962
 		e = k8s.InjectParallelPodManagementPolicy(e)
 

@@ -591,6 +591,7 @@ spec:
   containers:
   - name: lonely-pod
     image: gcr.io/windmill-public-containers/lonely-pod
+    imagePullPolicy: Always
     command: ["/go/bin/lonely-pod"]
     ports:
     - containerPort: 8001
