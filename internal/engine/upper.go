@@ -748,6 +748,7 @@ func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.Ti
 	} else {
 		state.CloudStatus.TokenKnownUnregistered = false
 		state.CloudStatus.Username = action.Username
+		state.CloudStatus.TeamName = action.TeamName
 	}
 }
 

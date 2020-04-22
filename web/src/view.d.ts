@@ -16,6 +16,7 @@ declare namespace Proto {
     latestTiltBuild?: webviewTiltBuild;
     versionSettings?: webviewVersionSettings;
     tiltCloudUsername?: string;
+    tiltCloudTeamName?: string;
     tiltCloudSchemeHost?: string;
     tiltCloudTeamID?: string;
     fatalError?: string;
