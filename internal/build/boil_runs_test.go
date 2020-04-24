@@ -1,8 +1,8 @@
-// +build !windows
-
 package build
 
 import (
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +19,7 @@ func TestBoilRunsNoTrigger(t *testing.T) {
 
 	pathMappings := []PathMapping{
 		PathMapping{
-			LocalPath:     "/home/tilt/code/test/foo",
+			LocalPath:     AbsPath("test", "foo"),
 			ContainerPath: "/src/foo",
 		},
 	}
@@ -58,13 +58,13 @@ func TestBoilRunsOneTriggerFilesDontMatch(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToUnixCmd("echo hello"),
-			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, AbsPath("test")),
 		},
 	}
 
 	pathMappings := []PathMapping{
 		PathMapping{
-			LocalPath:     "/home/tilt/code/test/foo",
+			LocalPath:     AbsPath("test", "foo"),
 			ContainerPath: "/src/foo",
 		},
 	}
@@ -84,13 +84,13 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToUnixCmd("echo world"),
-			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, AbsPath("test")),
 		},
 	}
 
 	pathMappings := []PathMapping{
 		PathMapping{
-			LocalPath:     "/home/tilt/code/test/bar",
+			LocalPath:     AbsPath("test", "bar"),
 			ContainerPath: "/src/bar",
 		},
 	}
@@ -106,17 +106,17 @@ func TestBoilRunsOneTriggerMatchingFile(t *testing.T) {
 }
 
 func TestBoilRunsTriggerMatchingAbsPath(t *testing.T) {
-	triggers := []string{"/home/tilt/code/test/bar"}
+	triggers := []string{AbsPath("test", "bar")}
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToUnixCmd("echo world"),
-			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, AbsPath("test")),
 		},
 	}
 
 	pathMappings := []PathMapping{
 		PathMapping{
-			LocalPath:     "/home/tilt/code/test/bar",
+			LocalPath:     AbsPath("test", "bar"),
 			ContainerPath: "/src/bar",
 		},
 	}
@@ -136,7 +136,7 @@ func TestBoilRunsTriggerNestedPathNoMatch(t *testing.T) {
 	runs := []model.Run{
 		model.Run{
 			Cmd:      model.ToUnixCmd("echo world"),
-			Triggers: model.NewPathSet(triggers, "/home/tilt/code/test"),
+			Triggers: model.NewPathSet(triggers, AbsPath("test")),
 		},
 	}
 
@@ -158,7 +158,7 @@ func TestBoilRunsTriggerNestedPathNoMatch(t *testing.T) {
 }
 
 func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
-	wd := "/home/tilt/code/test"
+	wd := AbsPath("test")
 	triggers1 := []string{"foo"}
 	triggers2 := []string{"bar"}
 	runs := []model.Run{
@@ -174,11 +174,11 @@ func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 
 	pathMappings := []PathMapping{
 		PathMapping{
-			LocalPath:     "/home/tilt/code/test/baz",
+			LocalPath:     AbsPath("test", "baz"),
 			ContainerPath: "/src/baz",
 		},
 		PathMapping{
-			LocalPath:     "/home/tilt/code/test/bar",
+			LocalPath:     AbsPath("test", "bar"),
 			ContainerPath: "/src/bar",
 		},
 	}
@@ -191,4 +191,11 @@ func TestBoilRunsManyTriggersManyFiles(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, expected, actual)
+}
+
+func AbsPath(parts ...string) string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(append([]string{"C:\\home\\tilt"}, parts...)...)
+	}
+	return filepath.Join(append([]string{"/home/tilt"}, parts...)...)
 }
