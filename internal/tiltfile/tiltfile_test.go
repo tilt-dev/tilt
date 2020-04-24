@@ -256,9 +256,6 @@ func TestVerifiesGitRepo(t *testing.T) {
 }
 
 func TestLocal(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("need per-OS local commands")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -266,7 +263,10 @@ func TestLocal(t *testing.T) {
 
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
-yaml = local('cat foo.yaml')
+cmd = 'cat foo.yaml'
+if os.name == 'nt':
+  cmd = 'type foo.yaml'
+yaml = local(cmd)
 k8s_yaml(yaml)
 `)
 
@@ -276,14 +276,15 @@ k8s_yaml(yaml)
 		db(image("gcr.io/foo")),
 		deployment("foo"))
 
-	assert.Contains(t, f.out.String(), "local: cat foo.yaml")
+	cmdStr := "cat foo.yaml"
+	if runtime.GOOS == "windows" {
+		cmdStr = "type foo.yaml"
+	}
+	assert.Contains(t, f.out.String(), "local: "+cmdStr)
 	assert.Contains(t, f.out.String(), " → kind: Deployment")
 }
 
 func TestLocalQuiet(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("need per-OS local commands")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -334,9 +335,6 @@ k8s_yaml(yaml)
 }
 
 func TestKustomize(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - install kustomize on windows ci")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -357,9 +355,6 @@ k8s_resource("the-deployment", "foo")
 }
 
 func TestKustomizeError(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - install kustomize on windows ci")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -368,9 +363,6 @@ func TestKustomizeError(t *testing.T) {
 }
 
 func TestKustomization(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - install kustomize on windows ci")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1185,9 +1177,6 @@ x = 2
 }
 
 func TestHelm(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1209,9 +1198,6 @@ k8s_yaml(yml)
 }
 
 func TestHelmArgs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1242,9 +1228,6 @@ k8s_yaml(yml)
 }
 
 func TestHelmNamespaceFlagDoesNotInsertNSEntityIfNSInChart(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1277,9 +1260,6 @@ k8s_yaml(yml)
 }
 
 func TestHelmNamespaceFlagInsertsNSEntityIfDifferentNSInChart(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1302,9 +1282,6 @@ k8s_yaml(yml)
 }
 
 func TestHelmInvalidDirectory(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1317,9 +1294,6 @@ k8s_yaml(yml)
 }
 
 func TestHelmFromRepoPath(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -1980,9 +1954,6 @@ k8s_yaml(read_file('foo.yaml'))
 }
 
 func TestYamlErrorFromHelm(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 	f.setupHelm()
@@ -2580,9 +2551,6 @@ k8s_yaml('foo.yaml')
 }
 
 func TestLocalRegistryDockerCompose(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - install docker-compose on windows ci")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3230,9 +3198,6 @@ trigger_mode(TRIGGER_MODE_MANUAL)
 }
 
 func TestHelmSkipsTests(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3265,9 +3230,6 @@ func isBuggyHelm(t *testing.T) bool {
 }
 
 func TestHelmIncludesRequirements(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - get helm in windows build")
-	}
 	if isBuggyHelm(t) {
 		t.Skipf("Helm v2.15.0 has a major regression, skipping test. See: https://github.com/helm/helm/issues/6708")
 	}
@@ -3696,9 +3658,6 @@ k8s_yaml('foo.yaml')
 }
 
 func TestDockerBuild_buildArgs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO - windows-specific commands")
-	}
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3706,7 +3665,10 @@ func TestDockerBuild_buildArgs(t *testing.T) {
 
 	f.file("rev.txt", "hello")
 	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo', build_args={'GIT_REV': local('cat rev.txt')})
+cmd = 'cat rev.txt'
+if os.name == 'nt':
+  cmd = 'type rev.txt'
+docker_build('gcr.io/foo', 'foo', build_args={'GIT_REV': local(cmd)})
 k8s_yaml('foo.yaml')
 `)
 
