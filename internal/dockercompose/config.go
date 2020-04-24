@@ -1,6 +1,7 @@
 package dockercompose
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -82,7 +83,14 @@ func (v *Volumes) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		switch a := volume.(type) {
 		case string:
 			parts := strings.Split(a, ":")
-			*v = append(*v, Volume{Source: parts[0]})
+			source := parts[0]
+
+			// docker-compose uses : as a separator, but also normalizes
+			// windows paths to absolute (C:\foo\bar), so special-case this.
+			if len(parts) >= 2 && strings.HasPrefix(parts[1], "\\") {
+				source = fmt.Sprintf("%s:%s", parts[0], parts[1])
+			}
+			*v = append(*v, Volume{Source: source})
 		}
 	}
 

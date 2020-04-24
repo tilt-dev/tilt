@@ -1,5 +1,3 @@
-// +build !windows
-
 package tiltfile
 
 import (
@@ -8,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 func TestIncludeThreeTiltfiles(t *testing.T) {
@@ -84,7 +84,7 @@ include('./foo/Tiltfile')
 
 	f.loadErrString(
 		"Tiltfile:2:8: in <toplevel>",
-		"no such file or directory")
+		testutils.IsNotExistMessage())
 }
 
 func TestIncludeError(t *testing.T) {
@@ -99,8 +99,8 @@ local('exit 1')
 `)
 
 	f.loadErrString(
-		fmt.Sprintf("%s/Tiltfile:2:8: in <toplevel>", f.Path()),
-		fmt.Sprintf("%s/foo/Tiltfile:2:6: in <toplevel>", f.Path()),
+		fmt.Sprintf("%s:2:8: in <toplevel>", f.JoinPath("Tiltfile")),
+		fmt.Sprintf("%s:2:6: in <toplevel>", f.JoinPath("foo", "Tiltfile")),
 		"exit status 1")
 }
 
@@ -138,8 +138,8 @@ local('exit 1')
 `)
 
 	f.loadErrString(
-		fmt.Sprintf("%s/Tiltfile:2:1: in <toplevel>", f.Path()),
-		fmt.Sprintf("%s/foo/Tiltfile:3:6: in <toplevel>", f.Path()),
+		fmt.Sprintf("%s:2:1: in <toplevel>", f.JoinPath("Tiltfile")),
+		fmt.Sprintf("%s:3:6: in <toplevel>", f.JoinPath("foo", "Tiltfile")),
 		"exit status 1")
 }
 

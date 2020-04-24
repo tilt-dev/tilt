@@ -1,9 +1,10 @@
-//+build !skipdockercomposetests,!windows
+//+build !skipdockercomposetests
 
 package tiltfile
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -67,7 +68,7 @@ func TestDockerComposeManifest(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
@@ -81,7 +82,14 @@ func TestDockerComposeManifest(t *testing.T) {
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", ".dockerignore", "docker-compose.yml", "foo/Dockerfile", "foo/.dockerignore"}
+	expectedConfFiles := []string{
+		"Tiltfile",
+		".tiltignore",
+		".dockerignore",
+		"docker-compose.yml",
+		filepath.Join("foo", "Dockerfile"),
+		filepath.Join("foo", ".dockerignore"),
+	}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -143,7 +151,7 @@ func TestMultipleDockerComposeNotSupported(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose1.yml", simpleConfig)
 	f.file("docker-compose2.yml", simpleConfig)
 
@@ -174,7 +182,7 @@ func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {
 	defer f.TearDown()
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", `
 version: '3'
 services:
@@ -183,7 +191,7 @@ services:
     command: sleep 100
     ports:
       - "12312:80"`)
-	f.file("Tiltfile", fmt.Sprintf("docker_compose('%s')", configPath))
+	f.file("Tiltfile", fmt.Sprintf("docker_compose(%q)", configPath))
 
 	f.load("foo")
 	f.assertDcManifest("foo", dcConfigPath([]string{configPath}))
@@ -198,7 +206,7 @@ func TestDockerComposeManifestComputesLocalPaths(t *testing.T) {
 ADD ./src /app
 COPY ./thing.go /stuff
 RUN echo hi`
-	f.file("foo/Dockerfile", df)
+	f.file(filepath.Join("foo", "Dockerfile"), df)
 
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
@@ -213,7 +221,14 @@ RUN echo hi`
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "foo/Dockerfile", ".dockerignore", "foo/.dockerignore"}
+	expectedConfFiles := []string{
+		"Tiltfile",
+		".tiltignore",
+		"docker-compose.yml",
+		filepath.Join("foo", "Dockerfile"),
+		".dockerignore",
+		filepath.Join("foo", ".dockerignore"),
+	}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -228,8 +243,8 @@ RUN echo hi
 FROM alpine
 COPY --from=builder /app /app
 RUN echo bye`
-	f.file("foo/Dockerfile", df)
-	f.file("foo/docker-compose.yml", `version: '3'
+	f.file(filepath.Join("foo", "Dockerfile"), df)
+	f.file(filepath.Join("foo", "docker-compose.yml"), `version: '3'
 services:
   foo:
     build:
@@ -239,7 +254,7 @@ services:
       - "12312:80"`)
 	f.file("Tiltfile", "docker_compose('foo/docker-compose.yml')")
 	f.load("foo")
-	configPath := f.JoinPath("foo/docker-compose.yml")
+	configPath := f.JoinPath("foo", "docker-compose.yml")
 	f.assertDcManifest("foo",
 		dcConfigPath([]string{configPath}),
 		dcYAMLRaw(f.simpleConfigFooYAML()),
@@ -248,7 +263,14 @@ services:
 		dcPublishedPorts(12312),
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "foo/docker-compose.yml", "foo/Dockerfile", ".dockerignore", "foo/.dockerignore"}
+	expectedConfFiles := []string{
+		"Tiltfile",
+		".tiltignore",
+		filepath.Join("foo", "docker-compose.yml"),
+		filepath.Join("foo", "Dockerfile"),
+		".dockerignore",
+		filepath.Join("foo", ".dockerignore"),
+	}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -261,21 +283,21 @@ func TestDockerComposeHonorsDockerIgnore(t *testing.T) {
 ADD . /app
 COPY ./thing.go /stuff
 RUN echo hi`
-	f.file("foo/Dockerfile", df)
+	f.file(filepath.Join("foo", "Dockerfile"), df)
 
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
-	f.file("foo/.dockerignore", "tmp")
+	f.file(filepath.Join("foo", ".dockerignore"), "tmp")
 	f.file(".dockerignore", "foo/tmp2")
 
 	f.load("foo")
 
 	f.assertNextManifest("foo",
-		buildFilters("foo/tmp2"),
-		fileChangeFilters("foo/tmp2"),
-		buildFilters("foo/tmp"),
-		fileChangeFilters("foo/tmp"),
+		buildFilters(filepath.Join("foo", "tmp2")),
+		fileChangeFilters(filepath.Join("foo", "tmp2")),
+		buildFilters(filepath.Join("foo", "tmp")),
+		fileChangeFilters(filepath.Join("foo", "tmp")),
 	)
 }
 
@@ -288,7 +310,7 @@ func TestDockerComposeIgnoresFileChangesOnMountedVolumes(t *testing.T) {
 ADD . /app
 COPY ./thing.go /stuff
 RUN echo hi`
-	f.file("foo/Dockerfile", df)
+	f.file(filepath.Join("foo", "Dockerfile"), df)
 
 	f.file("docker-compose.yml", configWithMounts)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
@@ -297,9 +319,9 @@ RUN echo hi`
 
 	f.assertNextManifest("foo",
 		// ensure that DC syncs are *not* ignored for builds, because all files are still relevant to builds
-		buildMatches("foo/Dockerfile"),
+		buildMatches(filepath.Join("foo", "Dockerfile")),
 		// ensure that DC syncs *are* ignored for file watching, i.e., won't trigger builds
-		fileChangeFilters("foo/blah"),
+		fileChangeFilters(filepath.Join("foo", "blah")),
 	)
 }
 
@@ -307,7 +329,7 @@ func TestDockerComposeWithDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", `docker_build('gcr.io/foo', './foo')
 docker_compose('docker-compose.yml')
@@ -331,7 +353,7 @@ func TestDockerComposeWithDockerBuildAutoAssociate(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", `version: '3'
 services:
   foo:
@@ -364,7 +386,7 @@ func TestDockerComposeWithDockerBuildLocalRef(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", `docker_build('fooimage', './foo')
 docker_compose('docker-compose.yml')
@@ -384,8 +406,8 @@ func TestMultipleDockerComposeWithDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
-	f.dockerfile("bar/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.dockerfile(filepath.Join("bar", "Dockerfile"))
 	f.file("docker-compose.yml", twoServiceConfig)
 	f.file("Tiltfile", `docker_build('gcr.io/foo', './foo')
 docker_build('gcr.io/bar', './bar')
@@ -411,8 +433,8 @@ func TestMultipleDockerComposeWithDockerBuildImageNames(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
-	f.dockerfile("bar/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.dockerfile(filepath.Join("bar", "Dockerfile"))
 	f.file("docker-compose.yml", `version: '3'
 services:
   foo:
@@ -464,7 +486,7 @@ func TestDockerComposeOnlySomeWithDockerBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", twoServiceConfig)
 	f.file("Tiltfile", `img_name = 'gcr.io/foo'
 docker_build(img_name, './foo')
@@ -489,7 +511,7 @@ func TestDockerComposeResourceNoImageMatch(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", `docker_build('gcr.io/foo', './foo')
 docker_compose('docker-compose.yml')
@@ -502,7 +524,7 @@ func TestDockerComposeDoesntSupportEntrypointOverride(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", `docker_build('gcr.io/foo', './foo', entrypoint='./foo')
 docker_compose('docker-compose.yml')
@@ -516,7 +538,7 @@ func TestDefaultRegistryWithDockerCompose(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", `
 docker_compose('docker-compose.yml')
@@ -545,7 +567,7 @@ func TestTriggerModeDC(t *testing.T) {
 			f := newFixture(t)
 			defer f.TearDown()
 
-			f.dockerfile("foo/Dockerfile")
+			f.dockerfile(filepath.Join("foo", "Dockerfile"))
 			f.file("docker-compose.yml", simpleConfig)
 
 			var globalTriggerModeDirective string
@@ -600,7 +622,7 @@ func TestDCDependsOn(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.dockerfile("foo/Dockerfile")
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", twoServiceConfig)
 	f.file("Tiltfile", `
 docker_compose('docker-compose.yml')

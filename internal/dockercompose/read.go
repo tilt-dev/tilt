@@ -17,7 +17,6 @@ func ReadConfigAndServiceNames(ctx context.Context, dcc DockerComposeClient,
 	g.Go(func() error {
 
 		configOut, err := dcc.Config(ctx, configPaths)
-
 		if err != nil {
 			return err
 		}
@@ -53,6 +52,7 @@ func serviceNames(ctx context.Context, dcc DockerComposeClient, configPaths []st
 	var result []string
 
 	for _, name := range serviceNames {
+		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
 		}
