@@ -74,7 +74,7 @@ jobs:
       name: win/default
       size: "medium"
     steps:
-      - run: choco install make
+      - run: choco install make kustomize kubernetes-helm docker-compose
       - run: choco update golang
       - checkout
       # Check to make sure Windows binaries compile
