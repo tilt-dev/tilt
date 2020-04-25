@@ -43,12 +43,12 @@ func (m PathMapping) PrettyStr() string {
 
 func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
 	result := make([]PathMapping, 0)
-	err := filepath.Walk(m.LocalPath, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(m.LocalPath, func(currentLocal string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		match, err := matcher.Matches(path)
+		match, err := matcher.Matches(currentLocal)
 		if err != nil {
 			return err
 		}
@@ -57,14 +57,14 @@ func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
 			return nil
 		}
 
-		rp, err := filepath.Rel(m.LocalPath, path)
+		rpLocal, err := filepath.Rel(m.LocalPath, currentLocal)
 		if err != nil {
 			return err
 		}
 
 		result = append(result, PathMapping{
-			LocalPath:     path,
-			ContainerPath: filepath.Join(m.ContainerPath, rp),
+			LocalPath:     currentLocal,
+			ContainerPath: path.Join(m.ContainerPath, filepath.ToSlash(rpLocal)),
 		})
 		return nil
 	})
@@ -122,11 +122,11 @@ func fileToPathMapping(file string, sync []model.Sync) (pm PathMapping, couldMap
 				return PathMapping{}, false, fmt.Errorf("error stat'ing: %v", err)
 			}
 			var containerPath string
-			if endsWithSlash(s.ContainerPath) && localPathIsFile {
-				fileName := path.Base(s.LocalPath)
-				containerPath = filepath.Join(s.ContainerPath, fileName)
+			if endsWithUnixSeparator(s.ContainerPath) && localPathIsFile {
+				fileName := filepath.Base(s.LocalPath)
+				containerPath = path.Join(s.ContainerPath, fileName)
 			} else {
-				containerPath = filepath.Join(s.ContainerPath, relPath)
+				containerPath = path.Join(s.ContainerPath, filepath.ToSlash(relPath))
 			}
 			return PathMapping{
 				LocalPath:     file,
@@ -141,8 +141,8 @@ func fileToPathMapping(file string, sync []model.Sync) (pm PathMapping, couldMap
 	return PathMapping{}, false, nil
 }
 
-func endsWithSlash(path string) bool {
-	return strings.HasSuffix(path, string(filepath.Separator))
+func endsWithUnixSeparator(path string) bool {
+	return strings.HasSuffix(path, "/")
 }
 
 func isFile(path string) (bool, error) {
