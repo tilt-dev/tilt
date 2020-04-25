@@ -1,5 +1,3 @@
-// +build !windows
-
 package build
 
 import (
@@ -8,6 +6,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -128,6 +127,10 @@ func TestDontArchiveTiltfile(t *testing.T) {
 }
 
 func TestArchiveOverlapping(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Cannot create a symlink on windows")
+	}
+
 	f := newFixture(t)
 	buf := new(bytes.Buffer)
 	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
@@ -163,6 +166,10 @@ func TestArchiveOverlapping(t *testing.T) {
 }
 
 func TestArchiveSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Cannot create a symlink on windows")
+	}
+
 	f := newFixture(t)
 	buf := new(bytes.Buffer)
 	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
@@ -192,6 +199,10 @@ func TestArchiveSymlink(t *testing.T) {
 }
 
 func TestArchiveSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Cannot create a unix socket on windows")
+	}
+
 	f := newFixture(t)
 	buf := new(bytes.Buffer)
 	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
