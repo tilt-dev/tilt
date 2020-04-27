@@ -1,9 +1,8 @@
-// +build !windows
-
 package local
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -19,7 +18,7 @@ func TestTrue(t *testing.T) {
 	f := newProcessExecFixture(t)
 	defer f.tearDown()
 
-	f.start("true")
+	f.start("exit 0")
 
 	f.assertCmdSucceeds()
 }
@@ -28,11 +27,17 @@ func TestSleep(t *testing.T) {
 	f := newProcessExecFixture(t)
 	defer f.tearDown()
 
-	f.start("sleep 5")
+	cmd := "sleep 1"
+	if runtime.GOOS == "windows" {
+		// believe it or not, this is the idiomatic way to sleep on windows
+		// https://www.ibm.com/support/pages/timeout-command-run-batch-job-exits-immediately-and-returns-error-input-redirection-not-supported-exiting-process-immediately
+		cmd = "ping -n 1 127.0.0.1"
+	}
+	f.start(cmd)
 
 	f.waitForStatusAndNoError(Running)
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(time.Second)
 
 	f.assertCmdSucceeds()
 }
@@ -50,13 +55,16 @@ func TestHandlesExits(t *testing.T) {
 	f := newProcessExecFixture(t)
 	defer f.tearDown()
 
-	f.start("false")
+	f.start("exit 1")
 
 	f.waitForError()
 	f.assertLogContains("exited with exit code 1")
 }
 
 func TestStopsGrandchildren(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no bash on windows")
+	}
 	f := newProcessExecFixture(t)
 	defer f.tearDown()
 
