@@ -4,7 +4,7 @@ package kustomize
 Code for ordering Kubernetes entities by kind.
 
 Adapted from
-https://github.com/kubernetes-sigs/kustomize/blob/180429774a5fefab0d6af9ada7f866c177b5d7b4/pkg/gvk/gvk.go#L82
+https://github.com/kubernetes-sigs/kustomize/blob/9686cc9861f25d831e4158e928ba584f3e5feea8/api/resid/gvk.go
 
 Copyright 2019 The Kubernetes Authors.
 
@@ -25,9 +25,12 @@ limitations under the License.
 // a Service should come before things that refer to it.
 // Namespace should be first.
 // In some cases order just specified to provide determinism.
-// Adapted from Kustomize: https://github.com/kubernetes-sigs/kustomize/blob/180429774a5fefab0d6af9ada7f866c177b5d7b4/pkg/gvk/gvk.go#L82
+// Adapted from Kustomize:
+// https://github.com/kubernetes-sigs/kustomize/blob/9686cc9861f25d831e4158e928ba584f3e5feea8/api/resid/gvk.go
+
 var OrderFirst = []string{
 	"Namespace",
+	"ResourceQuota",
 	"StorageClass",
 	"CustomResourceDefinition",
 	"MutatingWebhookConfiguration",
@@ -43,6 +46,7 @@ var OrderFirst = []string{
 	"Secret",
 	"Service",
 	"LimitRange",
+	"PriorityClass",
 	"Deployment",
 	"StatefulSet",
 	"CronJob",
