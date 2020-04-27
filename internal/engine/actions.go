@@ -7,7 +7,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 
-	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
@@ -53,13 +52,6 @@ func (HudStoppedAction) Action() {}
 func NewHudStoppedAction(err error) HudStoppedAction {
 	return HudStoppedAction{err}
 }
-
-type DockerComposeEventAction struct {
-	Event dockercompose.Event
-	Time  time.Time
-}
-
-func (DockerComposeEventAction) Action() {}
 
 type LatestVersionAction struct {
 	Build model.TiltBuild

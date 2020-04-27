@@ -5,6 +5,7 @@ import (
 	"github.com/windmilleng/tilt/internal/containerupdate"
 	"github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/dcwatch"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/exit"
 	"github.com/windmilleng/tilt/internal/engine/k8srollout"
@@ -26,7 +27,7 @@ func ProvideSubscribers(
 	fwm *WatchManager,
 	bc *BuildController,
 	cc *configs.ConfigsController,
-	dcw *DockerComposeEventWatcher,
+	dcw *dcwatch.EventWatcher,
 	dclm *runtimelog.DockerComposeLogManager,
 	pm *ProfilerManager,
 	sm containerupdate.SyncletManager,

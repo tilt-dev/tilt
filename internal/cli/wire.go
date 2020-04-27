@@ -24,6 +24,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine"
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/dcwatch"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/exit"
 	"github.com/windmilleng/tilt/internal/engine/k8srollout"
@@ -79,7 +80,7 @@ var BaseWireSet = wire.NewSet(
 	k8swatch.NewEventWatchManager,
 	configs.NewConfigsController,
 	telemetry.NewController,
-	engine.NewDockerComposeEventWatcher,
+	dcwatch.NewEventWatcher,
 	runtimelog.NewDockerComposeLogManager,
 	engine.NewProfilerManager,
 	engine.NewGithubClientFactory,
