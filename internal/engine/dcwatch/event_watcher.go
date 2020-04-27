@@ -1,4 +1,4 @@
-package engine
+package dcwatch
 
 import (
 	"context"
@@ -11,24 +11,24 @@ import (
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
-type DockerComposeEventWatcher struct {
+type EventWatcher struct {
 	watching bool
 	dcc      dockercompose.DockerComposeClient
 }
 
-func NewDockerComposeEventWatcher(dcc dockercompose.DockerComposeClient) *DockerComposeEventWatcher {
-	return &DockerComposeEventWatcher{
+func NewEventWatcher(dcc dockercompose.DockerComposeClient) *EventWatcher {
+	return &EventWatcher{
 		dcc: dcc,
 	}
 }
 
-func (w *DockerComposeEventWatcher) needsWatch(st store.RStore) bool {
+func (w *EventWatcher) needsWatch(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
 	return state.EngineMode.WatchesRuntime() && !w.watching
 }
 
-func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStore) {
+func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if !w.needsWatch(st) {
 		return
 	}
@@ -46,18 +46,18 @@ func (w *DockerComposeEventWatcher) OnChange(ctx context.Context, st store.RStor
 	ch, err := w.startWatch(ctx, configPaths)
 	if err != nil {
 		err = errors.Wrap(err, "Subscribing to docker-compose events")
-		st.Dispatch(NewErrorAction(err))
+		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
 
-	go dispatchDockerComposeEventLoop(ctx, ch, st)
+	go dispatchEventLoop(ctx, ch, st)
 }
 
-func (w *DockerComposeEventWatcher) startWatch(ctx context.Context, configPath []string) (<-chan string, error) {
+func (w *EventWatcher) startWatch(ctx context.Context, configPath []string) (<-chan string, error) {
 	return w.dcc.StreamEvents(ctx, configPath)
 }
 
-func dispatchDockerComposeEventLoop(ctx context.Context, ch <-chan string, st store.RStore) {
+func dispatchEventLoop(ctx context.Context, ch <-chan string, st store.RStore) {
 	for {
 		select {
 		case evtJson, ok := <-ch:
@@ -71,15 +71,15 @@ func dispatchDockerComposeEventLoop(ctx context.Context, ch <-chan string, st st
 				continue
 			}
 
-			st.Dispatch(NewDockerComposeEventAction(evt))
+			st.Dispatch(NewEventAction(evt))
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func NewDockerComposeEventAction(evt dockercompose.Event) DockerComposeEventAction {
-	return DockerComposeEventAction{
+func NewEventAction(evt dockercompose.Event) EventAction {
+	return EventAction{
 		Event: evt,
 		Time:  time.Now(),
 	}

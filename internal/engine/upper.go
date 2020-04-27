@@ -17,6 +17,7 @@ import (
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/dcwatch"
 	"github.com/windmilleng/tilt/internal/engine/exit"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/local"
@@ -170,7 +171,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleConfigsReloadStarted(ctx, state, action)
 	case configs.ConfigsReloadedAction:
 		handleConfigsReloaded(ctx, state, action)
-	case DockerComposeEventAction:
+	case dcwatch.EventAction:
 		handleDockerComposeEvent(ctx, state, action)
 	case server.AppendToTriggerQueueAction:
 		appendToTriggerQueue(state, action.Name, action.Reason)
@@ -679,7 +680,7 @@ func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState,
 	ms.RuntimeState = lrs
 }
 
-func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action DockerComposeEventAction) {
+func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action dcwatch.EventAction) {
 	evt := action.Event
 	mn := model.ManifestName(evt.Service)
 	ms, ok := engineState.ManifestState(mn)

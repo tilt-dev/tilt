@@ -38,6 +38,7 @@ import (
 	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/engine/configs"
+	"github.com/windmilleng/tilt/internal/engine/dcwatch"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/exit"
 	"github.com/windmilleng/tilt/internal/engine/k8srollout"
@@ -3536,7 +3537,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, versionExt, fakeDcc, "localhost", feature.MainDefaults, env)
 	cc := configs.NewConfigsController(tfl, dockerClient)
-	dcw := NewDockerComposeEventWatcher(fakeDcc)
+	dcw := dcwatch.NewEventWatcher(fakeDcc)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
 	sCli := synclet.NewTestSyncletClient(dockerClient)
