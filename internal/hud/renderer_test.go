@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 	"github.com/windmilleng/tilt/internal/store"
@@ -588,7 +587,7 @@ func TestDockerComposeUpExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusUp, testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusOK),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "running", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusOK),
 		Endpoints:    []string{"http://localhost:3000"},
 		CurrentBuild: model.BuildRecord{
 			StartTime: now.Add(-5 * time.Second),
@@ -607,7 +606,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusDown, testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
 		CurrentBuild: model.BuildRecord{
 			StartTime: now.Add(-5 * time.Second),
 			Reason:    model.BuildReasonFlagChangedFiles,
@@ -625,7 +624,7 @@ func TestDetectDCCrashExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
@@ -639,7 +638,7 @@ func TestDetectDCCrashNotExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
@@ -653,7 +652,7 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, dockercompose.StatusCrash, testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 

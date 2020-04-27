@@ -745,7 +745,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 	switch state := mt.State.RuntimeState.(type) {
 	case dockercompose.State:
 		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths,
-			state.Status, state.ContainerID, state.SpanID, state.StartTime, runStatus)
+			state.ContainerState.Status, state.ContainerID, state.SpanID, state.StartTime, runStatus)
 	case K8sRuntimeState:
 		pod := state.MostRecentPod()
 		return view.K8sResourceInfo{

@@ -88,6 +88,7 @@ type Client interface {
 	// which can talk to either the Local or in-cluster docker daemon.
 	SetOrchestrator(orc model.Orchestrator)
 
+	ContainerInspect(ctx context.Context, contianerID string) (types.ContainerJSON, error)
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 	CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error

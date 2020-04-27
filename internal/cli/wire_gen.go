@@ -223,7 +223,7 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, dockerComposeClient, modelWebHost, defaults, env)
 	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
-	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient)
+	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
@@ -379,7 +379,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics) (CmdCID
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, dockerComposeClient, modelWebHost, defaults, env)
 	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
-	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient)
+	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
