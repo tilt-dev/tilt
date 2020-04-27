@@ -1,5 +1,3 @@
-// +build !windows
-
 package build
 
 import (
@@ -7,7 +5,10 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/pkg/logger"
 )
@@ -69,7 +70,9 @@ func assertSnapshot(t *testing.T, output string) {
 		t.Fatal(err)
 	}
 
-	if string(expected) != output {
-		t.Errorf("Expected: %s != Output: %s", expected, output)
-	}
+	assert.Equal(t, normalize(string(expected)), normalize(output))
+}
+
+func normalize(str string) string {
+	return strings.Replace(str, "\r\n", "\n", -1)
 }

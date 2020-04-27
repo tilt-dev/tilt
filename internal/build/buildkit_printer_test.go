@@ -1,5 +1,3 @@
-// +build !windows
-
 package build
 
 import (
@@ -13,6 +11,7 @@ import (
 	"testing"
 
 	controlapi "github.com/moby/buildkit/api/services/control"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/pkg/logger"
 )
@@ -96,9 +95,7 @@ func TestBuildkitPrinter(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if output.String() != string(expected) {
-				t.Errorf("EXPECTED:\n%s\nGOT:\n%s\n", expected, output.String())
-			}
+			assert.Equal(t, normalize(string(expected)), normalize(output.String()))
 		})
 	}
 }
