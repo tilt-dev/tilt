@@ -20,6 +20,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/configs"
 	"github.com/windmilleng/tilt/internal/engine/dcwatch"
 	"github.com/windmilleng/tilt/internal/engine/exit"
+	"github.com/windmilleng/tilt/internal/engine/fswatch"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/local"
 	"github.com/windmilleng/tilt/internal/engine/runtimelog"
@@ -29,24 +30,9 @@ import (
 	"github.com/windmilleng/tilt/internal/sliceutils"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
-
-// When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
-// 200ms is not the result of any kind of research or experimentation
-// it might end up being a significant part of deployment delay, if we get the total latency <2s
-// it might also be long enough that it misses some changes if the user has some operation involving a large file
-//   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
-const watchBufferMinRestInMs = 200
-
-// When waiting for a `watchBufferDurationInMs`-long break in file modifications to aggregate notifications,
-// if we haven't seen a break by the time `watchBufferMaxTimeInMs` has passed, just send off whatever we've got
-const watchBufferMaxTimeInMs = 10000
-
-var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
-var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
@@ -54,22 +40,8 @@ type Upper struct {
 	store *store.Store
 }
 
-type FsWatcherMaker func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error)
 type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
-type timerMaker func(d time.Duration) <-chan time.Time
-
-func ProvideFsWatcherMaker() FsWatcherMaker {
-	return func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error) {
-		return watch.NewWatcher(paths, ignore, l)
-	}
-}
-
-func ProvideTimerMaker() timerMaker {
-	return func(t time.Duration) <-chan time.Time {
-		return time.After(t)
-	}
-}
 
 func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) Upper {
 	// There's not really a good reason to add all the subscribers
@@ -152,7 +124,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		state.FatalError = action.Error
 	case hud.ExitAction:
 		handleHudExitAction(state, action)
-	case targetFilesChangedAction:
+	case fswatch.TargetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
@@ -439,25 +411,25 @@ func handleStartProfilingAction(state *store.EngineState) {
 func handleFSEvent(
 	ctx context.Context,
 	state *store.EngineState,
-	event targetFilesChangedAction) {
+	event fswatch.TargetFilesChangedAction) {
 
-	if event.targetID.Type == model.TargetTypeConfigs {
-		for _, f := range event.files {
-			state.PendingConfigFileChanges[f] = event.time
+	if event.TargetID.Type == model.TargetTypeConfigs {
+		for _, f := range event.Files {
+			state.PendingConfigFileChanges[f] = event.Time
 		}
 		return
 	}
 
-	mns := state.ManifestNamesForTargetID(event.targetID)
+	mns := state.ManifestNamesForTargetID(event.TargetID)
 	for _, mn := range mns {
 		ms, ok := state.ManifestState(mn)
 		if !ok {
 			return
 		}
 
-		status := ms.MutableBuildStatus(event.targetID)
-		for _, f := range event.files {
-			status.PendingFileChanges[f] = event.time
+		status := ms.MutableBuildStatus(event.TargetID)
+		for _, f := range event.Files {
+			status.PendingFileChanges[f] = event.Time
 		}
 	}
 }

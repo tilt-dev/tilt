@@ -1,6 +1,4 @@
-// +build !windows
-
-package engine
+package fswatch
 
 import (
 	"path/filepath"
@@ -11,48 +9,48 @@ import (
 	"github.com/windmilleng/tilt/pkg/logger"
 )
 
-type fakeMultiWatcher struct {
-	events chan watch.FileEvent
-	errors chan error
+type FakeMultiWatcher struct {
+	Events chan watch.FileEvent
+	Errors chan error
 
 	mu         sync.Mutex
-	watchers   []*fakeWatcher
+	watchers   []*FakeWatcher
 	subs       []chan watch.FileEvent
 	subsErrors []chan error
 }
 
-func newFakeMultiWatcher() *fakeMultiWatcher {
-	r := &fakeMultiWatcher{events: make(chan watch.FileEvent, 20), errors: make(chan error, 20)}
+func NewFakeMultiWatcher() *FakeMultiWatcher {
+	r := &FakeMultiWatcher{Events: make(chan watch.FileEvent, 20), Errors: make(chan error, 20)}
 	go r.loop()
 	return r
 }
 
-func (w *fakeMultiWatcher) newSub(paths []string, ignore watch.PathMatcher, _ logger.Logger) (watch.Notify, error) {
+func (w *FakeMultiWatcher) NewSub(paths []string, ignore watch.PathMatcher, _ logger.Logger) (watch.Notify, error) {
 	subCh := make(chan watch.FileEvent)
 	errorCh := make(chan error)
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	watcher := newFakeWatcher(subCh, errorCh, paths, ignore)
+	watcher := NewFakeWatcher(subCh, errorCh, paths, ignore)
 	w.watchers = append(w.watchers, watcher)
 	w.subs = append(w.subs, subCh)
 	w.subsErrors = append(w.subsErrors, errorCh)
 	return watcher, nil
 }
 
-func (w *fakeMultiWatcher) getSubs() []chan watch.FileEvent {
+func (w *FakeMultiWatcher) getSubs() []chan watch.FileEvent {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return append([]chan watch.FileEvent{}, w.subs...)
 }
 
-func (w *fakeMultiWatcher) getSubErrors() []chan error {
+func (w *FakeMultiWatcher) getSubErrors() []chan error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return append([]chan error{}, w.subsErrors...)
 }
 
-func (w *fakeMultiWatcher) loop() {
+func (w *FakeMultiWatcher) loop() {
 	defer func() {
 		for _, sub := range w.getSubs() {
 			close(sub)
@@ -67,7 +65,7 @@ func (w *fakeMultiWatcher) loop() {
 
 	for {
 		select {
-		case e, ok := <-w.events:
+		case e, ok := <-w.Events:
 			if !ok {
 				return
 			}
@@ -76,7 +74,7 @@ func (w *fakeMultiWatcher) loop() {
 					watcher.inboundCh <- e
 				}
 			}
-		case e, ok := <-w.errors:
+		case e, ok := <-w.Errors:
 			if !ok {
 				return
 			}
@@ -87,7 +85,7 @@ func (w *fakeMultiWatcher) loop() {
 	}
 }
 
-type fakeWatcher struct {
+type FakeWatcher struct {
 	inboundCh  chan watch.FileEvent
 	outboundCh chan watch.FileEvent
 	errorCh    chan error
@@ -96,12 +94,12 @@ type fakeWatcher struct {
 	ignore watch.PathMatcher
 }
 
-func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error, paths []string, ignore watch.PathMatcher) *fakeWatcher {
+func NewFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error, paths []string, ignore watch.PathMatcher) *FakeWatcher {
 	for i, path := range paths {
 		paths[i], _ = filepath.Abs(path)
 	}
 
-	return &fakeWatcher{
+	return &FakeWatcher{
 		inboundCh:  inboundCh,
 		outboundCh: make(chan watch.FileEvent, 20),
 		errorCh:    errorCh,
@@ -110,7 +108,7 @@ func newFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error, paths []
 	}
 }
 
-func (w *fakeWatcher) matches(path string) bool {
+func (w *FakeWatcher) matches(path string) bool {
 	ignore, _ := w.ignore.Matches(path)
 	if ignore {
 		return false
@@ -124,24 +122,24 @@ func (w *fakeWatcher) matches(path string) bool {
 	return false
 }
 
-func (w *fakeWatcher) Start() error {
+func (w *FakeWatcher) Start() error {
 	go w.loop()
 	return nil
 }
 
-func (w *fakeWatcher) Close() error {
+func (w *FakeWatcher) Close() error {
 	return nil
 }
 
-func (w *fakeWatcher) Errors() chan error {
+func (w *FakeWatcher) Errors() chan error {
 	return w.errorCh
 }
 
-func (w *fakeWatcher) Events() chan watch.FileEvent {
+func (w *FakeWatcher) Events() chan watch.FileEvent {
 	return w.outboundCh
 }
 
-func (w *fakeWatcher) loop() {
+func (w *FakeWatcher) loop() {
 	var q []watch.FileEvent
 	for {
 		if len(q) == 0 {
@@ -159,4 +157,4 @@ func (w *fakeWatcher) loop() {
 	}
 }
 
-var _ watch.Notify = &fakeWatcher{}
+var _ watch.Notify = &FakeWatcher{}

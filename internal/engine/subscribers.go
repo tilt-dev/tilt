@@ -8,6 +8,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/dcwatch"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/exit"
+	"github.com/windmilleng/tilt/internal/engine/fswatch"
 	"github.com/windmilleng/tilt/internal/engine/k8srollout"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/local"
@@ -24,7 +25,7 @@ func ProvideSubscribers(
 	sw *k8swatch.ServiceWatcher,
 	plm *runtimelog.PodLogManager,
 	pfc *PortForwardController,
-	fwm *WatchManager,
+	fwm *fswatch.WatchManager,
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	dcw *dcwatch.EventWatcher,

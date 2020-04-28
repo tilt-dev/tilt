@@ -1,6 +1,6 @@
 // +build !windows
 
-package engine
+package fswatch
 
 import (
 	"context"
@@ -125,16 +125,16 @@ type wmFixture struct {
 	getActions       func() []store.Action
 	store            *store.Store
 	wm               *WatchManager
-	fakeMultiWatcher *fakeMultiWatcher
-	fakeTimerMaker   fakeTimerMaker
+	fakeMultiWatcher *FakeMultiWatcher
+	fakeTimerMaker   FakeTimerMaker
 	*tempdir.TempDirFixture
 }
 
 func newWMFixture(t *testing.T) *wmFixture {
 	st, getActions := store.NewStoreForTesting()
-	timerMaker := makeFakeTimerMaker(t)
-	fakeMultiWatcher := newFakeMultiWatcher()
-	wm := NewWatchManager(fakeMultiWatcher.newSub, timerMaker.maker())
+	timerMaker := MakeFakeTimerMaker(t)
+	fakeMultiWatcher := NewFakeMultiWatcher()
+	wm := NewWatchManager(fakeMultiWatcher.NewSub, timerMaker.Maker())
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
@@ -170,40 +170,40 @@ func (f *wmFixture) ChangeFile(t *testing.T, path string) {
 	path, _ = filepath.Abs(path)
 
 	select {
-	case f.fakeMultiWatcher.events <- watch.NewFileEvent(path):
+	case f.fakeMultiWatcher.Events <- watch.NewFileEvent(path):
 	default:
 		t.Fatal("emitting a FileEvent would block. Perhaps there are too many events or the buffer size is too small.")
 	}
 }
 
-func (f *wmFixture) AssertActionsContain(actions []targetFilesChangedAction, path string) {
+func (f *wmFixture) AssertActionsContain(actions []TargetFilesChangedAction, path string) {
 	path, _ = filepath.Abs(path)
 	observedPaths := targetFilesChangedActionsToPaths(actions)
 	assert.Contains(f.T(), observedPaths, path)
 }
 
-func (f *wmFixture) AssertActionsNotContain(actions []targetFilesChangedAction, path string) {
+func (f *wmFixture) AssertActionsNotContain(actions []TargetFilesChangedAction, path string) {
 	path, _ = filepath.Abs(path)
 	observedPaths := targetFilesChangedActionsToPaths(actions)
 	assert.NotContains(f.T(), observedPaths, path)
 }
 
-func (f *wmFixture) ReadActionsUntil(lastFile string) ([]targetFilesChangedAction, error) {
+func (f *wmFixture) ReadActionsUntil(lastFile string) ([]TargetFilesChangedAction, error) {
 	lastFile, _ = filepath.Abs(lastFile)
 	startTime := time.Now()
 	timeout := time.Second
-	var actions []targetFilesChangedAction
+	var actions []TargetFilesChangedAction
 	for time.Since(startTime) < timeout {
 		actions = nil
 		for _, a := range f.getActions() {
-			tfca, ok := a.(targetFilesChangedAction)
+			tfca, ok := a.(TargetFilesChangedAction)
 			if !ok {
-				return nil, fmt.Errorf("expected action of type %T, got action of type %T: %v", targetFilesChangedAction{}, a, a)
+				return nil, fmt.Errorf("expected action of type %T, got action of type %T: %v", TargetFilesChangedAction{}, a, a)
 			}
 			// 1. unpack to one file per action, for deterministic inspection
 			// 2. make paths relative to cwd
-			for _, p := range tfca.files {
-				actions = append(actions, newTargetFilesChangedAction(tfca.targetID, p))
+			for _, p := range tfca.Files {
+				actions = append(actions, NewTargetFilesChangedAction(tfca.TargetID, p))
 				if p == lastFile {
 					return actions, nil
 				}
@@ -214,7 +214,7 @@ func (f *wmFixture) ReadActionsUntil(lastFile string) ([]targetFilesChangedActio
 	return nil, fmt.Errorf("timed out waiting for actions. received so far: %v", actions)
 }
 
-func (f *wmFixture) Stop(t *testing.T) []targetFilesChangedAction {
+func (f *wmFixture) Stop(t *testing.T) []TargetFilesChangedAction {
 	f.ChangeFile(t, "stop")
 
 	actions, err := f.ReadActionsUntil("stop")
@@ -241,10 +241,10 @@ func (f *wmFixture) SetTiltIgnoreContents(s string) {
 	f.wm.OnChange(f.ctx, f.store)
 }
 
-func targetFilesChangedActionsToPaths(actions []targetFilesChangedAction) []string {
+func targetFilesChangedActionsToPaths(actions []TargetFilesChangedAction) []string {
 	var paths []string
 	for _, a := range actions {
-		paths = append(paths, a.files...)
+		paths = append(paths, a.Files...)
 	}
 	return paths
 }
