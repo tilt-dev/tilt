@@ -310,6 +310,62 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
 	f.loadErrString("fall_back_on", f.JoinPath("bar"), f.JoinPath("foo"), "child", "any watched filepaths")
 }
 
+func TestLiveUpdateRestartContainerDeprecationWarnK8sDockerBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', './foo',
+  live_update=[
+    sync('foo/bar', '/baz'),
+	restart_container(),
+  ]
+)`)
+	f.loadAssertWarnings(restartContainerDeprecationWarning([]model.ManifestName{"foo"}))
+}
+
+func TestLiveUpdateNoRestartContainerDeprecationWarnK8sCustomBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
+  live_update=[
+    sync('foo/bar', '/baz'),
+	restart_container(),
+  ]
+)`)
+
+	// Expect no deprecation warning b/c restart_container() is still allowed on custom_build
+	f.load()
+	f.assertNextManifest("foo", cb(image("gcr.io/foo")))
+}
+
+func TestLiveUpdateNoRestartContainerDeprecationWarnK8sDockerCompose(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupFoo()
+	f.file("docker-compose.yml", `version: '3'
+services:
+  foo:
+    image: gcr.io/foo
+`)
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+docker_compose('docker-compose.yml')
+`)
+
+	// Expect no deprecation warning b/c restart_container() is still allowed on Docker Compose resources
+	f.load()
+	f.assertNextManifest("foo", db(image("gcr.io/foo")))
+}
+
 type liveUpdateFixture struct {
 	*fixture
 
@@ -326,7 +382,6 @@ func (f *liveUpdateFixture) init() {
     fall_back_on(['foo/i', 'foo/j']),
 	sync('foo/b', '/c'),
 	run('f', ['g', 'h']),
-	restart_container(),
 ]`
 	codeToInsert := fmt.Sprintf(f.tiltfileCode, luSteps)
 	tiltfile := fmt.Sprintf(`
@@ -353,7 +408,6 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 			Command:  model.ToUnixCmd("f"),
 			Triggers: model.NewPathSet([]string{"g", "h"}, f.Path()),
 		},
-		model.LiveUpdateRestartContainerStep{},
 	)
 
 	f.expectedLU = model.LiveUpdate{
