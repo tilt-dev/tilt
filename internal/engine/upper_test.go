@@ -42,6 +42,7 @@ import (
 	"github.com/windmilleng/tilt/internal/engine/dcwatch"
 	"github.com/windmilleng/tilt/internal/engine/dockerprune"
 	"github.com/windmilleng/tilt/internal/engine/exit"
+	"github.com/windmilleng/tilt/internal/engine/fswatch"
 	"github.com/windmilleng/tilt/internal/engine/k8srollout"
 	"github.com/windmilleng/tilt/internal/engine/k8swatch"
 	"github.com/windmilleng/tilt/internal/engine/local"
@@ -445,7 +446,7 @@ func TestUpper_UpWatchError(t *testing.T) {
 	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest})
 
-	f.fsWatcher.errors <- context.Canceled
+	f.fsWatcher.Errors <- context.Canceled
 
 	err := <-f.upperInitResult
 	if assert.NotNil(t, err) {
@@ -459,13 +460,13 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest})
 
-	f.timerMaker.maxTimerLock.Lock()
+	f.timerMaker.MaxTimerLock.Lock()
 	call := f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
 	fileRelPath := "fdas"
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
 
 	call = f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
@@ -489,18 +490,18 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	manifest := f.newManifest("foobar")
 	f.Start([]model.Manifest{manifest})
 
-	f.timerMaker.maxTimerLock.Lock()
+	f.timerMaker.MaxTimerLock.Lock()
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
-	f.timerMaker.restTimerLock.Lock()
+	f.timerMaker.RestTimerLock.Lock()
 	fileRelPaths := []string{"fdas", "giueheh"}
 	for _, fileRelPath := range fileRelPaths {
-		f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
+		f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
 	}
 	time.Sleep(time.Millisecond)
-	f.timerMaker.restTimerLock.Unlock()
+	f.timerMaker.RestTimerLock.Unlock()
 
 	call = f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
@@ -527,14 +528,14 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneState().FilesChanged())
 
-	f.timerMaker.maxTimerLock.Lock()
-	f.timerMaker.restTimerLock.Lock()
+	f.timerMaker.MaxTimerLock.Lock()
+	f.timerMaker.RestTimerLock.Lock()
 	fileRelPaths := []string{"fdas", "giueheh"}
 	for _, fileRelPath := range fileRelPaths {
-		f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
+		f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
 	}
 	time.Sleep(time.Millisecond)
-	f.timerMaker.maxTimerLock.Unlock()
+	f.timerMaker.MaxTimerLock.Unlock()
 
 	call = f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
@@ -562,7 +563,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	call := f.nextCall()
 	assert.True(t, call.oneState().IsEmpty())
 
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("a.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
 
 	call = f.nextCall()
 	assert.True(t, call.oneState().IsEmpty())
@@ -632,14 +633,14 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 	// Simulate a change to a.go that makes the build fail.
 	f.SetNextBuildFailure(errors.New("build failed"))
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("a.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
 
 	call = f.nextCallComplete("failed build from a.go change")
 	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastLocalImageAsString())
 	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("b.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
 
 	// The next build should treat both a.go and b.go as changed, and build
 	// on the last successful result, from before a.go changed.
@@ -662,13 +663,13 @@ func TestThreeBuilds(t *testing.T) {
 	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneState().IsEmpty())
 
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("a.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
 
 	call = f.nextCallComplete("second build")
 	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneState().FilesChanged())
 
 	// Simulate a change to b.go
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("b.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
 
 	call = f.nextCallComplete("third build")
 	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneState().FilesChanged())
@@ -697,12 +698,12 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	tmpPath := filepath.Join(f.Path(), ".#a.go")
 	_ = os.Symlink(realPath, tmpPath)
 
-	f.fsWatcher.events <- watch.NewFileEvent(tmpPath)
+	f.fsWatcher.Events <- watch.NewFileEvent(tmpPath)
 
 	f.assertNoCall()
 
 	f.TouchFiles([]string{realPath})
-	f.fsWatcher.events <- watch.NewFileEvent(realPath)
+	f.fsWatcher.Events <- watch.NewFileEvent(realPath)
 
 	call = f.nextCall()
 	assert.Equal(t, []string{realPath}, call.oneState().FilesChanged())
@@ -739,7 +740,7 @@ k8s_yaml('snack.yaml')
 	// (i.e. check that we called BuildAndDeploy with no pre-existing state)
 	assert.False(t, call.oneState().HasLastSuccessfulResult())
 
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("random_file.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("random_file.go"))
 
 	// third call: new manifest should persist
 	call = f.nextCall("persist new manifest")
@@ -885,7 +886,7 @@ k8s_yaml('snack.yaml')`)
 	// Editing the random file means we have to do a rebuild. BUT! The Dockerfile
 	// hasn't changed, so the manifest hasn't changed, so we can do an incremental build.
 	changed := f.WriteFile("src/main.go", "goodbye")
-	f.fsWatcher.events <- watch.NewFileEvent(changed)
+	f.fsWatcher.Events <- watch.NewFileEvent(changed)
 
 	call = f.nextCall("build from file change")
 	assert.Equal(t, "snack", string(call.k8s().Name))
@@ -1044,7 +1045,7 @@ k8s_yaml('snack.yaml')`
 		return mt.Manifest.TriggerMode == model.TriggerModeManualAfterInitial
 	})
 
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("src/main.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("src/main.go"))
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
 		return len(st.BuildStatus(imageTargetID).PendingFileChanges) > 0
 	})
@@ -1126,7 +1127,7 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src')`)
 	f.WriteFile("Tiltfile", `
 k8s_yaml('snack.yaml')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignore='Dockerfile')`)
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
 
 	f.WaitUntilManifestState("snack reloaded", "snack", func(ms store.ManifestState) bool {
 		return len(ms.BuildHistory) == 2
@@ -1187,7 +1188,7 @@ go build ./...
 
 	// Simulate a change to main.go
 	mainPath := filepath.Join(f.Path(), "main.go")
-	f.fsWatcher.events <- watch.NewFileEvent(mainPath)
+	f.fsWatcher.Events <- watch.NewFileEvent(mainPath)
 
 	// Check that this triggered a rebuild.
 	call = f.nextCallComplete("rebuild triggered")
@@ -1486,7 +1487,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
-	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
+	f.store.Dispatch(fswatch.NewTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
@@ -1537,7 +1538,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
 
 	// Start a fake build
-	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
+	f.store.Dispatch(fswatch.NewTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1578,7 +1579,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.Start([]model.Manifest{manifest})
 
 	// Start and end a normal build
-	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
+	f.store.Dispatch(fswatch.NewTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1608,7 +1609,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	// Start another fake build
-	f.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
+	f.store.Dispatch(fswatch.NewTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a"))
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
@@ -1994,7 +1995,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("dignore.txt"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("dignore.txt"))
 	f.assertNoCall("event for ignored file should not trigger build")
 
 	err := f.Stop()
@@ -2017,7 +2018,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.startPod(pod, name)
 	f.podLog(pod, name, "first string")
 
-	f.upper.store.Dispatch(newTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a.go"))
+	f.upper.store.Dispatch(fswatch.NewTargetFilesChangedAction(manifest.ImageTargetAt(0).ID(), "/go/a.go"))
 
 	f.waitForCompletedBuildCount(2)
 	f.podLog(pod, name, "second string")
@@ -2139,7 +2140,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	f.b.nextLiveUpdateContainerIDs = []container.ID{podbuilder.FakeContainerID()}
 	pod := podbuilder.New(f.T(), manifest).Build()
 	f.podEvent(pod, manifest.Name)
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
 	assert.Equal(t, pod.Name, call.oneState().OneContainerInfo().PodID.String())
@@ -2163,7 +2164,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	})
 
 	// kick off another build
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("main2.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main2.go"))
 	call = f.nextCall()
 	// at this point we have not received a pod event for pod that was started by the crash-rebuild,
 	// so any known pod info would have to be invalid to use for a build and this BuildState should
@@ -2498,7 +2499,7 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	assert.True(t, call.oneState().IsEmpty())
 
 	// Change a file -- should trigger build
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("package.json"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("package.json"))
 	call = f.nextCall()
 	assert.Equal(t, []string{f.JoinPath("package.json")}, call.oneState().FilesChanged())
 }
@@ -2776,7 +2777,7 @@ func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 	assert.Equal(t, m2.K8sTarget(), call.k8s())
 
 	f.WriteFile("common/a.txt", "hello world")
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("common/a.txt"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("common/a.txt"))
 
 	f.waitForCompletedBuildCount(4)
 
@@ -2806,7 +2807,7 @@ k8s_yaml('snack.yaml')`
 	f.waitForCompletedBuildCount(1)
 
 	f.WriteFile("snack.yaml", testyaml.Deployment("snack", "gcr.io/windmill-public-containers/servantes/snack:new"))
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("snack.yaml"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("snack.yaml"))
 
 	f.waitForCompletedBuildCount(2)
 
@@ -2815,7 +2816,7 @@ k8s_yaml('snack.yaml')`
 	})
 
 	f.WriteFile("Dockerfile", `FROM iron/go:foobar`)
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Dockerfile"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Dockerfile"))
 
 	f.waitForCompletedBuildCount(3)
 
@@ -3016,7 +3017,7 @@ k8s_yaml('snack.yaml')`)
 	f.WriteFile("Tiltfile", `
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile', ignore='foo')
 k8s_yaml('snack.yaml')`)
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
 
 	f.WaitUntil("Tiltfile reloaded", func(state store.EngineState) bool {
 		return len(state.TiltfileState.BuildHistory) == 2
@@ -3219,7 +3220,7 @@ func TestHasEverBeenReadyLocal(t *testing.T) {
 	})
 
 	// second build will succeed, HasEverBeenReadyOrSucceeded should be true
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("bar", "main.go"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("bar", "main.go"))
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
 		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
@@ -3371,7 +3372,7 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 	})
 
 	f.WriteFile("Tiltfile", "local_resource('foo', serve_cmd='false')")
-	f.fsWatcher.events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
 
 	f.WaitUntil("false is served", func(state store.EngineState) bool {
 		return strings.Contains(state.LogStore.ManifestLog("foo"), "Starting cmd false")
@@ -3422,44 +3423,6 @@ update_settings(max_parallel_updates=123)
 	})
 }
 
-type fakeTimerMaker struct {
-	restTimerLock *sync.Mutex
-	maxTimerLock  *sync.Mutex
-	t             *testing.T
-}
-
-func (f fakeTimerMaker) maker() timerMaker {
-	return func(d time.Duration) <-chan time.Time {
-		var lock *sync.Mutex
-		// we have separate locks for the separate uses of timer so that tests can control the timers independently
-		switch d {
-		case watchBufferMinRestDuration:
-			lock = f.restTimerLock
-		case watchBufferMaxDuration:
-			lock = f.maxTimerLock
-		default:
-			// if you hit this, someone (you!?) might have added a new timer with a new duration, and you probably
-			// want to add a case above
-			f.t.Error("makeTimer called on unsupported duration")
-		}
-		ret := make(chan time.Time, 1)
-		go func() {
-			lock.Lock()
-			ret <- time.Unix(0, 0)
-			lock.Unlock()
-			close(ret)
-		}()
-		return ret
-	}
-}
-
-func makeFakeTimerMaker(t *testing.T) fakeTimerMaker {
-	restTimerLock := new(sync.Mutex)
-	maxTimerLock := new(sync.Mutex)
-
-	return fakeTimerMaker{restTimerLock, maxTimerLock, t}
-}
-
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
@@ -3468,8 +3431,8 @@ type testFixture struct {
 	clock                      clockwork.Clock
 	upper                      Upper
 	b                          *fakeBuildAndDeployer
-	fsWatcher                  *fakeMultiWatcher
-	timerMaker                 *fakeTimerMaker
+	fsWatcher                  *fswatch.FakeMultiWatcher
+	timerMaker                 *fswatch.FakeTimerMaker
 	docker                     *docker.FakeClient
 	kClient                    *k8s.FakeK8sClient
 	hud                        hud.HeadsUpDisplay // so fixture may use either FakeHud or DisabledHud. See: f.FakeHud()/f.DisabledHud()
@@ -3477,7 +3440,7 @@ type testFixture struct {
 	log                        *bufsync.ThreadSafeBuffer
 	store                      *store.Store
 	bc                         *BuildController
-	fwm                        *WatchManager
+	fwm                        *fswatch.WatchManager
 	cc                         *configs.ConfigsController
 	dcc                        *dockercompose.FakeDCClient
 	tfl                        tiltfile.TiltfileLoader
@@ -3503,10 +3466,10 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 
-	watcher := newFakeMultiWatcher()
+	watcher := fswatch.NewFakeMultiWatcher()
 	b := newFakeBuildAndDeployer(t)
 
-	timerMaker := makeFakeTimerMaker(t)
+	timerMaker := fswatch.MakeFakeTimerMaker(t)
 
 	dockerClient := docker.NewFakeClient()
 
@@ -3529,7 +3492,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
-	fwm := NewWatchManager(watcher.newSub, timerMaker.maker())
+	fwm := fswatch.NewWatchManager(watcher.NewSub, timerMaker.Maker())
 	pfc := NewPortForwardController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
@@ -3687,7 +3650,7 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
-	expectedWatchCount := len(watchableTargetsForManifests(state.Manifests()))
+	expectedWatchCount := len(fswatch.WatchableTargetsForManifests(state.Manifests()))
 	if len(state.ConfigFiles) > 0 {
 		// watchmanager also creates a watcher for config files
 		expectedWatchCount++
@@ -3698,9 +3661,7 @@ func (f *testFixture) Init(action InitAction) {
 	f.store.UnlockMutableState()
 
 	f.PollUntil("watches set up", func() bool {
-		f.fwm.mu.Lock()
-		defer f.fwm.mu.Unlock()
-		return !watchFiles || len(f.fwm.targetWatches) == expectedWatchCount
+		return !watchFiles || f.fwm.TargetWatchCount() == expectedWatchCount
 	})
 }
 
@@ -3963,8 +3924,8 @@ func (f *testFixture) TearDown() {
 	}
 	f.TempDirFixture.TearDown()
 	f.kClient.TearDown()
-	close(f.fsWatcher.events)
-	close(f.fsWatcher.errors)
+	close(f.fsWatcher.Events)
+	close(f.fsWatcher.Errors)
 	f.cancel()
 }
 
@@ -4046,7 +4007,7 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 		filenames = append(filenames, filename)
 
 		// Fire an FS event thru the normal pipeline, so that manifests get marked dirty.
-		f.fsWatcher.events <- watch.NewFileEvent(filename)
+		f.fsWatcher.Events <- watch.NewFileEvent(filename)
 	}
 
 	// The test harness was written for a time when most tests didn't
@@ -4055,7 +4016,7 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 	// 2) Because the Tiltfile isn't executed, ConfigFiles isn't populated
 	// 3) Because ConfigFiles isn't populated, ConfigsTargetID watches aren't set up properly
 	// So just fire a change action manually.
-	f.store.Dispatch(newTargetFilesChangedAction(ConfigsTargetID, filenames...))
+	f.store.Dispatch(fswatch.NewTargetFilesChangedAction(fswatch.ConfigsTargetID, filenames...))
 }
 
 func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {

@@ -1,4 +1,4 @@
-package engine
+package fswatch
 
 import (
 	"context"
@@ -18,6 +18,20 @@ import (
 	"github.com/windmilleng/tilt/pkg/model"
 )
 
+// When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
+// 200ms is not the result of any kind of research or experimentation
+// it might end up being a significant part of deployment delay, if we get the total latency <2s
+// it might also be long enough that it misses some changes if the user has some operation involving a large file
+//   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
+const BufferMinRestInMs = 200
+
+// When waiting for a `watchBufferDurationInMs`-long break in file modifications to aggregate notifications,
+// if we haven't seen a break by the time `watchBufferMaxTimeInMs` has passed, just send off whatever we've got
+const BufferMaxTimeInMs = 10000
+
+var BufferMinRestDuration = BufferMinRestInMs * time.Millisecond
+var BufferMaxDuration = BufferMaxTimeInMs * time.Millisecond
+
 const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install#system-specific-preparation`
 
 var ConfigsTargetID = model.TargetID{
@@ -35,7 +49,7 @@ type WatchableTarget interface {
 var _ WatchableTarget = model.ImageTarget{}
 var _ WatchableTarget = model.LocalTarget{}
 
-func watchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget {
+func WatchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget {
 	var watchable []WatchableTarget
 	seen := map[model.TargetID]bool{}
 	for _, m := range manifests {
@@ -78,22 +92,6 @@ func (m *configsTarget) IgnoredLocalDirectories() []string {
 	return nil
 }
 
-type targetFilesChangedAction struct {
-	targetID model.TargetID
-	files    []string
-	time     time.Time
-}
-
-func (targetFilesChangedAction) Action() {}
-
-func newTargetFilesChangedAction(targetID model.TargetID, files ...string) targetFilesChangedAction {
-	return targetFilesChangedAction{
-		targetID: targetID,
-		files:    files,
-		time:     time.Now(),
-	}
-}
-
 type targetNotifyCancel struct {
 	target WatchableTarget
 	notify watch.Notify
@@ -103,14 +101,14 @@ type targetNotifyCancel struct {
 type WatchManager struct {
 	targetWatches      map[model.TargetID]targetNotifyCancel
 	fsWatcherMaker     FsWatcherMaker
-	timerMaker         timerMaker
+	timerMaker         TimerMaker
 	tiltIgnoreContents string
 	tiltIgnore         model.PathMatcher
 	disabledForTesting bool
 	mu                 sync.Mutex
 }
 
-func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker timerMaker) *WatchManager {
+func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchManager {
 	return &WatchManager{
 		targetWatches:  make(map[model.TargetID]targetNotifyCancel),
 		fsWatcherMaker: watcherMaker,
@@ -130,7 +128,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 	setup = []WatchableTarget{}
 	teardown = []model.TargetID{}
 
-	watchable := watchableTargetsForManifests(state.Manifests())
+	watchable := WatchableTargetsForManifests(state.Manifests())
 	targetsToProcess := make(map[model.TargetID]WatchableTarget)
 	for _, w := range watchable {
 		targetsToProcess[w.ID()] = w
@@ -168,7 +166,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		tiltRoot := filepath.Dir(state.TiltfilePath)
 		tiltIgnoreFilter, err := dockerignore.DockerIgnoreTesterFromContents(tiltRoot, w.tiltIgnoreContents)
 		if err != nil {
-			st.Dispatch(NewErrorAction(err))
+			st.Dispatch(store.NewErrorAction(err))
 		}
 		w.tiltIgnore = tiltIgnoreFilter
 	}
@@ -181,6 +179,12 @@ func watchRulesMatch(w1, w2 WatchableTarget) bool {
 		cmp.Equal(w1.Dockerignores(), w2.Dockerignores()) &&
 		cmp.Equal(w1.Dependencies(), w2.Dependencies()) &&
 		cmp.Equal(w1.IgnoredLocalDirectories(), w2.IgnoredLocalDirectories())
+}
+
+func (w *WatchManager) TargetWatchCount() int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return len(w.targetWatches)
 }
 
 func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
@@ -196,19 +200,19 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 		logger := store.NewLogActionLogger(ctx, st.Dispatch)
 		ignore, err := w.createIgnoreMatcher(target)
 		if err != nil {
-			st.Dispatch(NewErrorAction(err))
+			st.Dispatch(store.NewErrorAction(err))
 			continue
 		}
 
 		watcher, err := w.fsWatcherMaker(target.Dependencies(), ignore, logger)
 		if err != nil {
-			st.Dispatch(NewErrorAction(err))
+			st.Dispatch(store.NewErrorAction(err))
 			continue
 		}
 
 		err = watcher.Start()
 		if err != nil {
-			st.Dispatch(NewErrorAction(err))
+			st.Dispatch(store.NewErrorAction(err))
 			continue
 		}
 
@@ -258,9 +262,9 @@ func (w *WatchManager) dispatchFileChangesLoop(
 				return
 			}
 			if err.Error() == fsnotify.ErrEventOverflow.Error() {
-				st.Dispatch(NewErrorAction(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err)))
+				st.Dispatch(store.NewErrorAction(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err)))
 			} else {
-				st.Dispatch(NewErrorAction(err))
+				st.Dispatch(store.NewErrorAction(err))
 			}
 		case <-ctx.Done():
 			return
@@ -269,12 +273,12 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			if !ok {
 				return
 			}
-			watchEvent := newTargetFilesChangedAction(target.ID())
+			watchEvent := NewTargetFilesChangedAction(target.ID())
 			for _, e := range fsEvents {
-				watchEvent.files = append(watchEvent.files, e.Path())
+				watchEvent.Files = append(watchEvent.Files, e.Path())
 			}
 
-			if len(watchEvent.files) > 0 {
+			if len(watchEvent.Files) > 0 {
 				st.Dispatch(watchEvent)
 			}
 		}
@@ -283,7 +287,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 
 //makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
 //from the user's perspective are grouped together.
-func coalesceEvents(timerMaker timerMaker, eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
+func coalesceEvents(timerMaker TimerMaker, eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
 	ret := make(chan []watch.FileEvent)
 	go func() {
 		defer close(ret)
@@ -295,12 +299,12 @@ func coalesceEvents(timerMaker timerMaker, eventChan <-chan watch.FileEvent) <-c
 			}
 			events := []watch.FileEvent{event}
 
-			// keep grabbing changes until we've gone `watchBufferMinRestDuration` without seeing a change
-			minRestTimer := timerMaker(watchBufferMinRestDuration)
+			// keep grabbing changes until we've gone `BufferMinRestDuration` without seeing a change
+			minRestTimer := timerMaker(BufferMinRestDuration)
 
 			// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
 			// then just send what we've got
-			timeout := timerMaker(watchBufferMaxDuration)
+			timeout := timerMaker(BufferMaxDuration)
 
 			done := false
 			channelClosed := false
@@ -310,7 +314,7 @@ func coalesceEvents(timerMaker timerMaker, eventChan <-chan watch.FileEvent) <-c
 					if !ok {
 						channelClosed = true
 					} else {
-						minRestTimer = timerMaker(watchBufferMinRestDuration)
+						minRestTimer = timerMaker(BufferMinRestDuration)
 						events = append(events, event)
 					}
 				case <-minRestTimer:

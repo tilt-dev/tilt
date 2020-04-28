@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/windmilleng/tilt/internal/engine/fswatch"
 	"github.com/windmilleng/tilt/internal/github"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -18,10 +19,10 @@ type TiltVersionChecker struct {
 	started       bool
 	clientFactory GithubClientFactory
 	client        github.Client
-	timerMaker    timerMaker
+	timerMaker    fswatch.TimerMaker
 }
 
-func NewTiltVersionChecker(ghcf GithubClientFactory, timerMaker timerMaker) *TiltVersionChecker {
+func NewTiltVersionChecker(ghcf GithubClientFactory, timerMaker fswatch.TimerMaker) *TiltVersionChecker {
 	return &TiltVersionChecker{clientFactory: ghcf, timerMaker: timerMaker}
 }
 
