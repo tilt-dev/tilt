@@ -1,8 +1,7 @@
-// +build !windows
-
 package tiltfile
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,8 +25,8 @@ docker_build('gcr.io/fe', '.', live_update=[
 ])
 `)
 	f.file(".dockerignore", "build")
-	f.file("src/index.html", "Hello world!")
-	f.file("src/.dockerignore", "**")
+	f.file(filepath.Join("src", "index.html"), "Hello world!")
+	f.file(filepath.Join("src", ".dockerignore"), "**")
 
 	f.load()
 	m := f.assertNextManifest("fe")
@@ -55,8 +54,8 @@ k8s_yaml('fe.yaml')
 custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', ['src'])
 `)
 	f.file(".dockerignore", "build")
-	f.file("src/index.html", "Hello world!")
-	f.file("src/.git/hi", "hi")
+	f.file(filepath.Join("src", "index.html"), "Hello world!")
+	f.file(filepath.Join("src", ".git", "hi"), "hi")
 
 	f.load()
 
