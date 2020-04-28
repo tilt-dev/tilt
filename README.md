@@ -5,15 +5,17 @@
 [![Build Status](https://circleci.com/gh/windmilleng/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/windmilleng/tilt)
 [![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://godoc.org/github.com/windmilleng/tilt)
 
-Local Kubernetes development with no stress.
+Kubernetes for Prod, Tilt for Dev
 
-[Tilt](https://tilt.dev) helps you develop your microservices locally.
-Run `tilt up` to start working on your services in a complete dev environment
-configured for your team.
+Modern apps are made of too many services. They're everywhere and in constant
+communication.
 
-Tilt watches your files for edits, automatically builds your container images,
-and applies any changes to bring your environment
-up-to-date in real-time. Think `docker build && kubectl apply` or `docker-compose up`.
+[Tilt](https://tilt.dev) powers multi-service development and makes sure they behave!
+Run `tilt up` to work in a complete dev environment configured for your team.
+
+Tilt automates all the steps from a code change to a new process: watching
+files, building container images, and bringing your environment
+up-to-date. Think `docker build && kubectl apply` or `docker-compose up`.
 
 ## Watch: Tilt in Two Minutes
 
