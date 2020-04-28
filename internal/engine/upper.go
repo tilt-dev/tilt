@@ -14,6 +14,7 @@ import (
 
 	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
 	"github.com/windmilleng/tilt/internal/container"
+	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
 	"github.com/windmilleng/tilt/internal/engine/configs"
@@ -367,13 +368,19 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			state = state.WithContainerID(cid)
 		}
 
-		// If we have a container ID and no status yet, set status to Up
-		// (this is an expected case when we run docker-compose up while the service
-		// is already running, and we won't get an event to tell us so).
-		// If the container is crashing we will get an event subsequently.
-		isFirstBuild := cid != "" && state.Status == ""
-		if isFirstBuild {
-			state = state.WithStatus(dockercompose.StatusUp)
+		cState := dcResult.ContainerState
+		if cState != nil {
+			state = state.WithContainerState(*cState)
+
+			if docker.HasStarted(*cState) {
+				if state.StartTime.IsZero() {
+					state = state.WithStartTime(cb.FinishTime)
+				}
+				if state.LastReadyTime.IsZero() {
+					// NB: this will differ from StartTime once we support DC health checks
+					state = state.WithLastReadyTime(cb.FinishTime)
+				}
+			}
 		}
 
 		ms.RuntimeState = state
@@ -689,35 +696,16 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 		return
 	}
 
-	if evt.Type != dockercompose.TypeContainer {
-		// We currently only support Container events.
-		return
-	}
-
 	state, _ := ms.RuntimeState.(dockercompose.State)
 
 	state = state.WithContainerID(container.ID(evt.ID)).
-		WithSpanID(runtimelog.SpanIDForDCService(mn))
-
-	// For now, just guess at state.
-	status := evt.GuessStatus()
-	if status != "" {
-		state = state.WithStatus(status)
-	}
+		WithSpanID(runtimelog.SpanIDForDCService(mn)).
+		WithContainerState(action.ContainerState)
 
 	if evt.IsStartupEvent() {
 		state = state.WithStartTime(action.Time)
-		state = state.WithStopping(false)
 		// NB: this will differ from StartTime once we support DC health checks
 		state = state.WithLastReadyTime(action.Time)
-	}
-
-	if evt.IsStopEvent() {
-		state = state.WithStopping(true)
-	}
-
-	if evt.Action == dockercompose.ActionDie && !state.IsStopping {
-		state = state.WithStatus(dockercompose.StatusCrash)
 	}
 
 	ms.RuntimeState = state

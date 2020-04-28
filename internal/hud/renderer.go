@@ -8,7 +8,6 @@ import (
 
 	"github.com/gdamore/tcell"
 
-	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/rty"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -205,7 +204,7 @@ func isCrashing(res view.Resource) bool {
 		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
 		res.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
 		res.PendingBuildReason.Has(model.BuildReasonFlagCrash) ||
-		res.IsDC() && res.DockerComposeTarget().Status() == string(dockercompose.StatusCrash)
+		res.IsDC() && res.DockerComposeTarget().RuntimeStatus() == model.RuntimeStatusError
 }
 
 func (r *Renderer) renderModal(fg rty.Component, bg rty.Component, fixed bool) rty.Component {

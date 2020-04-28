@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
@@ -178,7 +179,8 @@ type fakeBuildAndDeployer struct {
 
 	// Inject the container ID of the container started by Docker Compose.
 	// If not set, we will auto-generate an ID.
-	nextDockerComposeContainerID container.ID
+	nextDockerComposeContainerID    container.ID
+	nextDockerComposeContainerState *dockertypes.ContainerState
 
 	nextDeployedUID           types.UID
 	nextPodTemplateSpecHashes []k8s.PodTemplateSpecHash
@@ -267,7 +269,10 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		if b.nextDockerComposeContainerID != "" {
 			dcContainerID = b.nextDockerComposeContainerID
 		}
-		result[call.dc().ID()] = store.NewDockerComposeDeployResult(call.dc().ID(), dcContainerID)
+
+		dcContainerState := b.nextDockerComposeContainerState
+		result[call.dc().ID()] = store.NewDockerComposeDeployResult(
+			call.dc().ID(), dcContainerID, dcContainerState)
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
@@ -2508,25 +2513,19 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	// Send event corresponding to status = "In Progress"
-	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionCreate))
-	if err != nil {
-		f.T().Fatal(err)
-	}
+	f.dispatchDCEvent(m, dockercompose.ActionCreate, docker.NewCreatedContainerState())
 
 	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().Status == dockercompose.StatusInProg
+		return ms.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusPending
 	})
 
 	beforeStart := f.Now()
 
 	// Send event corresponding to status = "OK"
-	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
-	if err != nil {
-		f.T().Fatal(err)
-	}
+	f.dispatchDCEvent(m, dockercompose.ActionStart, docker.NewRunningContainerState())
 
 	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().Status == dockercompose.StatusUp
+		return ms.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusOK
 	})
 
 	f.withManifestState(m.ManifestName(), func(ms store.ManifestState) {
@@ -2535,14 +2534,11 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	})
 
 	// An event unrelated to status shouldn't change the status
-	err = f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionExecCreate))
-	if err != nil {
-		f.T().Fatal(err)
-	}
+	f.dispatchDCEvent(m, dockercompose.ActionExecCreate, docker.NewRunningContainerState())
 
 	time.Sleep(10 * time.Millisecond)
 	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().Status == dockercompose.StatusUp
+		return ms.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusOK
 	})
 }
 
@@ -2562,13 +2558,10 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	// Is DockerComposeEventWatcher watching for events??
-	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionCreate))
-	if err != nil {
-		f.T().Fatal(err)
-	}
+	f.dispatchDCEvent(m, dockercompose.ActionCreate, docker.NewCreatedContainerState())
 
 	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().Status == dockercompose.StatusInProg
+		return ms.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusPending
 	})
 }
 
@@ -2638,6 +2631,8 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	})
 }
 
+// NOTE(nick): The weird structure of this test is vesigial from when
+// we inferred crash from ContainerState rather than sequences of events.
 func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f := newTestFixture(t)
 	m1, m2 := f.setupDCFixture()
@@ -2646,11 +2641,11 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, dockercompose.StatusCrash, st.DCRuntimeState().Status)
+		assert.NotEqual(t, model.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
 	})
 
 	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, dockercompose.StatusCrash, st.DCRuntimeState().Status)
+		assert.NotEqual(t, model.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
 	})
 
 	for _, action := range []dockercompose.Action{
@@ -2663,16 +2658,19 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 		dockercompose.ActionStart,
 		dockercompose.ActionDie,
 	} {
-		err := f.dcc.SendEvent(dcContainerEvtForManifest(m1, action))
-		require.NoError(t, err)
+		if action == dockercompose.ActionDie {
+			f.dispatchDCEvent(m1, action, docker.NewExitErrorContainerState())
+		} else {
+			f.dispatchDCEvent(m1, action, docker.NewCreatedContainerState())
+		}
 	}
 
 	f.WaitUntilManifestState("is crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCRuntimeState().Status == dockercompose.StatusCrash
+		return st.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusError
 	})
 
 	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, dockercompose.StatusCrash, st.DCRuntimeState().Status)
+		assert.NotEqual(t, model.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
 	})
 
 	for _, action := range []dockercompose.Action{
@@ -2684,12 +2682,11 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 		dockercompose.ActionCreate,
 		dockercompose.ActionStart,
 	} {
-		err := f.dcc.SendEvent(dcContainerEvtForManifest(m1, action))
-		require.NoError(t, err)
+		f.dispatchDCEvent(m1, action, docker.NewRunningContainerState())
 	}
 
 	f.WaitUntilManifestState("is not crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCRuntimeState().Status == dockercompose.StatusUp
+		return st.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusOK
 	})
 }
 
@@ -2699,6 +2696,10 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 
 	expected := container.ID("aaaaaa")
 	f.b.nextDockerComposeContainerID = expected
+
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
 	f.loadAndStart()
 
 	f.waitForCompletedBuildCount(2)
@@ -2709,7 +2710,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 			t.Fatal("expected RuntimeState to be docker compose, but it wasn't")
 		}
 		assert.Equal(t, expected, state.ContainerID)
-		assert.Equal(t, dockercompose.StatusUp, state.Status)
+		assert.Equal(t, model.RuntimeStatusOK, state.RuntimeStatus())
 	})
 }
 
@@ -3238,8 +3239,8 @@ func TestHasEverBeenReadyDC(t *testing.T) {
 	})
 
 	// second build will succeed, HasEverBeenReadyOrSucceeded should be true
-	err := f.dcc.SendEvent(dcContainerEvtForManifest(m, dockercompose.ActionStart))
-	require.NoError(t, err)
+	f.dispatchDCEvent(m, dockercompose.ActionStart, docker.NewRunningContainerState())
+
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
 		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
@@ -3537,7 +3538,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, versionExt, fakeDcc, "localhost", feature.MainDefaults, env)
 	cc := configs.NewConfigsController(tfl, dockerClient)
-	dcw := dcwatch.NewEventWatcher(fakeDcc)
+	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
 	sCli := synclet.NewTestSyncletClient(dockerClient)
@@ -4171,12 +4172,17 @@ func (s fixtureSub) OnChange(ctx context.Context, st store.RStore) {
 	s.ch <- true
 }
 
-func dcContainerEvtForManifest(m model.Manifest, action dockercompose.Action) dockercompose.Event {
-	return dockercompose.Event{
-		Type:    dockercompose.TypeContainer,
-		Action:  action,
-		Service: m.ManifestName().String(),
-	}
+func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Action, containerState dockertypes.ContainerState) {
+	f.store.Dispatch(dcwatch.EventAction{
+		Event: dockercompose.Event{
+			ID:      "fake-container-id",
+			Type:    dockercompose.TypeContainer,
+			Action:  action,
+			Service: m.ManifestName().String(),
+		},
+		Time:           f.clock.Now(),
+		ContainerState: containerState,
+	})
 }
 
 func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {

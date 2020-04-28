@@ -152,6 +152,16 @@ func (c *FakeClient) SetExecError(err error) {
 	c.ExecErrorsToThrow = []error{err}
 }
 
+func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+	state := NewRunningContainerState()
+	return types.ContainerJSON{
+		ContainerJSONBase: &types.ContainerJSONBase{
+			ID:    containerID,
+			State: &state,
+		},
+	}, nil
+}
+
 func (c *FakeClient) SetContainerListOutput(output map[string][]types.Container) {
 	c.ContainerListOutput = output
 }

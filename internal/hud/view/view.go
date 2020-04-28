@@ -1,10 +1,10 @@
 package view
 
 import (
+	"strings"
 	"time"
 
 	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/pkg/model"
 	"github.com/windmilleng/tilt/pkg/model/logstore"
 )
@@ -22,14 +22,14 @@ type ResourceInfoView interface {
 
 type DCResourceInfo struct {
 	ConfigPaths     []string
-	ContainerStatus dockercompose.Status
+	ContainerStatus string
 	ContainerID     container.ID
 	SpanID          logstore.SpanID
 	StartTime       time.Time
 	RunStatus       model.RuntimeStatus
 }
 
-func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID container.ID, spanID logstore.SpanID, startTime time.Time, runtimeStatus model.RuntimeStatus) DCResourceInfo {
+func NewDCResourceInfo(configPaths []string, status string, cID container.ID, spanID logstore.SpanID, startTime time.Time, runtimeStatus model.RuntimeStatus) DCResourceInfo {
 	return DCResourceInfo{
 		ConfigPaths:     configPaths,
 		ContainerStatus: status,
@@ -42,9 +42,11 @@ func NewDCResourceInfo(configPaths []string, status dockercompose.Status, cID co
 
 var _ ResourceInfoView = DCResourceInfo{}
 
-func (DCResourceInfo) resourceInfoView()                         {}
-func (dcInfo DCResourceInfo) RuntimeSpanID() logstore.SpanID     { return dcInfo.SpanID }
-func (dcInfo DCResourceInfo) Status() string                     { return string(dcInfo.ContainerStatus) }
+func (DCResourceInfo) resourceInfoView()                     {}
+func (dcInfo DCResourceInfo) RuntimeSpanID() logstore.SpanID { return dcInfo.SpanID }
+func (dcInfo DCResourceInfo) Status() string {
+	return strings.Title(dcInfo.ContainerStatus)
+}
 func (dcInfo DCResourceInfo) RuntimeStatus() model.RuntimeStatus { return dcInfo.RunStatus }
 
 type K8sResourceInfo struct {
@@ -184,7 +186,7 @@ func (r Resource) DefaultCollapse() bool {
 		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackOff" || k8sInfo.PodStatus == "Error"
 	}
 
-	if r.IsDC() && r.DockerComposeTarget().Status() == string(dockercompose.StatusCrash) {
+	if r.IsDC() && r.DockerComposeTarget().RuntimeStatus() == model.RuntimeStatusError {
 		autoExpand = true
 	}
 

@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/docker/distribution/reference"
+	dockertypes "github.com/docker/docker/api/types"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/windmilleng/tilt/internal/container"
@@ -98,6 +99,9 @@ type DockerComposeBuildResult struct {
 	// we use for Kubernetes, where the pods appear some time later via an
 	// asynchronous event.
 	DockerComposeContainerID container.ID
+
+	// The initial state of the container.
+	ContainerState *dockertypes.ContainerState
 }
 
 func (r DockerComposeBuildResult) TargetID() model.TargetID   { return r.id }
@@ -105,10 +109,11 @@ func (r DockerComposeBuildResult) BuildType() model.BuildType { return model.Bui
 func (r DockerComposeBuildResult) Facets() []model.Facet      { return nil }
 
 // For docker compose deploy targets.
-func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID) DockerComposeBuildResult {
+func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID, state *dockertypes.ContainerState) DockerComposeBuildResult {
 	return DockerComposeBuildResult{
 		id:                       id,
 		DockerComposeContainerID: containerID,
+		ContainerState:           state,
 	}
 }
 

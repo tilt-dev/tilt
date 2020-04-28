@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/api/types"
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/windmilleng/tilt/internal/build"
@@ -126,8 +127,19 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, err
 	}
 
+	// grab the initial container state
+	containerJSON, err := bd.dc.ContainerInspect(ctx, string(cid))
+	if err != nil {
+		logger.Get(ctx).Debugf("Error inspecting container %s: %v", cid, err)
+	}
+
+	var containerState *types.ContainerState
+	if containerJSON.ContainerJSONBase != nil && containerJSON.ContainerJSONBase.State != nil {
+		containerState = containerJSON.ContainerJSONBase.State
+	}
+
 	results := q.Results()
-	results[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid)
+	results[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid, containerState)
 	return results, nil
 }
 
