@@ -66,6 +66,16 @@ func TestProvideEnv(t *testing.T) {
 			Cluster: "microk8s-cluster-dev-cluster-1",
 		},
 	}
+	crcContexts := map[string]*api.Context{
+		"api-crc-testing": &api.Context{
+			Cluster: "api-crc-testing",
+		},
+	}
+	crcPrefixContexts := map[string]*api.Context{
+		"api-crc-testing:6443": &api.Context{
+			Cluster: "api-crc-testing:6443",
+		},
+	}
 
 	homedir, err := homedir.Dir()
 	assert.NoError(t, err)
@@ -99,6 +109,8 @@ func TestProvideEnv(t *testing.T) {
 		{EnvKIND5, &api.Config{CurrentContext: "kubernetes-admin@kind-1", Contexts: kind5Contexts}},
 		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s", Contexts: microK8sContexts}},
 		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s-dev-cluster-1", Contexts: microK8sPrefixContexts}},
+		{EnvCRC, &api.Config{CurrentContext: "api-crc-testing", Contexts: crcContexts}},
+		{EnvCRC, &api.Config{CurrentContext: "api-crc-testing:6443", Contexts: crcPrefixContexts}},
 		{EnvK3D, &api.Config{CurrentContext: "default", Contexts: k3dContexts}},
 		{EnvKIND5, &api.Config{CurrentContext: "default", Contexts: kind5NamedClusterContexts}},
 		{EnvKIND6, &api.Config{CurrentContext: "kind-custom-name", Contexts: kind6Contexts}},
