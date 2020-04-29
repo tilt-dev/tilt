@@ -1,5 +1,3 @@
-// +build !windows
-
 package fswatch
 
 import (
@@ -28,10 +26,10 @@ func TestWatchManager_IgnoredLocalDirectories(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
-	f.ChangeFile(t, "bar/baz")
+	f.ChangeFile(t, filepath.Join("bar", "baz"))
 
 	actions := f.Stop(t)
-	f.AssertActionsNotContain(actions, "bar/baz")
+	f.AssertActionsNotContain(actions, filepath.Join("bar", "baz"))
 }
 
 func TestWatchManager_Dockerignore(t *testing.T) {
@@ -43,11 +41,11 @@ func TestWatchManager_Dockerignore(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
-	f.ChangeFile(t, "bar/baz")
+	f.ChangeFile(t, filepath.Join("bar", "baz"))
 
 	actions := f.Stop(t)
 
-	f.AssertActionsNotContain(actions, "bar/baz")
+	f.AssertActionsNotContain(actions, filepath.Join("bar", "baz"))
 }
 
 func TestWatchManager_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
@@ -95,11 +93,11 @@ func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
 
-	f.ChangeFile(t, "bar/foo")
+	f.ChangeFile(t, filepath.Join("bar", "foo"))
 
 	actions := f.Stop(t)
 
-	f.AssertActionsNotContain(actions, "bar/foo")
+	f.AssertActionsNotContain(actions, filepath.Join("bar", "foo"))
 }
 
 func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
@@ -110,13 +108,13 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
-	f.ChangeFile(t, "bar/foo")
+	f.ChangeFile(t, filepath.Join("bar", "foo"))
 	f.SetTiltIgnoreContents("**foo\n!bar/baz/foo")
-	f.ChangeFile(t, "bar/baz/foo")
+	f.ChangeFile(t, filepath.Join("bar", "baz", "foo"))
 
 	actions := f.Stop(t)
-	f.AssertActionsNotContain(actions, "bar/foo")
-	f.AssertActionsContain(actions, "bar/baz/foo")
+	f.AssertActionsNotContain(actions, filepath.Join("bar", "foo"))
+	f.AssertActionsContain(actions, filepath.Join("bar", "baz", "foo"))
 }
 
 type wmFixture struct {
