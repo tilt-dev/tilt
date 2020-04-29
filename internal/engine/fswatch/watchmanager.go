@@ -125,6 +125,10 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 	state := st.RLockState()
 	defer st.RUnlockState()
 
+	if !state.EngineMode.WatchesFiles() {
+		return nil, nil
+	}
+
 	setup = []WatchableTarget{}
 	teardown = []model.TargetID{}
 
