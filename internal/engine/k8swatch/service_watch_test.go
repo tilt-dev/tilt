@@ -101,14 +101,13 @@ func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 }
 
 type swFixture struct {
-	t          *testing.T
-	kClient    *k8s.FakeK8sClient
-	nip        k8s.NodeIP
-	sw         *ServiceWatcher
-	ctx        context.Context
-	cancel     func()
-	store      *store.Store
-	getActions func() []store.Action
+	t       *testing.T
+	kClient *k8s.FakeK8sClient
+	nip     k8s.NodeIP
+	sw      *ServiceWatcher
+	ctx     context.Context
+	cancel  func()
+	store   *store.TestingStore
 }
 
 func newSWFixture(t *testing.T) *swFixture {
@@ -122,41 +121,36 @@ func newSWFixture(t *testing.T) *swFixture {
 
 	of := k8s.ProvideOwnerFetcher(kClient)
 	sw := NewServiceWatcher(kClient, of)
+	st := store.NewTestingStore()
 
-	ret := &swFixture{
+	return &swFixture{
 		kClient: kClient,
 		sw:      sw,
 		nip:     nip,
 		ctx:     ctx,
 		cancel:  cancel,
 		t:       t,
+		store:   st,
 	}
-
-	ret.store, ret.getActions = store.NewStoreWithFakeReducer()
-	go func() {
-		err := ret.store.Loop(ctx)
-		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
-	}()
-
-	return ret
 }
 
 func (f *swFixture) TearDown() {
 	f.kClient.TearDown()
 	f.cancel()
+	f.store.AssertNoErrorActions(f.t)
 }
 
 func (f *swFixture) assertObservedServiceChangeActions(expectedSCAs ...ServiceChangeAction) {
 	start := time.Now()
 	for time.Since(start) < 200*time.Millisecond {
-		actions := f.getActions()
+		actions := f.store.Actions()
 		if len(actions) == len(expectedSCAs) {
 			break
 		}
 	}
 
 	var observedSCAs []ServiceChangeAction
-	for _, a := range f.getActions() {
+	for _, a := range f.store.Actions() {
 		sca, ok := a.(ServiceChangeAction)
 		if !ok {
 			f.t.Fatalf("got non-%T: %v", ServiceChangeAction{}, a)
