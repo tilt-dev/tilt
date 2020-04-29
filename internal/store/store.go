@@ -52,9 +52,14 @@ func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {
 	}
 }
 
-// Returns a Store for testing that saves observed actions and makes them available
-// via the return value `getActions`
-func NewStoreForTesting() (st *Store, getActions func() []Action) {
+// Returns a Store with a fake reducer that saves observed actions and makes
+// them available via the return value `getActions`.
+//
+// Tests should only use this if they:
+// 1) want to test the Store itself, or
+// 2) want to test subscribers with the particular async behavior of a real Store
+// Otherwise, use NewTestingStore().
+func NewStoreWithFakeReducer() (st *Store, getActions func() []Action) {
 	var mu sync.Mutex
 	actions := []Action{}
 	reducer := Reducer(func(ctx context.Context, s *EngineState, action Action) {

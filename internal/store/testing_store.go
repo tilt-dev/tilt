@@ -24,6 +24,15 @@ func NewTestingStore() *TestingStore {
 	}
 }
 
+func (s *TestingStore) LockMutableStateForTesting() *EngineState {
+	s.stateMu.Lock()
+	return s.state
+}
+
+func (s *TestingStore) UnlockMutableState() {
+	s.stateMu.Unlock()
+}
+
 func (s *TestingStore) SetState(state EngineState) {
 	s.stateMu.Lock()
 	defer s.stateMu.Unlock()

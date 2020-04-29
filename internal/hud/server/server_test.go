@@ -431,7 +431,7 @@ type serverFixture struct {
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
-	st, getActions := store.NewStoreForTesting()
+	st, getActions := store.NewStoreWithFakeReducer()
 	go func() {
 		err := st.Loop(context.Background())
 		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")

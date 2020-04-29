@@ -132,7 +132,7 @@ func newSWFixture(t *testing.T) *swFixture {
 		t:       t,
 	}
 
-	ret.store, ret.getActions = store.NewStoreForTesting()
+	ret.store, ret.getActions = store.NewStoreWithFakeReducer()
 	go func() {
 		err := ret.store.Loop(ctx)
 		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")

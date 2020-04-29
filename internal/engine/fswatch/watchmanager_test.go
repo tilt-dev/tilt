@@ -129,7 +129,7 @@ type wmFixture struct {
 }
 
 func newWMFixture(t *testing.T) *wmFixture {
-	st, getActions := store.NewStoreForTesting()
+	st, getActions := store.NewStoreWithFakeReducer()
 	timerMaker := MakeFakeTimerMaker(t)
 	fakeMultiWatcher := NewFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.NewSub, timerMaker.Maker())

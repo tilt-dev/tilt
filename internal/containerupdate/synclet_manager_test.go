@@ -5,8 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/testutils"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/windmilleng/tilt/internal/docker"
@@ -57,7 +55,7 @@ type smFixture struct {
 	kCli   *k8s.FakeK8sClient
 	sCli   *synclet.TestSyncletClient
 	sm     SyncletManager
-	store  *store.Store
+	store  *store.TestingStore
 }
 
 func newSMFixture(t *testing.T) *smFixture {
@@ -69,14 +67,10 @@ func newSMFixture(t *testing.T) *smFixture {
 	sGRPCCli, err := synclet.FakeGRPCWrapper(ctx, sCli)
 	assert.NoError(t, err)
 	sm := NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
-	go func() {
-		err := st.Loop(ctx)
-		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
-	}()
 
 	return &smFixture{
 		TempDirFixture: f,

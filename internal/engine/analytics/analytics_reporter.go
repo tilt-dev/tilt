@@ -15,7 +15,7 @@ const analyticsReportingInterval = time.Minute * 15
 
 type AnalyticsReporter struct {
 	a       *analytics.TiltAnalytics
-	store   *store.Store
+	store   store.RStore
 	kClient k8s.Client
 	env     k8s.Env
 	started bool
@@ -55,7 +55,7 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
 
 var _ store.Subscriber = &AnalyticsReporter{}
 
-func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st *store.Store, kClient k8s.Client, env k8s.Env) *AnalyticsReporter {
+func ProvideAnalyticsReporter(a *analytics.TiltAnalytics, st store.RStore, kClient k8s.Client, env k8s.Env) *AnalyticsReporter {
 	return &AnalyticsReporter{
 		a:       a,
 		store:   st,

@@ -169,7 +169,7 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 		storeLoopErrCh: storeLoopErrCh,
 	}
 
-	ret.store, ret.getActions = store.NewStoreForTesting()
+	ret.store, ret.getActions = store.NewStoreWithFakeReducer()
 	state := ret.store.LockMutableStateForTesting()
 	state.TiltStartTime = clock.Now()
 	ret.store.UnlockMutableState()
