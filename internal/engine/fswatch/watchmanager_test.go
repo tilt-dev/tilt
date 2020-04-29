@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -16,6 +17,37 @@ import (
 	"github.com/windmilleng/tilt/internal/watch"
 	"github.com/windmilleng/tilt/pkg/model"
 )
+
+func TestWatchManager_basic(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
+	f.SetManifestTarget(target)
+
+	f.ChangeFile(t, "foo.txt")
+
+	actions := f.Stop(t)
+	f.AssertActionsContain(actions, "foo.txt")
+}
+
+func TestWatchManager_disabledOnCIMode(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	state := f.store.LockMutableStateForTesting()
+	state.EngineMode = store.EngineModeCI
+	f.store.UnlockMutableState()
+
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
+	f.SetManifestTarget(target)
+
+	f.ChangeFile(t, "foo.txt")
+
+	store.AssertNoActionOfType(t, reflect.TypeOf(TargetFilesChangedAction{}), f.store.Actions)
+}
 
 func TestWatchManager_IgnoredLocalDirectories(t *testing.T) {
 	f := newWMFixture(t)
@@ -120,8 +152,7 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 type wmFixture struct {
 	ctx              context.Context
 	cancel           func()
-	getActions       func() []store.Action
-	store            *store.Store
+	store            *store.TestingStore
 	wm               *WatchManager
 	fakeMultiWatcher *FakeMultiWatcher
 	fakeTimerMaker   FakeTimerMaker
@@ -129,7 +160,7 @@ type wmFixture struct {
 }
 
 func newWMFixture(t *testing.T) *wmFixture {
-	st, getActions := store.NewStoreWithFakeReducer()
+	st := store.NewTestingStore()
 	timerMaker := MakeFakeTimerMaker(t)
 	fakeMultiWatcher := NewFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.NewSub, timerMaker.Maker())
@@ -137,20 +168,12 @@ func newWMFixture(t *testing.T) *wmFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	go func() {
-		err := st.Loop(ctx)
-		if err != nil && err != context.Canceled {
-			panic(fmt.Sprintf("st.Loop exited with error: %+v", err))
-		}
-	}()
-
 	f := tempdir.NewTempDirFixture(t)
 	f.Chdir()
 
 	return &wmFixture{
 		ctx:              ctx,
 		cancel:           cancel,
-		getActions:       getActions,
 		store:            st,
 		wm:               wm,
 		fakeMultiWatcher: fakeMultiWatcher,
@@ -162,6 +185,7 @@ func newWMFixture(t *testing.T) *wmFixture {
 func (f *wmFixture) TearDown() {
 	f.TempDirFixture.TearDown()
 	f.cancel()
+	f.store.AssertNoErrorActions(f.T())
 }
 
 func (f *wmFixture) ChangeFile(t *testing.T, path string) {
@@ -193,7 +217,7 @@ func (f *wmFixture) ReadActionsUntil(lastFile string) ([]TargetFilesChangedActio
 	var actions []TargetFilesChangedAction
 	for time.Since(startTime) < timeout {
 		actions = nil
-		for _, a := range f.getActions() {
+		for _, a := range f.store.Actions() {
 			tfca, ok := a.(TargetFilesChangedAction)
 			if !ok {
 				return nil, fmt.Errorf("expected action of type %T, got action of type %T: %v", TargetFilesChangedAction{}, a, a)
