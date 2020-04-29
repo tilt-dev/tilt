@@ -1005,7 +1005,7 @@ type bdFixture struct {
 	k8s    *k8s.FakeK8sClient
 	sCli   *synclet.TestSyncletClient
 	bd     BuildAndDeployer
-	st     *store.Store
+	st     *store.TestingStore
 	dcCli  *dockercompose.FakeDCClient
 	logs   *bytes.Buffer
 }
@@ -1035,7 +1035,7 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 		t.Fatal(err)
 	}
 
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 
 	return &bdFixture{
 		TempDirFixture: f,

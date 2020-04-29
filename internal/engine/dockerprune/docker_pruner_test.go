@@ -374,7 +374,7 @@ type dockerPruneFixture struct {
 	t    *testing.T
 	ctx  context.Context
 	logs *bytes.Buffer
-	st   *store.Store
+	st   *store.TestingStore
 
 	dCli *docker.FakeClient
 	dp   *DockerPruner
@@ -383,7 +383,7 @@ type dockerPruneFixture struct {
 func newFixture(t *testing.T) *dockerPruneFixture {
 	logs := new(bytes.Buffer)
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(logs)
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 
 	dCli := docker.NewFakeClient()
 	dp := NewDockerPruner(dCli)

@@ -18,7 +18,7 @@ func TestOnChange(t *testing.T) {
 	_, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	cmdUpTags := CmdTags(map[string]string{"watch": "true"})
 	au := NewAnalyticsUpdater(a, cmdUpTags)
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	setUserOpt(st, analytics.OptOut)
 	au.OnChange(context.Background(), st)
 
@@ -33,7 +33,7 @@ func TestReportOnOptIn(t *testing.T) {
 
 	cmdUpTags := CmdTags(map[string]string{"watch": "true"})
 	au := NewAnalyticsUpdater(a, cmdUpTags)
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	setUserOpt(st, analytics.OptIn)
 	au.OnChange(context.Background(), st)
 
@@ -52,7 +52,7 @@ func TestReportOnOptIn(t *testing.T) {
 	assert.Equal(t, 1, len(mem.Counts))
 }
 
-func setUserOpt(st *store.Store, opt analytics.Opt) {
+func setUserOpt(st *store.TestingStore, opt analytics.Opt) {
 	state := st.LockMutableStateForTesting()
 	defer st.UnlockMutableState()
 	state.AnalyticsUserOpt = opt

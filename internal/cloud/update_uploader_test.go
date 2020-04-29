@@ -99,7 +99,7 @@ type updateFixture struct {
 	ctx        context.Context
 	httpClient *httptest.FakeClient
 	uu         *UpdateUploader
-	store      *store.Store
+	store      *store.TestingStore
 	clock      clockwork.FakeClock
 }
 
@@ -108,7 +108,7 @@ func newUpdateFixture(t *testing.T) *updateFixture {
 	httpClient := httptest.NewFakeClient()
 	addr := cloudurl.Address("cloud-test.tilt.dev")
 	uu := NewUpdateUploader(httpClient, addr)
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	state := st.LockMutableStateForTesting()

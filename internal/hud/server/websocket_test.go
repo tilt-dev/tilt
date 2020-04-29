@@ -15,7 +15,7 @@ import (
 
 func TestWebsocketCloseOnReadErr(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st, _ := store.NewStoreForTesting()
+	st, _ := store.NewStoreWithFakeReducer()
 	st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
@@ -41,7 +41,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 
 func TestWebsocketReadErrDuringMsg(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st, _ := store.NewStoreForTesting()
+	st, _ := store.NewStoreWithFakeReducer()
 	st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
@@ -72,7 +72,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 
 func TestWebsocketNextWriterError(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st, _ := store.NewStoreForTesting()
+	st, _ := store.NewStoreWithFakeReducer()
 	st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()

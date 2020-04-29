@@ -350,7 +350,7 @@ type lcbadFixture struct {
 	*tempdir.TempDirFixture
 	t     testing.TB
 	ctx   context.Context
-	st    *store.Store
+	st    *store.TestingStore
 	cu    *containerupdate.FakeContainerUpdater
 	ps    *build.PipelineState
 	lubad *LiveUpdateBuildAndDeployer
@@ -362,7 +362,7 @@ func newFixture(t testing.TB) *lcbadFixture {
 	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, nil, buildcontrol.UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker, fakeClock{})
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,

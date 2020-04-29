@@ -175,7 +175,7 @@ type dcbdFixture struct {
 	dcCli *dockercompose.FakeDCClient
 	dCli  *docker.FakeClient
 	dcbad *DockerComposeBuildAndDeployer
-	st    *store.Store
+	st    *store.TestingStore
 }
 
 func newDCBDFixture(t *testing.T) *dcbdFixture {
@@ -190,7 +190,7 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	return &dcbdFixture{
 		TempDirFixture: f,
 		ctx:            ctx,

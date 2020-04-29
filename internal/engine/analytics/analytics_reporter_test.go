@@ -55,12 +55,12 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf.addManifest(tf.nextManifest().WithImageTargets(
 		[]model.ImageTarget{imgTargDBWithLU, imgTargDBWithLU})) // liveupdate, multipleimageliveupdate
 
-	state := tf.ar.store.LockMutableStateForTesting()
+	state := tf.st.LockMutableStateForTesting()
 	state.TiltStartTime = time.Now()
 
 	state.CompletedBuildCount = 3
 
-	tf.ar.store.UnlockMutableState()
+	tf.st.UnlockMutableState()
 	tf.kClient.Registry, _ = container.NewRegistryWithHostFromCluster("localhost:5000", "registry:5000")
 
 	tf.run()
@@ -143,14 +143,14 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.DockerComposeTarget{}))
 
-	state := tf.ar.store.LockMutableStateForTesting()
+	state := tf.st.LockMutableStateForTesting()
 	state.TiltStartTime = time.Now()
 
 	state.CompletedBuildCount = 3
 
 	state.TiltfileState.AddCompletedBuild(model.BuildRecord{Error: errors.New("foo")})
 
-	tf.ar.store.UnlockMutableState()
+	tf.st.UnlockMutableState()
 
 	tf.run()
 
@@ -170,10 +170,11 @@ type analyticsReporterTestFixture struct {
 	ar            *AnalyticsReporter
 	ma            *analytics.MemoryAnalytics
 	kClient       *k8s.FakeK8sClient
+	st            *store.TestingStore
 }
 
 func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
 	kClient := k8s.NewFakeK8sClient()
@@ -183,13 +184,14 @@ func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 		ar:            ar,
 		ma:            ma,
 		kClient:       kClient,
+		st:            st,
 	}
 }
 
 func (artf *analyticsReporterTestFixture) addManifest(m model.Manifest) {
-	state := artf.ar.store.LockMutableStateForTesting()
+	state := artf.st.LockMutableStateForTesting()
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	artf.ar.store.UnlockMutableState()
+	artf.st.UnlockMutableState()
 }
 
 func (artf *analyticsReporterTestFixture) nextManifest() model.Manifest {

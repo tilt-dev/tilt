@@ -246,14 +246,14 @@ type plcFixture struct {
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
-	st     *store.Store
+	st     *store.TestingStore
 	plc    *PortForwardController
 	out    *bufsync.ThreadSafeBuffer
 }
 
 func newPLCFixture(t *testing.T) *plcFixture {
 	f := tempdir.NewTempDirFixture(t)
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient()
 	plc := NewPortForwardController(kCli)
 

@@ -123,7 +123,7 @@ type ltFixture struct {
 	ctx   context.Context
 	out   *bytes.Buffer
 	ltbad *LocalTargetBuildAndDeployer
-	st    *store.Store
+	st    *store.TestingStore
 }
 
 func newLTFixture(t *testing.T) *ltFixture {
@@ -134,7 +134,7 @@ func newLTFixture(t *testing.T) *ltFixture {
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
 
 	ltbad := NewLocalTargetBuildAndDeployer(clock)
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	return &ltFixture{
 		TempDirFixture: f,
 		ctx:            ctx,

@@ -89,7 +89,7 @@ type ccFixture struct {
 
 func newCCFixture(t *testing.T) *ccFixture {
 	f := tempdir.NewTempDirFixture(t)
-	st, getActions := store.NewStoreForTesting()
+	st, getActions := store.NewStoreWithFakeReducer()
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
 	cc := NewConfigsController(tfl, d)
