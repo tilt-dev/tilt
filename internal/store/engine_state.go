@@ -411,14 +411,17 @@ func (ms *ManifestState) IsDC() bool {
 }
 
 func (ms *ManifestState) K8sRuntimeState() K8sRuntimeState {
-	ret, _ := ms.RuntimeState.(K8sRuntimeState)
+	ret, ok := ms.RuntimeState.(K8sRuntimeState)
+	if !ok {
+		return NewK8sRuntimeState(ms.Name)
+	}
 	return ret
 }
 
 func (ms *ManifestState) GetOrCreateK8sRuntimeState() K8sRuntimeState {
 	ret, ok := ms.RuntimeState.(K8sRuntimeState)
 	if !ok {
-		ret = NewK8sRuntimeState()
+		ret = NewK8sRuntimeState(ms.Name)
 		ms.RuntimeState = ret
 	}
 	return ret
