@@ -175,6 +175,26 @@ print(result5)
 	assert.Equal(t, f.JoinPath("foo", "foo", "Tiltfile"), readState.Files[2])
 }
 
+func TestPermissionDenied(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Test relies on Unix /root permissions")
+	}
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File("Tiltfile", `
+print(os.path.exists('/root/x'))
+`)
+
+	model, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, "False\n", f.PrintOutput())
+
+	readState, err := io.GetState(model)
+	require.NoError(t, err)
+	assert.Equal(t, []string{f.JoinPath("Tiltfile")}, readState.Files)
+}
+
 func TestRealpath(t *testing.T) {
 	f := NewFixture(t)
 
