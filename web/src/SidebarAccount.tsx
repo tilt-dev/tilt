@@ -252,7 +252,7 @@ function SidebarAccount(props: SidebarAccountProps) {
       <MenuContentSignInLink>
         Or{" "}
         <strong>
-          <a href={props.tiltCloudSchemeHost}>Sign In</a>
+          <a href={props.tiltCloudSchemeHost} target="_blank">Sign In</a>
         </strong>{" "}
         to your account.
       </MenuContentSignInLink>
