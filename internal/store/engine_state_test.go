@@ -14,6 +14,8 @@ import (
 
 	"github.com/windmilleng/tilt/internal/hud/view"
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
+	"github.com/windmilleng/tilt/internal/testutils/tempdir"
 
 	"github.com/windmilleng/tilt/internal/k8s"
 	"github.com/windmilleng/tilt/pkg/model"
@@ -60,6 +62,18 @@ func TestStateToViewPortForwards(t *testing.T) {
 		res.Endpoints)
 }
 
+func TestRuntimeStateUnresourced(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, model.UnresourcedYAMLManifestName).
+		WithK8sYAML(testyaml.SecretYaml).
+		Build()
+	state := newState([]model.Manifest{m})
+	assert.Equal(t, model.RuntimeStatusOK,
+		state.ManifestTargets[m.Name].State.GetOrCreateK8sRuntimeState().RuntimeStatus())
+}
+
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
 	assert.NoError(t, err)
@@ -81,7 +95,7 @@ func TestMostRecentPod(t *testing.T) {
 	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
 	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
 	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
-	podSet := NewK8sRuntimeState(podA, podB, podC)
+	podSet := NewK8sRuntimeState("fe", podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 
