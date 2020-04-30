@@ -135,15 +135,23 @@ func dirname(t *starlark.Thread, path string) (starlark.Value, error) {
 
 func exists(t *starlark.Thread, path string) (starlark.Value, error) {
 	absPath := starkit.AbsPath(t, path)
-	err := io.RecordReadFile(t, absPath)
-	if err != nil {
-		return nil, err
-	}
 
-	_, err = os.Stat(absPath)
+	_, err := os.Stat(absPath)
 	if os.IsNotExist(err) {
+		err := io.RecordReadFile(t, absPath)
+		if err != nil {
+			return nil, err
+		}
+
 		return starlark.Bool(false), nil
 	} else if err != nil {
+		// Return false on error (e.g., permission denied errors),
+		// for consistency with the python version, but don't watch.
+		return starlark.Bool(false), nil
+	}
+
+	err = io.RecordReadFile(t, absPath)
+	if err != nil {
 		return nil, err
 	}
 	return starlark.Bool(true), nil
