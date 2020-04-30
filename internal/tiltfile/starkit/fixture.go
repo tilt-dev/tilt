@@ -93,6 +93,14 @@ func (f *Fixture) File(name, contents string) {
 	f.fs[fullPath] = contents
 }
 
+func (f *Fixture) Symlink(old, new string) {
+	if !f.useRealFS {
+		panic("Can only use symlinks with a real FS")
+	}
+	err := os.Symlink(f.JoinPath(old), f.JoinPath(new))
+	assert.NoError(f.tb, err)
+}
+
 func (f *Fixture) UseRealFS() {
 	path, err := ioutil.TempDir("", tempdir.SanitizeFileName(f.tb.Name()))
 	require.NoError(f.tb, err)

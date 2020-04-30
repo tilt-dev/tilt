@@ -1,6 +1,7 @@
 package os
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -8,6 +9,7 @@ import (
 
 	"go.starlark.net/starlark"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/io"
 	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
 )
 
@@ -29,7 +31,27 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 		return err
 	}
 
-	err = env.AddBuiltin("os.path.realpath", realpath)
+	err = addPathBuiltin(env, "os.path.abspath", abspath)
+	if err != nil {
+		return err
+	}
+	err = addPathBuiltin(env, "os.path.basename", basename)
+	if err != nil {
+		return err
+	}
+	err = addPathBuiltin(env, "os.path.dirname", dirname)
+	if err != nil {
+		return err
+	}
+	err = addPathBuiltin(env, "os.path.exists", exists)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("os.path.join", join)
+	if err != nil {
+		return err
+	}
+	err = addPathBuiltin(env, "os.path.realpath", realpath)
 	if err != nil {
 		return err
 	}
@@ -83,18 +105,66 @@ func cwd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs [
 	return starlark.String(dir), nil
 }
 
-func realpath(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path string
-	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
-		"path", &path,
-	)
+// Add a function that takes exactly one parameter, a path string.
+func addPathBuiltin(env *starkit.Environment, name string,
+	f func(t *starlark.Thread, s string) (starlark.Value, error)) error {
+	builtin := func(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var path string
+		err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+			"path", &path,
+		)
+		if err != nil {
+			return nil, err
+		}
+		return f(t, path)
+	}
+	return env.AddBuiltin(name, starkit.Function(builtin))
+}
+
+func abspath(t *starlark.Thread, path string) (starlark.Value, error) {
+	return starlark.String(starkit.AbsPath(t, path)), nil
+}
+
+func basename(t *starlark.Thread, path string) (starlark.Value, error) {
+	return starlark.String(filepath.Base(path)), nil
+}
+
+func dirname(t *starlark.Thread, path string) (starlark.Value, error) {
+	return starlark.String(filepath.Dir(path)), nil
+}
+
+func exists(t *starlark.Thread, path string) (starlark.Value, error) {
+	absPath := starkit.AbsPath(t, path)
+	err := io.RecordReadFile(t, absPath)
 	if err != nil {
 		return nil, err
 	}
 
-	absPath, err := filepath.Abs(path)
+	_, err = os.Stat(absPath)
+	if os.IsNotExist(err) {
+		return starlark.Bool(false), nil
+	} else if err != nil {
+		return nil, err
+	}
+	return starlark.Bool(true), nil
+}
+
+func join(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	parts := []string{}
+	for i, arg := range args {
+		s, ok := starlark.AsString(arg)
+		if !ok {
+			return nil, fmt.Errorf("os.path.join() only accepts strings. Argument #%d: %s", i, arg)
+		}
+		parts = append(parts, s)
+	}
+	return starlark.String(filepath.Join(parts...)), nil
+}
+
+func realpath(t *starlark.Thread, path string) (starlark.Value, error) {
+	realPath, err := filepath.EvalSymlinks(starkit.AbsPath(t, path))
 	if err != nil {
 		return nil, err
 	}
-	return starlark.String(absPath), nil
+	return starlark.String(realPath), nil
 }
