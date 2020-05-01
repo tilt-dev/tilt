@@ -229,6 +229,7 @@ print(path)
 	// on MacOS, /tmp is a symlink to /private/tmp. If we don't eval the expected path,
 	// we get an error because /tmp != /private/tmp
 	expected, err := filepath.EvalSymlinks(f.JoinPath("foo"))
+	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s\n", expected), f.PrintOutput())
 }
 
