@@ -169,6 +169,7 @@ custom-synclet-release:
 
 release:
 	goreleaser --rm-dist
+	scripts/record-release.sh "$(git describe --abbrev=0 --tags)"
 
 prettier:
 	cd web && yarn install
