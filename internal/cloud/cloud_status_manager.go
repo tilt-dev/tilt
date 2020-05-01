@@ -13,7 +13,6 @@ import (
 	"github.com/jonboulle/clockwork"
 
 	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
-	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/token"
 	"github.com/windmilleng/tilt/pkg/logger"
@@ -172,10 +171,6 @@ func (c *CloudStatusManager) needsLookup(requestKey statusRequestKey) bool {
 func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
-
-	if !state.Features[feature.Snapshots] {
-		return
-	}
 
 	c.mu.Lock()
 	lastErrorTime := c.lastErrorTime
