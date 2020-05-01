@@ -54,8 +54,15 @@ func TestEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.WaitUntil(ctx, "unschedulable pod event", func() (string, error) {
-		return f.logs.String(), nil
-	}, "had taints that the pod didn't tolerate")
+		logs := strings.Split(f.logs.String(), "\n")
+		for _, log := range logs {
+			if strings.Contains(log, "K8s EVENT") && strings.Contains(log, "the pod didn't tolerate") {
+				return "unschedulable event", nil
+			}
+		}
+
+		return "", nil
+	}, "unschedulable event")
 
 	markNodeSchedulable(f, node)
 

@@ -6,6 +6,6 @@
 #
 # Built with goreleaser.
 
-FROM tiltdev/circleci-kind:v1.0.0
+FROM tiltdev/circleci-kind:v1.1.0
 
 COPY tilt /usr/local/bin/tilt
