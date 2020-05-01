@@ -181,7 +181,7 @@ describe("StatusBar", () => {
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
     let suggestedVersion = "10.0.0"
-    let devRunningBuild = {...runningBuild, dev: true}
+    let devRunningBuild = { ...runningBuild, dev: true }
     const tree = renderer
       .create(
         <MemoryRouter>
