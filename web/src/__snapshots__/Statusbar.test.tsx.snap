@@ -303,11 +303,45 @@ exports[`StatusBar renders an upgrade badge when the version is out of date 1`] 
   <section
     className="Statusbar-tiltPanel"
   >
-    <svg
-      className="Statusbar-logo"
+    <a
+      className="Statusbar-tiltPanel-link"
+      href="https://docs.tilt.dev/upgrade.html"
+      rel="noopener noreferrer"
+      target="_blank"
     >
-      logo.svg
-    </svg>
+      <p
+        className="Statusbar-tiltPanel-upgradeTooltip"
+      >
+        <span
+          aria-label="Decorative sparkling stars"
+          role="img"
+        >
+          ✨
+        </span>
+        Get Tilt v
+        10.0.0
+        !
+         
+        <span
+          aria-label="Decorative sparkling stars"
+          role="img"
+        >
+          ✨
+        </span>
+        <br />
+        (You're running v
+        v0.8.1
+        )
+      </p>
+      <svg
+        className="Statusbar-logo"
+      >
+        logo.svg
+      </svg>
+      <svg>
+        update-available.svg
+      </svg>
+    </a>
   </section>
 </div>
 `;

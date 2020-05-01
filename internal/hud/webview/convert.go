@@ -147,12 +147,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 		Dev:       s.TiltBuildInfo.Dev,
 		Date:      s.TiltBuildInfo.Date,
 	}
-	ret.LatestTiltBuild = &proto_webview.TiltBuild{
-		Version:   s.LatestTiltBuild.Version,
-		CommitSHA: s.LatestTiltBuild.CommitSHA,
-		Dev:       s.LatestTiltBuild.Dev,
-		Date:      s.LatestTiltBuild.Date,
-	}
+	ret.SuggestedTiltVersion = s.SuggestedTiltVersion
 	ret.FeatureFlags = make(map[string]bool)
 	for k, v := range s.Features {
 		ret.FeatureFlags[k] = v

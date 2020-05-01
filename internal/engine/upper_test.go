@@ -2825,38 +2825,6 @@ k8s_yaml('snack.yaml')`
 	})
 }
 
-func TestTiltVersionCheck(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	versions := []model.TiltBuild{
-		{
-			Version: "v1000.10.1",
-			Date:    "2019-03-11",
-		},
-		{
-			Version: "v1000.10.2",
-			Date:    "2019-03-13",
-		},
-	}
-
-	f.ghc.LatestReleaseErr = nil
-	f.ghc.LatestReleaseRet = versions[0]
-	f.tiltVersionCheckDelay = time.Millisecond
-
-	manifest := f.newManifest("foobar")
-	f.Start([]model.Manifest{manifest})
-
-	f.WaitUntil("latest version is updated the first time", func(state store.EngineState) bool {
-		return state.LatestTiltBuild == versions[0]
-	})
-
-	f.ghc.LatestReleaseRet = versions[1]
-	f.WaitUntil("latest version is updated the second time", func(state store.EngineState) bool {
-		return state.LatestTiltBuild == versions[1]
-	})
-}
-
 func TestSetAnalyticsOpt(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -3448,7 +3416,6 @@ type testFixture struct {
 	opter                      *tiltanalytics.FakeOpter
 	dp                         *dockerprune.DockerPruner
 	fe                         *local.FakeExecer
-	tiltVersionCheckDelay      time.Duration
 	overrideMaxParallelUpdates int
 
 	onchangeCh chan bool
@@ -3520,43 +3487,38 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	dp.DisabledForTesting(true)
 
 	ret := &testFixture{
-		TempDirFixture:        f,
-		t:                     t,
-		ctx:                   ctx,
-		cancel:                cancel,
-		clock:                 clock,
-		b:                     b,
-		fsWatcher:             watcher,
-		timerMaker:            &timerMaker,
-		docker:                dockerClient,
-		kClient:               kCli,
-		hud:                   h,
-		log:                   log,
-		store:                 st,
-		bc:                    bc,
-		onchangeCh:            fSub.ch,
-		fwm:                   fwm,
-		cc:                    cc,
-		dcc:                   fakeDcc,
-		tfl:                   tfl,
-		ghc:                   ghc,
-		opter:                 to,
-		dp:                    dp,
-		fe:                    fe,
-		tiltVersionCheckDelay: versionCheckInterval,
+		TempDirFixture: f,
+		t:              t,
+		ctx:            ctx,
+		cancel:         cancel,
+		clock:          clock,
+		b:              b,
+		fsWatcher:      watcher,
+		timerMaker:     &timerMaker,
+		docker:         dockerClient,
+		kClient:        kCli,
+		hud:            h,
+		log:            log,
+		store:          st,
+		bc:             bc,
+		onchangeCh:     fSub.ch,
+		fwm:            fwm,
+		cc:             cc,
+		dcc:            fakeDcc,
+		tfl:            tfl,
+		ghc:            ghc,
+		opter:          to,
+		dp:             dp,
+		fe:             fe,
 	}
 
 	ret.disableEnvAnalyticsOpt()
 
-	tiltVersionCheckTimerMaker := func(d time.Duration) <-chan time.Time {
-		return time.After(ret.tiltVersionCheckDelay)
-	}
-	tvc := NewTiltVersionChecker(func() github.Client { return ghc }, tiltVersionCheckTimerMaker)
 	tc := telemetry.NewController(clock, tracer.NewSpanCollector(ctx))
 	podm := k8srollout.NewPodMonitor()
 	ec := exit.NewController()
 
-	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, tvc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
+	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

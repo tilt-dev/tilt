@@ -82,11 +82,7 @@ class HUD extends Component<HudProps, HudState> {
           date: "",
           dev: false,
         },
-        latestTiltBuild: {
-          version: "",
-          date: "",
-          dev: false,
-        },
+        suggestedTiltVersion: "",
         versionSettings: { checkUpdates: true },
         featureFlags: {},
         tiltCloudUsername: "",
@@ -233,8 +229,8 @@ class HUD extends Component<HudProps, HudState> {
     }
     let statusItems = resources.map(res => new StatusItem(res))
 
-    let runningVersion = view?.runningTiltBuild
-    let latestVersion = view?.latestTiltBuild
+    let runningBuild = view?.runningTiltBuild
+    let suggestedVersion = view?.suggestedTiltVersion
     const versionSettings = view?.versionSettings
     const checkUpdates = versionSettings?.checkUpdates ?? true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
@@ -244,8 +240,8 @@ class HUD extends Component<HudProps, HudState> {
       <Statusbar
         items={statusItems}
         alertsUrl={this.path("/alerts")}
-        runningVersion={runningVersion}
-        latestVersion={latestVersion}
+        runningBuild={runningBuild}
+        suggestedVersion={suggestedVersion}
         checkVersion={checkUpdates}
       />
     )

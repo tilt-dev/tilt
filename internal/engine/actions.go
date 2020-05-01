@@ -53,12 +53,6 @@ func NewHudStoppedAction(err error) HudStoppedAction {
 	return HudStoppedAction{err}
 }
 
-type LatestVersionAction struct {
-	Build model.TiltBuild
-}
-
-func (LatestVersionAction) Action() {}
-
 type UIDUpdateAction struct {
 	UID          types.UID
 	EventType    watch.EventType
