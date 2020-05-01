@@ -52,6 +52,10 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			return nil, buildcontrol.SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
 		}
 
+		if len(state.DepsChangedSet) > 0 {
+			return nil, buildcontrol.SilentRedirectToNextBuilderf("Pending dependencies")
+		}
+
 		hasFileChangesIDs, err := hasFileChangesTree(g, iTarget, stateSet)
 		if err != nil {
 			return nil, errors.Wrap(err, "extractImageTargetsForLiveUpdates")
