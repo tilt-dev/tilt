@@ -429,7 +429,7 @@ func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
 
 func (f *pwFixture) assertObservedManifests(manifests ...model.ManifestName) {
 	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
+	for time.Since(start) < time.Second {
 		if len(manifests) == len(f.manifestNames) {
 			break
 		}
@@ -440,7 +440,7 @@ func (f *pwFixture) assertObservedManifests(manifests ...model.ManifestName) {
 
 func (f *pwFixture) assertWatchedSelectors(ls ...labels.Selector) {
 	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
+	for time.Since(start) < time.Second {
 		if len(ls) == len(f.kClient.WatchedSelectors()) {
 			break
 		}

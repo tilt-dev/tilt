@@ -142,7 +142,7 @@ func (f *swFixture) TearDown() {
 
 func (f *swFixture) assertObservedServiceChangeActions(expectedSCAs ...ServiceChangeAction) {
 	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
+	for time.Since(start) < time.Second {
 		actions := f.store.Actions()
 		if len(actions) == len(expectedSCAs) {
 			break
@@ -164,7 +164,7 @@ func (f *swFixture) assertObservedServiceChangeActions(expectedSCAs ...ServiceCh
 
 func (f *swFixture) waitUntilServiceKnown(uid types.UID) {
 	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
+	for time.Since(start) < time.Second {
 		f.sw.mu.Lock()
 		_, known := f.sw.knownServices[uid]
 		f.sw.mu.Unlock()
