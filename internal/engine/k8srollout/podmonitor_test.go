@@ -1,5 +1,3 @@
-// +build !windows
-
 package k8srollout
 
 import (
@@ -7,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -132,7 +132,9 @@ func assertSnapshot(t *testing.T, output string) {
 		t.Fatal(err)
 	}
 
-	if string(expected) != output {
-		t.Errorf("Expected: %s != Output: %s", expected, output)
-	}
+	assert.Equal(t, normalize(string(expected)), normalize(output))
+}
+
+func normalize(s string) string {
+	return strings.Replace(s, "\r\n", "\n", -1)
 }
