@@ -115,7 +115,9 @@ else
 endif
 
 goimports:
-	goimports -w -l $(GOIMPORTS_LOCAL_ARG) $$(go list -f {{.Dir}} ./...)
+	goimports -w -l $(GOIMPORTS_LOCAL_ARG) internal
+	goimports -w -l $(GOIMPORTS_LOCAL_ARG) pkg
+	goimports -w -l $(GOIMPORTS_LOCAL_ARG) cmd
 
 benchmark:
 	go test -mod vendor -run=XXX -bench=. ./...
