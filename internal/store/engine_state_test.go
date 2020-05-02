@@ -1,5 +1,3 @@
-// +build !windows
-
 package store
 
 import (
@@ -22,27 +20,39 @@ import (
 )
 
 func TestStateToViewRelativeEditPaths(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{}).WithImageTarget(model.ImageTarget{}.
-		WithBuildDetails(model.DockerBuild{BuildPath: "/a/b/c"}))
+		WithBuildDetails(model.DockerBuild{BuildPath: f.JoinPath("a", "b", "c")}))
 
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
-	ms.CurrentBuild.Edits = []string{"/a/b/c/foo", "/a/b/c/d/e"}
+	ms.CurrentBuild.Edits = []string{
+		f.JoinPath("a", "b", "c", "foo"),
+		f.JoinPath("a", "b", "c", "d", "e")}
 	ms.BuildHistory = []model.BuildRecord{
-		{Edits: []string{"/a/b/c/foo", "/a/b/c/d/e"}},
+		{
+			Edits: []string{
+				f.JoinPath("a", "b", "c", "foo"),
+				f.JoinPath("a", "b", "c", "d", "e"),
+			},
+		},
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
-		map[string]time.Time{"/a/b/c/foo": time.Now(), "/a/b/c/d/e": time.Now()}
+		map[string]time.Time{
+			f.JoinPath("a", "b", "c", "foo"):    time.Now(),
+			f.JoinPath("a", "b", "c", "d", "e"): time.Now(),
+		}
 	v := StateToView(*state, &sync.RWMutex{})
 
 	require.Len(t, v.Resources, 2)
 
 	r, _ := v.Resource(m.Name)
-	assert.Equal(t, []string{"foo", "d/e"}, r.LastBuild().Edits)
-	assert.Equal(t, []string{"foo", "d/e"}, r.CurrentBuild.Edits)
-	assert.Equal(t, []string{"d/e", "foo"}, r.PendingBuildEdits) // these are sorted for deterministic ordering
+	assert.Equal(t, []string{"foo", filepath.Join("d", "e")}, r.LastBuild().Edits)
+	assert.Equal(t, []string{"foo", filepath.Join("d", "e")}, r.CurrentBuild.Edits)
+	assert.Equal(t, []string{filepath.Join("d", "e"), "foo"}, r.PendingBuildEdits) // these are sorted for deterministic ordering
 }
 
 func TestStateToViewPortForwards(t *testing.T) {
