@@ -166,7 +166,8 @@ message View {
   bool needs_analytics_nudge = 5;
 
   TiltBuild running_tilt_build = 6;
-  TiltBuild latest_tilt_build = 7;
+  TiltBuild DEPRECATED_latest_tilt_build = 7;
+  string suggested_tilt_version = 16;
   VersionSettings version_settings = 12;
 
   string tilt_cloud_username = 8;

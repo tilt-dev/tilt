@@ -84,8 +84,6 @@ var BaseWireSet = wire.NewSet(
 	dcwatch.NewEventWatcher,
 	runtimelog.NewDockerComposeLogManager,
 	engine.NewProfilerManager,
-	engine.NewGithubClientFactory,
-	engine.NewTiltVersionChecker,
 	cloud.WireSet,
 	cloudurl.ProvideAddress,
 	k8srollout.NewPodMonitor,

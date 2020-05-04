@@ -80,8 +80,8 @@ type EngineState struct {
 
 	TiltfileState ManifestState
 
-	LatestTiltBuild model.TiltBuild // from GitHub
-	VersionSettings model.VersionSettings
+	SuggestedTiltVersion string
+	VersionSettings      model.VersionSettings
 
 	// Analytics Info
 	AnalyticsEnvOpt        analytics.Opt

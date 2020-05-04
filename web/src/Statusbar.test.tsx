@@ -8,7 +8,7 @@ import { MemoryRouter } from "react-router"
 type TiltBuild = Proto.webviewTiltBuild
 
 describe("StatusBar", () => {
-  let runningVersion: TiltBuild = {
+  let runningBuild: TiltBuild = {
     version: "v0.8.1",
     date: "1970-01-01",
     dev: false,
@@ -20,8 +20,8 @@ describe("StatusBar", () => {
           <Statusbar
             items={[]}
             alertsUrl="/alerts"
-            runningVersion={runningVersion}
-            latestVersion={null}
+            runningBuild={runningBuild}
+            suggestedVersion={null}
             checkVersion={true}
           />
         </MemoryRouter>
@@ -42,8 +42,8 @@ describe("StatusBar", () => {
         <Statusbar
           items={items}
           alertsUrl="/alerts"
-          runningVersion={runningVersion}
-          latestVersion={null}
+          runningBuild={runningBuild}
+          suggestedVersion={null}
           checkVersion={true}
         />
       </MemoryRouter>
@@ -67,8 +67,8 @@ describe("StatusBar", () => {
           <Statusbar
             items={items}
             alertsUrl="/alerts"
-            runningVersion={runningVersion}
-            latestVersion={null}
+            runningBuild={runningBuild}
+            suggestedVersion={null}
             checkVersion={true}
           />
         </MemoryRouter>
@@ -91,8 +91,8 @@ describe("StatusBar", () => {
           <Statusbar
             items={items}
             alertsUrl="/alerts"
-            runningVersion={runningVersion}
-            latestVersion={null}
+            runningBuild={runningBuild}
+            suggestedVersion={null}
             checkVersion={true}
           />
         </MemoryRouter>
@@ -113,8 +113,8 @@ describe("StatusBar", () => {
         <Statusbar
           items={items}
           alertsUrl="/alerts"
-          runningVersion={runningVersion}
-          latestVersion={null}
+          runningBuild={runningBuild}
+          suggestedVersion={null}
           checkVersion={true}
         />
       </MemoryRouter>
@@ -132,16 +132,15 @@ describe("StatusBar", () => {
       res.buildHistory[0].error = ""
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
-    let latestVersion = runningVersion
-    latestVersion.version = "10.0.0"
+    let suggestedVersion = "10.0.0"
     const tree = renderer
       .create(
         <MemoryRouter>
           <Statusbar
             items={items}
             alertsUrl="/alerts"
-            runningVersion={runningVersion}
-            latestVersion={latestVersion}
+            runningBuild={runningBuild}
+            suggestedVersion={suggestedVersion}
             checkVersion={true}
           />
         </MemoryRouter>
@@ -157,15 +156,15 @@ describe("StatusBar", () => {
       res.buildHistory[0].error = ""
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
-    let latestVersion = { version: "", date: "", dev: false }
+    let suggestedVersion = ""
     const tree = renderer
       .create(
         <MemoryRouter>
           <Statusbar
             items={items}
             alertsUrl="/alerts"
-            runningVersion={runningVersion}
-            latestVersion={latestVersion}
+            runningBuild={runningBuild}
+            suggestedVersion={suggestedVersion}
             checkVersion={true}
           />
         </MemoryRouter>
@@ -181,18 +180,16 @@ describe("StatusBar", () => {
       res.buildHistory[0].error = ""
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
-    let latestVersion = runningVersion
-    latestVersion.version = "10.0.0"
-    let devRunningVersion = runningVersion
-    devRunningVersion.dev = true
+    let suggestedVersion = "10.0.0"
+    let devRunningBuild = { ...runningBuild, dev: true }
     const tree = renderer
       .create(
         <MemoryRouter>
           <Statusbar
             items={items}
             alertsUrl="/alerts"
-            runningVersion={devRunningVersion}
-            latestVersion={latestVersion}
+            runningBuild={devRunningBuild}
+            suggestedVersion={suggestedVersion}
             checkVersion={true}
           />
         </MemoryRouter>
@@ -208,15 +205,14 @@ describe("StatusBar", () => {
       res.buildHistory[0].error = ""
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
-    let latestVersion = runningVersion
-    latestVersion.version = "10.0.0"
+    let suggestedVersion = "10.0.0"
     const root = mount(
       <MemoryRouter>
         <Statusbar
           items={items}
           alertsUrl="/alerts"
-          runningVersion={runningVersion}
-          latestVersion={latestVersion}
+          runningBuild={runningBuild}
+          suggestedVersion={suggestedVersion}
           checkVersion={false}
         />
       </MemoryRouter>

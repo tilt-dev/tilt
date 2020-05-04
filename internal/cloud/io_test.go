@@ -49,9 +49,6 @@ func TestWriteSnapshotTo(t *testing.T) {
     "runningTiltBuild": {
 
     },
-    "latestTiltBuild": {
-
-    },
     "versionSettings": {
       "checkUpdates": true
     },

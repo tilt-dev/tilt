@@ -154,14 +154,12 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleStopProfilingAction(state)
 	case hud.DumpEngineStateAction:
 		handleDumpEngineStateAction(ctx, state)
-	case LatestVersionAction:
-		handleLatestVersionAction(state, action)
 	case store.AnalyticsUserOptAction:
 		handleAnalyticsUserOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	case store.TiltCloudStatusReceivedAction:
-		handleTiltCloudUserLookedUpAction(state, action)
+		handleTiltCloudStatusReceivedAction(state, action)
 	case store.UserStartedTiltCloudRegistrationAction:
 		handleUserStartedTiltCloudRegistrationAction(state)
 	case store.PanicAction:
@@ -610,10 +608,6 @@ func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineS
 	}
 }
 
-func handleLatestVersionAction(state *store.EngineState, action LatestVersionAction) {
-	state.LatestTiltBuild = action.Build
-}
-
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) {
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
@@ -699,7 +693,7 @@ func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.Engine
 	}
 }
 
-func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.TiltCloudStatusReceivedAction) {
+func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.TiltCloudStatusReceivedAction) {
 	if action.IsPostRegistrationLookup {
 		state.CloudStatus.WaitingForStatusPostRegistration = false
 	}
@@ -711,6 +705,8 @@ func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.Ti
 		state.CloudStatus.Username = action.Username
 		state.CloudStatus.TeamName = action.TeamName
 	}
+
+	state.SuggestedTiltVersion = action.SuggestedTiltVersion
 }
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {

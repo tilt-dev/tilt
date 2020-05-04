@@ -557,8 +557,11 @@
         "running_tilt_build": {
           "$ref": "#/definitions/webviewTiltBuild"
         },
-        "latest_tilt_build": {
+        "DEPRECATED_latest_tilt_build": {
           "$ref": "#/definitions/webviewTiltBuild"
+        },
+        "suggested_tilt_version": {
+          "type": "string"
         },
         "version_settings": {
           "$ref": "#/definitions/webviewVersionSettings"
