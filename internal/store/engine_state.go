@@ -516,7 +516,7 @@ func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
 // Used to determine if changes to synced files or config files
 // should kick off a new build.
 func (ms *ManifestState) IsPendingTime(t time.Time) bool {
-	return !t.IsZero() && t.After(ms.LastBuild().StartTime)
+	return !t.IsZero() && AfterOrEqual(t, ms.LastBuild().StartTime)
 }
 
 // Whether changes have been made to this Manifest's synced files
@@ -526,22 +526,22 @@ func (ms *ManifestState) IsPendingTime(t time.Time) bool {
 // bool: whether changes have been made
 // Time: the time of the earliest change
 func (ms *ManifestState) HasPendingChanges() (bool, time.Time) {
-	return ms.HasPendingChangesBefore(time.Now())
+	return ms.HasPendingChangesBeforeOrEqual(time.Now())
 }
 
 // Like HasPendingChanges, but relative to a particular time.
-func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool, time.Time) {
+func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time) (bool, time.Time) {
 	ok := false
 	earliest := highWaterMark
 	t := ms.PendingManifestChange
-	if t.Before(earliest) && ms.IsPendingTime(t) {
+	if BeforeOrEqual(t, earliest) && ms.IsPendingTime(t) {
 		ok = true
 		earliest = t
 	}
 
 	for _, status := range ms.BuildStatuses {
 		for _, t := range status.PendingFileChanges {
-			if t.Before(earliest) && ms.IsPendingTime(t) {
+			if BeforeOrEqual(t, earliest) && ms.IsPendingTime(t) {
 				ok = true
 				earliest = t
 			}

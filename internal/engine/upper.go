@@ -269,14 +269,14 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		// Remove pending file changes that were consumed by this build.
 		for _, status := range ms.BuildStatuses {
 			for file, modTime := range status.PendingFileChanges {
-				if modTime.Before(bs.StartTime) {
+				if store.BeforeOrEqual(modTime, bs.StartTime) {
 					delete(status.PendingFileChanges, file)
 				}
 			}
 		}
 
 		if !ms.PendingManifestChange.IsZero() &&
-			ms.PendingManifestChange.Before(bs.StartTime) {
+			store.BeforeOrEqual(ms.PendingManifestChange, bs.StartTime) {
 			ms.PendingManifestChange = time.Time{}
 		}
 
@@ -305,7 +305,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		bestPod := ms.MostRecentPod()
-		if bestPod.StartedAt.After(bs.StartTime) ||
+		if store.AfterOrEqual(bestPod.StartedAt, bs.StartTime) ||
 			bestPod.UpdateStartTime.Equal(bs.StartTime) {
 			checkForContainerCrash(ctx, engineState, mt)
 		}
@@ -555,7 +555,7 @@ func handleConfigsReloaded(
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
-		if modTime.Before(state.TiltfileState.LastBuild().StartTime) {
+		if store.BeforeOrEqual(modTime, state.TiltfileState.LastBuild().StartTime) {
 			delete(state.PendingConfigFileChanges, file)
 		}
 	}

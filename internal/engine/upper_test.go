@@ -1,5 +1,3 @@
-// +build !windows
-
 package engine
 
 import (
@@ -2431,6 +2429,8 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 
 func TestInitSetsTiltfilePath(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
+
 	f.Start([]model.Manifest{})
 	f.store.Dispatch(InitAction{
 		EngineMode:   store.EngineModeApply,
@@ -2440,6 +2440,9 @@ func TestInitSetsTiltfilePath(t *testing.T) {
 	f.WaitUntil("tiltfile path gets set on init", func(st store.EngineState) bool {
 		return st.TiltfilePath == "/Tiltfile"
 	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
 }
 
 func TestHudExitNoError(t *testing.T) {
@@ -2530,8 +2533,8 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	})
 
 	f.withManifestState(m.ManifestName(), func(ms store.ManifestState) {
-		assert.True(t, ms.DCRuntimeState().StartTime.After(beforeStart))
-
+		startTime := ms.DCRuntimeState().StartTime
+		assert.True(t, store.AfterOrEqual(startTime, beforeStart))
 	})
 
 	// An event unrelated to status shouldn't change the status
@@ -3691,6 +3694,8 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
 
+	isCanceled := false
+
 	for {
 		state := f.upper.store.RLockState()
 		done := isDone(state)
@@ -3699,9 +3704,14 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 			return
 		}
 
+		if isCanceled {
+			f.T().Fatalf("Timed out waiting for: %s", msg)
+		}
+
 		select {
 		case <-ctx.Done():
-			f.T().Fatalf("Timed out waiting for: %s", msg)
+			// Let the loop run the isDone test one more time
+			isCanceled = true
 		case <-f.onchangeCh:
 		}
 	}
