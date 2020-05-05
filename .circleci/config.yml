@@ -79,7 +79,7 @@ jobs:
       - checkout
       # Check to make sure Windows binaries compile
       - run: go install -mod vendor ./cmd/tilt
-      - run: make shorttest
+      - run: make test-go-windows
 
   build-integration:
     docker:

@@ -52,6 +52,9 @@ lint: golangci-lint
 build:
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
 
+test-go-windows:
+		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s ./...
+
 test-go:
 ifneq ($(CIRCLECI),true)
 		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s ./...

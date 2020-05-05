@@ -1,4 +1,4 @@
-//+build !skipcontainertests,!windows
+//+build !skipcontainertests
 
 // Tests that involve spinning up/interacting with actual containers
 package build
