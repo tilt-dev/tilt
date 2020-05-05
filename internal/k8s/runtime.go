@@ -38,7 +38,7 @@ func (r *runtimeAsync) Runtime(ctx context.Context) container.Runtime {
 			if isStatusErr {
 				status := statusErr.ErrStatus
 				if status.Code == http.StatusForbidden {
-					logger.Get(ctx).Warnf(
+					logger.Get(ctx).Debugf(
 						"Tilt could not read your node configuration\n"+
 							"  Ask your Kubernetes admin for access to run `kubectl get nodes`.\n"+
 							"  Detail: %v", err)
