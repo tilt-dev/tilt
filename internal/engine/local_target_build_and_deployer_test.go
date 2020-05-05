@@ -1,11 +1,11 @@
-// +build !windows
-
 package engine
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -68,9 +68,13 @@ func TestWorkdir(t *testing.T) {
 	f := newLTFixture(t)
 	defer f.TearDown()
 
-	f.MkdirAll("some/internal/dir")
-	workdir := f.JoinPath("some/internal/dir")
-	targ := f.localTargetWithWorkdir("echo the directory is $(pwd)", workdir)
+	f.MkdirAll(filepath.Join("some", "internal", "dir"))
+	workdir := f.JoinPath("some", "internal", "dir")
+	cmd := "echo the directory is $(pwd)"
+	if runtime.GOOS == "windows" {
+		cmd = "echo the directory is %cd%"
+	}
+	targ := f.localTargetWithWorkdir(cmd, workdir)
 
 	res, err := f.ltbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{targ}, store.BuildStateSet{})
 	require.Nil(t, err)
@@ -104,14 +108,14 @@ func TestFailedCommand(t *testing.T) {
 	f := newLTFixture(t)
 	defer f.TearDown()
 
-	targ := f.localTarget("echo oh no; false")
+	targ := f.localTarget("echo oh no && exit 1")
 
 	res, err := f.ltbad.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{targ}, store.BuildStateSet{})
 	assert.Empty(t, res, "expect empty build result for failed cmd")
 
 	require.NotNil(t, err, "failed cmd should throw error")
 	assert.Contains(t, err.Error(),
-		"Command \"echo oh no; false\" failed: exit status 1")
+		"Command \"echo oh no && exit 1\" failed: exit status 1")
 	assert.True(t, buildcontrol.IsDontFallBackError(err), "expect DontFallBackError")
 
 	assert.Contains(t, f.out.String(), "oh no", "expect cmd stdout in logs")
