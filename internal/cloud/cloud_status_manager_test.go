@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/feature"
 	"github.com/windmilleng/tilt/internal/store"
 	"github.com/windmilleng/tilt/internal/testutils"
 	"github.com/windmilleng/tilt/internal/testutils/httptest"
@@ -170,7 +169,6 @@ func newCloudStatusManagerTestFixture(t *testing.T) *cloudStatusManagerTestFixtu
 
 func (f *cloudStatusManagerTestFixture) Run(mutateState func(state *store.EngineState)) {
 	state := store.EngineState{
-		Features:     map[string]bool{feature.Snapshots: true},
 		CloudAddress: testCloudAddress,
 	}
 	mutateState(&state)
