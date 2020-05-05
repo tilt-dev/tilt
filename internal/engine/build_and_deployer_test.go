@@ -1,5 +1,3 @@
-// +build !windows
-
 package engine
 
 import (
@@ -949,7 +947,7 @@ func TestLocalTargetFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lt := model.LocalTarget{UpdateCmd: model.ToHostCmd("echo oh no; false")}
+	lt := model.LocalTarget{UpdateCmd: model.ToHostCmd("echo 'oh no' && exit 1")}
 	res, err := f.bd.BuildAndDeploy(f.ctx, f.st, []model.TargetSpec{lt}, store.BuildStateSet{})
 	assert.Empty(t, res, "expect empty result for failed command")
 

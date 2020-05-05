@@ -1,5 +1,3 @@
-// +build !windows
-
 package engine
 
 import (
@@ -401,7 +399,7 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
 
 	cb := model.CustomBuild{
-		Command:          "true",
+		Command:          "exit 0",
 		Deps:             []string{f.JoinPath("app")},
 		SkipsLocalDocker: true,
 		Tag:              "tilt-build",
