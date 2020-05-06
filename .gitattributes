@@ -1,4 +1,4 @@
 **/testdata/* binary
 
-*.sh test eol=lf
+*.sh text eol=lf
 
