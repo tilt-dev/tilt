@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"testing"
 	"time"
 
@@ -161,6 +162,9 @@ func TestPortForwardChangePort(t *testing.T) {
 }
 
 func TestPortForwardRestart(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): investigate")
+	}
 	f := newPLCFixture(t)
 	defer f.TearDown()
 

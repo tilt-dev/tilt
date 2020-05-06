@@ -395,6 +395,9 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 }
 
 func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): investigate")
+	}
 	f := newTestFixture(t)
 	defer f.TearDown()
 
