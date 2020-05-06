@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -1223,6 +1224,9 @@ func TestHudUpdated(t *testing.T) {
 }
 
 func TestDisabledHudUpdated(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): Investigate")
+	}
 	out := bufsync.NewThreadSafeBuffer()
 	h := hud.NewDisabledHud(hud.NewIncrementalPrinter(out))
 	f := newTestFixtureWithHud(t, h)
@@ -2428,6 +2432,9 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 }
 
 func TestInitSetsTiltfilePath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): investigate")
+	}
 	f := newTestFixture(t)
 	defer f.TearDown()
 

@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"net/http"
+	goRuntime "runtime"
 	"testing"
 	"time"
 
@@ -93,6 +94,9 @@ func TestK8sClient_WatchPodsLabelsPassed(t *testing.T) {
 }
 
 func TestK8sClient_WatchServices(t *testing.T) {
+	if goRuntime.GOOS == "windows" {
+		t.Skip("TODO(nick): investigate")
+	}
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
 
