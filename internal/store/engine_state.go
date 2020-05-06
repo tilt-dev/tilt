@@ -512,13 +512,6 @@ func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
 	return reason
 }
 
-// Whether a change at the given time should trigger a build.
-// Used to determine if changes to synced files or config files
-// should kick off a new build.
-func (ms *ManifestState) IsPendingTime(t time.Time) bool {
-	return !t.IsZero() && AfterOrEqual(t, ms.LastBuild().StartTime)
-}
-
 // Whether changes have been made to this Manifest's synced files
 // or config since the last build.
 //
@@ -534,14 +527,14 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 	ok := false
 	earliest := highWaterMark
 	t := ms.PendingManifestChange
-	if BeforeOrEqual(t, earliest) && ms.IsPendingTime(t) {
+	if !t.IsZero() && BeforeOrEqual(t, earliest) {
 		ok = true
 		earliest = t
 	}
 
 	for _, status := range ms.BuildStatuses {
 		for _, t := range status.PendingFileChanges {
-			if BeforeOrEqual(t, earliest) && ms.IsPendingTime(t) {
+			if !t.IsZero() && BeforeOrEqual(t, earliest) {
 				ok = true
 				earliest = t
 			}
