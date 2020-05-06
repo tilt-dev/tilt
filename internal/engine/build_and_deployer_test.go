@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -858,6 +859,9 @@ func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
 }
 
 func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntImageBuild(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): fix this")
+	}
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
