@@ -641,10 +641,9 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	// Simulate a change to b.go
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
 
-	// The next build should treat both a.go and b.go as changed, and build
-	// on the last successful result, from before a.go changed.
+	// The next build should only treat b.go as changed.
 	call = f.nextCallComplete("build on last successful result")
-	assert.Equal(t, []string{f.JoinPath("a.go"), f.JoinPath("b.go")}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneState().FilesChanged())
 	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneState().LastLocalImageAsString())
 
 	err := f.Stop()

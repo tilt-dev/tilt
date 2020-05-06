@@ -260,26 +260,26 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		ms.MutableBuildStatus(id).LastResult = result
 	}
 
+	// Remove pending file changes that were consumed by this build.
+	for _, status := range ms.BuildStatuses {
+		for file, modTime := range status.PendingFileChanges {
+			if store.BeforeOrEqual(modTime, bs.StartTime) {
+				delete(status.PendingFileChanges, file)
+			}
+		}
+	}
+
+	if !ms.PendingManifestChange.IsZero() &&
+		store.BeforeOrEqual(ms.PendingManifestChange, bs.StartTime) {
+		ms.PendingManifestChange = time.Time{}
+	}
+
 	if err != nil {
 		if buildcontrol.IsFatalError(err) {
 			engineState.FatalError = err
 			return
 		}
 	} else {
-		// Remove pending file changes that were consumed by this build.
-		for _, status := range ms.BuildStatuses {
-			for file, modTime := range status.PendingFileChanges {
-				if store.BeforeOrEqual(modTime, bs.StartTime) {
-					delete(status.PendingFileChanges, file)
-				}
-			}
-		}
-
-		if !ms.PendingManifestChange.IsZero() &&
-			store.BeforeOrEqual(ms.PendingManifestChange, bs.StartTime) {
-			ms.PendingManifestChange = time.Time{}
-		}
-
 		ms.LastSuccessfulDeployTime = cb.FinishTime
 
 		for id, result := range cb.Result {

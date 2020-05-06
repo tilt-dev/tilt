@@ -593,7 +593,7 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	call := f.nextCallComplete()
 	state := call.oneState()
-	assert.Equal(t, []string{f.JoinPath("main.go")}, state.FilesChanged())
+	assert.Equal(t, []string{}, state.FilesChanged())
 	assert.True(t, state.ImageBuildTriggered)
 
 	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
