@@ -22,7 +22,6 @@ import (
 
 	"github.com/windmilleng/tilt/internal/docker"
 	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/ignore"
 	"github.com/windmilleng/tilt/pkg/logger"
 	"github.com/windmilleng/tilt/pkg/model"
 )
@@ -68,86 +67,6 @@ func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, 
 		},
 	}
 	return d.buildFromDf(ctx, ps, db, paths, filter, refs)
-}
-
-func (d *dockerImageBuilder) applyLabels(df dockerfile.Dockerfile, buildMode dockerfile.LabelValue) dockerfile.Dockerfile {
-	df = df.WithLabel(BuildMode, buildMode)
-	for k, v := range d.extraLabels {
-		df = df.WithLabel(k, v)
-	}
-	return df
-}
-
-// If the build starts with conditional run's, add the dependent files first,
-// then add the runs, before we add the majority of the source.
-func (d *dockerImageBuilder) addConditionalRuns(df dockerfile.Dockerfile, runs []model.Run, paths []PathMapping) (dockerfile.Dockerfile, []model.Run, error) {
-	consumed := 0
-	for _, run := range runs {
-		if run.Triggers.Empty() {
-			break
-		}
-
-		matcher, err := ignore.CreateRunMatcher(run)
-		if err != nil {
-			return "", nil, err
-		}
-
-		pathsToAdd, err := FilterMappings(paths, matcher)
-		if err != nil {
-			return "", nil, err
-		}
-
-		if len(pathsToAdd) == 0 {
-			// TODO(nick): If this happens, it means the input file has been deleted.
-			// This seems like a very late part of the pipeline to detect this
-			// error. It should have been caught way up when we were evaluating the
-			// tiltfile.
-			//
-			// For now, we're going to return an error to catch this case.
-			return "", nil, fmt.Errorf("No inputs for run: %s", run.Cmd)
-		}
-
-		for _, p := range pathsToAdd {
-			// The tarball root is the same as the container root, so the src and dest
-			// are the same.
-			df = df.Join(fmt.Sprintf("COPY %s %s", p.ContainerPath, p.ContainerPath))
-		}
-
-		// After adding the inputs, run the command.
-		//
-		// TODO(nick): This assumes that the RUN run doesn't overwrite any input files
-		// that might be added later. In that case, we might need to do something
-		// clever where we stash the outputs and restore them after the final "ADD . /".
-		// But let's see how this works for now.
-		df = df.Run(run.Cmd)
-		consumed++
-	}
-
-	remainingRuns := append([]model.Run{}, runs[consumed:]...)
-	return df, remainingRuns, nil
-}
-
-func (d *dockerImageBuilder) addSyncedAndRemovedFiles(ctx context.Context, df dockerfile.Dockerfile, paths []PathMapping) (dockerfile.Dockerfile, error) {
-	df = df.AddAll()
-	toRemove, _, err := MissingLocalPaths(ctx, paths)
-	if err != nil {
-		return "", errors.Wrap(err, "addSyncedAndRemovedFiles")
-	}
-
-	toRemovePaths := make([]string, len(toRemove))
-	for i, p := range toRemove {
-		toRemovePaths[i] = p.ContainerPath
-	}
-
-	df = df.RmPaths(toRemovePaths)
-	return df, nil
-}
-
-func (d *dockerImageBuilder) addRemainingRuns(df dockerfile.Dockerfile, remaining []model.Run) dockerfile.Dockerfile {
-	for _, run := range remaining {
-		df = df.Run(run.Cmd)
-	}
-	return df
 }
 
 // Tag the digest with the given name and wm-tilt tag.
