@@ -2795,6 +2795,9 @@ func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 }
 
 func TestConfigChangeThatChangesManifestIsIncludedInManifestsChangedFile(t *testing.T) {
+	// https://app.clubhouse.io/windmill/story/5701/test-testconfigchangethatchangesmanifestisincludedinmanifestschangedfile-is-flaky
+	t.Skip("TODO(nick): fix this")
+
 	f := newTestFixture(t)
 	defer f.TearDown()
 
