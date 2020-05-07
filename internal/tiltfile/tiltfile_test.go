@@ -4381,6 +4381,25 @@ allow_k8s_contexts("hello")
 	}
 }
 
+// TODO(dmiller): right now this only tests that `object` is a valid param
+// in the future it will test more
+func TestK8sResourceObjects(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_resource('foo', objects=['bar'])
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo")
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
