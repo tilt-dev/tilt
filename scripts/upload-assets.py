@@ -33,6 +33,8 @@ status = subprocess.call([
 ])
 if status == 0:
   print("Error: Files already exist: %s" % url)
+  print("You can manually delete the file(s) at:")
+  print("\thttps://console.cloud.google.com/storage/browser/tilt-static-assets?forceOnBucketsSortingFiltering=false&project=windmill-prod")
   sys.exit(1)
 
 os.chdir("web")
