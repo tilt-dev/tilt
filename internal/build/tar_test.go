@@ -71,7 +71,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 
 	actual := tar.NewReader(pr)
 	f.assertFilesInTar(actual, []expectedFile{
-		expectedFile{Path: "a", Contents: "a", AssertUidAndGidAreZero: true},
+		expectedFile{Path: "a", Contents: "a", AssertUidAndGidAreZero: true, HasExecBitWindows: true},
 		expectedFile{Path: "b", Missing: true},
 	})
 }

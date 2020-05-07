@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +29,11 @@ type ExpectedFile struct {
 
 	// If true, we will assert that this is a symlink with a linkname.
 	Linkname string
+
+	// Windows filesystem APIs don't expose an executable bit.
+	// So when we create docker images on windows, we set the executable
+	// bit on all files, for consistency with Docker.
+	HasExecBitWindows bool
 }
 
 // Asserts whether or not this file is in the tar.
@@ -106,6 +113,10 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 
 		if expected.AssertUidAndGidAreZero && header.Gid != expectedUidAndGid {
 			t.Errorf("Expected %s to have GID 0, got %d (%s)", header.Name, header.Gid, msg)
+		}
+
+		if expected.HasExecBitWindows && runtime.GOOS == "windows" && (os.FileMode(header.Mode)&0111 == 0) {
+			t.Errorf("Expected %s to have Executable bit, got %s", header.Name, os.FileMode(header.Mode))
 		}
 
 		if header.Linkname != expected.Linkname {
