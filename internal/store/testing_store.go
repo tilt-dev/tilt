@@ -95,7 +95,7 @@ func (s *TestingStore) AssertNoErrorActions(t testing.TB) {
 // searching from the next index
 func WaitForAction(t testing.TB, typ reflect.Type, getActions func() []Action) Action {
 	start := time.Now()
-	timeout := 300 * time.Millisecond
+	timeout := 500 * time.Millisecond
 
 	for time.Since(start) < timeout {
 		actions := getActions()
@@ -117,7 +117,7 @@ func WaitForAction(t testing.TB, typ reflect.Type, getActions func() []Action) A
 // we don't see an action of the given type
 func AssertNoActionOfType(t testing.TB, typ reflect.Type, getActions func() []Action) Action {
 	start := time.Now()
-	timeout := 150 * time.Millisecond
+	timeout := 300 * time.Millisecond
 
 	for time.Since(start) < timeout {
 		actions := getActions()
