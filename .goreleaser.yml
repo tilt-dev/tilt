@@ -1,7 +1,7 @@
 project_name: tilt
 before:
   hooks:
-    - ./scripts/upload-assets.py latest
+    - ./scripts/upload-assets.py latest --no_check
 builds:
 - env:
   main: ./cmd/tilt/main.go
@@ -49,7 +49,7 @@ dockers:
     - "tiltdev/tilt"
     - "tiltdev/tilt:{{ .Tag }}"
   dockerfile: scripts/goreleaser.Dockerfile
-  
+
 # Uncomment these lines if you want to experiment with other
 # parts of the release process without releasing new binaries.
 # release:

@@ -10,15 +10,15 @@
 
 import argparse
 import os
-import re
 import subprocess
 import sys
 
 parser = argparse.ArgumentParser(description='Upload JS assets')
-parser.add_argument('--force', dest='feature', action='store_true',
-                    help='Re-upload files even if they already exist')
+parser.add_argument('--no_check', action='store_true',
+                    help='Don\'t check if files already exist before attempting to upload them')
 parser.add_argument('version', help='A version string like "v1.2.3".')
 args = parser.parse_args()
+
 version = args.version
 if version == "latest":
   version = str(subprocess.check_output([
@@ -28,14 +28,17 @@ if version == "latest":
 dir_url = ("https://storage.googleapis.com/tilt-static-assets/%s/" % version)
 url = dir_url + "index.html"
 print("Uploading to %s" % dir_url)
-status = subprocess.call([
-  "gsutil", "stat", "gs://tilt-static-assets/%s/index.html" % version
-])
-if status == 0:
-  print("Error: Files already exist: %s" % url)
-  print("You can manually delete the file(s) at:")
-  print("\thttps://console.cloud.google.com/storage/browser/tilt-static-assets?forceOnBucketsSortingFiltering=false&project=windmill-prod")
-  sys.exit(1)
+
+if not args.no_check:
+    status = subprocess.call([
+      "gsutil", "stat", "gs://tilt-static-assets/%s/index.html" % version
+    ])
+    if status == 0:
+      print("Error: Files already exist: {}".format(url))
+      print("You can manually delete the file(s) at:")
+      print("\thttps://console.cloud.google.com/storage/browser/tilt-static-assets"+
+            "?forceOnBucketsSortingFiltering=false&project=windmill-prod&prefix={}".format(version))
+      sys.exit(1)
 
 os.chdir("web")
 subprocess.check_call(["yarn", "install"])
