@@ -66,6 +66,8 @@ type k8sResourceOptions struct {
 	triggerMode       triggerMode
 	tiltfilePosition  syntax.Position
 	resourceDeps      []string
+	// TODO(dmiller): this should be a different type once it has been parsed as a valid identifier
+	objects []string
 }
 
 func (r *k8sResource) addRefSelector(selector container.RefSelector) {
@@ -86,7 +88,7 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
 			if count == 0 {
 				r.imageRefs = append(r.imageRefs, image)
 			}
-			r.imageRefMap[image.String()] += 1
+			r.imageRefMap[image.String()]++
 		}
 	}
 
@@ -361,6 +363,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var extraPodSelectorsVal starlark.Value
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
+	var objectsVal starlark.Sequence
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"workload", &workload,
@@ -369,6 +372,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		"extra_pod_selectors?", &extraPodSelectorsVal,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
+		"objects?", &objectsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -396,6 +400,12 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
+	// TODO(dmiller): this should be parsed as a valid identifier, and stored its own type
+	objects, err := value.SequenceToStringSlice(objectsVal)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
+	}
+
 	s.k8sResourceOptions[workload] = k8sResourceOptions{
 		newName:           newName,
 		portForwards:      portForwards,
@@ -403,6 +413,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		tiltfilePosition:  thread.CallFrame(1).Pos,
 		triggerMode:       triggerMode,
 		resourceDeps:      resourceDeps,
+		objects:           objects,
 	}
 
 	return starlark.None, nil
