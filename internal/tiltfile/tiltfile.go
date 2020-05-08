@@ -9,10 +9,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/secretsettings"
 	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+
+	"github.com/windmilleng/tilt/internal/tiltfile/secretsettings"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
 

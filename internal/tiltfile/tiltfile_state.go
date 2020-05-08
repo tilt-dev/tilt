@@ -10,9 +10,10 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/looplab/tarjan"
 	"github.com/pkg/errors"
-	"github.com/windmilleng/tilt/internal/tiltfile/secretsettings"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+
+	"github.com/windmilleng/tilt/internal/tiltfile/secretsettings"
 
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
