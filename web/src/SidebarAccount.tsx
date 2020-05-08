@@ -246,7 +246,7 @@ function SidebarAccount(props: SidebarAccountProps) {
         <input name="token" type="hidden" value={cookies.get("Tilt-Token")} />
         <MenuContentButtonSignUp
           type="submit"
-          value="Link Local Tilt to Tilt Cloud"
+          value="Link Tilt to Tilt Cloud"
         />
       </form>
     </SidebarAccountMenuContent>
