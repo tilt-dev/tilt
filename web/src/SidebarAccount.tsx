@@ -156,9 +156,6 @@ let MenuContentTeamInTiltfile = styled.small`
     opacity: 1;
   }
 `
-let MenuContentSignInLink = styled.p`
-  text-align: center;
-`
 export const MenuContentButtonTiltCloud = styled(ButtonLink)`
   margin-top: ${SizeUnit(0.3)};
 `
@@ -247,21 +244,11 @@ function SidebarAccount(props: SidebarAccountProps) {
         onSubmit={notifyTiltOfRegistration}
       >
         <input name="token" type="hidden" value={cookies.get("Tilt-Token")} />
-        <MenuContentButtonSignUp type="submit" value="Sign Up via GitHub" />
+        <MenuContentButtonSignUp
+          type="submit"
+          value="Link Local Tilt to Tilt Cloud"
+        />
       </form>
-      <MenuContentSignInLink>
-        Or{" "}
-        <strong>
-          <a
-            href={props.tiltCloudSchemeHost}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-          >
-            Sign In
-          </a>
-        </strong>{" "}
-        to your account.
-      </MenuContentSignInLink>
     </SidebarAccountMenuContent>
   )
 
