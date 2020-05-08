@@ -368,10 +368,20 @@ func ToHostCmd(cmd string) Cmd {
 		return Cmd{}
 	}
 	if runtime.GOOS == "windows" {
-		// from https://docs.docker.com/engine/reference/builder/#run
-		return Cmd{Argv: []string{"cmd", "/S", "/C", cmd}}
+		return ToBatCmd(cmd)
 	}
 	return ToUnixCmd(cmd)
+}
+
+// 🦇🦇🦇
+// Named in honor of Bazel
+// https://docs.bazel.build/versions/master/be/general.html#genrule.cmd_bat
+func ToBatCmd(cmd string) Cmd {
+	if cmd == "" {
+		return Cmd{}
+	}
+	// from https://docs.docker.com/engine/reference/builder/#run
+	return Cmd{Argv: []string{"cmd", "/S", "/C", cmd}}
 }
 
 func ToUnixCmd(cmd string) Cmd {
