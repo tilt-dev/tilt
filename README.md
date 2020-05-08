@@ -3,7 +3,7 @@
 <img src="assets/logo-wordmark.png" width="250">
 
 [![Build Status](https://circleci.com/gh/windmilleng/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/windmilleng/tilt)
-[![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://godoc.org/github.com/windmilleng/tilt)
+[![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://pkg.go.dev/github.com/windmilleng/tilt)
 
 Kubernetes for Prod, Tilt for Dev
 
