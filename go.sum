@@ -862,6 +862,10 @@ github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed h1:xt+hAUJdHN
 github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed/go.mod h1:feHoQi0H+lyL/mtPHePEI0Pan5Vd4LJmo/PaohCewks=
 github.com/windmilleng/fsnotify v1.4.7 h1:9PUoTe3ZaKO9JLtuHQzM8BaCcrDz8rQ7PmEGo6BAbCQ=
 github.com/windmilleng/fsnotify v1.4.7/go.mod h1:h3pBNCM04c2q++yj67m77Mof0ZG/mzQMh+OM7J+Umc0=
+github.com/windmilleng/fsnotify v1.4.8-0.20200507213701-a66a0f1b3653 h1:0241eQk3BKvo+1l+T5IP2dvHKdtE8cel06cnLkffdpI=
+github.com/windmilleng/fsnotify v1.4.8-0.20200507213701-a66a0f1b3653/go.mod h1:h3pBNCM04c2q++yj67m77Mof0ZG/mzQMh+OM7J+Umc0=
+github.com/windmilleng/fsnotify v1.4.8-0.20200507235935-249ce517a564 h1:uHQ+TDSr8ySprXcE3xq2n3SXi89d/BTHvtX4NjZcOhs=
+github.com/windmilleng/fsnotify v1.4.8-0.20200507235935-249ce517a564/go.mod h1:h3pBNCM04c2q++yj67m77Mof0ZG/mzQMh+OM7J+Umc0=
 github.com/windmilleng/json-patch v3.0.0+incompatible h1:suCvanVlAvf9cE6cw+oVm4IEL5e/pvpZy2gldDP4wGQ=
 github.com/windmilleng/json-patch v3.0.0+incompatible/go.mod h1:ptw7VpdMlXpl6gg2OB5lY8o3O8eZonTmaqv8NrYVbME=
 github.com/windmilleng/json-patch/v4 v4.8.0 h1:Leq7Yrc0Hbp9+pHk+uE619t9/OJf2pXkWvzKLuqzBO4=
