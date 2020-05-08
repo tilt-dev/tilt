@@ -39,7 +39,7 @@ If you want to run the tests:
 
 Other development commands:
 
-- **[goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)**: `go get -u golang.org/x/tools/cmd/goimports` (to sort imports, IDE-specific installation instructions in the link). You should configure goimports to run with `-local github.com/windmill/tilt`
+- **[goimports](https://pkg.go.dev/golang.org/x/tools/cmd/goimports?tab=doc)**: `go get -u golang.org/x/tools/cmd/goimports` (to sort imports, IDE-specific installation instructions in the link). You should configure goimports to run with `-local github.com/windmill/tilt`
 - **[toast](https://github.com/stepchowfun/toast)**: `curl https://raw.githubusercontent.com/stepchowfun/toast/master/install.sh -LSfs | sh` Used for generating some protobuf files
 - Our Python scripts are in Python 3.6.0. To run them:
   - **[pyenv](https://github.com/pyenv/pyenv#installation)**
