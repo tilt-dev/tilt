@@ -4095,6 +4095,30 @@ k8s_yaml('secret.yaml')
 	assert.Equal(t, "d29ybGQ=", string(secrets["world"].ValueEncoded))
 }
 
+func TestSecretSettingsDisableScrub(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("secret.yaml", `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+stringData:
+  client-id: hello
+  client-secret: world
+`)
+	f.file("Tiltfile", `
+k8s_yaml('secret.yaml')
+secret_settings(disable_scrub=True)
+`)
+
+	f.load()
+
+	secrets := f.loadResult.Secrets
+	assert.Empty(t, secrets, "expect no secrets to be collected if scrubbing secrets is disabled")
+}
+
 func TestDockerPruneSettings(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
