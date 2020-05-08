@@ -5259,11 +5259,11 @@ func hotReload(on bool) hotReloadHelper {
 }
 
 type cmdHelper struct {
-	cmd string
+	cmd model.Cmd
 }
 
 func cmd(cmd string) cmdHelper {
-	return cmdHelper{cmd}
+	return cmdHelper{cmd: model.ToHostCmd(cmd)}
 }
 
 type workDirHelper struct {

@@ -45,7 +45,7 @@ type dockerImage struct {
 	dbDockerfile     dockerfile.Dockerfile
 	dbBuildPath      string
 	dbBuildArgs      model.DockerBuildArgs
-	customCommand    string
+	customCommand    model.Cmd
 	customDeps       []string
 	customTag        string
 
@@ -76,7 +76,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 		return DockerBuild
 	}
 
-	if d.customCommand != "" {
+	if !d.customCommand.Empty() {
 		return CustomBuild
 	}
 
@@ -285,7 +285,7 @@ func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
 
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var command string // TODO(nick): Parse command at a model.Cmd
+	var commandVal, commandBatVal starlark.Value
 	var deps *starlark.List
 	var tag string
 	var disablePush bool
@@ -297,7 +297,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
-		"command", &command,
+		"command", &commandVal,
 		"deps", &deps,
 		"tag?", &tag,
 		"disable_push?", &disablePush,
@@ -307,6 +307,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"ignore?", &ignoreVal,
 		"entrypoint?", &entrypoint,
 		"container_args?", &containerArgsVal,
+		"command_bat_val", &commandBatVal,
 	)
 	if err != nil {
 		return nil, err
@@ -315,10 +316,6 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	ref, err := container.ParseNamed(dockerRef)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 1 (ref): can't parse %q: %v", dockerRef, err)
-	}
-
-	if command == "" {
-		return nil, fmt.Errorf("Argument 2 (command) can't be empty")
 	}
 
 	if deps == nil || deps.Len() == 0 {
@@ -359,6 +356,13 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 			return nil, fmt.Errorf("Argument 'container_args': %v", err)
 		}
 		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
+	}
+
+	command, err := value.ValueGroupToCmdHelper(commandVal, commandBatVal)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 2 (command): %v", err)
+	} else if command.Empty() {
+		return nil, fmt.Errorf("Argument 2 (command) can't be empty")
 	}
 
 	img := &dockerImage{

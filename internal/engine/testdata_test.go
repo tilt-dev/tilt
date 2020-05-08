@@ -109,7 +109,7 @@ func NewSanchoCustomBuildImageTarget(fixture Fixture) model.ImageTarget {
 
 func NewSanchoCustomBuildImageTargetWithTag(fixture Fixture, tag string) model.ImageTarget {
 	cb := model.CustomBuild{
-		Command: "exit 0",
+		Command: model.ToHostCmd("exit 0"),
 		Deps:    []string{fixture.JoinPath("app")},
 		Tag:     tag,
 	}
@@ -125,7 +125,7 @@ func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Mani
 
 func NewSanchoCustomBuildManifestWithLiveUpdate(fixture Fixture) model.Manifest {
 	cb := model.CustomBuild{
-		Command:    "exit 0",
+		Command:    model.ToHostCmd("exit 0"),
 		Deps:       []string{fixture.JoinPath("app")},
 		LiveUpdate: NewSanchoLiveUpdate(fixture),
 	}
@@ -138,7 +138,7 @@ func NewSanchoCustomBuildManifestWithLiveUpdate(fixture Fixture) model.Manifest 
 
 func NewSanchoCustomBuildManifestWithPushDisabled(fixture Fixture) model.Manifest {
 	cb := model.CustomBuild{
-		Command:     "exit 0",
+		Command:     model.ToHostCmd("exit 0"),
 		Deps:        []string{fixture.JoinPath("app")},
 		DisablePush: true,
 		Tag:         "tilt-build",
