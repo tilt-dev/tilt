@@ -4381,23 +4381,26 @@ allow_k8s_contexts("hello")
 	}
 }
 
-// TODO(dmiller): right now this only tests that `object` is a valid param
-// in the future it will test more
-func TestK8sResourceObjects(t *testing.T) {
+func TestK8sResourceObjectsIncludesNonWorkload(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
 
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
-k8s_resource('foo', objects=['bar'])
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar', 'baz'])
 `)
 
 	f.load()
 
-	f.assertNextManifest("foo")
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
+	f.assertNoMoreManifests()
 }
 
 type fixture struct {
@@ -4546,6 +4549,14 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 				f.t.Fatal(err)
 			}
 
+			entityObjs = append(entityObjs, objs...)
+		case namespaceHelper:
+			s := testyaml.MyNamespaceYAML
+			s = strings.Replace(s, testyaml.MyNamespaceName, e.namespace, -1)
+			objs, err := k8s.ParseYAMLFromString(s)
+			if err != nil {
+				f.t.Fatal(err)
+			}
 			entityObjs = append(entityObjs, objs...)
 		default:
 			f.t.Fatalf("unexpected entity %T %v", e, e)

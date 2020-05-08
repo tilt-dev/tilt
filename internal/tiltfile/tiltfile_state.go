@@ -602,6 +602,16 @@ func (s *tiltfileState) assembleK8sV2() error {
 		return err
 	}
 
+	// TODO(dmiller): support all three ways of specifying a name:
+	// 1. Short name (foo) (done)
+	// 2. Full names (foo:deployment:default:apps)
+	// 3. Unique fragments (foo, foo:deployment, foo:deployment:default, etc)
+	namesToEntities := make(map[string]k8s.K8sEntity)
+	for _, u := range s.k8sUnresourced {
+		names := k8s.UniqueNames([]k8s.K8sEntity{u}, 1)
+		namesToEntities[names[0]] = u
+	}
+
 	for workload, opts := range s.k8sResourceOptions {
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
@@ -615,6 +625,26 @@ func (s *tiltfileState) assembleK8sV2() error {
 				delete(s.k8sByName, r.name)
 				r.name = opts.newName
 				s.k8sByName[r.name] = r
+			}
+
+			// if the resource specifies additional objects, iterate through the unresourced k8s entities
+			// and pull the specified objects out
+			for _, o := range opts.objects {
+				if u, ok := namesToEntities[o]; ok {
+					r.entities = append(r.entities, u)
+					for i, ur := range s.k8sUnresourced {
+						if ur == u {
+							// delete from unresourced
+							s.k8sUnresourced = append(s.k8sUnresourced[:i], s.k8sUnresourced[i+1:]...)
+						}
+					}
+				} else {
+					knownResources := []string{}
+					for n := range namesToEntities {
+						knownResources = append(knownResources, n)
+					}
+					return fmt.Errorf("Expected to find a resource named %s but couldn't. Known resources: %v", o, knownResources)
+				}
 			}
 		} else {
 			var knownResources []string

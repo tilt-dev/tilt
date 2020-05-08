@@ -1376,6 +1376,7 @@ kind: Namespace
 metadata:
   name: mynamespace
 `
+const MyNamespaceName = "mynamespace"
 
 const RedisStatefulSetYAML = `
 # Modified from: redis/templates/redis-master-statefulset.yaml
