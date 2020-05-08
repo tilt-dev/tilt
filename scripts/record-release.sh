@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Notifies Tilt Cloud of a new Tilt Release
 
