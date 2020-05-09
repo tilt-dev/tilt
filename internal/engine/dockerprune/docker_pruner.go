@@ -329,7 +329,7 @@ func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.L
 	l.Infof("[Docker Prune] removed %d caches, reclaimed %s",
 		len(report.CachesDeleted), humanSize(report.SpaceReclaimed))
 	if len(report.CachesDeleted) > 0 {
-		l.Debugf(sliceutils.BulletedIndentedStringList(report.CachesDeleted))
+		l.Debugf("%s", sliceutils.BulletedIndentedStringList(report.CachesDeleted))
 	}
 }
 

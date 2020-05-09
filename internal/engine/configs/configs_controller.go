@@ -122,7 +122,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore,
 	}
 
 	if tlr.Error != nil {
-		logger.Get(ctx).Infof(tlr.Error.Error())
+		logger.Get(ctx).Infof("%s", tlr.Error.Error())
 	}
 
 	st.Dispatch(ConfigsReloadedAction{
