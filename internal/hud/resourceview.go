@@ -2,6 +2,7 @@ package hud
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -121,9 +122,16 @@ func (v *ResourceView) titleTextName() rty.Component {
 	p := " "
 	if selected {
 		p = "▼"
+		if runtime.GOOS == "windows" {
+			// Windows default fonts support fewer symbols.
+			p = "↓"
+		}
 	}
 	if selected && v.res.IsCollapsed(v.rv) {
 		p = "▶"
+		if runtime.GOOS == "windows" {
+			p = "→"
+		}
 	}
 
 	display := combinedStatus(v.res)
@@ -133,7 +141,11 @@ func (v *ResourceView) titleTextName() rty.Component {
 	case cGood:
 		sb.Fg(display.color).Textf(" ● ")
 	case cBad:
-		sb.Fg(display.color).Textf(" ✖ ")
+		if runtime.GOOS == "windows" {
+			sb.Fg(display.color).Textf(" × ")
+		} else {
+			sb.Fg(display.color).Textf(" ✖ ")
+		}
 	default:
 		sb.Fg(display.color).Textf(" ○ ")
 	}
