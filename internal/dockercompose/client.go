@@ -214,7 +214,7 @@ func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args .
 		if err, ok := err.(*exec.ExitError); ok {
 			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
 		}
-		err = fmt.Errorf(errorMessage)
+		err = fmt.Errorf("%s", errorMessage)
 	}
 	return strings.TrimSpace(string(output)), err
 }
@@ -230,5 +230,5 @@ func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
 	if err, ok := err.(*exec.ExitError); ok && len(err.Stderr) > 0 {
 		errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
 	}
-	return fmt.Errorf(errorMessage)
+	return fmt.Errorf("%s", errorMessage)
 }

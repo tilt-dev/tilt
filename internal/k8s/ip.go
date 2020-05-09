@@ -30,7 +30,7 @@ func (a *nodeIPAsync) detectNodeIP(ctx context.Context) NodeIP {
 	}
 	nodeIP, err := a.mkClient.NodeIP(ctx)
 	if err != nil {
-		logger.Get(ctx).Warnf(err.Error())
+		logger.Get(ctx).Warnf("%s", err.Error())
 	}
 	return nodeIP
 }

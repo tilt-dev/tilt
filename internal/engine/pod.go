@@ -175,7 +175,7 @@ func podContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.Cont
 	for _, cStatus := range containerStatuses {
 		c, err := containerForStatus(ctx, pod, cStatus)
 		if err != nil {
-			logger.Get(ctx).Debugf(err.Error())
+			logger.Get(ctx).Debugf("%s", err.Error())
 			continue
 		}
 

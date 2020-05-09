@@ -233,7 +233,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		ids = append(ids, id)
 		output, ok := b.buildLogOutput[id]
 		if ok {
-			logger.Get(ctx).Infof(output)
+			logger.Get(ctx).Infof("%s", output)
 		}
 	}
 
