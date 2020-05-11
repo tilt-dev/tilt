@@ -13,6 +13,8 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/secretsettings"
+
 	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
 
 	"github.com/windmilleng/tilt/internal/analytics"
@@ -171,6 +173,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, tfl.versionExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)
+
+	// NOTE(maia): if/when add secret settings that affect the engine, add them to tlr here
+	ss, _ := secretsettings.GetState(result)
+	s.secretSettings = ss
 
 	ioState, _ := io.GetState(result)
 	tlr.ConfigFiles = sliceutils.AppendWithoutDupes(ioState.Files, s.postExecReadFiles...)

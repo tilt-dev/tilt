@@ -139,6 +139,11 @@ func (s *tiltfileState) extractSecrets() model.SecretSet {
 }
 
 func (s *tiltfileState) maybeExtractSecrets(e k8s.K8sEntity) model.SecretSet {
+	if !s.secretSettings.ScrubSecrets {
+		// Secret scrubbing disabled, don't extract any secrets
+		return nil
+	}
+
 	secret, ok := e.Obj.(*v1.Secret)
 	if !ok {
 		return nil

@@ -13,6 +13,8 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
+	"github.com/windmilleng/tilt/internal/tiltfile/secretsettings"
+
 	"github.com/windmilleng/tilt/internal/container"
 	"github.com/windmilleng/tilt/internal/dockercompose"
 	"github.com/windmilleng/tilt/internal/feature"
@@ -98,6 +100,8 @@ type tiltfileState struct {
 
 	teamID string
 
+	secretSettings model.SecretSettings
+
 	logger                           logger.Logger
 	warnedDeprecatedResourceAssembly bool
 	postExecReadFiles                []string
@@ -140,6 +144,7 @@ func newTiltfileState(
 		localResources:             []localResource{},
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
+		secretSettings:             model.DefaultSecretSettings(),
 	}
 }
 
@@ -171,6 +176,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
 		updatesettings.NewExtension(),
+		secretsettings.NewExtension(),
 		encoding.NewExtension(),
 		tiltextension.NewExtension(tiltextension.NewGithubFetcher(), tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
