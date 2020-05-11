@@ -283,6 +283,11 @@ update the [install](https://github.com/windmilleng/tilt.build/tree/master/docs/
 the [default dev version](internal/cli/build.go),
 and the [installer version](scripts/install.sh).
 
+These should be updated as soon as possible to match the newest Tilt version
+available, especially since the Tilt update nudge will send people to the upgrade
+docs page to get the newest version. These version bump PRs can be merged
+immediately without review.
+
 To auto-generate new CLI docs, make sure you have tilt.build in a sibling directory of tilt, and run:
 
 ```
