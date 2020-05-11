@@ -34,9 +34,7 @@ func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error) {
 	workDir := cb.WorkDir
 	expectedTag := cb.Tag
-
-	// TODO(nick): this should be stored in the data model as a Cmd
-	command := model.ToHostCmd(cb.Command)
+	command := cb.Command
 
 	skipsLocalDocker := cb.SkipsLocalDocker
 
