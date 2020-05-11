@@ -1,9 +1,8 @@
 package hud
 
 import (
-	"os"
-
 	"github.com/google/wire"
+	"github.com/mattn/go-colorable"
 )
 
 var WireSet = wire.NewSet(
@@ -13,5 +12,5 @@ var WireSet = wire.NewSet(
 	NewIncrementalPrinter)
 
 func ProvideStdout() Stdout {
-	return Stdout(os.Stdout)
+	return Stdout(colorable.NewColorableStdout())
 }
