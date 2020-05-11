@@ -241,11 +241,15 @@ func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	return nil, nil
 }
 
+const upsertTimeout = 15 * time.Second
+
+var timeoutError = fmt.Sprintf("Killed kubectl. Hit timeout of %v.", upsertTimeout)
+
 func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
 
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, upsertTimeout)
 	defer cancel()
 
 	result := make([]K8sEntity, 0, len(entities))
@@ -255,6 +259,9 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 	if len(mutable) > 0 {
 		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, mutable)
 		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return nil, errors.New(timeoutError)
+			}
 			return nil, err
 		}
 		result = append(result, newEntities...)
@@ -263,6 +270,9 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 	if len(immutable) > 0 {
 		newEntities, err := k.forceReplaceEntities(ctx, immutable)
 		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return nil, errors.New(timeoutError)
+			}
 			return nil, err
 		}
 		result = append(result, newEntities...)
