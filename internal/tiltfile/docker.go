@@ -285,7 +285,7 @@ func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
 
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var command string
+	var command string // TODO(nick): Parse command at a model.Cmd
 	var deps *starlark.List
 	var tag string
 	var disablePush bool

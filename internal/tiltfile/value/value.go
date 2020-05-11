@@ -2,6 +2,7 @@ package value
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -115,11 +116,26 @@ func StringSliceToList(slice []string) *starlark.List {
 	return starlark.NewList(v)
 }
 
+// In other similar build systems (Buck and Bazel),
+// there's a "main" command, and then various per-platform overrides.
+// https://docs.bazel.build/versions/master/be/general.html#genrule.cmd_bat
+// This helper function abstracts out the precedence rules.
+func ValueGroupToCmdHelper(cmdVal, cmdBatVal starlark.Value) (model.Cmd, error) {
+	if cmdBatVal != nil && runtime.GOOS == "windows" {
+		return ValueToBatCmd(cmdBatVal)
+	}
+	return ValueToHostCmd(cmdVal)
+}
+
 // provides dockerfile-style behavior of:
 // a string gets interpreted as a shell command (like, sh -c 'foo bar $X')
 // an array of strings gets interpreted as a raw argv to exec
 func ValueToHostCmd(v starlark.Value) (model.Cmd, error) {
 	return valueToCmdHelper(v, model.ToHostCmd)
+}
+
+func ValueToBatCmd(v starlark.Value) (model.Cmd, error) {
+	return valueToCmdHelper(v, model.ToBatCmd)
 }
 
 func ValueToUnixCmd(v starlark.Value) (model.Cmd, error) {

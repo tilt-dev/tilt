@@ -284,6 +284,32 @@ k8s_yaml(yaml)
 	assert.Contains(t, f.out.String(), " → kind: Deployment")
 }
 
+func TestLocalBat(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+yaml = local(command='cat foo.yaml', command_bat='type foo.yaml')
+k8s_yaml(yaml)
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo",
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+
+	cmdStr := "cat foo.yaml"
+	if runtime.GOOS == "windows" {
+		cmdStr = "type foo.yaml"
+	}
+	assert.Contains(t, f.out.String(), "local: "+cmdStr)
+	assert.Contains(t, f.out.String(), " → kind: Deployment")
+}
+
 func TestLocalQuiet(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

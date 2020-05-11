@@ -22,17 +22,18 @@ import (
 const localLogPrefix = " → "
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var commandValue starlark.Value
+	var commandValue, commandBatValue starlark.Value
 	quiet := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"command", &commandValue,
 		"quiet?", &quiet,
+		"command_bat", &commandBatValue,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	cmd, err := value.ValueToHostCmd(commandValue)
+	cmd, err := value.ValueGroupToCmdHelper(commandValue, commandBatValue)
 	if err != nil {
 		return nil, err
 	}
