@@ -4515,6 +4515,27 @@ k8s_resource('foo', objects=['baz:secret:default'])
 	f.loadErrString("Unable to find any unresourced matches for selector baz:secret:default. Available unresourced YAML: bar:Secret:default, baz:Namespace:default")
 }
 
+func TestK8sResourceObjectsPartialNames(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar:secret', 'bar:namespace'])
+`)
+
+	f.load()
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("bar", "Namespace"))
+	f.assertNoMoreManifests()
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
