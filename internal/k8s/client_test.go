@@ -194,7 +194,6 @@ type fakeKubectlRunner struct {
 }
 
 func (f *fakeKubectlRunner) waitForDeadline(ctx context.Context) {
-	// ok not actually forever
 	// hopefully 10 seconds is longer than any test is going to execute for
 	// this means that in case we run this without a higher level timeout, a broken test will still exit
 	select {
