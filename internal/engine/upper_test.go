@@ -2430,27 +2430,6 @@ func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestInitSetsTiltfilePath(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO(nick): investigate")
-	}
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	f.Start([]model.Manifest{})
-	f.store.Dispatch(InitAction{
-		EngineMode:   store.EngineModeApply,
-		TiltfilePath: "/Tiltfile",
-		StartTime:    f.Now(),
-	})
-	f.WaitUntil("tiltfile path gets set on init", func(st store.EngineState) bool {
-		return st.TiltfilePath == "/Tiltfile"
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
 func TestHudExitNoError(t *testing.T) {
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{})
