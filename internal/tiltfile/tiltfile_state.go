@@ -602,22 +602,6 @@ func (s *tiltfileState) assembleK8sV2() error {
 		return err
 	}
 
-	// TODO(dmiller): support all three ways of specifying a name:
-	// 1. Short name (foo) (done)
-	// 2. Full names (foo:deployment:default:apps) (done)
-	// 3. Unique fragments (foo, foo:deployment, foo:deployment:default, etc)
-	shortNamesToEntities := make(map[string]k8s.K8sEntity)
-	for _, u := range s.k8sUnresourced {
-		names := k8s.UniqueNames([]k8s.K8sEntity{u}, 1)
-		shortNamesToEntities[names[0]] = u
-	}
-
-	fullNamesToEntities := make(map[string]k8s.K8sEntity)
-	for _, u := range s.k8sUnresourced {
-		names := k8s.UniqueNames([]k8s.K8sEntity{u}, 3)
-		fullNamesToEntities[names[0]] = u
-	}
-
 	for workload, opts := range s.k8sResourceOptions {
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
@@ -633,27 +617,32 @@ func (s *tiltfileState) assembleK8sV2() error {
 				s.k8sByName[r.name] = r
 			}
 
-			// if the resource specifies additional objects, iterate through the unresourced k8s entities
-			// and pull the specified objects out
-			for _, o := range opts.objects {
-				var err error
-				if u, ok := shortNamesToEntities[o]; ok {
-					err = s.addEntityToResourceAndRemoveFromUnresourced(u, r)
-					if err != nil {
-						return err
-					}
-				} else if u, ok := fullNamesToEntities[o]; ok {
-					err = s.addEntityToResourceAndRemoveFromUnresourced(u, r)
-					if err != nil {
-						return err
-					}
-				} else if err != nil {
-					knownResources := []string{}
-					for n := range shortNamesToEntities {
-						knownResources = append(knownResources, n)
-					}
-					return errors.Wrapf(err, "Known resources: %v", knownResources)
+			selectors := make([]k8sObjectSelector, len(opts.objects))
+			for i, o := range opts.objects {
+				s, err := selectorFromString(o)
+				if err != nil {
+					return errors.Wrap(err, "Error making selector from string")
 				}
+				selectors[i] = s
+			}
+
+			for _, selector := range selectors {
+				matches := []k8s.K8sEntity{}
+				for _, e := range s.k8sUnresourced {
+					if selector.matches(e) {
+						matches = append(matches, e)
+					}
+				}
+				numMatches := len(matches)
+				if numMatches == 0 {
+					return fmt.Errorf("Unable to find any unesourced matches for selector %+v", selector)
+				}
+				if numMatches > 1 {
+					return fmt.Errorf("Found multiple (%d) matches for selector %+v: %v", numMatches, selector, matches)
+				}
+
+				e := matches[0]
+				s.addEntityToResourceAndRemoveFromUnresourced(e, r)
 			}
 		} else {
 			var knownResources []string
@@ -672,18 +661,35 @@ func (s *tiltfileState) assembleK8sV2() error {
 	return nil
 }
 
-func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEntity, r *k8sResource) error {
+func selectorFromString(s string) (k8sObjectSelector, error) {
+	parts := strings.Split(s, ":")
+	if len(parts) == 0 {
+		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
+	}
+	if len(parts) == 1 {
+		return newK8sObjectSelector("", "", parts[0], "default")
+	}
+	if len(parts) == 2 {
+		return newK8sObjectSelector("", parts[1], parts[0], "default")
+	}
+	if len(parts) == 3 {
+		return newK8sObjectSelector("", parts[1], parts[0], parts[2])
+	}
+
+	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 4 parts, found %d parts in %s", len(parts), s)
+}
+
+func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEntity, r *k8sResource) {
 	r.entities = append(r.entities, e)
 	for i, ur := range s.k8sUnresourced {
 		if ur == e {
 			// delete from unresourced
 			s.k8sUnresourced = append(s.k8sUnresourced[:i], s.k8sUnresourced[i+1:]...)
-			return nil
-
+			return
 		}
 	}
 
-	return fmt.Errorf("Unable to find %s in unresourced YAML", e.Name())
+	panic("Unable to find entity in unresourced YAML after checking that it was there. This should never happen")
 }
 
 func (s *tiltfileState) assembleK8sByWorkload() error {

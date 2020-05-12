@@ -4419,10 +4419,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
 `)
 
-	f.load()
-
-	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("bar", "Namespace"))
-	f.assertNoMoreManifests()
+	f.loadErrString("Found multiple (2) matches for selector")
 }
 
 type fixture struct {
