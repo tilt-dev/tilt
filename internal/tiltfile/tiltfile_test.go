@@ -4403,6 +4403,28 @@ k8s_resource('foo', objects=['bar', 'baz:namespace:default'])
 	f.assertNoMoreManifests()
 }
 
+func TestK8sResourceObjectsWithSameName(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("bar", "Namespace"))
+	f.assertNoMoreManifests()
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
