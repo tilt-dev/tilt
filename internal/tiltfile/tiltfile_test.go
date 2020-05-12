@@ -4422,6 +4422,42 @@ k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
 	f.loadErrString("Found multiple (2) matches for selector")
 }
 
+func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', objects=['bar', 'bar:secret:default'])
+`)
+
+	f.loadErrString("Unable to find any unresourced matches for selector bar:secret:default. All YAML has already been resourced")
+}
+
+func TestK8sResourceObjectsAmbiguous(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', objects=['bar', 'bar'])
+`)
+
+	f.loadErrString("Unable to find any unresourced matches for selector bar. All YAML has already been resourced")
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer

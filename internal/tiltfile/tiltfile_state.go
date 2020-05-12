@@ -626,7 +626,10 @@ func (s *tiltfileState) assembleK8sV2() error {
 				selectors[i] = s
 			}
 
-			for _, selector := range selectors {
+			for i, selector := range selectors {
+				if len(s.k8sUnresourced) == 0 {
+					return fmt.Errorf("Unable to find any unresourced matches for selector %s. All YAML has already been resourced", opts.objects[i])
+				}
 				matches := []k8s.K8sEntity{}
 				for _, e := range s.k8sUnresourced {
 					if selector.matches(e) {
@@ -635,7 +638,11 @@ func (s *tiltfileState) assembleK8sV2() error {
 				}
 				numMatches := len(matches)
 				if numMatches == 0 {
-					return fmt.Errorf("Unable to find any unesourced matches for selector %+v", selector)
+					namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
+					for i, e := range s.k8sUnresourced {
+						namesOfAvailableUnresourcedYAML[i] = selectorStringFromK8sEntity(e)
+					}
+					return fmt.Errorf("Unable to find any unresourced matches for selector %s. Available unresourced YAML: %s", opts.objects[i], strings.Join(namesOfAvailableUnresourcedYAML, ", "))
 				}
 				if numMatches > 1 {
 					return fmt.Errorf("Found multiple (%d) matches for selector %+v: %v", numMatches, selector, matches)
@@ -677,6 +684,10 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 	}
 
 	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 4 parts, found %d parts in %s", len(parts), s)
+}
+
+func selectorStringFromK8sEntity(e k8s.K8sEntity) string {
+	return fmt.Sprintf("%s:%s:%s:", e.Name(), e.GVK().Kind, e.Namespace())
 }
 
 func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEntity, r *k8sResource) {
