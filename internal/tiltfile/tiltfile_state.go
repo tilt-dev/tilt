@@ -621,7 +621,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for i, o := range opts.objects {
 				s, err := selectorFromString(o)
 				if err != nil {
-					return errors.Wrap(err, "Error making selector from string")
+					return errors.Wrapf(err, "Error making selector from string %s", o)
 				}
 				selectors[i] = s
 			}
@@ -668,6 +668,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 	return nil
 }
 
+// format is <name:required>:<kind:optional>:<namespace:optional>
 func selectorFromString(s string) (k8sObjectSelector, error) {
 	parts := strings.Split(s, ":")
 	if len(parts) == 0 {
@@ -683,7 +684,7 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 		return newK8sObjectSelector("", parts[1], parts[0], parts[2])
 	}
 
-	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 4 parts, found %d parts in %s", len(parts), s)
+	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 4 parts (colon separated), found %d parts in %s", len(parts), s)
 }
 
 func selectorStringFromK8sEntity(e k8s.K8sEntity) string {
