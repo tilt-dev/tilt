@@ -604,12 +604,18 @@ func (s *tiltfileState) assembleK8sV2() error {
 
 	// TODO(dmiller): support all three ways of specifying a name:
 	// 1. Short name (foo) (done)
-	// 2. Full names (foo:deployment:default:apps)
+	// 2. Full names (foo:deployment:default:apps) (done)
 	// 3. Unique fragments (foo, foo:deployment, foo:deployment:default, etc)
-	namesToEntities := make(map[string]k8s.K8sEntity)
+	shortNamesToEntities := make(map[string]k8s.K8sEntity)
 	for _, u := range s.k8sUnresourced {
 		names := k8s.UniqueNames([]k8s.K8sEntity{u}, 1)
-		namesToEntities[names[0]] = u
+		shortNamesToEntities[names[0]] = u
+	}
+
+	fullNamesToEntities := make(map[string]k8s.K8sEntity)
+	for _, u := range s.k8sUnresourced {
+		names := k8s.UniqueNames([]k8s.K8sEntity{u}, 3)
+		fullNamesToEntities[names[0]] = u
 	}
 
 	for workload, opts := range s.k8sResourceOptions {
@@ -630,20 +636,23 @@ func (s *tiltfileState) assembleK8sV2() error {
 			// if the resource specifies additional objects, iterate through the unresourced k8s entities
 			// and pull the specified objects out
 			for _, o := range opts.objects {
-				if u, ok := namesToEntities[o]; ok {
-					r.entities = append(r.entities, u)
-					for i, ur := range s.k8sUnresourced {
-						if ur == u {
-							// delete from unresourced
-							s.k8sUnresourced = append(s.k8sUnresourced[:i], s.k8sUnresourced[i+1:]...)
-						}
+				var err error
+				if u, ok := shortNamesToEntities[o]; ok {
+					err = s.addEntityToResourceAndRemoveFromUnresourced(u, r)
+					if err != nil {
+						return err
 					}
-				} else {
+				} else if u, ok := fullNamesToEntities[o]; ok {
+					err = s.addEntityToResourceAndRemoveFromUnresourced(u, r)
+					if err != nil {
+						return err
+					}
+				} else if err != nil {
 					knownResources := []string{}
-					for n := range namesToEntities {
+					for n := range shortNamesToEntities {
 						knownResources = append(knownResources, n)
 					}
-					return fmt.Errorf("Expected to find a resource named %s but couldn't. Known resources: %v", o, knownResources)
+					return errors.Wrapf(err, "Known resources: %v", knownResources)
 				}
 			}
 		} else {
@@ -661,6 +670,20 @@ func (s *tiltfileState) assembleK8sV2() error {
 		}
 	}
 	return nil
+}
+
+func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEntity, r *k8sResource) error {
+	r.entities = append(r.entities, e)
+	for i, ur := range s.k8sUnresourced {
+		if ur == e {
+			// delete from unresourced
+			s.k8sUnresourced = append(s.k8sUnresourced[:i], s.k8sUnresourced[i+1:]...)
+			return nil
+
+		}
+	}
+
+	return fmt.Errorf("Unable to find %s in unresourced YAML", e.Name())
 }
 
 func (s *tiltfileState) assembleK8sByWorkload() error {

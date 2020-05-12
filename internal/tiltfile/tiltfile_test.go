@@ -4394,7 +4394,7 @@ docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 k8s_yaml('secret.yaml')
 k8s_yaml('namespace.yaml')
-k8s_resource('foo', objects=['bar', 'baz'])
+k8s_resource('foo', objects=['bar', 'baz:namespace:default'])
 `)
 
 	f.load()
