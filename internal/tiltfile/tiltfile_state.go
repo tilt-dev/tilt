@@ -621,7 +621,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for i, o := range opts.objects {
 				s, err := selectorFromString(o)
 				if err != nil {
-					return errors.Wrapf(err, "Error making selector from string %s", o)
+					return errors.Wrapf(err, "Error making selector from string '%s'", o)
 				}
 				selectors[i] = s
 			}
@@ -671,7 +671,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 // format is <name:required>:<kind:optional>:<namespace:optional>
 func selectorFromString(s string) (k8sObjectSelector, error) {
 	parts := strings.Split(s, ":")
-	if len(parts) == 0 {
+	if len(s) == 0 {
 		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
 	}
 	if len(parts) == 1 {
@@ -688,7 +688,7 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 }
 
 func selectorStringFromK8sEntity(e k8s.K8sEntity) string {
-	return fmt.Sprintf("%s:%s:%s:", e.Name(), e.GVK().Kind, e.Namespace())
+	return fmt.Sprintf("%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace())
 }
 
 func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEntity, r *k8sResource) {
