@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,12 +18,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	ktesting "k8s.io/client-go/testing"
 
-	"github.com/windmilleng/tilt/internal/testutils"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/windmilleng/tilt/internal/testutils"
 )
 
 func TestEmptyNamespace(t *testing.T) {
@@ -161,17 +161,47 @@ func TestGetGroup(t *testing.T) {
 	}
 }
 
+func TestUpsertTimeout(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
+
+	f.runner.pauseForever = true
+
+	// we can't use a fake clock with context.Context, so we'll cheat a bit
+	// and just pass Upsert an already expired context.
+	var cancel context.CancelFunc
+	f.ctx, cancel = context.WithDeadline(f.ctx, time.Now().Add(-time.Hour))
+	defer cancel()
+
+	_, err := f.client.Upsert(f.ctx, postgres)
+
+	require.Error(t, err)
+	require.Equal(t, "Killed kubectl. Hit timeout of 15s.", err.Error())
+}
+
 type call struct {
 	argv  []string
 	stdin string
 }
 
 type fakeKubectlRunner struct {
-	stdout string
-	stderr string
-	err    error
+	pauseForever bool
+	stdout       string
+	stderr       string
+	err          error
 
 	calls []call
+}
+
+func (f *fakeKubectlRunner) waitForDeadline(ctx context.Context) {
+	// hopefully 10 seconds is longer than any test is going to execute for
+	// this means that in case we run this without a higher level timeout, a broken test will still exit
+	select {
+	case <-ctx.Done():
+		f.err = errors.New("context was canceled")
+	case <-time.After(10 * time.Second):
+		f.err = errors.New("test set to have kubectl pause forever, but it never timed kubectl out!")
+	}
 }
 
 func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin string) (stdout string, stderr string, err error) {
@@ -181,17 +211,30 @@ func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, st
 		f.stdout = ""
 		f.stderr = ""
 		f.err = nil
+		f.pauseForever = false
 	}()
+
+	if f.pauseForever {
+		f.waitForDeadline(ctx)
+	}
+
 	return f.stdout, f.stderr, f.err
 }
 
 func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
 	f.calls = append(f.calls, call{argv: args})
+
 	defer func() {
 		f.stdout = ""
 		f.stderr = ""
 		f.err = nil
+		f.pauseForever = false
 	}()
+
+	if f.pauseForever {
+		f.waitForDeadline(ctx)
+	}
+
 	return f.stdout, f.stderr, f.err
 }
 
@@ -244,6 +287,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,
 	}
+
 	return ret
 }
 
@@ -292,4 +336,8 @@ func (c clientTestFixture) setStderr(stderr string) {
 
 func (c clientTestFixture) setError(err error) {
 	c.runner.err = err
+}
+
+func (c clientTestFixture) setKubectlPauseForever(d time.Duration) {
+	c.runner.pauseForever = true
 }
