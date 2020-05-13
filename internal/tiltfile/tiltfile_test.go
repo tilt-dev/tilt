@@ -4573,6 +4573,27 @@ k8s_resource('foo', objects=['bar'])
 	f.loadErrString("Found multiple (2) matches for selector")
 }
 
+func TestK8sResourceObjectDuplicate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("anotherworkload.yaml", deployment("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('anotherworkload.yaml')
+k8s_resource('foo', objects=['bar'])
+k8s_resource('baz', objects=['bar'])
+`)
+
+	f.loadErrString("Unable to find any unresourced matches for selector bar. All YAML has already been resourced")
+}
+
+// TODO(dmiller): add test case for line 4 from Maia's spreadsheet
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
