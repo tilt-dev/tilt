@@ -384,6 +384,14 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 	return sb.String()
 }
 
+func (s *LogStore) IsLastSegmentUncompleted() bool {
+	if len(s.segments) == 0 {
+		return false
+	}
+	lastSegment := s.segments[len(s.segments)-1]
+	return !lastSegment.IsComplete()
+}
+
 func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 	isSameSpanContinuation := false
 	isChangingSpanContinuation := false

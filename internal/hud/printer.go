@@ -24,6 +24,10 @@ func NewIncrementalPrinter(stdout Stdout) *IncrementalPrinter {
 	}
 }
 
+func (p *IncrementalPrinter) PrintNewline() {
+	_, _ = io.WriteString(p.stdout, "\n")
+}
+
 func (p *IncrementalPrinter) Print(lines []logstore.LogLine) {
 	for _, line := range lines {
 		// Naive progress implementation: skip lines that have already been printed

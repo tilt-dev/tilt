@@ -50,9 +50,9 @@ type Hud struct {
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func ProvideHud(hudEnabled HudEnabled, renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics, printer *IncrementalPrinter) (HeadsUpDisplay, error) {
+func ProvideHud(hudEnabled HudEnabled, renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics, printer *IncrementalPrinter, store store.RStore) (HeadsUpDisplay, error) {
 	if !hudEnabled {
-		return NewDisabledHud(printer), nil
+		return NewDisabledHud(printer, store), nil
 	}
 	return NewDefaultHeadsUpDisplay(renderer, webURL, analytics)
 }

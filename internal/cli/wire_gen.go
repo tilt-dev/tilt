@@ -141,13 +141,13 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	}
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	headsUpDisplay, err := hud.ProvideHud(hudEnabled, renderer, webURL, analytics3, incrementalPrinter)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
+	headsUpDisplay, err := hud.ProvideHud(hudEnabled, renderer, webURL, analytics3, incrementalPrinter, storeStore)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -298,7 +298,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics) (CmdCID
 	}
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	headsUpDisplay, err := hud.ProvideHud(hudEnabled, renderer, webURL, analytics3, incrementalPrinter)
+	headsUpDisplay, err := hud.ProvideHud(hudEnabled, renderer, webURL, analytics3, incrementalPrinter, storeStore)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
