@@ -4440,7 +4440,7 @@ k8s_resource('foo', objects=['bar', 'bar:secret:default'])
 	f.loadErrString("Unable to find any unresourced matches for selector bar:secret:default. All YAML has already been resourced")
 }
 
-func TestK8sResourceObjectsAmbiguous(t *testing.T) {
+func TestK8sResourceObjectsMultipleAmbiguous(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -4452,10 +4452,11 @@ func TestK8sResourceObjectsAmbiguous(t *testing.T) {
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar'])
 `)
 
-	f.loadErrString("Unable to find any unresourced matches for selector bar. All YAML has already been resourced")
+	f.loadErrString("Found multiple (2) matches for selector")
 }
 
 func TestK8sResourceObjectEmptySelector(t *testing.T) {
@@ -4571,8 +4572,6 @@ k8s_resource('foo', objects=['bar'])
 
 	f.loadErrString("Found multiple (2) matches for selector")
 }
-
-// TODO(dmiller): test out interaction between workload parameter, objects parameter and workload_to_resource_function
 
 type fixture struct {
 	ctx context.Context
