@@ -4427,13 +4427,15 @@ func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
 	defer f.TearDown()
 
 	f.setupFoo()
-	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("secret1.yaml", secret("bar"))
+	f.yaml("secret2.yaml", secret("qux"))
 	f.yaml("namespace.yaml", namespace("bar"))
 
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
-k8s_yaml('secret.yaml')
+k8s_yaml('secret1.yaml')
+k8s_yaml('secret2.yaml')
 k8s_resource('foo', objects=['bar', 'bar:secret:default'])
 `)
 
