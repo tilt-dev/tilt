@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-colorable"
 	"github.com/spf13/cobra"
 
 	"github.com/windmilleng/tilt/internal/analytics"
@@ -87,7 +88,8 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 		c.fileName, false, a.UserOpt(), cmdCIDeps.Token,
 		string(cmdCIDeps.CloudAddress))
 	if err == nil {
-		fmt.Println(color.GreenString("SUCCESS. All workloads are healthy."))
+		_, _ = fmt.Fprintln(colorable.NewColorableStdout(),
+			color.GreenString("SUCCESS. All workloads are healthy."))
 	}
 	return err
 }

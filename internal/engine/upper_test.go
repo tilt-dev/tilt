@@ -1227,7 +1227,7 @@ func TestDisabledHudUpdated(t *testing.T) {
 		t.Skip("TODO(nick): Investigate")
 	}
 	out := bufsync.NewThreadSafeBuffer()
-	h := hud.NewDisabledHud(hud.NewIncrementalPrinter(out))
+	h := hud.NewDisabledHud(hud.NewIncrementalPrinter(out), store.NewTestingStore())
 	f := newTestFixtureWithHud(t, h)
 	defer f.TearDown()
 
