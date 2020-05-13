@@ -68,7 +68,7 @@ type Client interface {
 	//
 	// Returns entities in the order that they were applied (which may be different
 	// than they were passed in) and with UUIDs from the Kube API
-	Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error)
+	Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error)
 
 	// Deletes all given entities.
 	//
@@ -240,15 +240,15 @@ func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	return nil, nil
 }
 
-const upsertTimeout = 15 * time.Second
+func timeoutError(timeout time.Duration) error {
+	return errors.New(fmt.Sprintf("Killed kubectl. Hit timeout of %v.", timeout))
+}
 
-var timeoutError = fmt.Sprintf("Killed kubectl. Hit timeout of %v.", upsertTimeout)
-
-func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
+func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
 
-	ctx, cancel := context.WithTimeout(ctx, upsertTimeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	result := make([]K8sEntity, 0, len(entities))
@@ -259,7 +259,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, mutable)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
-				return nil, errors.New(timeoutError)
+				return nil, timeoutError(timeout)
 			}
 			return nil, err
 		}
@@ -270,7 +270,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 		newEntities, err := k.forceReplaceEntities(ctx, immutable)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
-				return nil, errors.New(timeoutError)
+				return nil, timeoutError(timeout)
 			}
 			return nil, err
 		}

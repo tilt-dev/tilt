@@ -2,6 +2,7 @@ package updatesettings
 
 import (
 	"fmt"
+	"time"
 
 	"go.starlark.net/starlark"
 
@@ -27,9 +28,12 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 }
 
 func (e Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var maxParallelUpdates int
+	maxParallelUpdates := model.DefaultMaxParallelUpdates
+	k8sUpsertTimeoutSecs := int(model.DefaultK8sUpsertTimeout / time.Second)
+
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
-		"max_parallel_updates", &maxParallelUpdates); err != nil {
+		"max_parallel_updates?", &maxParallelUpdates,
+		"k8s_upsert_timeout_secs?", &k8sUpsertTimeoutSecs); err != nil {
 		return nil, err
 	}
 
@@ -37,9 +41,15 @@ func (e Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("max number of parallel updates must be >= 1(got: %d)",
 			maxParallelUpdates)
 	}
+	if k8sUpsertTimeoutSecs < 1 {
+		return nil, fmt.Errorf("minimum k8s upsert timeout is 1s; got %ds",
+			k8sUpsertTimeoutSecs)
+	}
 
 	err := starkit.SetState(thread, func(settings model.UpdateSettings) model.UpdateSettings {
+		// TODO(maia): ensure that this func can only be called once
 		settings = settings.WithMaxParallelUpdates(maxParallelUpdates)
+		settings = settings.WithK8sUpsertTimeout(time.Duration(k8sUpsertTimeoutSecs) * time.Second)
 		return settings
 	})
 
