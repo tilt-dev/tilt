@@ -21,11 +21,96 @@ func TestEnviron(t *testing.T) {
 
 	f.File("Tiltfile", `
 print(os.environ['FAKE_ENV_VARIABLE'])
+print(os.environ.get('FAKE_ENV_VARIABLE'))
 `)
 
 	_, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
-	assert.Equal(t, "fakeValue\n", f.PrintOutput())
+	assert.Equal(t, "fakeValue\nfakeValue\n", f.PrintOutput())
+}
+
+func TestGetenv(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+print(os.getenv('FAKE_ENV_VARIABLE'))
+print(os.getenv('FAKE_ENV_VARIABLE', 'foo'))
+print(os.getenv('FAKE_ENV_VARIABLE_UNSET', 'bar'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "fakeValue\nfakeValue\nbar\n", f.PrintOutput())
+}
+
+func TestPutenv(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+os.putenv('FAKE_ENV_VARIABLE', 'fakeValue2')
+print(os.getenv('FAKE_ENV_VARIABLE'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "fakeValue2\n", f.PrintOutput())
+	assert.Equal(t, "fakeValue2", os.Getenv("FAKE_ENV_VARIABLE"))
+}
+
+func TestPutenvByDict(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+os.environ['FAKE_ENV_VARIABLE'] = 'fakeValueByDict'
+print(os.getenv('FAKE_ENV_VARIABLE'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "fakeValueByDict\n", f.PrintOutput())
+	assert.Equal(t, "fakeValueByDict", os.Getenv("FAKE_ENV_VARIABLE"))
+}
+
+func TestUnsetenv(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+os.unsetenv('FAKE_ENV_VARIABLE')
+print(os.getenv('FAKE_ENV_VARIABLE', 'unused'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "unused\n", f.PrintOutput())
+
+	_, found := os.LookupEnv("FAKE_ENV_VARIABLE")
+	assert.False(t, found)
+}
+
+func TestUnsetenvAsDict(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+os.environ.pop('FAKE_ENV_VARIABLE')
+print(os.getenv('FAKE_ENV_VARIABLE', 'unused'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "unused\n", f.PrintOutput())
+
+	_, found := os.LookupEnv("FAKE_ENV_VARIABLE")
+	assert.False(t, found)
 }
 
 func TestGetCwd(t *testing.T) {
