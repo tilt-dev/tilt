@@ -4550,7 +4550,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['ba'])
 `)
 
-	f.loadErrString("Unable to find any unresourced matches for selector ba.")
+	f.loadErrString("Unable to find any unresourced matches for selector ba. Available unresourced YAML: bar:Secret:default")
 }
 
 func TestK8sResourceAmbiguousSelector(t *testing.T) {
@@ -4565,10 +4565,11 @@ func TestK8sResourceAmbiguousSelector(t *testing.T) {
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar'])
 `)
 
-	f.loadErrString("Some error")
+	f.loadErrString("Found multiple (2) matches for selector")
 }
 
 // TODO(dmiller): test out interaction between workload parameter, objects parameter and workload_to_resource_function

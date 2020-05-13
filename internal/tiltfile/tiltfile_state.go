@@ -636,6 +636,14 @@ func (s *tiltfileState) assembleK8sV2() error {
 						matches = append(matches, e)
 					}
 				}
+
+				for _, k := range s.k8s {
+					for _, e := range k.entities {
+						if selector.matches(e) {
+							matches = append(matches, e)
+						}
+					}
+				}
 				numMatches := len(matches)
 				if numMatches == 0 {
 					namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
@@ -1284,7 +1292,7 @@ func newExactK8sObjectSelector(apiVersion string, kind string, name string, name
 
 func exactOrEmptyRegex(s string) string {
 	if s != "" {
-		s =  fmt.Sprintf("^%s$", regexp.QuoteMeta(s))
+		s = fmt.Sprintf("^%s$", regexp.QuoteMeta(s))
 	}
 	return s
 }
