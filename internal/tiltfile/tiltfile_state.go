@@ -675,13 +675,13 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
 	}
 	if len(parts) == 1 {
-		return newK8sObjectSelector("", "", parts[0], "default")
+		return newExactK8sObjectSelector("", "", parts[0], "default")
 	}
 	if len(parts) == 2 {
-		return newK8sObjectSelector("", parts[1], parts[0], "default")
+		return newExactK8sObjectSelector("", parts[1], parts[0], "default")
 	}
 	if len(parts) == 3 {
-		return newK8sObjectSelector("", parts[1], parts[0], parts[2])
+		return newExactK8sObjectSelector("", parts[1], parts[0], parts[2])
 	}
 
 	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 4 parts (colon separated), found %d parts in %s", len(parts), s)
@@ -1271,7 +1271,27 @@ type k8sObjectSelector struct {
 }
 
 // Creates a new k8sObjectSelector
+// If an arg is an empty string it will become an empty regex that matches all input
+// Otherwise the arg must match the input exactly
+func newExactK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+	return newK8sObjectSelector(
+		exactOrEmptyRegex(apiVersion),
+		exactOrEmptyRegex(kind),
+		exactOrEmptyRegex(name),
+		exactOrEmptyRegex(namespace),
+	)
+}
+
+func exactOrEmptyRegex(s string) string {
+	if s != "" {
+		s =  fmt.Sprintf("^%s$", regexp.QuoteMeta(s))
+	}
+	return s
+}
+
+// Creates a new k8sObjectSelector
 // If an arg is an empty string, it will become an empty regex that matches all input
+// Otherwise the arg will match input from the beginning (prefix matching)
 func newK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
 	ret := k8sObjectSelector{}
 	var err error

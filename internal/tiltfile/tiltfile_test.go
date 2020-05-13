@@ -4536,6 +4536,43 @@ k8s_resource('foo', objects=['bar:secret', 'bar:namespace'])
 	f.assertNoMoreManifests()
 }
 
+func TestK8sResourcePrefixesShouldntMatch(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', objects=['ba'])
+`)
+
+	f.loadErrString("Unable to find any unresourced matches for selector ba.")
+}
+
+func TestK8sResourceAmbiguousSelector(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', objects=['bar'])
+`)
+
+	f.loadErrString("Some error")
+}
+
+// TODO(dmiller): test out interaction between workload parameter, objects parameter and workload_to_resource_function
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
