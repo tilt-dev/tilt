@@ -551,7 +551,7 @@ func handleConfigsReloaded(
 	state.VersionSettings = event.VersionSettings
 	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
 
-	state.MaxParallelUpdates = event.UpdateSettings.MaxParallelUpdatesMinOne()
+	state.UpdateSettings = event.UpdateSettings
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {

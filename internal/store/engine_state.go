@@ -42,7 +42,7 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	MaxParallelUpdates int
+	UpdateSettings model.UpdateSettings
 
 	FatalError error
 
@@ -165,12 +165,12 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 
 func (e *EngineState) AvailableBuildSlots() int {
 	currentlyBuilding := len(e.CurrentlyBuilding)
-	if currentlyBuilding >= e.MaxParallelUpdates {
+	if currentlyBuilding >= e.UpdateSettings.MaxParallelUpdates() {
 		// this could happen if user decreases max build slots while
 		// multiple builds are in progress, no big deal
 		return 0
 	}
-	return e.MaxParallelUpdates - currentlyBuilding
+	return e.UpdateSettings.MaxParallelUpdates() - currentlyBuilding
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -358,7 +358,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
-	ret.MaxParallelUpdates = 1
+	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {

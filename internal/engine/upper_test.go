@@ -3358,7 +3358,7 @@ func TestDefaultMaxBuildSlots(t *testing.T) {
 		return len(state.TiltfileState.BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, model.DefaultMaxParallelUpdates, state.MaxParallelUpdates)
+		assert.Equal(t, model.DefaultMaxParallelUpdates, state.UpdateSettings.MaxParallelUpdates())
 	})
 }
 
@@ -3378,7 +3378,7 @@ update_settings(max_parallel_updates=123)
 		return len(state.TiltfileState.BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, 123, state.MaxParallelUpdates)
+		assert.Equal(t, 123, state.UpdateSettings.MaxParallelUpdates())
 	})
 }
 
@@ -3567,7 +3567,7 @@ func (f *testFixture) setMaxParallelUpdates(n int) {
 	f.overrideMaxParallelUpdates = n
 
 	state := f.store.LockMutableStateForTesting()
-	state.MaxParallelUpdates = n
+	state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(n)
 	f.store.UnlockMutableState()
 }
 
@@ -3609,7 +3609,7 @@ func (f *testFixture) Init(action InitAction) {
 		expectedWatchCount++
 	}
 	if f.overrideMaxParallelUpdates > 0 {
-		state.MaxParallelUpdates = f.overrideMaxParallelUpdates
+		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}
 	f.store.UnlockMutableState()
 

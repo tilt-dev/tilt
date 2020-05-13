@@ -1120,9 +1120,9 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-// It should be legal for a user to change MaxParallelUpdates while builds
+// It should be legal for a user to change maxParallelUpdates while builds
 // are in progress (e.g. if there are 5 builds in progress and user sets
-// MaxParallelUpdates=3, nothing should explode.)
+// maxParallelUpdates=3, nothing should explode.)
 func TestCurrentlyBuildingMayExceedMaxParallelUpdates(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
