@@ -591,6 +591,12 @@ func (s *tiltfileState) assembleK8sV1() error {
 
 }
 
+type claimPair struct {
+	resource       *k8sResource
+	selector       k8sObjectSelector
+	selectorString string
+}
+
 func (s *tiltfileState) assembleK8sV2() error {
 	err := s.assembleK8sByWorkload()
 	if err != nil {
@@ -626,39 +632,77 @@ func (s *tiltfileState) assembleK8sV2() error {
 				selectors[i] = s
 			}
 
-			for i, selector := range selectors {
-				if len(s.k8sUnresourced) == 0 {
-					return fmt.Errorf("Unable to find any unresourced matches for selector %s. All YAML has already been resourced", opts.objects[i])
-				}
-				matches := []k8s.K8sEntity{}
-				for _, e := range s.k8sUnresourced {
-					if selector.matches(e) {
-						matches = append(matches, e)
+			claims := make(map[k8s.K8sEntity]claimPair)
+			for _, r := range s.k8s {
+				for i, sel := range selectors {
+					resourcedMatches := filterEntitiesBySelector(r.entities, sel)
+					if len(resourcedMatches) > 0 {
+						return fmt.Errorf("%s has already been resourced by %s", opts.objects[i], r.name)
 					}
-				}
 
-				for _, k := range s.k8s {
-					for _, e := range k.entities {
-						if selector.matches(e) {
-							matches = append(matches, e)
+					unresourcedMatches := filterEntitiesBySelector(s.k8sUnresourced, sel)
+					if len(unresourcedMatches) != 1 {
+						errMsg := fmt.Sprintf("Found %d matches for %s in remaining YAML. Object must match exactly 1 resource", len(unresourcedMatches), opts.objects[i])
+						if len(s.k8sUnresourced) == 0 {
+							errMsg = fmt.Sprintf("%s. All YAML already belongs to a resource", errMsg)
+						} else if len(unresourcedMatches) == 0 {
+							namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
+							for i, e := range s.k8sUnresourced {
+								namesOfAvailableUnresourcedYAML[i] = selectorStringFromK8sEntity(e)
+							}
+							errMsg = fmt.Sprintf("%s. Available YAML: %s", errMsg, strings.Join(namesOfAvailableUnresourcedYAML, ", "))
 						}
-					}
-				}
-				numMatches := len(matches)
-				if numMatches == 0 {
-					namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
-					for i, e := range s.k8sUnresourced {
-						namesOfAvailableUnresourcedYAML[i] = selectorStringFromK8sEntity(e)
-					}
-					return fmt.Errorf("Unable to find any unresourced matches for selector %s. Available unresourced YAML: %s", opts.objects[i], strings.Join(namesOfAvailableUnresourcedYAML, ", "))
-				}
-				if numMatches > 1 {
-					return fmt.Errorf("Found multiple (%d) matches for selector %+v: %v", numMatches, selector, matches)
-				}
 
-				e := matches[0]
-				s.addEntityToResourceAndRemoveFromUnresourced(e, r)
+						return errors.New(errMsg)
+					}
+
+					entity := unresourcedMatches[0]
+					if existingClaim, ok := claims[entity]; ok {
+						// TODO(dmiller): improve error message
+						return fmt.Errorf("%s tried to claim %s but it was already claimed by %s via %s", opts.objects[i], entity.Name(), existingClaim.resource.name, existingClaim.selectorString)
+					}
+
+					claims[entity] = claimPair{resource: r, selector: sel, selectorString: opts.objects[i]}
+				}
 			}
+
+			for entity, claim := range claims {
+				s.addEntityToResourceAndRemoveFromUnresourced(entity, claim.resource)
+			}
+
+			// for i, selector := range selectors {
+			// 	if len(s.k8sUnresourced) == 0 {
+			// 		return fmt.Errorf("Unable to find any unresourced matches for selector %s. All YAML has already been resourced", opts.objects[i])
+			// 	}
+			// 	matches := []k8s.K8sEntity{}
+			// 	for _, e := range s.k8sUnresourced {
+			// 		if selector.matches(e) {
+			// 			matches = append(matches, e)
+			// 		}
+			// 	}
+
+			// 	for _, k := range s.k8s {
+			// 		for _, e := range k.entities {
+			// 			if selector.matches(e) {
+			// 				matches = append(matches, e)
+			// 			}
+			// 		}
+			// 	}
+			// 	numMatches := len(matches)
+			// 	if numMatches == 0 {
+			// 		namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
+			// 		for i, e := range s.k8sUnresourced {
+			// 			namesOfAvailableUnresourcedYAML[i] = selectorStringFromK8sEntity(e)
+			// 		}
+			// 		return fmt.Errorf("Unable to find any unresourced matches for selector %s. Available unresourced YAML: %s", opts.objects[i], strings.Join(namesOfAvailableUnresourcedYAML, ", "))
+			// 	}
+			// 	if numMatches > 1 {
+			// 		return fmt.Errorf("Found multiple (%d) matches for selector %+v: %v", numMatches, selector, matches)
+			// 	}
+
+			// 	e := matches[0]
+			// 	s.addEntityToResourceAndRemoveFromUnresourced(e, r)
+			// }
 		} else {
 			var knownResources []string
 			for name := range s.k8sByName {
@@ -697,6 +741,18 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 
 func selectorStringFromK8sEntity(e k8s.K8sEntity) string {
 	return fmt.Sprintf("%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace())
+}
+
+func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8sObjectSelector) []k8s.K8sEntity {
+	ret := []k8s.K8sEntity{}
+
+	for _, e := range entities {
+		if sel.matches(e) {
+			ret = append(ret, e)
+		}
+	}
+
+	return ret
 }
 
 func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEntity, r *k8sResource) {
@@ -1271,23 +1327,37 @@ const (
 
 // A selector matches an entity if all non-empty selector fields match the corresponding entity fields
 type k8sObjectSelector struct {
-	apiVersion *regexp.Regexp
-	kind       *regexp.Regexp
+	apiVersion       *regexp.Regexp
+	apiVersionString string
+	kind             *regexp.Regexp
+	kindString       string
 
-	name      *regexp.Regexp
-	namespace *regexp.Regexp
+	name            *regexp.Regexp
+	nameString      string
+	namespace       *regexp.Regexp
+	namespaceString string
 }
 
 // Creates a new k8sObjectSelector
 // If an arg is an empty string it will become an empty regex that matches all input
 // Otherwise the arg must match the input exactly
 func newExactK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	return newK8sObjectSelector(
+	ret, err := newK8sObjectSelector(
 		exactOrEmptyRegex(apiVersion),
 		exactOrEmptyRegex(kind),
 		exactOrEmptyRegex(name),
 		exactOrEmptyRegex(namespace),
 	)
+	if err != nil {
+		return ret, err
+	}
+
+	ret.apiVersionString = apiVersion
+	ret.kindString = kind
+	ret.nameString = name
+	ret.namespaceString = namespace
+
+	return ret, nil
 }
 
 func exactOrEmptyRegex(s string) string {
@@ -1301,7 +1371,7 @@ func exactOrEmptyRegex(s string) string {
 // If an arg is an empty string, it will become an empty regex that matches all input
 // Otherwise the arg will match input from the beginning (prefix matching)
 func newK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	ret := k8sObjectSelector{}
+	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
 	var err error
 
 	makeCaseInsensitive := func(s string) string {

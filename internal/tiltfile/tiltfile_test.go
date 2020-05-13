@@ -4419,7 +4419,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
 `)
 
-	f.loadErrString("Found multiple (2) matches for selector")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
 }
 
 func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
@@ -4439,7 +4439,7 @@ k8s_yaml('secret2.yaml')
 k8s_resource('foo', objects=['bar', 'bar:secret:default'])
 `)
 
-	f.loadErrString("Unable to find any unresourced matches for selector bar:secret:default. All YAML has already been resourced")
+	f.loadErrString("bar:secret:default tried to claim bar but it was already claimed by foo via bar")
 }
 
 func TestK8sResourceObjectsMultipleAmbiguous(t *testing.T) {
@@ -4458,7 +4458,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar'])
 `)
 
-	f.loadErrString("Found multiple (2) matches for selector")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
 }
 
 func TestK8sResourceObjectEmptySelector(t *testing.T) {
@@ -4515,7 +4515,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['baz:secret:default'])
 `)
 
-	f.loadErrString("Unable to find any unresourced matches for selector baz:secret:default. Available unresourced YAML: bar:Secret:default, baz:Namespace:default")
+	f.loadErrString("Found 0 matches for baz:secret:default in remaining YAML. Object must match exactly 1 resource. Available YAML: bar:Secret:default, baz:Namespace:default")
 }
 
 func TestK8sResourceObjectsPartialNames(t *testing.T) {
@@ -4553,7 +4553,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['ba'])
 `)
 
-	f.loadErrString("Unable to find any unresourced matches for selector ba. Available unresourced YAML: bar:Secret:default")
+	f.loadErrString("Found 0 matches for ba in remaining YAML. Object must match exactly 1 resource. Available YAML: bar:Secret:default")
 }
 
 func TestK8sResourceAmbiguousSelector(t *testing.T) {
@@ -4572,7 +4572,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar'])
 `)
 
-	f.loadErrString("Found multiple (2) matches for selector")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
 }
 
 func TestK8sResourceObjectDuplicate(t *testing.T) {
@@ -4591,7 +4591,7 @@ k8s_resource('foo', objects=['bar'])
 k8s_resource('baz', objects=['bar'])
 `)
 
-	f.loadErrString("Unable to find any unresourced matches for selector bar. All YAML has already been resourced")
+	f.loadErrString("Found 0 matches for bar in remaining YAML. Object must match exactly 1 resource. All YAML already belongs to a resource")
 }
 
 // TODO(dmiller): add test case for line 4 from Maia's spreadsheet
