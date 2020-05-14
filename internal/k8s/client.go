@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -122,7 +121,7 @@ type K8sClient struct {
 	runtimeAsync      *runtimeAsync
 	registryAsync     *registryAsync
 	nodeIPAsync       *nodeIPAsync
-	drm               meta.RESTMapper
+	drm               *restmapper.DeferredDiscoveryRESTMapper
 }
 
 var _ Client = K8sClient{}
@@ -403,7 +402,21 @@ func (k K8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (
 	uid := ref.UID
 	rm, err := k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
 	if err != nil {
-		return K8sEntity{}, errors.Wrapf(err, "error mapping %s/%s", group, kind)
+		// The REST mapper doesn't have any sort of internal invalidation
+		// mechanism. So if the user applies a CRD (i.e., changing the available
+		// api resources), the REST mapper won't discover the new types.
+		//
+		// https://github.com/kubernetes/kubernetes/issues/75383
+		//
+		// But! When Tilt requests a resource by reference, we know in advance that
+		// it must exist, and therefore, its type must exist.  So we can safely
+		// reset the REST mapper and retry, so that it discovers the types.
+		k.drm.Reset()
+
+		rm, err = k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
+		if err != nil {
+			return K8sEntity{}, errors.Wrapf(err, "error mapping %s/%s", group, kind)
+		}
 	}
 
 	result, err := k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{
