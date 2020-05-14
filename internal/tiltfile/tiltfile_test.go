@@ -4685,7 +4685,6 @@ k8s_resource('hello-foo', objects=['foo:secret'])
 
 // TODO(dmiller): resource of only non-workload objects
 
-
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
