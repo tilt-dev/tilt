@@ -4419,7 +4419,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
 `)
 
-	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 entity")
 }
 
 func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
@@ -4458,7 +4458,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar'])
 `)
 
-	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 entity")
 }
 
 func TestK8sResourceObjectEmptySelector(t *testing.T) {
@@ -4515,7 +4515,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['baz:secret:default'])
 `)
 
-	f.loadErrString("Found 0 matches for baz:secret:default in remaining YAML. Object must match exactly 1 resource. Available YAML: bar:Secret:default, baz:Namespace:default")
+	f.loadErrString("Found 0 matches for baz:secret:default in remaining YAML. Object must match exactly 1 entity. Available YAML: bar:Secret:default, baz:Namespace:default")
 }
 
 func TestK8sResourceObjectsPartialNames(t *testing.T) {
@@ -4553,7 +4553,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['ba'])
 `)
 
-	f.loadErrString("Found 0 matches for ba in remaining YAML. Object must match exactly 1 resource. Available YAML: bar:Secret:default")
+	f.loadErrString("Found 0 matches for ba in remaining YAML. Object must match exactly 1 entity. Available YAML: bar:Secret:default")
 }
 
 func TestK8sResourceAmbiguousSelector(t *testing.T) {
@@ -4572,7 +4572,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar'])
 `)
 
-	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 entity")
 }
 
 func TestK8sResourceObjectDuplicate(t *testing.T) {
@@ -4591,7 +4591,7 @@ k8s_resource('foo', objects=['bar'])
 k8s_resource('baz', objects=['bar'])
 `)
 
-	f.loadErrString("Found 0 matches for bar in remaining YAML. Object must match exactly 1 resource. All YAML already belongs to a resource")
+	f.loadErrString("Found 0 matches for bar in remaining YAML. Object must match exactly 1 entity. All YAML already belongs to a resource")
 }
 
 func TestK8sResourceObjectMultipleResources(t *testing.T) {
@@ -4659,6 +4659,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['foo'])
 `)
 
+	// TODO(dmiller): this error message should be different. It should complain that foo is not a unique fragment.
 	f.loadErrString("object foo already belongs to resource foo")
 }
 
@@ -4684,6 +4685,12 @@ k8s_resource('hello-foo', objects=['foo:secret'])
 }
 
 // TODO(dmiller): resource of only non-workload objects
+
+// TODO: once just on workloads, and once just on everything
+// unique fragment: unique among all objects Tilt saw
+// unique workload fragment: unique among all Workload objects Tilt saw
+
+// TODO: write a test for an object that becomes unique as k8s_resources are added
 
 type fixture struct {
 	ctx context.Context
