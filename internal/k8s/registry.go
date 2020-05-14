@@ -6,7 +6,7 @@ import (
 	"net"
 	"sync"
 
-	_ "github.com/tilt-dev/localregistry-go"
+	"github.com/tilt-dev/localregistry-go"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -144,8 +144,35 @@ func (r *registryAsync) inferRegistryFromNodeAnnotations(ctx context.Context) co
 	return container.Registry{}
 }
 
+// Implements the local registry discovery standard.
+func (r *registryAsync) inferRegistryFromConfigMap(ctx context.Context) (registry container.Registry, help string) {
+	hosting, err := localregistry.Discover(ctx, r.core)
+	if err != nil {
+		logger.Get(ctx).Warnf("Local registry discovery error: %v", err)
+		return container.Registry{}, ""
+	}
+
+	if hosting.Host == "" {
+		return container.Registry{}, hosting.Help
+	}
+
+	registry, err = container.NewRegistryWithHostFromCluster(
+		hosting.Host, hosting.HostFromContainerRuntime)
+	if err != nil {
+		logger.Get(ctx).Warnf("Local registry discovery error: %v", err)
+		return container.Registry{}, hosting.Help
+	}
+	return registry, hosting.Help
+}
+
 func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 	r.once.Do(func() {
+		reg, help := r.inferRegistryFromConfigMap(ctx)
+		if !reg.Empty() {
+			r.registry = reg
+			return
+		}
+
 		// Auto-infer the microk8s local registry.
 		if r.env == EnvMicroK8s {
 			reg := r.inferRegistryFromMicrok8s(ctx)
@@ -155,19 +182,25 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 			}
 		}
 
-		reg := r.inferRegistryFromNodeAnnotations(ctx)
+		reg = r.inferRegistryFromNodeAnnotations(ctx)
 		if !reg.Empty() {
 			r.registry = reg
 		}
 
-		if r.env == EnvKIND6 && r.registry.Empty() {
-			logger.Get(ctx).Warnf("You are running Kind without a local image registry.\n" +
-				"Tilt can use the local registry to speed up builds.\n" +
-				"Instructions: https://github.com/tilt-dev/kind-local")
-		} else if r.env == EnvK3D && r.registry.Empty() {
-			logger.Get(ctx).Warnf("You are running K3D without a local image registry.\n" +
-				"Tilt can use the local registry to speed up builds.\n" +
-				"Instructions: https://github.com/tilt-dev/k3d-local-registry")
+		if r.registry.Empty() {
+			if help != "" {
+				logger.Get(ctx).Warnf("You are running without a local image registry.\n"+
+					"Tilt can use the local registry to speed up builds.\n"+
+					"Instructions: %s", help)
+			} else if r.env == EnvKIND6 {
+				logger.Get(ctx).Warnf("You are running Kind without a local image registry.\n" +
+					"Tilt can use the local registry to speed up builds.\n" +
+					"Instructions: https://github.com/tilt-dev/kind-local")
+			} else if r.env == EnvK3D {
+				logger.Get(ctx).Warnf("You are running K3D without a local image registry.\n" +
+					"Tilt can use the local registry to speed up builds.\n" +
+					"Instructions: https://github.com/tilt-dev/k3d-local-registry")
+			}
 		}
 	})
 	return r.registry

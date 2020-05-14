@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -89,6 +90,57 @@ func TestRegistryFoundInKindAnnotations(t *testing.T) {
 	assert.Equal(t, "localhost:5000", registry.Host)
 }
 
+func TestLocalRegistryDiscoveryHelp(t *testing.T) {
+	cs := &fake.Clientset{}
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+	err := addConfigMap(tracker, `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-hosting
+  namespace: kube-public
+data:
+  localRegistryHosting.v1: |
+    help: "https://fake-domain.tilt.dev/local-registry-help"
+`)
+	require.NoError(t, err)
+
+	core := cs.CoreV1()
+	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+
+	out := bytes.NewBuffer(nil)
+	registry := registryAsync.Registry(newLoggerCtx(out))
+	assert.True(t, registry.Empty())
+	assert.Contains(t, out.String(), "https://fake-domain.tilt.dev/local-registry-help")
+}
+
+func TestLocalRegistryDiscoveryHost(t *testing.T) {
+	cs := &fake.Clientset{}
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+	err := addConfigMap(tracker, `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-hosting
+  namespace: kube-public
+data:
+  localRegistryHosting.v1: |
+    host: "localhost:5000"
+    hostFromContainerRuntime: "registry:5000"
+    help: "https://fake-domain.tilt.dev/local-registry-help"
+`)
+	require.NoError(t, err)
+
+	core := cs.CoreV1()
+	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+
+	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
+	assert.Equal(t, "localhost:5000", registry.Host)
+	assert.Equal(t, "registry:5000", registry.HostFromCluster())
+}
+
 func TestKINDWarning(t *testing.T) {
 	cs := &fake.Clientset{}
 	core := cs.CoreV1()
@@ -155,4 +207,13 @@ func newLoggerCtx(w io.Writer) context.Context {
 	l := logger.NewLogger(logger.InfoLvl, w)
 	ctx := logger.WithLogger(context.Background(), l)
 	return ctx
+}
+
+func addConfigMap(tracker ktesting.ObjectTracker, configMap string) error {
+	obj, _, err :=
+		scheme.Codecs.UniversalDeserializer().Decode([]byte(configMap), nil, nil)
+	if err != nil {
+		return err
+	}
+	return tracker.Add(obj)
 }
