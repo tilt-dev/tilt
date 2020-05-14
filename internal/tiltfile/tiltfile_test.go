@@ -4594,6 +4594,28 @@ k8s_resource('baz', objects=['bar'])
 	f.loadErrString("Found 0 matches for bar in remaining YAML. Object must match exactly 1 resource. All YAML already belongs to a resource")
 }
 
+func TestK8sResourceObjectMultipleResources(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("qux"))
+	f.yaml("anotherworkload.yaml", deployment("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_yaml('anotherworkload.yaml')
+k8s_resource('foo', objects=['bar'])
+k8s_resource('baz')
+`)
+
+	f.load()
+}
+
 // TODO(dmiller): add test case for line 4 from Maia's spreadsheet
 
 type fixture struct {

@@ -633,82 +633,48 @@ func (s *tiltfileState) assembleK8sV2() error {
 			}
 
 			claims := make(map[k8s.K8sEntity]claimPair)
-			for _, r := range s.k8s {
-				for i, sel := range selectors {
+			for i, sel := range selectors {
+				for _, r := range s.k8s {
 					resourcedMatches := filterEntitiesBySelector(r.entities, sel)
 					if len(resourcedMatches) > 0 {
 						return fmt.Errorf("%s has already been resourced by %s", opts.objects[i], r.name)
 					}
-
-					unresourcedMatches := filterEntitiesBySelector(s.k8sUnresourced, sel)
-					if len(unresourcedMatches) != 1 {
-						errMsg := fmt.Sprintf("Found %d matches for %s in remaining YAML. Object must match exactly 1 resource", len(unresourcedMatches), opts.objects[i])
-						if len(s.k8sUnresourced) == 0 {
-							errMsg = fmt.Sprintf("%s. All YAML already belongs to a resource", errMsg)
-						} else if len(unresourcedMatches) == 0 {
-							namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
-							for i, e := range s.k8sUnresourced {
-								namesOfAvailableUnresourcedYAML[i] = selectorStringFromK8sEntity(e)
-							}
-							errMsg = fmt.Sprintf("%s. Available YAML: %s", errMsg, strings.Join(namesOfAvailableUnresourcedYAML, ", "))
-						}
-
-						return errors.New(errMsg)
-					}
-
-					entity := unresourcedMatches[0]
-					if existingClaim, ok := claims[entity]; ok {
-						// TODO(dmiller): improve error message
-						return fmt.Errorf("%s tried to claim %s but it was already claimed by %s via %s", opts.objects[i], entity.Name(), existingClaim.resource.name, existingClaim.selectorString)
-					}
-
-					claims[entity] = claimPair{resource: r, selector: sel, selectorString: opts.objects[i]}
 				}
+
+				unresourcedMatches := filterEntitiesBySelector(s.k8sUnresourced, sel)
+				if len(unresourcedMatches) != 1 {
+					errMsg := fmt.Sprintf("Found %d matches for %s in remaining YAML. Object must match exactly 1 resource", len(unresourcedMatches), opts.objects[i])
+					if len(s.k8sUnresourced) == 0 {
+						errMsg = fmt.Sprintf("%s. All YAML already belongs to a resource", errMsg)
+					} else if len(unresourcedMatches) == 0 {
+						namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
+						for i, e := range s.k8sUnresourced {
+							namesOfAvailableUnresourcedYAML[i] = selectorStringFromK8sEntity(e)
+						}
+						errMsg = fmt.Sprintf("%s. Available YAML: %s", errMsg, strings.Join(namesOfAvailableUnresourcedYAML, ", "))
+					}
+
+					return errors.New(errMsg)
+				}
+
+				entity := unresourcedMatches[0]
+				if existingClaim, ok := claims[entity]; ok {
+					return fmt.Errorf("%s tried to claim %s but it was already claimed by %s via %s", opts.objects[i], entity.Name(), existingClaim.resource.name, existingClaim.selectorString)
+				}
+
+				claims[entity] = claimPair{resource: r, selector: sel, selectorString: opts.objects[i]}
 			}
 
 			for entity, claim := range claims {
 				s.addEntityToResourceAndRemoveFromUnresourced(entity, claim.resource)
 			}
 
-			// for i, selector := range selectors {
-			// 	if len(s.k8sUnresourced) == 0 {
-			// 		return fmt.Errorf("Unable to find any unresourced matches for selector %s. All YAML has already been resourced", opts.objects[i])
-			// 	}
-			// 	matches := []k8s.K8sEntity{}
-			// 	for _, e := range s.k8sUnresourced {
-			// 		if selector.matches(e) {
-			// 			matches = append(matches, e)
-			// 		}
-			// 	}
-
-			// 	for _, k := range s.k8s {
-			// 		for _, e := range k.entities {
-			// 			if selector.matches(e) {
-			// 				matches = append(matches, e)
-			// 			}
-			// 		}
-			// 	}
-			// 	numMatches := len(matches)
-			// 	if numMatches == 0 {
-			// 		namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
-			// 		for i, e := range s.k8sUnresourced {
-			// 			namesOfAvailableUnresourcedYAML[i] = selectorStringFromK8sEntity(e)
-			// 		}
-			// 		return fmt.Errorf("Unable to find any unresourced matches for selector %s. Available unresourced YAML: %s", opts.objects[i], strings.Join(namesOfAvailableUnresourcedYAML, ", "))
-			// 	}
-			// 	if numMatches > 1 {
-			// 		return fmt.Errorf("Found multiple (%d) matches for selector %+v: %v", numMatches, selector, matches)
-			// 	}
-
-			// 	e := matches[0]
-			// 	s.addEntityToResourceAndRemoveFromUnresourced(e, r)
-			// }
 		} else {
 			var knownResources []string
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info.", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
 		}
 	}
 
