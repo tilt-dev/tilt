@@ -4419,7 +4419,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
 `)
 
-	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 entity")
 }
 
 func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
@@ -4458,7 +4458,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar'])
 `)
 
-	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 entity")
 }
 
 func TestK8sResourceObjectEmptySelector(t *testing.T) {
@@ -4515,7 +4515,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['baz:secret:default'])
 `)
 
-	f.loadErrString("Found 0 matches for baz:secret:default in remaining YAML. Object must match exactly 1 resource. Available YAML: bar:Secret:default, baz:Namespace:default")
+	f.loadErrString("Found 0 matches for baz:secret:default in remaining YAML. Object must match exactly 1 entity. Available YAML: bar:Secret:default, baz:Namespace:default")
 }
 
 func TestK8sResourceObjectsPartialNames(t *testing.T) {
@@ -4553,7 +4553,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['ba'])
 `)
 
-	f.loadErrString("Found 0 matches for ba in remaining YAML. Object must match exactly 1 resource. Available YAML: bar:Secret:default")
+	f.loadErrString("Found 0 matches for ba in remaining YAML. Object must match exactly 1 entity. Available YAML: bar:Secret:default")
 }
 
 func TestK8sResourceAmbiguousSelector(t *testing.T) {
@@ -4572,7 +4572,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar'])
 `)
 
-	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 resource")
+	f.loadErrString("Found 2 matches for bar in remaining YAML. Object must match exactly 1 entity")
 }
 
 func TestK8sResourceObjectDuplicate(t *testing.T) {
@@ -4591,7 +4591,7 @@ k8s_resource('foo', objects=['bar'])
 k8s_resource('baz', objects=['bar'])
 `)
 
-	f.loadErrString("Found 0 matches for bar in remaining YAML. Object must match exactly 1 resource. All YAML already belongs to a resource")
+	f.loadErrString("Found 0 matches for bar in remaining YAML. Object must match exactly 1 entity. All YAML already belongs to a resource")
 }
 
 func TestK8sResourceObjectMultipleResources(t *testing.T) {
@@ -4614,9 +4614,53 @@ k8s_resource('baz')
 `)
 
 	f.load()
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"))
+	f.assertNextManifest("baz", deployment("baz"))
+	f.assertNextManifestUnresourced("qux")
+	f.assertNoMoreManifests()
 }
 
-// TODO(dmiller): add test case for line 4 from Maia's spreadsheet
+func TestMultipleResourcesMultipleObjects(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("qux"))
+	f.yaml("anotherworkload.yaml", deployment("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_yaml('anotherworkload.yaml')
+k8s_resource('foo', objects=['bar'])
+k8s_resource('baz', objects=['qux'])
+`)
+
+	f.load()
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"))
+	f.assertNextManifest("baz", deployment("baz"), namespace("qux"))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceAmbiguousWorkloadAmbiguousObject(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("foo"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', objects=['foo'])
+`)
+
+	f.loadErrString("object foo already belongs to resource foo")
+}
 
 type fixture struct {
 	ctx context.Context
@@ -5003,6 +5047,18 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
+			}
+		case namespaceHelper:
+			yaml := m.K8sTarget().YAML
+			found := false
+			for _, e := range f.entities(yaml) {
+				if e.GVK().Kind == "Namespace" && e.Name() == opt.namespace {
+					found = true
+					break
+				}
+			}
+			if !found {
+				f.t.Fatalf("namespace %s not found in yaml %q", opt.namespace, yaml)
 			}
 		case serviceHelper:
 			yaml := m.K8sTarget().YAML

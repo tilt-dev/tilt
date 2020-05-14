@@ -637,13 +637,13 @@ func (s *tiltfileState) assembleK8sV2() error {
 				for _, r := range s.k8s {
 					resourcedMatches := filterEntitiesBySelector(r.entities, sel)
 					if len(resourcedMatches) > 0 {
-						return fmt.Errorf("%s has already been resourced by %s", opts.objects[i], r.name)
+						return fmt.Errorf("object %s already belongs to resource %s", opts.objects[i], r.name)
 					}
 				}
 
 				unresourcedMatches := filterEntitiesBySelector(s.k8sUnresourced, sel)
 				if len(unresourcedMatches) != 1 {
-					errMsg := fmt.Sprintf("Found %d matches for %s in remaining YAML. Object must match exactly 1 resource", len(unresourcedMatches), opts.objects[i])
+					errMsg := fmt.Sprintf("Found %d matches for %s in remaining YAML. Object must match exactly 1 entity", len(unresourcedMatches), opts.objects[i])
 					if len(s.k8sUnresourced) == 0 {
 						errMsg = fmt.Sprintf("%s. All YAML already belongs to a resource", errMsg)
 					} else if len(unresourcedMatches) == 0 {
