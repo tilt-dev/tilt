@@ -39,7 +39,8 @@ While Tilt is running, you can view the UI at %s:%d
 `, DefaultWebHost, DefaultWebPort),
 	}
 
-	addWebServerFlags(cmd)
+	addStartServerFlags(cmd)
+	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
 
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
