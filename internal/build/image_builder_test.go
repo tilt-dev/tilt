@@ -143,6 +143,13 @@ func TestCleanUpBuildKitErrors(t *testing.T) {
 			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: who knows, some made up explosion",
 			expectedTiltError: "who knows, some made up explosion",
 		},
+		{
+			// Error message when using
+			// # syntax=docker/dockerfile:experimental
+			//nolint
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to solve with frontend gateway.v0: rpc error: code = Unknown desc = failed to build LLB: executor failed running [/bin/sh -c pip install python-dateutil]: runc did not terminate sucessfully",
+			expectedTiltError: "executor failed running [/bin/sh -c pip install python-dateutil]",
+		},
 	} {
 		t.Run(tc.expectedTiltError, func(t *testing.T) {
 			f := newFakeDockerBuildFixture(t)
