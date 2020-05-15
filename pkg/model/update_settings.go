@@ -4,7 +4,7 @@ import "time"
 
 const (
 	DefaultMaxParallelUpdates = 3
-	DefaultK8sUpsertTimeout   = 15 * time.Second
+	DefaultK8sUpsertTimeout   = 30 * time.Second
 )
 
 type UpdateSettings struct {

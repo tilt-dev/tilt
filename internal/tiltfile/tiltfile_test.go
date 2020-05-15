@@ -4418,6 +4418,17 @@ func TestK8sUpsertTimeout(t *testing.T) {
 	}
 }
 
+func TestUpdateSettingsOnlyCallableOnce(t *testing.T) {
+
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `update_settings(max_parallel_updates=123)
+update_settings(k8s_upsert_timeout_secs=456)`)
+
+	f.loadErrString("'update_settings' can only be called once")
+}
+
 // recursion is disabled by default in Starlark. Make sure we've enabled it for Tiltfiles.
 func TestRecursionEnabled(t *testing.T) {
 	f := newFixture(t)

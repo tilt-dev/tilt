@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -13,6 +14,7 @@ import (
 
 // Implements functions for dealing with update settings.
 type Extension struct {
+	callPosition syntax.Position
 }
 
 func NewExtension() Extension {
@@ -27,7 +29,13 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("update_settings", e.updateSettings)
 }
 
-func (e Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e *Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if e.callPosition.IsValid() {
+		return starlark.None, fmt.Errorf(
+			"'update_settings' can only be called once. It was already called at %s", e.callPosition.String())
+	}
+	e.callPosition = thread.CallFrame(1).Pos
+
 	maxParallelUpdates := model.DefaultMaxParallelUpdates
 	k8sUpsertTimeoutSecs := int(model.DefaultK8sUpsertTimeout / time.Second)
 
@@ -47,7 +55,6 @@ func (e Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin,
 	}
 
 	err := starkit.SetState(thread, func(settings model.UpdateSettings) model.UpdateSettings {
-		// TODO(maia): ensure that this func can only be called once
 		settings = settings.WithMaxParallelUpdates(maxParallelUpdates)
 		settings = settings.WithK8sUpsertTimeout(time.Duration(k8sUpsertTimeoutSecs) * time.Second)
 		return settings
