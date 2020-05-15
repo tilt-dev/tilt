@@ -39,7 +39,7 @@ func (e Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin,
 	}
 
 	err := starkit.SetState(thread, func(settings model.UpdateSettings) model.UpdateSettings {
-		settings.MaxParallelUpdates = maxParallelUpdates
+		settings = settings.WithMaxParallelUpdates(maxParallelUpdates)
 		return settings
 	})
 

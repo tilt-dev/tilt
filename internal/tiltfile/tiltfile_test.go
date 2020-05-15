@@ -4364,8 +4364,8 @@ func TestMaxParallelUpdates(t *testing.T) {
 			}
 
 			f.load()
-			actualBuildSlots := f.loadResult.UpdateSettings.MaxParallelUpdates
-			assert.Equal(t, tc.expectedMaxBuildSlots, actualBuildSlots, "expected vs. actual MaxParallelUpdates")
+			actualBuildSlots := f.loadResult.UpdateSettings.MaxParallelUpdates()
+			assert.Equal(t, tc.expectedMaxBuildSlots, actualBuildSlots, "expected vs. actual maxParallelUpdates")
 		})
 	}
 }
