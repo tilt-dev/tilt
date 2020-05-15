@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
 type Opt int

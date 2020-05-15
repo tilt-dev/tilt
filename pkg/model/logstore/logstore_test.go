@@ -9,12 +9,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // NOTE(dmiller): set at runtime with:
-// go test -ldflags="-X 'github.com/windmilleng/tilt/pkg/model/logstore.LogstoreWriteGoldenMaster=1'" ./pkg/model/logstore
+// go test -ldflags="-X 'github.com/tilt-dev/tilt/pkg/model/logstore.LogstoreWriteGoldenMaster=1'" ./pkg/model/logstore
 var LogstoreWriteGoldenMaster = "0"
 
 func TestLog_AppendUnderLimit(t *testing.T) {

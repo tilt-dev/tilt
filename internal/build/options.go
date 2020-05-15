@@ -4,8 +4,8 @@ import (
 	"flag"
 	"io"
 
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func Options(archive io.Reader, db model.DockerBuild) docker.BuildOptions {

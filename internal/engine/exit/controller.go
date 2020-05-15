@@ -5,8 +5,8 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Controls normal process termination. Either Tilt completed all its work,

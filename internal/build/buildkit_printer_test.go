@@ -13,11 +13,11 @@ import (
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // NOTE(dmiller): set at runtime with:
-// go test -ldflags="-X github.com/windmilleng/tilt/internal/build.WriteGoldenMaster=1" github.com/windmilleng/tilt/internal/build -run ^TestBuildkitPrinter
+// go test -ldflags="-X github.com/tilt-dev/tilt/internal/build.WriteGoldenMaster=1" github.com/tilt-dev/tilt/internal/build -run ^TestBuildkitPrinter
 var WriteGoldenMaster = "0"
 
 type buildkitTestCase struct {

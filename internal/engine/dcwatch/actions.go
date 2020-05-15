@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 
-	"github.com/windmilleng/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
 )
 
 type EventAction struct {

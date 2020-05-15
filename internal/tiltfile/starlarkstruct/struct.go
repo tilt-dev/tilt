@@ -3,7 +3,7 @@ package starlarkstruct
 import (
 	"go.starlark.net/starlarkstruct"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 type Extension struct {

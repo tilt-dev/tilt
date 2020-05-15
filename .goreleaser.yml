@@ -37,12 +37,12 @@ changelog:
     - '^test:'
 brews:
 - github:
-    owner: windmilleng
+    owner: tilt-dev
     name: homebrew-tap
   commit_author:
-    name: Windmill Engineering
-    email: hi@windmill.engineering
-  url_template: "http://github.com/windmilleng/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    name: Tilt Dev
+    email: hi@tilt.dev
+  url_template: "http://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   homepage: "https://tilt.build/"
   description: "Local Kubernetes development with no stress"
   test: |

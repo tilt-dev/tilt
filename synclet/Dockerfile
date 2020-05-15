@@ -2,11 +2,11 @@ ARG baseImage="golang:1.12-alpine"
 
 FROM ${baseImage} as builder
 
-WORKDIR /go/src/github.com/windmilleng/tilt
+WORKDIR /go/src/github.com/tilt-dev/tilt
 
 # Add the source code
 # (from current dir, add all files to dockerspace: /go/src...)
-# (assumes that this is being run from $GOPATH/.../windmilleng/tilt
+# (assumes that this is being run from $GOPATH/.../tilt-dev/tilt
 ADD . .
 
 RUN mkdir -p /app

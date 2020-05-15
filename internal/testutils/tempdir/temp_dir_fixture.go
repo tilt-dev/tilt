@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/wmclient/pkg/os/temp"
+	"github.com/tilt-dev/wmclient/pkg/os/temp"
 )
 
 type TempDirFixture struct {

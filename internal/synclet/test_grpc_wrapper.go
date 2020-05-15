@@ -11,7 +11,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/windmilleng/tilt/internal/synclet/proto"
+	"github.com/tilt-dev/tilt/internal/synclet/proto"
 )
 
 func FakeGRPCWrapper(ctx context.Context, c *TestSyncletClient) (SyncletClient, error) {

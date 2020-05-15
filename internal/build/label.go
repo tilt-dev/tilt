@@ -1,6 +1,6 @@
 package build
 
-import "github.com/windmilleng/tilt/internal/dockerfile"
+import "github.com/tilt-dev/tilt/internal/dockerfile"
 
 const (
 	// Label for all image builds created with Tilt.

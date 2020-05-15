@@ -3,8 +3,8 @@ package buildcontrol
 import (
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
 )
 
 type UpdateMode string

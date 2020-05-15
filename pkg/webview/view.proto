@@ -6,7 +6,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 import "pkg/webview/log.proto";
 
-option go_package = "github.com/windmilleng/tilt/pkg/webview";
+option go_package = "github.com/tilt-dev/tilt/pkg/webview";
 
 // Correspond to BuildAndDeployers
 enum UpdateType {

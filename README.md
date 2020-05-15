@@ -2,8 +2,8 @@
 
 <img src="assets/logo-wordmark.png" width="250">
 
-[![Build Status](https://circleci.com/gh/windmilleng/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/windmilleng/tilt)
-[![GoDoc](https://godoc.org/github.com/windmilleng/tilt?status.svg)](https://pkg.go.dev/github.com/windmilleng/tilt)
+[![Build Status](https://circleci.com/gh/tilt-dev/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/tilt-dev/tilt)
+[![GoDoc](https://godoc.org/github.com/tilt-dev/tilt?status.svg)](https://pkg.go.dev/github.com/tilt-dev/tilt)
 
 Kubernetes for Prod, Tilt for Dev
 
@@ -26,7 +26,7 @@ up-to-date. Think `docker build && kubectl apply` or `docker-compose up`.
 Installing the `tilt` binary is a one-step command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/windmilleng/tilt/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash
 ```
 
 For other installation options, see the [Installation Guide](https://docs.tilt.dev/install.html).
@@ -60,7 +60,7 @@ status of running services, errors, logs, and more.
 
 **Questions and feedback:** Join [the Kubernetes slack](http://slack.k8s.io) and
  find us in the [#tilt](https://kubernetes.slack.com/messages/CESBL84MV/)
- channel. Or [file an issue](https://github.com/windmilleng/tilt/issues).
+ channel. Or [file an issue](https://github.com/tilt-dev/tilt/issues).
 
 **Contribute:** Check out our [contribution](CONTRIBUTING.md) guidelines.
 

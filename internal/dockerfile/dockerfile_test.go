@@ -159,7 +159,7 @@ FROM gcr.io/image-a:${TAG}
 
 func TestFindImagesWithMount(t *testing.T) {
 	// Example from:
-	// https://github.com/windmilleng/tilt/issues/3331
+	// https://github.com/tilt-dev/tilt/issues/3331
 	//
 	// The buildkit experimental parser will parse commands
 	// like `RUN --mount` that the normal parser won't. So

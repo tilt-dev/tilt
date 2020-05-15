@@ -10,8 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 const annotationRegistry = "tilt.dev/registry"
@@ -81,7 +81,7 @@ func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container
 
 	// Check to make sure localhost resolves to an IPv4 address. If it doesn't,
 	// then we won't be able to connect to the registry. See:
-	// https://github.com/windmilleng/tilt/issues/2369
+	// https://github.com/tilt-dev/tilt/issues/2369
 	ips, err := net.LookupIP("localhost")
 	if err != nil || len(ips) == 0 || ips[0].To4() == nil {
 		logger.Get(ctx).Warnf("Your /etc/hosts is resolving localhost to ::1 (IPv6).\n" +
@@ -146,11 +146,11 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		if r.env == EnvKIND6 && r.registry.Empty() {
 			logger.Get(ctx).Warnf("You are running Kind without a local image registry.\n" +
 				"Tilt can use the local registry to speed up builds.\n" +
-				"Instructions: https://github.com/windmilleng/kind-local")
+				"Instructions: https://github.com/tilt-dev/kind-local")
 		} else if r.env == EnvK3D && r.registry.Empty() {
 			logger.Get(ctx).Warnf("You are running K3D without a local image registry.\n" +
 				"Tilt can use the local registry to speed up builds.\n" +
-				"Instructions: https://github.com/windmilleng/k3d-local-registry")
+				"Instructions: https://github.com/tilt-dev/k3d-local-registry")
 		}
 	})
 	return r.registry

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/synclet/proto"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/synclet/proto"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 func protoLogLevelToLevel(protoLevel proto.LogLevel) logger.Level {

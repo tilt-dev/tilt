@@ -6,8 +6,8 @@ import (
 
 	"github.com/gdamore/tcell"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/rty"
 )
 
 // The most lines we can reasonably put in the log pane. If the log pane sticks

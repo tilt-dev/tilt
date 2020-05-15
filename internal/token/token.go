@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
 const tokenFileName = "token"
