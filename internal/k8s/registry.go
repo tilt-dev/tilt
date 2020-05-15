@@ -14,8 +14,14 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-const annotationRegistry = "tilt.dev/registry"
-const annotationRegistryFromCluster = "tilt.dev/registry-from-cluster"
+// Recommended in Tilt-specific scripts
+const tiltAnnotationRegistry = "tilt.dev/registry"
+const tiltAnnotationRegistryFromCluster = "tilt.dev/registry-from-cluster"
+
+// Recommended in Kind's scripts
+// https://kind.sigs.k8s.io/docs/user/local-registry/
+// There's active work underway to standardize this.
+const kindAnnotationRegistry = "kind.x-k8s.io/registry"
 
 const microk8sRegistryNamespace = "container-registry"
 const microk8sRegistryName = "registry"
@@ -103,7 +109,7 @@ func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container
 
 // If this node has the Tilt registry annotations on it, then we can
 // infer it was set up with a Tilt script and thus has a local registry.
-func (r *registryAsync) inferRegistryFromTiltNodeAnnotations(ctx context.Context) container.Registry {
+func (r *registryAsync) inferRegistryFromNodeAnnotations(ctx context.Context) container.Registry {
 	nodeList, err := r.core.Nodes().List(ctx, metav1.ListOptions{Limit: 1})
 	if err != nil || len(nodeList.Items) == 0 {
 		return container.Registry{}
@@ -112,13 +118,23 @@ func (r *registryAsync) inferRegistryFromTiltNodeAnnotations(ctx context.Context
 	node := nodeList.Items[0]
 	annotations := node.Annotations
 
-	fromLocal := annotations[annotationRegistry]
-	fromCluster := annotations[annotationRegistryFromCluster]
+	fromLocal := annotations[tiltAnnotationRegistry]
+	fromCluster := annotations[tiltAnnotationRegistryFromCluster]
 
 	if fromLocal != "" {
 		reg, err := container.NewRegistryWithHostFromCluster(fromLocal, fromCluster)
 		if err != nil {
 			logger.Get(ctx).Warnf("Local registry read from node failed to parse (%s, %s): %v", fromLocal, fromCluster, err)
+			return container.Registry{}
+		}
+		return reg
+	}
+
+	kindLocal := annotations[kindAnnotationRegistry]
+	if kindLocal != "" {
+		reg, err := container.NewRegistryWithHostFromCluster(kindLocal, "")
+		if err != nil {
+			logger.Get(ctx).Warnf("Local registry read from node failed to parse (%s): %v", kindLocal, err)
 			return container.Registry{}
 		}
 		return reg
@@ -138,7 +154,7 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 			}
 		}
 
-		reg := r.inferRegistryFromTiltNodeAnnotations(ctx)
+		reg := r.inferRegistryFromNodeAnnotations(ctx)
 		if !reg.Empty() {
 			r.registry = reg
 		}
