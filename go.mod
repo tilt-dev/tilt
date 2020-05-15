@@ -68,7 +68,6 @@ require (
 	github.com/lightstep/lightstep-tracer-go v0.15.6
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/marstr/guid v1.1.0 // indirect
-	github.com/mattn/go-colorable v0.1.4
 	github.com/mattn/go-isatty v0.0.10
 	github.com/mattn/go-sqlite3 v2.0.2+incompatible // indirect
 	github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e // indirect
