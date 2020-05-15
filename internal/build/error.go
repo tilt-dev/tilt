@@ -6,9 +6,9 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/util/exec"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // https://success.docker.com/article/what-causes-a-container-to-exit-with-code-137

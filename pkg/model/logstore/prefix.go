@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func SourcePrefix(n model.ManifestName) string {

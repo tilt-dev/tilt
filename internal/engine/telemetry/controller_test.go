@@ -15,10 +15,10 @@ import (
 
 	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/internal/tracer"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestTelNoScriptTimeIsUpNoInvocation(t *testing.T) {

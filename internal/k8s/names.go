@@ -36,7 +36,7 @@ func UniqueNames(es []K8sEntity, minComponents int) []string {
 			//
 			// We should surface a warning or error about this somewhere else that has
 			// more context on how to fix it.
-			// https://github.com/windmilleng/tilt/issues/1852
+			// https://github.com/tilt-dev/tilt/issues/1852
 			//
 			// But for now, append the index to the name to make it unique
 			ret[i] = fmt.Sprintf("%s:%d", names[len(names)-1], i)

@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 func NewLogActionLogger(ctx context.Context, dispatch func(action Action)) logger.Logger {

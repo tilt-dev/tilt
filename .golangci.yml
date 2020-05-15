@@ -42,7 +42,7 @@ linters-settings:
           - Debugf
           - PrintColorf
   goimports:
-    local-prefixes: github.com/windmilleng/tilt
+    local-prefixes: github.com/tilt-dev/tilt
   misspell:
     # Correct spellings using locale preferences for US or UK.
     # Default is to use a neutral variety of English.

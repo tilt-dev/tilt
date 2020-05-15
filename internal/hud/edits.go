@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/windmilleng/tilt/internal/rty"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type EditStatusLineComponent struct {

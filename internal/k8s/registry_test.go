@@ -8,8 +8,8 @@ import (
 	goruntime "runtime"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
@@ -77,7 +77,7 @@ func TestKINDWarning(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
 	assert.True(t, registry.Empty())
-	assert.Contains(t, out.String(), "https://github.com/windmilleng/kind-local")
+	assert.Contains(t, out.String(), "https://github.com/tilt-dev/kind-local")
 }
 
 func TestK3DWarning(t *testing.T) {
@@ -88,7 +88,7 @@ func TestK3DWarning(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
 	assert.True(t, registry.Empty())
-	assert.Contains(t, out.String(), "https://github.com/windmilleng/k3d-local-registry")
+	assert.Contains(t, out.String(), "https://github.com/tilt-dev/k3d-local-registry")
 }
 
 func TestRegistryFoundInLabelsWithLocalOnly(t *testing.T) {

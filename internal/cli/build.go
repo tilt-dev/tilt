@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Version for Go-compiled builds that didn't go through goreleaser.
@@ -19,7 +19,7 @@ import (
 // For distributed binaries, version is automatically baked
 // into the binary with goreleaser. If this doesn't get updated
 // on every release, it's often not that big a deal.
-const devVersion = "0.13.5"
+const devVersion = "0.13.6"
 
 var commitSHA string
 var globalTiltInfo model.TiltBuild

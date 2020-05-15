@@ -1,6 +1,6 @@
 package manifestbuilder
 
-import "github.com/windmilleng/tilt/pkg/model"
+import "github.com/tilt-dev/tilt/pkg/model"
 
 // Assemble these targets into a manifest, that deploys to k8s,
 // wiring up all the dependency ids so that the K8sTarget depends on all

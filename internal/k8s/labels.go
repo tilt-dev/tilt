@@ -3,7 +3,7 @@ package k8s
 import (
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/

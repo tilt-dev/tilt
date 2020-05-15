@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
+	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 
-	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/analytics"
 )
 
 type doctorCmd struct {

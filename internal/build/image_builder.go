@@ -18,12 +18,12 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type dockerImageBuilder struct {
@@ -215,7 +215,10 @@ var dockerBuildCleanupRexes = []*regexp.Regexp{
 // that has that change. So let's clean errors up here until that's in a good place.
 func cleanupDockerBuildError(err string) string {
 	// this is pretty much always the same, and meaningless noise to most users
-	ret := strings.TrimPrefix(err, "failed to solve with frontend dockerfile.v0: failed to build LLB: ")
+	ret := strings.TrimPrefix(err, "failed to solve with frontend dockerfile.v0: ")
+	ret = strings.TrimPrefix(ret, "failed to solve with frontend gateway.v0: ")
+	ret = strings.TrimPrefix(ret, "rpc error: code = Unknown desc = ")
+	ret = strings.TrimPrefix(ret, "failed to build LLB: ")
 	for _, re := range dockerBuildCleanupRexes {
 		ret = re.ReplaceAllString(ret, "$1")
 	}

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/wmclient/pkg/os/temp"
+	"github.com/tilt-dev/wmclient/pkg/os/temp"
 )
 
 type TempDirFixture struct {
@@ -162,7 +162,8 @@ func (f *TempDirFixture) TearDown() {
 
 	err := f.dir.TearDown()
 	if err != nil && runtime.GOOS == "windows" &&
-		strings.Contains(err.Error(), "The process cannot access the file") {
+		(strings.Contains(err.Error(), "The process cannot access the file") ||
+			strings.Contains(err.Error(), "Access is denied")) {
 		// NOTE(nick): I'm not convinced that this is a real problem.
 		// I think it might just be clean up of file notification I/O.
 	} else if err != nil {

@@ -1,9 +1,9 @@
 package engine
 
 import (
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // A helper data structure that represents a live-update image and

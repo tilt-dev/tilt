@@ -1,6 +1,6 @@
 package encoding
 
-import "github.com/windmilleng/tilt/internal/tiltfile/starkit"
+import "github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 
 type Extension struct{}
 

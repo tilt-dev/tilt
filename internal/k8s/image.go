@@ -8,9 +8,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 // Iterate through the fields of a k8s entity and
@@ -213,7 +213,7 @@ func injectCommandInContainers(entity K8sEntity, selector container.RefSelector,
 		if selector.Matches(existingRef) {
 			// The override rules of entrypoint and Command and Args are surprisingly complex!
 			// See this github thread:
-			// https://github.com/windmilleng/tilt/issues/2918
+			// https://github.com/tilt-dev/tilt/issues/2918
 			if !cmd.Empty() {
 				c.Command = cmd.Argv
 			}

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 )
 
 type ImageTarget struct {

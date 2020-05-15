@@ -3,11 +3,11 @@ package engine
 import (
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type Fixture = manifestbuilder.Fixture
@@ -23,7 +23,7 @@ FROM go:1.10
 const SanchoDockerfile = `
 FROM go:1.10
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `
 
@@ -34,7 +34,7 @@ var SanchoSidecarRef = container.MustParseSelector(testyaml.SanchoSidecarImage)
 func SyncStepsForApp(app string, fixture Fixture) []model.LiveUpdateSyncStep {
 	return []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: fixture.Path(),
-		Dest:   fmt.Sprintf("/go/src/github.com/windmilleng/%s", app),
+		Dest:   fmt.Sprintf("/go/src/github.com/tilt-dev/%s", app),
 	}}
 }
 func SanchoSyncSteps(fixture Fixture) []model.LiveUpdateSyncStep {
@@ -42,7 +42,7 @@ func SanchoSyncSteps(fixture Fixture) []model.LiveUpdateSyncStep {
 }
 
 func RunStepsForApp(app string) []model.LiveUpdateRunStep {
-	return []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", fmt.Sprintf("github.com/windmilleng/%s", app)}}}}
+	return []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", fmt.Sprintf("github.com/tilt-dev/%s", app)}}}}
 }
 
 var SanchoRunSteps = RunStepsForApp("sancho")
@@ -58,7 +58,7 @@ func NewSanchoLiveUpdateManifestWithTriggeredRuns(f Fixture, shouldRestart bool)
 	syncs := []model.LiveUpdateSyncStep{
 		{
 			Source: f.Path(),
-			Dest:   "/go/src/github.com/windmilleng/sancho",
+			Dest:   "/go/src/github.com/tilt-dev/sancho",
 		},
 	}
 	runs := []model.LiveUpdateRunStep{
@@ -166,12 +166,12 @@ func NewSanchoLiveUpdate(f Fixture) model.LiveUpdate {
 	syncs := []model.LiveUpdateSyncStep{
 		{
 			Source: f.Path(),
-			Dest:   "/go/src/github.com/windmilleng/sancho",
+			Dest:   "/go/src/github.com/tilt-dev/sancho",
 		},
 	}
 	runs := []model.LiveUpdateRunStep{
 		{
-			Command: model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
+			Command: model.Cmd{Argv: []string{"go", "install", "github.com/tilt-dev/sancho"}},
 		},
 	}
 
@@ -215,7 +215,7 @@ func NewSanchoDockerBuildMultiStageManifest(fixture Fixture) model.Manifest {
 		Dockerfile: `
 FROM sancho-base
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 		BuildPath: fixture.JoinPath("sancho"),
@@ -237,7 +237,7 @@ func NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(fixture Fixture, lu mo
 		Dockerfile: `
 FROM sancho-base
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 		BuildPath: fixture.JoinPath("sancho"),

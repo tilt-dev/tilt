@@ -6,12 +6,12 @@ import (
 	"runtime"
 	"strings"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/pkg/logger"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/pkg/logger"
 
 	giturls "github.com/whilp/git-urls"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 const tiltAppName = "tilt"
@@ -101,12 +101,12 @@ func normalizeGitRemote(s string) string {
 
 	u.User = nil
 
-	// github.com/windmilleng/tilt is the same as github.com/windmilleng/tilt/
+	// github.com/tilt-dev/tilt is the same as github.com/tilt-dev/tilt/
 	if strings.HasSuffix(u.Path, "/") {
 		u.Path = u.Path[:len(u.Path)-1]
 	}
 
-	// github.com/windmilleng/tilt is the same as github.com/windmilleng/tilt.git
+	// github.com/tilt-dev/tilt is the same as github.com/tilt-dev/tilt.git
 	if strings.HasSuffix(u.Path, ".git") {
 		u.Path = u.Path[:len(u.Path)-4]
 	}

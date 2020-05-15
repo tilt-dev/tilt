@@ -49,8 +49,8 @@ docker_build('gcr.io/windmill-test-containers/integration/onewatch',
              '.',
              dockerfile='Dockerfile',
              live_update=[
-               sync('.', '/go/src/github.com/windmilleng/tilt/integration/onewatch'),
-               run('go install github.com/windmilleng/tilt/integration/onewatch'),
+               sync('.', '/go/src/github.com/tilt-dev/tilt/integration/onewatch'),
+               run('go install github.com/tilt-dev/tilt/integration/onewatch'),
                run('./restart.sh'),
              ])
 ```

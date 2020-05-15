@@ -7,8 +7,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/schollz/closestmatch"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // An index of all the images that we know how to build.

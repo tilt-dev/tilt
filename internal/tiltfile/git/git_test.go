@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 func TestGitRepoPath(t *testing.T) {

@@ -1,4 +1,4 @@
-module github.com/windmilleng/tilt
+module github.com/tilt-dev/tilt
 
 go 1.14
 
@@ -12,7 +12,9 @@ require (
 	github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d // indirect
 	github.com/aws/aws-sdk-go v1.15.11 // indirect
 	github.com/bitly/go-hostpool v0.1.0 // indirect
+	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/bugsnag/bugsnag-go v1.5.3 // indirect
 	github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b // indirect
 	github.com/bugsnag/panicwrap v1.2.0 // indirect
@@ -42,7 +44,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/frankban/quicktest v1.7.2 // indirect
 	github.com/gdamore/tcell v1.1.3
-	github.com/gentlemanautomaton/graceful v0.0.0-20170727140743-803ae396410c
+	github.com/gentlemanautomaton/graceful v0.0.0-20170727140743-803ae396410c // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
@@ -68,6 +70,7 @@ require (
 	github.com/lightstep/lightstep-tracer-go v0.15.6
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/marstr/guid v1.1.0 // indirect
+	github.com/mattn/go-colorable v0.1.4
 	github.com/mattn/go-isatty v0.0.10
 	github.com/mattn/go-sqlite3 v2.0.2+incompatible // indirect
 	github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e // indirect
@@ -94,13 +97,13 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	github.com/theupdateframework/notary v0.6.1 // indirect
+	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
+	github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564
+	github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/uber/jaeger-client-go v2.21.1+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
-	github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
-	github.com/windmilleng/fsnotify v1.4.8-0.20200507235935-249ce517a564
-	github.com/windmilleng/wmclient v0.0.0-20200205181513-6c994672553a
 	go.opencensus.io v0.22.2 // indirect
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20191021185836-28350e608555
@@ -136,10 +139,10 @@ replace (
 	// This is just evanphx/json-patch v4.6.0 with a fix for
 	// https://github.com/evanphx/json-patch/issues/98
 	// so that we can pull it in correctly
-	github.com/evanphx/json-patch => github.com/windmilleng/json-patch/v4 v4.8.0 // indirect
+	github.com/evanphx/json-patch => github.com/tilt-dev/json-patch/v4 v4.8.1 // indirect
 	// TODO(dmiller) remove this replace once https://github.com/moby/buildkit/pull/1297 is merged
 	github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
-	k8s.io/client-go => github.com/windmilleng/client-go v0.0.0-20200326150806-41017343d309
+	k8s.io/client-go => github.com/tilt-dev/client-go v0.0.0-20200326150806-41017343d309
 )

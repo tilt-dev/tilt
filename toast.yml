@@ -14,7 +14,7 @@ tasks:
        internal/synclet/synclet.proto
       mkdir -p internal/synclet/proto
       mv internal/synclet/synclet.pb.go internal/synclet/proto
-      goimports -local github.com/windmilleng/tilt -w internal/synclet/proto/synclet.pb.go
+      goimports -local github.com/tilt-dev/tilt -w internal/synclet/proto/synclet.pb.go
 
   webview-proto:
     input_paths:
@@ -35,7 +35,7 @@ tasks:
        --swagger_out=logtostderr=true:. \
        --go_out=plugins=grpc,paths=source_relative:. \
        pkg/webview/*.proto
-      goimports -local github.com/windmilleng/tilt -w pkg/webview/*.pb.go
+      goimports -local github.com/tilt-dev/tilt -w pkg/webview/*.pb.go
 
   proto-ts:
     dependencies:
@@ -49,7 +49,7 @@ tasks:
       swagger-to-ts pkg/webview/view.swagger.json --camelcase --wrapper "declare namespace Proto" --output web/src/view.d.ts
 
   wire:
-    location: /go/src/github.com/windmilleng/tilt
+    location: /go/src/github.com/tilt-dev/tilt
     input_paths:
       - assets
       - cmd

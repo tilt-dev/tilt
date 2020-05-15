@@ -5,7 +5,7 @@ import (
 
 	"go.opentelemetry.io/otel/api/trace"
 
-	"github.com/windmilleng/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store"
 )
 
 type StartTracker struct {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 type FakeOpter struct {
