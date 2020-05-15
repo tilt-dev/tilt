@@ -23,10 +23,18 @@ up-to-date. Think `docker build && kubectl apply` or `docker-compose up`.
 
 ## Install Tilt
 
-Installing the `tilt` binary is a one-step command:
+Installing the `tilt` binary is a one-step command.
+
+### macOS/Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash
+```
+
+### Windows
+
+```powershell
+iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.ps1')
 ```
 
 For other installation options, see the [Installation Guide](https://docs.tilt.dev/install.html).
