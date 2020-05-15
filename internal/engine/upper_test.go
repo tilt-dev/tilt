@@ -3343,7 +3343,7 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestDefaultMaxBuildSlots(t *testing.T) {
+func TestDefaultUpdateSettings(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
@@ -3358,7 +3358,27 @@ func TestDefaultMaxBuildSlots(t *testing.T) {
 		return len(state.TiltfileState.BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
-		assert.Equal(t, model.DefaultMaxParallelUpdates, state.UpdateSettings.MaxParallelUpdates())
+		assert.Equal(t, model.DefaultUpdateSettings(), state.UpdateSettings)
+	})
+}
+
+func TestSetK8sUpsertTimeout(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
+	f.WriteFile("snack.yaml", simpleYAML)
+
+	f.WriteFile("Tiltfile", `
+update_settings(k8s_upsert_timeout_secs=123)
+`+simpleTiltfile)
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.Equal(t, 123*time.Second, state.UpdateSettings.K8sUpsertTimeout())
 	})
 }
 
