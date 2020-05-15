@@ -8,15 +8,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/output"
-	"github.com/windmilleng/tilt/internal/tracer"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/output"
+	"github.com/tilt-dev/tilt/internal/tracer"
 
 	"github.com/spf13/cobra"
 
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 var debug bool

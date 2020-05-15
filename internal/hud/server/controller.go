@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/assets"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/assets"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // The amount of time to wait for a reconnection before restarting the browser

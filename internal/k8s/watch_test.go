@@ -25,7 +25,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
 func TestTiltPatch(t *testing.T) {

@@ -3,7 +3,7 @@ package fswatch
 import (
 	"time"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type TargetFilesChangedAction struct {

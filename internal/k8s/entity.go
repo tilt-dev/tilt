@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/windmilleng/tilt/internal/kustomize"
+	"github.com/tilt-dev/tilt/internal/kustomize"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 type K8sEntity struct {

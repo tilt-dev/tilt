@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
 func analyticsStatus(_ *cobra.Command, args []string) error {

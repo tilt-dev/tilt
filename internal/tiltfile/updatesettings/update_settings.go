@@ -5,9 +5,9 @@ import (
 
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 // Implements functions for dealing with update settings.

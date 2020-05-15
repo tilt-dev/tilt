@@ -32,8 +32,8 @@ import (
 	// Client auth plugins! They will auto-init if we import them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type Namespace string

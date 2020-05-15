@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 )
 
 func TestStatefulsetPodManagementPolicy(t *testing.T) {

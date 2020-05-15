@@ -13,16 +13,16 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
@@ -300,7 +300,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		// changes, we make sure image pull policy isn't set to "Always".
 		// Frequent applies don't work well with this setting, and makes things
 		// slower. See discussion:
-		// https://github.com/windmilleng/tilt/issues/3209
+		// https://github.com/tilt-dev/tilt/issues/3209
 		if len(iTargetMap) > 0 {
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
@@ -309,7 +309,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		}
 
 		// StatefulSet pods should be managed in parallel. See discussion:
-		// https://github.com/windmilleng/tilt/issues/1962
+		// https://github.com/tilt-dev/tilt/issues/1962
 		e = k8s.InjectParallelPodManagementPolicy(e)
 
 		// When working with a local k8s cluster, we set the pull policy to Never,

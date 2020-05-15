@@ -11,10 +11,10 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
 const simpleDockerfile = dockerfile.Dockerfile("FROM alpine")
@@ -111,15 +111,15 @@ func TestCleanUpBuildKitErrors(t *testing.T) {
 		// actual error currently emitted by buildkit when a `RUN` fails
 		{
 			//nolint
-			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
-			expectedTiltError: "executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]",
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: executor failed running [/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate sucessfully",
+			expectedTiltError: "executor failed running [/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]",
 		},
 		//nolint
 		// artificial error - in case docker for some reason doesn't have "executor failed running", don't trim "runc did not terminate sucessfully"
 		{
 			//nolint
-			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: [/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
-			expectedTiltError: "[/bin/sh -c go install github.com/windmilleng/servantes/vigoda]: runc did not terminate sucessfully",
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: [/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate sucessfully",
+			expectedTiltError: "[/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate sucessfully",
 		},
 		// actual error currently emitted by buildkit when an `ADD` file is missing
 		{

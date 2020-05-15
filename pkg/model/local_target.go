@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 )
 
 type LocalTarget struct {

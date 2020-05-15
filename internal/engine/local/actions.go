@@ -1,7 +1,7 @@
 package local
 
 import (
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type LocalServeStatusAction struct {

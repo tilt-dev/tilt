@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/synclet/proto"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/synclet/proto"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type syncletDelegate interface {

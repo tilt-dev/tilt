@@ -3,11 +3,11 @@ package synclet
 import (
 	"context"
 
-	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/docker"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type TestSyncletClient struct {

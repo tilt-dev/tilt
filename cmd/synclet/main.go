@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/windmilleng/tilt/internal/cli"
+	"github.com/tilt-dev/tilt/internal/cli"
 )
 
 func main() {

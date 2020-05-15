@@ -10,10 +10,10 @@ import (
 
 	"github.com/gdamore/tcell"
 
-	"github.com/windmilleng/tilt/internal/rty"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestRenderInit(t *testing.T) {

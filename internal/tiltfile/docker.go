@@ -9,14 +9,14 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
@@ -38,7 +38,7 @@ type dockerImage struct {
 
 	// Overrides the container args. Used as an escape hatch in case people want the old entrypoint behavior.
 	// See discussion here:
-	// https://github.com/windmilleng/tilt/pull/2933
+	// https://github.com/tilt-dev/tilt/pull/2933
 	containerArgs model.OverrideArgs
 
 	dbDockerfilePath string
@@ -274,7 +274,7 @@ func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
 
 	for _, p := range paths {
 		// We want to forbid file globs due to these issues:
-		// https://github.com/windmilleng/tilt/issues/1982
+		// https://github.com/tilt-dev/tilt/issues/1982
 		// https://github.com/moby/moby/issues/30018
 		if strings.Contains(p, "*") {
 			return nil, fmt.Errorf("'only' does not support '*' file globs. Must be a real path: %s", p)

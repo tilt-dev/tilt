@@ -3,7 +3,7 @@ package github
 import (
 	"context"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type FakeClient struct {

@@ -11,7 +11,7 @@ We want everyone to feel at home in this repo and its environs; please see our [
 Most of this page describes how to get set up making & testing changes. See a [YouTube walkthrough](https://youtu.be/oGC5O-BCBhc) showing some of the steps below, for macOS.
 
 Small PRs are better than large ones. If you have an idea for a major feature, please file
-an issue first. The [Roadmap](../../../../orgs/windmilleng/projects/3) has details on some of the upcoming
+an issue first. The [Roadmap](../../../../orgs/tilt-dev/projects/3) has details on some of the upcoming
 features that we have in mind and might already be in-progress.
 
 ## Build Prereqs
@@ -52,11 +52,11 @@ Other development commands:
 To check out Tilt for the first time, run:
 
 ```
-go get -u github.com/windmilleng/tilt/cmd/tilt
+go get -u github.com/tilt-dev/tilt/cmd/tilt
 ```
 
 The Go toolchain will checkout the Tilt repo somewhere on your GOPATH,
-usually under `~/go/src/github.com/windmilleng/tilt`.
+usually under `~/go/src/github.com/tilt-dev/tilt`.
 
 To run the fast test suite, run:
 
@@ -84,13 +84,13 @@ make install
 ```
 
 To start using Tilt, just run `tilt up` in any project with a `Tiltfile` -- i.e., NOT the root of the Tilt source code.
-There are plenty of toy projects to play with in the [integration](https://github.com/windmilleng/tilt/tree/master/integration) directory
+There are plenty of toy projects to play with in the [integration](https://github.com/tilt-dev/tilt/tree/master/integration) directory
 (see e.g. `./integration/oneup`), or check out one of these sample repos to get started:
-- [ABC123](https://github.com/windmilleng/abc123): Go/Python/JavaScript microservices generating random letters and numbers
-- [Servantes](https://github.com/windmilleng/servantes): a-little-bit-of-everything sample app with multiple microservices in different languages, showcasing many different Tilt behaviors
-- [Frontend Demo](https://github.com/windmilleng/tilt-frontend-demo): Tilt + ReactJS
-- [Live Update Examples](https://github.com/windmilleng/live_update): contains Go and Python examples of Tilt's [Live Update](https://docs.tilt.dev/live_update_tutorial.html) functionality
-- [Sidecar Example](https://github.com/windmilleng/sidecar_example): simple Python app and home-rolled logging sidecar
+- [ABC123](https://github.com/tilt-dev/abc123): Go/Python/JavaScript microservices generating random letters and numbers
+- [Servantes](https://github.com/tilt-dev/servantes): a-little-bit-of-everything sample app with multiple microservices in different languages, showcasing many different Tilt behaviors
+- [Frontend Demo](https://github.com/tilt-dev/tilt-frontend-demo): Tilt + ReactJS
+- [Live Update Examples](https://github.com/tilt-dev/live_update): contains Go and Python examples of Tilt's [Live Update](https://docs.tilt.dev/live_update_tutorial.html) functionality
+- [Sidecar Example](https://github.com/tilt-dev/sidecar_example): simple Python app and home-rolled logging sidecar
 
 ## Remove token to force signing out of Tilt Cloud
 
@@ -188,7 +188,7 @@ tilt up --port=8001
 ## Documentation
 
 The landing page and documentation lives in
-[the tilt.build repo](https://github.com/windmilleng/tilt.build/).
+[the tilt.build repo](https://github.com/tilt-dev/tilt.build/).
 
 We write our docs in Markdown and generate static HTML with [Jekyll](https://jekyllrb.com/).
 
@@ -223,10 +223,10 @@ Step 3) Look closely at the error message. Identify the "top" of the dependency
 graph that is failing. So if your error message is:
 
 ```
-wire: /go/src/github.com/windmilleng/tilt/internal/cli/wire.go:182:1: inject wireRuntime: no provider found for github.com/windmilleng/tilt/internal/k8s.MinikubeClient
-	needed by github.com/windmilleng/tilt/internal/k8s.Client in provider set "K8sWireSet" (/go/src/github.com/windmilleng/tilt/internal/cli/wire.go:44:18)
-	needed by github.com/windmilleng/tilt/internal/container.Runtime in provider set "K8sWireSet" (/go/src/github.com/windmilleng/tilt/internal/cli/wire.go:44:18)
-wire: github.com/windmilleng/tilt/internal/cli: generate failed
+wire: /go/src/github.com/tilt-dev/tilt/internal/cli/wire.go:182:1: inject wireRuntime: no provider found for github.com/tilt-dev/tilt/internal/k8s.MinikubeClient
+	needed by github.com/tilt-dev/tilt/internal/k8s.Client in provider set "K8sWireSet" (/go/src/github.com/tilt-dev/tilt/internal/cli/wire.go:44:18)
+	needed by github.com/tilt-dev/tilt/internal/container.Runtime in provider set "K8sWireSet" (/go/src/github.com/tilt-dev/tilt/internal/cli/wire.go:44:18)
+wire: github.com/tilt-dev/tilt/internal/cli: generate failed
 wire: at least one generate failure
 ```
 
@@ -275,11 +275,11 @@ goreleaser will build binaries for the latest tag (using semantic version to
 determine "latest"). Check the current releases to figure out what the latest
 release ought to be.
 
-Add a [summary section](https://github.com/windmilleng/company/blob/master/user-support/README.md#releases) 
+Add a [summary section](https://github.com/tilt-dev/company/blob/master/user-support/README.md#releases) 
 in the release notes.
 
 After updating the release notes,
-update the [install](https://github.com/windmilleng/tilt.build/tree/master/docs/install.md) and [upgrade](https://github.com/windmilleng/tilt.build/blob/master/docs/upgrade.md) docs,
+update the [install](https://github.com/tilt-dev/tilt.build/tree/master/docs/install.md) and [upgrade](https://github.com/tilt-dev/tilt.build/blob/master/docs/upgrade.md) docs,
 the [default dev version](internal/cli/build.go),
 and the [installer version](scripts/install.sh).
 

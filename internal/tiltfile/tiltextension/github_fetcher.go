@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-github/v29/github"
 
-	pkgtiltextension "github.com/windmilleng/tilt/pkg/tiltextension"
+	pkgtiltextension "github.com/tilt-dev/tilt/pkg/tiltextension"
 )
 
 type GithubFetcher struct {
@@ -21,11 +21,11 @@ func NewGithubFetcher() *GithubFetcher {
 	return &GithubFetcher{}
 }
 
-const githubTemplate = "https://raw.githubusercontent.com/windmilleng/tilt-extensions/%s/%s/Tiltfile"
+const githubTemplate = "https://raw.githubusercontent.com/tilt-dev/tilt-extensions/%s/%s/Tiltfile"
 
 func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
 	client := github.NewClient(nil)
-	masterBranch, _, err := client.Repositories.GetBranch(ctx, "windmilleng", "tilt-extensions", "master")
+	masterBranch, _, err := client.Repositories.GetBranch(ctx, "tilt-dev", "tilt-extensions", "master")
 	if err != nil {
 		return ModuleContents{}, err
 	}
@@ -61,7 +61,7 @@ func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleCon
 		Name:              moduleName,
 		TiltfileContents:  string(body),
 		GitCommitHash:     masterSHA,
-		ExtensionRegistry: "https://github.com/windmilleng/tilt-extensions",
+		ExtensionRegistry: "https://github.com/tilt-dev/tilt-extensions",
 		TimeFetched:       time.Now(),
 	}, nil
 }

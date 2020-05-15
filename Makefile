@@ -16,7 +16,7 @@ SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
 
 CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
 
-GOIMPORTS_LOCAL_ARG := -local github.com/windmilleng/tilt
+GOIMPORTS_LOCAL_ARG := -local github.com/tilt-dev/tilt
 
 proto:
 	toast synclet-proto
@@ -24,12 +24,12 @@ proto:
 
 # Build a binary that uses the synclet tag specified in sidecar.go
 install:
-	go install -mod vendor -ldflags "-X 'github.com/windmilleng/tilt/internal/cli.commitSHA=$$(git merge-base master HEAD)'" ./cmd/tilt/...
+	go install -mod vendor -ldflags "-X 'github.com/tilt-dev/tilt/internal/cli.commitSHA=$$(git merge-base master HEAD)'" ./cmd/tilt/...
 
 # Build a binary that uses a dev synclet image produced by `make synclet-dev`
 install-dev:
 	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
-	go install -mod vendor -ldflags "-X 'github.com/windmilleng/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
+	go install -mod vendor -ldflags "-X 'github.com/tilt-dev/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
 
 # disable optimizations and inlining, to allow more complete information when attaching a debugger or capturing a profile
 install-debug:

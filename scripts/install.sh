@@ -3,7 +3,7 @@
 # Tilt installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/windmilleng/tilt/master/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash
 
 # When releasing Tilt, the releaser should update this version number
 # AFTER they upload new binaries.
@@ -25,22 +25,22 @@ function copy_binary() {
 function install_tilt() {
   if [[ "$OSTYPE" == "linux-gnu" ]]; then
       set -x
-      curl -fsSL https://github.com/windmilleng/tilt/releases/download/v$VERSION/tilt.$VERSION.linux.x86_64.tar.gz | tar -xzv tilt
+      curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.linux.x86_64.tar.gz | tar -xzv tilt
       copy_binary
   elif [[ "$OSTYPE" == "darwin"* ]]; then
       if [[ "$BREW" != "" ]]; then
           set -x
-          brew tap windmilleng/tap
-          brew install windmilleng/tap/tilt
+          brew tap tilt-dev/tap
+          brew install tilt-dev/tap/tilt
       else
           set -x
-          curl -fsSL https://github.com/windmilleng/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.x86_64.tar.gz | tar -xzv tilt
+          curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.x86_64.tar.gz | tar -xzv tilt
           copy_binary
       fi
   else
       set +x
       echo "The Tilt installer does not work for your platform: $OS"
-      echo "Please file an issue at https://github.com/windmilleng/tilt/issues/new"
+      echo "Please file an issue at https://github.com/tilt-dev/tilt/issues/new"
       exit 1
   fi
 

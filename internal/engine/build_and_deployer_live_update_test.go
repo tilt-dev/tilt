@@ -9,18 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/util/exec"
 
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 
-	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/docker"
 
-	"github.com/windmilleng/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store"
 
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var userFailureErrDocker = docker.ExitError{ExitCode: 123}
@@ -989,7 +989,7 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 
 	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: f.JoinPath("specific/directory"),
-		Dest:   "/go/src/github.com/windmilleng/sancho",
+		Dest:   "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
@@ -1020,7 +1020,7 @@ func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 
 	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: f.JoinPath("specific/directory"),
-		Dest:   "/go/src/github.com/windmilleng/sancho",
+		Dest:   "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
@@ -1052,7 +1052,7 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 
 	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: f.JoinPath("specific/directory"),
-		Dest:   "/go/src/github.com/windmilleng/sancho",
+		Dest:   "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
@@ -1084,7 +1084,7 @@ func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
 
 	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: f.JoinPath("sancho-base"),
-		Dest:   "/go/src/github.com/windmilleng/sancho-base",
+		Dest:   "/go/src/github.com/tilt-dev/sancho-base",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
@@ -1105,7 +1105,7 @@ func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
 
 	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: f.JoinPath("sancho"),
-		Dest:   "/go/src/github.com/windmilleng/sancho",
+		Dest:   "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
@@ -1125,7 +1125,7 @@ func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
 
 	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: f.JoinPath("sancho"),
-		Dest:   "/go/src/github.com/windmilleng/sancho",
+		Dest:   "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)

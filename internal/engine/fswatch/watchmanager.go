@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/windmilleng/fsnotify"
+	"github.com/tilt-dev/fsnotify"
 
-	"github.com/windmilleng/tilt/internal/dockerignore"
-	"github.com/windmilleng/tilt/internal/ignore"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/watch"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/dockerignore"
+	"github.com/tilt-dev/tilt/internal/ignore"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.

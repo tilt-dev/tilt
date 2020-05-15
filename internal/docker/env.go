@@ -9,9 +9,9 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // We didn't pick minikube v1.8.0 for any particular reason, it's just what Nick

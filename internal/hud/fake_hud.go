@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/hud/view"
 )
 
 var _ HeadsUpDisplay = (*FakeHud)(nil)
