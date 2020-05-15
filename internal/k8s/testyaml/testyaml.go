@@ -57,6 +57,59 @@ spec:
         - containerPort: 8080
 `
 
+const BlorgBackendAmbiguousYAML = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: blorg 
+  labels:
+    app: blorg
+    owner: nick
+    environment: devel
+    tier: backend
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: blorg
+    owner: nick
+    environment: devel
+    tier: backend
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: blorg 
+spec:
+  selector:
+    matchLabels:
+      app: blorg
+      owner: nick
+      environment: devel
+      tier: backend
+  template:
+    metadata:
+      name: blorg 
+      labels:
+        app: blorg
+        owner: nick
+        environment: devel
+        tier: backend
+    spec:
+      containers:
+      - name: backend
+        imagePullPolicy: Always
+        image: gcr.io/blorg-dev/blorg
+        command: [
+          "/app/server",
+          "--dbAddr", "hissing-cockroach-cockroachdb:26257"
+        ]
+        ports:
+        - containerPort: 8080
+`
+
 const BlorgJobYAML = `apiVersion: batch/v1
 kind: Job
 metadata:

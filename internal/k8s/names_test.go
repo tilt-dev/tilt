@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/windmilleng/tilt/internal/k8s/testyaml"
 )
 
 type workload struct {
@@ -70,4 +72,51 @@ func TestUniqueResourceNames(t *testing.T) {
 			assert.Equal(t, expectedNames, actualNames)
 		})
 	}
+}
+
+func TestFragmentsToEntities(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.BlorgBackendYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual := FragmentsToEntities(entities)
+
+	expected := map[string][]K8sEntity{
+		"devel-nick-lb-blorg-be":                 {entities[0]},
+		"devel-nick-lb-blorg-be:service":         {entities[0]},
+		"devel-nick-lb-blorg-be:service:default": {entities[0]},
+		// TODO(dmiller): this is wrong
+		"devel-nick-lb-blorg-be:service:default:": {entities[0]},
+
+		"devel-nick-blorg-be":                               {entities[1]},
+		"devel-nick-blorg-be:deployment":                    {entities[1]},
+		"devel-nick-blorg-be:deployment:default":            {entities[1]},
+		"devel-nick-blorg-be:deployment:default:extensions": {entities[1]},
+	}
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestFragmentsToEntitiesAmbiguous(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.BlorgBackendAmbiguousYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual := FragmentsToEntities(entities)
+
+	expected := map[string][]K8sEntity{
+		"blorg":                 {entities[0], entities[1]},
+		"blorg:service":         {entities[0]},
+		"blorg:service:default": {entities[0]},
+		// TODO(dmiller): this is wrong
+		"blorg:service:default:": {entities[0]},
+
+		"blorg:deployment":                    {entities[1]},
+		"blorg:deployment:default":            {entities[1]},
+		"blorg:deployment:default:extensions": {entities[1]},
+	}
+
+	assert.Equal(t, expected, actual)
 }

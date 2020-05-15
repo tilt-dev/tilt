@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -591,10 +592,33 @@ func (s *tiltfileState) assembleK8sV1() error {
 
 }
 
-type claimPair struct {
-	resource       *k8sResource
-	selector       k8sObjectSelector
-	selectorString string
+func entitiesToFullName(entities []k8s.K8sEntity) (map[string]k8s.K8sEntity, error) {
+	ret := make(map[string]k8s.K8sEntity, len(entities))
+
+	for _, e := range entities {
+		// TODO(dmiller): if it's already there error
+		ret[entityToFullName(e)] = e
+	}
+
+	return ret, nil
+}
+
+func entityToFullName(e k8s.K8sEntity) string {
+	return fmt.Sprintf("%s:%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace(), e.GVK().Group)
+}
+
+type byLen []string
+
+func (a byLen) Len() int {
+	return len(a)
+}
+
+func (a byLen) Less(i, j int) bool {
+	return len(a[i]) < len(a[j])
+}
+
+func (a byLen) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
 }
 
 func (s *tiltfileState) assembleK8sV2() error {
@@ -608,6 +632,32 @@ func (s *tiltfileState) assembleK8sV2() error {
 		return err
 	}
 
+	unresourcedFragmentsToEntities := k8s.FragmentsToEntities(s.k8sUnresourced)
+	// TODO(dmiller): can we know the size of these?
+	unresourcedFragmentNames := []string{}
+	for name := range unresourcedFragmentsToEntities {
+		unresourcedFragmentNames = append(unresourcedFragmentNames, name)
+	}
+	sort.Sort(byLen(unresourcedFragmentNames))
+	uniqueFragments := map[string]k8s.K8sEntity{}
+	uniqueFragmentNames := []string{}
+	seenEntities := map[k8s.K8sEntity]interface{}{}
+
+	for _, name := range unresourcedFragmentNames {
+		entities := unresourcedFragmentsToEntities[name]
+
+		if len(entities) == 1 {
+			entity := entities[0]
+			if _, seen := seenEntities[entity]; !seen {
+				seenEntities[entity] = struct{}{}
+				uniqueFragments[name] = entity
+				uniqueFragmentNames = append(uniqueFragmentNames, name)
+			}
+		}
+
+	}
+
+	// TODO(dmiller): in all of these error messages use %q more judiciously
 	for workload, opts := range s.k8sResourceOptions {
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
@@ -632,41 +682,32 @@ func (s *tiltfileState) assembleK8sV2() error {
 				selectors[i] = s
 			}
 
-			claims := make(map[k8s.K8sEntity]claimPair)
-			for i, sel := range selectors {
-				for _, r := range s.k8s {
-					resourcedMatches := filterEntitiesBySelector(r.entities, sel)
-					if len(resourcedMatches) > 0 {
-						return fmt.Errorf("object %s already belongs to resource %s", opts.objects[i], r.name)
+			for i, o := range opts.objects {
+				entities, ok := unresourcedFragmentsToEntities[o]
+				if !ok || len(entities) == 0 {
+					return fmt.Errorf("No object identified by the fragment %s could be found. Unique fragments are: %s", o, strings.Join(uniqueFragmentNames, ", "))
+				}
+				if len(entities) > 1 {
+					matchingObjects := make([]string, len(entities))
+					for i, e := range entities {
+						matchingObjects[i] = fullNameFromK8sEntity(e)
 					}
+					return fmt.Errorf("%s is not a unique fragment. Objects that match %s are %s", o, o, strings.Join(matchingObjects, ", "))
 				}
 
-				unresourcedMatches := filterEntitiesBySelector(s.k8sUnresourced, sel)
-				if len(unresourcedMatches) != 1 {
-					errMsg := fmt.Sprintf("Found %d matches for %s in remaining YAML. Object must match exactly 1 entity", len(unresourcedMatches), opts.objects[i])
-					if len(s.k8sUnresourced) == 0 {
-						errMsg = fmt.Sprintf("%s. All YAML already belongs to a resource", errMsg)
-					} else if len(unresourcedMatches) == 0 {
-						namesOfAvailableUnresourcedYAML := make([]string, len(s.k8sUnresourced))
-						for i, e := range s.k8sUnresourced {
-							namesOfAvailableUnresourcedYAML[i] = selectorStringFromK8sEntity(e)
-						}
-						errMsg = fmt.Sprintf("%s. Available YAML: %s", errMsg, strings.Join(namesOfAvailableUnresourcedYAML, ", "))
+				entitiesToRemove := filterEntitiesBySelector(s.k8sUnresourced, selectors[i])
+				if len(entitiesToRemove) == 0 {
+					remainingUnresourcedFragments := make([]string, len(s.k8sUnresourced))
+					for i, entity := range s.k8sUnresourced {
+						remainingUnresourcedFragments[i] = fullNameFromK8sEntity(entity)
 					}
-
-					return errors.New(errMsg)
+					return fmt.Errorf("No object identified by the fragment %s could be found in remaining YAML. Valid remaining fragments are: %s", o, strings.Join(remainingUnresourcedFragments, ", "))
+				}
+				if len(entitiesToRemove) > 1 {
+					return fmt.Errorf("Fragment %s matches %d resources. Each object fragment must match exactly 1 resource", o, len(entitiesToRemove))
 				}
 
-				entity := unresourcedMatches[0]
-				if existingClaim, ok := claims[entity]; ok {
-					return fmt.Errorf("%s tried to claim %s but it was already claimed by %s via %s", opts.objects[i], entity.Name(), existingClaim.resource.name, existingClaim.selectorString)
-				}
-
-				claims[entity] = claimPair{resource: r, selector: sel, selectorString: opts.objects[i]}
-			}
-
-			for entity, claim := range claims {
-				s.addEntityToResourceAndRemoveFromUnresourced(entity, claim.resource)
+				s.addEntityToResourceAndRemoveFromUnresourced(entitiesToRemove[0], r)
 			}
 
 		} else {
@@ -686,6 +727,10 @@ func (s *tiltfileState) assembleK8sV2() error {
 	return nil
 }
 
+func fullNameFromK8sEntity(e k8s.K8sEntity) string {
+	return fmt.Sprintf("%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace())
+}
+
 // format is <name:required>:<kind:optional>:<namespace:optional>
 func selectorFromString(s string) (k8sObjectSelector, error) {
 	parts := strings.Split(s, ":")
@@ -703,10 +748,6 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 	}
 
 	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 4 parts (colon separated), found %d parts in %s", len(parts), s)
-}
-
-func selectorStringFromK8sEntity(e k8s.K8sEntity) string {
-	return fmt.Sprintf("%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace())
 }
 
 func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8sObjectSelector) []k8s.K8sEntity {

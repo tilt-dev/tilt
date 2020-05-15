@@ -46,6 +46,33 @@ func UniqueNames(es []K8sEntity, minComponents int) []string {
 	return ret
 }
 
+func FragmentsToEntities(es []K8sEntity) map[string][]K8sEntity {
+	ret := make(map[string][]K8sEntity, len(es))
+	// how many resources potentially map to a given name
+	counts := make(map[string]int)
+
+	// count how many entities want each potential name
+	for _, e := range es {
+		for _, name := range potentialNames(e, 1) {
+			counts[name]++
+		}
+	}
+
+	// for each entity, take the shortest name that is uniquely wanted by that entity
+	for _, e := range es {
+		names := potentialNames(e, 1)
+		for _, name := range names {
+			if a, ok := ret[name]; ok {
+				ret[name] = append(a, e)
+			} else {
+				ret[name] = []K8sEntity{e}
+			}
+		}
+	}
+
+	return ret
+}
+
 // returns a list of potential names, in order of preference
 func potentialNames(e K8sEntity, minComponents int) []string {
 	gvk := e.GVK()
