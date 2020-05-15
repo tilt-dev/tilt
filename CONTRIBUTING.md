@@ -281,7 +281,8 @@ in the release notes.
 After updating the release notes,
 update the [install](https://github.com/tilt-dev/tilt.build/tree/master/docs/install.md) and [upgrade](https://github.com/tilt-dev/tilt.build/blob/master/docs/upgrade.md) docs,
 the [default dev version](internal/cli/build.go),
-and the [installer version](scripts/install.sh).
+the [installer bash script](scripts/install.sh), and
+the [installer powershell script](scripts/install.ps1).
 
 These should be updated as soon as possible to match the newest Tilt version
 available, especially since the Tilt update nudge will send people to the upgrade
