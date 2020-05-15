@@ -84,7 +84,8 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
-	addWebServerFlags(cmd)
+	addStartServerFlags(cmd)
+	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")

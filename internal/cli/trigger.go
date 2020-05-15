@@ -21,7 +21,7 @@ Otherwise, this command will force a full rebuild.
 		Args: cobra.ExactArgs(1),
 		Run:  triggerUpdate,
 	}
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
+	addConnectServerFlags(cmd)
 	return cmd
 }
 
@@ -32,7 +32,7 @@ func triggerUpdate(cmd *cobra.Command, args []string) {
 	//   like a lot of code to move over (to avoid import cycles) for one call.
 	payload := []byte(fmt.Sprintf(`{"manifest_names":[%q], "build_reason": %d}`, resource, model.BuildReasonFlagTriggerCLI))
 
-	body := apiPostJson(webPort, "trigger", payload)
+	body := apiPostJson("trigger", payload)
 	_ = body.Close()
 
 	fmt.Printf("Successfully triggered update for resource: %q\n", resource)
