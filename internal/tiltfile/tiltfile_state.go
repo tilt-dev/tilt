@@ -592,7 +592,7 @@ func (s *tiltfileState) assembleK8sV1() error {
 
 }
 
-func entitiesToFullName(entities []k8s.K8sEntity) (map[string]k8s.K8sEntity, error) {
+func entitiesByFullName(entities []k8s.K8sEntity) (map[string]k8s.K8sEntity, error) {
 	ret := make(map[string]k8s.K8sEntity, len(entities))
 
 	for _, e := range entities {
@@ -675,11 +675,12 @@ func (s *tiltfileState) assembleK8sV2() error {
 
 				entitiesToRemove := filterEntitiesBySelector(s.k8sUnresourced, selectors[i])
 				if len(entitiesToRemove) == 0 {
-					remainingUnresourcedFragments := make([]string, len(s.k8sUnresourced))
+					// we've already taken these entities out of unresourced
+					remainingUnresourced := make([]string, len(s.k8sUnresourced))
 					for i, entity := range s.k8sUnresourced {
-						remainingUnresourcedFragments[i] = fullNameFromK8sEntity(entity)
+						remainingUnresourced[i] = fullNameFromK8sEntity(entity)
 					}
-					return fmt.Errorf("No object identified by the fragment %q could be found in remaining YAML. Valid remaining fragments are: %s", o, sliceutils.QuotedStringList(remainingUnresourcedFragments))
+					return fmt.Errorf("No object identified by the fragment %q could be found in remaining YAML. Valid remaining fragments are: %s", o, sliceutils.QuotedStringList(remainingUnresourced))
 				}
 				if len(entitiesToRemove) > 1 {
 					panic(fmt.Sprintf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource. This should NOT be possible", o, len(entitiesToRemove)))
@@ -1317,6 +1318,7 @@ type k8sObjectSelector struct {
 	kind             *regexp.Regexp
 	kindString       string
 
+	// TODO(dmiller): do something like this instead https://github.com/windmilleng/tilt/blob/c2b2df88de3777eed5f1bb9f54b5c555707c8b42/internal/container/selector.go#L9
 	name            *regexp.Regexp
 	nameString      string
 	namespace       *regexp.Regexp

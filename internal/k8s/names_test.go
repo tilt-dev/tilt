@@ -27,8 +27,8 @@ func TestUniqueResourceNames(t *testing.T) {
 			{"foo", "Deployment", "default", "", "foo"},
 		}},
 		{"one workload, same name", []workload{
-			{"foo", "Deployment", "default", "", "foo:deployment:default::0"},
-			{"foo", "Deployment", "default", "", "foo:deployment:default::1"},
+			{"foo", "Deployment", "default", "", "foo:deployment:default:core:0"},
+			{"foo", "Deployment", "default", "", "foo:deployment:default:core:1"},
 		}},
 		{"one workload, by name", []workload{
 			{"foo", "Deployment", "default", "", "foo"},
@@ -83,11 +83,10 @@ func TestFragmentsToEntities(t *testing.T) {
 	actual := FragmentsToEntities(entities)
 
 	expected := map[string][]K8sEntity{
-		"devel-nick-lb-blorg-be":                 {entities[0]},
-		"devel-nick-lb-blorg-be:service":         {entities[0]},
-		"devel-nick-lb-blorg-be:service:default": {entities[0]},
-		// TODO(dmiller): this is wrong
-		"devel-nick-lb-blorg-be:service:default:": {entities[0]},
+		"devel-nick-lb-blorg-be":                      {entities[0]},
+		"devel-nick-lb-blorg-be:service":              {entities[0]},
+		"devel-nick-lb-blorg-be:service:default":      {entities[0]},
+		"devel-nick-lb-blorg-be:service:default:core": {entities[0]},
 
 		"devel-nick-blorg-be":                               {entities[1]},
 		"devel-nick-blorg-be:deployment":                    {entities[1]},
@@ -107,11 +106,10 @@ func TestFragmentsToEntitiesAmbiguous(t *testing.T) {
 	actual := FragmentsToEntities(entities)
 
 	expected := map[string][]K8sEntity{
-		"blorg":                 {entities[0], entities[1]},
-		"blorg:service":         {entities[0]},
-		"blorg:service:default": {entities[0]},
-		// TODO(dmiller): this is wrong
-		"blorg:service:default:": {entities[0]},
+		"blorg":                      {entities[0], entities[1]},
+		"blorg:service":              {entities[0]},
+		"blorg:service:default":      {entities[0]},
+		"blorg:service:default:core": {entities[0]},
 
 		"blorg:deployment":                    {entities[1]},
 		"blorg:deployment:default":            {entities[1]},

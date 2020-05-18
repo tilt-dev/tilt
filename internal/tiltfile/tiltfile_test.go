@@ -3738,7 +3738,7 @@ k8s_yaml('resource.yaml')
 
 	displayNames := []string{}
 	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
-	assert.Equal(t, []string{"doggos:service:default::0", "doggos:service:default::1"}, displayNames)
+	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
 }
 
 func TestSetTeamID(t *testing.T) {
@@ -4381,7 +4381,7 @@ allow_k8s_contexts("hello")
 	}
 }
 
-func TestK8sResourceObjectsIncludesNonWorkload(t *testing.T) {
+func TestK8sResourceObjectsAddsNonWorkload(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
