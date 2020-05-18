@@ -23,7 +23,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	m := f.assertNextManifestUnresourced("garnet",
+	m := f.assertNextManifestUnresourced(
 		// A service and ingress with the same name
 		"rose-quartz-helloworld-chart",
 		"rose-quartz-helloworld-chart")
@@ -63,7 +63,7 @@ func TestHelmUnknownVersion(t *testing.T) {
 }
 
 const fileRequirementsYAML = `dependencies:
-  - name: foobar 
+  - name: foobar
     version: 1.0.1
     repository: file://./foobar`
 

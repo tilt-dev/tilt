@@ -1236,7 +1236,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	m := f.assertNextManifestUnresourced("garnet", "rose-quartz-helloworld-chart")
+	m := f.assertNextManifestUnresourced("rose-quartz-helloworld-chart")
 	yaml := m.K8sTarget().YAML
 	assert.Contains(t, yaml, "release: rose-quartz")
 	assert.Contains(t, yaml, "namespace: garnet")
@@ -1247,7 +1247,7 @@ k8s_yaml(yml)
 	require.NoError(t, err)
 
 	names := k8s.UniqueNames(entities, 2)
-	expectedNames := []string{"garnet:namespace", "rose-quartz-helloworld-chart:service"}
+	expectedNames := []string{"rose-quartz-helloworld-chart:service"}
 	assert.ElementsMatch(t, expectedNames, names)
 
 	f.assertConfigFiles("./helm/", "./dev/helm/values-dev.yaml", ".tiltignore", "Tiltfile")
@@ -1304,7 +1304,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertNextManifestUnresourced("foobarbaz", "not-the-one-specified-in-flag", "rose-quartz-helloworld-chart")
+	f.assertNextManifestUnresourced("not-the-one-specified-in-flag", "rose-quartz-helloworld-chart")
 }
 
 func TestHelmInvalidDirectory(t *testing.T) {
