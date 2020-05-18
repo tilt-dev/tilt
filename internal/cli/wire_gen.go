@@ -508,6 +508,28 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	return runtime, nil
 }
 
+func wireK8sClient(ctx context.Context) (k8s.Client, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	config, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	env := k8s.ProvideEnv(ctx, config)
+	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
+	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
+	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(config)
+	if err != nil {
+		return nil, err
+	}
+	int2 := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
+	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, kubectlRunner, minikubeClient, clientConfig)
+	return client, nil
+}
+
 func wireK8sVersion(ctx context.Context) (*version2.Info, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
