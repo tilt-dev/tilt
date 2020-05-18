@@ -2770,7 +2770,7 @@ k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
 
-	f.loadErrString("specified unknown resource 'bar'. known resources: foo", "https://docs.tilt.dev/resource_assembly_migration.html")
+	f.loadErrString("specified unknown resource \"bar\". known resources: foo", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
 func TestK8sResourceNewName(t *testing.T) {
@@ -2800,7 +2800,7 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 k8s_resource('foo', new_name='bar')
 `)
 
-	f.loadErrString("'foo' to 'bar'", "already a resource with that name")
+	f.loadErrString("\"foo\" to \"bar\"", "already a resource with that name")
 }
 
 func TestK8sResourceRenameConflictingNames(t *testing.T) {
@@ -4419,7 +4419,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
 `)
 
-	f.loadErrString("bar is not a unique fragment. Objects that match bar are bar:Secret:default, bar:Namespace:default")
+	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are bar:Secret:default, bar:Namespace:default")
 }
 
 func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
@@ -4439,7 +4439,7 @@ k8s_yaml('secret2.yaml')
 k8s_resource('foo', objects=['bar', 'bar:secret:default'])
 `)
 
-	f.loadErrString("No object identified by the fragment bar:secret:default could be found in remaining YAML. Valid remaining fragments are: qux:Secret:default")
+	f.loadErrString("No object identified by the fragment \"bar:secret:default\" could be found in remaining YAML. Valid remaining fragments are: qux:Secret:default")
 }
 
 func TestK8sResourceObjectsMultipleAmbiguous(t *testing.T) {
@@ -4458,7 +4458,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar'])
 `)
 
-	f.loadErrString("bar is not a unique fragment. Objects that match bar are bar:Secret:default, bar:Namespace:default")
+	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are bar:Secret:default, bar:Namespace:default")
 }
 
 func TestK8sResourceObjectEmptySelector(t *testing.T) {
@@ -4477,7 +4477,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=[''])
 `)
 
-	f.loadErrString("Error making selector from string ''")
+	f.loadErrString("Error making selector from string \"\"")
 }
 
 func TestK8sResourceObjectInvalidSelector(t *testing.T) {
@@ -4496,7 +4496,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['baz:namespace:default:wot'])
 `)
 
-	f.loadErrString("Error making selector from string 'baz:namespace:default:wot'")
+	f.loadErrString("Error making selector from string \"baz:namespace:default:wot\"")
 }
 
 func TestK8sResourceObjectIncludesSelectorThatDoesntExist(t *testing.T) {
@@ -4515,7 +4515,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['baz:secret:default'])
 `)
 
-	f.loadErrString("No object identified by the fragment baz:secret:default could be found. Unique fragments are: ")
+	f.loadErrString("No object identified by the fragment \"baz:secret:default\" could be found. Unique fragments are: ")
 }
 
 func TestK8sResourceObjectsPartialNames(t *testing.T) {
@@ -4553,7 +4553,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['ba'])
 `)
 
-	f.loadErrString("No object identified by the fragment ba could be found. Unique fragments are: bar")
+	f.loadErrString("No object identified by the fragment \"ba\" could be found. Unique fragments are: bar")
 }
 
 func TestK8sResourceAmbiguousSelector(t *testing.T) {
@@ -4572,7 +4572,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar'])
 `)
 
-	f.loadErrString("bar is not a unique fragment. Objects that match bar are bar:Secret:default, bar:Namespace:default")
+	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are bar:Secret:default, bar:Namespace:default")
 }
 
 func TestK8sResourceObjectDuplicate(t *testing.T) {
@@ -4592,7 +4592,7 @@ k8s_resource('foo', objects=['bar'])
 k8s_resource('baz', objects=['bar'])
 `)
 
-	f.loadErrString("No object identified by the fragment bar could be found in remaining YAML. Valid remaining fragments are:")
+	f.loadErrString("No object identified by the fragment \"bar\" could be found in remaining YAML. Valid remaining fragments are:")
 }
 
 func TestK8sResourceObjectMultipleResources(t *testing.T) {
@@ -4647,7 +4647,7 @@ k8s_resource('baz', objects=['qux'])
 }
 
 func TestK8sResourceAmbiguousWorkloadAmbiguousObject(t *testing.T) {
-	t.Skip()
+	t.Skipf("this should be an error. Objects need to be unique among all objects, not just non-deployment objects (as is the case now)")
 	f := newFixture(t)
 	defer f.TearDown()
 

@@ -666,7 +666,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			r.resourceDeps = opts.resourceDeps
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
-					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
+					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q, but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
 				}
 				delete(s.k8sByName, r.name)
 				r.name = opts.newName
@@ -677,7 +677,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for i, o := range opts.objects {
 				s, err := selectorFromString(o)
 				if err != nil {
-					return errors.Wrapf(err, "Error making selector from string '%s'", o)
+					return errors.Wrapf(err, "Error making selector from string %q", o)
 				}
 				selectors[i] = s
 			}
@@ -685,14 +685,15 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for i, o := range opts.objects {
 				entities, ok := unresourcedFragmentsToEntities[o]
 				if !ok || len(entities) == 0 {
-					return fmt.Errorf("No object identified by the fragment %s could be found. Unique fragments are: %s", o, strings.Join(uniqueFragmentNames, ", "))
+					// TODO(dmiller): better error message if there are 0 unique fragments
+					return fmt.Errorf("No object identified by the fragment %q could be found. Unique fragments are: %s", o, strings.Join(uniqueFragmentNames, ", "))
 				}
 				if len(entities) > 1 {
 					matchingObjects := make([]string, len(entities))
 					for i, e := range entities {
 						matchingObjects[i] = fullNameFromK8sEntity(e)
 					}
-					return fmt.Errorf("%s is not a unique fragment. Objects that match %s are %s", o, o, strings.Join(matchingObjects, ", "))
+					return fmt.Errorf("%q is not a unique fragment. Objects that match %q are %s", o, o, strings.Join(matchingObjects, ", "))
 				}
 
 				entitiesToRemove := filterEntitiesBySelector(s.k8sUnresourced, selectors[i])
@@ -701,10 +702,10 @@ func (s *tiltfileState) assembleK8sV2() error {
 					for i, entity := range s.k8sUnresourced {
 						remainingUnresourcedFragments[i] = fullNameFromK8sEntity(entity)
 					}
-					return fmt.Errorf("No object identified by the fragment %s could be found in remaining YAML. Valid remaining fragments are: %s", o, strings.Join(remainingUnresourcedFragments, ", "))
+					return fmt.Errorf("No object identified by the fragment %q could be found in remaining YAML. Valid remaining fragments are: %s", o, strings.Join(remainingUnresourcedFragments, ", "))
 				}
 				if len(entitiesToRemove) > 1 {
-					return fmt.Errorf("Fragment %s matches %d resources. Each object fragment must match exactly 1 resource", o, len(entitiesToRemove))
+					return fmt.Errorf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource", o, len(entitiesToRemove))
 				}
 
 				s.addEntityToResourceAndRemoveFromUnresourced(entitiesToRemove[0], r)
@@ -715,7 +716,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource at %s specified unknown resource %q. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
 		}
 	}
 
