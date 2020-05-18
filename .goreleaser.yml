@@ -43,8 +43,8 @@ brews:
     name: Tilt Dev
     email: hi@tilt.dev
   url_template: "http://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-  homepage: "https://tilt.build/"
-  description: "Local Kubernetes development with no stress"
+  homepage: "https://tilt.dev/"
+  description: "Tilt powers multi-service developments for teams that deploy to Kubernetes."
   test: |
     system "#{bin}/tilt version"
 dockers:
@@ -52,6 +52,18 @@ dockers:
     - "tiltdev/tilt"
     - "tiltdev/tilt:{{ .Tag }}"
   dockerfile: scripts/goreleaser.Dockerfile
+scoop:
+  url_template: "http://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+  bucket:
+    owner: tilt-dev
+    name: scoop-bucket
+  commit_author:
+    name: Tilt Dev
+    email: hi@tilt.dev
+  commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
+  homepage: "https://tilt.dev/"
+  description: "Tilt powers multi-service developments for teams that deploy to Kubernetes."
+  license: Apache-2.0
   
 # Uncomment these lines if you want to experiment with other
 # parts of the release process without releasing new binaries.
