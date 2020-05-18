@@ -4682,6 +4682,7 @@ k8s_resource('hello-foo', objects=['foo:secret'])
 
 	f.load()
 	f.assertNumManifests(1)
+	f.assertNextManifest("hello-foo", k8sObject("foo", "Secret"))
 }
 
 // TODO(dmiller): resource of only non-workload objects
