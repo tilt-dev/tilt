@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tilt-dev/tilt/pkg/model"
 	"go.starlark.net/starlark"
+
+	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
