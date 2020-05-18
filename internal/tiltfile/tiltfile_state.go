@@ -651,25 +651,12 @@ func (s *tiltfileState) assembleK8sV2() error {
 		fragmentNames = append(fragmentNames, name)
 	}
 	sort.Sort(byLen(fragmentNames))
-	uniqueFragments := map[string]k8s.K8sEntity{}
-	uniqueFragmentNames := []string{}
-	seenEntities := map[k8s.K8sEntity]interface{}{}
 
-	for _, name := range fragmentNames {
-		entities := fragmentsToEntities[name]
+	fullNames := make([]string, len(allEntities))
 
-		if len(entities) == 1 {
-			entity := entities[0]
-			if _, seen := seenEntities[entity]; !seen {
-				seenEntities[entity] = struct{}{}
-				uniqueFragments[name] = entity
-				uniqueFragmentNames = append(uniqueFragmentNames, name)
-			}
-		}
+	for i, e := range allEntities {
+		fullNames[i] = fullNameFromK8sEntity(e)
 	}
-
-	// sort the strings alphabetically for consistent error messages
-	sort.Strings(uniqueFragmentNames)
 
 	for workload, opts := range s.k8sResourceOptions {
 		if r, ok := s.k8sByName[workload]; ok {
@@ -698,14 +685,14 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for i, o := range opts.objects {
 				entities, ok := fragmentsToEntities[o]
 				if !ok || len(entities) == 0 {
-					return fmt.Errorf("No object identified by the fragment %q could be found. Unique fragments are: %s", o, strings.Join(uniqueFragmentNames, ", "))
+					return fmt.Errorf("No object identified by the fragment %q could be found. Possible objects are: %s", o, sliceutils.QuotedStringList(fullNames))
 				}
 				if len(entities) > 1 {
 					matchingObjects := make([]string, len(entities))
 					for i, e := range entities {
 						matchingObjects[i] = fullNameFromK8sEntity(e)
 					}
-					return fmt.Errorf("%q is not a unique fragment. Objects that match %q are %s", o, o, strings.Join(matchingObjects, ", "))
+					return fmt.Errorf("%q is not a unique fragment. Objects that match %q are %s", o, o, sliceutils.QuotedStringList(matchingObjects))
 				}
 
 				entitiesToRemove := filterEntitiesBySelector(s.k8sUnresourced, selectors[i])
@@ -714,11 +701,11 @@ func (s *tiltfileState) assembleK8sV2() error {
 					for i, entity := range s.k8sUnresourced {
 						remainingUnresourcedFragments[i] = fullNameFromK8sEntity(entity)
 					}
-					return fmt.Errorf("No object identified by the fragment %q could be found in remaining YAML. Valid remaining fragments are: %s", o, strings.Join(remainingUnresourcedFragments, ", "))
+					return fmt.Errorf("No object identified by the fragment %q could be found in remaining YAML. Valid remaining fragments are: %s", o, sliceutils.QuotedStringList(remainingUnresourcedFragments))
 				}
 				if len(entitiesToRemove) > 1 {
-					return fmt.Errorf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource", o, len(entitiesToRemove))
-				}
+					panic(fmt.Sprintf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource. This should NOT be possible", o, len(entitiesToRemove)))
+}
 
 				s.addEntityToResourceAndRemoveFromUnresourced(entitiesToRemove[0], r)
 			}

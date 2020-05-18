@@ -4419,7 +4419,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
 `)
 
-	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are bar:Secret:default, bar:Namespace:default")
+	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are \"bar:Secret:default\", \"bar:Namespace:default\"")
 }
 
 func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
@@ -4439,7 +4439,7 @@ k8s_yaml('secret2.yaml')
 k8s_resource('foo', objects=['bar', 'bar:secret:default'])
 `)
 
-	f.loadErrString("No object identified by the fragment \"bar:secret:default\" could be found in remaining YAML. Valid remaining fragments are: qux:Secret:default")
+	f.loadErrString("No object identified by the fragment \"bar:secret:default\" could be found in remaining YAML. Valid remaining fragments are: \"qux:Secret:default\"")
 }
 
 func TestK8sResourceObjectsMultipleAmbiguous(t *testing.T) {
@@ -4458,7 +4458,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'bar'])
 `)
 
-	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are bar:Secret:default, bar:Namespace:default")
+	f.loadErrString("bar\" is not a unique fragment. Objects that match \"bar\" are \"bar:Secret:default\", \"bar:Namespace:default\"")
 }
 
 func TestK8sResourceObjectEmptySelector(t *testing.T) {
@@ -4515,7 +4515,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['baz:secret:default'])
 `)
 
-	f.loadErrString("No object identified by the fragment \"baz:secret:default\" could be found. Unique fragments are: bar, baz, foo")
+	f.loadErrString("No object identified by the fragment \"baz:secret:default\" could be found. Possible objects are: \"foo:Deployment:default\", \"bar:Secret:default\", \"baz:Namespace:default\"")
 }
 
 func TestK8sResourceObjectsPartialNames(t *testing.T) {
@@ -4553,7 +4553,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['ba'])
 `)
 
-	f.loadErrString("No object identified by the fragment \"ba\" could be found. Unique fragments are: bar, foo")
+	f.loadErrString("No object identified by the fragment \"ba\" could be found. Possible objects are: \"foo:Deployment:default\", \"bar:Secret:default\"")
 }
 
 func TestK8sResourceAmbiguousSelector(t *testing.T) {
@@ -4572,7 +4572,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar'])
 `)
 
-	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are bar:Secret:default, bar:Namespace:default")
+	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are \"bar:Secret:default\", \"bar:Namespace:default\"")
 }
 
 func TestK8sResourceObjectDuplicate(t *testing.T) {
@@ -4660,7 +4660,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['foo'])
 `)
 
-	f.loadErrString("\"foo\" is not a unique fragment. Objects that match \"foo\" are foo:Deployment:default, foo:Secret:default")
+	f.loadErrString("\"foo\" is not a unique fragment. Objects that match \"foo\" are \"foo:Deployment:default\", \"foo:Secret:default\"")
 }
 
 func TestK8sResourceObjectsWithWorkloadToResourceFunction(t *testing.T) {
@@ -4707,6 +4707,8 @@ k8s_resource('foo', objects=['bar', 'baz:namespace:default:core'])
 	// f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
 	// f.assertNoMoreManifests()
 }
+
+// TODO(dmiller): add a test for trying to specify the namespace of a cluster scoped resource
 
 // TODO(dmiller): resource of only non-workload objects
 
