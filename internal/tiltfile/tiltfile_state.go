@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -759,7 +760,7 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 		return newExactK8sObjectSelector("", parts[1], parts[0], parts[2])
 	}
 
-	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 4 parts (colon separated), found %d parts in %s", len(parts), s)
+	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
 }
 
 func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8sObjectSelector) []k8s.K8sEntity {
@@ -1355,6 +1356,9 @@ type k8sObjectSelector struct {
 	nameString      string
 	namespace       *regexp.Regexp
 	namespaceString string
+
+	group *regexp.Regexp
+	groupString string
 }
 
 // Creates a new k8sObjectSelector
@@ -1425,6 +1429,7 @@ func newK8sObjectSelector(apiVersion string, kind string, name string, namespace
 }
 
 func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
+	log.Printf("Group: %s, Version: %s, GroupVersion: %+v, Kind: %s\n", e.GVK().Group, e.GVK().Version, e.GVK().GroupVersion(), e.GVK().Kind)
 	gvk := e.GVK()
 	return k.apiVersion.MatchString(gvk.GroupVersion().String()) &&
 		k.kind.MatchString(gvk.Kind) &&

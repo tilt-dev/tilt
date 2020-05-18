@@ -4683,6 +4683,29 @@ k8s_resource('hello-foo', objects=['foo:secret'])
 	f.load()
 	f.assertNumManifests(1)
 	f.assertNextManifest("hello-foo", k8sObject("foo", "Secret"))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceObjectsWithGroup(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar', 'baz:namespace:default:core'])
+`)
+
+	// TODO(dmiller): explain this
+	f.loadErrString("Error making selector from string \"baz:namespace:default:core\": Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found 4 parts in baz:namespace:default:core")
+	// f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
+	// f.assertNoMoreManifests()
 }
 
 // TODO(dmiller): resource of only non-workload objects
