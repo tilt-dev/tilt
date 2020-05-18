@@ -4341,7 +4341,7 @@ func TestMaxParallelUpdates(t *testing.T) {
 		{
 			name:                "NaN error",
 			tiltfile:            "update_settings(max_parallel_updates='boop')",
-			expectErrorContains: "got string, want int",
+			expectErrorContains: "got starlark.String, want int",
 		},
 		{
 			name:                "must be positive int",
@@ -4392,7 +4392,7 @@ func TestK8sUpsertTimeout(t *testing.T) {
 		{
 			name:                "NaN error",
 			tiltfile:            "update_settings(k8s_upsert_timeout_secs='boop')",
-			expectErrorContains: "got string, want int",
+			expectErrorContains: "got starlark.String, want int",
 		},
 		{
 			name:                "must be positive int",
@@ -4418,15 +4418,16 @@ func TestK8sUpsertTimeout(t *testing.T) {
 	}
 }
 
-func TestUpdateSettingsOnlyCallableOnce(t *testing.T) {
-
+func TestUpdateSettingsCalledTwice(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.file("Tiltfile", `update_settings(max_parallel_updates=123)
 update_settings(k8s_upsert_timeout_secs=456)`)
 
-	f.loadErrString("'update_settings' can only be called once")
+	f.load()
+	assert.Equal(t, 123, f.loadResult.UpdateSettings.MaxParallelUpdates(), "expected vs. actual MaxParallelUpdates")
+	assert.Equal(t, 456*time.Second, f.loadResult.UpdateSettings.K8sUpsertTimeout(), "expected vs. actual k8sUpsertTimeout")
 }
 
 // recursion is disabled by default in Starlark. Make sure we've enabled it for Tiltfiles.
