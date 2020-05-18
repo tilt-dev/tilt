@@ -68,7 +68,7 @@ func (e *Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin
 
 func valueToInt(v starlark.Value) (val int, wasPassed bool, err error) {
 	switch x := v.(type) {
-	case nil:
+	case nil, starlark.NoneType:
 		return 0, false, nil
 	case starlark.Int:
 		val, err := starlark.AsInt32(x)
