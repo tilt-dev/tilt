@@ -596,8 +596,12 @@ func entitiesToFullName(entities []k8s.K8sEntity) (map[string]k8s.K8sEntity, err
 	ret := make(map[string]k8s.K8sEntity, len(entities))
 
 	for _, e := range entities {
-		// TODO(dmiller): if it's already there error
-		ret[entityToFullName(e)] = e
+		fullName := entityToFullName(e)
+		existing, ok := ret[fullName]
+		if ok {
+			return nil, fmt.Errorf("entity %q has already been to entity %v", fullName, existing)
+		}
+		ret[fullName] = e
 	}
 
 	return ret, nil
