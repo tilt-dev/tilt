@@ -4515,7 +4515,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['baz:secret:default'])
 `)
 
-	f.loadErrString("No object identified by the fragment \"baz:secret:default\" could be found. Unique fragments are: ")
+	f.loadErrString("No object identified by the fragment \"baz:secret:default\" could be found. Unique fragments are: bar")
 }
 
 func TestK8sResourceObjectsPartialNames(t *testing.T) {

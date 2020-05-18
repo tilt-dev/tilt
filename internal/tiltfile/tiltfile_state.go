@@ -661,7 +661,6 @@ func (s *tiltfileState) assembleK8sV2() error {
 
 	}
 
-	// TODO(dmiller): in all of these error messages use %q more judiciously
 	for workload, opts := range s.k8sResourceOptions {
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
@@ -689,7 +688,6 @@ func (s *tiltfileState) assembleK8sV2() error {
 			for i, o := range opts.objects {
 				entities, ok := unresourcedFragmentsToEntities[o]
 				if !ok || len(entities) == 0 {
-					// TODO(dmiller): better error message if there are 0 unique fragments
 					return fmt.Errorf("No object identified by the fragment %q could be found. Unique fragments are: %s", o, strings.Join(uniqueFragmentNames, ", "))
 				}
 				if len(entities) > 1 {
