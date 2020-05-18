@@ -4686,8 +4686,6 @@ k8s_resource('hello-foo', objects=['foo:secret'])
 
 // TODO(dmiller): resource of only non-workload objects
 
-// TODO: write a test for an object that becomes unique as k8s_resources are added
-
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
