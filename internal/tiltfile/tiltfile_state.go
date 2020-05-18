@@ -6,7 +6,6 @@ import (
 	"log"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -612,20 +611,6 @@ func entityToFullName(e k8s.K8sEntity) string {
 	return fmt.Sprintf("%s:%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace(), e.GVK().Group)
 }
 
-type byLen []string
-
-func (a byLen) Len() int {
-	return len(a)
-}
-
-func (a byLen) Less(i, j int) bool {
-	return len(a[i]) < len(a[j])
-}
-
-func (a byLen) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-
 func (s *tiltfileState) assembleK8sV2() error {
 	err := s.assembleK8sByWorkload()
 	if err != nil {
@@ -645,15 +630,8 @@ func (s *tiltfileState) assembleK8sV2() error {
 	allEntities := append(resourcedEntities, s.k8sUnresourced...)
 
 	fragmentsToEntities := k8s.FragmentsToEntities(allEntities)
-	// TODO(dmiller): can we know the size of these?
-	fragmentNames := []string{}
-	for name := range fragmentsToEntities {
-		fragmentNames = append(fragmentNames, name)
-	}
-	sort.Sort(byLen(fragmentNames))
 
 	fullNames := make([]string, len(allEntities))
-
 	for i, e := range allEntities {
 		fullNames[i] = fullNameFromK8sEntity(e)
 	}
@@ -705,7 +683,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 				}
 				if len(entitiesToRemove) > 1 {
 					panic(fmt.Sprintf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource. This should NOT be possible", o, len(entitiesToRemove)))
-}
+				}
 
 				s.addEntityToResourceAndRemoveFromUnresourced(entitiesToRemove[0], r)
 			}
@@ -1343,9 +1321,6 @@ type k8sObjectSelector struct {
 	nameString      string
 	namespace       *regexp.Regexp
 	namespaceString string
-
-	group *regexp.Regexp
-	groupString string
 }
 
 // Creates a new k8sObjectSelector
