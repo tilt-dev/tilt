@@ -4515,7 +4515,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['baz:secret:default'])
 `)
 
-	f.loadErrString("No object identified by the fragment \"baz:secret:default\" could be found. Unique fragments are: bar")
+	f.loadErrString("No object identified by the fragment \"baz:secret:default\" could be found. Unique fragments are: bar, baz, foo")
 }
 
 func TestK8sResourceObjectsPartialNames(t *testing.T) {
@@ -4553,7 +4553,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['ba'])
 `)
 
-	f.loadErrString("No object identified by the fragment \"ba\" could be found. Unique fragments are: bar")
+	f.loadErrString("No object identified by the fragment \"ba\" could be found. Unique fragments are: bar, foo")
 }
 
 func TestK8sResourceAmbiguousSelector(t *testing.T) {
@@ -4647,7 +4647,6 @@ k8s_resource('baz', objects=['qux'])
 }
 
 func TestK8sResourceAmbiguousWorkloadAmbiguousObject(t *testing.T) {
-	t.Skipf("this should be an error. Objects need to be unique among all objects, not just non-deployment objects (as is the case now)")
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -4661,8 +4660,7 @@ k8s_yaml('secret.yaml')
 k8s_resource('foo', objects=['foo'])
 `)
 
-	// TODO(dmiller): this should be an error. Objects need to be unique among all objects, not just non-deployment objects (as is the case now)
-	f.loadErrString("object foo already belongs to resource foo")
+	f.loadErrString("\"foo\" is not a unique fragment. Objects that match \"foo\" are foo:Deployment:default, foo:Secret:default")
 }
 
 func TestK8sResourceObjectsWithWorkloadToResourceFunction(t *testing.T) {
@@ -4687,10 +4685,6 @@ k8s_resource('hello-foo', objects=['foo:secret'])
 }
 
 // TODO(dmiller): resource of only non-workload objects
-
-// TODO: once just on workloads, and once just on everything
-// unique fragment: unique among all objects Tilt saw
-// unique workload fragment: unique among all Workload objects Tilt saw
 
 // TODO: write a test for an object that becomes unique as k8s_resources are added
 

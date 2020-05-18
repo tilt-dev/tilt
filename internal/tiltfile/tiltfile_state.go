@@ -636,19 +636,26 @@ func (s *tiltfileState) assembleK8sV2() error {
 		return err
 	}
 
-	unresourcedFragmentsToEntities := k8s.FragmentsToEntities(s.k8sUnresourced)
-	// TODO(dmiller): can we know the size of these?
-	unresourcedFragmentNames := []string{}
-	for name := range unresourcedFragmentsToEntities {
-		unresourcedFragmentNames = append(unresourcedFragmentNames, name)
+	resourcedEntities := []k8s.K8sEntity{}
+	for _, r := range s.k8sByName {
+		resourcedEntities = append(resourcedEntities, r.entities...)
 	}
-	sort.Sort(byLen(unresourcedFragmentNames))
+
+	allEntities := append(resourcedEntities, s.k8sUnresourced...)
+
+	fragmentsToEntities := k8s.FragmentsToEntities(allEntities)
+	// TODO(dmiller): can we know the size of these?
+	fragmentNames := []string{}
+	for name := range fragmentsToEntities {
+		fragmentNames = append(fragmentNames, name)
+	}
+	sort.Sort(byLen(fragmentNames))
 	uniqueFragments := map[string]k8s.K8sEntity{}
 	uniqueFragmentNames := []string{}
 	seenEntities := map[k8s.K8sEntity]interface{}{}
 
-	for _, name := range unresourcedFragmentNames {
-		entities := unresourcedFragmentsToEntities[name]
+	for _, name := range fragmentNames {
+		entities := fragmentsToEntities[name]
 
 		if len(entities) == 1 {
 			entity := entities[0]
@@ -658,8 +665,10 @@ func (s *tiltfileState) assembleK8sV2() error {
 				uniqueFragmentNames = append(uniqueFragmentNames, name)
 			}
 		}
-
 	}
+
+	// sort the strings alphabetically for consistent error messages
+	sort.Strings(uniqueFragmentNames)
 
 	for workload, opts := range s.k8sResourceOptions {
 		if r, ok := s.k8sByName[workload]; ok {
@@ -686,7 +695,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			}
 
 			for i, o := range opts.objects {
-				entities, ok := unresourcedFragmentsToEntities[o]
+				entities, ok := fragmentsToEntities[o]
 				if !ok || len(entities) == 0 {
 					return fmt.Errorf("No object identified by the fragment %q could be found. Unique fragments are: %s", o, strings.Join(uniqueFragmentNames, ", "))
 				}
