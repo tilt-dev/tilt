@@ -10,6 +10,20 @@ $extractDir = "tilt-" + $version
 $binDir = "$HOME\bin"
 $dest = "$binDir\tilt.exe"
 
+$useScoop = ""
+if (Get-Command "scoop" 2>$null) {
+   $useScoop = "true"
+}
+
+if ("true" -eq $useScoop) {
+    Write-Host "Scoop detected! (https://scoop.sh)" 
+    scoop bucket add tilt-dev https://github.com/tilt-dev/scoop-bucket
+    scoop install tilt
+    scoop update tilt
+    Write-Output "Tilt installed with Scoop! Run 'tilt up' to start."
+    exit
+}
+
 Write-Output "Downloading $url"
 if (Test-Path "$zip") {
     Remove-Item -Force "$zip"
