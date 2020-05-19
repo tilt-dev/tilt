@@ -4702,7 +4702,7 @@ k8s_yaml('namespace.yaml')
 k8s_resource('foo', objects=['bar', 'baz:namespace:default:core'])
 `)
 
-	// TODO(dmiller): explain this
+	// TODO(dmiller): see comment on fullNameFromK8sEntity for info on why we don't support specifying group right now
 	f.loadErrString("Error making selector from string \"baz:namespace:default:core\": Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found 4 parts in baz:namespace:default:core")
 	// f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
 	// f.assertNoMoreManifests()

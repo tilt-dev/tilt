@@ -687,6 +687,15 @@ func (s *tiltfileState) assembleK8sV2() error {
 	return nil
 }
 
+// NOTE(dmiller): This isn't _technically_ a fullname since it is missing "group" (core, apps, data, etc)
+// A true full name would look like "foo:secret:namespace:core"
+// However because we
+// a) couldn't think of a concrete case where you would need to specify group
+// b) being able to do so would make things more complicated, like in the case where you want to specify the group of
+//    a cluster scoped object but are unable to specify the namespace (e.g. foo:clusterrole::rbac.authorization.k8s.io)
+//
+// we decided to leave it off for now. When we encounter a concrete use case for specifying group it shouldn't be too
+// hard to add it here and in the docs.
 func fullNameFromK8sEntity(e k8s.K8sEntity) string {
 	return fmt.Sprintf("%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace())
 }
