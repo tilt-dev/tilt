@@ -227,26 +227,11 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 			return nil, err
 		}
 
-		var haveYAMLForNamespace bool
 		for i, e := range parsed {
-			if e.GVK().Kind == "Namespace" && e.Name() == namespace {
-				// Chart already has YAML for the --namespace passed, we don't need to insert it
-				haveYAMLForNamespace = true
-				continue
-			}
 			parsed[i] = e.WithNamespace(namespace)
 		}
 
-		var entities []k8s.K8sEntity
-		if !haveYAMLForNamespace {
-			// User is relying on Helm to create the namespace, which it does independent
-			// of the YAML it generates, so we need to make sure the new namespace is included
-			// in the YAML.
-			entities = []k8s.K8sEntity{k8s.NewNamespaceEntity(namespace)}
-		}
-		entities = append(entities, parsed...)
-
-		yaml, err = k8s.SerializeSpecYAML(entities)
+		yaml, err = k8s.SerializeSpecYAML(parsed)
 		if err != nil {
 			return nil, err
 		}
