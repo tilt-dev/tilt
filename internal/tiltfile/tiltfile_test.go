@@ -4708,9 +4708,45 @@ k8s_resource('foo', objects=['bar', 'baz:namespace:default:core'])
 	// f.assertNoMoreManifests()
 }
 
-// TODO(dmiller): add a test for trying to specify the namespace of a cluster scoped resource
+func TestK8sResourceObjectClusterScoped(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
 
-// TODO(dmiller): resource of only non-workload objects
+	f.setupFoo()
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['baz:namespace'])
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("baz", "Namespace"))
+	f.assertNoMoreManifests()
+}
+
+// TODO(dmiller): I'm not sure if this makes sense ... cluster scoped things like namespaces _can't_ have
+// namespaces, so should we allow you to specify namespaces for them?
+// For now we just leave them as "default"
+func TestK8sResourceObjectClusterScopedWithNamespace(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['baz:namespace:qux'])
+`)
+
+	f.loadErrString("No object identified by the fragment \"baz:namespace:qux\" could be found. Possible objects are: \"foo:Deployment:default\", \"baz:Namespace:default\"")
+}
 
 type fixture struct {
 	ctx context.Context

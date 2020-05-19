@@ -688,7 +688,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 }
 
 // NOTE(dmiller): This isn't _technically_ a fullname since it is missing "group" (core, apps, data, etc)
-// A true full name would look like "foo:secret:namespace:core"
+// A true full name would look like "foo:secret:mynamespace:core"
 // However because we
 // a) couldn't think of a concrete case where you would need to specify group
 // b) being able to do so would make things more complicated, like in the case where you want to specify the group of
