@@ -3,7 +3,6 @@ package tiltfile
 import (
 	"context"
 	"fmt"
-	"log"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -664,7 +663,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 					return fmt.Errorf("No object identified by the fragment %q could be found in remaining YAML. Valid remaining fragments are: %s", o, sliceutils.QuotedStringList(remainingUnresourced))
 				}
 				if len(entitiesToRemove) > 1 {
-					panic(fmt.Sprintf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource. This should NOT be possible", o, len(entitiesToRemove)))
+					panic(fmt.Sprintf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource. This should NOT be possible at this point in the code, we should have already checked that this fragment was unique", o, len(entitiesToRemove)))
 				}
 
 				s.addEntityToResourceAndRemoveFromUnresourced(entitiesToRemove[0], r)
@@ -1383,7 +1382,6 @@ func newK8sObjectSelector(apiVersion string, kind string, name string, namespace
 }
 
 func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
-	log.Printf("Group: %s, Version: %s, GroupVersion: %+v, Kind: %s\n", e.GVK().Group, e.GVK().Version, e.GVK().GroupVersion(), e.GVK().Kind)
 	gvk := e.GVK()
 	return k.apiVersion.MatchString(gvk.GroupVersion().String()) &&
 		k.kind.MatchString(gvk.Kind) &&
