@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell"
+	"github.com/rivo/tview"
 
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/rty"
@@ -141,11 +142,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 	case cGood:
 		sb.Fg(display.color).Textf(" ● ")
 	case cBad:
-		if runtime.GOOS == "windows" {
-			sb.Fg(display.color).Textf(" × ")
-		} else {
-			sb.Fg(display.color).Textf(" ✖ ")
-		}
+		sb.Fg(display.color).Textf(" %s ", xMark())
 	default:
 		sb.Fg(display.color).Textf(" ○ ")
 	}
@@ -509,7 +506,24 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 
 var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
+var spinnerCharsWindows = []string{
+	string(tview.BoxDrawingsLightDownAndRight),
+	string(tview.BoxDrawingsLightHorizontal),
+	string(tview.BoxDrawingsLightHorizontal),
+	string(tview.BoxDrawingsLightDownAndLeft),
+	string(tview.BoxDrawingsLightVertical),
+	string(tview.BoxDrawingsLightUpAndLeft),
+	string(tview.BoxDrawingsLightHorizontal),
+	string(tview.BoxDrawingsLightHorizontal),
+	string(tview.BoxDrawingsLightUpAndRight),
+	string(tview.BoxDrawingsLightVertical),
+}
+
 func (v *ResourceView) spinner() string {
+	chars := spinnerChars
+	if runtime.GOOS == "windows" {
+		chars = spinnerCharsWindows
+	}
 	decisecond := v.clock().Nanosecond() / int(time.Second/10)
-	return spinnerChars[decisecond%len(spinnerChars)] // tick spinner every 10x/second
+	return chars[decisecond%len(chars)] // tick spinner every 10x/second
 }

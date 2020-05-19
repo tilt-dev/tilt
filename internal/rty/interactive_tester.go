@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/gdamore/tcell"
@@ -116,6 +117,7 @@ var equivalentChars = [][]rune{
 	{'▼', '↓'},
 	{'▶', '→'},
 	{'✖', '×'},
+	{tview.BoxDrawingsLightDownAndRight, '⠋'},
 }
 
 func canvasesEqual(actual, expected Canvas) bool {

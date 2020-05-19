@@ -1,6 +1,7 @@
 package hud
 
 import (
+	"runtime"
 	"strings"
 	"time"
 
@@ -14,6 +15,13 @@ import (
 // around in the long term, we might want to compute this dynamically based on
 // the window size.
 const logLineCount = view.LogLineCount
+
+func xMark() string {
+	if runtime.GOOS == "windows" {
+		return "×"
+	}
+	return "✖"
+}
 
 func deployTimeText(t time.Time) rty.Component {
 	sb := rty.NewStringBuilder()
