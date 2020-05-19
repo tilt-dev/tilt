@@ -592,25 +592,6 @@ func (s *tiltfileState) assembleK8sV1() error {
 
 }
 
-func entitiesByFullName(entities []k8s.K8sEntity) (map[string]k8s.K8sEntity, error) {
-	ret := make(map[string]k8s.K8sEntity, len(entities))
-
-	for _, e := range entities {
-		fullName := entityToFullName(e)
-		existing, ok := ret[fullName]
-		if ok {
-			return nil, fmt.Errorf("entity %q has already been to entity %v", fullName, existing)
-		}
-		ret[fullName] = e
-	}
-
-	return ret, nil
-}
-
-func entityToFullName(e k8s.K8sEntity) string {
-	return fmt.Sprintf("%s:%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace(), e.GVK().Group)
-}
-
 func (s *tiltfileState) assembleK8sV2() error {
 	err := s.assembleK8sByWorkload()
 	if err != nil {
