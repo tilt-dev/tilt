@@ -2796,7 +2796,7 @@ k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
 
-	f.loadErrString("specified unknown resource 'bar'. known resources: foo", "https://docs.tilt.dev/resource_assembly_migration.html")
+	f.loadErrString("specified unknown resource \"bar\". known resources: foo", "https://docs.tilt.dev/resource_assembly_migration.html")
 }
 
 func TestK8sResourceNewName(t *testing.T) {
@@ -2826,7 +2826,7 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 k8s_resource('foo', new_name='bar')
 `)
 
-	f.loadErrString("'foo' to 'bar'", "already a resource with that name")
+	f.loadErrString("\"foo\" to \"bar\"", "already a resource with that name")
 }
 
 func TestK8sResourceRenameConflictingNames(t *testing.T) {
@@ -3764,7 +3764,7 @@ k8s_yaml('resource.yaml')
 
 	displayNames := []string{}
 	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
-	assert.Equal(t, []string{"doggos:service:default::0", "doggos:service:default::1"}, displayNames)
+	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
 }
 
 func TestSetTeamID(t *testing.T) {
@@ -4431,23 +4431,371 @@ allow_k8s_contexts("hello")
 	}
 }
 
-// TODO(dmiller): right now this only tests that `object` is a valid param
-// in the future it will test more
-func TestK8sResourceObjects(t *testing.T) {
+func TestK8sResourceObjectsAddsNonWorkload(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
 
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
-k8s_resource('foo', objects=['bar'])
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar', 'baz:namespace:default'])
 `)
 
 	f.load()
 
-	f.assertNextManifest("foo")
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceObjectsWithSameName(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
+`)
+
+	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are \"bar:Secret:default\", \"bar:Namespace:default\"")
+}
+
+func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret1.yaml", secret("bar"))
+	f.yaml("secret2.yaml", secret("qux"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret1.yaml')
+k8s_yaml('secret2.yaml')
+k8s_resource('foo', objects=['bar', 'bar:secret:default'])
+`)
+
+	f.loadErrString("No object identified by the fragment \"bar:secret:default\" could be found in remaining YAML. Valid remaining fragments are: \"qux:Secret:default\"")
+}
+
+func TestK8sResourceObjectsMultipleAmbiguous(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar', 'bar'])
+`)
+
+	f.loadErrString("bar\" is not a unique fragment. Objects that match \"bar\" are \"bar:Secret:default\", \"bar:Namespace:default\"")
+}
+
+func TestK8sResourceObjectEmptySelector(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=[''])
+`)
+
+	f.loadErrString("Error making selector from string \"\"")
+}
+
+func TestK8sResourceObjectInvalidSelector(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['baz:namespace:default:wot'])
+`)
+
+	f.loadErrString("Error making selector from string \"baz:namespace:default:wot\"")
+}
+
+func TestK8sResourceObjectIncludesSelectorThatDoesntExist(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['baz:secret:default'])
+`)
+
+	f.loadErrString("No object identified by the fragment \"baz:secret:default\" could be found. Possible objects are: \"foo:Deployment:default\", \"bar:Secret:default\", \"baz:Namespace:default\"")
+}
+
+func TestK8sResourceObjectsPartialNames(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar:secret', 'bar:namespace'])
+`)
+
+	f.load()
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("bar", "Namespace"))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourcePrefixesShouldntMatch(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', objects=['ba'])
+`)
+
+	f.loadErrString("No object identified by the fragment \"ba\" could be found. Possible objects are: \"foo:Deployment:default\", \"bar:Secret:default\"")
+}
+
+func TestK8sResourceAmbiguousSelector(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("bar"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar'])
+`)
+
+	f.loadErrString("\"bar\" is not a unique fragment. Objects that match \"bar\" are \"bar:Secret:default\", \"bar:Namespace:default\"")
+}
+
+func TestK8sResourceObjectDuplicate(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("anotherworkload.yaml", deployment("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('anotherworkload.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', objects=['bar'])
+k8s_resource('baz', objects=['bar'])
+`)
+
+	f.loadErrString("No object identified by the fragment \"bar\" could be found in remaining YAML. Valid remaining fragments are:")
+}
+
+func TestK8sResourceObjectMultipleResources(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("qux"))
+	f.yaml("anotherworkload.yaml", deployment("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_yaml('anotherworkload.yaml')
+k8s_resource('foo', objects=['bar'])
+k8s_resource('baz')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"))
+	f.assertNextManifest("baz", deployment("baz"))
+	f.assertNextManifestUnresourced("qux")
+	f.assertNoMoreManifests()
+}
+
+func TestMultipleResourcesMultipleObjects(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("qux"))
+	f.yaml("anotherworkload.yaml", deployment("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_yaml('anotherworkload.yaml')
+k8s_resource('foo', objects=['bar'])
+k8s_resource('baz', objects=['qux'])
+`)
+
+	f.load()
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"))
+	f.assertNextManifest("baz", deployment("baz"), namespace("qux"))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceAmbiguousWorkloadAmbiguousObject(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("foo"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', objects=['foo'])
+`)
+
+	f.loadErrString("\"foo\" is not a unique fragment. Objects that match \"foo\" are \"foo:Deployment:default\", \"foo:Secret:default\"")
+}
+
+func TestK8sResourceObjectsWithWorkloadToResourceFunction(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("foo"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+def wtrf(id):
+	return 'hello-' + id.name
+workload_to_resource_function(wtrf)
+k8s_resource('hello-foo', objects=['foo:secret'])
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("hello-foo", k8sObject("foo", "Secret"))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceObjectsWithGroup(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['bar', 'baz:namespace:default:core'])
+`)
+
+	// TODO(dmiller): see comment on fullNameFromK8sEntity for info on why we don't support specifying group right now
+	f.loadErrString("Error making selector from string \"baz:namespace:default:core\": Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found 4 parts in baz:namespace:default:core")
+	// f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
+	// f.assertNoMoreManifests()
+}
+
+func TestK8sResourceObjectClusterScoped(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['baz:namespace'])
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("baz", "Namespace"))
+	f.assertNoMoreManifests()
+}
+
+// TODO(dmiller): I'm not sure if this makes sense ... cluster scoped things like namespaces _can't_ have
+// namespaces, so should we allow you to specify namespaces for them?
+// For now we just leave them as "default"
+func TestK8sResourceObjectClusterScopedWithNamespace(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['baz:namespace:qux'])
+`)
+
+	f.loadErrString("No object identified by the fragment \"baz:namespace:qux\" could be found. Possible objects are: \"foo:Deployment:default\", \"baz:Namespace:default\"")
 }
 
 type fixture struct {
@@ -4596,6 +4944,14 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 				f.t.Fatal(err)
 			}
 
+			entityObjs = append(entityObjs, objs...)
+		case namespaceHelper:
+			s := testyaml.MyNamespaceYAML
+			s = strings.Replace(s, testyaml.MyNamespaceName, e.namespace, -1)
+			objs, err := k8s.ParseYAMLFromString(s)
+			if err != nil {
+				f.t.Fatal(err)
+			}
 			entityObjs = append(entityObjs, objs...)
 		default:
 			f.t.Fatalf("unexpected entity %T %v", e, e)
@@ -4827,6 +5183,18 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
+			}
+		case namespaceHelper:
+			yaml := m.K8sTarget().YAML
+			found := false
+			for _, e := range f.entities(yaml) {
+				if e.GVK().Kind == "Namespace" && e.Name() == opt.namespace {
+					found = true
+					break
+				}
+			}
+			if !found {
+				f.t.Fatalf("namespace %s not found in yaml %q", opt.namespace, yaml)
 			}
 		case serviceHelper:
 			yaml := m.K8sTarget().YAML
