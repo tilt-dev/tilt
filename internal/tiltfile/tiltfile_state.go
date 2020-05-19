@@ -1313,7 +1313,7 @@ type k8sObjectSelector struct {
 	kind             *regexp.Regexp
 	kindString       string
 
-	// TODO(dmiller): do something like this instead https://github.com/windmilleng/tilt/blob/c2b2df88de3777eed5f1bb9f54b5c555707c8b42/internal/container/selector.go#L9
+	// TODO(dmiller): do something like this instead https://github.com/tilt-dev/tilt/blob/c2b2df88de3777eed5f1bb9f54b5c555707c8b42/internal/container/selector.go#L9
 	name            *regexp.Regexp
 	nameString      string
 	namespace       *regexp.Regexp
