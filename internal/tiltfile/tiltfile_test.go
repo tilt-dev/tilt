@@ -4802,7 +4802,7 @@ k8s_resource(new_name='foo', objects=['bar', 'baz:namespace:default'])
 	f.assertNoMoreManifests()
 }
 
-func TestK8sWorkloadOnlyResourceWithAllTheOptions(t *testing.T) {
+func TestK8sNonWorkloadOnlyResourceWithAllTheOptions(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -4870,7 +4870,7 @@ k8s_resource('foo', new_name='bar')
 k8s_resource(new_name='bar', objects=['bar:secret'])
 `)
 
-	// NOTE(dmiller): because `range`ing over maps is unstable we don't which error we will encounter:
+	// NOTE(dmiller): because `range`ing over maps is unstable we don't know which error we will encounter:
 	// 1. Trying to create a non-workload resource when a resource by that name already exists
 	// 2. Trying to rename a resource to a name that already exists
 	// so we match a string that appears in both error messages
