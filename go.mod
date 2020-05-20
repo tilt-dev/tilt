@@ -106,7 +106,7 @@ require (
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	go.opencensus.io v0.22.2 // indirect
 	go.opentelemetry.io/otel v0.2.0
-	go.starlark.net v0.0.0-20191021185836-28350e608555
+	go.starlark.net v0.0.0-20200519165436-0aa95694c768
 	go.uber.org/atomic v1.5.1 // indirect
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
