@@ -4318,38 +4318,35 @@ local_resource('e', 'echo e')
 
 func TestMaxParallelUpdates(t *testing.T) {
 	for _, tc := range []struct {
-		name                  string
-		tiltfile              string
-		expectErrorContains   string
-		expectedMaxBuildSlots int
+		name                       string
+		tiltfile                   string
+		expectErrorContains        string
+		expectedMaxParallelUpdates int
 	}{
 		{
-			name:                  "default max parallel updates",
-			tiltfile:              "print('hello world')",
-			expectedMaxBuildSlots: model.DefaultMaxParallelUpdates,
+			name:                       "default value if func not called",
+			tiltfile:                   "print('hello world')",
+			expectedMaxParallelUpdates: model.DefaultMaxParallelUpdates,
 		},
 		{
-			name:                  "set max parallel updates",
-			tiltfile:              "update_settings(max_parallel_updates=42)",
-			expectedMaxBuildSlots: 42,
+			name:                       "default value if arg not specified",
+			tiltfile:                   "update_settings(k8s_upsert_timeout_secs=123)",
+			expectedMaxParallelUpdates: model.DefaultMaxParallelUpdates,
+		},
+		{
+			name:                       "set max parallel updates",
+			tiltfile:                   "update_settings(max_parallel_updates=42)",
+			expectedMaxParallelUpdates: 42,
 		},
 		{
 			name:                "NaN error",
 			tiltfile:            "update_settings(max_parallel_updates='boop')",
-			expectErrorContains: "got string, want int",
+			expectErrorContains: "got starlark.String, want int",
 		},
 		{
 			name:                "must be positive int",
 			tiltfile:            "update_settings(max_parallel_updates=-1)",
 			expectErrorContains: "must be >= 1",
-		},
-		{
-			// as more settings are configurable from this func, max_parallel_updates
-			// won't be a required arg and instead we should test that it gets
-			// set to the approprirate default; but for now, it IS required.
-			name:                "max_parallel_updates is required arg",
-			tiltfile:            "update_settings()",
-			expectErrorContains: "missing argument for max_parallel_updates",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -4365,9 +4362,72 @@ func TestMaxParallelUpdates(t *testing.T) {
 
 			f.load()
 			actualBuildSlots := f.loadResult.UpdateSettings.MaxParallelUpdates()
-			assert.Equal(t, tc.expectedMaxBuildSlots, actualBuildSlots, "expected vs. actual maxParallelUpdates")
+			assert.Equal(t, tc.expectedMaxParallelUpdates, actualBuildSlots, "expected vs. actual maxParallelUpdates")
 		})
 	}
+}
+
+func TestK8sUpsertTimeout(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		tiltfile            string
+		expectErrorContains string
+		expectedTimeout     time.Duration
+	}{
+		{
+			name:            "default value if func not called",
+			tiltfile:        "print('hello world')",
+			expectedTimeout: model.DefaultK8sUpsertTimeout,
+		},
+		{
+			name:            "default value if arg not specified",
+			tiltfile:        "update_settings(max_parallel_updates=123)",
+			expectedTimeout: model.DefaultK8sUpsertTimeout,
+		},
+		{
+			name:            "set max parallel updates",
+			tiltfile:        "update_settings(k8s_upsert_timeout_secs=42)",
+			expectedTimeout: 42 * time.Second,
+		},
+		{
+			name:                "NaN error",
+			tiltfile:            "update_settings(k8s_upsert_timeout_secs='boop')",
+			expectErrorContains: "got starlark.String, want int",
+		},
+		{
+			name:                "must be positive int",
+			tiltfile:            "update_settings(k8s_upsert_timeout_secs=-1)",
+			expectErrorContains: "minimum k8s upsert timeout is 1s",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.file("Tiltfile", tc.tiltfile)
+
+			if tc.expectErrorContains != "" {
+				f.loadErrString(tc.expectErrorContains)
+				return
+			}
+
+			f.load()
+			actualTimeout := f.loadResult.UpdateSettings.K8sUpsertTimeout()
+			assert.Equal(t, tc.expectedTimeout, actualTimeout, "expected vs. actual k8sUpsertTimeout")
+		})
+	}
+}
+
+func TestUpdateSettingsCalledTwice(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `update_settings(max_parallel_updates=123)
+update_settings(k8s_upsert_timeout_secs=456)`)
+
+	f.load()
+	assert.Equal(t, 123, f.loadResult.UpdateSettings.MaxParallelUpdates(), "expected vs. actual MaxParallelUpdates")
+	assert.Equal(t, 456*time.Second, f.loadResult.UpdateSettings.K8sUpsertTimeout(), "expected vs. actual k8sUpsertTimeout")
 }
 
 // recursion is disabled by default in Starlark. Make sure we've enabled it for Tiltfiles.

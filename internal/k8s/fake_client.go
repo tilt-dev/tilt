@@ -59,6 +59,7 @@ type FakeK8sClient struct {
 
 	UpsertError      error
 	LastUpsertResult []K8sEntity
+	UpsertTimeout    time.Duration
 
 	Runtime    container.Runtime
 	Registry   container.Registry
@@ -204,7 +205,7 @@ func (c *FakeK8sClient) ConnectedToCluster(ctx context.Context) error {
 	return nil
 }
 
-func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
+func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	if c.UpsertError != nil {
 		return nil, c.UpsertError
 	}
@@ -226,6 +227,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8s
 	}
 
 	c.LastUpsertResult = result
+	c.UpsertTimeout = timeout
 	return result, nil
 }
 

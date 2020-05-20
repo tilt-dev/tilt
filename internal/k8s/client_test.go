@@ -22,6 +22,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
+const upsertTimeout = time.Minute
+
 func TestEmptyNamespace(t *testing.T) {
 	var emptyNamespace Namespace
 	assert.True(t, emptyNamespace.Empty())
@@ -40,7 +42,7 @@ func TestUpsert(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
 	assert.Nil(t, err)
-	_, err = f.client.Upsert(f.ctx, postgres)
+	_, err = f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(f.runner.calls))
 	assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
@@ -52,7 +54,7 @@ func TestUpsertMutableAndImmutable(t *testing.T) {
 	eJob := MustParseYAMLFromString(t, testyaml.JobYAML)[0]
 	eNamespace := MustParseYAMLFromString(t, testyaml.MyNamespaceYAML)[0]
 
-	_, err := f.client.Upsert(f.ctx, []K8sEntity{eDeploy, eJob, eNamespace})
+	_, err := f.k8sUpsert(f.ctx, []K8sEntity{eDeploy, eJob, eNamespace})
 	if !assert.Nil(t, err) {
 		t.FailNow()
 	}
@@ -84,7 +86,7 @@ func TestUpsertAnnotationTooLong(t *testing.T) {
 	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
 
 	f.setStderr(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
-	_, err := f.client.Upsert(f.ctx, postgres)
+	_, err := f.k8sUpsert(f.ctx, postgres)
 	if !assert.Nil(t, err) {
 		t.FailNow()
 	}
@@ -109,7 +111,7 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	assert.Nil(t, err)
 
 	f.setStderr(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
-	_, err = f.client.Upsert(f.ctx, postgres)
+	_, err = f.k8sUpsert(f.ctx, postgres)
 	if assert.Nil(t, err) && assert.Equal(t, 3, len(f.runner.calls)) {
 		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
 		assert.Equal(t, []string{"delete", "--ignore-not-found=true", "-f", "-"}, f.runner.calls[1].argv)
@@ -128,7 +130,7 @@ func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 	errStr := `Error from server (Forbidden): error when creating "STDIN": deployments.apps "sancho" is forbidden: unable to create new content in namespace sancho-ns because it is being terminated`
 	f.setStderr(errStr)
 
-	_, err = f.client.Upsert(f.ctx, postgres)
+	_, err = f.k8sUpsert(f.ctx, postgres)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), errStr)
 	}
@@ -173,10 +175,11 @@ func TestUpsertTimeout(t *testing.T) {
 	f.ctx, cancel = context.WithDeadline(f.ctx, time.Now().Add(-time.Hour))
 	defer cancel()
 
-	_, err := f.client.Upsert(f.ctx, postgres)
+	timeout := time.Second * 123
+	_, err := f.client.Upsert(f.ctx, postgres, timeout)
 
 	require.Error(t, err)
-	require.Equal(t, "Killed kubectl. Hit timeout of 15s.", err.Error())
+	require.Equal(t, err.Error(), timeoutError(timeout).Error())
 }
 
 type call struct {
@@ -289,6 +292,10 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	}
 
 	return ret
+}
+
+func (c clientTestFixture) k8sUpsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
+	return c.client.Upsert(ctx, entities, time.Minute)
 }
 
 func (c clientTestFixture) addObject(obj runtime.Object) {

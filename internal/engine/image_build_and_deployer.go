@@ -242,7 +242,11 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		l.Infof("→ %s", displayName)
 	}
 
-	deployed, err := ibd.k8sClient.Upsert(ctx, newK8sEntities)
+	state := st.RLockState()
+	us := state.UpdateSettings
+	st.RUnlockState()
+
+	deployed, err := ibd.k8sClient.Upsert(ctx, newK8sEntities, us.K8sUpsertTimeout())
 	if err != nil {
 		return nil, err
 	}

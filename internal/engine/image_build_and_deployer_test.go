@@ -336,6 +336,26 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
 }
 
+func TestK8sUpsertTimeout(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	timeout := 123 * time.Second
+
+	state := f.st.LockMutableStateForTesting()
+	state.UpdateSettings = state.UpdateSettings.WithK8sUpsertTimeout(123 * time.Second)
+	f.st.UnlockMutableState()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, f.k8s.UpsertTimeout, timeout)
+}
+
 func TestKINDLoad(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND6)
 	defer f.TearDown()
