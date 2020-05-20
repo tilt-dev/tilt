@@ -2878,7 +2878,7 @@ k8s_yaml('foo.yaml')
 k8s_resource('', port_forwards=8000)
 `)
 
-	f.loadErrString("k8s_resource call on line 4 doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
+	f.loadErrString(" k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
 }
 
 func TestWorkloadToResourceFunction(t *testing.T) {

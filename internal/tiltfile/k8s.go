@@ -414,16 +414,15 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	position := thread.CallFrame(1).Pos
 	if needsToHaveObjects && len(objects) == 0 {
-		return nil, fmt.Errorf("k8s_resource call on line %d doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects", position.Line)
+		return nil, fmt.Errorf("k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
 	}
 
 	s.k8sResourceOptions[resourceName] = k8sResourceOptions{
 		newName:           newName,
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
-		tiltfilePosition:  position,
+		tiltfilePosition:  thread.CallFrame(1).Pos,
 		triggerMode:       triggerMode,
 		resourceDeps:      resourceDeps,
 		objects:           objects,
