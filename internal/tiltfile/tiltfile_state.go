@@ -623,6 +623,13 @@ func (s *tiltfileState) assembleK8sV2() error {
 	}
 
 	for workload, opts := range s.k8sResourceOptions {
+		if opts.nonWorkload {
+			r, err := s.makeK8sResource(opts.newName)
+			if err != nil {
+				return err
+			}
+			s.k8sByName[opts.newName] = r
+		}
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards

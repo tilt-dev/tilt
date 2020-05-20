@@ -66,8 +66,8 @@ type k8sResourceOptions struct {
 	triggerMode       triggerMode
 	tiltfilePosition  syntax.Position
 	resourceDeps      []string
-	// TODO(dmiller): this should be a different type once it has been parsed as a valid identifier
-	objects []string
+	objects           []string
+	nonWorkload       bool
 }
 
 func (r *k8sResource) addRefSelector(selector container.RefSelector) {
@@ -371,7 +371,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var objectsVal starlark.Sequence
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"workload", &workload,
+		"workload?", &workload,
 		"new_name?", &newName,
 		"port_forwards?", &portForwardsVal,
 		"extra_pod_selectors?", &extraPodSelectorsVal,
@@ -382,13 +382,17 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
+	resourceName := workload
+	needsToHaveObjects := false
 	if workload == "" {
-		return nil, fmt.Errorf("%s: workload must not be empty", fn.Name())
+		resourceName = newName
+		// If a resource doesn't specify a workload then it needs to have objects to be valid
+		needsToHaveObjects = true
 	}
 
 	portForwards, err := convertPortForwards(portForwardsVal)
 	if err != nil {
-		return nil, errors.Wrapf(err, "%s %q", fn.Name(), workload)
+		return nil, errors.Wrapf(err, "%s %q", fn.Name(), resourceName)
 	}
 
 	extraPodSelectors, err := podLabelsFromStarlarkValue(extraPodSelectorsVal)
@@ -396,8 +400,8 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	if opts, ok := s.k8sResourceOptions[workload]; ok {
-		return nil, fmt.Errorf("%s already called for %s, at %s", fn.Name(), workload, opts.tiltfilePosition.String())
+	if opts, ok := s.k8sResourceOptions[resourceName]; ok {
+		return nil, fmt.Errorf("%s already called for %s, at %s", fn.Name(), resourceName, opts.tiltfilePosition.String())
 	}
 
 	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
@@ -405,20 +409,25 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	// TODO(dmiller): this should be parsed as a valid identifier, and stored its own type
 	objects, err := value.SequenceToStringSlice(objectsVal)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	s.k8sResourceOptions[workload] = k8sResourceOptions{
+	position := thread.CallFrame(1).Pos
+	if needsToHaveObjects && len(objects) == 0 {
+		return nil, fmt.Errorf("k8s_resource call on line %d doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects", position.Line)
+	}
+
+	s.k8sResourceOptions[resourceName] = k8sResourceOptions{
 		newName:           newName,
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
-		tiltfilePosition:  thread.CallFrame(1).Pos,
+		tiltfilePosition:  position,
 		triggerMode:       triggerMode,
 		resourceDeps:      resourceDeps,
 		objects:           objects,
+		nonWorkload:       needsToHaveObjects,
 	}
 
 	return starlark.None, nil

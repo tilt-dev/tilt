@@ -2866,7 +2866,7 @@ k8s_resource('foo', port_forwards=8000)
 	f.loadErrString("k8s_resource already called for foo")
 }
 
-func TestK8sResourceEmptyWorkloadSpecifier(t *testing.T) {
+func TestK8sResourceEmptyWorkloadSpecifierAndNoObjects(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2878,7 +2878,7 @@ k8s_yaml('foo.yaml')
 k8s_resource('', port_forwards=8000)
 `)
 
-	f.loadErrString("workload must not be empty")
+	f.loadErrString("k8s_resource call on line 4 doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
 }
 
 func TestWorkloadToResourceFunction(t *testing.T) {
@@ -4796,6 +4796,48 @@ k8s_resource('foo', objects=['baz:namespace:qux'])
 `)
 
 	f.loadErrString("No object identified by the fragment \"baz:namespace:qux\" could be found. Possible objects are: \"foo:Deployment:default\", \"baz:Namespace:default\"")
+}
+
+func TestK8sResouceObjectsNonWorkloadOnly(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource(new_name='foo', objects=['bar', 'baz:namespace:default'])
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo", k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sWorkloadOnlyResourceWithAllTheOptions(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource(new_name='bar', objects=['bar', 'baz:namespace:default'], port_forwards=9876, extra_pod_selectors=[{'quux': 'corge'}], trigger_mode=TRIGGER_MODE_MANUAL, resource_deps=['foo'])
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo")
+	f.assertNextManifest("bar", k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
+	f.assertNoMoreManifests()
 }
 
 type fixture struct {
