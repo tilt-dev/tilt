@@ -2866,21 +2866,6 @@ k8s_resource('foo', port_forwards=8000)
 	f.loadErrString("k8s_resource already called for foo")
 }
 
-func TestK8sResourceEmptyWorkloadSpecifierAndNoObjects(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
-k8s_yaml('foo.yaml')
-k8s_resource('', port_forwards=8000)
-`)
-
-	f.loadErrString(" k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
-}
-
 func TestWorkloadToResourceFunction(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -4838,6 +4823,21 @@ k8s_resource(new_name='bar', objects=['bar', 'baz:namespace:default'], port_forw
 	f.assertNextManifest("foo")
 	f.assertNextManifest("bar", k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
 	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceEmptyWorkloadSpecifierAndNoObjects(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_resource_assembly_version(2)
+k8s_yaml('foo.yaml')
+k8s_resource('', port_forwards=8000)
+`)
+
+	f.loadErrString(" k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
 }
 
 func TestK8sResouceNonWorkloadRequiresNewName(t *testing.T) {
