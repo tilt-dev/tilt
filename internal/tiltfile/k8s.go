@@ -418,6 +418,10 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, fmt.Errorf("k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
 	}
 
+	if needsToHaveObjects && len(objects) > 0 && newName == "" {
+		return nil, fmt.Errorf("k8s_resource has only non-workload objects but doesn't provide a new_name")
+	}
+
 	s.k8sResourceOptions[resourceName] = k8sResourceOptions{
 		newName:           newName,
 		portForwards:      portForwards,

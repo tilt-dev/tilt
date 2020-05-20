@@ -2826,7 +2826,7 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 k8s_resource('foo', new_name='bar')
 `)
 
-	f.loadErrString("\"foo\" to \"bar\"", "already a resource with that name")
+	f.loadErrString("\"foo\" to \"bar\"", "already exists a resource with that name")
 }
 
 func TestK8sResourceRenameConflictingNames(t *testing.T) {
@@ -4838,6 +4838,43 @@ k8s_resource(new_name='bar', objects=['bar', 'baz:namespace:default'], port_forw
 	f.assertNextManifest("foo")
 	f.assertNextManifest("bar", k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
 	f.assertNoMoreManifests()
+}
+
+func TestK8sResouceNonWorkloadRequiresNewName(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("secret.yaml", secret("bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource(objects=['bar', 'baz:namespace:default'])
+`)
+
+	f.loadErrString("k8s_resource has only non-workload objects but doesn't provide a new_name")
+}
+
+func TestK8sResourceNewNameCantOverwriteWorkload(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("bar"))
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_resource('foo', new_name='bar')
+k8s_resource(new_name='bar', objects=['bar:secret'])
+`)
+
+	// NOTE(dmiller): because `range`ing over maps is unstable we don't which error we will encounter:
+	// 1. Trying to create a non-workload resource when a resource by that name already exists
+	// 2. Trying to rename a resource to a name that already exists
+	// so we match a string that appears in both error messages
+	f.loadErrString("already exists")
 }
 
 type fixture struct {
