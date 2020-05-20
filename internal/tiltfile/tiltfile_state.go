@@ -623,6 +623,13 @@ func (s *tiltfileState) assembleK8sV2() error {
 	}
 
 	for workload, opts := range s.k8sResourceOptions {
+		if opts.nonWorkload {
+			r, err := s.makeK8sResource(opts.newName)
+			if err != nil {
+				return err
+			}
+			s.k8sByName[opts.newName] = r
+		}
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards
@@ -630,7 +637,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			r.resourceDeps = opts.resourceDeps
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
-					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q, but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
+					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q, but there already exists a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
 				}
 				delete(s.k8sByName, r.name)
 				r.name = opts.newName
