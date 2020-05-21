@@ -17,6 +17,7 @@ limitations under the License.
 package portforward
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"os"
@@ -27,6 +28,8 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/httpstream"
+
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type fakeDialer struct {
@@ -209,15 +212,15 @@ func TestParsePortsAndNew(t *testing.T) {
 			t.Fatalf("%d: parseAddresses: error expected=%t, got %t: %s", i, e, a, err)
 		}
 
+		ctx := newCtx()
 		dialer := &fakeDialer{}
-		expectedStopChan := make(chan struct{})
 		readyChan := make(chan struct{})
 
 		var pf *PortForwarder
 		if len(test.addresses) > 0 {
-			pf, err = NewOnAddresses(dialer, test.addresses, test.input, expectedStopChan, readyChan, os.Stdout, os.Stderr)
+			pf, err = NewOnAddresses(ctx, dialer, test.addresses, test.input, readyChan)
 		} else {
-			pf, err = New(dialer, test.input, expectedStopChan, readyChan, os.Stdout, os.Stderr)
+			pf, err = New(ctx, dialer, test.input, readyChan)
 		}
 		haveError = err != nil
 		if e, a := test.expectNewError, haveError; e != a {
@@ -258,9 +261,6 @@ func TestParsePortsAndNew(t *testing.T) {
 			t.Fatalf("%d: GetPorts: unable to retrieve ports: %s", i, portErr)
 		} else if !reflect.DeepEqual(test.expectedPorts, ports) {
 			t.Fatalf("%d: ports: expected %#v, got %#v", i, test.expectedPorts, ports)
-		}
-		if e, a := expectedStopChan, pf.stopChan; e != a {
-			t.Fatalf("%d: stopChan: expected %#v, got %#v", i, e, a)
 		}
 		if pf.Ready == nil {
 			t.Fatalf("%d: Ready should be non-nil", i)
@@ -349,12 +349,12 @@ func TestGetPortsReturnsDynamicallyAssignedLocalPort(t *testing.T) {
 		conn: newFakeConnection(),
 	}
 
-	stopChan := make(chan struct{})
+	ctx, cancel := context.WithCancel(newCtx())
 	readyChan := make(chan struct{})
 	errChan := make(chan error)
 
 	defer func() {
-		close(stopChan)
+		cancel()
 
 		forwardErr := <-errChan
 		if forwardErr != nil {
@@ -362,7 +362,7 @@ func TestGetPortsReturnsDynamicallyAssignedLocalPort(t *testing.T) {
 		}
 	}()
 
-	pf, err := New(dialer, []string{":5000"}, stopChan, readyChan, os.Stdout, os.Stderr)
+	pf, err := New(ctx, dialer, []string{":5000"}, readyChan)
 
 	if err != nil {
 		t.Fatalf("error while calling New: %s", err)
@@ -388,4 +388,9 @@ func TestGetPortsReturnsDynamicallyAssignedLocalPort(t *testing.T) {
 	if port.Local == 0 {
 		t.Fatalf("local port is 0, expected != 0")
 	}
+}
+
+func newCtx() context.Context {
+	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
+	return logger.WithLogger(context.Background(), l)
 }
