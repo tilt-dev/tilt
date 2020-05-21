@@ -1,4 +1,4 @@
-package engine
+package portforward
 
 import (
 	"context"
@@ -251,7 +251,7 @@ type plcFixture struct {
 	cancel func()
 	kCli   *k8s.FakeK8sClient
 	st     *store.TestingStore
-	plc    *PortForwardController
+	plc    *Controller
 	out    *bufsync.ThreadSafeBuffer
 }
 
@@ -259,7 +259,7 @@ func newPLCFixture(t *testing.T) *plcFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient()
-	plc := NewPortForwardController(kCli)
+	plc := NewController(kCli)
 
 	out := bufsync.NewThreadSafeBuffer()
 	l := logger.NewLogger(logger.DebugLvl, out)

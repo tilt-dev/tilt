@@ -31,6 +31,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -72,7 +73,7 @@ var BaseWireSet = wire.NewSet(
 	clockwork.NewRealClock,
 	engine.DeployerWireSet,
 	runtimelog.NewPodLogManager,
-	engine.NewPortForwardController,
+	portforward.NewController,
 	engine.NewBuildController,
 	local.ProvideExecer,
 	local.NewController,

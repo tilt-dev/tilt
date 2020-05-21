@@ -1,4 +1,4 @@
-package engine
+package portforward
 
 import (
 	"context"
@@ -16,14 +16,14 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type PortForwardController struct {
+type Controller struct {
 	kClient k8s.Client
 
 	activeForwards map[k8s.PodID]portForwardEntry
 }
 
-func NewPortForwardController(kClient k8s.Client) *PortForwardController {
-	return &PortForwardController{
+func NewController(kClient k8s.Client) *Controller {
+	return &Controller{
 		kClient:        kClient,
 		activeForwards: make(map[k8s.PodID]portForwardEntry),
 	}
@@ -31,7 +31,7 @@ func NewPortForwardController(kClient k8s.Client) *PortForwardController {
 
 // Figure out the diff between what's in the data store and
 // what port-forwarding is currently active.
-func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
+func (m *Controller) diff(ctx context.Context, st store.RStore) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -96,7 +96,7 @@ func (m *PortForwardController) diff(ctx context.Context, st store.RStore) (toSt
 	return toStart, toShutdown
 }
 
-func (m *PortForwardController) OnChange(ctx context.Context, st store.RStore) {
+func (m *Controller) OnChange(ctx context.Context, st store.RStore) {
 	toStart, toShutdown := m.diff(ctx, st)
 	for _, entry := range toShutdown {
 		entry.cancel()
@@ -118,7 +118,7 @@ func (m *PortForwardController) OnChange(ctx context.Context, st store.RStore) {
 	}
 }
 
-func (m *PortForwardController) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward model.PortForward) {
+func (m *Controller) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward model.PortForward) {
 	originalBackoff := wait.Backoff{
 		Steps:    1000,
 		Duration: 50 * time.Millisecond,
@@ -152,7 +152,7 @@ func (m *PortForwardController) startPortForwardLoop(ctx context.Context, entry 
 	}
 }
 
-func (m *PortForwardController) onePortForward(ctx context.Context, entry portForwardEntry, forward model.PortForward) error {
+func (m *Controller) onePortForward(ctx context.Context, entry portForwardEntry, forward model.PortForward) error {
 	ns := entry.namespace
 	podID := entry.podID
 
@@ -168,7 +168,7 @@ func (m *PortForwardController) onePortForward(ctx context.Context, entry portFo
 	return nil
 }
 
-var _ store.Subscriber = &PortForwardController{}
+var _ store.Subscriber = &Controller{}
 
 type portForwardEntry struct {
 	name      model.ManifestName
@@ -205,7 +205,7 @@ func populatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
 	return forwards
 }
 
-func portForwardsAreValid(m model.Manifest, pod store.Pod) bool {
+func PortForwardsAreValid(m model.Manifest, pod store.Pod) bool {
 	expectedFwds := m.K8sTarget().PortForwards
 	actualFwds := populatePortForwards(m, pod)
 	return len(actualFwds) == len(expectedFwds)
