@@ -2870,6 +2870,8 @@ func TestK8sResourceEmptyWorkloadSpecifier(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
+	t.Fatal("this test is failing to test gotestsum!")
+
 	f.setupFoo()
 
 	f.file("Tiltfile", `
