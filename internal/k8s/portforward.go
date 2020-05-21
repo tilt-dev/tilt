@@ -10,9 +10,9 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // registers gcp auth provider
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 
+	"github.com/tilt-dev/tilt/internal/k8s/portforward"
 	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/pkg/errors"
