@@ -13,11 +13,13 @@ import (
 	"github.com/tilt-dev/tilt/pkg/webview"
 )
 
-// All parts of Tilt should display logs incrementally,
-// so there's no longer a CPU usage reason why logs can't grow unbounded.
+// All parts of Tilt should display logs incrementally.
 //
-// We currently cap logs just to prevent heap usage from blowing up unbounded.
-const defaultMaxLogLengthInBytes = 20 * 1000 * 1000
+// But the initial page load loads all the existing logs.
+// https://github.com/tilt-dev/tilt/issues/3359
+//
+// Until that issue is fixed, we cap the logs at about 1MB.
+const defaultMaxLogLengthInBytes = 1000 * 1000
 
 const newlineByte = byte('\n')
 
