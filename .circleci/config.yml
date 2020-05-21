@@ -81,6 +81,8 @@ jobs:
       # Check to make sure Windows binaries compile
       - run: go install -mod vendor ./cmd/tilt
       - run: make shorttestsum
+      - store_test_results:
+          path: test-results
 
   build-integration:
     docker:
