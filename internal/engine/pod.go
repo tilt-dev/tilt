@@ -10,6 +10,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -80,7 +81,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		ms.RuntimeState = runtime
 	}
 
-	fwdsValid := portForwardsAreValid(manifest, *podInfo)
+	fwdsValid := portforward.PortForwardsAreValid(manifest, *podInfo)
 	if !fwdsValid {
 		logger.Get(ctx).Warnf(
 			"Resource %s is using port forwards, but no container ports on pod %s",

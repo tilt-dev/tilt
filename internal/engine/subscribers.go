@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -24,7 +25,7 @@ func ProvideSubscribers(
 	pw *k8swatch.PodWatcher,
 	sw *k8swatch.ServiceWatcher,
 	plm *runtimelog.PodLogManager,
-	pfc *PortForwardController,
+	pfc *portforward.Controller,
 	fwm *fswatch.WatchManager,
 	bc *BuildController,
 	cc *configs.ConfigsController,
