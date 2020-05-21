@@ -2870,7 +2870,9 @@ func TestK8sResourceEmptyWorkloadSpecifier(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	t.Fatal("this test is failing to test gotestsum!")
+	if runtime.GOOS == "windows" {
+		t.Fatal("this test is failing to test gotestsum!")
+	}
 
 	f.setupFoo()
 
