@@ -1,9 +1,9 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 
+	flag "github.com/spf13/pflag"
 	"go.starlark.net/starlark"
 )
 
@@ -21,6 +21,10 @@ func (s *stringSetting) starlark() starlark.Value {
 
 func (s *stringSetting) IsSet() bool {
 	return s.isSet
+}
+
+func (s *stringSetting) Type() string {
+	return "string"
 }
 
 func (s *stringSetting) setFromInterface(i interface{}) error {
