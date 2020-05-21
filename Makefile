@@ -77,7 +77,12 @@ shorttest:
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
 
 shorttestsum:
+ifneq ($(CIRCLECI),true)
 	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
+else
+	mkdir -p test-results
+	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s
+endif
 
 integration:
 ifneq ($(CIRCLECI),true)

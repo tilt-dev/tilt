@@ -76,10 +76,13 @@ jobs:
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose
       - run: choco update golang
+      - run: go get -u gotest.tools/gotestsum
       - checkout
       # Check to make sure Windows binaries compile
       - run: go install -mod vendor ./cmd/tilt
-      - run: make shorttest
+      - run: make shorttestsum
+      - store_test_results:
+          path: test-results
 
   build-integration:
     docker:
