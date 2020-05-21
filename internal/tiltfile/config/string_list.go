@@ -1,10 +1,10 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	"strings"
 
+	flag "github.com/spf13/pflag"
 	"go.starlark.net/starlark"
 
 	"github.com/windmilleng/tilt/internal/tiltfile/value"
@@ -24,6 +24,10 @@ func (s *stringList) starlark() starlark.Value {
 
 func (s *stringList) IsSet() bool {
 	return s.isSet
+}
+
+func (s *stringList) Type() string {
+	return "list[string]"
 }
 
 func (s *stringList) setFromInterface(i interface{}) error {
