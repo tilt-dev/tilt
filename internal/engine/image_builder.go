@@ -8,7 +8,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/ignore"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -26,7 +25,7 @@ func NewImageBuilder(db build.DockerBuilder, custb build.CustomBuilder, updateMo
 	}
 }
 
-func (icb *imageBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState,
+func (icb *imageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
 	ps *build.PipelineState) (refs container.TaggedRefs, err error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
 

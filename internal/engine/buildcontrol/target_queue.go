@@ -14,7 +14,6 @@ import (
 // Allows the caller to inject its own build strategy for dirty targets.
 type BuildHandler func(
 	target model.TargetSpec,
-	state store.BuildState,
 	depResults []store.BuildResult) (store.BuildResult, error)
 
 type ImageExistsChecker func(ctx context.Context, namedTagged reference.NamedTagged) (bool, error)
@@ -24,7 +23,7 @@ type TargetQueue struct {
 	sortedTargets []model.TargetSpec
 
 	// The state from the previous build.
-	// Contains files-changed so we can do incremental builds.
+	// Contains files-changed so that we can recycle old builds.
 	state store.BuildStateSet
 
 	// The results of this build.
@@ -95,10 +94,14 @@ func (q *TargetQueue) Results() store.BuildResultSet {
 	return q.results
 }
 
+func (q *TargetQueue) IsDirty(id model.TargetID) bool {
+	return q.needsOwnBuild[id] || q.depsNeedBuild[id]
+}
+
 func (q *TargetQueue) CountDirty() int {
 	result := 0
 	for _, target := range q.sortedTargets {
-		if q.needsOwnBuild[target.ID()] || q.depsNeedBuild[target.ID()] {
+		if q.IsDirty(target.ID()) {
 			result++
 		}
 	}
@@ -108,16 +111,8 @@ func (q *TargetQueue) CountDirty() int {
 func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 	for _, target := range q.sortedTargets {
 		id := target.ID()
-		if q.depsNeedBuild[id] {
-			// If the dependencies are dirty, we can't use any state from the previous build.
-			result, err := handler(target, store.BuildState{}, q.dependencyResults(target))
-			if err != nil {
-				return err
-			}
-			q.results[id] = result
-		} else if q.needsOwnBuild[id] {
-			// If only files are dirty, we can try to do an incremental build.
-			result, err := handler(target, q.state[id], q.dependencyResults(target))
+		if q.IsDirty(id) {
+			result, err := handler(target, q.dependencyResults(target))
 			if err != nil {
 				return err
 			}

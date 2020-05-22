@@ -132,7 +132,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	var anyLiveUpdate bool
 
 	iTargetMap := model.ImageTargetsByID(iTargets)
-	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
+	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
 			return nil, fmt.Errorf("Not an image target: %T", target)
@@ -143,7 +143,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return nil, err
 		}
 
-		refs, err := ibd.ib.Build(ctx, iTarget, state, ps)
+		refs, err := ibd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
 			return nil, err
 		}

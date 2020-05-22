@@ -80,7 +80,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	defer func() { ps.End(ctx, err) }()
 
 	iTargetMap := model.ImageTargetsByID(iTargets)
-	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
+	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
 			return nil, fmt.Errorf("Not an image target: %T", target)
@@ -96,7 +96,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one
 		// service at once, we'll have to match up image build results to DC target by ref.
-		refs, err := bd.ib.Build(ctx, iTarget, currentState[iTarget.ID()], ps)
+		refs, err := bd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
 			return nil, err
 		}
