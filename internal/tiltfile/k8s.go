@@ -52,6 +52,8 @@ type k8sResource struct {
 	triggerMode triggerMode
 
 	resourceDeps []string
+
+	nonWorkload bool
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +

@@ -11,7 +11,7 @@ import (
 
 func TestNewTargetSortsK8sEntities(t *testing.T) {
 	entities := MustParseYAMLFromString(t, testyaml.OutOfOrderYaml)
-	targ, err := NewTarget("foo", entities, nil, nil, nil, nil)
+	targ, err := NewTarget("foo", entities, nil, nil, nil, nil, false)
 	require.NoError(t, err)
 
 	expectedKindOrder := []string{"PersistentVolume", "PersistentVolumeClaim", "ConfigMap", "Service", "StatefulSet", "Job", "Pod"}

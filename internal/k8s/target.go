@@ -17,7 +17,7 @@ func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
-	target, err := NewTarget(name, entities, nil, nil, nil, nil)
+	target, err := NewTarget(name, entities, nil, nil, nil, nil, false)
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
@@ -30,7 +30,8 @@ func NewTarget(
 	portForwards []model.PortForward,
 	extraPodSelectors []labels.Selector,
 	dependencyIDs []model.TargetID,
-	refInjectCounts map[string]int) (model.K8sTarget, error) {
+	refInjectCounts map[string]int,
+	nonWorkload bool) (model.K8sTarget, error) {
 	sorted := SortedEntities(entities)
 	yaml, err := SerializeSpecYAML(sorted)
 	if err != nil {
@@ -53,11 +54,12 @@ func NewTarget(
 		ExtraPodSelectors: extraPodSelectors,
 		DisplayNames:      displayNames,
 		ObjectRefs:        objectRefs,
+		NonWorkload:       nonWorkload,
 	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 
 func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil)
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, false)
 	if err != nil {
 		return model.Manifest{}, err
 	}
