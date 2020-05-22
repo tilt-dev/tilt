@@ -177,17 +177,18 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	var cmd []string
 
+	if name == "" {
+		// Use 'chart' as the release name, so that the release name is stable
+		// across Tiltfile loads.
+		// This looks like what helm does.
+		// https://github.com/helm/helm/blob/e672a42efae30d45ddd642a26557dcdbf5a9f5f0/pkg/action/install.go#L562
+		name = "chart"
+	}
+
 	if version == helmV3 {
-		if name != "" {
-			cmd = []string{"helm", "template", name, localPath}
-		} else {
-			cmd = []string{"helm", "template", localPath, "--generate-name"}
-		}
+		cmd = []string{"helm", "template", name, localPath}
 	} else {
-		cmd = []string{"helm", "template", localPath}
-		if name != "" {
-			cmd = append(cmd, "--name", name)
-		}
+		cmd = []string{"helm", "template", localPath, "--name", name}
 	}
 
 	if namespace != "" {
