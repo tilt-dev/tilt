@@ -73,7 +73,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, err
 	}
 
-	numStages := q.CountDirty()
+	numStages := q.CountBuilds()
 	haveImage := len(iTargets) > 0
 
 	ps := build.NewPipelineState(ctx, numStages, bd.clock)
@@ -109,22 +109,23 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.NewImageBuildResultSingleRef(iTarget.ID(), ref), nil
 	})
 
+	newResults := q.NewResults()
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return newResults, err
 	}
 
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 	err = bd.dcc.Up(ctx, dcTarget.ConfigPaths, dcTarget.Name, !haveImage, stdout, stderr)
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return newResults, err
 	}
 
 	// NOTE(dmiller): right now we only need this the first time. In the future
 	// it might be worth it to move this somewhere else
 	cid, err := bd.dcc.ContainerID(ctx, dcTarget.ConfigPaths, dcTarget.Name)
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return newResults, err
 	}
 
 	// grab the initial container state
@@ -138,9 +139,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		containerState = containerJSON.ContainerJSONBase.State
 	}
 
-	results := q.Results()
-	results[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid, containerState)
-	return results, nil
+	newResults[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid, containerState)
+	return newResults, nil
 }
 
 // tagWithExpected tags the given ref as whatever Docker Compose expects, i.e. as

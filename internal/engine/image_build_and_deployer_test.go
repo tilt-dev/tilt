@@ -4,13 +4,14 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -149,8 +150,6 @@ func TestImageIsClean(t *testing.T) {
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
-
-	f.docker.ImageListCount = 1
 
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.NewBuildState(result1, []string{}),
@@ -310,8 +309,6 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 	result2 := store.NewImageBuildResultSingleRef(iTargetID2, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
 
 	newFile := f.WriteFile("sancho/message.txt", "message")
-
-	f.docker.ImageListCount = 1
 
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.NewBuildState(result1, nil),
@@ -794,6 +791,77 @@ func TestDockerBuildTargetStage(t *testing.T) {
 	assert.Equal(t, "stage", f.docker.BuildOptions.Target)
 }
 
+func TestTwoManifestsWithCommonImage(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m1, m2 := NewManifestsWithCommonAncestor(f)
+	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m1), store.BuildStateSet{})
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"image:gcr.io/common", "image:gcr.io/image-1", "k8s:image-1"},
+		resultKeys(results1))
+
+	stateSet := f.resultsToNextState(results1)
+
+	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m2), stateSet)
+	require.NoError(t, err)
+	assert.Equal(t,
+		// We did not return image-common because it didn't need a rebuild.
+		[]string{"image:gcr.io/image-2", "k8s:image-2"},
+		resultKeys(results2))
+}
+
+func TestTwoManifestsWithTwoCommonAncestors(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
+	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m1), store.BuildStateSet{})
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"image:gcr.io/base", "image:gcr.io/common", "image:gcr.io/image-1", "k8s:image-1"},
+		resultKeys(results1))
+
+	stateSet := f.resultsToNextState(results1)
+
+	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m2), stateSet)
+	require.NoError(t, err)
+	assert.Equal(t,
+		// We did not return image-common because it didn't need a rebuild.
+		[]string{"image:gcr.io/image-2", "k8s:image-2"},
+		resultKeys(results2))
+}
+
+func TestTwoManifestsWithSameTwoImages(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m1, m2 := NewManifestsWithSameTwoImages(f)
+	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m1), store.BuildStateSet{})
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"image:gcr.io/common", "image:gcr.io/image-1", "k8s:dep-1"},
+		resultKeys(results1))
+
+	stateSet := f.resultsToNextState(results1)
+
+	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m2), stateSet)
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"k8s:dep-2"},
+		resultKeys(results2))
+}
+
+func resultKeys(result store.BuildResultSet) []string {
+	keys := []string{}
+	for id := range result {
+		keys = append(keys, id.String())
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 type ibdFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
@@ -807,7 +875,13 @@ type ibdFixture struct {
 func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
+
 	docker := docker.NewFakeClient()
+
+	// Setting ImageListCount makes the fake ImageExists always return true,
+	// which is the behavior we want when testing the ImageBuildAndDeployer.
+	docker.ImageListCount = 1
+
 	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
 	kClient := k8s.NewFakeK8sClient()
 	kl := &fakeKINDLoader{}
@@ -830,6 +904,14 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 func (f *ibdFixture) TearDown() {
 	f.k8s.TearDown()
 	f.TempDirFixture.TearDown()
+}
+
+func (f *ibdFixture) resultsToNextState(results store.BuildResultSet) store.BuildStateSet {
+	stateSet := store.BuildStateSet{}
+	for id, result := range results {
+		stateSet[id] = store.NewBuildState(result, nil)
+	}
+	return stateSet
 }
 
 func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelector) reference.Named {

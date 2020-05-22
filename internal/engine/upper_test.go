@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -249,8 +249,17 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		logger.Get(ctx).Infof("fake built %s. error: %v", ids, err)
 	}()
 
-	result := store.BuildResultSet{}
-	for _, iTarget := range model.ExtractImageTargets(specs) {
+	iTargets := model.ExtractImageTargets(specs)
+	fakeImageExistsCheck := func(ctx context.Context, namedTagged reference.NamedTagged) (bool, error) {
+		return true, nil
+	}
+	queue, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, state, fakeImageExistsCheck)
+	if err != nil {
+		return nil, err
+	}
+
+	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
+		iTarget := target.(model.ImageTarget)
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
 			if isImageDeployedToDC(iTarget, call.dc()) {
@@ -262,7 +271,11 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			}
 		}
 
-		result[iTarget.ID()] = b.nextBuildResult(iTarget, deployTarget)
+		return b.nextBuildResult(iTarget, deployTarget), nil
+	})
+	result := queue.NewResults()
+	if err != nil {
+		return result, err
 	}
 
 	if !call.dc().Empty() && len(b.nextLiveUpdateContainerIDs) == 0 {

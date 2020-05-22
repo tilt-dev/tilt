@@ -288,11 +288,11 @@ func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Mani
 	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM ` + refCommon.String(),
 		BuildPath:  fixture.JoinPath("image-1"),
-	})
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
 	target2 := model.MustNewImageTarget(ref2).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM ` + refCommon.String(),
 		BuildPath:  fixture.JoinPath("image-2"),
-	})
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
 
 	m1 := manifestbuilder.New(fixture, "image-1").
 		WithK8sYAML(testyaml.Deployment("image-1", ref1.String())).
@@ -301,6 +301,72 @@ func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Mani
 	m2 := manifestbuilder.New(fixture, "image-2").
 		WithK8sYAML(testyaml.Deployment("image-2", ref2.String())).
 		WithImageTargets(targetCommon, target2).
+		Build()
+	return m1, m2
+}
+
+func NewManifestsWithTwoCommonAncestors(fixture Fixture) (model.Manifest, model.Manifest) {
+	refBase := container.MustParseSelector("gcr.io/base")
+	refCommon := container.MustParseSelector("gcr.io/common")
+	ref1 := container.MustParseSelector("gcr.io/image-1")
+	ref2 := container.MustParseSelector("gcr.io/image-2")
+
+	fixture.MkdirAll("base")
+	fixture.MkdirAll("common")
+	fixture.MkdirAll("image-1")
+	fixture.MkdirAll("image-2")
+
+	targetBase := model.MustNewImageTarget(refBase).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM golang:1.10`,
+		BuildPath:  fixture.JoinPath("base"),
+	})
+	targetCommon := model.MustNewImageTarget(refCommon).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM ` + refBase.String(),
+		BuildPath:  fixture.JoinPath("common"),
+	}).WithDependencyIDs([]model.TargetID{targetBase.ID()})
+	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM ` + refCommon.String(),
+		BuildPath:  fixture.JoinPath("image-1"),
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+	target2 := model.MustNewImageTarget(ref2).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM ` + refCommon.String(),
+		BuildPath:  fixture.JoinPath("image-2"),
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+
+	m1 := manifestbuilder.New(fixture, "image-1").
+		WithK8sYAML(testyaml.Deployment("image-1", ref1.String())).
+		WithImageTargets(targetBase, targetCommon, target1).
+		Build()
+	m2 := manifestbuilder.New(fixture, "image-2").
+		WithK8sYAML(testyaml.Deployment("image-2", ref2.String())).
+		WithImageTargets(targetBase, targetCommon, target2).
+		Build()
+	return m1, m2
+}
+
+func NewManifestsWithSameTwoImages(fixture Fixture) (model.Manifest, model.Manifest) {
+	refCommon := container.MustParseSelector("gcr.io/common")
+	ref1 := container.MustParseSelector("gcr.io/image-1")
+
+	fixture.MkdirAll("common")
+	fixture.MkdirAll("image-1")
+
+	targetCommon := model.MustNewImageTarget(refCommon).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM golang:1.10`,
+		BuildPath:  fixture.JoinPath("common"),
+	})
+	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM ` + refCommon.String(),
+		BuildPath:  fixture.JoinPath("image-1"),
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+
+	m1 := manifestbuilder.New(fixture, "dep-1").
+		WithK8sYAML(testyaml.Deployment("dep-1", ref1.String())).
+		WithImageTargets(targetCommon, target1).
+		Build()
+	m2 := manifestbuilder.New(fixture, "dep-2").
+		WithK8sYAML(testyaml.Deployment("dep-2", ref1.String())).
+		WithImageTargets(targetCommon, target1).
 		Build()
 	return m1, m2
 }
