@@ -4494,7 +4494,7 @@ k8s_resource('foo', objects=['bar', 'baz:namespace:default'])
 
 	f.load()
 
-	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"), nonWorkload(false))
 	f.assertNoMoreManifests()
 }
 
@@ -4858,7 +4858,7 @@ k8s_resource(new_name='foo', objects=['bar', 'baz:namespace:default'])
 
 	f.load()
 
-	f.assertNextManifest("foo", k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"))
+	f.assertNextManifest("foo", k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"), nonWorkload(true))
 	f.assertNoMoreManifests()
 }
 
@@ -5323,6 +5323,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
+		case nonWorkloadHelper:
+			assert.Equal(f.t, opt.nonWorkload, m.K8sTarget().NonWorkload)
 		case namespaceHelper:
 			yaml := m.K8sTarget().YAML
 			found := false
@@ -5558,6 +5560,14 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 		}
 	}
 	return r
+}
+
+type nonWorkloadHelper struct {
+	nonWorkload bool
+}
+
+func nonWorkload(nonWorkload bool) nonWorkloadHelper {
+	return nonWorkloadHelper{nonWorkload: nonWorkload}
 }
 
 type serviceHelper struct {
