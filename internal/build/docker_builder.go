@@ -36,18 +36,18 @@ type dockerImageBuilder struct {
 	extraLabels dockerfile.Labels
 }
 
-type ImageBuilder interface {
+type DockerBuilder interface {
 	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) error
 	TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error)
 	ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error)
 }
 
-func DefaultImageBuilder(b *dockerImageBuilder) ImageBuilder {
+func DefaultDockerBuilder(b *dockerImageBuilder) DockerBuilder {
 	return b
 }
 
-var _ ImageBuilder = &dockerImageBuilder{}
+var _ DockerBuilder = &dockerImageBuilder{}
 
 func NewDockerImageBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *dockerImageBuilder {
 	return &dockerImageBuilder{

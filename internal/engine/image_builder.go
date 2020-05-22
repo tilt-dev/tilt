@@ -12,23 +12,21 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-// TODO(nick): Rename these builders. ImageBuilder should really be called DockerBuilder,
-// and this struct should be called ImageBuilder.
-type imageAndCacheBuilder struct {
-	ib         build.ImageBuilder
+type imageBuilder struct {
+	db         build.DockerBuilder
 	custb      build.CustomBuilder
 	updateMode buildcontrol.UpdateMode
 }
 
-func NewImageAndCacheBuilder(ib build.ImageBuilder, custb build.CustomBuilder, updateMode buildcontrol.UpdateMode) *imageAndCacheBuilder {
-	return &imageAndCacheBuilder{
-		ib:         ib,
+func NewImageBuilder(db build.DockerBuilder, custb build.CustomBuilder, updateMode buildcontrol.UpdateMode) *imageBuilder {
+	return &imageBuilder{
+		db:         db,
 		custb:      custb,
 		updateMode: updateMode,
 	}
 }
 
-func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState,
+func (icb *imageBuilder) Build(ctx context.Context, iTarget model.ImageTarget, state store.BuildState,
 	ps *build.PipelineState) (refs container.TaggedRefs, err error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
 
@@ -37,7 +35,7 @@ func (icb *imageAndCacheBuilder) Build(ctx context.Context, iTarget model.ImageT
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		refs, err = icb.ib.BuildImage(ctx, ps, iTarget.Refs, bd,
+		refs, err = icb.db.BuildImage(ctx, ps, iTarget.Refs, bd,
 			ignore.CreateBuildContextFilter(iTarget))
 
 		if err != nil {

@@ -60,8 +60,8 @@ func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
 }
 
 type ImageBuildAndDeployer struct {
-	ib               build.ImageBuilder
-	icb              *imageAndCacheBuilder
+	db               build.DockerBuilder
+	ib               *imageBuilder
 	k8sClient        k8s.Client
 	env              k8s.Env
 	runtime          container.Runtime
@@ -73,7 +73,7 @@ type ImageBuildAndDeployer struct {
 }
 
 func NewImageBuildAndDeployer(
-	b build.ImageBuilder,
+	db build.DockerBuilder,
 	customBuilder build.CustomBuilder,
 	k8sClient k8s.Client,
 	env k8s.Env,
@@ -85,8 +85,8 @@ func NewImageBuildAndDeployer(
 	syncletContainer sidecar.SyncletContainer,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		ib:               b,
-		icb:              NewImageAndCacheBuilder(b, customBuilder, updMode),
+		db:               db,
+		ib:               NewImageBuilder(db, customBuilder, updMode),
 		k8sClient:        k8sClient,
 		env:              env,
 		analytics:        analytics,
@@ -118,7 +118,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ibd.analytics.Timer("build.image", time.Since(startTime), nil)
 	}()
 
-	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.ImageExists)
+	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, stateSet, ibd.db.ImageExists)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -143,7 +143,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return nil, err
 		}
 
-		refs, err := ibd.icb.Build(ctx, iTarget, state, ps)
+		refs, err := ibd.ib.Build(ctx, iTarget, state, ps)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +191,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 		}
 	} else {
 		ps.Printf(ctx, "Pushing with Docker client")
-		err = ibd.ib.PushImage(ps.AttachLogger(ctx), ref)
+		err = ibd.db.PushImage(ps.AttachLogger(ctx), ref)
 		if err != nil {
 			return err
 		}

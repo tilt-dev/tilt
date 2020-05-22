@@ -31,7 +31,7 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	sidecar.WireSet,
 	k8s.ProvideMinikubeClient,
-	build.DefaultImageBuilder,
+	build.DefaultDockerBuilder,
 	build.NewDockerImageBuilder,
 	build.NewExecCustomBuilder,
 	wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)),
@@ -44,7 +44,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	containerupdate.NewExecUpdater,
 	NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
-	NewImageAndCacheBuilder,
+	NewImageBuilder,
 	DefaultBuildOrder,
 
 	tracer.InitOpenTelemetry,
