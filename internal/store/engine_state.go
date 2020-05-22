@@ -732,7 +732,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		runStatus = mt.State.RuntimeState.RuntimeStatus()
 	}
 
-	if mt.Manifest.IsNonWorkloadYAMLManifest() {
+	if mt.Manifest.NonWorkloadManifest() {
 		return view.YAMLResourceInfo{
 			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
 		}

@@ -18,7 +18,7 @@ func NeedsNudge(st store.EngineState) bool {
 	}
 
 	for _, targ := range manifestTargs {
-		if targ.Manifest.IsNonWorkloadYAMLManifest() {
+		if targ.Manifest.NonWorkloadManifest() {
 			continue
 		}
 
