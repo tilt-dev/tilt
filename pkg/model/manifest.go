@@ -113,10 +113,6 @@ func (m Manifest) IsK8s() bool {
 }
 
 func (m Manifest) IsNonWorkloadYAMLManifest() bool {
-	if m.Name == UnresourcedYAMLManifestName {
-		return true
-	}
-
 	k8sTarget, ok := m.deployTarget.(K8sTarget)
 	if !ok {
 		return false

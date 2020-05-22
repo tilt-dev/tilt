@@ -59,7 +59,7 @@ func NewTarget(
 }
 
 func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, false)
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, true)
 	if err != nil {
 		return model.Manifest{}, err
 	}
