@@ -215,7 +215,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) error {
 	r.RuntimeStatus = string(model.RuntimeStatusNotApplicable)
 
-	if mt.Manifest.IsUnresourcedYAMLManifest() {
+	if mt.Manifest.NonWorkloadManifest() {
 		r.YamlResourceInfo = &proto_webview.YAMLResourceInfo{
 			K8SResources: mt.Manifest.K8sTarget().DisplayNames,
 		}

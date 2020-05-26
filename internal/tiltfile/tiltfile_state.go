@@ -628,6 +628,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			if err != nil {
 				return err
 			}
+			r.nonWorkload = true
 			s.k8sByName[opts.newName] = r
 		}
 		if r, ok := s.k8sByName[workload]; ok {
@@ -1039,7 +1040,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
-			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload)
 		if err != nil {
 			return nil, err
 		}
