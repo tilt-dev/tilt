@@ -752,7 +752,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			SpanID:             pod.SpanID,
 			RunStatus:          runStatus,
-			DislayNames:        mt.Manifest.K8sTarget().DisplayNames,
+			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 	case LocalRuntimeState:
 		return view.NewLocalResourceInfo(runStatus, state.PID, state.SpanID)

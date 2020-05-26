@@ -67,7 +67,7 @@ message K8sResourceInfo {
   // The span id for this pod's logs in the main logstore
   string span_id = 9;
 
-  repeated string k8s_display_names = 10;
+  repeated string display_names = 10;
 }
 
 message DCResourceInfo {

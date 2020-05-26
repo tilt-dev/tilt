@@ -114,7 +114,7 @@ func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
 
 	r, _ := findResource(m.Name, v)
 
-	assert.Equal(t, r.K8SResourceInfo.K8SDisplayNames, displayNames)
+	assert.Equal(t, r.K8SResourceInfo.DisplayNames, displayNames)
 }
 
 func TestStateToViewTiltfileLog(t *testing.T) {

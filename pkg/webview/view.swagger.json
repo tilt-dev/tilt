@@ -216,7 +216,7 @@
           "type": "string",
           "title": "The span id for this pod's logs in the main logstore"
         },
-        "k8s_display_names": {
+        "display_names": {
           "type": "array",
           "items": {
             "type": "string"

@@ -57,7 +57,7 @@ type K8sResourceInfo struct {
 	PodRestarts        int
 	SpanID             logstore.SpanID
 	RunStatus          model.RuntimeStatus
-	DislayNames        []string
+	DisplayNames       []string
 }
 
 var _ ResourceInfoView = K8sResourceInfo{}

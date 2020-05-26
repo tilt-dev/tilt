@@ -250,7 +250,7 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
 			AllContainersReady: pod.AllContainersReady(),
 			PodRestarts:        int32(pod.VisibleContainerRestarts()),
-			K8SDisplayNames:    mt.Manifest.K8sTarget().DisplayNames,
+			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 
 		r.RuntimeStatus = string(kState.RuntimeStatus())
