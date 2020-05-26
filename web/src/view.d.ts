@@ -141,6 +141,7 @@ declare namespace Proto {
     allContainersReady?: boolean;
     podRestarts?: number;
     spanId?: string;
+    k8sDisplayNames?: string[];
   }
   export interface webviewFacet {
     name?: string;
