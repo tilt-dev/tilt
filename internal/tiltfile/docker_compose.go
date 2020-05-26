@@ -47,18 +47,26 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		configPaths = append(configPaths, path)
 	}
 
-	var services []*dcService
-	tempServices, err := parseDCConfig(s.ctx, s.dcCli, configPaths)
-	services = append(services, tempServices...)
+	dc := s.dc
+	currentTiltfilePath := starkit.CurrentExecPath(thread)
+	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
+		return starlark.None, fmt.Errorf("Cannot load docker-compose files from two different Tiltfiles.\n"+
+			"docker-compose must have a single working directory:\n"+
+			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
+	}
+
+	// To make sure all the docker-compose files are compatible together,
+	// parse them all together.
+	allConfigPaths := append([]string{}, dc.configPaths...)
+	allConfigPaths = append(allConfigPaths, configPaths...)
+
+	services, err := parseDCConfig(s.ctx, s.dcCli, allConfigPaths)
 	if err != nil {
 		return nil, err
 	}
-	if !s.dc.Empty() {
-		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%v), cannot declare another", s.dc.configPaths)
-	}
 
 	s.dc = dcResourceSet{
-		configPaths:  configPaths,
+		configPaths:  allConfigPaths,
 		services:     services,
 		tiltfilePath: starkit.CurrentExecPath(thread),
 	}
