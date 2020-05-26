@@ -1215,7 +1215,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertNextManifestUnresourced("release-name-helloworld-chart")
+	f.assertNextManifestUnresourced("chart-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		".tiltignore",
@@ -1334,7 +1334,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertNextManifestUnresourced("release-name-helloworld-chart")
+	f.assertNextManifestUnresourced("chart-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		".tiltignore",
@@ -3220,7 +3220,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	f.assertNextManifestUnresourced("release-name-helloworld-chart")
+	f.assertNextManifestUnresourced("chart-helloworld-chart")
 	f.assertConfigFiles(
 		"Tiltfile",
 		".tiltignore",
@@ -3255,7 +3255,7 @@ k8s_yaml(yml)
 `)
 
 	f.load()
-	f.assertNextManifest("release-name-nginx-ingress-controller")
+	f.assertNextManifest("chart-nginx-ingress-controller")
 }
 
 func TestK8sContext(t *testing.T) {
