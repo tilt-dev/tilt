@@ -734,7 +734,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 
 	if mt.Manifest.NonWorkloadManifest() {
 		return view.YAMLResourceInfo{
-			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
+			K8sDisplayNames: mt.Manifest.K8sTarget().DisplayNames,
 		}
 	}
 
@@ -752,6 +752,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			SpanID:             pod.SpanID,
 			RunStatus:          runStatus,
+			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 	case LocalRuntimeState:
 		return view.NewLocalResourceInfo(runStatus, state.PID, state.SpanID)

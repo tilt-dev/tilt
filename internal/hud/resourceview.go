@@ -235,7 +235,7 @@ func (v *ResourceView) resourceExpanded() rty.Component {
 func (v *ResourceView) resourceExpandedYAML() rty.Component {
 	yi := v.res.YAMLInfo()
 
-	if !v.res.IsYAML() || len(yi.K8sResources) == 0 {
+	if !v.res.IsYAML() || len(yi.K8sDisplayNames) == 0 {
 		return rty.EmptyLayout
 	}
 
@@ -243,7 +243,7 @@ func (v *ResourceView) resourceExpandedYAML() rty.Component {
 	l.Add(rty.TextString(strings.Repeat(" ", 2)))
 	rhs := rty.NewConcatLayout(rty.DirVert)
 	rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("(Kubernetes objects that don't match a group)").Build())
-	rhs.Add(rty.TextString(strings.Join(yi.K8sResources, "\n")))
+	rhs.Add(rty.TextString(strings.Join(yi.K8sDisplayNames, "\n")))
 	l.AddDynamic(rhs)
 	return l
 }

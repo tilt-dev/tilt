@@ -104,6 +104,19 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	assert.Equal(t, expectedInfo, r.YamlResourceInfo)
 }
 
+func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
+	displayNames := []string{"foo:namespace", "foo:secret"}
+	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
+	state := newState([]model.Manifest{m})
+	v := stateToProtoView(t, *state)
+
+	assert.Equal(t, 2, len(v.Resources))
+
+	r, _ := findResource(m.Name, v)
+
+	assert.Equal(t, r.K8SResourceInfo.DisplayNames, displayNames)
+}
+
 func TestStateToViewTiltfileLog(t *testing.T) {
 	es := newState([]model.Manifest{})
 	spanID := configs.SpanIDForLoadCount(1)

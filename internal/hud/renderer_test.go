@@ -228,7 +228,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`)
 		}},
 		LastDeployTime: ts,
 		ResourceInfo: view.YAMLResourceInfo{
-			K8sResources: []string{"sancho:deployment"},
+			K8sDisplayNames: []string{"sancho:deployment"},
 		},
 	})
 	rtf.run("no collapse unresourced yaml manifest", 70, 20, v, plainVs)
