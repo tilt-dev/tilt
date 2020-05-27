@@ -124,7 +124,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	}
 
 	// each image target has two stages: one for build, and one for push
-	numStages := q.CountDirty()*2 + 1
+	numStages := q.CountBuilds()*2 + 1
 
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
@@ -156,14 +156,20 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		anyLiveUpdate = anyLiveUpdate || !iTarget.LiveUpdateInfo().Empty()
 		return store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef), nil
 	})
+
+	newResults := q.NewResults()
 	if err != nil {
-		return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
+		return newResults, buildcontrol.WrapDontFallBackError(err)
 	}
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	brs, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.Results(), anyLiveUpdate)
-	return brs, buildcontrol.WrapDontFallBackError(err)
+	k8sResult, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.AllResults(), anyLiveUpdate)
+	if err != nil {
+		return newResults, buildcontrol.WrapDontFallBackError(err)
+	}
+	newResults[kTarget.ID()] = k8sResult
+	return newResults, nil
 }
 
 func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) error {
@@ -223,7 +229,7 @@ func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg m
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
 func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState,
-	iTargetMap map[model.TargetID]model.ImageTarget, kTarget model.K8sTarget, results store.BuildResultSet, needsSynclet bool) (store.BuildResultSet, error) {
+	iTargetMap map[model.TargetID]model.ImageTarget, kTarget model.K8sTarget, results store.BuildResultSet, needsSynclet bool) (store.BuildResult, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -266,9 +272,8 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		}
 		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
 	}
-	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes, deployed)
 
-	return results, nil
+	return store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes, deployed), nil
 }
 
 func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) context.Context {

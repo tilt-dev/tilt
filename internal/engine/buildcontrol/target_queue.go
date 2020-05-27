@@ -90,18 +90,37 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 	}, nil
 }
 
-func (q *TargetQueue) Results() store.BuildResultSet {
-	return q.results
+// New results that were built with the current queue. Omits results
+// that were re-used previous builds.
+//
+// Returns results that the BuildAndDeploy contract expects.
+func (q *TargetQueue) NewResults() store.BuildResultSet {
+	newResults := store.BuildResultSet{}
+	for id, result := range q.results {
+		if q.isBuilding(id) {
+			newResults[id] = result
+		}
+	}
+	return newResults
 }
 
-func (q *TargetQueue) IsDirty(id model.TargetID) bool {
+// All results for targets in the current queue.
+func (q *TargetQueue) AllResults() store.BuildResultSet {
+	allResults := store.BuildResultSet{}
+	for id, result := range q.results {
+		allResults[id] = result
+	}
+	return allResults
+}
+
+func (q *TargetQueue) isBuilding(id model.TargetID) bool {
 	return q.needsOwnBuild[id] || q.depsNeedBuild[id]
 }
 
-func (q *TargetQueue) CountDirty() int {
+func (q *TargetQueue) CountBuilds() int {
 	result := 0
 	for _, target := range q.sortedTargets {
-		if q.IsDirty(target.ID()) {
+		if q.isBuilding(target.ID()) {
 			result++
 		}
 	}
@@ -111,7 +130,7 @@ func (q *TargetQueue) CountDirty() int {
 func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 	for _, target := range q.sortedTargets {
 		id := target.ID()
-		if q.IsDirty(id) {
+		if q.isBuilding(id) {
 			result, err := handler(target, q.dependencyResults(target))
 			if err != nil {
 				return err
