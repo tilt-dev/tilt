@@ -398,8 +398,8 @@ func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-cha
 			if ok {
 				observedPods = append(observedPods, pod)
 			}
-		case <-time.After(10 * time.Millisecond):
-			// if we haven't seen any events for 10ms, assume we're done
+		case <-time.After(200 * time.Millisecond):
+			// if we haven't seen any events for 200ms, assume we're done
 			done = true
 		}
 	}
@@ -425,7 +425,7 @@ func (tf *watchTestFixture) assertServices(expectedOutput []runtime.Object, ch <
 			} else {
 				observedServices = append(observedServices, pod)
 			}
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			// if we haven't seen any events for 10ms, assume we're done
 			done = true
 		}
@@ -452,7 +452,7 @@ func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-c
 			} else {
 				observedEvents = append(observedEvents, event)
 			}
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			// if we haven't seen any events for 10ms, assume we're done
 			// ideally we'd always be exiting from ch closing, but it's not currently clear how to do that via informer
 			done = true
