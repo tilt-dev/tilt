@@ -2,7 +2,7 @@
 
 exports[`renders highlighted lines 1`] = `
 <section
-  className="sc-bdVaJa coSZVw LogPane"
+  className="sc-AxjAm eivNNO LogPane"
 >
   <div
     style={
@@ -78,7 +78,7 @@ exports[`renders highlighted lines 1`] = `
     </code>
   </span>
   <div
-    className="sc-bwzfXH bPLpVx logEnd"
+    className="sc-AxirZ iAxHJQ logEnd"
   >
     █
   </div>
@@ -87,7 +87,7 @@ exports[`renders highlighted lines 1`] = `
 
 exports[`renders logs 1`] = `
 <section
-  className="sc-bdVaJa coSZVw LogPane"
+  className="sc-AxjAm eivNNO LogPane"
 >
   <div
     style={
@@ -163,7 +163,7 @@ exports[`renders logs 1`] = `
     </code>
   </span>
   <div
-    className="sc-bwzfXH bPLpVx logEnd"
+    className="sc-AxirZ iAxHJQ logEnd"
   >
     █
   </div>
@@ -172,7 +172,7 @@ exports[`renders logs 1`] = `
 
 exports[`renders logs with leading whitespace and ANSI codes 1`] = `
 <section
-  className="sc-bdVaJa coSZVw LogPane"
+  className="sc-AxjAm eivNNO LogPane"
 >
   <div
     style={
@@ -1056,7 +1056,7 @@ exports[`renders logs with leading whitespace and ANSI codes 1`] = `
     </code>
   </span>
   <div
-    className="sc-bwzfXH bPLpVx logEnd"
+    className="sc-AxirZ iAxHJQ logEnd"
   >
     █
   </div>

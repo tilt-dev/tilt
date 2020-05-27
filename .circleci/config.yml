@@ -44,7 +44,7 @@ jobs:
 
   build-js:
     docker:
-      - image: circleci/node:12.16.0
+      - image: circleci/node:12
     steps:
       - checkout
       - run: make check-js
