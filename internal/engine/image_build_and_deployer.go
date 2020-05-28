@@ -126,8 +126,23 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	// each image target has two stages: one for build, and one for push
 	numStages := q.CountBuilds()*2 + 1
 
+	reused := q.ReusedResults()
+	hasReusedStep := len(reused) > 0
+	if hasReusedStep {
+		numStages++
+	}
+
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
+
+	if hasReusedStep {
+		ps.StartPipelineStep(ctx, "Loading cached images")
+		for _, result := range reused {
+			ref := store.LocalImageRefFromBuildResult(result)
+			logger.Get(ctx).Infof("- %s", container.FamiliarString(ref))
+		}
+		ps.EndPipelineStep(ctx)
+	}
 
 	var anyLiveUpdate bool
 

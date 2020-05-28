@@ -104,6 +104,19 @@ func (q *TargetQueue) NewResults() store.BuildResultSet {
 	return newResults
 }
 
+// Reused results that were not built with the current queue.
+//
+// Used for printing out which builds are cached from previous builds.
+func (q *TargetQueue) ReusedResults() store.BuildResultSet {
+	reusedResults := store.BuildResultSet{}
+	for id, result := range q.results {
+		if !q.isBuilding(id) {
+			reusedResults[id] = result
+		}
+	}
+	return reusedResults
+}
+
 // All results for targets in the current queue.
 func (q *TargetQueue) AllResults() store.BuildResultSet {
 	allResults := store.BuildResultSet{}
