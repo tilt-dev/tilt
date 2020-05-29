@@ -119,6 +119,10 @@ func (s *devServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.
 
 	cmd.SysProcAttr = attrs
 
+	// The webpack devserver expects an stdin that never closes.
+	pipeReader, _ := io.Pipe()
+	cmd.Stdin = pipeReader
+
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
