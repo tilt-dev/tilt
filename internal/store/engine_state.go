@@ -69,8 +69,12 @@ type EngineState struct {
 	// All logs in Tilt, stored in a structured format.
 	LogStore *logstore.LogStore `testdiff:"ignore"`
 
-	TiltfilePath             string
-	ConfigFiles              []string
+	TiltfilePath string
+
+	// TODO(nick): This should be called "ConfigPaths", not "ConfigFiles",
+	// because this could refer to directories that are watched recursively.
+	ConfigFiles []string
+
 	TiltIgnoreContents       string
 	PendingConfigFileChanges map[string]time.Time
 

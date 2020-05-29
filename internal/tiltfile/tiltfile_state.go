@@ -369,7 +369,7 @@ func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 }
 
 func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string) error {
-	return io.RecordReadFile(t, tiltIgnorePath(tiltfilePath))
+	return io.RecordReadPath(t, io.WatchFileOnly, tiltIgnorePath(tiltfilePath))
 }
 
 // wrap a builtin such that it's only allowed to run when we have a known safe k8s context

@@ -46,7 +46,7 @@ assert.equals(expected, observed)
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("options.yaml"))
+	require.Contains(t, rs.Paths, f.JoinPath("options.yaml"))
 }
 
 func TestReadYAMLDefaultValue(t *testing.T) {
@@ -97,7 +97,7 @@ func TestYAMLDoesNotExist(t *testing.T) {
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("dne.yaml"))
+	require.Contains(t, rs.Paths, f.JoinPath("dne.yaml"))
 }
 
 func TestMalformedYAML(t *testing.T) {
@@ -122,7 +122,7 @@ key5: 3
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("options.yaml"))
+	require.Contains(t, rs.Paths, f.JoinPath("options.yaml"))
 
 }
 

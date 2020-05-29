@@ -80,7 +80,11 @@ func (f *Fixture) JoinPath(elem ...string) string {
 }
 
 func (f *Fixture) File(name, contents string) {
-	fullPath := filepath.Join(f.path, name)
+	fullPath := name
+	if !filepath.IsAbs(fullPath) {
+		fullPath = filepath.Join(f.path, name)
+	}
+
 	if f.useRealFS {
 		dir := filepath.Dir(fullPath)
 		err := os.MkdirAll(dir, os.FileMode(0755))

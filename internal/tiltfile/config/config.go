@@ -117,7 +117,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 
 	userConfigPath := filepath.Join(wd, UserConfigFileName)
 
-	err = io.RecordReadFile(thread, userConfigPath)
+	err = io.RecordReadPath(thread, io.WatchFileOnly, userConfigPath)
 	if err != nil {
 		return starlark.None, err
 	}

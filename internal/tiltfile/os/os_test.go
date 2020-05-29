@@ -255,9 +255,8 @@ print(result5)
 	require.NoError(t, err)
 	assert.Equal(t, "False\nTrue\nTrue\nTrue\nFalse\n", f.PrintOutput())
 
-	readState, err := io.GetState(model)
-	require.NoError(t, err)
-	assert.Equal(t, f.JoinPath("foo", "foo", "Tiltfile"), readState.Files[2])
+	readState := io.MustState(model)
+	assert.Equal(t, f.JoinPath("foo", "foo", "Tiltfile"), readState.Paths[2])
 }
 
 func TestPermissionDenied(t *testing.T) {
@@ -275,9 +274,29 @@ print(os.path.exists('/root/x'))
 	require.NoError(t, err)
 	assert.Equal(t, "False\n", f.PrintOutput())
 
-	readState, err := io.GetState(model)
+	readState := io.MustState(model)
+	assert.Equal(t, []string{f.JoinPath("Tiltfile")}, readState.Paths)
+}
+
+func TestPathExistsDir(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Test relies on Unix /root permissions")
+	}
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File(f.JoinPath("subdir", "inner", "a.txt"), "hello")
+	f.File("Tiltfile", `
+print(os.path.exists('subdir'))
+`)
+
+	model, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
-	assert.Equal(t, []string{f.JoinPath("Tiltfile")}, readState.Files)
+	assert.Equal(t, "True\n", f.PrintOutput())
+
+	// Verify that we're not watching the subdir recursively.
+	readState := io.MustState(model)
+	assert.Equal(t, []string{f.JoinPath("Tiltfile")}, readState.Paths)
 }
 
 func TestRealpath(t *testing.T) {
