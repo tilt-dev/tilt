@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
@@ -94,7 +95,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	var dontFallBackErr error
 	for _, info := range liveUpdInfos {
-		ps.StartPipelineStep(ctx, "updating image %s", info.iTarget.Refs.ClusterRef().Name())
+		ps.StartPipelineStep(ctx, "updating image %s", reference.FamiliarName(info.iTarget.Refs.ClusterRef()))
 		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
 		if err != nil {
 			if !buildcontrol.IsDontFallBackError(err) {
