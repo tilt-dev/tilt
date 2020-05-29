@@ -2997,7 +2997,7 @@ k8s_yaml('snack.yaml')`)
 	})
 
 	f.withState(func(state store.EngineState) {
-		expectedMessage := fmt.Sprintf("1 changed: [%s]", f.JoinPath("Tiltfile"))
+		expectedMessage := fmt.Sprintf("1 File Changed: [%s]", f.JoinPath("Tiltfile"))
 		require.Contains(t, state.LogStore.String(), expectedMessage)
 	})
 }

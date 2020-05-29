@@ -42,6 +42,10 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
+	// For synchronizing ConfigsController -- wait until engine records all builds started
+	// so far before starting another build
+	StartedTiltfileLoadCount int
+
 	UpdateSettings model.UpdateSettings
 
 	FatalError error

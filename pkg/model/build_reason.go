@@ -18,6 +18,9 @@ const (
 	BuildReasonFlagTriggerWeb
 	BuildReasonFlagTriggerCLI
 	BuildReasonFlagTriggerUnknown
+
+	// An external process called `tilt args`
+	BuildReasonFlagTiltfileArgs
 )
 
 func (r BuildReason) With(flag BuildReason) BuildReason {
@@ -49,6 +52,7 @@ var translations = map[BuildReason]string{
 	BuildReasonFlagTriggerWeb:     "Web Trigger",
 	BuildReasonFlagTriggerCLI:     "CLI Trigger",
 	BuildReasonFlagTriggerUnknown: "Unknown Trigger",
+	BuildReasonFlagTiltfileArgs:   "Tilt Args",
 }
 
 var triggerBuildReasons = []BuildReason{
@@ -65,6 +69,7 @@ var allBuildReasons = []BuildReason{
 	BuildReasonFlagTriggerWeb,
 	BuildReasonFlagTriggerCLI,
 	BuildReasonFlagTriggerUnknown,
+	BuildReasonFlagTiltfileArgs,
 }
 
 func (r BuildReason) String() string {
