@@ -179,7 +179,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	s.secretSettings = ss
 
 	ioState, _ := io.GetState(result)
-	tlr.ConfigFiles = sliceutils.AppendWithoutDupes(ioState.Files, s.postExecReadFiles...)
+	tlr.ConfigFiles = sliceutils.AppendWithoutDupes(ioState.Paths, s.postExecReadFiles...)
 
 	dps, _ := dockerprune.GetState(result)
 	tlr.DockerPruneSettings = dps

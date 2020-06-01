@@ -442,7 +442,7 @@ cfg = config.parse()`)
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath(UserConfigFileName))
+	require.Contains(t, rs.Paths, f.JoinPath(UserConfigFileName))
 }
 
 func NewFixture(tb testing.TB, userConfigState model.UserConfigState) *starkit.Fixture {

@@ -55,7 +55,7 @@ test()
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("options.json"))
+	require.Contains(t, rs.Paths, f.JoinPath("options.json"))
 }
 
 func TestJSONDoesNotExist(t *testing.T) {
@@ -70,7 +70,7 @@ func TestJSONDoesNotExist(t *testing.T) {
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("dne.json"))
+	require.Contains(t, rs.Paths, f.JoinPath("dne.json"))
 }
 
 func TestMalformedJSON(t *testing.T) {
@@ -88,7 +88,7 @@ func TestMalformedJSON(t *testing.T) {
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("options.json"))
+	require.Contains(t, rs.Paths, f.JoinPath("options.json"))
 }
 
 func TestDecodeJSON(t *testing.T) {

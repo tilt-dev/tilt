@@ -1840,7 +1840,7 @@ func TestDir(t *testing.T) {
 
 	f.load("foo", "bar")
 	f.assertNumManifests(2)
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "config/foo.yaml", "config/bar.yaml", "config")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "config/foo.yaml", "config/bar.yaml")
 }
 
 func TestDirRecursive(t *testing.T) {

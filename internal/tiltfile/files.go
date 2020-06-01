@@ -108,7 +108,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("internal error: %v", err)
 	}
 	for _, d := range deps {
-		err := tiltfile_io.RecordReadFile(thread, d)
+		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, d)
 		if err != nil {
 			return nil, err
 		}
@@ -164,7 +164,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 	for _, d := range deps {
-		err = tiltfile_io.RecordReadFile(thread, starkit.AbsPath(thread, d))
+		err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, starkit.AbsPath(thread, d))
 		if err != nil {
 			return nil, err
 		}
@@ -196,7 +196,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 	for _, valueFile := range valueFiles {
 		cmd = append(cmd, "--values", valueFile)
-		err := tiltfile_io.RecordReadFile(thread, starkit.AbsPath(thread, valueFile))
+		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchFileOnly, starkit.AbsPath(thread, valueFile))
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +212,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	err = tiltfile_io.RecordReadFile(thread, localPath)
+	err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, localPath)
 	if err != nil {
 		return nil, err
 	}

@@ -198,7 +198,7 @@ func exists(t *starlark.Thread, path string) (starlark.Value, error) {
 
 	_, err := os.Stat(absPath)
 	if os.IsNotExist(err) {
-		err := io.RecordReadFile(t, absPath)
+		err := io.RecordReadPath(t, io.WatchFileOnly, absPath)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +210,7 @@ func exists(t *starlark.Thread, path string) (starlark.Value, error) {
 		return starlark.Bool(false), nil
 	}
 
-	err = io.RecordReadFile(t, absPath)
+	err = io.RecordReadPath(t, io.WatchFileOnly, absPath)
 	if err != nil {
 		return nil, err
 	}
