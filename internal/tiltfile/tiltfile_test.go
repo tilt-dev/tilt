@@ -141,7 +141,7 @@ func TestLocalImageRef(t *testing.T) {
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('fooimage', 'foo')
 k8s_yaml('foo.yaml')
 `)
@@ -370,7 +370,7 @@ func TestKustomize(t *testing.T) {
 	f.file("deployment.yaml", kustomizeDeploymentText)
 	f.file("service.yaml", kustomizeServiceText)
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build("gcr.io/foo", "foo")
 k8s_yaml(kustomize("."))
 k8s_resource("the-deployment", "foo")
@@ -398,7 +398,7 @@ func TestKustomization(t *testing.T) {
 	f.file("deployment.yaml", kustomizeDeploymentText)
 	f.file("service.yaml", kustomizeServiceText)
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build("gcr.io/foo", "foo")
 k8s_yaml(kustomize("."))
 k8s_resource("the-deployment", "foo")
@@ -524,7 +524,7 @@ func TestDuplicateResourceNames(t *testing.T) {
 
 	f.setupExpand()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('all.yaml')
 k8s_resource('a')
 k8s_resource('a')
@@ -801,7 +801,7 @@ func TestK8sGroupedWhenAddedToResource(t *testing.T) {
 	)
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('all.yaml')
 docker_build('gcr.io/a', 'a')
 docker_build('gcr.io/b', 'b')
@@ -831,7 +831,7 @@ func TestImplicitK8sResourceWithoutDockerBuild(t *testing.T) {
 	defer f.TearDown()
 	f.setupFoo()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('foo', port_forwards=8000)
 `)
@@ -851,7 +851,7 @@ func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
 		deployment("d", image("gcr.io/d")),
 	)
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('all.yaml')
 docker_build('gcr.io/a', 'a')
 docker_build('gcr.io/b', 'b')
@@ -1568,7 +1568,7 @@ func TestImageDependency(t *testing.T) {
 	f.file("imageB.dockerfile", "FROM gcr.io/image-a")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
 docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
 k8s_yaml('foo.yaml')
@@ -1589,7 +1589,7 @@ func TestImageDependencyLiveUpdate(t *testing.T) {
 ADD message.txt /tmp/message.txt`)
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-b")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile',
              live_update=[sync('message.txt', '/tmp/message.txt')])
 docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
@@ -1635,7 +1635,7 @@ FROM gcr.io/image-c
 `)
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-d")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
 docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
 docker_build('gcr.io/image-c', '.', dockerfile='imageC.dockerfile')
@@ -1689,7 +1689,7 @@ spec:
         command: ["/go/bin/snack"]
 `)
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/image-a', '.', dockerfile='imageA.dockerfile')
 docker_build('gcr.io/image-b', '.', dockerfile='imageB.dockerfile')
 k8s_yaml('snack.yaml')
@@ -1772,7 +1772,7 @@ func TestImagesWithSameNameAssembly(t *testing.T) {
 		deployment("app", image("vandelay/app")),
 		deployment("app-jessie", image("vandelay/app:jessie")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('vandelay/app', '.', dockerfile='app.dockerfile')
 docker_build('vandelay/app:jessie', '.', dockerfile='app-jessie.dockerfile')
 k8s_yaml('app.yaml')
@@ -2100,7 +2100,7 @@ func TestExtraImageLocationOneImage(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('crd.yaml')
 k8s_image_json_path(kind='Environment', paths='{.spec.runtime.image}')
 docker_build('test/mycrd-env', 'env')
@@ -2125,7 +2125,7 @@ func TestConflictingWorkloadNames(t *testing.T) {
 	f.yaml("foo2.yaml", deployment("foo", image("gcr.io/foo2"), namespace("ns2")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml(['foo1.yaml', 'foo2.yaml'])
 docker_build('gcr.io/foo1', 'foo1')
 docker_build('gcr.io/foo2', 'foo2')
@@ -2169,7 +2169,7 @@ func TestK8sKind(t *testing.T) {
 				img = "docker_build('test/mycrd-env', 'env')"
 			}
 			f.file("Tiltfile", fmt.Sprintf(`
-k8s_resource_assembly_version(2)
+
 %s
 k8s_yaml('crd.yaml')
 k8s_kind(%s)
@@ -2233,7 +2233,7 @@ func TestExtraImageLocationTwoImages(t *testing.T) {
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('crd.yaml')
 k8s_image_json_path(['{.spec.runtime.image}', '{.spec.builder.image}'], kind='Environment')
 docker_build('test/mycrd-builder', 'builder')
@@ -2613,7 +2613,7 @@ func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
 
 	f.gitInit("")
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo:bar', 'bar')
 docker_build('gcr.io/foo:baz', 'baz')
 k8s_yaml('bar.yaml')
@@ -2768,7 +2768,7 @@ func TestAssemblyVersion2TwoWorkloadsSameImage(t *testing.T) {
 	f.yaml("bar.yaml", deployment("bar", image("gcr.io/foo")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml(['foo.yaml', 'bar.yaml'])
 `)
@@ -2791,7 +2791,7 @@ func TestK8sResourceNoMatch(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
@@ -2805,7 +2805,7 @@ func TestK8sResourceNewName(t *testing.T) {
 
 	f.setupFoo()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('foo', new_name='bar')
 `)
@@ -2821,7 +2821,7 @@ func TestK8sResourceNewNameConflict(t *testing.T) {
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml(['foo.yaml', 'bar.yaml'])
 k8s_resource('foo', new_name='bar')
 `)
@@ -2839,7 +2839,7 @@ func TestK8sResourceRenameConflictingNames(t *testing.T) {
 	f.yaml("foo2.yaml", deployment("foo", image("gcr.io/foo2"), namespace("ns2")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml(['foo1.yaml', 'foo2.yaml'])
 docker_build('gcr.io/foo1', 'foo1')
 docker_build('gcr.io/foo2', 'foo2')
@@ -2858,7 +2858,7 @@ func TestMultipleK8sResourceOptionsForOneResource(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('foo', port_forwards=8001)
 k8s_resource('foo', port_forwards=8000)
@@ -2873,7 +2873,7 @@ func TestWorkloadToResourceFunction(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf(id):
@@ -2894,7 +2894,7 @@ func TestWorkloadToResourceFunctionConflict(t *testing.T) {
 	f.setupFooAndBar()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 docker_build('gcr.io/bar', 'bar')
 k8s_yaml(['foo.yaml', 'bar.yaml'])
@@ -2913,7 +2913,7 @@ func TestWorkloadToResourceFunctionError(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf(id):
@@ -2932,7 +2932,7 @@ func TestWorkloadToResourceFunctionReturnsNonString(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf(id):
@@ -2951,7 +2951,7 @@ func TestWorkloadToResourceFunctionTakesNoArgs(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf():
@@ -2970,7 +2970,7 @@ func TestWorkloadToResourceFunctionTakesTwoArgs(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 def wtrf(a, b):
@@ -3286,7 +3286,7 @@ func TestDockerbuildIgnoreAsString(t *testing.T) {
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', '.', ignore="*.txt")
 k8s_yaml('foo.yaml')
 `)
@@ -3307,7 +3307,7 @@ func TestDockerbuildIgnoreAsArray(t *testing.T) {
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', '.', ignore=["*.txt", "*.md"])
 k8s_yaml('foo.yaml')
 `)
@@ -3331,7 +3331,7 @@ func TestDockerbuildInvalidIgnore(t *testing.T) {
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('fooimage', 'foo', ignore=[127])
 k8s_yaml('foo.yaml')
 `)
@@ -3389,7 +3389,7 @@ func TestDockerbuildInvalidOnly(t *testing.T) {
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('fooimage', 'foo', only=[127])
 k8s_yaml('foo.yaml')
 `)
@@ -3405,7 +3405,7 @@ func TestDockerbuildInvalidOnlyGlob(t *testing.T) {
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 docker_build('fooimage', 'foo', only=["**/common"])
 k8s_yaml('foo.yaml')
 `)
@@ -3513,7 +3513,7 @@ func TestCustomBuildIgnoresSingular(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
   ['foo'], ignore="a.txt")
 k8s_yaml('foo.yaml')
@@ -3532,7 +3532,7 @@ func TestCustomBuildIgnoresMultiple(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
 
-	f.file("Tiltfile", `k8s_resource_assembly_version(2)
+	f.file("Tiltfile", `
 custom_build('gcr.io/foo', 'docker build -t $EXPECTED_REF foo',
  ['foo'], ignore=["a.md","a.txt"])
 k8s_yaml('foo.yaml')
@@ -4892,7 +4892,7 @@ func TestK8sResourceEmptyWorkloadSpecifierAndNoObjects(t *testing.T) {
 	f.setupFoo()
 
 	f.file("Tiltfile", `
-k8s_resource_assembly_version(2)
+
 k8s_yaml('foo.yaml')
 k8s_resource('', port_forwards=8000)
 `)
@@ -5119,7 +5119,7 @@ func (f *fixture) loadResourceAssemblyV1(names ...string) {
 		f.t.Fatal(err)
 	}
 	f.loadResult = tlr
-	assert.Equal(f.t, []string{deprecatedResourceAssemblyV1Warning + "\n"}, f.warnings)
+	assert.Equal(f.t, []string{deprecatedResourceAssemblyVersionWarning + "\n"}, f.warnings)
 }
 
 // Load the manifests, expecting warnings.
@@ -5912,7 +5912,7 @@ func (f *fixture) setupExtraPodSelectors(s string) {
 	f.setupFoo()
 
 	tiltfile := fmt.Sprintf(`
-k8s_resource_assembly_version(2)
+
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 k8s_resource('foo', extra_pod_selectors=%s)
