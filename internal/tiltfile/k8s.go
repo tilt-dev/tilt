@@ -59,6 +59,8 @@ type k8sResource struct {
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
 	"deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
 
+const deprecatedResourceAssemblyVersionWarning = "This Tiltfile is calling k8s_resource_assembly_version, which has been deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
+
 // holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
 	// if non-empty, how to rename this resource
@@ -912,8 +914,8 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 		return starlark.None, fmt.Errorf("invalid %s %d. Must be 1 or 2.", fn.Name(), version)
 	}
 
-	if version == 1 && !s.warnedDeprecatedResourceAssembly {
-		s.logger.Warnf("%s", deprecatedResourceAssemblyV1Warning)
+	if !s.warnedDeprecatedResourceAssembly {
+		s.logger.Warnf(deprecatedResourceAssemblyVersionWarning)
 		s.warnedDeprecatedResourceAssembly = true
 	}
 
