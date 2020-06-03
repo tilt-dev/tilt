@@ -180,7 +180,7 @@ class HUD extends Component<HudProps, HudState> {
       return
     }
 
-    let body = JSON.stringify(snapshot)
+    let body = JSON.stringify("foo")
 
     fetch(url, {
       method: "post",
@@ -199,19 +199,29 @@ class HUD extends Component<HudProps, HudState> {
             if (err instanceof Error) {
               this.setAppState({
                 showSnapshotModal: false,
-                error: `Error sending snapshot: ${err.message}`,
+                error: `Error decoding JSON response: ${err.message}`,
               })
             } else {
               this.setAppState({
                 showSnapshotModal: false,
-                error:
-                  "Error sending snapshot. Check JavaScript console for more details",
+                error: "Error decoding JSON response",
               })
             }
           })
       })
       .catch(err => {
         console.error(err)
+        if (err instanceof Error) {
+          this.setAppState({
+            showSnapshotModal: false,
+            error: `Error posting snapshot: ${err.message}`,
+          })
+        } else {
+          this.setAppState({
+            showSnapshotModal: false,
+            error: "Error posting snapshot",
+          })
+        }
       })
   }
 

@@ -24,6 +24,30 @@ export default class ErrorModal extends PureComponent<props> {
         <h2 className="FatalErrorModal-title">Error</h2>
         <div className="FatalErrorModal-pane">
           <p>Tilt has encountered an error: {this.props.error}</p>
+          <p>
+            To get help try{" "}
+            <a href="https://github.com/tilt-dev/tilt/issues/new">
+              opening a GitHub issue
+            </a>{" "}
+            or{" "}
+            <a href="https://docs.tilt.dev/debug_faq.html#where-can-i-ask-questions">
+              contacting us on Slack
+            </a>
+            .
+          </p>
+        </div>
+        <div className="FatalErrorModal-pane">
+          <p>
+            To get help try{" "}
+            <a href="https://github.com/tilt-dev/tilt/issues/new">
+              opening a GitHub issue
+            </a>{" "}
+            or{" "}
+            <a href="https://docs.tilt.dev/debug_faq.html#where-can-i-ask-questions">
+              contacting us on Slack
+            </a>
+            .
+          </p>
         </div>
       </Modal>
     )
