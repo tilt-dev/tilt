@@ -157,7 +157,7 @@ func (r *Renderer) renderStatusMessage(v view.View) rty.Component {
 			errorCountMessage = fmt.Sprintf(" %d %s", errorCount, s)
 		}
 
-		sb.Fg(cBad).Text("✖").
+		sb.Fg(cBad).Text(xMark()).
 			Fg(cText).Textf("%s", errorCountMessage)
 	}
 	return sb.Build()
