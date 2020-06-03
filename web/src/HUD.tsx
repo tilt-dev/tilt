@@ -356,9 +356,7 @@ class HUD extends Component<HudProps, HudState> {
       let alertsUrl =
         name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
 
-      let isFacetsEnabled = this.getFeatures().isEnabled("facets")
-      let facetsUrl =
-        name !== "" && isFacetsEnabled ? this.path(`/r/${name}/facets`) : null
+      let facetsUrl = name !== "" ? this.path(`/r/${name}/facets`) : null
 
       let currentTraceNav =
         span && this.state.logStore
