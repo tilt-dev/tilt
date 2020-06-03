@@ -182,6 +182,7 @@ class HUD extends Component<HudProps, HudState> {
 
     let body = JSON.stringify(snapshot)
 
+    // TODO(dmiller): we need to figure out a way to get human readable error messages from the server
     fetch(url, {
       method: "post",
       body: body,
@@ -196,32 +197,18 @@ class HUD extends Component<HudProps, HudState> {
           })
           .catch(err => {
             console.error(err)
-            if (err instanceof Error) {
-              this.setAppState({
-                showSnapshotModal: false,
-                error: `Error decoding JSON response: ${err.message}`,
-              })
-            } else {
-              this.setAppState({
-                showSnapshotModal: false,
-                error: "Error decoding JSON response",
-              })
-            }
+            this.setAppState({
+              showSnapshotModal: false,
+              error: "Error decoding JSON response",
+            })
           })
       })
       .catch(err => {
         console.error(err)
-        if (err instanceof Error) {
-          this.setAppState({
-            showSnapshotModal: false,
-            error: `Error posting snapshot: ${err.message}`,
-          })
-        } else {
-          this.setAppState({
-            showSnapshotModal: false,
-            error: "Error posting snapshot",
-          })
-        }
+        this.setAppState({
+          showSnapshotModal: false,
+          error: "Error posting snapshot",
+        })
       })
   }
 
