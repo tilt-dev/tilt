@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
-	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -72,10 +71,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 
 		podID := ms.MostRecentPod().PodID
 
-		var facets []model.Facet
-		if s.Features[feature.Facets] {
-			facets = mt.Facets(s.Secrets)
-		}
+		facets := mt.Facets(s.Secrets)
 
 		bh, err := ToProtoBuildRecords(buildHistory, s.LogStore)
 		if err != nil {

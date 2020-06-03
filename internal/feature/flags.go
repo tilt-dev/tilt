@@ -54,7 +54,7 @@ var MainDefaults = Defaults{
 	},
 	Facets: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 }
 
