@@ -180,7 +180,7 @@ class HUD extends Component<HudProps, HudState> {
       return
     }
 
-    let body = JSON.stringify("foo")
+    let body = JSON.stringify(snapshot)
 
     fetch(url, {
       method: "post",
