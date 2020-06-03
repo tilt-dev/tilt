@@ -23,6 +23,7 @@ import {
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
+  ShowErrorModal,
 } from "./types"
 import { logLinesFromString } from "./logs"
 import HudState from "./HudState"
@@ -38,6 +39,7 @@ import FacetsPane from "./FacetsPane"
 import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 import { traceNav } from "./trace"
+import ErrorModal from "./ErrorModal"
 
 type HudProps = {
   history: History
@@ -95,6 +97,8 @@ class HUD extends Component<HudProps, HudState> {
       showFatalErrorModal: ShowFatalErrorModal.Default,
       snapshotHighlight: undefined,
       socketState: SocketState.Closed,
+      showErrorModal: ShowErrorModal.Default,
+      error: undefined,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -178,6 +182,7 @@ class HUD extends Component<HudProps, HudState> {
 
     let body = JSON.stringify(snapshot)
 
+    // TODO(dmiller): we need to figure out a way to get human readable error messages from the server
     fetch(url, {
       method: "post",
       body: body,
@@ -190,9 +195,21 @@ class HUD extends Component<HudProps, HudState> {
               snapshotLink: value.url ? value.url : "",
             })
           })
-          .catch(err => console.error(err))
+          .catch(err => {
+            console.error(err)
+            this.setAppState({
+              showSnapshotModal: false,
+              error: "Error decoding JSON response",
+            })
+          })
       })
-      .catch(err => console.error(err))
+      .catch(err => {
+        console.error(err)
+        this.setAppState({
+          showSnapshotModal: false,
+          error: "Error posting snapshot",
+        })
+      })
   }
 
   private getFeatures(): Features {
@@ -235,6 +252,7 @@ class HUD extends Component<HudProps, HudState> {
     const checkUpdates = versionSettings?.checkUpdates ?? true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
+    let errorModal = this.renderErrorModal()
 
     let statusbar = (
       <Statusbar
@@ -262,6 +280,7 @@ class HUD extends Component<HudProps, HudState> {
         <AnalyticsNudge needsNudge={needsNudge} />
         <SocketBar state={this.state.socketState} />
         {fatalErrorModal}
+        {errorModal}
         {shareSnapshotModal}
 
         {this.renderSidebarSwitch()}
@@ -621,6 +640,21 @@ class HUD extends Component<HudProps, HudState> {
         error={error}
         showFatalErrorModal={this.state.showFatalErrorModal}
         handleClose={handleClose}
+      />
+    )
+  }
+
+  renderErrorModal() {
+    return (
+      <ErrorModal
+        error={this.state.error}
+        showErrorModal={this.state.showErrorModal}
+        handleClose={() =>
+          this.setState({
+            showErrorModal: ShowErrorModal.Default,
+            error: undefined,
+          })
+        }
       />
     )
   }
