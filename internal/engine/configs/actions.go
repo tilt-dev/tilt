@@ -10,9 +10,10 @@ import (
 )
 
 type ConfigsReloadStartedAction struct {
-	FilesChanged map[string]bool
+	FilesChanged []string
 	StartTime    time.Time
 	SpanID       logstore.SpanID
+	Reason       model.BuildReason
 }
 
 func (ConfigsReloadStartedAction) Action() {}

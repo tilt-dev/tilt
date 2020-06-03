@@ -437,18 +437,15 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event configs.ConfigsReloadStartedAction,
 ) {
-	filesChanged := []string{}
-	for f := range event.FilesChanged {
-		filesChanged = append(filesChanged, f)
-	}
 	status := model.BuildRecord{
 		StartTime: event.StartTime,
-		Reason:    model.BuildReasonFlagConfig,
-		Edits:     filesChanged,
+		Reason:    event.Reason,
+		Edits:     event.FilesChanged,
 		SpanID:    event.SpanID,
 	}
 
 	state.TiltfileState.CurrentBuild = status
+	state.StartedTiltfileLoadCount++
 }
 
 func handleConfigsReloaded(
@@ -456,6 +453,7 @@ func handleConfigsReloaded(
 	state *store.EngineState,
 	event configs.ConfigsReloadedAction,
 ) {
+
 	manifests := event.Manifests
 
 	b := state.TiltfileState.CurrentBuild
@@ -619,9 +617,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
 	engineState.HUDEnabled = action.HUDEnabled
-
-	// NOTE(dmiller): this kicks off a Tiltfile build
-	engineState.PendingConfigFileChanges[action.TiltfilePath] = action.StartTime
 }
 
 func handleHudExitAction(state *store.EngineState, action hud.ExitAction) {
