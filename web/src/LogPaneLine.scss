@@ -35,10 +35,8 @@
   color: $color-gray-lightest;
   padding-left: $spacing-unit * 0.5;
   padding-right: $spacing-unit * 0.5;
-  display: flex;
-  align-items: center;
-  justify-content: right;
-  flex-shrink: 0;
+  text-align: right;
+  
   // Truncate long text:
   text-overflow: ellipsis;
   overflow: hidden;
@@ -48,6 +46,9 @@
     // Border shouldn't add height:
     margin-top: -$logLine-separator-height;
     border-top: $logLine-separator-height solid $color-gray;
+  }
+  .LogPaneLine.is-buildEvent-init > & {
+    visibility: hidden;
   }
 }
 
