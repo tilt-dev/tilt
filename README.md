@@ -41,16 +41,18 @@ For other installation options, see the [Installation Guide](https://docs.tilt.d
 
 ## Run Tilt
 
-Use [this guide](https://docs.tilt.dev/tutorial.html) to run Tilt on your project.
+**New to Tilt?** Our tutorial will [get you started](https://docs.tilt.dev/tutorial.html).
 
-Tilt automatically handles all the expert tricks for working in a Kubernetes dev environment:
+**Configuring a Service?** We have best practice guides for 
+[HTML](https://docs.tilt.dev/example_static_html.html), 
+[NodeJS](https://docs.tilt.dev/example_nodejs.html), 
+[Python](https://docs.tilt.dev/example_python.html), 
+[Go](https://docs.tilt.dev/example_go.html),
+[Java](https://docs.tilt.dev/example_java.html),
+and [C#](https://docs.tilt.dev/example_csharp.html).
 
-- Stands up any constellation of services, no matter how complex
-
-- Watches your file system and update servers in seconds
-
-- Streams logs, events, and pod changes so that it can show you the problem when
-something breaks
+**Optimizing a Tiltfile?** Search for the function you need in our 
+[complete API reference](https://docs.tilt.dev/api.html).
 
 ## Don’t Tilt Alone, Take This
 
