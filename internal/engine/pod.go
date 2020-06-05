@@ -218,15 +218,21 @@ func containerForStatus(ctx context.Context, pod *v1.Pod, cStatus v1.ContainerSt
 		isRunning = true
 	}
 
+	isTerminated := false
+	if cStatus.State.Terminated != nil && !cStatus.State.Terminated.StartedAt.IsZero() {
+		isTerminated = true
+	}
+
 	return store.Container{
-		Name:     cName,
-		ID:       cID,
-		Ports:    ports,
-		Ready:    cStatus.Ready,
-		Running:  isRunning,
-		ImageRef: cRef,
-		Restarts: int(cStatus.RestartCount),
-		Status:   k8swatch.ContainerStatusToRuntimeState(cStatus),
+		Name:       cName,
+		ID:         cID,
+		Ports:      ports,
+		Ready:      cStatus.Ready,
+		Running:    isRunning,
+		Terminated: isTerminated,
+		ImageRef:   cRef,
+		Restarts:   int(cStatus.RestartCount),
+		Status:     k8swatch.ContainerStatusToRuntimeState(cStatus),
 	}, nil
 }
 
