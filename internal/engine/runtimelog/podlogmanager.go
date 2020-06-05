@@ -6,8 +6,6 @@ import (
 	"io"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -20,13 +18,15 @@ import (
 type PodLogManager struct {
 	kClient k8s.Client
 
-	watches map[podLogKey]PodLogWatch
+	watches         map[podLogKey]PodLogWatch
+	hasClosedStream map[podLogKey]bool
 }
 
 func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 	return &PodLogManager{
-		kClient: kClient,
-		watches: make(map[podLogKey]PodLogWatch),
+		kClient:         kClient,
+		watches:         make(map[podLogKey]PodLogWatch),
+		hasClosedStream: make(map[podLogKey]bool),
 	}
 }
 
@@ -51,20 +51,34 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	for _, ms := range state.ManifestStates() {
 		runtime := ms.K8sRuntimeState()
 		for _, pod := range runtime.PodList() {
-			if !m.shouldWatchPodLogs(pod) {
+			if pod.PodID == "" {
 				continue
 			}
 
-			// if pod has more than one container, we should prefix logs with the container name
-			shouldPrefix := len(pod.Containers) > 1
+			containers := []store.Container{}
+			containers = append(containers, pod.InitContainers...)
+			containers = append(containers, pod.Containers...)
 
-			for _, c := range pod.Containers {
+			for i, c := range containers {
 				// Key the log watcher by the container id, so we auto-restart the
 				// watching if the container crashes.
 				key := podLogKey{
 					podID: pod.PodID,
 					cID:   c.ID,
 				}
+				if !m.shouldStreamContainerLogs(c, key) {
+					continue
+				}
+
+				isInitContainer := i < len(pod.InitContainers)
+
+				// We don't want to clutter the logs with a container name
+				// if it's unambiguous what container we're looking at.
+				//
+				// Long-term, we should make the container name a log field
+				// and have better ways to display it visually.
+				shouldPrefix := isInitContainer || len(pod.Containers) > 1
+
 				stateWatches[key] = true
 
 				existing, isActive := m.watches[key]
@@ -85,6 +99,10 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 					// so we need to create a new one that picks up
 					// where it left off.
 					startWatchTime = <-existing.terminationTime
+					m.hasClosedStream[key] = true
+					if c.Terminated {
+						continue
+					}
 				}
 
 				ctx, cancel := context.WithCancel(ctx)
@@ -116,29 +134,21 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	return setup, teardown
 }
 
-func (m *PodLogManager) shouldWatchPodLogs(pod store.Pod) bool {
-	if pod.PodID == "" || len(pod.Containers) == 0 {
+func (m *PodLogManager) shouldStreamContainerLogs(c store.Container, key podLogKey) bool {
+	if c.ID == "" {
 		return false
 	}
 
-	// If an ID or name for the containers hasn't been created yet, weird things
-	// will happen when we try to store them in the `m.watches` map.  This should
-	// only happen if the pod is still in a weird creating state. It shouldn't
-	// happen when user code is running.
-	for _, container := range pod.Containers {
-		if container.Name == "" || container.ID == "" {
-			return false
-		}
+	if c.Terminated && m.hasClosedStream[key] {
+		return false
 	}
 
-	// Only try to fetch logs if pod is in a state that can handle it;
-	// otherwise, it may reject our connection.
-	if !(pod.Phase == v1.PodRunning || pod.Phase == v1.PodSucceeded ||
-		pod.Phase == v1.PodFailed) {
+	if !(c.Running || c.Terminated) {
 		return false
 	}
 
 	return true
+
 }
 
 func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore) {

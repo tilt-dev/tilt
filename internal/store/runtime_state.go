@@ -231,14 +231,15 @@ func (p Pod) AllContainers() []Container {
 }
 
 type Container struct {
-	Name     container.Name
-	ID       container.ID
-	Ports    []int32
-	Ready    bool
-	Running  bool
-	ImageRef reference.Named
-	Restarts int
-	Status   model.RuntimeStatus
+	Name       container.Name
+	ID         container.ID
+	Ports      []int32
+	Ready      bool
+	Running    bool
+	Terminated bool
+	ImageRef   reference.Named
+	Restarts   int
+	Status     model.RuntimeStatus
 }
 
 func (c Container) Empty() bool {
