@@ -187,13 +187,15 @@ tilt up --port=8001
 
 ## Documentation
 
-The landing page and documentation lives in
+The user-facing landing page and documentation lives in
 [the tilt.build repo](https://github.com/tilt-dev/tilt.build/).
 
 We write our docs in Markdown and generate static HTML with [Jekyll](https://jekyllrb.com/).
 
 Netlify will automatically deploy the docs to [the public site](https://docs.tilt.dev/)
 when you merge to master.
+
+For internal architecture, see [the Tilt Architecture Guide](internal/README.md).
 
 ## Wire
 
