@@ -318,9 +318,6 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-github v17.0.0+incompatible
-## explicit
-github.com/google/go-github/github
 # github.com/google/go-github/v29 v29.0.3
 ## explicit
 github.com/google/go-github/v29/github

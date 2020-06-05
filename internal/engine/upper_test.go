@@ -49,7 +49,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/feature"
-	"github.com/tilt-dev/tilt/internal/github"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/hud/view"
@@ -3437,7 +3436,6 @@ type testFixture struct {
 	cc                         *configs.ConfigsController
 	dcc                        *dockercompose.FakeDCClient
 	tfl                        tiltfile.TiltfileLoader
-	ghc                        *github.FakeClient
 	opter                      *tiltanalytics.FakeOpter
 	dp                         *dockerprune.DockerPruner
 	fe                         *local.FakeExecer
@@ -3501,7 +3499,6 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	assert.NoError(t, err)
 	sm := containerupdate.NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 	hudsc := server.ProvideHeadsUpServerController("localhost", 0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{}, false)
-	ghc := &github.FakeClient{}
 	ewm := k8swatch.NewEventWatchManager(kCli, of)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev")
@@ -3531,7 +3528,6 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		cc:             cc,
 		dcc:            fakeDcc,
 		tfl:            tfl,
-		ghc:            ghc,
 		opter:          to,
 		dp:             dp,
 		fe:             fe,

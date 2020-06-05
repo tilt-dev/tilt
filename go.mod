@@ -51,7 +51,6 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/google/go-cmp v0.3.1
-	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-github/v29 v29.0.3
 	github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf // indirect
 	github.com/google/uuid v1.1.1
