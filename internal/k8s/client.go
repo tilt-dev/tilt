@@ -370,8 +370,9 @@ func maybeShouldTryReplaceReason(stderr string) (string, bool) {
 // behavior for our use cases.
 func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	l := logger.Get(ctx)
+	l.Infof("Deleting via kubectl:")
 	for _, e := range entities {
-		l.Infof("Deleting via kubectl: %s/%s\n", e.GVK().Kind, e.Name())
+		l.Infof("→ %s/%s", e.GVK().Kind, e.Name())
 	}
 
 	_, stderr, err := k.actOnEntities(ctx, []string{"delete", "--ignore-not-found"}, entities)

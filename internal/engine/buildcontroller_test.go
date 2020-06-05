@@ -337,7 +337,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.podEvent(pb.WithContainerID("funnyContainerID").Build(), manifest.Name)
 	call = f.nextCall()
 	assert.True(t, call.oneState().OneContainerInfo().Empty())
-	assert.False(t, call.oneState().ImageBuildTriggered)
+	assert.False(t, call.oneState().FullBuildTriggered)
 	f.waitForCompletedBuildCount(3)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {
@@ -556,7 +556,7 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 			call := f.nextCallComplete()
 			state := call.oneState()
 			assert.Equal(t, expectedFiles, state.FilesChanged())
-			assert.Equal(t, tc.expectedImageBuild, state.ImageBuildTriggered)
+			assert.Equal(t, tc.expectedImageBuild, state.FullBuildTriggered)
 
 			f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
 				for _, mn := range st.TriggerQueue {
@@ -594,7 +594,7 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 	call := f.nextCallComplete()
 	state := call.oneState()
 	assert.Equal(t, []string{}, state.FilesChanged())
-	assert.True(t, state.ImageBuildTriggered)
+	assert.True(t, state.FullBuildTriggered)
 
 	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
 		for _, mn := range st.TriggerQueue {
