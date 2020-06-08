@@ -51,6 +51,23 @@ func TestDeployTwinImages(t *testing.T) {
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
 }
 
+func TestForceUpdate(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m := NewSanchoDockerBuildManifest(f)
+
+	iTargetID1 := m.ImageTargets[0].ID()
+	stateSet := store.BuildStateSet{
+		iTargetID1: store.BuildState{FullBuildTriggered: true},
+	}
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m), stateSet)
+	require.NoError(t, err)
+
+	// A force rebuild should delete the old resources.
+	assert.Equal(t, 1, strings.Count(f.k8s.DeletedYaml, "Deployment"))
+}
+
 func TestDeployPodWithMultipleImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()

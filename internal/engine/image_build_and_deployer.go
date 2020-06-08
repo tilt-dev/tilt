@@ -132,8 +132,22 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		numStages++
 	}
 
+	hasDeleteStep := stateSet.FullBuildTriggered()
+	if hasDeleteStep {
+		numStages++
+	}
+
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
+
+	if hasDeleteStep {
+		ps.StartPipelineStep(ctx, "Force update")
+		err = ibd.delete(ctx, kTarget)
+		if err != nil {
+			return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
+		}
+		ps.EndPipelineStep(ctx)
+	}
 
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
@@ -295,6 +309,15 @@ func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) context.Cont
 	l := logger.Get(ctx)
 	newL := logger.NewPrefixedLogger(logger.Blue(l).Sprint("     "), l)
 	return logger.WithLogger(ctx, newL)
+}
+
+func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8sTarget) error {
+	entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
+	if err != nil {
+		return err
+	}
+
+	return ibd.k8sClient.Delete(ctx, entities)
 }
 
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,

@@ -213,7 +213,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 	isImageBuildTrigger := reason.HasTrigger() && !isLiveUpdateEligibleTrigger
 	if isImageBuildTrigger {
 		for k, v := range result {
-			result[k] = v.WithImageBuildTriggered(true)
+			result[k] = v.WithFullBuildTriggered(true)
 		}
 	}
 
