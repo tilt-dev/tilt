@@ -4937,6 +4937,29 @@ k8s_resource(new_name='bar', objects=['bar:secret'])
 	f.loadErrString("already exists")
 }
 
+func TestK8sResourceObjectsNonAmbiguousDefaultNamespace(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("serving-core.yaml", testyaml.KnativeServingCore)
+
+	f.file("Tiltfile", `
+k8s_yaml([
+	'serving-core.yaml',
+])
+
+k8s_resource(
+  objects=[
+	  'queue-proxy:image',
+	],
+  new_name='knative-gateways')
+`)
+
+	f.load()
+	f.assertNextManifest("knative-gateways")
+	f.assertNoMoreManifests()
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
