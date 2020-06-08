@@ -2719,11 +2719,13 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.WriteFile("Tiltfile", "")
+
+	closeCh := make(chan error)
 	go func() {
 		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, store.EngineModeUp,
 			f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"),
 			"nonexistent.example.com")
-		testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
+		closeCh <- err
 	}()
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
 		return !st.TiltfileState.LastBuild().Empty()
@@ -2736,6 +2738,11 @@ func TestEmptyTiltfile(t *testing.T) {
 		buildRecord := st.TiltfileState.LastBuild()
 		assertContainsOnce(t, st.LogStore.SpanLog(buildRecord.SpanID), "No resources found. Check out ")
 	})
+
+	f.cancel()
+
+	err := <-closeCh
+	testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
 }
 
 func TestUpperStart(t *testing.T) {
@@ -2745,11 +2752,13 @@ func TestUpperStart(t *testing.T) {
 	tok := token.Token("unit test token")
 	cloudAddress := "nonexistent.example.com"
 
+	closeCh := make(chan error)
+
 	f.WriteFile("Tiltfile", "")
 	go func() {
 		err := f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{},
-			store.EngineModeApply, f.JoinPath("Tiltfile"), true, analytics.OptIn, tok, cloudAddress)
-		testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
+			store.EngineModeUp, f.JoinPath("Tiltfile"), true, analytics.OptIn, tok, cloudAddress)
+		closeCh <- err
 	}()
 	f.WaitUntil("init action processed", func(state store.EngineState) bool {
 		return !state.TiltStartTime.IsZero()
@@ -2762,6 +2771,11 @@ func TestUpperStart(t *testing.T) {
 		require.Equal(t, analytics.OptIn, state.AnalyticsEffectiveOpt())
 		require.Equal(t, cloudAddress, state.CloudAddress)
 	})
+
+	f.cancel()
+
+	err := <-closeCh
+	testutils.FailOnNonCanceledErr(t, err, "upper.Start failed")
 }
 
 func TestWatchManifestsWithCommonAncestor(t *testing.T) {
