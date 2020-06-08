@@ -720,10 +720,10 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
 	}
 	if len(parts) == 1 {
-		return newExactK8sObjectSelector("", "", parts[0], "default")
+		return newExactK8sObjectSelector("", "", parts[0], "")
 	}
 	if len(parts) == 2 {
-		return newExactK8sObjectSelector("", parts[1], parts[0], "default")
+		return newExactK8sObjectSelector("", parts[1], parts[0], "")
 	}
 	if len(parts) == 3 {
 		return newExactK8sObjectSelector("", parts[1], parts[0], parts[2])
