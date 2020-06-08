@@ -15,7 +15,7 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/shell"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 type AST struct {
@@ -65,12 +65,24 @@ func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, m
 // Find all images referenced in this dockerfile and call the visitor function.
 // If the visitor function returns a new image, subsitute that image into the dockerfile.
 func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Named) reference.Named) error {
-	// Parse the instructions for ARG expansions. It's not a big deal if it doesn't parse.
-	_, metaArgs, _ := instructions.Parse(a.result.AST)
+	metaArgs := []instructions.ArgCommand{}
 	shlex := shell.NewLex(a.result.EscapeToken)
 
 	return a.Traverse(func(node *parser.Node) error {
 		switch node.Value {
+		case command.Arg:
+			inst, err := instructions.ParseInstruction(node)
+			if err != nil {
+				return nil // ignore parsing error
+			}
+
+			argCmd, ok := inst.(*instructions.ArgCommand)
+			if !ok {
+				return nil
+			}
+
+			metaArgs = append(metaArgs, *argCmd)
+
 		case command.From:
 			baseName := a.extractBaseNameInFromCommand(node, shlex, metaArgs)
 			if baseName == "" {

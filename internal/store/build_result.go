@@ -8,10 +8,10 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // The results of a successful build.
@@ -289,7 +289,7 @@ type BuildState struct {
 	//
 	// This field indicates case 1 || case 2 -- i.e. that we should skip
 	// live_update, and force an image build (even if there are no changed files)
-	ImageBuildTriggered bool
+	FullBuildTriggered bool
 
 	RunningContainers []ContainerInfo
 
@@ -318,8 +318,8 @@ func (b BuildState) WithRunningContainerError(err error) BuildState {
 	return b
 }
 
-func (b BuildState) WithImageBuildTriggered(isImageBuildTrigger bool) BuildState {
-	b.ImageBuildTriggered = isImageBuildTrigger
+func (b BuildState) WithFullBuildTriggered(isImageBuildTrigger bool) BuildState {
+	b.FullBuildTriggered = isImageBuildTrigger
 	return b
 }
 
@@ -366,10 +366,19 @@ func (b BuildState) HasLastSuccessfulResult() bool {
 func (b BuildState) NeedsImageBuild() bool {
 	lastBuildWasImgBuild := b.LastSuccessfulResult != nil &&
 		b.LastSuccessfulResult.BuildType() == model.BuildTypeImage
-	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0 || b.ImageBuildTriggered
+	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0 || b.FullBuildTriggered
 }
 
 type BuildStateSet map[model.TargetID]BuildState
+
+func (set BuildStateSet) FullBuildTriggered() bool {
+	for _, state := range set {
+		if state.FullBuildTriggered {
+			return true
+		}
+	}
+	return false
+}
 
 func (set BuildStateSet) Empty() bool {
 	return len(set) == 0

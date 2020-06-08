@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 const LogLineCount = 50
@@ -57,6 +57,7 @@ type K8sResourceInfo struct {
 	PodRestarts        int
 	SpanID             logstore.SpanID
 	RunStatus          model.RuntimeStatus
+	DisplayNames       []string
 }
 
 var _ ResourceInfoView = K8sResourceInfo{}
@@ -80,7 +81,7 @@ func (TiltfileResourceInfo) RuntimeStatus() model.RuntimeStatus {
 }
 
 type YAMLResourceInfo struct {
-	K8sResources []string
+	K8sDisplayNames []string
 }
 
 var _ ResourceInfoView = YAMLResourceInfo{}

@@ -3,19 +3,23 @@ package server
 import (
 	"fmt"
 	"io"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils"
 
-	"github.com/windmilleng/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store"
 )
 
 func TestWebsocketCloseOnReadErr(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): investigate")
+	}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st, _ := store.NewStoreForTesting()
+	st, _ := store.NewStoreWithFakeReducer()
 	st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
@@ -41,7 +45,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 
 func TestWebsocketReadErrDuringMsg(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st, _ := store.NewStoreForTesting()
+	st, _ := store.NewStoreWithFakeReducer()
 	st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
@@ -72,7 +76,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 
 func TestWebsocketNextWriterError(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st, _ := store.NewStoreForTesting()
+	st, _ := store.NewStoreWithFakeReducer()
 	st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()

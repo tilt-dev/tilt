@@ -1,5 +1,3 @@
-// +build !windows
-
 package engine
 
 import (
@@ -10,16 +8,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestDockerComposeTargetBuilt(t *testing.T) {
@@ -130,7 +128,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 		Contents: `
 FROM sancho-base:latest
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
@@ -162,7 +160,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 		Contents: `
 FROM sancho-base:tilt-prebuilt
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
@@ -175,7 +173,7 @@ type dcbdFixture struct {
 	dcCli *dockercompose.FakeDCClient
 	dCli  *docker.FakeClient
 	dcbad *DockerComposeBuildAndDeployer
-	st    *store.Store
+	st    *store.TestingStore
 }
 
 func newDCBDFixture(t *testing.T) *dcbdFixture {
@@ -190,7 +188,7 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	return &dcbdFixture{
 		TempDirFixture: f,
 		ctx:            ctx,

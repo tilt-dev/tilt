@@ -24,6 +24,10 @@ type K8sTarget struct {
 	// for easy access. This should duplicate what's specified in the YAML.
 	ObjectRefs []v1.ObjectReference
 
+	// NonWorkload indicates whether or not a given K8sTarget was
+	// determined to have workloads at assembly time during Tiltfile execution
+	NonWorkload bool
+
 	dependencyIDs []TargetID
 
 	// Map configRef -> number of times we (expect to) inject it.

@@ -4,23 +4,27 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/internal/tiltfile"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestConfigsController(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): investigate")
+	}
 	f := newCCFixture(t)
 	defer f.TearDown()
 
@@ -76,20 +80,18 @@ func TestConfigsControllerDockerNotConnectedButNotRequired(t *testing.T) {
 
 type ccFixture struct {
 	*tempdir.TempDirFixture
-	ctx        context.Context
-	cancel     func()
-	cc         *ConfigsController
-	st         *store.Store
-	getActions func() []store.Action
-	tfl        *tiltfile.FakeTiltfileLoader
-	fc         *testutils.FakeClock
-	docker     *docker.FakeClient
-	loopDone   chan struct{}
+	ctx    context.Context
+	cancel func()
+	cc     *ConfigsController
+	st     *store.TestingStore
+	tfl    *tiltfile.FakeTiltfileLoader
+	fc     *testutils.FakeClock
+	docker *docker.FakeClient
 }
 
 func newCCFixture(t *testing.T) *ccFixture {
 	f := tempdir.NewTempDirFixture(t)
-	st, getActions := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
 	cc := NewConfigsController(tfl, d)
@@ -97,14 +99,6 @@ func newCCFixture(t *testing.T) *ccFixture {
 	cc.clock = fc.Clock()
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
-	loopDone := make(chan struct{})
-
-	st.AddSubscriber(ctx, cc)
-	go func() {
-		err := st.Loop(ctx)
-		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
-		close(loopDone)
-	}()
 
 	// configs_controller uses state.RelativeTiltfilePath, which is relative to wd
 	// sometimes the original directory was invalid (e.g., it was another test's temp dir, which was deleted,
@@ -117,22 +111,16 @@ func newCCFixture(t *testing.T) *ccFixture {
 		cancel:         cancel,
 		cc:             cc,
 		st:             st,
-		getActions:     getActions,
 		tfl:            tfl,
 		fc:             fc,
 		docker:         d,
-		loopDone:       loopDone,
 	}
 }
 
 func (f *ccFixture) TearDown() {
 	f.cancel()
-	select {
-	case <-f.loopDone:
-	case <-time.After(2 * time.Second):
-		f.T().Fatalf("Timeout waiting for store loop")
-	}
 	f.TempDirFixture.TearDown()
+	f.st.AssertNoErrorActions(f.T())
 }
 
 func (f *ccFixture) addManifest(name model.ManifestName) {
@@ -146,15 +134,13 @@ func (f *ccFixture) addManifest(name model.ManifestName) {
 }
 
 func (f *ccFixture) run(m model.Manifest) ConfigsReloadedAction {
-	f.st.SetUpSubscribersForTesting(f.ctx)
-
 	f.tfl.Result = tiltfile.TiltfileLoadResult{
 		Manifests: []model.Manifest{m},
 	}
 
-	f.st.NotifySubscribers(f.ctx)
+	f.cc.OnChange(f.ctx, f.st)
 
-	a := store.WaitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.getActions)
+	a := store.WaitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.st.Actions)
 	cra, ok := a.(ConfigsReloadedAction)
 	if !ok {
 		f.T().Fatalf("didn't get an action of type %T", ConfigsReloadedAction{})
@@ -166,7 +152,7 @@ func (f *ccFixture) run(m model.Manifest) ConfigsReloadedAction {
 const SanchoDockerfile = `
 FROM go:1.10
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `
 

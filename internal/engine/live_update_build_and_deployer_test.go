@@ -1,5 +1,3 @@
-// +build !windows
-
 package engine
 
 import (
@@ -11,17 +9,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/k8s"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/containerupdate"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var rsf = build.RunStepFailure{
@@ -336,7 +334,7 @@ func TestSkipLiveUpdateIfForceUpdate(t *testing.T) {
 	state := store.BuildState{
 		LastSuccessfulResult: alreadyBuilt,
 		RunningContainers:    []store.ContainerInfo{cInfo},
-		ImageBuildTriggered:  true, // should make us skip LiveUpdate
+		FullBuildTriggered:   true, // should make us skip LiveUpdate
 	}
 
 	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): state}
@@ -350,7 +348,7 @@ type lcbadFixture struct {
 	*tempdir.TempDirFixture
 	t     testing.TB
 	ctx   context.Context
-	st    *store.Store
+	st    *store.TestingStore
 	cu    *containerupdate.FakeContainerUpdater
 	ps    *build.PipelineState
 	lubad *LiveUpdateBuildAndDeployer
@@ -362,7 +360,7 @@ func newFixture(t testing.TB) *lcbadFixture {
 	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, nil, buildcontrol.UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker, fakeClock{})
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,

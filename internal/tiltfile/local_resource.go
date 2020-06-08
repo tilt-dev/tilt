@@ -7,9 +7,9 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type localResource struct {
@@ -27,7 +27,7 @@ type localResource struct {
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
-	var updateCmdVal, serveCmdVal starlark.Value
+	var updateCmdVal, updateCmdBatVal, serveCmdVal, serveCmdBatVal starlark.Value
 	var triggerMode triggerMode
 	var deps starlark.Value
 	var resourceDepsVal starlark.Sequence
@@ -43,6 +43,8 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"ignore?", &ignoresVal,
 		"auto_init?", &autoInit,
 		"serve_cmd?", &serveCmdVal,
+		"cmd_bat?", &updateCmdBatVal,
+		"serve_cmd_bat?", &serveCmdBatVal,
 	); err != nil {
 		return nil, err
 	}
@@ -69,11 +71,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	updateCmd, err := value.ValueToHostCmd(updateCmdVal)
+	updateCmd, err := value.ValueGroupToCmdHelper(updateCmdVal, updateCmdBatVal)
 	if err != nil {
 		return nil, err
 	}
-	serveCmd, err := value.ValueToHostCmd(serveCmdVal)
+	serveCmd, err := value.ValueGroupToCmdHelper(serveCmdVal, serveCmdBatVal)
 	if err != nil {
 		return nil, err
 	}

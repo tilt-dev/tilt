@@ -1,5 +1,3 @@
-// +build !windows
-
 package webview
 
 import (
@@ -13,13 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/engine/configs"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	proto_webview "github.com/windmilleng/tilt/pkg/webview"
+	"github.com/tilt-dev/tilt/internal/engine/configs"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
 var fooManifest = model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
@@ -34,29 +33,43 @@ func stateToProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
 }
 
 func TestStateToWebViewRelativeEditPaths(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{}).WithImageTarget(model.ImageTarget{}.
-		WithBuildDetails(model.DockerBuild{BuildPath: "/a/b/c"}))
+		WithBuildDetails(model.DockerBuild{BuildPath: f.JoinPath("a", "b", "c")}))
 
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
-	ms.CurrentBuild.Edits = []string{"/a/b/c/foo", "/a/b/c/d/e"}
+	ms.CurrentBuild.Edits = []string{
+		f.JoinPath("a", "b", "c", "foo"),
+		f.JoinPath("a", "b", "c", "d", "e"),
+	}
 	ms.BuildHistory = []model.BuildRecord{
-		{Edits: []string{"/a/b/c/foo", "/a/b/c/d/e"}},
+		{
+			Edits: []string{
+				f.JoinPath("a", "b", "c", "foo"),
+				f.JoinPath("a", "b", "c", "d", "e"),
+			},
+		},
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
-		map[string]time.Time{"/a/b/c/foo": time.Now(), "/a/b/c/d/e": time.Now()}
+		map[string]time.Time{
+			f.JoinPath("a", "b", "c", "foo"):    time.Now(),
+			f.JoinPath("a", "b", "c", "d", "e"): time.Now(),
+		}
 	v := stateToProtoView(t, *state)
 
 	require.Len(t, v.Resources, 2)
 
 	r, _ := findResource(m.Name, v)
-	assert.ElementsMatch(t, []string{"foo", "d/e"}, lastBuild(r).Edits)
+	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, lastBuild(r).Edits)
 
 	sort.Strings(r.CurrentBuild.Edits)
-	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.CurrentBuild.Edits)
-	assert.ElementsMatch(t, []string{"foo", "d/e"}, r.PendingBuildEdits)
+	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, r.CurrentBuild.Edits)
+	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, r.PendingBuildEdits)
 }
 
 func TestStateToWebViewPortForwards(t *testing.T) {
@@ -89,6 +102,19 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 
 	expectedInfo := &proto_webview.YAMLResourceInfo{K8SResources: []string{"sancho:deployment"}}
 	assert.Equal(t, expectedInfo, r.YamlResourceInfo)
+}
+
+func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
+	displayNames := []string{"foo:namespace", "foo:secret"}
+	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
+	state := newState([]model.Manifest{m})
+	v := stateToProtoView(t, *state)
+
+	assert.Equal(t, 2, len(v.Resources))
+
+	r, _ := findResource(m.Name, v)
+
+	assert.Equal(t, r.K8SResourceInfo.DisplayNames, displayNames)
 }
 
 func TestStateToViewTiltfileLog(t *testing.T) {

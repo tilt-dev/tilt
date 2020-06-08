@@ -5,11 +5,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Extract the targets that we can apply, or nil if we can't apply these targets.
@@ -48,7 +48,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			return nil, buildcontrol.SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
-		if state.ImageBuildTriggered {
+		if state.FullBuildTriggered {
 			return nil, buildcontrol.SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
 		}
 

@@ -10,10 +10,9 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // registers gcp auth provider
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/k8s/portforward"
 
 	"github.com/pkg/errors"
 )
@@ -32,6 +31,14 @@ type PortForwarder interface {
 	// Returns when the port-forwarder sees an unrecoverable error or
 	// when the context passed at creation is canceled.
 	ForwardPorts() error
+
+	// TODO(nick): If the port forwarder has any problems connecting to the pod,
+	// it just logs those as debug logs. I'm not sure that logs are the right API
+	// for this -- there are lots of cases (e.g., where you're deliberately
+	// restarting the pod) where it's ok if it drops the connection.
+	//
+	// I suspect what we actually need is a healthcheck/status field for the
+	// portforwarder that's exposed as part of the engine.
 }
 
 type portForwarder struct {
@@ -99,7 +106,6 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 		return nil, errors.Wrap(err, "error creating dialer")
 	}
 
-	stopChan := make(chan struct{}, 1)
 	readyChan := make(chan struct{}, 1)
 
 	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
@@ -107,31 +113,23 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 	var pf *portforward.PortForwarder
 	if host == "" {
 		pf, err = portforward.New(
+			ctx,
 			dialer,
 			ports,
-			stopChan,
-			readyChan,
-			logger.Get(ctx).Writer(logger.DebugLvl),
-			logger.Get(ctx).Writer(logger.DebugLvl))
+			readyChan)
 	} else {
 		addresses := []string{host}
 		pf, err = portforward.NewOnAddresses(
+			ctx,
 			dialer,
 			addresses,
 			ports,
-			stopChan,
-			readyChan,
-			logger.Get(ctx).Writer(logger.DebugLvl),
-			logger.Get(ctx).Writer(logger.DebugLvl))
+			readyChan)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "error forwarding port")
 	}
 
-	go func() {
-		<-ctx.Done()
-		close(stopChan)
-	}()
 	return portForwarder{
 		PortForwarder: pf,
 		localPort:     localPort,

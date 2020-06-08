@@ -6,6 +6,7 @@ import { TriggerMode } from "./types"
 import PathBuilder from "./PathBuilder"
 import { mount } from "enzyme"
 import LogStore from "./LogStore"
+import fetchMock from "jest-fetch-mock"
 
 type Resource = Proto.webviewResource
 
@@ -101,7 +102,7 @@ it("renders pod restart dismiss button", () => {
 
   expect(fetchMock.mock.calls.length).toEqual(1)
   expect(fetchMock.mock.calls[0][0]).toEqual("/api/action")
-  expect(fetchMock.mock.calls[0][1].body).toEqual(
+  expect(fetchMock.mock.calls[0][1]?.body).toEqual(
     JSON.stringify({
       type: "PodResetRestarts",
       manifest_name: "foo",

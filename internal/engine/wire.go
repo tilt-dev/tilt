@@ -7,21 +7,21 @@ import (
 	"context"
 
 	"github.com/google/wire"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"github.com/windmilleng/tilt/internal/containerupdate"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/synclet"
-	"github.com/windmilleng/tilt/internal/synclet/sidecar"
+	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/synclet"
+	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/tracer"
 )
 
 var DeployerBaseWireSet = wire.NewSet(
@@ -31,7 +31,7 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	sidecar.WireSet,
 	k8s.ProvideMinikubeClient,
-	build.DefaultImageBuilder,
+	build.DefaultDockerBuilder,
 	build.NewDockerImageBuilder,
 	build.NewExecCustomBuilder,
 	wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)),
@@ -44,7 +44,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	containerupdate.NewExecUpdater,
 	NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
-	NewImageAndCacheBuilder,
+	NewImageBuilder,
 	DefaultBuildOrder,
 
 	tracer.InitOpenTelemetry,

@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/docker/docker/pkg/fileutils"
 
-	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/ospath"
 )
 
 type dockerPathMatcher struct {

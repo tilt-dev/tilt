@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/wire"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
 )
 
 func WireSynclet(ctx context.Context, runtime container.Runtime) (*Synclet, error) {

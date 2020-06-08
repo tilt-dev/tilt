@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ManifestTarget struct {

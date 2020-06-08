@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 func TestFetchableAlreadyPresentWorks(t *testing.T) {

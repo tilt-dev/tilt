@@ -2,15 +2,15 @@ package config
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"os"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	flag "github.com/spf13/pflag"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 type configValue interface {
@@ -104,10 +104,16 @@ func (cd ConfigDef) parseArgs(args []string) (ret configMap, output string, err 
 			continue
 		}
 		fs.Var(ret[name], name, def.usage)
+		// for bools, make "--foo" equal to "--foo true"
+		if _, ok := ret[name].(*boolSetting); ok {
+			fs.Lookup(name).NoOptDefVal = "true"
+		}
 	}
 
 	err = fs.Parse(args)
 	if err != nil {
+		_, _ = fmt.Fprintf(w, "Error parsing tiltfile config args: %v\nUsage:\n", err)
+		fs.PrintDefaults()
 		return nil, w.String(), err
 	}
 

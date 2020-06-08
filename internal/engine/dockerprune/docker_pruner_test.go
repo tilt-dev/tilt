@@ -15,13 +15,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
 var (
@@ -374,7 +374,7 @@ type dockerPruneFixture struct {
 	t    *testing.T
 	ctx  context.Context
 	logs *bytes.Buffer
-	st   *store.Store
+	st   *store.TestingStore
 
 	dCli *docker.FakeClient
 	dp   *DockerPruner
@@ -383,7 +383,7 @@ type dockerPruneFixture struct {
 func newFixture(t *testing.T) *dockerPruneFixture {
 	logs := new(bytes.Buffer)
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(logs)
-	st, _ := store.NewStoreForTesting()
+	st := store.NewTestingStore()
 
 	dCli := docker.NewFakeClient()
 	dp := NewDockerPruner(dCli)

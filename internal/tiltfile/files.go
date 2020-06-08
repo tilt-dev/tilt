@@ -7,32 +7,33 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	tiltfile_io "github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/kustomize"
+	"github.com/tilt-dev/tilt/internal/kustomize"
 )
 
 const localLogPrefix = " → "
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var commandValue starlark.Value
+	var commandValue, commandBatValue starlark.Value
 	quiet := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"command", &commandValue,
 		"quiet?", &quiet,
+		"command_bat", &commandBatValue,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	cmd, err := value.ValueToHostCmd(commandValue)
+	cmd, err := value.ValueGroupToCmdHelper(commandValue, commandBatValue)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +108,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, fmt.Errorf("internal error: %v", err)
 	}
 	for _, d := range deps {
-		err := tiltfile_io.RecordReadFile(thread, d)
+		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, d)
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +164,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 	for _, d := range deps {
-		err = tiltfile_io.RecordReadFile(thread, starkit.AbsPath(thread, d))
+		err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, starkit.AbsPath(thread, d))
 		if err != nil {
 			return nil, err
 		}
@@ -176,17 +177,18 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	var cmd []string
 
+	if name == "" {
+		// Use 'chart' as the release name, so that the release name is stable
+		// across Tiltfile loads.
+		// This looks like what helm does.
+		// https://github.com/helm/helm/blob/e672a42efae30d45ddd642a26557dcdbf5a9f5f0/pkg/action/install.go#L562
+		name = "chart"
+	}
+
 	if version == helmV3 {
-		if name != "" {
-			cmd = []string{"helm", "template", name, localPath}
-		} else {
-			cmd = []string{"helm", "template", localPath, "--generate-name"}
-		}
+		cmd = []string{"helm", "template", name, localPath}
 	} else {
-		cmd = []string{"helm", "template", localPath}
-		if name != "" {
-			cmd = append(cmd, "--name", name)
-		}
+		cmd = []string{"helm", "template", localPath, "--name", name}
 	}
 
 	if namespace != "" {
@@ -194,7 +196,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 	for _, valueFile := range valueFiles {
 		cmd = append(cmd, "--values", valueFile)
-		err := tiltfile_io.RecordReadFile(thread, starkit.AbsPath(thread, valueFile))
+		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchFileOnly, starkit.AbsPath(thread, valueFile))
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +212,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	err = tiltfile_io.RecordReadFile(thread, localPath)
+	err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, localPath)
 	if err != nil {
 		return nil, err
 	}
@@ -226,26 +228,11 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 			return nil, err
 		}
 
-		var haveYAMLForNamespace bool
 		for i, e := range parsed {
-			if e.GVK().Kind == "Namespace" && e.Name() == namespace {
-				// Chart already has YAML for the --namespace passed, we don't need to insert it
-				haveYAMLForNamespace = true
-				continue
-			}
 			parsed[i] = e.WithNamespace(namespace)
 		}
 
-		var entities []k8s.K8sEntity
-		if !haveYAMLForNamespace {
-			// User is relying on Helm to create the namespace, which it does independent
-			// of the YAML it generates, so we need to make sure the new namespace is included
-			// in the YAML.
-			entities = []k8s.K8sEntity{k8s.NewNamespaceEntity(namespace)}
-		}
-		entities = append(entities, parsed...)
-
-		yaml, err = k8s.SerializeSpecYAML(entities)
+		yaml, err = k8s.SerializeSpecYAML(parsed)
 		if err != nil {
 			return nil, err
 		}

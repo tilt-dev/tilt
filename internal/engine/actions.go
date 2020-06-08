@@ -3,14 +3,14 @@ package engine
 import (
 	"time"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func NewErrorAction(err error) store.ErrorAction {
@@ -52,12 +52,6 @@ func (HudStoppedAction) Action() {}
 func NewHudStoppedAction(err error) HudStoppedAction {
 	return HudStoppedAction{err}
 }
-
-type LatestVersionAction struct {
-	Build model.TiltBuild
-}
-
-func (LatestVersionAction) Action() {}
 
 type UIDUpdateAction struct {
 	UID          types.UID

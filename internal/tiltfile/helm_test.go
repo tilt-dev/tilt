@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
 )
 
 func TestHelmSetArgs(t *testing.T) {
@@ -23,7 +26,7 @@ k8s_yaml(yml)
 
 	f.load()
 
-	m := f.assertNextManifestUnresourced("garnet",
+	m := f.assertNextManifestUnresourced(
 		// A service and ingress with the same name
 		"rose-quartz-helloworld-chart",
 		"rose-quartz-helloworld-chart")
@@ -63,7 +66,7 @@ func TestHelmUnknownVersion(t *testing.T) {
 }
 
 const fileRequirementsYAML = `dependencies:
-  - name: foobar 
+  - name: foobar
     version: 1.0.1
     repository: file://./foobar`
 
@@ -93,4 +96,32 @@ func TestSubchartRemoteDependencies(t *testing.T) {
 	}
 
 	assert.Empty(t, actual)
+}
+
+func TestHelmReleaseName(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("helm/Chart.yaml", `apiVersion: v1
+description: grafana chart
+name: grafana
+version: 0.1.0`)
+
+	f.file("helm/values.yaml", testdata.GrafanaHelmValues)
+	f.file("helm/templates/_helpers.tpl", testdata.GrafanaHelmHelpers)
+	f.file("helm/templates/service-account.yaml", testdata.GrafanaHelmServiceAccount)
+
+	f.file("Tiltfile", `
+k8s_yaml(helm('./helm'))
+`)
+
+	f.load()
+
+	manifests := f.loadResult.Manifests
+	require.Equal(t, 1, len(manifests))
+
+	m := manifests[0]
+	yaml := m.K8sTarget().YAML
+	assert.NotContains(t, yaml, "RELEASE-NAME")
+	assert.Contains(t, yaml, "name: chart-grafana")
 }

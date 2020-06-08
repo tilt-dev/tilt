@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 func TestFixContainerStatusImages(t *testing.T) {

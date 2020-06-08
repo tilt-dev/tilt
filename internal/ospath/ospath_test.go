@@ -1,13 +1,12 @@
-// +build !windows
-
 package ospath
 
 import (
 	"os"
-	"path"
+	"path/filepath"
+	"runtime"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 )
 
 func TestChild(t *testing.T) {
@@ -15,25 +14,28 @@ func TestChild(t *testing.T) {
 	defer f.TearDown()
 
 	paths := []string{
-		"parent/fileA",
-		"parent/child/fileB",
-		"parent/child/grandchild/fileC",
-		"sibling/fileD",
+		filepath.Join("parent", "fileA"),
+		filepath.Join("parent", "child", "fileB"),
+		filepath.Join("parent", "child", "grandchild", "fileC"),
+		filepath.Join("sibling", "fileD"),
 	}
 	f.TouchFiles(paths)
 
-	f.assertChild("parent", "sibling/fileD", "")
-	f.assertChild("parent/child", "parent/fileA", "")
-	f.assertChild("parent", "parent/fileA", "fileA")
-	f.assertChild("parent", "parent/child/fileB", "child/fileB")
-	f.assertChild("parent", "parent/child/grandchild/fileC", "child/grandchild/fileC")
+	f.assertChild("parent", filepath.Join("sibling", "fileD"), "")
+	f.assertChild(filepath.Join("parent", "child"), filepath.Join("parent", "fileA"), "")
+	f.assertChild("parent", filepath.Join("parent", "fileA"), "fileA")
+	f.assertChild("parent", filepath.Join("parent", "child", "fileB"), filepath.Join("child", "fileB"))
+	f.assertChild("parent", filepath.Join("parent", "child", "grandchild", "fileC"), filepath.Join("child", "grandchild", "fileC"))
 
-	f.assertChild("parent/child", "parent/child/fileB", "fileB")
+	f.assertChild(filepath.Join("parent", "child"), filepath.Join("parent", "child", "fileB"), "fileB")
 
 	f.assertChild("parent", "parent", ".")
 }
 
 func TestIsBrokenSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("windows does not support user-land symlinks")
+	}
 	f := NewOspathFixture(t)
 	defer f.TearDown()
 
@@ -66,11 +68,13 @@ func TestDirTrailingSlash(t *testing.T) {
 	f := NewOspathFixture(t)
 	defer f.TearDown()
 
-	f.TouchFiles([]string{"some/dir/file"})
+	f.TouchFiles([]string{filepath.Join("some", "dir", "file")})
 
 	// Should work regardless of whether directory has trailing slash
-	f.assertChild("some/dir", "some/dir/file", "file")
-	f.assertChild("some/dir/", "some/dir/file", "file")
+	f.assertChild(filepath.Join("some", "dir"),
+		filepath.Join("some", "dir", "file"), "file")
+	f.assertChild(filepath.Join("some", "dir")+string(filepath.Separator),
+		filepath.Join("some", "dir", "file"), "file")
 }
 
 func TestTryAsCwdChildren(t *testing.T) {
@@ -123,8 +127,8 @@ func (f *OspathFixture) assertChild(dir, file, expectedRel string) {
 }
 
 func (f *OspathFixture) symlink(oldPath, newPath string) {
-	oldPath = path.Join(f.Path(), oldPath)
-	newPath = path.Join(f.Path(), newPath)
+	oldPath = filepath.Join(f.Path(), oldPath)
+	newPath = filepath.Join(f.Path(), newPath)
 	err := os.Symlink(oldPath, newPath)
 	if err != nil {
 		f.t.Fatal(err)
@@ -132,7 +136,7 @@ func (f *OspathFixture) symlink(oldPath, newPath string) {
 }
 
 func (f *OspathFixture) assertBrokenSymlink(file string, expected bool) {
-	broken, err := IsBrokenSymlink(path.Join(f.Path(), file))
+	broken, err := IsBrokenSymlink(filepath.Join(f.Path(), file))
 	if err != nil {
 		f.t.Fatal(err)
 	}

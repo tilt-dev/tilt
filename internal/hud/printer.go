@@ -4,7 +4,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 var backoffInit = 5 * time.Second
@@ -22,6 +22,10 @@ func NewIncrementalPrinter(stdout Stdout) *IncrementalPrinter {
 		progress: make(map[progressKey]progressStatus),
 		stdout:   stdout,
 	}
+}
+
+func (p *IncrementalPrinter) PrintNewline() {
+	_, _ = io.WriteString(p.stdout, "\n")
 }
 
 func (p *IncrementalPrinter) Print(lines []logstore.LogLine) {

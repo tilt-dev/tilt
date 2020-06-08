@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,13 +18,11 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	ktesting "k8s.io/client-go/testing"
 
-	"github.com/windmilleng/tilt/internal/testutils"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
+
+const upsertTimeout = time.Minute
 
 func TestEmptyNamespace(t *testing.T) {
 	var emptyNamespace Namespace
@@ -40,7 +42,7 @@ func TestUpsert(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
 	assert.Nil(t, err)
-	_, err = f.client.Upsert(f.ctx, postgres)
+	_, err = f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(f.runner.calls))
 	assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
@@ -52,7 +54,7 @@ func TestUpsertMutableAndImmutable(t *testing.T) {
 	eJob := MustParseYAMLFromString(t, testyaml.JobYAML)[0]
 	eNamespace := MustParseYAMLFromString(t, testyaml.MyNamespaceYAML)[0]
 
-	_, err := f.client.Upsert(f.ctx, []K8sEntity{eDeploy, eJob, eNamespace})
+	_, err := f.k8sUpsert(f.ctx, []K8sEntity{eDeploy, eJob, eNamespace})
 	if !assert.Nil(t, err) {
 		t.FailNow()
 	}
@@ -84,7 +86,7 @@ func TestUpsertAnnotationTooLong(t *testing.T) {
 	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
 
 	f.setStderr(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
-	_, err := f.client.Upsert(f.ctx, postgres)
+	_, err := f.k8sUpsert(f.ctx, postgres)
 	if !assert.Nil(t, err) {
 		t.FailNow()
 	}
@@ -109,7 +111,7 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	assert.Nil(t, err)
 
 	f.setStderr(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
-	_, err = f.client.Upsert(f.ctx, postgres)
+	_, err = f.k8sUpsert(f.ctx, postgres)
 	if assert.Nil(t, err) && assert.Equal(t, 3, len(f.runner.calls)) {
 		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
 		assert.Equal(t, []string{"delete", "--ignore-not-found=true", "-f", "-"}, f.runner.calls[1].argv)
@@ -128,7 +130,7 @@ func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 	errStr := `Error from server (Forbidden): error when creating "STDIN": deployments.apps "sancho" is forbidden: unable to create new content in namespace sancho-ns because it is being terminated`
 	f.setStderr(errStr)
 
-	_, err = f.client.Upsert(f.ctx, postgres)
+	_, err = f.k8sUpsert(f.ctx, postgres)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), errStr)
 	}
@@ -161,17 +163,48 @@ func TestGetGroup(t *testing.T) {
 	}
 }
 
+func TestUpsertTimeout(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
+
+	f.runner.pauseForever = true
+
+	// we can't use a fake clock with context.Context, so we'll cheat a bit
+	// and just pass Upsert an already expired context.
+	var cancel context.CancelFunc
+	f.ctx, cancel = context.WithDeadline(f.ctx, time.Now().Add(-time.Hour))
+	defer cancel()
+
+	timeout := time.Second * 123
+	_, err := f.client.Upsert(f.ctx, postgres, timeout)
+
+	require.Error(t, err)
+	require.Equal(t, err.Error(), timeoutError(timeout).Error())
+}
+
 type call struct {
 	argv  []string
 	stdin string
 }
 
 type fakeKubectlRunner struct {
-	stdout string
-	stderr string
-	err    error
+	pauseForever bool
+	stdout       string
+	stderr       string
+	err          error
 
 	calls []call
+}
+
+func (f *fakeKubectlRunner) waitForDeadline(ctx context.Context) {
+	// hopefully 10 seconds is longer than any test is going to execute for
+	// this means that in case we run this without a higher level timeout, a broken test will still exit
+	select {
+	case <-ctx.Done():
+		f.err = errors.New("context was canceled")
+	case <-time.After(10 * time.Second):
+		f.err = errors.New("test set to have kubectl pause forever, but it never timed kubectl out!")
+	}
 }
 
 func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin string) (stdout string, stderr string, err error) {
@@ -181,17 +214,30 @@ func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, st
 		f.stdout = ""
 		f.stderr = ""
 		f.err = nil
+		f.pauseForever = false
 	}()
+
+	if f.pauseForever {
+		f.waitForDeadline(ctx)
+	}
+
 	return f.stdout, f.stderr, f.err
 }
 
 func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
 	f.calls = append(f.calls, call{argv: args})
+
 	defer func() {
 		f.stdout = ""
 		f.stderr = ""
 		f.err = nil
+		f.pauseForever = false
 	}()
+
+	if f.pauseForever {
+		f.waitForDeadline(ctx)
+	}
+
 	return f.stdout, f.stderr, f.err
 }
 
@@ -244,7 +290,12 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,
 	}
+
 	return ret
+}
+
+func (c clientTestFixture) k8sUpsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
+	return c.client.Upsert(ctx, entities, time.Minute)
 }
 
 func (c clientTestFixture) addObject(obj runtime.Object) {
@@ -292,4 +343,8 @@ func (c clientTestFixture) setStderr(stderr string) {
 
 func (c clientTestFixture) setError(err error) {
 	c.runner.err = err
+}
+
+func (c clientTestFixture) setKubectlPauseForever(d time.Duration) {
+	c.runner.pauseForever = true
 }

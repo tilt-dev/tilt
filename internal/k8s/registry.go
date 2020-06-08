@@ -10,12 +10,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-const annotationRegistry = "tilt.dev/registry"
-const annotationRegistryFromCluster = "tilt.dev/registry-from-cluster"
+// Recommended in Tilt-specific scripts
+const tiltAnnotationRegistry = "tilt.dev/registry"
+const tiltAnnotationRegistryFromCluster = "tilt.dev/registry-from-cluster"
+
+// Recommended in Kind's scripts
+// https://kind.sigs.k8s.io/docs/user/local-registry/
+// There's active work underway to standardize this.
+const kindAnnotationRegistry = "kind.x-k8s.io/registry"
 
 const microk8sRegistryNamespace = "container-registry"
 const microk8sRegistryName = "registry"
@@ -81,7 +87,7 @@ func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container
 
 	// Check to make sure localhost resolves to an IPv4 address. If it doesn't,
 	// then we won't be able to connect to the registry. See:
-	// https://github.com/windmilleng/tilt/issues/2369
+	// https://github.com/tilt-dev/tilt/issues/2369
 	ips, err := net.LookupIP("localhost")
 	if err != nil || len(ips) == 0 || ips[0].To4() == nil {
 		logger.Get(ctx).Warnf("Your /etc/hosts is resolving localhost to ::1 (IPv6).\n" +
@@ -103,7 +109,7 @@ func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container
 
 // If this node has the Tilt registry annotations on it, then we can
 // infer it was set up with a Tilt script and thus has a local registry.
-func (r *registryAsync) inferRegistryFromTiltNodeAnnotations(ctx context.Context) container.Registry {
+func (r *registryAsync) inferRegistryFromNodeAnnotations(ctx context.Context) container.Registry {
 	nodeList, err := r.core.Nodes().List(ctx, metav1.ListOptions{Limit: 1})
 	if err != nil || len(nodeList.Items) == 0 {
 		return container.Registry{}
@@ -112,13 +118,23 @@ func (r *registryAsync) inferRegistryFromTiltNodeAnnotations(ctx context.Context
 	node := nodeList.Items[0]
 	annotations := node.Annotations
 
-	fromLocal := annotations[annotationRegistry]
-	fromCluster := annotations[annotationRegistryFromCluster]
+	fromLocal := annotations[tiltAnnotationRegistry]
+	fromCluster := annotations[tiltAnnotationRegistryFromCluster]
 
 	if fromLocal != "" {
 		reg, err := container.NewRegistryWithHostFromCluster(fromLocal, fromCluster)
 		if err != nil {
 			logger.Get(ctx).Warnf("Local registry read from node failed to parse (%s, %s): %v", fromLocal, fromCluster, err)
+			return container.Registry{}
+		}
+		return reg
+	}
+
+	kindLocal := annotations[kindAnnotationRegistry]
+	if kindLocal != "" {
+		reg, err := container.NewRegistryWithHostFromCluster(kindLocal, "")
+		if err != nil {
+			logger.Get(ctx).Warnf("Local registry read from node failed to parse (%s): %v", kindLocal, err)
 			return container.Registry{}
 		}
 		return reg
@@ -138,7 +154,7 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 			}
 		}
 
-		reg := r.inferRegistryFromTiltNodeAnnotations(ctx)
+		reg := r.inferRegistryFromNodeAnnotations(ctx)
 		if !reg.Empty() {
 			r.registry = reg
 		}
@@ -146,11 +162,11 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		if r.env == EnvKIND6 && r.registry.Empty() {
 			logger.Get(ctx).Warnf("You are running Kind without a local image registry.\n" +
 				"Tilt can use the local registry to speed up builds.\n" +
-				"Instructions: https://github.com/windmilleng/kind-local")
+				"Instructions: https://github.com/tilt-dev/kind-local")
 		} else if r.env == EnvK3D && r.registry.Empty() {
 			logger.Get(ctx).Warnf("You are running K3D without a local image registry.\n" +
 				"Tilt can use the local registry to speed up builds.\n" +
-				"Instructions: https://github.com/windmilleng/k3d-local-registry")
+				"Instructions: https://github.com/tilt-dev/k3d-local-registry")
 		}
 	})
 	return r.registry

@@ -50,8 +50,8 @@ class StatusItem {
 type StatusBarProps = {
   items: Array<StatusItem>
   alertsUrl: string
-  runningVersion: TiltBuild | null | undefined
-  latestVersion: TiltBuild | null | undefined
+  runningBuild: TiltBuild | null | undefined
+  suggestedVersion: string | null | undefined
   checkVersion: boolean
 }
 
@@ -125,19 +125,18 @@ class Statusbar extends PureComponent<StatusBarProps> {
   }
 
   tiltPanel(
-    runningVersion: TiltBuild | null | undefined,
-    latestVersion: TiltBuild | null | undefined,
+    runningBuild: TiltBuild | null | undefined,
+    suggestedVersion: string | null | undefined,
     shouldCheckVersion: boolean
   ) {
     let content: ReactElement = <LogoSvg className="Statusbar-logo" />
     if (
       shouldCheckVersion &&
-      latestVersion &&
-      latestVersion.version &&
-      runningVersion &&
-      runningVersion.version &&
-      !runningVersion.dev &&
-      runningVersion.version !== latestVersion.version
+      suggestedVersion &&
+      runningBuild &&
+      runningBuild.version &&
+      !runningBuild.dev &&
+      runningBuild.version !== suggestedVersion
     ) {
       content = (
         <a
@@ -150,12 +149,12 @@ class Statusbar extends PureComponent<StatusBarProps> {
             <span role="img" aria-label="Decorative sparkling stars">
               ✨
             </span>
-            Get Tilt v{latestVersion.version}!{" "}
+            Get Tilt v{suggestedVersion}!{" "}
             <span role="img" aria-label="Decorative sparkling stars">
               ✨
             </span>
             <br />
-            (You're running v{runningVersion.version})
+            (You're running v{runningBuild.version})
           </p>
           {content}
           <UpdateAvailableSvg />
@@ -197,8 +196,8 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let progressPanel = this.progressPanel(upCount, resCount)
 
     let tiltPanel = this.tiltPanel(
-      this.props.runningVersion,
-      this.props.latestVersion,
+      this.props.runningBuild,
+      this.props.suggestedVersion,
       this.props.checkVersion
     )
 

@@ -66,9 +66,13 @@ github.com/apache/thrift/lib/go/thrift
 github.com/beorn7/perks/quantile
 # github.com/bitly/go-hostpool v0.1.0
 ## explicit
+# github.com/bitly/go-simplejson v0.5.0
+## explicit
 # github.com/blang/semver v3.5.1+incompatible
 ## explicit
 github.com/blang/semver
+# github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
+## explicit
 # github.com/bugsnag/bugsnag-go v1.5.3
 ## explicit
 # github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b
@@ -246,7 +250,7 @@ github.com/eapache/queue
 # github.com/emicklei/go-restful v2.9.5+incompatible
 github.com/emicklei/go-restful
 github.com/emicklei/go-restful/log
-# github.com/evanphx/json-patch v4.2.0+incompatible => github.com/windmilleng/json-patch/v4 v4.8.0
+# github.com/evanphx/json-patch v4.2.0+incompatible => github.com/tilt-dev/json-patch/v4 v4.8.1
 github.com/evanphx/json-patch
 # github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d
 github.com/exponent-io/jsonpath
@@ -264,7 +268,6 @@ github.com/gdamore/tcell/terminfo
 github.com/gdamore/tcell/terminfo/dynamic
 # github.com/gentlemanautomaton/graceful v0.0.0-20170727140743-803ae396410c
 ## explicit
-github.com/gentlemanautomaton/graceful
 # github.com/ghodss/yaml v1.0.0
 ## explicit
 github.com/ghodss/yaml
@@ -315,9 +318,6 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-github v17.0.0+incompatible
-## explicit
-github.com/google/go-github/github
 # github.com/google/go-github/v29 v29.0.3
 ## explicit
 github.com/google/go-github/v29/github
@@ -412,6 +412,7 @@ github.com/mailru/easyjson/jwriter
 # github.com/marstr/guid v1.1.0
 ## explicit
 # github.com/mattn/go-colorable v0.1.4
+## explicit
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.10
 ## explicit
@@ -572,6 +573,18 @@ github.com/theupdateframework/notary/tuf/data
 github.com/theupdateframework/notary/tuf/signed
 github.com/theupdateframework/notary/tuf/utils
 github.com/theupdateframework/notary/tuf/validation
+# github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
+## explicit
+github.com/tilt-dev/fsevents
+# github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564
+## explicit
+github.com/tilt-dev/fsnotify
+# github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564
+## explicit
+github.com/tilt-dev/wmclient/pkg/analytics
+github.com/tilt-dev/wmclient/pkg/dirs
+github.com/tilt-dev/wmclient/pkg/env
+github.com/tilt-dev/wmclient/pkg/os/temp
 # github.com/tonistiigi/fsutil v0.0.0-20191018213012-0f039a052ca1
 github.com/tonistiigi/fsutil/types
 # github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
@@ -602,18 +615,6 @@ github.com/uber/jaeger-lib/metrics
 # github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 ## explicit
 github.com/whilp/git-urls
-# github.com/windmilleng/fsevents v0.0.0-20190206153914-2ad75e5ddeed
-## explicit
-github.com/windmilleng/fsevents
-# github.com/windmilleng/fsnotify v1.4.7
-## explicit
-github.com/windmilleng/fsnotify
-# github.com/windmilleng/wmclient v0.0.0-20200205181513-6c994672553a
-## explicit
-github.com/windmilleng/wmclient/pkg/analytics
-github.com/windmilleng/wmclient/pkg/dirs
-github.com/windmilleng/wmclient/pkg/env
-github.com/windmilleng/wmclient/pkg/os/temp
 # go.opencensus.io v0.22.2
 ## explicit
 go.opencensus.io
@@ -630,7 +631,7 @@ go.opentelemetry.io/otel/sdk/export/trace
 go.opentelemetry.io/otel/sdk/internal
 go.opentelemetry.io/otel/sdk/trace
 go.opentelemetry.io/otel/sdk/trace/internal
-# go.starlark.net v0.0.0-20191021185836-28350e608555
+# go.starlark.net v0.0.0-20200519165436-0aa95694c768
 ## explicit
 go.starlark.net/internal/compile
 go.starlark.net/internal/spell
@@ -897,7 +898,7 @@ k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/patch
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/validator
 k8s.io/cli-runtime/pkg/printers
 k8s.io/cli-runtime/pkg/resource
-# k8s.io/client-go v0.18.0 => github.com/windmilleng/client-go v0.0.0-20200326150806-41017343d309
+# k8s.io/client-go v0.18.0 => github.com/tilt-dev/client-go v0.0.0-20200326150806-41017343d309
 ## explicit
 k8s.io/client-go/discovery
 k8s.io/client-go/discovery/cached/disk
@@ -1112,7 +1113,6 @@ k8s.io/client-go/tools/clientcmd/api/latest
 k8s.io/client-go/tools/clientcmd/api/v1
 k8s.io/client-go/tools/metrics
 k8s.io/client-go/tools/pager
-k8s.io/client-go/tools/portforward
 k8s.io/client-go/tools/reference
 k8s.io/client-go/tools/remotecommand
 k8s.io/client-go/tools/watch
@@ -1200,7 +1200,7 @@ sigs.k8s.io/yaml
 ## explicit
 vbom.ml/util/sortorder
 # github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
-# github.com/evanphx/json-patch => github.com/windmilleng/json-patch/v4 v4.8.0
+# github.com/evanphx/json-patch => github.com/tilt-dev/json-patch/v4 v4.8.1
 # github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
-# k8s.io/client-go => github.com/windmilleng/client-go v0.0.0-20200326150806-41017343d309
+# k8s.io/client-go => github.com/tilt-dev/client-go v0.0.0-20200326150806-41017343d309

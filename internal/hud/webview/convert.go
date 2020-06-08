@@ -6,14 +6,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
-	"github.com/windmilleng/tilt/internal/feature"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
-	proto_webview "github.com/windmilleng/tilt/pkg/webview"
+	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
 func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*proto_webview.View, error) {
@@ -72,10 +71,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 
 		podID := ms.MostRecentPod().PodID
 
-		var facets []model.Facet
-		if s.Features[feature.Facets] {
-			facets = mt.Facets(s.Secrets)
-		}
+		facets := mt.Facets(s.Secrets)
 
 		bh, err := ToProtoBuildRecords(buildHistory, s.LogStore)
 		if err != nil {
@@ -147,12 +143,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 		Dev:       s.TiltBuildInfo.Dev,
 		Date:      s.TiltBuildInfo.Date,
 	}
-	ret.LatestTiltBuild = &proto_webview.TiltBuild{
-		Version:   s.LatestTiltBuild.Version,
-		CommitSHA: s.LatestTiltBuild.CommitSHA,
-		Dev:       s.LatestTiltBuild.Dev,
-		Date:      s.LatestTiltBuild.Date,
-	}
+	ret.SuggestedTiltVersion = s.SuggestedTiltVersion
 	ret.FeatureFlags = make(map[string]bool)
 	for k, v := range s.Features {
 		ret.FeatureFlags[k] = v
@@ -220,7 +211,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) error {
 	r.RuntimeStatus = string(model.RuntimeStatusNotApplicable)
 
-	if mt.Manifest.IsUnresourcedYAMLManifest() {
+	if mt.Manifest.NonWorkloadManifest() {
 		r.YamlResourceInfo = &proto_webview.YAMLResourceInfo{
 			K8SResources: mt.Manifest.K8sTarget().DisplayNames,
 		}
@@ -255,6 +246,7 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
 			AllContainersReady: pod.AllContainersReady(),
 			PodRestarts:        int32(pod.VisibleContainerRestarts()),
+			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 
 		r.RuntimeStatus = string(kState.RuntimeStatus())

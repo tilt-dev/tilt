@@ -9,17 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/output"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/output"
+	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/gdamore/tcell"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // The main loop ensures the HUD updates at least this often
@@ -50,9 +50,9 @@ type Hud struct {
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func ProvideHud(hudEnabled HudEnabled, renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics, printer *IncrementalPrinter) (HeadsUpDisplay, error) {
+func ProvideHud(hudEnabled HudEnabled, renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics, printer *IncrementalPrinter, store store.RStore) (HeadsUpDisplay, error) {
 	if !hudEnabled {
-		return NewDisabledHud(printer), nil
+		return NewDisabledHud(printer, store), nil
 	}
 	return NewDefaultHeadsUpDisplay(renderer, webURL, analytics)
 }

@@ -23,6 +23,7 @@ import {
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
+  ShowErrorModal,
 } from "./types"
 import { logLinesFromString } from "./logs"
 import HudState from "./HudState"
@@ -38,6 +39,7 @@ import FacetsPane from "./FacetsPane"
 import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 import { traceNav } from "./trace"
+import ErrorModal from "./ErrorModal"
 
 type HudProps = {
   history: History
@@ -82,11 +84,7 @@ class HUD extends Component<HudProps, HudState> {
           date: "",
           dev: false,
         },
-        latestTiltBuild: {
-          version: "",
-          date: "",
-          dev: false,
-        },
+        suggestedTiltVersion: "",
         versionSettings: { checkUpdates: true },
         featureFlags: {},
         tiltCloudUsername: "",
@@ -99,6 +97,8 @@ class HUD extends Component<HudProps, HudState> {
       showFatalErrorModal: ShowFatalErrorModal.Default,
       snapshotHighlight: undefined,
       socketState: SocketState.Closed,
+      showErrorModal: ShowErrorModal.Default,
+      error: undefined,
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -182,6 +182,7 @@ class HUD extends Component<HudProps, HudState> {
 
     let body = JSON.stringify(snapshot)
 
+    // TODO(dmiller): we need to figure out a way to get human readable error messages from the server
     fetch(url, {
       method: "post",
       body: body,
@@ -194,9 +195,21 @@ class HUD extends Component<HudProps, HudState> {
               snapshotLink: value.url ? value.url : "",
             })
           })
-          .catch(err => console.error(err))
+          .catch(err => {
+            console.error(err)
+            this.setAppState({
+              showSnapshotModal: false,
+              error: "Error decoding JSON response",
+            })
+          })
       })
-      .catch(err => console.error(err))
+      .catch(err => {
+        console.error(err)
+        this.setAppState({
+          showSnapshotModal: false,
+          error: "Error posting snapshot",
+        })
+      })
   }
 
   private getFeatures(): Features {
@@ -233,19 +246,20 @@ class HUD extends Component<HudProps, HudState> {
     }
     let statusItems = resources.map(res => new StatusItem(res))
 
-    let runningVersion = view?.runningTiltBuild
-    let latestVersion = view?.latestTiltBuild
+    let runningBuild = view?.runningTiltBuild
+    let suggestedVersion = view?.suggestedTiltVersion
     const versionSettings = view?.versionSettings
     const checkUpdates = versionSettings?.checkUpdates ?? true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
+    let errorModal = this.renderErrorModal()
 
     let statusbar = (
       <Statusbar
         items={statusItems}
         alertsUrl={this.path("/alerts")}
-        runningVersion={runningVersion}
-        latestVersion={latestVersion}
+        runningBuild={runningBuild}
+        suggestedVersion={suggestedVersion}
         checkVersion={checkUpdates}
       />
     )
@@ -266,6 +280,7 @@ class HUD extends Component<HudProps, HudState> {
         <AnalyticsNudge needsNudge={needsNudge} />
         <SocketBar state={this.state.socketState} />
         {fatalErrorModal}
+        {errorModal}
         {shareSnapshotModal}
 
         {this.renderSidebarSwitch()}
@@ -341,9 +356,7 @@ class HUD extends Component<HudProps, HudState> {
       let alertsUrl =
         name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
 
-      let isFacetsEnabled = this.getFeatures().isEnabled("facets")
-      let facetsUrl =
-        name !== "" && isFacetsEnabled ? this.path(`/r/${name}/facets`) : null
+      let facetsUrl = name !== "" ? this.path(`/r/${name}/facets`) : null
 
       let currentTraceNav =
         span && this.state.logStore
@@ -625,6 +638,21 @@ class HUD extends Component<HudProps, HudState> {
         error={error}
         showFatalErrorModal={this.state.showFatalErrorModal}
         handleClose={handleClose}
+      />
+    )
+  }
+
+  renderErrorModal() {
+    return (
+      <ErrorModal
+        error={this.state.error}
+        showErrorModal={this.state.showErrorModal}
+        handleClose={() =>
+          this.setState({
+            showErrorModal: ShowErrorModal.Default,
+            error: undefined,
+          })
+        }
       />
     )
   }

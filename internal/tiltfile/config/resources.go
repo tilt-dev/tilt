@@ -6,10 +6,10 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

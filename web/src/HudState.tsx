@@ -1,4 +1,9 @@
-import { ShowFatalErrorModal, SnapshotHighlight, SocketState } from "./types"
+import {
+  ShowFatalErrorModal,
+  SnapshotHighlight,
+  SocketState,
+  ShowErrorModal,
+} from "./types"
 import LogStore from "./LogStore"
 
 type HudState = {
@@ -7,6 +12,8 @@ type HudState = {
   snapshotLink: string
   showSnapshotModal: boolean
   showFatalErrorModal: ShowFatalErrorModal
+  error: string | undefined
+  showErrorModal: ShowErrorModal
   snapshotHighlight: SnapshotHighlight | undefined
   socketState: SocketState
   logStore?: LogStore

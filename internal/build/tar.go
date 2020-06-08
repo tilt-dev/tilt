@@ -13,9 +13,10 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/build/moby"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ArchiveBuilder struct {
@@ -179,6 +180,8 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, localPath, containe
 			logger.Get(ctx).Debugf("Skipping file %s: %v", curLocalPath, err)
 			return nil
 		}
+
+		header.Mode = int64(moby.ChmodTarEntry(os.FileMode(header.Mode)))
 
 		clearUIDAndGID(header)
 

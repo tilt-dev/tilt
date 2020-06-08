@@ -1,5 +1,3 @@
-// +build !windows
-
 package store
 
 import (
@@ -12,35 +10,49 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestStateToViewRelativeEditPaths(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{}).WithImageTarget(model.ImageTarget{}.
-		WithBuildDetails(model.DockerBuild{BuildPath: "/a/b/c"}))
+		WithBuildDetails(model.DockerBuild{BuildPath: f.JoinPath("a", "b", "c")}))
 
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
-	ms.CurrentBuild.Edits = []string{"/a/b/c/foo", "/a/b/c/d/e"}
+	ms.CurrentBuild.Edits = []string{
+		f.JoinPath("a", "b", "c", "foo"),
+		f.JoinPath("a", "b", "c", "d", "e")}
 	ms.BuildHistory = []model.BuildRecord{
-		{Edits: []string{"/a/b/c/foo", "/a/b/c/d/e"}},
+		{
+			Edits: []string{
+				f.JoinPath("a", "b", "c", "foo"),
+				f.JoinPath("a", "b", "c", "d", "e"),
+			},
+		},
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
-		map[string]time.Time{"/a/b/c/foo": time.Now(), "/a/b/c/d/e": time.Now()}
+		map[string]time.Time{
+			f.JoinPath("a", "b", "c", "foo"):    time.Now(),
+			f.JoinPath("a", "b", "c", "d", "e"): time.Now(),
+		}
 	v := StateToView(*state, &sync.RWMutex{})
 
 	require.Len(t, v.Resources, 2)
 
 	r, _ := v.Resource(m.Name)
-	assert.Equal(t, []string{"foo", "d/e"}, r.LastBuild().Edits)
-	assert.Equal(t, []string{"foo", "d/e"}, r.CurrentBuild.Edits)
-	assert.Equal(t, []string{"d/e", "foo"}, r.PendingBuildEdits) // these are sorted for deterministic ordering
+	assert.Equal(t, []string{"foo", filepath.Join("d", "e")}, r.LastBuild().Edits)
+	assert.Equal(t, []string{"foo", filepath.Join("d", "e")}, r.CurrentBuild.Edits)
+	assert.Equal(t, []string{filepath.Join("d", "e"), "foo"}, r.PendingBuildEdits) // these are sorted for deterministic ordering
 }
 
 func TestStateToViewPortForwards(t *testing.T) {
@@ -60,6 +72,18 @@ func TestStateToViewPortForwards(t *testing.T) {
 		res.Endpoints)
 }
 
+func TestRuntimeStateUnresourced(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, model.UnresourcedYAMLManifestName).
+		WithK8sYAML(testyaml.SecretYaml).
+		Build()
+	state := newState([]model.Manifest{m})
+	assert.Equal(t, model.RuntimeStatusOK,
+		state.ManifestTargets[m.Name].State.GetOrCreateK8sRuntimeState().RuntimeStatus())
+}
+
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
 	assert.NoError(t, err)
@@ -72,7 +96,26 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	assert.Equal(t, nil, r.LastBuild().Error)
 
 	expectedInfo := view.YAMLResourceInfo{
-		K8sResources: []string{"sancho:deployment"},
+		K8sDisplayNames: []string{"sancho:deployment"},
+	}
+	assert.Equal(t, expectedInfo, r.ResourceInfo)
+}
+
+func TestStateToViewNonWorkloadYAMLManifest(t *testing.T) {
+	es, err := k8s.ParseYAMLFromString(testyaml.SecretYaml)
+	require.NoError(t, err)
+	m, err := k8s.NewK8sOnlyManifest(model.ManifestName("foo"), es)
+	require.NoError(t, err)
+	state := newState([]model.Manifest{m})
+	v := StateToView(*state, &sync.RWMutex{})
+
+	assert.Equal(t, 2, len(v.Resources))
+
+	r, _ := v.Resource(m.Name)
+	assert.Equal(t, nil, r.LastBuild().Error)
+
+	expectedInfo := view.YAMLResourceInfo{
+		K8sDisplayNames: []string{"mysecret:secret"},
 	}
 	assert.Equal(t, expectedInfo, r.ResourceInfo)
 }
@@ -81,7 +124,7 @@ func TestMostRecentPod(t *testing.T) {
 	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
 	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
 	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
-	podSet := NewK8sRuntimeState(podA, podB, podC)
+	podSet := NewK8sRuntimeState("fe", podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 

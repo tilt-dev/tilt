@@ -3,8 +3,8 @@ package sidecar
 import (
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
 )
 
 // Inject the synclet into any Pod

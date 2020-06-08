@@ -7,14 +7,13 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Allows the caller to inject its own build strategy for dirty targets.
 type BuildHandler func(
 	target model.TargetSpec,
-	state store.BuildState,
 	depResults []store.BuildResult) (store.BuildResult, error)
 
 type ImageExistsChecker func(ctx context.Context, namedTagged reference.NamedTagged) (bool, error)
@@ -24,7 +23,7 @@ type TargetQueue struct {
 	sortedTargets []model.TargetSpec
 
 	// The state from the previous build.
-	// Contains files-changed so we can do incremental builds.
+	// Contains files-changed so that we can recycle old builds.
 	state store.BuildStateSet
 
 	// The results of this build.
@@ -91,14 +90,50 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 	}, nil
 }
 
-func (q *TargetQueue) Results() store.BuildResultSet {
-	return q.results
+// New results that were built with the current queue. Omits results
+// that were re-used previous builds.
+//
+// Returns results that the BuildAndDeploy contract expects.
+func (q *TargetQueue) NewResults() store.BuildResultSet {
+	newResults := store.BuildResultSet{}
+	for id, result := range q.results {
+		if q.isBuilding(id) {
+			newResults[id] = result
+		}
+	}
+	return newResults
 }
 
-func (q *TargetQueue) CountDirty() int {
+// Reused results that were not built with the current queue.
+//
+// Used for printing out which builds are cached from previous builds.
+func (q *TargetQueue) ReusedResults() store.BuildResultSet {
+	reusedResults := store.BuildResultSet{}
+	for id, result := range q.results {
+		if !q.isBuilding(id) {
+			reusedResults[id] = result
+		}
+	}
+	return reusedResults
+}
+
+// All results for targets in the current queue.
+func (q *TargetQueue) AllResults() store.BuildResultSet {
+	allResults := store.BuildResultSet{}
+	for id, result := range q.results {
+		allResults[id] = result
+	}
+	return allResults
+}
+
+func (q *TargetQueue) isBuilding(id model.TargetID) bool {
+	return q.needsOwnBuild[id] || q.depsNeedBuild[id]
+}
+
+func (q *TargetQueue) CountBuilds() int {
 	result := 0
 	for _, target := range q.sortedTargets {
-		if q.needsOwnBuild[target.ID()] || q.depsNeedBuild[target.ID()] {
+		if q.isBuilding(target.ID()) {
 			result++
 		}
 	}
@@ -108,16 +143,8 @@ func (q *TargetQueue) CountDirty() int {
 func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 	for _, target := range q.sortedTargets {
 		id := target.ID()
-		if q.depsNeedBuild[id] {
-			// If the dependencies are dirty, we can't use any state from the previous build.
-			result, err := handler(target, store.BuildState{}, q.dependencyResults(target))
-			if err != nil {
-				return err
-			}
-			q.results[id] = result
-		} else if q.needsOwnBuild[id] {
-			// If only files are dirty, we can try to do an incremental build.
-			result, err := handler(target, q.state[id], q.dependencyResults(target))
+		if q.isBuilding(id) {
+			result, err := handler(target, q.dependencyResults(target))
 			if err != nil {
 				return err
 			}

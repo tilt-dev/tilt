@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
 func TestWriteSnapshotTo(t *testing.T) {
@@ -47,9 +47,6 @@ func TestWriteSnapshotTo(t *testing.T) {
     "featureFlags": {
     },
     "runningTiltBuild": {
-
-    },
-    "latestTiltBuild": {
 
     },
     "versionSettings": {

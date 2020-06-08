@@ -6,12 +6,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 type BuildController struct {
@@ -26,9 +25,12 @@ type buildEntry struct {
 	buildStateSet store.BuildStateSet
 	filesChanged  []string
 	buildReason   model.BuildReason
-	firstBuild    bool
 	spanID        logstore.SpanID
 }
+
+func (e buildEntry) Name() model.ManifestName       { return e.name }
+func (e buildEntry) FilesChanged() []string         { return e.filesChanged }
+func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
 
 func NewBuildController(b BuildAndDeployer) *BuildController {
 	return &BuildController{
@@ -59,7 +61,6 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	c.buildsStartedCount += 1
 	ms := mt.State
 	manifest := mt.Manifest
-	firstBuild := !ms.StartedFirstBuild()
 
 	buildReason := mt.NextBuildReason()
 	targets := buildTargets(manifest)
@@ -68,7 +69,6 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	return buildEntry{
 		name:          manifest.Name,
 		targets:       targets,
-		firstBuild:    firstBuild,
 		buildReason:   buildReason,
 		buildStateSet: buildStateSet,
 		filesChanged:  append(ms.ConfigFilesThatCausedChange, buildStateSet.FilesChanged()...),
@@ -106,7 +106,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 		}
 		ctx := logger.CtxWithLogHandler(ctx, actionWriter)
 
-		c.logBuildEntry(ctx, entry)
+		buildcontrol.LogBuildEntry(ctx, entry)
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
 		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, entry.spanID, result, err))
@@ -122,29 +122,6 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, e
 		}
 	}
 	return c.b.BuildAndDeploy(ctx, st, targets, entry.buildStateSet)
-}
-
-func (c *BuildController) logBuildEntry(ctx context.Context, entry buildEntry) {
-	firstBuild := entry.firstBuild
-	name := entry.name
-	buildReason := entry.buildReason
-	changedFiles := entry.filesChanged
-
-	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "init"})
-	delimiter := "•"
-	if firstBuild {
-		l.Infof("Initial Build %s %s", delimiter, name)
-	} else {
-		if len(changedFiles) > 0 {
-			t := "File"
-			if len(changedFiles) > 1 {
-				t = "Files"
-			}
-			l.Infof("%d %s Changed: %s %s %s", len(changedFiles), t, ospath.FormatFileChangeList(changedFiles), delimiter, name)
-		} else {
-			l.Infof("%s %s %s", buildReason, delimiter, name)
-		}
-	}
 }
 
 type BuildLogActionWriter struct {
@@ -236,7 +213,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 	isImageBuildTrigger := reason.HasTrigger() && !isLiveUpdateEligibleTrigger
 	if isImageBuildTrigger {
 		for k, v := range result {
-			result[k] = v.WithImageBuildTriggered(true)
+			result[k] = v.WithFullBuildTriggered(true)
 		}
 	}
 

@@ -12,12 +12,11 @@ import (
 
 	"github.com/jonboulle/clockwork"
 
-	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
-	"github.com/windmilleng/tilt/internal/feature"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // to avoid infinitely resubmitting requests on error
@@ -62,9 +61,10 @@ type HttpClient interface {
 }
 
 type whoAmIResponse struct {
-	Found    bool
-	Username string
-	TeamName string
+	Found                bool
+	Username             string
+	TeamName             string
+	SuggestedTiltVersion string
 }
 
 func (c *CloudStatusManager) error() {
@@ -160,6 +160,7 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, c
 		Username:                 r.Username,
 		TeamName:                 r.TeamName,
 		IsPostRegistrationLookup: blocking,
+		SuggestedTiltVersion:     r.SuggestedTiltVersion,
 	})
 }
 
@@ -172,10 +173,6 @@ func (c *CloudStatusManager) needsLookup(requestKey statusRequestKey) bool {
 func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
-
-	if !state.Features[feature.Snapshots] {
-		return
-	}
 
 	c.mu.Lock()
 	lastErrorTime := c.lastErrorTime

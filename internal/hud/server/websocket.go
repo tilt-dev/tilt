@@ -12,18 +12,19 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
-	"github.com/windmilleng/tilt/internal/hud/webview"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
-	proto_webview "github.com/windmilleng/tilt/pkg/webview"
+	"github.com/tilt-dev/tilt/internal/hud/webview"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
+	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 
 	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:    1024,
+	WriteBufferSize:   1024,
+	EnableCompression: true,
 }
 
 type WebsocketSubscriber struct {

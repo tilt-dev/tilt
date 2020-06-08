@@ -11,9 +11,9 @@ import (
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 
-	tiltfile_io "github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
+	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 )
 
 // takes a list of objects that came from deserializing a potential starlark stream

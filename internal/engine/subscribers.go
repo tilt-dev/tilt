@@ -1,21 +1,23 @@
 package engine
 
 import (
-	"github.com/windmilleng/tilt/internal/cloud"
-	"github.com/windmilleng/tilt/internal/containerupdate"
-	"github.com/windmilleng/tilt/internal/engine/analytics"
-	"github.com/windmilleng/tilt/internal/engine/configs"
-	"github.com/windmilleng/tilt/internal/engine/dcwatch"
-	"github.com/windmilleng/tilt/internal/engine/dockerprune"
-	"github.com/windmilleng/tilt/internal/engine/exit"
-	"github.com/windmilleng/tilt/internal/engine/k8srollout"
-	"github.com/windmilleng/tilt/internal/engine/k8swatch"
-	"github.com/windmilleng/tilt/internal/engine/local"
-	"github.com/windmilleng/tilt/internal/engine/runtimelog"
-	"github.com/windmilleng/tilt/internal/engine/telemetry"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/cloud"
+	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/configs"
+	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
+	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
+	"github.com/tilt-dev/tilt/internal/engine/exit"
+	"github.com/tilt-dev/tilt/internal/engine/fswatch"
+	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/engine/telemetry"
+	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/store"
 )
 
 func ProvideSubscribers(
@@ -23,8 +25,8 @@ func ProvideSubscribers(
 	pw *k8swatch.PodWatcher,
 	sw *k8swatch.ServiceWatcher,
 	plm *runtimelog.PodLogManager,
-	pfc *PortForwardController,
-	fwm *WatchManager,
+	pfc *portforward.Controller,
+	fwm *fswatch.WatchManager,
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	dcw *dcwatch.EventWatcher,
@@ -33,7 +35,6 @@ func ProvideSubscribers(
 	sm containerupdate.SyncletManager,
 	ar *analytics.AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
-	tvc *TiltVersionChecker,
 	au *analytics.AnalyticsUpdater,
 	ewm *k8swatch.EventWatchManager,
 	tcum *cloud.CloudStatusManager,
@@ -59,7 +60,6 @@ func ProvideSubscribers(
 		sm,
 		ar,
 		hudsc,
-		tvc,
 		au,
 		ewm,
 		tcum,

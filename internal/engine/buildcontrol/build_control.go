@@ -3,8 +3,8 @@ package buildcontrol
 import (
 	"time"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // NOTE(maia): we eventually want to move the BuildController into its own package
@@ -229,11 +229,15 @@ func EarliestPendingAutoTriggerTarget(targets []*store.ManifestTarget) *store.Ma
 	earliest := time.Now()
 
 	for _, mt := range targets {
-		ok, newTime := mt.State.HasPendingChangesBefore(earliest)
+		ok, newTime := mt.State.HasPendingChangesBeforeOrEqual(earliest)
 		if ok {
 			if !mt.Manifest.TriggerMode.AutoOnChange() {
 				// Don't trigger update of a manual manifest just b/c if has
 				// pending changes; must come through the TriggerQueue, above.
+				continue
+			}
+			if choice != nil && newTime.Equal(earliest) {
+				// If two choices are equal, use the first one in target order.
 				continue
 			}
 			choice = mt

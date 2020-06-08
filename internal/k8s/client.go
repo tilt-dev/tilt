@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -33,8 +32,8 @@ import (
 	// Client auth plugins! They will auto-init if we import them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type Namespace string
@@ -69,7 +68,7 @@ type Client interface {
 	//
 	// Returns entities in the order that they were applied (which may be different
 	// than they were passed in) and with UUIDs from the Kube API
-	Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error)
+	Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error)
 
 	// Deletes all given entities.
 	//
@@ -122,7 +121,7 @@ type K8sClient struct {
 	runtimeAsync      *runtimeAsync
 	registryAsync     *registryAsync
 	nodeIPAsync       *nodeIPAsync
-	drm               meta.RESTMapper
+	drm               *restmapper.DeferredDiscoveryRESTMapper
 }
 
 var _ Client = K8sClient{}
@@ -241,11 +240,15 @@ func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	return nil, nil
 }
 
-func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
+func timeoutError(timeout time.Duration) error {
+	return errors.New(fmt.Sprintf("Killed kubectl. Hit timeout of %v.", timeout))
+}
+
+func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
 	defer span.Finish()
 
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	result := make([]K8sEntity, 0, len(entities))
@@ -255,6 +258,9 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 	if len(mutable) > 0 {
 		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, mutable)
 		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return nil, timeoutError(timeout)
+			}
 			return nil, err
 		}
 		result = append(result, newEntities...)
@@ -263,6 +269,9 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity) ([]K8sEntit
 	if len(immutable) > 0 {
 		newEntities, err := k.forceReplaceEntities(ctx, immutable)
 		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return nil, timeoutError(timeout)
+			}
 			return nil, err
 		}
 		result = append(result, newEntities...)
@@ -361,8 +370,9 @@ func maybeShouldTryReplaceReason(stderr string) (string, bool) {
 // behavior for our use cases.
 func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	l := logger.Get(ctx)
+	l.Infof("Deleting via kubectl:")
 	for _, e := range entities {
-		l.Infof("Deleting via kubectl: %s/%s\n", e.GVK().Kind, e.Name())
+		l.Infof("→ %s/%s", e.GVK().Kind, e.Name())
 	}
 
 	_, stderr, err := k.actOnEntities(ctx, []string{"delete", "--ignore-not-found"}, entities)
@@ -393,7 +403,21 @@ func (k K8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (
 	uid := ref.UID
 	rm, err := k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
 	if err != nil {
-		return K8sEntity{}, errors.Wrapf(err, "error mapping %s/%s", group, kind)
+		// The REST mapper doesn't have any sort of internal invalidation
+		// mechanism. So if the user applies a CRD (i.e., changing the available
+		// api resources), the REST mapper won't discover the new types.
+		//
+		// https://github.com/kubernetes/kubernetes/issues/75383
+		//
+		// But! When Tilt requests a resource by reference, we know in advance that
+		// it must exist, and therefore, its type must exist.  So we can safely
+		// reset the REST mapper and retry, so that it discovers the types.
+		k.drm.Reset()
+
+		rm, err = k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
+		if err != nil {
+			return K8sEntity{}, errors.Wrapf(err, "error mapping %s/%s", group, kind)
+		}
 	}
 
 	result, err := k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{

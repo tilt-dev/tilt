@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 )
 
 type ImageTarget struct {
@@ -83,7 +83,7 @@ func (i ImageTarget) Validate() error {
 			return fmt.Errorf("[Validate] Image %q missing build path", confRef)
 		}
 	case CustomBuild:
-		if bd.Command == "" {
+		if bd.Command.Empty() {
 			return fmt.Errorf(
 				"[Validate] CustomBuild command must not be empty",
 			)
@@ -248,7 +248,7 @@ func (s DockerBuildTarget) String() string { return string(s) }
 
 type CustomBuild struct {
 	WorkDir string
-	Command string
+	Command Cmd
 	// Deps is a list of file paths that are dependencies of this command.
 	Deps []string
 

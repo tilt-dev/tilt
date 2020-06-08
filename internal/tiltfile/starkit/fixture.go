@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 )
 
 // A fixture for test setup/teardown
@@ -80,7 +80,11 @@ func (f *Fixture) JoinPath(elem ...string) string {
 }
 
 func (f *Fixture) File(name, contents string) {
-	fullPath := filepath.Join(f.path, name)
+	fullPath := name
+	if !filepath.IsAbs(fullPath) {
+		fullPath = filepath.Join(f.path, name)
+	}
+
 	if f.useRealFS {
 		dir := filepath.Dir(fullPath)
 		err := os.MkdirAll(dir, os.FileMode(0755))
@@ -91,6 +95,14 @@ func (f *Fixture) File(name, contents string) {
 		return
 	}
 	f.fs[fullPath] = contents
+}
+
+func (f *Fixture) Symlink(old, new string) {
+	if !f.useRealFS {
+		panic("Can only use symlinks with a real FS")
+	}
+	err := os.Symlink(f.JoinPath(old), f.JoinPath(new))
+	assert.NoError(f.tb, err)
 }
 
 func (f *Fixture) UseRealFS() {

@@ -10,8 +10,8 @@ import (
 
 	"github.com/docker/distribution/reference"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 func syncletPrivileged() *bool {

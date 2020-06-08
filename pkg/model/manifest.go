@@ -9,8 +9,8 @@ import (
 
 	"github.com/docker/distribution/reference"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -112,8 +112,11 @@ func (m Manifest) IsK8s() bool {
 	return ok
 }
 
-func (m Manifest) IsUnresourcedYAMLManifest() bool {
-	return m.Name == UnresourcedYAMLManifestName
+func (m Manifest) NonWorkloadManifest() bool {
+	if k8sTarget, ok := m.deployTarget.(K8sTarget); ok {
+		return k8sTarget.NonWorkload
+	}
+	return false
 }
 
 func (m Manifest) DeployTarget() TargetSpec {
@@ -368,10 +371,20 @@ func ToHostCmd(cmd string) Cmd {
 		return Cmd{}
 	}
 	if runtime.GOOS == "windows" {
-		// from https://docs.docker.com/engine/reference/builder/#run
-		return Cmd{Argv: []string{"cmd", "/S", "/C", cmd}}
+		return ToBatCmd(cmd)
 	}
 	return ToUnixCmd(cmd)
+}
+
+// 🦇🦇🦇
+// Named in honor of Bazel
+// https://docs.bazel.build/versions/master/be/general.html#genrule.cmd_bat
+func ToBatCmd(cmd string) Cmd {
+	if cmd == "" {
+		return Cmd{}
+	}
+	// from https://docs.docker.com/engine/reference/builder/#run
+	return Cmd{Argv: []string{"cmd", "/S", "/C", cmd}}
 }
 
 func ToUnixCmd(cmd string) Cmd {

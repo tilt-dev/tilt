@@ -9,10 +9,10 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type CustomBuilder interface {
@@ -34,9 +34,7 @@ func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error) {
 	workDir := cb.WorkDir
 	expectedTag := cb.Tag
-
-	// TODO(nick): this should be stored in the data model as a Cmd
-	command := model.ToHostCmd(cb.Command)
+	command := cb.Command
 
 	skipsLocalDocker := cb.SkipsLocalDocker
 

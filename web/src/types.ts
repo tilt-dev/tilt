@@ -48,6 +48,11 @@ export enum ShowFatalErrorModal {
   Hide,
 }
 
+export enum ShowErrorModal {
+  Default,
+  Show,
+}
+
 export type Snapshot = {
   view: Proto.webviewView
   isSidebarClosed: boolean

@@ -42,7 +42,7 @@ var MainDefaults = Defaults{
 	},
 	Events: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	Snapshots: Value{
 		Enabled: true,
@@ -54,7 +54,7 @@ var MainDefaults = Defaults{
 	},
 	Facets: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 }
 

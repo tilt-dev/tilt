@@ -9,38 +9,40 @@ import (
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/cloud"
-	"github.com/windmilleng/tilt/internal/cloud/cloudurl"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/engine"
-	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
-	"github.com/windmilleng/tilt/internal/engine/configs"
-	"github.com/windmilleng/tilt/internal/engine/dcwatch"
-	"github.com/windmilleng/tilt/internal/engine/dockerprune"
-	"github.com/windmilleng/tilt/internal/engine/exit"
-	"github.com/windmilleng/tilt/internal/engine/k8srollout"
-	"github.com/windmilleng/tilt/internal/engine/k8swatch"
-	"github.com/windmilleng/tilt/internal/engine/local"
-	"github.com/windmilleng/tilt/internal/engine/runtimelog"
-	"github.com/windmilleng/tilt/internal/engine/telemetry"
-	"github.com/windmilleng/tilt/internal/feature"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tiltfile"
-	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/internal/tracer"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/cloud"
+	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/engine"
+	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/configs"
+	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
+	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
+	"github.com/tilt-dev/tilt/internal/engine/exit"
+	"github.com/tilt-dev/tilt/internal/engine/fswatch"
+	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/engine/telemetry"
+	"github.com/tilt-dev/tilt/internal/feature"
+	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var K8sWireSet = wire.NewSet(
@@ -71,7 +73,7 @@ var BaseWireSet = wire.NewSet(
 	clockwork.NewRealClock,
 	engine.DeployerWireSet,
 	runtimelog.NewPodLogManager,
-	engine.NewPortForwardController,
+	portforward.NewController,
 	engine.NewBuildController,
 	local.ProvideExecer,
 	local.NewController,
@@ -83,8 +85,6 @@ var BaseWireSet = wire.NewSet(
 	dcwatch.NewEventWatcher,
 	runtimelog.NewDockerComposeLogManager,
 	engine.NewProfilerManager,
-	engine.NewGithubClientFactory,
-	engine.NewTiltVersionChecker,
 	cloud.WireSet,
 	cloudurl.ProvideAddress,
 	k8srollout.NewPodMonitor,
@@ -106,9 +106,9 @@ var BaseWireSet = wire.NewSet(
 	engineanalytics.NewAnalyticsUpdater,
 	engineanalytics.ProvideAnalyticsReporter,
 	provideUpdateModeFlag,
-	engine.NewWatchManager,
-	engine.ProvideFsWatcherMaker,
-	engine.ProvideTimerMaker,
+	fswatch.NewWatchManager,
+	fswatch.ProvideFsWatcherMaker,
+	fswatch.ProvideTimerMaker,
 
 	provideWebVersion,
 	provideWebMode,
@@ -208,6 +208,15 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 		k8s.ProvideMinikubeClient,
 	)
 	return "", nil
+}
+
+func wireK8sClient(ctx context.Context) (k8s.Client, error) {
+	wire.Build(
+		K8sWireSet,
+		provideKubectlLogLevel,
+		k8s.ProvideMinikubeClient,
+	)
+	return nil, nil
 }
 
 func wireK8sVersion(ctx context.Context) (*version.Info, error) {

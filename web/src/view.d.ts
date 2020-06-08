@@ -13,7 +13,8 @@ declare namespace Proto {
     featureFlags?: object;
     needsAnalyticsNudge?: boolean;
     runningTiltBuild?: webviewTiltBuild;
-    latestTiltBuild?: webviewTiltBuild;
+    DEPRECATEDLatestTiltBuild?: webviewTiltBuild;
+    suggestedTiltVersion?: string;
     versionSettings?: webviewVersionSettings;
     tiltCloudUsername?: string;
     tiltCloudTeamName?: string;
@@ -140,6 +141,7 @@ declare namespace Proto {
     allContainersReady?: boolean;
     podRestarts?: number;
     spanId?: string;
+    displayNames?: string[];
   }
   export interface webviewFacet {
     name?: string;

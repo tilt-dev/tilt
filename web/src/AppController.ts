@@ -2,9 +2,6 @@ import { SocketState, Snapshot } from "./types"
 import HudState from "./HudState"
 import PathBuilder from "./PathBuilder"
 
-type Resource = Proto.webviewResource
-type K8sResourceInfo = Proto.webviewK8sResourceInfo
-
 interface HudInt {
   setAppState: <K extends keyof HudState>(state: Pick<HudState, K>) => void
   setHistoryLocation: (path: string) => void
@@ -139,8 +136,8 @@ class AppController {
         }
       })
       .catch(err => {
-        // TODO(dmiller): set app state with an error message
         console.error(err)
+        this.component.setAppState({ error: err })
       })
   }
 }

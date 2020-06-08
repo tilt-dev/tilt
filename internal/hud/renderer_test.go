@@ -10,13 +10,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/rty"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
 	"github.com/gdamore/tcell"
 )
@@ -98,13 +98,13 @@ func TestRender(t *testing.T) {
   │ Applying via kubectl
     ╎ Created tarball (size: 11 kB)
   │ Building image
-    ╎ RUNNING: go install github.com/windmilleng/servantes/snack
+    ╎ RUNNING: go install github.com/tilt-dev/servantes/snack
 
-    ╎ ERROR IN: go install github.com/windmilleng/servantes/snack
-    ╎   → # github.com/windmilleng/servantes/snack
-src/github.com/windmilleng/servantes/snack/main.go:16:36: syntax error: unexpected newline, expecting comma or }
+    ╎ ERROR IN: go install github.com/tilt-dev/servantes/snack
+    ╎   → # github.com/tilt-dev/servantes/snack
+src/github.com/tilt-dev/servantes/snack/main.go:16:36: syntax error: unexpected newline, expecting comma or }
 
-ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/windmilleng/servantes/snack]: exit code 2`)
+ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/tilt-dev/servantes/snack]: exit code 2`)
 	rtf.run("inline build log with wrapping", 117, 20, v, plainVs)
 
 	v = newView(view.Resource{
@@ -228,7 +228,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`)
 		}},
 		LastDeployTime: ts,
 		ResourceInfo: view.YAMLResourceInfo{
-			K8sResources: []string{"sancho:deployment"},
+			K8sDisplayNames: []string{"sancho:deployment"},
 		},
 	})
 	rtf.run("no collapse unresourced yaml manifest", 70, 20, v, plainVs)

@@ -1,5 +1,3 @@
-// +build !windows
-
 package store
 
 import (
@@ -11,7 +9,7 @@ import (
 )
 
 func TestSubscriber(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(ctx, s)
@@ -22,7 +20,7 @@ func TestSubscriber(t *testing.T) {
 }
 
 func TestSubscriberInterleavedCalls(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(ctx, s)
@@ -45,7 +43,7 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 }
 
 func TestAddSubscriberToAlreadySetUpListCallsSetUp(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	st.subscribers.SetUp(ctx)
 
@@ -56,7 +54,7 @@ func TestAddSubscriberToAlreadySetUpListCallsSetUp(t *testing.T) {
 }
 
 func TestAddSubscriberBeforeSetupNoop(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 
 	s := newFakeSubscriber()
@@ -67,7 +65,7 @@ func TestAddSubscriberBeforeSetupNoop(t *testing.T) {
 }
 
 func TestRemoveSubscriber(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 
@@ -82,7 +80,7 @@ func TestRemoveSubscriber(t *testing.T) {
 }
 
 func TestRemoveSubscriberNotFound(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	s := newFakeSubscriber()
 	ctx := context.Background()
 	err := st.RemoveSubscriber(ctx, s)
@@ -92,7 +90,7 @@ func TestRemoveSubscriberNotFound(t *testing.T) {
 }
 
 func TestSubscriberSetup(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(ctx, s)
@@ -103,7 +101,7 @@ func TestSubscriberSetup(t *testing.T) {
 }
 
 func TestSubscriberTeardown(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(ctx, s)
@@ -118,7 +116,7 @@ func TestSubscriberTeardown(t *testing.T) {
 }
 
 func TestSubscriberTeardownOnRemove(t *testing.T) {
-	st, _ := NewStoreForTesting()
+	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
 	st.AddSubscriber(ctx, s)

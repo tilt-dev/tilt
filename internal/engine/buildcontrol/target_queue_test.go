@@ -8,11 +8,11 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestTargetQueue_Simple(t *testing.T) {
@@ -29,7 +29,7 @@ func TestTargetQueue_Simple(t *testing.T) {
 	f.run(targets, buildStateSet)
 
 	expectedCalls := map[model.TargetID]fakeBuildHandlerCall{
-		t1.ID(): newFakeBuildHandlerCall(t1, s1, 1, []store.BuildResult{}),
+		t1.ID(): newFakeBuildHandlerCall(t1, 1, []store.BuildResult{}),
 	}
 	assert.Equal(t, expectedCalls, f.handler.calls)
 }
@@ -50,7 +50,7 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
-	barCall := newFakeBuildHandlerCall(barTarget, s2, 1, []store.BuildResult{
+	barCall := newFakeBuildHandlerCall(barTarget, 1, []store.BuildResult{
 		store.NewImageBuildResultSingleRef(fooTarget.ID(), store.LocalImageRefFromBuildResult(s1.LastSuccessfulResult)),
 	})
 
@@ -79,9 +79,9 @@ func TestTargetQueue_DepsUnbuilt(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
-	fooCall := newFakeBuildHandlerCall(fooTarget, s1, 1, []store.BuildResult{})
+	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.BuildResult{})
 	// bar's dep is dirty, so bar should not get its old state
-	barCall := newFakeBuildHandlerCall(barTarget, store.BuildState{}, 2, []store.BuildResult{fooCall.result})
+	barCall := newFakeBuildHandlerCall(barTarget, 2, []store.BuildResult{fooCall.result})
 
 	expectedCalls := map[model.TargetID]fakeBuildHandlerCall{
 		fooTarget.ID(): fooCall,
@@ -107,7 +107,7 @@ func TestTargetQueue_IncrementalBuild(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
-	fooCall := newFakeBuildHandlerCall(fooTarget, s1, 1, []store.BuildResult{})
+	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.BuildResult{})
 
 	expectedCalls := map[model.TargetID]fakeBuildHandlerCall{
 		fooTarget.ID(): fooCall,
@@ -154,8 +154,8 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
-	fooCall := newFakeBuildHandlerCall(fooTarget, s1, 1, []store.BuildResult{})
-	barCall := newFakeBuildHandlerCall(barTarget, s2, 2, []store.BuildResult{
+	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.BuildResult{})
+	barCall := newFakeBuildHandlerCall(barTarget, 2, []store.BuildResult{
 		store.NewImageBuildResultSingleRef(fooTarget.ID(), store.LocalImageRefFromBuildResult(fooCall.result)),
 	})
 
@@ -167,10 +167,9 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 	assert.Equal(t, expectedCalls, f.handler.calls)
 }
 
-func newFakeBuildHandlerCall(target model.ImageTarget, state store.BuildState, num int, depResults []store.BuildResult) fakeBuildHandlerCall {
+func newFakeBuildHandlerCall(target model.ImageTarget, num int, depResults []store.BuildResult) fakeBuildHandlerCall {
 	return fakeBuildHandlerCall{
 		target: target,
-		state:  state,
 		result: store.NewImageBuildResultSingleRef(
 			target.ID(),
 			container.MustParseNamedTagged(fmt.Sprintf("%s:%d", target.Refs.ConfigurationRef.String(), num)),
@@ -181,7 +180,6 @@ func newFakeBuildHandlerCall(target model.ImageTarget, state store.BuildState, n
 
 type fakeBuildHandlerCall struct {
 	target     model.TargetSpec
-	state      store.BuildState
 	depResults []store.BuildResult
 	result     store.BuildResult
 }
@@ -197,12 +195,12 @@ func newFakeBuildHandler() *fakeBuildHandler {
 	}
 }
 
-func (fbh *fakeBuildHandler) handle(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
+func (fbh *fakeBuildHandler) handle(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
 	iTarget := target.(model.ImageTarget)
 	fbh.buildNum++
 	namedTagged := container.MustParseNamedTagged(fmt.Sprintf("%s:%d", iTarget.Refs.ConfigurationRef, fbh.buildNum))
 	result := store.NewImageBuildResultSingleRef(target.ID(), namedTagged)
-	fbh.calls[target.ID()] = fakeBuildHandlerCall{target, state, depResults, result}
+	fbh.calls[target.ID()] = fakeBuildHandlerCall{target, depResults, result}
 	return result, nil
 }
 

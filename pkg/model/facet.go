@@ -1,6 +1,6 @@
 package model
 
-import "github.com/windmilleng/tilt/pkg/webview"
+import "github.com/tilt-dev/tilt/pkg/webview"
 
 type Facet struct {
 	Name   string `json:"name"`

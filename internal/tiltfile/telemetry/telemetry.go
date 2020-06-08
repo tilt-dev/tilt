@@ -6,9 +6,9 @@ import (
 
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type Extension struct{}
@@ -26,13 +26,15 @@ func (Extension) OnStart(env *starkit.Environment) error {
 }
 
 func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var cmdVal starlark.Value
-	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "cmd", &cmdVal)
+	var cmdVal, cmdBatVal starlark.Value
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
+		"cmd", &cmdVal,
+		"cmd_bat?", &cmdBatVal)
 	if err != nil {
 		return starlark.None, err
 	}
 
-	cmd, err := value.ValueToHostCmd(cmdVal)
+	cmd, err := value.ValueGroupToCmdHelper(cmdVal, cmdBatVal)
 	if err != nil {
 		return nil, err
 	}

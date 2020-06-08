@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestExitControlAllSuccess(t *testing.T) {
@@ -105,7 +105,7 @@ func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(store.Pod{
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", store.Pod{
 			PodID:  "pod-a",
 			Status: "ErrImagePull",
 			Containers: []store.Container{
@@ -141,14 +141,14 @@ func TestExitControlCISuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(readyPod("pod-a"))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", readyPod("pod-a"))
 	})
 
 	f.c.OnChange(f.ctx, f.store)
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe2"].State.RuntimeState = store.NewK8sRuntimeState(readyPod("pod-b"))
+		state.ManifestTargets["fe2"].State.RuntimeState = store.NewK8sRuntimeState("fe2", readyPod("pod-b"))
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
@@ -169,14 +169,14 @@ func TestExitControlCIJobSuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(readyPod("pod-a"))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", readyPod("pod-a"))
 	})
 
 	f.c.OnChange(f.ctx, f.store)
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(successPod("pod-a"))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", successPod("pod-a"))
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.

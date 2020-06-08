@@ -8,18 +8,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 type EngineState struct {
@@ -42,7 +42,11 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	MaxParallelUpdates int
+	// For synchronizing ConfigsController -- wait until engine records all builds started
+	// so far before starting another build
+	StartedTiltfileLoadCount int
+
+	UpdateSettings model.UpdateSettings
 
 	FatalError error
 
@@ -69,8 +73,12 @@ type EngineState struct {
 	// All logs in Tilt, stored in a structured format.
 	LogStore *logstore.LogStore `testdiff:"ignore"`
 
-	TiltfilePath             string
-	ConfigFiles              []string
+	TiltfilePath string
+
+	// TODO(nick): This should be called "ConfigPaths", not "ConfigFiles",
+	// because this could refer to directories that are watched recursively.
+	ConfigFiles []string
+
 	TiltIgnoreContents       string
 	PendingConfigFileChanges map[string]time.Time
 
@@ -80,8 +88,8 @@ type EngineState struct {
 
 	TiltfileState ManifestState
 
-	LatestTiltBuild model.TiltBuild // from GitHub
-	VersionSettings model.VersionSettings
+	SuggestedTiltVersion string
+	VersionSettings      model.VersionSettings
 
 	// Analytics Info
 	AnalyticsEnvOpt        analytics.Opt
@@ -165,12 +173,12 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 
 func (e *EngineState) AvailableBuildSlots() int {
 	currentlyBuilding := len(e.CurrentlyBuilding)
-	if currentlyBuilding >= e.MaxParallelUpdates {
+	if currentlyBuilding >= e.UpdateSettings.MaxParallelUpdates() {
 		// this could happen if user decreases max build slots while
 		// multiple builds are in progress, no big deal
 		return 0
 	}
-	return e.MaxParallelUpdates - currentlyBuilding
+	return e.UpdateSettings.MaxParallelUpdates() - currentlyBuilding
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -358,7 +366,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
-	ret.MaxParallelUpdates = 1
+	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
@@ -411,14 +419,17 @@ func (ms *ManifestState) IsDC() bool {
 }
 
 func (ms *ManifestState) K8sRuntimeState() K8sRuntimeState {
-	ret, _ := ms.RuntimeState.(K8sRuntimeState)
+	ret, ok := ms.RuntimeState.(K8sRuntimeState)
+	if !ok {
+		return NewK8sRuntimeState(ms.Name)
+	}
 	return ret
 }
 
 func (ms *ManifestState) GetOrCreateK8sRuntimeState() K8sRuntimeState {
 	ret, ok := ms.RuntimeState.(K8sRuntimeState)
 	if !ok {
-		ret = NewK8sRuntimeState()
+		ret = NewK8sRuntimeState(ms.Name)
 		ms.RuntimeState = ret
 	}
 	return ret
@@ -509,13 +520,6 @@ func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
 	return reason
 }
 
-// Whether a change at the given time should trigger a build.
-// Used to determine if changes to synced files or config files
-// should kick off a new build.
-func (ms *ManifestState) IsPendingTime(t time.Time) bool {
-	return !t.IsZero() && t.After(ms.LastBuild().StartTime)
-}
-
 // Whether changes have been made to this Manifest's synced files
 // or config since the last build.
 //
@@ -523,22 +527,22 @@ func (ms *ManifestState) IsPendingTime(t time.Time) bool {
 // bool: whether changes have been made
 // Time: the time of the earliest change
 func (ms *ManifestState) HasPendingChanges() (bool, time.Time) {
-	return ms.HasPendingChangesBefore(time.Now())
+	return ms.HasPendingChangesBeforeOrEqual(time.Now())
 }
 
 // Like HasPendingChanges, but relative to a particular time.
-func (ms *ManifestState) HasPendingChangesBefore(highWaterMark time.Time) (bool, time.Time) {
+func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time) (bool, time.Time) {
 	ok := false
 	earliest := highWaterMark
 	t := ms.PendingManifestChange
-	if t.Before(earliest) && ms.IsPendingTime(t) {
+	if !t.IsZero() && BeforeOrEqual(t, earliest) {
 		ok = true
 		earliest = t
 	}
 
 	for _, status := range ms.BuildStatuses {
 		for _, t := range status.PendingFileChanges {
-			if t.Before(earliest) && ms.IsPendingTime(t) {
+			if !t.IsZero() && BeforeOrEqual(t, earliest) {
 				ok = true
 				earliest = t
 			}
@@ -736,9 +740,9 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		runStatus = mt.State.RuntimeState.RuntimeStatus()
 	}
 
-	if mt.Manifest.IsUnresourcedYAMLManifest() {
+	if mt.Manifest.NonWorkloadManifest() {
 		return view.YAMLResourceInfo{
-			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
+			K8sDisplayNames: mt.Manifest.K8sTarget().DisplayNames,
 		}
 	}
 
@@ -756,6 +760,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			SpanID:             pod.SpanID,
 			RunStatus:          runStatus,
+			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 	case LocalRuntimeState:
 		return view.NewLocalResourceInfo(runStatus, state.PID, state.SpanID)

@@ -2,15 +2,17 @@ package hud
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/gdamore/tcell"
+	"github.com/rivo/tview"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/rty"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 // These widths are determined experimentally, to see what shows up in a typical UX.
@@ -121,9 +123,16 @@ func (v *ResourceView) titleTextName() rty.Component {
 	p := " "
 	if selected {
 		p = "▼"
+		if runtime.GOOS == "windows" {
+			// Windows default fonts support fewer symbols.
+			p = "↓"
+		}
 	}
 	if selected && v.res.IsCollapsed(v.rv) {
 		p = "▶"
+		if runtime.GOOS == "windows" {
+			p = "→"
+		}
 	}
 
 	display := combinedStatus(v.res)
@@ -133,7 +142,7 @@ func (v *ResourceView) titleTextName() rty.Component {
 	case cGood:
 		sb.Fg(display.color).Textf(" ● ")
 	case cBad:
-		sb.Fg(display.color).Textf(" ✖ ")
+		sb.Fg(display.color).Textf(" %s ", xMark())
 	default:
 		sb.Fg(display.color).Textf(" ○ ")
 	}
@@ -223,7 +232,7 @@ func (v *ResourceView) resourceExpanded() rty.Component {
 func (v *ResourceView) resourceExpandedYAML() rty.Component {
 	yi := v.res.YAMLInfo()
 
-	if !v.res.IsYAML() || len(yi.K8sResources) == 0 {
+	if !v.res.IsYAML() || len(yi.K8sDisplayNames) == 0 {
 		return rty.EmptyLayout
 	}
 
@@ -231,7 +240,7 @@ func (v *ResourceView) resourceExpandedYAML() rty.Component {
 	l.Add(rty.TextString(strings.Repeat(" ", 2)))
 	rhs := rty.NewConcatLayout(rty.DirVert)
 	rhs.Add(rty.NewStringBuilder().Fg(cLightText).Text("(Kubernetes objects that don't match a group)").Build())
-	rhs.Add(rty.TextString(strings.Join(yi.K8sResources, "\n")))
+	rhs.Add(rty.TextString(strings.Join(yi.K8sDisplayNames, "\n")))
 	l.AddDynamic(rhs)
 	return l
 }
@@ -497,7 +506,24 @@ func (v *ResourceView) resourceExpandedBuildError() (rty.Component, bool) {
 
 var spinnerChars = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
+var spinnerCharsWindows = []string{
+	string(tview.BoxDrawingsLightDownAndRight),
+	string(tview.BoxDrawingsLightHorizontal),
+	string(tview.BoxDrawingsLightHorizontal),
+	string(tview.BoxDrawingsLightDownAndLeft),
+	string(tview.BoxDrawingsLightVertical),
+	string(tview.BoxDrawingsLightUpAndLeft),
+	string(tview.BoxDrawingsLightHorizontal),
+	string(tview.BoxDrawingsLightHorizontal),
+	string(tview.BoxDrawingsLightUpAndRight),
+	string(tview.BoxDrawingsLightVertical),
+}
+
 func (v *ResourceView) spinner() string {
+	chars := spinnerChars
+	if runtime.GOOS == "windows" {
+		chars = spinnerCharsWindows
+	}
 	decisecond := v.clock().Nanosecond() / int(time.Second/10)
-	return spinnerChars[decisecond%len(spinnerChars)] // tick spinner every 10x/second
+	return chars[decisecond%len(chars)] // tick spinner every 10x/second
 }

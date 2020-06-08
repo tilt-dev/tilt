@@ -13,10 +13,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type DockerComposeClient interface {
@@ -45,7 +45,7 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 
 func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
 	// docker-compose up is not thread-safe, because network operations are non-atomic. See:
-	// https://github.com/windmilleng/tilt/issues/2817
+	// https://github.com/tilt-dev/tilt/issues/2817
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -214,7 +214,7 @@ func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args .
 		if err, ok := err.(*exec.ExitError); ok {
 			errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
 		}
-		err = fmt.Errorf(errorMessage)
+		err = fmt.Errorf("%s", errorMessage)
 	}
 	return strings.TrimSpace(string(output)), err
 }
@@ -230,5 +230,5 @@ func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
 	if err, ok := err.(*exec.ExitError); ok && len(err.Stderr) > 0 {
 		errorMessage += fmt.Sprintf("\nstderr: '%v'", string(err.Stderr))
 	}
-	return fmt.Errorf(errorMessage)
+	return fmt.Errorf("%s", errorMessage)
 }

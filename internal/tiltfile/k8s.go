@@ -14,11 +14,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type referenceList []reference.Named
@@ -52,10 +52,14 @@ type k8sResource struct {
 	triggerMode triggerMode
 
 	resourceDeps []string
+
+	nonWorkload bool
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
 	"deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
+
+const deprecatedResourceAssemblyVersionWarning = "This Tiltfile is calling k8s_resource_assembly_version, which has been deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
 
 // holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
@@ -66,6 +70,8 @@ type k8sResourceOptions struct {
 	triggerMode       triggerMode
 	tiltfilePosition  syntax.Position
 	resourceDeps      []string
+	objects           []string
+	nonWorkload       bool
 }
 
 func (r *k8sResource) addRefSelector(selector container.RefSelector) {
@@ -86,7 +92,7 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
 			if count == 0 {
 				r.imageRefs = append(r.imageRefs, image)
 			}
-			r.imageRefMap[image.String()] += 1
+			r.imageRefMap[image.String()]++
 		}
 	}
 
@@ -137,6 +143,11 @@ func (s *tiltfileState) extractSecrets() model.SecretSet {
 }
 
 func (s *tiltfileState) maybeExtractSecrets(e k8s.K8sEntity) model.SecretSet {
+	if !s.secretSettings.ScrubSecrets {
+		// Secret scrubbing disabled, don't extract any secrets
+		return nil
+	}
+
 	secret, ok := e.Obj.(*v1.Secret)
 	if !ok {
 		return nil
@@ -361,25 +372,31 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var extraPodSelectorsVal starlark.Value
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
+	var objectsVal starlark.Sequence
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"workload", &workload,
+		"workload?", &workload,
 		"new_name?", &newName,
 		"port_forwards?", &portForwardsVal,
 		"extra_pod_selectors?", &extraPodSelectorsVal,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
+		"objects?", &objectsVal,
 	); err != nil {
 		return nil, err
 	}
 
+	resourceName := workload
+	needsToHaveObjects := false
 	if workload == "" {
-		return nil, fmt.Errorf("%s: workload must not be empty", fn.Name())
+		resourceName = newName
+		// If a resource doesn't specify a workload then it needs to have objects to be valid
+		needsToHaveObjects = true
 	}
 
 	portForwards, err := convertPortForwards(portForwardsVal)
 	if err != nil {
-		return nil, errors.Wrapf(err, "%s %q", fn.Name(), workload)
+		return nil, errors.Wrapf(err, "%s %q", fn.Name(), resourceName)
 	}
 
 	extraPodSelectors, err := podLabelsFromStarlarkValue(extraPodSelectorsVal)
@@ -387,8 +404,8 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	if opts, ok := s.k8sResourceOptions[workload]; ok {
-		return nil, fmt.Errorf("%s already called for %s, at %s", fn.Name(), workload, opts.tiltfilePosition.String())
+	if opts, ok := s.k8sResourceOptions[resourceName]; ok {
+		return nil, fmt.Errorf("%s already called for %s, at %s", fn.Name(), resourceName, opts.tiltfilePosition.String())
 	}
 
 	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
@@ -396,13 +413,28 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	s.k8sResourceOptions[workload] = k8sResourceOptions{
+	objects, err := value.SequenceToStringSlice(objectsVal)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
+	}
+
+	if needsToHaveObjects && len(objects) == 0 {
+		return nil, fmt.Errorf("k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
+	}
+
+	if needsToHaveObjects && len(objects) > 0 && newName == "" {
+		return nil, fmt.Errorf("k8s_resource has only non-workload objects but doesn't provide a new_name")
+	}
+
+	s.k8sResourceOptions[resourceName] = k8sResourceOptions{
 		newName:           newName,
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
 		tiltfilePosition:  thread.CallFrame(1).Pos,
 		triggerMode:       triggerMode,
 		resourceDeps:      resourceDeps,
+		objects:           objects,
+		nonWorkload:       needsToHaveObjects,
 	}
 
 	return starlark.None, nil
@@ -882,8 +914,8 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 		return starlark.None, fmt.Errorf("invalid %s %d. Must be 1 or 2.", fn.Name(), version)
 	}
 
-	if version == 1 && !s.warnedDeprecatedResourceAssembly {
-		s.logger.Warnf("%s", deprecatedResourceAssemblyV1Warning)
+	if !s.warnedDeprecatedResourceAssembly {
+		s.logger.Warnf(deprecatedResourceAssemblyVersionWarning)
 		s.warnedDeprecatedResourceAssembly = true
 	}
 

@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-colorable"
 	"github.com/spf13/cobra"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/cloud"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/cloud"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type ciCmd struct {
@@ -38,7 +39,8 @@ While Tilt is running, you can view the UI at %s:%d
 `, DefaultWebHost, DefaultWebPort),
 	}
 
-	addWebServerFlags(cmd)
+	addStartServerFlags(cmd)
+	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
 
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
@@ -87,7 +89,8 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 		c.fileName, false, a.UserOpt(), cmdCIDeps.Token,
 		string(cmdCIDeps.CloudAddress))
 	if err == nil {
-		fmt.Println(color.GreenString("SUCCESS. All workloads are healthy."))
+		_, _ = fmt.Fprintln(colorable.NewColorableStdout(),
+			color.GreenString("SUCCESS. All workloads are healthy."))
 	}
 	return err
 }

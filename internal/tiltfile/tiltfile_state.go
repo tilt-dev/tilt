@@ -13,29 +13,31 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/feature"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/tiltfile/analytics"
-	"github.com/windmilleng/tilt/internal/tiltfile/config"
-	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
-	"github.com/windmilleng/tilt/internal/tiltfile/encoding"
-	"github.com/windmilleng/tilt/internal/tiltfile/git"
-	"github.com/windmilleng/tilt/internal/tiltfile/include"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
-	"github.com/windmilleng/tilt/internal/tiltfile/os"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
-	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
-	"github.com/windmilleng/tilt/internal/tiltfile/tiltextension"
-	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
-	"github.com/windmilleng/tilt/internal/tiltfile/version"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
+
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/feature"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/tiltfile/analytics"
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
+	"github.com/tilt-dev/tilt/internal/tiltfile/encoding"
+	"github.com/tilt-dev/tilt/internal/tiltfile/git"
+	"github.com/tilt-dev/tilt/internal/tiltfile/include"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/os"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starlarkstruct"
+	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
+	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
+	"github.com/tilt-dev/tilt/internal/tiltfile/version"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type resourceSet struct {
@@ -98,6 +100,8 @@ type tiltfileState struct {
 
 	teamID string
 
+	secretSettings model.SecretSettings
+
 	logger                           logger.Logger
 	warnedDeprecatedResourceAssembly bool
 	postExecReadFiles                []string
@@ -140,6 +144,7 @@ func newTiltfileState(
 		localResources:             []localResource{},
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
+		secretSettings:             model.DefaultSecretSettings(),
 	}
 }
 
@@ -171,6 +176,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
 		updatesettings.NewExtension(),
+		secretsettings.NewExtension(),
 		encoding.NewExtension(),
 		tiltextension.NewExtension(tiltextension.NewGithubFetcher(), tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
@@ -363,7 +369,7 @@ func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 }
 
 func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string) error {
-	return io.RecordReadFile(t, tiltIgnorePath(tiltfilePath))
+	return io.RecordReadPath(t, io.WatchFileOnly, tiltIgnorePath(tiltfilePath))
 }
 
 // wrap a builtin such that it's only allowed to run when we have a known safe k8s context
@@ -602,7 +608,29 @@ func (s *tiltfileState) assembleK8sV2() error {
 		return err
 	}
 
+	resourcedEntities := []k8s.K8sEntity{}
+	for _, r := range s.k8sByName {
+		resourcedEntities = append(resourcedEntities, r.entities...)
+	}
+
+	allEntities := append(resourcedEntities, s.k8sUnresourced...)
+
+	fragmentsToEntities := k8s.FragmentsToEntities(allEntities)
+
+	fullNames := make([]string, len(allEntities))
+	for i, e := range allEntities {
+		fullNames[i] = fullNameFromK8sEntity(e)
+	}
+
 	for workload, opts := range s.k8sResourceOptions {
+		if opts.nonWorkload {
+			r, err := s.makeK8sResource(opts.newName)
+			if err != nil {
+				return err
+			}
+			r.nonWorkload = true
+			s.k8sByName[opts.newName] = r
+		}
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards
@@ -610,18 +638,57 @@ func (s *tiltfileState) assembleK8sV2() error {
 			r.resourceDeps = opts.resourceDeps
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
-					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
+					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q, but there already exists a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
 				}
 				delete(s.k8sByName, r.name)
 				r.name = opts.newName
 				s.k8sByName[r.name] = r
 			}
+
+			selectors := make([]k8sObjectSelector, len(opts.objects))
+			for i, o := range opts.objects {
+				s, err := selectorFromString(o)
+				if err != nil {
+					return errors.Wrapf(err, "Error making selector from string %q", o)
+				}
+				selectors[i] = s
+			}
+
+			for i, o := range opts.objects {
+				entities, ok := fragmentsToEntities[o]
+				if !ok || len(entities) == 0 {
+					return fmt.Errorf("No object identified by the fragment %q could be found. Possible objects are: %s", o, sliceutils.QuotedStringList(fullNames))
+				}
+				if len(entities) > 1 {
+					matchingObjects := make([]string, len(entities))
+					for i, e := range entities {
+						matchingObjects[i] = fullNameFromK8sEntity(e)
+					}
+					return fmt.Errorf("%q is not a unique fragment. Objects that match %q are %s", o, o, sliceutils.QuotedStringList(matchingObjects))
+				}
+
+				entitiesToRemove := filterEntitiesBySelector(s.k8sUnresourced, selectors[i])
+				if len(entitiesToRemove) == 0 {
+					// we've already taken these entities out of unresourced
+					remainingUnresourced := make([]string, len(s.k8sUnresourced))
+					for i, entity := range s.k8sUnresourced {
+						remainingUnresourced[i] = fullNameFromK8sEntity(entity)
+					}
+					return fmt.Errorf("No object identified by the fragment %q could be found in remaining YAML. Valid remaining fragments are: %s", o, sliceutils.QuotedStringList(remainingUnresourced))
+				}
+				if len(entitiesToRemove) > 1 {
+					panic(fmt.Sprintf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource. This should NOT be possible at this point in the code, we should have already checked that this fragment was unique", o, len(entitiesToRemove)))
+				}
+
+				s.addEntityToResourceAndRemoveFromUnresourced(entitiesToRemove[0], r)
+			}
+
 		} else {
 			var knownResources []string
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info.", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource at %s specified unknown resource %q. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
 		}
 	}
 
@@ -631,6 +698,63 @@ func (s *tiltfileState) assembleK8sV2() error {
 		}
 	}
 	return nil
+}
+
+// NOTE(dmiller): This isn't _technically_ a fullname since it is missing "group" (core, apps, data, etc)
+// A true full name would look like "foo:secret:mynamespace:core"
+// However because we
+// a) couldn't think of a concrete case where you would need to specify group
+// b) being able to do so would make things more complicated, like in the case where you want to specify the group of
+//    a cluster scoped object but are unable to specify the namespace (e.g. foo:clusterrole::rbac.authorization.k8s.io)
+//
+// we decided to leave it off for now. When we encounter a concrete use case for specifying group it shouldn't be too
+// hard to add it here and in the docs.
+func fullNameFromK8sEntity(e k8s.K8sEntity) string {
+	return fmt.Sprintf("%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace())
+}
+
+// format is <name:required>:<kind:optional>:<namespace:optional>
+func selectorFromString(s string) (k8sObjectSelector, error) {
+	parts := strings.Split(s, ":")
+	if len(s) == 0 {
+		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
+	}
+	if len(parts) == 1 {
+		return newExactK8sObjectSelector("", "", parts[0], "default")
+	}
+	if len(parts) == 2 {
+		return newExactK8sObjectSelector("", parts[1], parts[0], "default")
+	}
+	if len(parts) == 3 {
+		return newExactK8sObjectSelector("", parts[1], parts[0], parts[2])
+	}
+
+	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
+}
+
+func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8sObjectSelector) []k8s.K8sEntity {
+	ret := []k8s.K8sEntity{}
+
+	for _, e := range entities {
+		if sel.matches(e) {
+			ret = append(ret, e)
+		}
+	}
+
+	return ret
+}
+
+func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEntity, r *k8sResource) {
+	r.entities = append(r.entities, e)
+	for i, ur := range s.k8sUnresourced {
+		if ur == e {
+			// delete from unresourced
+			s.k8sUnresourced = append(s.k8sUnresourced[:i], s.k8sUnresourced[i+1:]...)
+			return
+		}
+	}
+
+	panic("Unable to find entity in unresourced YAML after checking that it was there. This should never happen")
 }
 
 func (s *tiltfileState) assembleK8sByWorkload() error {
@@ -916,7 +1040,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
-			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload)
 		if err != nil {
 			return nil, err
 		}
@@ -1033,7 +1157,7 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 
 	for _, path := range lu.FallBackOnFiles().Paths {
 		if !filepath.IsAbs(path) {
-			return fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/windmilleng/tilt/issues : %s", path)
+			return fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/tilt-dev/tilt/issues : %s", path)
 		}
 		if !ospath.IsChildOfOne(watchedPaths, path) {
 			return fmt.Errorf("fall_back_on paths '%s' is not a child of any watched filepaths (%v)",
@@ -1221,17 +1345,52 @@ const (
 
 // A selector matches an entity if all non-empty selector fields match the corresponding entity fields
 type k8sObjectSelector struct {
-	apiVersion *regexp.Regexp
-	kind       *regexp.Regexp
+	apiVersion       *regexp.Regexp
+	apiVersionString string
+	kind             *regexp.Regexp
+	kindString       string
 
-	name      *regexp.Regexp
-	namespace *regexp.Regexp
+	// TODO(dmiller): do something like this instead https://github.com/tilt-dev/tilt/blob/c2b2df88de3777eed5f1bb9f54b5c555707c8b42/internal/container/selector.go#L9
+	name            *regexp.Regexp
+	nameString      string
+	namespace       *regexp.Regexp
+	namespaceString string
+}
+
+// Creates a new k8sObjectSelector
+// If an arg is an empty string it will become an empty regex that matches all input
+// Otherwise the arg must match the input exactly
+func newExactK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+	ret, err := newK8sObjectSelector(
+		exactOrEmptyRegex(apiVersion),
+		exactOrEmptyRegex(kind),
+		exactOrEmptyRegex(name),
+		exactOrEmptyRegex(namespace),
+	)
+	if err != nil {
+		return ret, err
+	}
+
+	ret.apiVersionString = apiVersion
+	ret.kindString = kind
+	ret.nameString = name
+	ret.namespaceString = namespace
+
+	return ret, nil
+}
+
+func exactOrEmptyRegex(s string) string {
+	if s != "" {
+		s = fmt.Sprintf("^%s$", regexp.QuoteMeta(s))
+	}
+	return s
 }
 
 // Creates a new k8sObjectSelector
 // If an arg is an empty string, it will become an empty regex that matches all input
+// Otherwise the arg will match input from the beginning (prefix matching)
 func newK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	ret := k8sObjectSelector{}
+	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
 	var err error
 
 	makeCaseInsensitive := func(s string) string {

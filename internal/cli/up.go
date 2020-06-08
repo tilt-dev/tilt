@@ -15,18 +15,18 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/cloud"
-	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tracer"
-	"github.com/windmilleng/tilt/pkg/assets"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/web"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/cloud"
+	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/pkg/assets"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/web"
 )
 
 const DefaultWebHost = "localhost"
@@ -72,20 +72,20 @@ By default:
 This default behavior does not apply if the Tiltfile uses config.parse or config.set_enabled_resources.
 In that case, see https://tilt.dev/user_config.html and/or comments in your Tiltfile
 
-When you exit Tilt (using Ctrl+C), Kubernetes resources and Docker Compose resources continue running; 
-you can use tilt down (https://docs.tilt.dev/cli/tilt_down.html) to delete these resources. Any long-running 
+When you exit Tilt (using Ctrl+C), Kubernetes resources and Docker Compose resources continue running;
+you can use tilt down (https://docs.tilt.dev/cli/tilt_down.html) to delete these resources. Any long-running
 local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 `,
 	}
 
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
-	cmd.Flags().Var(&webModeFlag, "web-mode", "Values: local, prod. Controls whether to use prod assets or a local dev server")
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(buildcontrol.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
-	addWebServerFlags(cmd)
+	addStartServerFlags(cmd)
+	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")

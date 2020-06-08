@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/dockerignore"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/internal/dockerignore"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestArchiveDf(t *testing.T) {
@@ -71,7 +71,7 @@ func TestArchivePathsIfExists(t *testing.T) {
 
 	actual := tar.NewReader(pr)
 	f.assertFilesInTar(actual, []expectedFile{
-		expectedFile{Path: "a", Contents: "a", AssertUidAndGidAreZero: true},
+		expectedFile{Path: "a", Contents: "a", AssertUidAndGidAreZero: true, HasExecBitWindows: true},
 		expectedFile{Path: "b", Missing: true},
 	})
 }

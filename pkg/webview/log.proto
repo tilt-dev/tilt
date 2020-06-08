@@ -4,7 +4,7 @@ package webview;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/windmilleng/tilt/pkg/webview";
+option go_package = "github.com/tilt-dev/tilt/pkg/webview";
 
 enum LogLevel {
   // For backwards-compatibility, the int value doesn't say

@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/servicebuilder"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/servicebuilder"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestServiceWatch(t *testing.T) {
@@ -101,14 +101,13 @@ func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 }
 
 type swFixture struct {
-	t          *testing.T
-	kClient    *k8s.FakeK8sClient
-	nip        k8s.NodeIP
-	sw         *ServiceWatcher
-	ctx        context.Context
-	cancel     func()
-	store      *store.Store
-	getActions func() []store.Action
+	t       *testing.T
+	kClient *k8s.FakeK8sClient
+	nip     k8s.NodeIP
+	sw      *ServiceWatcher
+	ctx     context.Context
+	cancel  func()
+	store   *store.TestingStore
 }
 
 func newSWFixture(t *testing.T) *swFixture {
@@ -122,41 +121,36 @@ func newSWFixture(t *testing.T) *swFixture {
 
 	of := k8s.ProvideOwnerFetcher(kClient)
 	sw := NewServiceWatcher(kClient, of)
+	st := store.NewTestingStore()
 
-	ret := &swFixture{
+	return &swFixture{
 		kClient: kClient,
 		sw:      sw,
 		nip:     nip,
 		ctx:     ctx,
 		cancel:  cancel,
 		t:       t,
+		store:   st,
 	}
-
-	ret.store, ret.getActions = store.NewStoreForTesting()
-	go func() {
-		err := ret.store.Loop(ctx)
-		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
-	}()
-
-	return ret
 }
 
 func (f *swFixture) TearDown() {
 	f.kClient.TearDown()
 	f.cancel()
+	f.store.AssertNoErrorActions(f.t)
 }
 
 func (f *swFixture) assertObservedServiceChangeActions(expectedSCAs ...ServiceChangeAction) {
 	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
-		actions := f.getActions()
+	for time.Since(start) < time.Second {
+		actions := f.store.Actions()
 		if len(actions) == len(expectedSCAs) {
 			break
 		}
 	}
 
 	var observedSCAs []ServiceChangeAction
-	for _, a := range f.getActions() {
+	for _, a := range f.store.Actions() {
 		sca, ok := a.(ServiceChangeAction)
 		if !ok {
 			f.t.Fatalf("got non-%T: %v", ServiceChangeAction{}, a)
@@ -170,7 +164,7 @@ func (f *swFixture) assertObservedServiceChangeActions(expectedSCAs ...ServiceCh
 
 func (f *swFixture) waitUntilServiceKnown(uid types.UID) {
 	start := time.Now()
-	for time.Since(start) < 200*time.Millisecond {
+	for time.Since(start) < time.Second {
 		f.sw.mu.Lock()
 		_, known := f.sw.knownServices[uid]
 		f.sw.mu.Unlock()

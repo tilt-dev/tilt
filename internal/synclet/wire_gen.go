@@ -8,8 +8,8 @@ package synclet
 import (
 	"context"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
 )
 
 // Injectors from wire.go:

@@ -6,7 +6,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 import "pkg/webview/log.proto";
 
-option go_package = "github.com/windmilleng/tilt/pkg/webview";
+option go_package = "github.com/tilt-dev/tilt/pkg/webview";
 
 // Correspond to BuildAndDeployers
 enum UpdateType {
@@ -66,6 +66,8 @@ message K8sResourceInfo {
 
   // The span id for this pod's logs in the main logstore
   string span_id = 9;
+
+  repeated string display_names = 10;
 }
 
 message DCResourceInfo {
@@ -166,7 +168,8 @@ message View {
   bool needs_analytics_nudge = 5;
 
   TiltBuild running_tilt_build = 6;
-  TiltBuild latest_tilt_build = 7;
+  TiltBuild DEPRECATED_latest_tilt_build = 7;
+  string suggested_tilt_version = 16;
   VersionSettings version_settings = 12;
 
   string tilt_cloud_username = 8;

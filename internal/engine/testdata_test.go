@@ -3,11 +3,11 @@ package engine
 import (
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type Fixture = manifestbuilder.Fixture
@@ -23,7 +23,7 @@ FROM go:1.10
 const SanchoDockerfile = `
 FROM go:1.10
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `
 
@@ -34,7 +34,7 @@ var SanchoSidecarRef = container.MustParseSelector(testyaml.SanchoSidecarImage)
 func SyncStepsForApp(app string, fixture Fixture) []model.LiveUpdateSyncStep {
 	return []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
 		Source: fixture.Path(),
-		Dest:   fmt.Sprintf("/go/src/github.com/windmilleng/%s", app),
+		Dest:   fmt.Sprintf("/go/src/github.com/tilt-dev/%s", app),
 	}}
 }
 func SanchoSyncSteps(fixture Fixture) []model.LiveUpdateSyncStep {
@@ -42,7 +42,7 @@ func SanchoSyncSteps(fixture Fixture) []model.LiveUpdateSyncStep {
 }
 
 func RunStepsForApp(app string) []model.LiveUpdateRunStep {
-	return []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", fmt.Sprintf("github.com/windmilleng/%s", app)}}}}
+	return []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", fmt.Sprintf("github.com/tilt-dev/%s", app)}}}}
 }
 
 var SanchoRunSteps = RunStepsForApp("sancho")
@@ -58,7 +58,7 @@ func NewSanchoLiveUpdateManifestWithTriggeredRuns(f Fixture, shouldRestart bool)
 	syncs := []model.LiveUpdateSyncStep{
 		{
 			Source: f.Path(),
-			Dest:   "/go/src/github.com/windmilleng/sancho",
+			Dest:   "/go/src/github.com/tilt-dev/sancho",
 		},
 	}
 	runs := []model.LiveUpdateRunStep{
@@ -109,7 +109,7 @@ func NewSanchoCustomBuildImageTarget(fixture Fixture) model.ImageTarget {
 
 func NewSanchoCustomBuildImageTargetWithTag(fixture Fixture, tag string) model.ImageTarget {
 	cb := model.CustomBuild{
-		Command: "true",
+		Command: model.ToHostCmd("exit 0"),
 		Deps:    []string{fixture.JoinPath("app")},
 		Tag:     tag,
 	}
@@ -125,7 +125,7 @@ func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Mani
 
 func NewSanchoCustomBuildManifestWithLiveUpdate(fixture Fixture) model.Manifest {
 	cb := model.CustomBuild{
-		Command:    "true",
+		Command:    model.ToHostCmd("exit 0"),
 		Deps:       []string{fixture.JoinPath("app")},
 		LiveUpdate: NewSanchoLiveUpdate(fixture),
 	}
@@ -138,7 +138,7 @@ func NewSanchoCustomBuildManifestWithLiveUpdate(fixture Fixture) model.Manifest 
 
 func NewSanchoCustomBuildManifestWithPushDisabled(fixture Fixture) model.Manifest {
 	cb := model.CustomBuild{
-		Command:     "true",
+		Command:     model.ToHostCmd("exit 0"),
 		Deps:        []string{fixture.JoinPath("app")},
 		DisablePush: true,
 		Tag:         "tilt-build",
@@ -166,12 +166,12 @@ func NewSanchoLiveUpdate(f Fixture) model.LiveUpdate {
 	syncs := []model.LiveUpdateSyncStep{
 		{
 			Source: f.Path(),
-			Dest:   "/go/src/github.com/windmilleng/sancho",
+			Dest:   "/go/src/github.com/tilt-dev/sancho",
 		},
 	}
 	runs := []model.LiveUpdateRunStep{
 		{
-			Command: model.Cmd{Argv: []string{"go", "install", "github.com/windmilleng/sancho"}},
+			Command: model.Cmd{Argv: []string{"go", "install", "github.com/tilt-dev/sancho"}},
 		},
 	}
 
@@ -215,7 +215,7 @@ func NewSanchoDockerBuildMultiStageManifest(fixture Fixture) model.Manifest {
 		Dockerfile: `
 FROM sancho-base
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 		BuildPath: fixture.JoinPath("sancho"),
@@ -237,7 +237,7 @@ func NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(fixture Fixture, lu mo
 		Dockerfile: `
 FROM sancho-base
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 		BuildPath: fixture.JoinPath("sancho"),
@@ -288,11 +288,11 @@ func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Mani
 	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM ` + refCommon.String(),
 		BuildPath:  fixture.JoinPath("image-1"),
-	})
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
 	target2 := model.MustNewImageTarget(ref2).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM ` + refCommon.String(),
 		BuildPath:  fixture.JoinPath("image-2"),
-	})
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
 
 	m1 := manifestbuilder.New(fixture, "image-1").
 		WithK8sYAML(testyaml.Deployment("image-1", ref1.String())).
@@ -301,6 +301,72 @@ func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Mani
 	m2 := manifestbuilder.New(fixture, "image-2").
 		WithK8sYAML(testyaml.Deployment("image-2", ref2.String())).
 		WithImageTargets(targetCommon, target2).
+		Build()
+	return m1, m2
+}
+
+func NewManifestsWithTwoCommonAncestors(fixture Fixture) (model.Manifest, model.Manifest) {
+	refBase := container.MustParseSelector("gcr.io/base")
+	refCommon := container.MustParseSelector("gcr.io/common")
+	ref1 := container.MustParseSelector("gcr.io/image-1")
+	ref2 := container.MustParseSelector("gcr.io/image-2")
+
+	fixture.MkdirAll("base")
+	fixture.MkdirAll("common")
+	fixture.MkdirAll("image-1")
+	fixture.MkdirAll("image-2")
+
+	targetBase := model.MustNewImageTarget(refBase).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM golang:1.10`,
+		BuildPath:  fixture.JoinPath("base"),
+	})
+	targetCommon := model.MustNewImageTarget(refCommon).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM ` + refBase.String(),
+		BuildPath:  fixture.JoinPath("common"),
+	}).WithDependencyIDs([]model.TargetID{targetBase.ID()})
+	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM ` + refCommon.String(),
+		BuildPath:  fixture.JoinPath("image-1"),
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+	target2 := model.MustNewImageTarget(ref2).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM ` + refCommon.String(),
+		BuildPath:  fixture.JoinPath("image-2"),
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+
+	m1 := manifestbuilder.New(fixture, "image-1").
+		WithK8sYAML(testyaml.Deployment("image-1", ref1.String())).
+		WithImageTargets(targetBase, targetCommon, target1).
+		Build()
+	m2 := manifestbuilder.New(fixture, "image-2").
+		WithK8sYAML(testyaml.Deployment("image-2", ref2.String())).
+		WithImageTargets(targetBase, targetCommon, target2).
+		Build()
+	return m1, m2
+}
+
+func NewManifestsWithSameTwoImages(fixture Fixture) (model.Manifest, model.Manifest) {
+	refCommon := container.MustParseSelector("gcr.io/common")
+	ref1 := container.MustParseSelector("gcr.io/image-1")
+
+	fixture.MkdirAll("common")
+	fixture.MkdirAll("image-1")
+
+	targetCommon := model.MustNewImageTarget(refCommon).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM golang:1.10`,
+		BuildPath:  fixture.JoinPath("common"),
+	})
+	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
+		Dockerfile: `FROM ` + refCommon.String(),
+		BuildPath:  fixture.JoinPath("image-1"),
+	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+
+	m1 := manifestbuilder.New(fixture, "dep-1").
+		WithK8sYAML(testyaml.Deployment("dep-1", ref1.String())).
+		WithImageTargets(targetCommon, target1).
+		Build()
+	m2 := manifestbuilder.New(fixture, "dep-2").
+		WithK8sYAML(testyaml.Deployment("dep-2", ref1.String())).
+		WithImageTargets(targetCommon, target1).
 		Build()
 	return m1, m2
 }

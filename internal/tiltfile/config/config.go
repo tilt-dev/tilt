@@ -7,9 +7,9 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const UserConfigFileName = "tilt_config.json"
@@ -117,7 +117,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 
 	userConfigPath := filepath.Join(wd, UserConfigFileName)
 
-	err = io.RecordReadFile(thread, userConfigPath)
+	err = io.RecordReadPath(thread, io.WatchFileOnly, userConfigPath)
 	if err != nil {
 		return starlark.None, err
 	}

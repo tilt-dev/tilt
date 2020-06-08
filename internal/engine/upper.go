@@ -9,44 +9,30 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/engine/configs"
-	"github.com/windmilleng/tilt/internal/engine/dcwatch"
-	"github.com/windmilleng/tilt/internal/engine/exit"
-	"github.com/windmilleng/tilt/internal/engine/k8swatch"
-	"github.com/windmilleng/tilt/internal/engine/local"
-	"github.com/windmilleng/tilt/internal/engine/runtimelog"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/internal/watch"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/engine/configs"
+	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
+	"github.com/tilt-dev/tilt/internal/engine/exit"
+	"github.com/tilt-dev/tilt/internal/engine/fswatch"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
-
-// When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
-// 200ms is not the result of any kind of research or experimentation
-// it might end up being a significant part of deployment delay, if we get the total latency <2s
-// it might also be long enough that it misses some changes if the user has some operation involving a large file
-//   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
-const watchBufferMinRestInMs = 200
-
-// When waiting for a `watchBufferDurationInMs`-long break in file modifications to aggregate notifications,
-// if we haven't seen a break by the time `watchBufferMaxTimeInMs` has passed, just send off whatever we've got
-const watchBufferMaxTimeInMs = 10000
-
-var watchBufferMinRestDuration = watchBufferMinRestInMs * time.Millisecond
-var watchBufferMaxDuration = watchBufferMaxTimeInMs * time.Millisecond
 
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
 // Upper seems like a poor and undescriptive name.
@@ -54,22 +40,8 @@ type Upper struct {
 	store *store.Store
 }
 
-type FsWatcherMaker func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error)
 type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
-type timerMaker func(d time.Duration) <-chan time.Time
-
-func ProvideFsWatcherMaker() FsWatcherMaker {
-	return func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error) {
-		return watch.NewWatcher(paths, ignore, l)
-	}
-}
-
-func ProvideTimerMaker() timerMaker {
-	return func(t time.Duration) <-chan time.Time {
-		return time.After(t)
-	}
-}
 
 func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) Upper {
 	// There's not really a good reason to add all the subscribers
@@ -152,7 +124,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		state.FatalError = action.Error
 	case hud.ExitAction:
 		handleHudExitAction(state, action)
-	case targetFilesChangedAction:
+	case fswatch.TargetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
 	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
@@ -182,14 +154,12 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleStopProfilingAction(state)
 	case hud.DumpEngineStateAction:
 		handleDumpEngineStateAction(ctx, state)
-	case LatestVersionAction:
-		handleLatestVersionAction(state, action)
 	case store.AnalyticsUserOptAction:
 		handleAnalyticsUserOptAction(state, action)
 	case store.AnalyticsNudgeSurfacedAction:
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	case store.TiltCloudStatusReceivedAction:
-		handleTiltCloudUserLookedUpAction(state, action)
+		handleTiltCloudStatusReceivedAction(state, action)
 	case store.UserStartedTiltCloudRegistrationAction:
 		handleUserStartedTiltCloudRegistrationAction(state)
 	case store.PanicAction:
@@ -290,26 +260,26 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		ms.MutableBuildStatus(id).LastResult = result
 	}
 
+	// Remove pending file changes that were consumed by this build.
+	for _, status := range ms.BuildStatuses {
+		for file, modTime := range status.PendingFileChanges {
+			if store.BeforeOrEqual(modTime, bs.StartTime) {
+				delete(status.PendingFileChanges, file)
+			}
+		}
+	}
+
+	if !ms.PendingManifestChange.IsZero() &&
+		store.BeforeOrEqual(ms.PendingManifestChange, bs.StartTime) {
+		ms.PendingManifestChange = time.Time{}
+	}
+
 	if err != nil {
 		if buildcontrol.IsFatalError(err) {
 			engineState.FatalError = err
 			return
 		}
 	} else {
-		// Remove pending file changes that were consumed by this build.
-		for _, status := range ms.BuildStatuses {
-			for file, modTime := range status.PendingFileChanges {
-				if modTime.Before(bs.StartTime) {
-					delete(status.PendingFileChanges, file)
-				}
-			}
-		}
-
-		if !ms.PendingManifestChange.IsZero() &&
-			ms.PendingManifestChange.Before(bs.StartTime) {
-			ms.PendingManifestChange = time.Time{}
-		}
-
 		ms.LastSuccessfulDeployTime = cb.FinishTime
 
 		for id, result := range cb.Result {
@@ -335,7 +305,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		bestPod := ms.MostRecentPod()
-		if bestPod.StartedAt.After(bs.StartTime) ||
+		if store.AfterOrEqual(bestPod.StartedAt, bs.StartTime) ||
 			bestPod.UpdateStartTime.Equal(bs.StartTime) {
 			checkForContainerCrash(ctx, engineState, mt)
 		}
@@ -439,25 +409,25 @@ func handleStartProfilingAction(state *store.EngineState) {
 func handleFSEvent(
 	ctx context.Context,
 	state *store.EngineState,
-	event targetFilesChangedAction) {
+	event fswatch.TargetFilesChangedAction) {
 
-	if event.targetID.Type == model.TargetTypeConfigs {
-		for _, f := range event.files {
-			state.PendingConfigFileChanges[f] = event.time
+	if event.TargetID.Type == model.TargetTypeConfigs {
+		for _, f := range event.Files {
+			state.PendingConfigFileChanges[f] = event.Time
 		}
 		return
 	}
 
-	mns := state.ManifestNamesForTargetID(event.targetID)
+	mns := state.ManifestNamesForTargetID(event.TargetID)
 	for _, mn := range mns {
 		ms, ok := state.ManifestState(mn)
 		if !ok {
 			return
 		}
 
-		status := ms.MutableBuildStatus(event.targetID)
-		for _, f := range event.files {
-			status.PendingFileChanges[f] = event.time
+		status := ms.MutableBuildStatus(event.TargetID)
+		for _, f := range event.Files {
+			status.PendingFileChanges[f] = event.Time
 		}
 	}
 }
@@ -467,18 +437,15 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event configs.ConfigsReloadStartedAction,
 ) {
-	filesChanged := []string{}
-	for f := range event.FilesChanged {
-		filesChanged = append(filesChanged, f)
-	}
 	status := model.BuildRecord{
 		StartTime: event.StartTime,
-		Reason:    model.BuildReasonFlagConfig,
-		Edits:     filesChanged,
+		Reason:    event.Reason,
+		Edits:     event.FilesChanged,
 		SpanID:    event.SpanID,
 	}
 
 	state.TiltfileState.CurrentBuild = status
+	state.StartedTiltfileLoadCount++
 }
 
 func handleConfigsReloaded(
@@ -486,6 +453,7 @@ func handleConfigsReloaded(
 	state *store.EngineState,
 	event configs.ConfigsReloadedAction,
 ) {
+
 	manifests := event.Manifests
 
 	b := state.TiltfileState.CurrentBuild
@@ -581,11 +549,11 @@ func handleConfigsReloaded(
 	state.VersionSettings = event.VersionSettings
 	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
 
-	state.MaxParallelUpdates = event.UpdateSettings.MaxParallelUpdatesMinOne()
+	state.UpdateSettings = event.UpdateSettings
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
-		if modTime.Before(state.TiltfileState.LastBuild().StartTime) {
+		if store.BeforeOrEqual(modTime, state.TiltfileState.LastBuild().StartTime) {
 			delete(state.PendingConfigFileChanges, file)
 		}
 	}
@@ -638,10 +606,6 @@ func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineS
 	}
 }
 
-func handleLatestVersionAction(state *store.EngineState, action LatestVersionAction) {
-	state.LatestTiltBuild = action.Build
-}
-
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) {
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
@@ -653,9 +617,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
 	engineState.HUDEnabled = action.HUDEnabled
-
-	// NOTE(dmiller): this kicks off a Tiltfile build
-	engineState.PendingConfigFileChanges[action.TiltfilePath] = action.StartTime
 }
 
 func handleHudExitAction(state *store.EngineState, action hud.ExitAction) {
@@ -727,7 +688,7 @@ func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.Engine
 	}
 }
 
-func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.TiltCloudStatusReceivedAction) {
+func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.TiltCloudStatusReceivedAction) {
 	if action.IsPostRegistrationLookup {
 		state.CloudStatus.WaitingForStatusPostRegistration = false
 	}
@@ -739,6 +700,8 @@ func handleTiltCloudUserLookedUpAction(state *store.EngineState, action store.Ti
 		state.CloudStatus.Username = action.Username
 		state.CloudStatus.TeamName = action.TeamName
 	}
+
+	state.SuggestedTiltVersion = action.SuggestedTiltVersion
 }
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {

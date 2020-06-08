@@ -76,14 +76,17 @@ jobs:
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose
       - run: choco update golang
+      - run: go get -u gotest.tools/gotestsum
       - checkout
       # Check to make sure Windows binaries compile
       - run: go install -mod vendor ./cmd/tilt
-      - run: make shorttest
+      - run: make shorttestsum
+      - store_test_results:
+          path: test-results
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:67d6cb938c2333c1483cfc6afbf2ef08a95e937ef4feafe15f8a0adf02596a89
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:fc9ce82789419e2c507f79e799c94bf942714ff2cad79b433a0b351b860cec54
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV

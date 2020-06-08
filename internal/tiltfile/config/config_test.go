@@ -9,11 +9,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/include"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/tiltfile/include"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestSetResources(t *testing.T) {
@@ -101,7 +101,7 @@ func TestParseKeyword(t *testing.T) {
 	foo := strings.Split("republic dominican cuba caribbean greenland el salvador too", " ")
 	var args []string
 	for _, s := range foo {
-		args = append(args, []string{"-foo", s}...)
+		args = append(args, []string{"--foo", s}...)
 	}
 
 	f := NewFixture(t, model.NewUserConfigState(args))
@@ -120,7 +120,7 @@ print(cfg['foo'])
 }
 
 func TestParsePositionalAndMultipleInterspersedKeyword(t *testing.T) {
-	args := []string{"-bar", "puerto rico", "-baz", "colombia", "-bar", "venezuela", "-baz", "honduras", "-baz", "guyana", "and", "still"}
+	args := []string{"--bar", "puerto rico", "--baz", "colombia", "--bar", "venezuela", "--baz", "honduras", "--baz", "guyana", "and", "still"}
 	f := NewFixture(t, model.NewUserConfigState(args))
 	defer f.TearDown()
 
@@ -140,6 +140,26 @@ print("baz:", cfg['baz'])
 	require.Contains(t, f.PrintOutput(), `foo: ["and", "still"]`)
 	require.Contains(t, f.PrintOutput(), `bar: ["puerto rico", "venezuela"]`)
 	require.Contains(t, f.PrintOutput(), `baz: ["colombia", "honduras", "guyana"]`)
+}
+
+func TestParseKeywordAfterPositional(t *testing.T) {
+	args := []string{"--bar", "puerto rico", "colombia"}
+	f := NewFixture(t, model.NewUserConfigState(args))
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+config.define_string_list('foo', args=True)
+config.define_string('bar')
+cfg = config.parse()
+print("foo:", cfg['foo'])
+print("bar:", cfg['bar'])
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	require.Contains(t, f.PrintOutput(), `foo: ["colombia"]`)
+	require.Contains(t, f.PrintOutput(), `bar: puerto rico`)
 }
 
 func TestMultiplePositionalDefs(t *testing.T) {
@@ -171,7 +191,7 @@ config.define_string_list('foo')
 }
 
 func TestUndefinedArg(t *testing.T) {
-	f := NewFixture(t, model.NewUserConfigState([]string{"-bar", "hello"}))
+	f := NewFixture(t, model.NewUserConfigState([]string{"--bar", "hello"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -181,7 +201,7 @@ config.parse()
 
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Equal(t, "flag provided but not defined: -bar", err.Error())
+	require.Equal(t, "unknown flag: --bar", err.Error())
 }
 
 func TestUnprovidedArg(t *testing.T) {
@@ -226,7 +246,7 @@ cfg = config.parse()
 }
 
 func TestUsage(t *testing.T) {
-	f := NewFixture(t, model.NewUserConfigState([]string{"-bar", "hello"}))
+	f := NewFixture(t, model.NewUserConfigState([]string{"--bar", "hello"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -236,7 +256,7 @@ config.parse()
 
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "flag provided but not defined: -bar")
+	require.Contains(t, err.Error(), "unknown flag: --bar")
 	require.Contains(t, f.PrintOutput(), "Usage:")
 	require.Contains(t, f.PrintOutput(), "what can I foo for you today")
 }
@@ -269,7 +289,7 @@ func TestSettingsFromConfigAndArgs(t *testing.T) {
 	}{
 		{
 			name:   "args only",
-			args:   []string{"-a", "1", "-a", "2", "-b", "3", "-a", "4", "5", "6"},
+			args:   []string{"--a", "1", "--a", "2", "--b", "3", "--a", "4", "5", "6"},
 			config: nil,
 			expected: map[string][]string{
 				"a": {"1", "2", "4"},
@@ -291,7 +311,7 @@ func TestSettingsFromConfigAndArgs(t *testing.T) {
 		},
 		{
 			name: "args trump config",
-			args: []string{"-a", "1", "-a", "2", "-a", "4", "5", "6"},
+			args: []string{"--a", "1", "--a", "2", "--a", "4", "5", "6"},
 			config: map[string][]string{
 				"b": {"7", "8"},
 				"c": {"9"},
@@ -422,7 +442,7 @@ cfg = config.parse()`)
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath(UserConfigFileName))
+	require.Contains(t, rs.Paths, f.JoinPath(UserConfigFileName))
 }
 
 func NewFixture(tb testing.TB, userConfigState model.UserConfigState) *starkit.Fixture {
@@ -485,7 +505,7 @@ func TestTypes(t *testing.T) {
 		newTypeTestCase("string defined multiple times", "config.define_string('foo')").withArgs("--foo bar --foo baz").withExpectedError("string settings can only be specified once"),
 		newTypeTestCase("invalid string from config", "config.define_string('foo')").withConfigFile(`{"foo": 5}`).withExpectedError("expected string, found float64"),
 
-		newTypeTestCase("bool from args", "config.define_bool('foo')").withArgs("--foo").withExpectedVal("True"),
+		newTypeTestCase("bool from args w/ implicit value", "config.define_bool('foo')").withArgs("--foo").withExpectedVal("True"),
 		newTypeTestCase("bool from config", "config.define_bool('foo')").withConfigFile(`{"foo": true}`).withExpectedVal("True"),
 		newTypeTestCase("bool defined multiple times", "config.define_bool('foo')").withArgs("--foo --foo").withExpectedError("bool settings can only be specified once"),
 		newTypeTestCase("invalid bool from config", "config.define_bool('foo')").withConfigFile(`{"foo": 5}`).withExpectedError("expected bool, found float64"),

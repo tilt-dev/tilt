@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const simpleConfig = `version: '3'
@@ -38,6 +38,16 @@ services:
 volumes:
   bar: {}
   baz: {}`
+
+const barServiceConfig = `version: '3'
+services:
+  bar:
+    image: bar-image
+    expose:
+      - "3000"
+    depends_on:
+      - foo
+`
 
 const twoServiceConfig = `version: '3'
 services:
@@ -147,19 +157,41 @@ services:
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
-func TestMultipleDockerComposeNotSupported(t *testing.T) {
+func TestMultipleDockerComposeDifferentDirsNotSupported(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose1.yml", simpleConfig)
-	f.file("docker-compose2.yml", simpleConfig)
 
-	tf := `docker_compose('docker-compose1.yml')
+	f.dockerfile(filepath.Join("subdir", "foo", "Dockerfile"))
+	f.file(filepath.Join("subdir", "Tiltfile"), `docker_compose('docker-compose2.yml')`)
+	f.file(filepath.Join("subdir", "docker-compose2.yml"), simpleConfig)
+
+	tf := `
+include('./subdir/Tiltfile')
+docker_compose('docker-compose1.yml')`
+	f.file("Tiltfile", tf)
+
+	f.loadErrString("Cannot load docker-compose files from two different Tiltfiles")
+}
+
+func TestMultipleDockerComposeSameDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose1.yml", simpleConfig)
+	f.file("docker-compose2.yml", barServiceConfig)
+
+	tf := `
+docker_compose('docker-compose1.yml')
 docker_compose('docker-compose2.yml')`
 	f.file("Tiltfile", tf)
 
-	f.loadErrString("already have a docker-compose resource declared")
+	f.load()
+
+	assert.Equal(t, 2, len(f.loadResult.Manifests))
 }
 
 func TestDockerComposeAndK8sNotSupported(t *testing.T) {

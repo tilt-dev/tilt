@@ -48,7 +48,7 @@ and may change frequently.
 		Run:  dumpWebview,
 		Args: cobra.NoArgs,
 	}
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
+	addConnectServerFlags(cmd)
 	return cmd
 }
 
@@ -69,7 +69,7 @@ Excludes logs.
 		Run:  dumpEngine,
 		Args: cobra.NoArgs,
 	}
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
+	addConnectServerFlags(cmd)
 	return cmd
 }
 
@@ -88,7 +88,7 @@ and may change frequently.
 		Run:  dumpLogStore,
 		Args: cobra.NoArgs,
 	}
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
+	addConnectServerFlags(cmd)
 	return cmd
 }
 
@@ -135,7 +135,7 @@ func (c *dumpCliDocsCmd) run(cmd *cobra.Command, args []string) {
 }
 
 func dumpWebview(cmd *cobra.Command, args []string) {
-	body := apiGet(webPort, "view")
+	body := apiGet("view")
 
 	err := dumpJSON(body)
 	if err != nil {
@@ -144,7 +144,7 @@ func dumpWebview(cmd *cobra.Command, args []string) {
 }
 
 func dumpEngine(cmd *cobra.Command, args []string) {
-	body := apiGet(webPort, "dump/engine")
+	body := apiGet("dump/engine")
 	defer func() {
 		_ = body.Close()
 	}()
@@ -166,7 +166,7 @@ func dumpEngine(cmd *cobra.Command, args []string) {
 }
 
 func dumpLogStore(cmd *cobra.Command, args []string) {
-	body := apiGet(webPort, "dump/engine")
+	body := apiGet("dump/engine")
 	defer func() {
 		_ = body.Close()
 	}()
