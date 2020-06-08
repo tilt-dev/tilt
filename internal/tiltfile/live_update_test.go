@@ -327,7 +327,7 @@ docker_build('gcr.io/foo', './foo',
 	f.loadAssertWarnings(restartContainerDeprecationWarning([]model.ManifestName{"foo"}))
 }
 
-func TestLiveUpdateNoRestartContainerDeprecationWarnK8sCustomBuild(t *testing.T) {
+func TestLiveUpdateRestartContainerDeprecationWarnK8sCustomBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -342,9 +342,7 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
   ]
 )`)
 
-	// Expect no deprecation warning b/c restart_container() is still allowed on custom_build
-	f.load()
-	f.assertNextManifest("foo", cb(image("gcr.io/foo")))
+	f.loadAssertWarnings(restartContainerDeprecationWarning([]model.ManifestName{"foo"}))
 }
 
 func TestLiveUpdateNoRestartContainerDeprecationWarnK8sDockerCompose(t *testing.T) {

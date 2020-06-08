@@ -1177,19 +1177,19 @@ func (s *tiltfileState) maybeWarnRestartContainerDeprecation(manifests []model.M
 	}
 
 	if len(needsWarn) > 0 {
-		s.logger.Warnf(restartContainerDeprecationWarning(needsWarn))
+		s.logger.Warnf("%s", restartContainerDeprecationWarning(needsWarn))
 	}
 }
 func needsRestartContainerDeprecationWarning(m model.Manifest) bool {
-	// 4/28/20: we're in the process of deprecating restart_container() in favor of the
-	// restart_process extension. If this is a docker_build with a restart_container step
-	// and will be deployed in k8s, give a deprecation warning.
+	// 6/8/20: we're in the process of deprecating restart_container() in favor of the
+	// restart_process extension. If this is a k8s resource with a restart_container
+	// step, give a deprecation warning.
 	if !m.IsK8s() {
 		return false
 	}
 
 	for _, iTarg := range m.ImageTargets {
-		if iTarg.IsDockerBuild() && iTarg.LiveUpdateInfo().ShouldRestart() {
+		if iTarg.LiveUpdateInfo().ShouldRestart() {
 			return true
 		}
 	}
