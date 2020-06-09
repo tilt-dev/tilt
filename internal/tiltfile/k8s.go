@@ -189,7 +189,7 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	k, err := newK8sObjectSelector(apiVersion, kind, name, namespace)
+	k, err := newPartialMatchK8sObjectSelector(apiVersion, kind, name, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -546,7 +546,7 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, err
 	}
 
-	k, err := newK8sObjectSelector(apiVersion, kind, name, namespace)
+	k, err := newPartialMatchK8sObjectSelector(apiVersion, kind, name, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -572,7 +572,7 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	k, err := newK8sObjectSelector(apiVersion, kind, "", "")
+	k, err := newPartialMatchK8sObjectSelector(apiVersion, kind, "", "")
 	if err != nil {
 		return nil, err
 	}

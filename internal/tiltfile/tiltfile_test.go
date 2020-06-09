@@ -4950,6 +4950,29 @@ k8s_yaml([
 
 k8s_resource(
   objects=[
+	  'queue-proxy:Image',
+	],
+  new_name='knative-gateways')
+`)
+
+	f.load()
+	f.assertNextManifest("knative-gateways")
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceObjectsAreNotCaseSensitive(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("serving-core.yaml", testyaml.KnativeServingCore)
+
+	f.file("Tiltfile", `
+k8s_yaml([
+	'serving-core.yaml',
+])
+
+k8s_resource(
+  objects=[
 	  'queue-proxy:image',
 	],
   new_name='knative-gateways')

@@ -655,7 +655,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			}
 
 			for i, o := range opts.objects {
-				entities, ok := fragmentsToEntities[o]
+				entities, ok := fragmentsToEntities[strings.ToLower(o)]
 				if !ok || len(entities) == 0 {
 					return fmt.Errorf("No object identified by the fragment %q could be found. Possible objects are: %s", o, sliceutils.QuotedStringList(fullNames))
 				}
@@ -720,13 +720,13 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
 	}
 	if len(parts) == 1 {
-		return newExactK8sObjectSelector("", "", parts[0], "")
+		return newFullmatchCaseInsensitiveK8sObjectSelector("", "", parts[0], "")
 	}
 	if len(parts) == 2 {
-		return newExactK8sObjectSelector("", parts[1], parts[0], "")
+		return newFullmatchCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], "")
 	}
 	if len(parts) == 3 {
-		return newExactK8sObjectSelector("", parts[1], parts[0], parts[2])
+		return newFullmatchCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], parts[2])
 	}
 
 	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
@@ -1357,31 +1357,53 @@ type k8sObjectSelector struct {
 	namespaceString string
 }
 
+// TODO(dmiller): this function and newPartialMatchK8sObjectSelector
+// should be written in to a form that can be used like this
+// x := re{pattern: name, ignoreCase: true, fullMatch: true}
+// x.compile()
+// rather than passing around and mutating regex strings
+
 // Creates a new k8sObjectSelector
 // If an arg is an empty string it will become an empty regex that matches all input
 // Otherwise the arg must match the input exactly
-func newExactK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	ret, err := newK8sObjectSelector(
-		exactOrEmptyRegex(apiVersion),
-		exactOrEmptyRegex(kind),
-		exactOrEmptyRegex(name),
-		exactOrEmptyRegex(namespace),
-	)
+func newFullmatchCaseInsensitiveK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
+	var err error
+
+	ret.apiVersion, err = regexp.Compile(exactOrEmptyRegex(apiVersion))
 	if err != nil {
-		return ret, err
+		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
 	}
 
-	ret.apiVersionString = apiVersion
-	ret.kindString = kind
-	ret.nameString = name
-	ret.namespaceString = namespace
+	ret.kind, err = regexp.Compile(exactOrEmptyRegex(kind))
+	if err != nil {
+		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
+	}
+
+	ret.name, err = regexp.Compile(exactOrEmptyRegex(name))
+	if err != nil {
+		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
+	}
+
+	ret.namespace, err = regexp.Compile(exactOrEmptyRegex(namespace))
+	if err != nil {
+		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
+	}
 
 	return ret, nil
 }
 
+func makeCaseInsensitive(s string) string {
+	if s == "" {
+		return s
+	} else {
+		return "(?i)" + s
+	}
+}
+
 func exactOrEmptyRegex(s string) string {
 	if s != "" {
-		s = fmt.Sprintf("^%s$", regexp.QuoteMeta(s))
+		s = fmt.Sprintf("^%s$", makeCaseInsensitive(regexp.QuoteMeta(s)))
 	}
 	return s
 }
@@ -1389,17 +1411,9 @@ func exactOrEmptyRegex(s string) string {
 // Creates a new k8sObjectSelector
 // If an arg is an empty string, it will become an empty regex that matches all input
 // Otherwise the arg will match input from the beginning (prefix matching)
-func newK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+func newPartialMatchK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
 	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
 	var err error
-
-	makeCaseInsensitive := func(s string) string {
-		if s == "" {
-			return s
-		} else {
-			return "(?i)" + s
-		}
-	}
 
 	ret.apiVersion, err = regexp.Compile(makeCaseInsensitive(apiVersion))
 	if err != nil {
