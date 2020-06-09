@@ -720,13 +720,13 @@ func selectorFromString(s string) (k8sObjectSelector, error) {
 		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
 	}
 	if len(parts) == 1 {
-		return newExactCaseInsensitiveK8sObjectSelector("", "", parts[0], "")
+		return newFullmatchCaseInsensitiveK8sObjectSelector("", "", parts[0], "")
 	}
 	if len(parts) == 2 {
-		return newExactCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], "")
+		return newFullmatchCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], "")
 	}
 	if len(parts) == 3 {
-		return newExactCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], parts[2])
+		return newFullmatchCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], parts[2])
 	}
 
 	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
@@ -1331,7 +1331,7 @@ type k8sObjectSelector struct {
 // Creates a new k8sObjectSelector
 // If an arg is an empty string it will become an empty regex that matches all input
 // Otherwise the arg must match the input exactly
-func newExactCaseInsensitiveK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+func newFullmatchCaseInsensitiveK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
 	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
 	var err error
 
@@ -1376,7 +1376,7 @@ func exactOrEmptyRegex(s string) string {
 // Creates a new k8sObjectSelector
 // If an arg is an empty string, it will become an empty regex that matches all input
 // Otherwise the arg will match input from the beginning (prefix matching)
-func newK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
+func newPartialMatchK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
 	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
 	var err error
 
