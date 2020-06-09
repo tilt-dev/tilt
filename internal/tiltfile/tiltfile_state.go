@@ -1331,7 +1331,7 @@ type k8sObjectSelector struct {
 // TODO(dmiller): this function and newPartialMatchK8sObjectSelector
 // should be written in to a form that can be used like this
 // x := re{pattern: name, ignoreCase: true, fullMatch: true}
-// x.compile() 
+// x.compile()
 // rather than passing around and mutating regex strings
 
 // Creates a new k8sObjectSelector
