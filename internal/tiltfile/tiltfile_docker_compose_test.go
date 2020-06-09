@@ -507,7 +507,7 @@ services:
 docker_build('gcr.typo.io/foo', 'foo')
 docker_compose('docker-compose.yml')
 `)
-	f.loadAssertWarnings(`Image not used in any deploy config:
+	f.loadAssertWarnings(`Image not used in any Docker Compose config:
     ✕ gcr.typo.io/foo
 Did you mean…
     - gcr.io/foo
