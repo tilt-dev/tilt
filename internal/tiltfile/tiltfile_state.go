@@ -1328,6 +1328,12 @@ type k8sObjectSelector struct {
 	namespaceString string
 }
 
+// TODO(dmiller): this function and newPartialMatchK8sObjectSelector
+// should be written in to a form that can be used like this
+// x := re{pattern: name, ignoreCase: true, fullMatch: true}
+// x.compile() 
+// rather than passing around and mutating regex strings
+
 // Creates a new k8sObjectSelector
 // If an arg is an empty string it will become an empty regex that matches all input
 // Otherwise the arg must match the input exactly
