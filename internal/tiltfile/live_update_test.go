@@ -310,7 +310,7 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
 	f.loadErrString("fall_back_on", f.JoinPath("bar"), f.JoinPath("foo"), "child", "any watched filepaths")
 }
 
-func TestLiveUpdateRestartContainerDeprecationWarnK8sDockerBuild(t *testing.T) {
+func TestLiveUpdateRestartContainerDeprecationWarnK8s(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -343,6 +343,34 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
 )`)
 
 	f.loadAssertWarnings(restartContainerDeprecationWarning([]model.ManifestName{"foo"}))
+}
+
+func TestLiveUpdateRestartContainerDeprecationWarnMultiple(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupExpand()
+
+	f.file("Tiltfile", `
+k8s_yaml('all.yaml')
+docker_build('gcr.io/a', './a',
+  live_update=[
+    sync('./a', '/'),
+	restart_container(),
+  ]
+)
+docker_build('gcr.io/b', './b')
+docker_build('gcr.io/c', './c',
+  live_update=[
+    sync('./c', '/'),
+	restart_container(),
+  ]
+)
+docker_build('gcr.io/d', './d',
+  live_update=[sync('./d', '/')]
+)`)
+
+	f.loadAssertWarnings(restartContainerDeprecationWarning([]model.ManifestName{"a", "c"}))
 }
 
 func TestLiveUpdateNoRestartContainerDeprecationWarnK8sDockerCompose(t *testing.T) {
