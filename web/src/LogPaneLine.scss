@@ -36,6 +36,7 @@
   padding-left: $spacing-unit * 0.5;
   padding-right: $spacing-unit * 0.5;
   text-align: right;
+  flex-shrink: 0;
   
   // Truncate long text:
   text-overflow: ellipsis;
@@ -58,6 +59,7 @@
   padding-left: $spacing-unit * 0.6;
   flex: 1;
   border-left: $logLine-separator-height solid $color-gray;
+  overflow-wrap: anywhere;
 
   // Make spacing around "header" text more generous for legibility
   // We avoid padding on the parent .LogPaneLine, lest we squish .logLinePrefix
