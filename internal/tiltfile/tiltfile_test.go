@@ -1468,6 +1468,19 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+func TestDockerBuildButK8sMissing(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo:stable', '.')
+`)
+
+	f.loadAssertWarnings(unmatchedImageNoConfigsWarning)
+}
+
 func TestDockerBuildButK8sMissingTag(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -1480,7 +1493,7 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo"})
+	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo"}, "Kubernetes")
 	f.loadAssertWarnings(w)
 }
 
@@ -1496,7 +1509,7 @@ docker_build('gcr.io/foo:stable', '.')
 k8s_yaml('foo.yaml')
 `)
 
-	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo"})
+	w := unusedImageWarning("gcr.io/foo:stable", []string{"gcr.io/foo"}, "Kubernetes")
 	f.loadAssertWarnings(w)
 }
 
@@ -1825,7 +1838,7 @@ docker_build('gcr.typo.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 `)
 
-	w := unusedImageWarning("gcr.typo.io/foo", []string{"gcr.io/foo"})
+	w := unusedImageWarning("gcr.typo.io/foo", []string{"gcr.io/foo"}, "Kubernetes")
 	f.loadAssertWarnings(w)
 }
 
@@ -2202,8 +2215,7 @@ k8s_kind(%s)
 					t.Fatal("invalid test: cannot expect image without expecting workload")
 				}
 				if test.expectedError == "" {
-					w := unusedImageWarning("test/mycrd-env", []string{})
-					f.loadAssertWarnings(w)
+					f.loadAssertWarnings(unmatchedImageAllUnresourcedWarning)
 				} else {
 					f.loadErrString(test.expectedError)
 				}
@@ -2323,7 +2335,7 @@ func TestExtraImageLocationDeploymentEnvVarDoesNotMatchIfNotSpecified(t *testing
 docker_build('gcr.io/foo', 'foo')
 docker_build('gcr.io/foo-fetcher', 'foo-fetcher')
 	`)
-	f.loadAssertWarnings(unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo"}))
+	f.loadAssertWarnings(unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo"}, "Kubernetes"))
 	f.assertNextManifest("foo",
 		db(
 			image("gcr.io/foo"),
@@ -2385,7 +2397,7 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 				)
 			} else {
 				if test.expectedError == "" {
-					w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo"})
+					w := unusedImageWarning("gcr.io/foo-fetcher", []string{"gcr.io/foo"}, "Kubernetes")
 					f.loadAssertWarnings(w)
 				} else {
 					f.loadErrString(test.expectedError)
@@ -5179,8 +5191,8 @@ func (f *fixture) loadAllowWarnings(args ...string) {
 	f.loadResult = tlr
 }
 
-func unusedImageWarning(unusedImage string, suggestedImages []string) string {
-	ret := fmt.Sprintf("Image not used in any deploy config:\n    ✕ %s", unusedImage)
+func unusedImageWarning(unusedImage string, suggestedImages []string, configType string) string {
+	ret := fmt.Sprintf("Image not used in any %s config:\n    ✕ %s", configType, unusedImage)
 	if len(suggestedImages) > 0 {
 		ret = ret + "\nDid you mean…"
 		for _, s := range suggestedImages {

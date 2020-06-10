@@ -40,6 +40,12 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+var unmatchedImageNoConfigsWarning = "No Kubernetes or Docker Compose configs found.\n" +
+	"Skipping all image builds until we have a place to deploy them"
+var unmatchedImageAllUnresourcedWarning = "No Kubernetes configs with images found.\n" +
+	"If you are using CRDs, add k8s_kind() to tell Tilt how to find images.\n" +
+	"https://docs.tilt.dev/api.html#api.k8s_kind"
+
 type resourceSet struct {
 	dc  dcResourceSet // currently only support one d-c.yml
 	k8s []*k8sResource
@@ -524,7 +530,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 			"resources/entities and docker-compose resources")
 	}
 
-	err = s.buildIndex.assertAllMatched()
+	err = s.assertAllImagesMatched()
 	if err != nil {
 		s.logger.Warnf("%s", err.Error())
 	}
@@ -533,6 +539,42 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		dc:  s.dc,
 		k8s: s.k8s,
 	}, s.k8sUnresourced, nil
+}
+
+// Emit an error if there are unmatches images.
+//
+// There are 4 mistakes people commonly make if they
+// have unmatched images:
+// 1) They didn't include any Kubernetes or Docker Compose configs at all.
+// 2) They included Kubernetes configs, but they're custom resources
+//    and Tilt can't infer the image.
+// 3) They typo'd the image name, and need help finding the right name.
+// 4) The tooling they're using to generating the k8s resources
+//    isn't generating what they expect.
+//
+// This function intends to help with cases (1)-(3).
+// Long-term, we want to have better tooling to help with (4),
+// like being able to see k8s resources as they move thru
+// the build system.
+func (s *tiltfileState) assertAllImagesMatched() error {
+	unmatchedImages := s.buildIndex.unmatchedImages()
+	if len(unmatchedImages) == 0 {
+		return nil
+	}
+
+	if len(s.dc.services) == 0 && len(s.k8s) == 0 && len(s.k8sUnresourced) == 0 {
+		return fmt.Errorf(unmatchedImageNoConfigsWarning)
+	}
+
+	if len(s.k8s) == 0 && len(s.k8sUnresourced) != 0 {
+		return fmt.Errorf(unmatchedImageAllUnresourcedWarning)
+	}
+
+	configType := "Kubernetes"
+	if len(s.dc.services) > 0 {
+		configType = "Docker Compose"
+	}
+	return s.buildIndex.unmatchedImageWarning(unmatchedImages[0], configType)
 }
 
 func (s *tiltfileState) assembleImages() error {
