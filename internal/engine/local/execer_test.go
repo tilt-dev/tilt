@@ -157,7 +157,7 @@ func (f *processExecFixture) waitForStatusAndNoError(expectedStatus status) {
 				f.t.Error("Unexpected Error sm")
 				return
 			}
-		case <-time.After(10 * time.Second):
+		case <-time.After(35 * time.Second):
 			f.t.Fatal("Timed out waiting for cmd sm")
 		}
 	}
