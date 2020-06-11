@@ -100,6 +100,8 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
 	}
 
+	cmd.Flag("watch").Deprecated = "it will be removed in future releases."
+
 	return cmd
 }
 
