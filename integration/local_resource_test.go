@@ -33,8 +33,8 @@ func TestLocalResourceCleanup(t *testing.T) {
 
 	select {
 	case <-f.activeTiltUp.done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("Tilt failed to exit within 2 seconds of SIGTERM")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Tilt failed to exit within 5 seconds of SIGTERM")
 	}
 
 	// hello.sh writes to cleanup.txt on SIGTERM
