@@ -177,6 +177,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 			select {
 			// we wait 30 seconds to give the process enough time to finish doing any cleanup.
 			// this is the same timeout that Kubernetes uses
+			// TODO(dmiller): make this configurable via the Tiltfile
 			case <-time.After(30 * time.Second):
 				procutil.KillProcessGroup(c)
 			case <-doneCh:
