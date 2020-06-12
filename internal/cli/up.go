@@ -12,9 +12,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
-	"k8s.io/klog"
-
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -27,6 +24,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/web"
+	"golang.org/x/sync/errgroup"
+	"k8s.io/klog"
 )
 
 const DefaultWebHost = "localhost"
@@ -101,15 +100,9 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
+		c.watchFlagExplicitlySet = cmd.Flag("watch").Changed
 	}
 
-	//since the --watch flag isn't really useful and has been made obselete by tilt ci, print a deprecation warning.
-	cmd.Flag("watch").Deprecated = "it will be removed in future releases."
-	//if a deprecation message exists, then watch was explicitly set by the user, so mark the watchFlagExplicitlySet var as true for
-	//logging the message on the web UI and TUI
-	if len(cmd.Flag("watch").Deprecated) > 0 {
-		c.watchFlagExplicitlySet = true
-	}
 	return cmd
 }
 
