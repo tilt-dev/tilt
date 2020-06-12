@@ -51,6 +51,9 @@ type upCmd struct {
 	hud        bool
 	// whether hud was explicitly set or just got the default value
 	hudFlagExplicitlySet bool
+
+	//whether watch was explicitly set in the cmdline
+	watchFlagExplicitlySet bool
 }
 
 func (c *upCmd) register() *cobra.Command {
@@ -98,6 +101,7 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
+		c.watchFlagExplicitlySet = cmd.Flag("watch").Changed
 	}
 
 	return cmd
@@ -135,6 +139,11 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	ctx = redirectLogs(ctx, deferred)
 
 	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
+
+	//if --watch was set, warn user about deprecation
+	if c.watchFlagExplicitlySet {
+		logger.Get(ctx).Warnf("Flag --watch has been deprecated, it will be removed in future releases.")
+	}
 
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
