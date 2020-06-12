@@ -142,7 +142,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	//if --watch was set, warn user about deprecation
 	if c.watchFlagExplicitlySet {
-		logOutput("Flag --watch has been deprecated, it will be removed in future releases.")
+		logger.Get(ctx).Warnf("Flag --watch has been deprecated, it will be removed in future releases.")
 	}
 
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
