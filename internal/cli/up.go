@@ -12,6 +12,9 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
+	"k8s.io/klog"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -24,8 +27,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/web"
-	"golang.org/x/sync/errgroup"
-	"k8s.io/klog"
 )
 
 const DefaultWebHost = "localhost"
