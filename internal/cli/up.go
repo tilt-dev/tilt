@@ -12,14 +12,12 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tracer"
@@ -149,15 +147,18 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	hudEnabled := c.isHudEnabledByConfig() && isatty.IsTerminal(os.Stdout.Fd())
-	cmdUpDeps, err := wireCmdUp(ctx, hud.HudEnabled(hudEnabled), a, cmdUpTags)
+	termMode := store.TerminalModeStream
+	if isatty.IsTerminal(os.Stdout.Fd()) && c.isHudEnabledByConfig() {
+		termMode = store.TerminalModeHUD
+	}
+
+	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags)
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
 	}
 
 	upper := cmdUpDeps.Upper
-	h := cmdUpDeps.Hud
 
 	l := store.NewLogActionLogger(ctx, upper.Dispatch)
 	deferred.SetOutput(l)
@@ -174,29 +175,16 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		logger.Get(ctx).Infof("TraceID: %s", traceID)
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	if hudEnabled {
-		g.Go(func() error {
-			err := h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
-			return err
-		})
-	}
 
 	engineMode := store.EngineModeUp
 	if !c.watch {
 		engineMode = store.EngineModeApply
 	}
 
-	g.Go(func() error {
-		defer cancel()
-		return upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
-			c.fileName, hudEnabled, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
-	})
-
-	err = g.Wait()
+	err = upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
+		c.fileName, termMode, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
 	if err != context.Canceled {
 		return err
 	} else {

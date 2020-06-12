@@ -142,7 +142,7 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics) (d
 	return dpDeps{}, nil
 }
 
-func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags) (CmdUpDeps, error) {
 	wire.Build(BaseWireSet,
 		build.ProvideClock,
 		wire.Struct(new(CmdUpDeps), "*"))
@@ -150,7 +150,6 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics *analyt
 }
 
 type CmdUpDeps struct {
-	Hud          hud.HeadsUpDisplay
 	Upper        engine.Upper
 	TiltBuild    model.TiltBuild
 	Token        token.Token
@@ -161,7 +160,6 @@ type CmdUpDeps struct {
 func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics) (CmdCIDeps, error) {
 	wire.Build(BaseWireSet,
 		build.ProvideClock,
-		wire.Value(hud.HudEnabled(false)),
 		wire.Value(engineanalytics.CmdTags(map[string]string{})),
 		wire.Struct(new(CmdCIDeps), "*"),
 	)

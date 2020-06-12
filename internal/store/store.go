@@ -191,7 +191,7 @@ func (s *Store) maybeFinished() (bool, error) {
 		return true, state.PanicExited
 	}
 
-	if state.FatalError != nil && !state.HUDEnabled {
+	if state.FatalError != nil && state.TerminalMode != TerminalModeHUD {
 		return true, state.FatalError
 	}
 

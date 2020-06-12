@@ -34,6 +34,7 @@ type EngineState struct {
 
 	CurrentlyBuilding map[model.ManifestName]bool
 	EngineMode        EngineMode
+	TerminalMode      TerminalMode
 
 	// For synchronizing BuildController -- wait until engine records all builds started
 	// so far before starting another build
@@ -49,8 +50,6 @@ type EngineState struct {
 	UpdateSettings model.UpdateSettings
 
 	FatalError error
-
-	HUDEnabled bool
 
 	// The user has indicated they want to exit
 	UserExited bool

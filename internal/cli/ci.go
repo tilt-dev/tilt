@@ -86,7 +86,7 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	engineMode := store.EngineModeCI
 
 	err = upper.Start(ctx, args, cmdCIDeps.TiltBuild, engineMode,
-		c.fileName, false, a.UserOpt(), cmdCIDeps.Token,
+		c.fileName, store.TerminalModeStream, a.UserOpt(), cmdCIDeps.Token,
 		string(cmdCIDeps.CloudAddress))
 	if err == nil {
 		_, _ = fmt.Fprintln(colorable.NewColorableStdout(),

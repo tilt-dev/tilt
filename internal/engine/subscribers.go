@@ -22,6 +22,7 @@ import (
 
 func ProvideSubscribers(
 	hud hud.HeadsUpDisplay,
+	ts *hud.TerminalStream,
 	pw *k8swatch.PodWatcher,
 	sw *k8swatch.ServiceWatcher,
 	plm *runtimelog.PodLogManager,
@@ -47,6 +48,7 @@ func ProvideSubscribers(
 ) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
+		ts,
 		pw,
 		sw,
 		plm,
