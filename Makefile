@@ -194,6 +194,7 @@ ensure: vendor
 
 vendor:
 	go mod vendor
+	go mod tidy
 
 cli-docs:
 	rm -fR ../tilt.build/docs/cli
