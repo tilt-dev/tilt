@@ -20,11 +20,15 @@
   }
   &.is-buildEvent-fallback {
     background-color: $color-gray-darker;
-
-    // A lil' trick so bottom margin only appears after the last element
-    margin-top: -$spacing-unit * 0.5;
-    margin-bottom: $spacing-unit * 0.5;
   }
+}
+
+.LogPaneLine.is-buildEvent-init + .LogPaneLine.is-buildEvent-fallback,
+.LogPaneLine.is-buildEvent-fallback + .LogPaneLine.is-buildEvent-fallback {
+
+  // A lil' trick so bottom margin only appears after the last element
+  margin-top: -$spacing-unit * 0.5;
+  margin-bottom: $spacing-unit * 0.5;
 }
 
 .logLinePrefix {
