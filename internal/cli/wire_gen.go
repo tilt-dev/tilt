@@ -131,7 +131,10 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics) (
 	return cliDpDeps, nil
 }
 
-func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags) (CmdUpDeps, error) {
+	reducer := _wireReducerValue
+	storeLogActionsFlag := provideLogActions()
+	storeStore := store.NewStore(reducer, storeLogActionsFlag)
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	modelWebHost := provideWebHost()
@@ -140,15 +143,10 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
+	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	reducer := _wireReducerValue
-	storeLogActionsFlag := provideLogActions()
-	storeStore := store.NewStore(reducer, storeLogActionsFlag)
-	headsUpDisplay, err := hud.ProvideHud(hudEnabled, renderer, webURL, analytics3, incrementalPrinter, storeStore)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -258,7 +256,7 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 	localController := local.NewController(execer)
 	podMonitor := k8srollout.NewPodMonitor()
 	exitController := exit.NewController()
-	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, controller, watchManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, updateUploader, dockerPruner, telemetryController, localController, podMonitor, exitController)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, terminalStream, podWatcher, serviceWatcher, podLogManager, controller, watchManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, updateUploader, dockerPruner, telemetryController, localController, podMonitor, exitController)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
@@ -269,7 +267,6 @@ func wireCmdUp(ctx context.Context, hudEnabled hud.HudEnabled, analytics3 *analy
 		return CmdUpDeps{}, err
 	}
 	cmdUpDeps := CmdUpDeps{
-		Hud:          headsUpDisplay,
 		Upper:        upper,
 		TiltBuild:    tiltBuild,
 		Token:        tokenToken,
@@ -288,7 +285,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics) (CmdCID
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
-	hudEnabled := _wireHudEnabledValue
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	modelWebHost := provideWebHost()
@@ -297,12 +293,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics) (CmdCID
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
+	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	headsUpDisplay, err := hud.ProvideHud(hudEnabled, renderer, webURL, analytics3, incrementalPrinter, storeStore)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -413,7 +407,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics) (CmdCID
 	localController := local.NewController(execer)
 	podMonitor := k8srollout.NewPodMonitor()
 	exitController := exit.NewController()
-	v2 := engine.ProvideSubscribers(headsUpDisplay, podWatcher, serviceWatcher, podLogManager, controller, watchManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, updateUploader, dockerPruner, telemetryController, localController, podMonitor, exitController)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, terminalStream, podWatcher, serviceWatcher, podLogManager, controller, watchManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, updateUploader, dockerPruner, telemetryController, localController, podMonitor, exitController)
 	upper := engine.NewUpper(ctx, storeStore, v2)
 	windmillDir, err := dirs.UseWindmillDir()
 	if err != nil {
@@ -434,8 +428,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics) (CmdCID
 }
 
 var (
-	_wireHudEnabledValue = hud.HudEnabled(false)
-	_wireCmdTagsValue    = analytics2.CmdTags(map[string]string{})
+	_wireCmdTagsValue = analytics2.CmdTags(map[string]string{})
 )
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
@@ -645,7 +638,6 @@ var BaseWireSet = wire.NewSet(
 )
 
 type CmdUpDeps struct {
-	Hud          hud.HeadsUpDisplay
 	Upper        engine.Upper
 	TiltBuild    model.TiltBuild
 	Token        token.Token

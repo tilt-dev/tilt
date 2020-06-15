@@ -7,7 +7,8 @@ import (
 
 var WireSet = wire.NewSet(
 	NewRenderer,
-	ProvideHud,
+	NewHud,
+	NewTerminalStream,
 	ProvideStdout,
 	NewIncrementalPrinter)
 

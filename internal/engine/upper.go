@@ -65,7 +65,7 @@ func (u Upper) Start(
 	b model.TiltBuild,
 	engineMode store.EngineMode,
 	fileName string,
-	hudEnabled bool,
+	initTerminalMode store.TerminalMode,
 	analyticsUserOpt analytics.Opt,
 	token token.Token,
 	cloudAddress string,
@@ -93,7 +93,7 @@ func (u Upper) Start(
 		AnalyticsUserOpt: analyticsUserOpt,
 		Token:            token,
 		CloudAddress:     cloudAddress,
-		HUDEnabled:       hudEnabled,
+		TerminalMode:     initTerminalMode,
 	})
 }
 
@@ -616,7 +616,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.EngineMode = action.EngineMode
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
-	engineState.HUDEnabled = action.HUDEnabled
+	engineState.TerminalMode = action.TerminalMode
 }
 
 func handleHudExitAction(state *store.EngineState, action hud.ExitAction) {

@@ -30,7 +30,7 @@ type InitAction struct {
 
 	CloudAddress string
 	Token        token.Token
-	HUDEnabled   bool
+	TerminalMode store.TerminalMode
 }
 
 func (InitAction) Action() {}

@@ -613,7 +613,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f.Init(InitAction{
 		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
-		HUDEnabled:   true,
+		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
 	})
 
@@ -1239,30 +1239,32 @@ func TestDisabledHudUpdated(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("TODO(nick): Investigate")
 	}
-	out := bufsync.NewThreadSafeBuffer()
-	h := hud.NewDisabledHud(hud.NewIncrementalPrinter(out), store.NewTestingStore())
-	f := newTestFixtureWithHud(t, h)
+	f := newTestFixture(t)
 	defer f.TearDown()
 
 	manifest := f.newManifest("foobar")
+	opt := func(ia InitAction) InitAction {
+		ia.TerminalMode = store.TerminalModeStream
+		return ia
+	}
 
-	f.Start([]model.Manifest{manifest})
+	f.Start([]model.Manifest{manifest}, opt)
 	call := f.nextCall()
 	assert.True(t, call.oneState().IsEmpty())
 
 	// Make sure we're done logging stuff, then grab # processed bytes
 	time.Sleep(5 * time.Millisecond)
-	assert.True(t, f.disabledHud().ProcessedLogs > 0)
-	oldCheckpoint := f.disabledHud().ProcessedLogs
-	assert.Contains(t, out.String(), "Initial Build • foobar")
+	assert.True(t, f.ts.ProcessedLogs > 0)
+	oldCheckpoint := f.ts.ProcessedLogs
+	assert.Contains(t, f.log.String(), "Initial Build • foobar")
 
 	// Log something new, make sure it's reflected
 	msg := []byte("hello world!\n")
 	f.store.Dispatch(store.NewGlobalLogAction(logger.InfoLvl, msg))
 	time.Sleep(5 * time.Millisecond)
 
-	assert.Contains(t, out.String(), "hello world!")
-	checkpointDiff := f.disabledHud().ProcessedLogs - oldCheckpoint
+	assert.Contains(t, f.log.String(), "hello world!")
+	checkpointDiff := f.ts.ProcessedLogs - oldCheckpoint
 	assert.Equal(t, logstore.Checkpoint(1), checkpointDiff)
 
 	err := f.Stop()
@@ -2723,7 +2725,8 @@ func TestEmptyTiltfile(t *testing.T) {
 	closeCh := make(chan error)
 	go func() {
 		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, store.EngineModeUp,
-			f.JoinPath("Tiltfile"), true, analytics.OptIn, token.Token("unit test token"),
+			f.JoinPath("Tiltfile"), store.TerminalModeHUD,
+			analytics.OptIn, token.Token("unit test token"),
 			"nonexistent.example.com")
 		closeCh <- err
 	}()
@@ -2757,7 +2760,8 @@ func TestUpperStart(t *testing.T) {
 	f.WriteFile("Tiltfile", "")
 	go func() {
 		err := f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{},
-			store.EngineModeUp, f.JoinPath("Tiltfile"), true, analytics.OptIn, tok, cloudAddress)
+			store.EngineModeUp, f.JoinPath("Tiltfile"), store.TerminalModeHUD,
+			analytics.OptIn, tok, cloudAddress)
 		closeCh <- err
 	}()
 	f.WaitUntil("init action processed", func(state store.EngineState) bool {
@@ -3441,7 +3445,8 @@ type testFixture struct {
 	timerMaker                 *fswatch.FakeTimerMaker
 	docker                     *docker.FakeClient
 	kClient                    *k8s.FakeK8sClient
-	hud                        hud.HeadsUpDisplay // so fixture may use either FakeHud or DisabledHud. See: f.FakeHud()/f.DisabledHud()
+	hud                        hud.HeadsUpDisplay
+	ts                         *hud.TerminalStream
 	upperInitResult            chan error
 	log                        *bufsync.ThreadSafeBuffer
 	store                      *store.Store
@@ -3459,10 +3464,6 @@ type testFixture struct {
 }
 
 func newTestFixture(t *testing.T) *testFixture {
-	return newTestFixtureWithHud(t, hud.NewFakeHud())
-}
-
-func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 
 	log := bufsync.NewThreadSafeBuffer()
@@ -3518,6 +3519,8 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	cuu := cloud.NewUpdateUploader(httptest.NewFakeClient(), "cloud-test.tilt.dev")
 	fe := local.NewFakeExecer()
 	lc := local.NewController(fe)
+	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
+	h := hud.NewFakeHud()
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
@@ -3534,6 +3537,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 		docker:         dockerClient,
 		kClient:        kCli,
 		hud:            h,
+		ts:             ts,
 		log:            log,
 		store:          st,
 		bc:             bc,
@@ -3553,7 +3557,7 @@ func newTestFixtureWithHud(t *testing.T, h hud.HeadsUpDisplay) *testFixture {
 	podm := k8srollout.NewPodMonitor()
 	ec := exit.NewController()
 
-	subs := ProvideSubscribers(h, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
+	subs := ProvideSubscribers(h, ts, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
@@ -3576,14 +3580,6 @@ func (f *testFixture) fakeHud() *hud.FakeHud {
 	return fakeHud
 }
 
-func (f *testFixture) disabledHud() *hud.DisabledHud {
-	disabledHud, ok := f.hud.(*hud.DisabledHud)
-	if !ok {
-		f.t.Fatalf("called f.disabledHud() on a test fixure without a disabledHud (instead f.hud is of type: %T", f.hud)
-	}
-	return disabledHud
-}
-
 // starts the upper with the given manifests, bypassing normal tiltfile loading
 func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOption) {
 	f.setManifests(manifests)
@@ -3591,7 +3587,7 @@ func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOptio
 	ia := InitAction{
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
-		HUDEnabled:   true,
+		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
 	}
 	for _, o := range initOptions {
@@ -3989,7 +3985,7 @@ func (f *testFixture) loadAndStart(initOptions ...initOption) {
 	ia := InitAction{
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
-		HUDEnabled:   true,
+		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
 	}
 	for _, opt := range initOptions {
