@@ -142,7 +142,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	if hasDeleteStep {
 		ps.StartPipelineStep(ctx, "Force update")
-		err = ibd.delete(ctx, kTarget)
+		err = ibd.delete(ps.AttachLogger(ctx), kTarget)
 		if err != nil {
 			return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
 		}
@@ -153,7 +153,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ps.StartPipelineStep(ctx, "Loading cached images")
 		for _, result := range reused {
 			ref := store.LocalImageRefFromBuildResult(result)
-			logger.Get(ctx).Infof("- %s", container.FamiliarString(ref))
+			ps.Printf(ctx, "- %s", container.FamiliarString(ref))
 		}
 		ps.EndPipelineStep(ctx)
 	}
