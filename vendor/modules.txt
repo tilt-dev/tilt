@@ -610,7 +610,7 @@ go.opentelemetry.io/otel/sdk/export/trace
 go.opentelemetry.io/otel/sdk/internal
 go.opentelemetry.io/otel/sdk/trace
 go.opentelemetry.io/otel/sdk/trace/internal
-# go.starlark.net v0.0.0-20200519165436-0aa95694c768
+# go.starlark.net v0.0.0-20200615180055-61b64bc45990
 ## explicit
 go.starlark.net/internal/compile
 go.starlark.net/internal/spell

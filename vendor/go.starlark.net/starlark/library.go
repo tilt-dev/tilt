@@ -215,7 +215,7 @@ func chr(thread *Thread, _ *Builtin, args Tuple, kwargs []Tuple) (Value, error) 
 	if i > unicode.MaxRune {
 		return nil, fmt.Errorf("chr: Unicode code point U+%X out of range (>0x10FFFF)", i)
 	}
-	return String(string(i)), nil
+	return String(string(rune(i))), nil
 }
 
 // https://github.com/google/starlark-go/blob/master/doc/spec.md#dict
