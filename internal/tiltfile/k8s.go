@@ -704,6 +704,7 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	values := starlarkValueOrSequenceToSlice(v)
 	var ret []k8s.K8sEntity
+
 	for _, value := range values {
 		entities, err := s.yamlEntitiesFromSkylarkValue(thread, value)
 		if err != nil {
