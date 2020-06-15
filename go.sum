@@ -654,8 +654,8 @@ github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564 h1:X4YiQoUKHSc
 github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564/go.mod h1:c6pAambncyReVORBv+ReH61QHPhZ2ddi0/3QyJO3aF8=
 github.com/tilt-dev/json-patch/v4 v4.8.1 h1:AbrhK3NMDfk/+/oMXz3NcKaCNwHYdhUJMDjBHNOHF5o=
 github.com/tilt-dev/json-patch/v4 v4.8.1/go.mod h1:tS8rrXPNPgltwGinFPfBjCwHFLxMa3ozjPngreH2eW0=
-github.com/tilt-dev/localregistry-go v0.0.0-20200611224805-6fcceac3a065 h1:AJSZE144nyVJteEJeA0Y/NKC+/r6KJMGQGC1b1/+Oyo=
-github.com/tilt-dev/localregistry-go v0.0.0-20200611224805-6fcceac3a065/go.mod h1:bZecZHy8tHzZWeF+MEQMugKbGhi9cF1A7tuaZNIxoDs=
+github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7 h1:ysHGLJJRVcnG6WoZJt7GGD4hsMSwMxEg7Rxx4fJrSrY=
+github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7/go.mod h1:bZecZHy8tHzZWeF+MEQMugKbGhi9cF1A7tuaZNIxoDs=
 github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564 h1:bEnkuD0b4rcHJbO3isFgtZhoGzA9NL0D4Qfo4jKvLlM=
 github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564/go.mod h1:CmwKPbHUwMhi/BZXZUjLW1LuxKkRa9qLtJ7p9p9zitE=
 github.com/timakin/bodyclose v0.0.0-20190930140734-f7f2e9bca95e/go.mod h1:Qimiffbc6q9tBWlVV6x0P9sat/ao1xEkREYPPj9hphk=

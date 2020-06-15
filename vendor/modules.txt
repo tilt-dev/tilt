@@ -558,7 +558,7 @@ github.com/tilt-dev/fsevents
 # github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564
 ## explicit
 github.com/tilt-dev/fsnotify
-# github.com/tilt-dev/localregistry-go v0.0.0-20200611224805-6fcceac3a065
+# github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 ## explicit
 github.com/tilt-dev/localregistry-go
 # github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564

@@ -86,7 +86,7 @@ require (
 	github.com/theupdateframework/notary v0.6.1 // indirect
 	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 	github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564
-	github.com/tilt-dev/localregistry-go v0.0.0-20200611224805-6fcceac3a065
+	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/uber/jaeger-client-go v2.21.1+incompatible

@@ -24,6 +24,12 @@ func Discover(ctx context.Context, core apiv1.CoreV1Interface) (LocalRegistryHos
 
 	cfg, err := core.ConfigMaps(ConfigMapNamespace).Get(ctx, ConfigMapName, metav1.GetOptions{})
 	if err != nil {
+		if errors.IsForbidden(err) {
+			// We assume that if a cluster has restricted access to the kube-public
+			// namespace, then they likely don't have a local registry, so don't
+			// bother returning an error.
+			return result, nil
+		}
 		if errors.IsNotFound(err) {
 			return result, nil
 		}
