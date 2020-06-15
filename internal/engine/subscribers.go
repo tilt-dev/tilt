@@ -16,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
 )
@@ -23,6 +24,7 @@ import (
 func ProvideSubscribers(
 	hud hud.HeadsUpDisplay,
 	ts *hud.TerminalStream,
+	tp *prompt.TerminalPrompt,
 	pw *k8swatch.PodWatcher,
 	sw *k8swatch.ServiceWatcher,
 	plm *runtimelog.PodLogManager,
@@ -49,6 +51,7 @@ func ProvideSubscribers(
 	return []store.Subscriber{
 		hud,
 		ts,
+		tp,
 		pw,
 		sw,
 		plm,

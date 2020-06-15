@@ -50,6 +50,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -3532,6 +3533,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	fe := local.NewFakeExecer()
 	lc := local.NewController(fe)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
+	tp := prompt.NewTerminalPrompt(prompt.TTYOpen, prompt.BrowserOpen,
+		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -3569,7 +3572,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	podm := k8srollout.NewPodMonitor()
 	ec := exit.NewController()
 
-	subs := ProvideSubscribers(h, ts, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
+	subs := ProvideSubscribers(h, ts, tp, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

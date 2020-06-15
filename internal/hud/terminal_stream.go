@@ -2,7 +2,6 @@ package hud
 
 import (
 	"context"
-	"time"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -16,10 +15,6 @@ type TerminalStream struct {
 
 func NewTerminalStream(printer *IncrementalPrinter, store store.RStore) *TerminalStream {
 	return &TerminalStream{printer: printer, store: store}
-}
-
-func (h *TerminalStream) Run(ctx context.Context, dispatch func(action store.Action), refreshRate time.Duration) error {
-	return nil
 }
 
 // TODO(nick): We should change this API so that TearDown gets
