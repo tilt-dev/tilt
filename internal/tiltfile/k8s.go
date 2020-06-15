@@ -117,10 +117,6 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	if _, res := starlark.AsString(yamlValue); !res {
-		return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
-	}
-
 	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
 	if err != nil {
 		return nil, err
@@ -179,6 +175,7 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		"kind?", &kind,
 		"api_version?", &apiVersion,
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -703,6 +700,11 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 
 func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	values := starlarkValueOrSequenceToSlice(v)
+
+	if len(values) == 0 {
+		return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
+	}
+
 	var ret []k8s.K8sEntity
 
 	for _, value := range values {
