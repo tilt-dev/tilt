@@ -14,10 +14,6 @@ import (
 )
 
 func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
-	// TODO(maia): investigate unexplained errors in CI, reenable
-	// e.g.: https://circleci.com/gh/tilt-dev/tilt/28109
-	t.SkipNow()
-
 	f := newK8sFixture(t, "live_update_after_crash_rebuild")
 	defer f.TearDown()
 

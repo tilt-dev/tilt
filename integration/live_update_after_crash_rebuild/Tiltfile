@@ -2,15 +2,17 @@
 
 include('../Tiltfile')
 
+load('ext://restart_process', 'docker_build_with_restart')
+
 k8s_yaml('deployment.yaml')
 repo = local_git_repo('../../')
-docker_build('gcr.io/windmill-test-containers/integration/live_update_after_crash_rebuild',
+docker_build_with_restart('gcr.io/windmill-test-containers/integration/live_update_after_crash_rebuild',
              '.',
+             entrypoint=['/app/main.sh'],
              dockerfile='Dockerfile',
              live_update=[
                sync('.', '/app'),
                run('/app/compile.sh'),
-               run('/app/restart.sh'),
              ])
 
 k8s_resource("live-update-after-crash-rebuild", port_forwards=["31234:8000"])
