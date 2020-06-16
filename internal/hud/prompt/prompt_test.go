@@ -1,6 +1,7 @@
 package prompt
 
 import (
+	"bytes"
 	"context"
 	"net/url"
 	"reflect"
@@ -54,6 +55,18 @@ func TestOpenHUD(t *testing.T) {
 
 	action := f.st.WaitForAction(t, reflect.TypeOf(SwitchTerminalModeAction{}))
 	assert.Equal(t, SwitchTerminalModeAction{Mode: store.TerminalModeHUD}, action)
+}
+
+func TestInitOutput(t *testing.T) {
+	f := newFixture()
+	defer f.TearDown()
+
+	f.prompt.SetInitOutput(bytes.NewBuffer([]byte("this is a warning\n")))
+	f.prompt.OnChange(f.ctx, f.st)
+
+	assert.Contains(t, f.out.String(), `this is a warning
+
+(space) to open the browser`)
 }
 
 type fixture struct {

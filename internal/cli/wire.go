@@ -157,6 +157,7 @@ type CmdUpDeps struct {
 	Token        token.Token
 	CloudAddress cloudurl.Address
 	Store        *store.Store
+	Prompt       *prompt.TerminalPrompt
 }
 
 func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics) (CmdCIDeps, error) {

@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"bytes"
 	"context"
 	"sync"
 )
@@ -29,6 +30,18 @@ func NewDeferredLogger(ctx context.Context) *DeferredLogger {
 	})
 	dLogger.Logger = fLogger
 	return dLogger
+}
+
+func (dl *DeferredLogger) CopyBuffered(lvl Level) *bytes.Buffer {
+	dl.mu.Lock()
+	defer dl.mu.Unlock()
+
+	buf := bytes.NewBuffer(nil)
+	logger := NewLogger(lvl, buf)
+	for _, entry := range dl.entries {
+		logger.Write(entry.level, entry.b)
+	}
+	return buf
 }
 
 // Set the output logger, and send all the buffered output to the new logger.

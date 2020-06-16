@@ -12,6 +12,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -59,7 +60,11 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
 
-	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
+	webHost := provideWebHost()
+	webURL, _ := provideWebURL(webHost, provideWebPort())
+	startLine := prompt.StartStatusLine(webURL, webHost)
+	log.Print(startLine)
+	log.Print(buildStamp())
 
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)

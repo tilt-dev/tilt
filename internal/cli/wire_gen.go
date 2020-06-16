@@ -276,6 +276,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		Token:        tokenToken,
 		CloudAddress: address,
 		Store:        storeStore,
+		Prompt:       terminalPrompt,
 	}
 	return cmdUpDeps, nil
 }
@@ -652,6 +653,7 @@ type CmdUpDeps struct {
 	Token        token.Token
 	CloudAddress cloudurl.Address
 	Store        *store.Store
+	Prompt       *prompt.TerminalPrompt
 }
 
 type CmdCIDeps struct {

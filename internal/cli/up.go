@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
@@ -18,6 +17,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tracer"
@@ -136,17 +136,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
 
-	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
-
-	//if --watch was set, warn user about deprecation
-	if c.watchFlagExplicitlySet {
-		logger.Get(ctx).Warnf("Flag --watch has been deprecated, it will be removed in future releases.")
-	}
-
-	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
-		log.Printf("Tilt analytics disabled: %s", reason)
-	}
-
 	termMode := store.TerminalModeStream
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		if c.isHudEnabledByConfig() {
@@ -157,6 +146,23 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		}
 	}
 
+	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+
+	webHost := provideWebHost()
+	webURL, _ := provideWebURL(webHost, provideWebPort())
+	startLine := prompt.StartStatusLine(webURL, webHost)
+	log.Print(startLine)
+	log.Print(buildStamp())
+
+	//if --watch was set, warn user about deprecation
+	if c.watchFlagExplicitlySet {
+		logger.Get(ctx).Warnf("Flag --watch has been deprecated, it will be removed in future releases.")
+	}
+
+	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
+		log.Printf("Tilt analytics disabled: %s", reason)
+	}
+
 	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags)
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
@@ -164,6 +170,11 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}
 
 	upper := cmdUpDeps.Upper
+	if termMode == store.TerminalModePrompt {
+		// Any logs that showed up during initialization, make sure they're
+		// in the prompt.
+		cmdUpDeps.Prompt.SetInitOutput(deferred.CopyBuffered(logger.InfoLvl))
+	}
 
 	l := store.NewLogActionLogger(ctx, upper.Dispatch)
 	deferred.SetOutput(l)
@@ -202,11 +213,6 @@ func redirectLogs(ctx context.Context, l logger.Logger) context.Context {
 	log.SetOutput(l.Writer(logger.InfoLvl))
 	klog.SetOutput(l.Writer(logger.InfoLvl))
 	return ctx
-}
-
-func logOutput(s string) {
-	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
-	log.Print(color.GreenString(s))
 }
 
 func provideUpdateModeFlag() buildcontrol.UpdateModeFlag {

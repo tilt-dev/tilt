@@ -1,8 +1,10 @@
 package prompt
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/fatih/color"
 	tty "github.com/mattn/go-tty"
@@ -31,12 +33,13 @@ func BrowserOpen(url string) error {
 }
 
 type TerminalPrompt struct {
-	openInput OpenInput
-	openURL   OpenURL
-	stdout    hud.Stdout
-	host      model.WebHost
-	url       model.WebURL
-	printed   bool
+	openInput  OpenInput
+	openURL    OpenURL
+	stdout     hud.Stdout
+	host       model.WebHost
+	url        model.WebURL
+	printed    bool
+	initOutput *bytes.Buffer
 }
 
 func NewTerminalPrompt(openInput OpenInput, openURL OpenURL, stdout hud.Stdout, host model.WebHost, url model.WebURL) *TerminalPrompt {
@@ -47,6 +50,24 @@ func NewTerminalPrompt(openInput OpenInput, openURL OpenURL, stdout hud.Stdout, 
 		host:      host,
 		url:       url,
 	}
+}
+
+// Copy initial warnings and info logs from the logstore into the terminal
+// prompt, so that they get shown as part of the prompt.
+//
+// This sits at the intersection of two incompatible interfaces:
+//
+// 1) The LogStore is an asynchronous, streaming log interface that makes sure
+//    all logs are shown everywhere (across stdout, hud, web, snapshots, etc).
+//
+// 2) The TerminalPrompt is a synchronous interface that shows a deliberately
+//    short "greeting" message, then blocks on user input.
+//
+// Rather than make these two interfaces interoperate well, we just have
+// the internal/cli code copy over the logs during the init sequence.
+// It's OK if logs show up twice.
+func (p *TerminalPrompt) SetInitOutput(buf *bytes.Buffer) {
+	p.initOutput = buf
 }
 
 func (p *TerminalPrompt) tiltBuild(st store.RStore) model.TiltBuild {
@@ -71,20 +92,24 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	build := p.tiltBuild(st)
-	hasBrowserUI := !p.url.Empty()
-	serverStatus := "(without browser UI)"
-	if hasBrowserUI {
-		if p.host == "0.0.0.0" {
-			serverStatus = fmt.Sprintf("on %s (listening on 0.0.0.0)", p.url)
-		} else {
-			serverStatus = fmt.Sprintf("on %s", p.url)
+	buildStamp := build.HumanBuildStamp()
+	firstLine := StartStatusLine(p.url, p.host)
+	_, _ = fmt.Fprintf(p.stdout, "%s\n", firstLine)
+	_, _ = fmt.Fprintf(p.stdout, "%s\n\n", buildStamp)
+
+	// Print all the init output. See comments on SetInitOutput()
+	//
+	// We expect this to end in an empty newline if non-empty, which we then print
+	// as a blank line. This is intended.
+	infoLines := strings.Split(p.initOutput.String(), "\n")
+	for _, line := range infoLines {
+		if strings.HasPrefix(line, firstLine) || strings.HasPrefix(line, buildStamp) {
+			continue
 		}
+		_, _ = fmt.Fprintf(p.stdout, "%s\n", line)
 	}
 
-	firstLine := color.GreenString(fmt.Sprintf("Tilt started %s", serverStatus))
-	_, _ = fmt.Fprintf(p.stdout, "%s\n", firstLine)
-	_, _ = fmt.Fprintf(p.stdout, "%s\n\n", build.HumanBuildStamp())
-
+	hasBrowserUI := !p.url.Empty()
 	if hasBrowserUI {
 		_, _ = fmt.Fprintf(p.stdout, "(space) to open the browser\n")
 	}
@@ -179,6 +204,20 @@ type runeMessage struct {
 	// Sending 'true' indicates that we're switching to a different mode and the
 	// input goroutine should stop reading TTY input.
 	stopCh chan bool
+}
+
+func StartStatusLine(url model.WebURL, host model.WebHost) string {
+	hasBrowserUI := !url.Empty()
+	serverStatus := "(without browser UI)"
+	if hasBrowserUI {
+		if host == "0.0.0.0" {
+			serverStatus = fmt.Sprintf("on %s (listening on 0.0.0.0)", url)
+		} else {
+			serverStatus = fmt.Sprintf("on %s", url)
+		}
+	}
+
+	return color.GreenString(fmt.Sprintf("Tilt started %s", serverStatus))
 }
 
 var _ store.Subscriber = &TerminalPrompt{}
