@@ -701,6 +701,7 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	values := starlarkValueOrSequenceToSlice(v)
 
+	//if starlark picks up that v is nil or None, it returns an empty list
 	if len(values) == 0 {
 		return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
 	}
