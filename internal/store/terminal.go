@@ -4,8 +4,12 @@ package store
 type TerminalMode int
 
 const (
+	// For the case where the terminal mode simply
+	// hasn't been initialized yet.
+	TerminalModeDefault TerminalMode = iota
+
 	// A termbox UI takes over your terminal screen.
-	TerminalModeHUD TerminalMode = iota
+	TerminalModeHUD
 
 	// Logs are incrementally written to stdout.
 	// This is the only available mode if the user

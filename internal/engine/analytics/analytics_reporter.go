@@ -110,6 +110,8 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 		// env should really be a global tag, but there's a circular dependency
 		// between the global tags and env initialization, so we add it manually.
 		"env": string(ar.env),
+
+		"term_mode": strconv.Itoa(int(st.TerminalMode)),
 	}
 
 	if k8sCount > 1 {
