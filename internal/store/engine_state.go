@@ -308,8 +308,7 @@ type BuildStatus struct {
 	// This map is mutable.
 	PendingFileChanges map[string]time.Time
 
-	LastSuccessfulResult BuildResult
-	LastResult           BuildResult
+	LastResult BuildResult
 
 	// Stores the times that dependencies were marked dirty, so we can prioritize
 	// the oldest one first.
@@ -338,7 +337,7 @@ func newBuildStatus() *BuildStatus {
 func (s BuildStatus) IsEmpty() bool {
 	return len(s.PendingFileChanges) == 0 &&
 		len(s.PendingDependencyChanges) == 0 &&
-		s.LastSuccessfulResult == nil
+		s.LastResult == nil
 }
 
 type ManifestState struct {
