@@ -3554,7 +3554,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fe := local.NewFakeExecer()
 	lc := local.NewController(fe)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
-	tp := prompt.NewTerminalPrompt(prompt.TTYOpen, prompt.BrowserOpen,
+	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
 

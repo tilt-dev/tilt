@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/mattn/go-isatty"
@@ -117,9 +118,20 @@ func (c *upCmd) isHudEnabledByConfig() bool {
 
 func (c *upCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
+
+	termMode := store.TerminalModeStream
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		if c.isHudEnabledByConfig() {
+			termMode = store.TerminalModeHUD
+		} else if !c.defaultTUI {
+			termMode = store.TerminalModePrompt
+			noBrowser = true
+		}
+	}
+
 	cmdUpTags := engineanalytics.CmdTags(map[string]string{
-		"watch": fmt.Sprintf("%v", c.watch),
-		"mode":  string(updateModeFlag),
+		"mode":      string(updateModeFlag),
+		"term_mode": strconv.Itoa(int(termMode)),
 	})
 	a.Incr("cmd.up", cmdUpTags.AsMap())
 	defer a.Flush(time.Second)
@@ -135,16 +147,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
-
-	termMode := store.TerminalModeStream
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		if c.isHudEnabledByConfig() {
-			termMode = store.TerminalModeHUD
-		} else if !c.defaultTUI {
-			termMode = store.TerminalModePrompt
-			noBrowser = true
-		}
-	}
 
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 

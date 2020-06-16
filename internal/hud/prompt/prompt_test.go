@@ -10,6 +10,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/wmclient/pkg/analytics"
+
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -92,7 +95,10 @@ func newFixture() *fixture {
 
 	url, _ := url.Parse(FakeURL)
 
-	prompt := NewTerminalPrompt(openInput, b.OpenURL, out, "localhost", model.WebURL(*url))
+	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
+	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
+
+	prompt := NewTerminalPrompt(ta, openInput, b.OpenURL, out, "localhost", model.WebURL(*url))
 	return &fixture{
 		ctx:    ctx,
 		cancel: cancel,

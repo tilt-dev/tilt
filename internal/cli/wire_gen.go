@@ -150,7 +150,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
 	openInput := _wireOpenInputValue
 	openURL := _wireOpenURLValue
-	terminalPrompt := prompt.NewTerminalPrompt(openInput, openURL, stdout, modelWebHost, webURL)
+	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, modelWebHost, webURL)
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -306,7 +306,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics) (CmdCID
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
 	openInput := _wireOpenInputValue
 	openURL := _wireOpenURLValue
-	terminalPrompt := prompt.NewTerminalPrompt(openInput, openURL, stdout, modelWebHost, webURL)
+	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, modelWebHost, webURL)
 	clientConfig := k8s.ProvideClientConfig()
 	config, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
