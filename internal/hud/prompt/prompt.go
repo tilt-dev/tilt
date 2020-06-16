@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fatih/color"
 	tty "github.com/mattn/go-tty"
 	"github.com/pkg/browser"
 
@@ -48,6 +49,12 @@ func NewTerminalPrompt(openInput OpenInput, openURL OpenURL, stdout hud.Stdout, 
 	}
 }
 
+func (p *TerminalPrompt) tiltBuild(st store.RStore) model.TiltBuild {
+	state := st.RLockState()
+	defer st.RUnlockState()
+	return state.TiltBuildInfo
+}
+
 func (p *TerminalPrompt) isEnabled(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
@@ -63,6 +70,7 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
+	build := p.tiltBuild(st)
 	hasBrowserUI := !p.url.Empty()
 	serverStatus := "(without browser UI)"
 	if hasBrowserUI {
@@ -73,14 +81,16 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 		}
 	}
 
-	_, _ = fmt.Fprintf(p.stdout, "Tilt started %s\n", serverStatus)
+	firstLine := color.GreenString(fmt.Sprintf("Tilt started %s", serverStatus))
+	_, _ = fmt.Fprintf(p.stdout, "%s\n", firstLine)
+	_, _ = fmt.Fprintf(p.stdout, "%s\n\n", build.HumanBuildStamp())
 
 	if hasBrowserUI {
 		_, _ = fmt.Fprintf(p.stdout, "(space) to open the browser\n")
 	}
 
-	// TODO(nick): implement this
-	// _, _ = fmt.Fprintf(p.stdout, "(s) to stream logs\n")
+	_, _ = fmt.Fprintf(p.stdout, "(s) to stream logs\n")
+	_, _ = fmt.Fprintf(p.stdout, "(h) to open terminal HUD\n")
 	_, _ = fmt.Fprintf(p.stdout, "(ctrl-c) to exit\n")
 
 	p.printed = true
@@ -91,7 +101,7 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 		return
 	}
 
-	keyCh := make(chan rune)
+	keyCh := make(chan runeMessage)
 
 	// One goroutine just pulls input from TTY.
 	go func() {
@@ -101,7 +111,17 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 				st.Dispatch(store.ErrorAction{Error: err})
 				return
 			}
-			keyCh <- r
+
+			msg := runeMessage{
+				rune:   r,
+				stopCh: make(chan bool),
+			}
+			keyCh <- msg
+
+			close := <-msg.stopCh
+			if close {
+				break
+			}
 		}
 		close(keyCh)
 	}()
@@ -118,25 +138,47 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 			select {
 			case <-ctx.Done():
 				return
-			case r, ok := <-keyCh:
+			case msg, ok := <-keyCh:
 				if !ok {
 					return
 				}
 
+				r := msg.rune
 				switch r {
+				case 's':
+					st.Dispatch(SwitchTerminalModeAction{Mode: store.TerminalModeStream})
+					msg.stopCh <- true
+
+				case 'h':
+					st.Dispatch(SwitchTerminalModeAction{Mode: store.TerminalModeHUD})
+					msg.stopCh <- true
+
 				case ' ':
 					_, _ = fmt.Fprintf(p.stdout, "Opening browser: %s\n", p.url.String())
 					err := p.openURL(p.url.String())
 					if err != nil {
 						_, _ = fmt.Fprintf(p.stdout, "Error: %v\n", err)
 					}
+					msg.stopCh <- false
 				default:
 					_, _ = fmt.Fprintf(p.stdout, "Unrecognized option: %s\n", string(r))
+					msg.stopCh <- false
 
 				}
 			}
 		}
 	}()
+}
+
+type runeMessage struct {
+	rune rune
+
+	// The receiver of this message should
+	// ACK the channel when they're done.
+	//
+	// Sending 'true' indicates that we're switching to a different mode and the
+	// input goroutine should stop reading TTY input.
+	stopCh chan bool
 }
 
 var _ store.Subscriber = &TerminalPrompt{}
