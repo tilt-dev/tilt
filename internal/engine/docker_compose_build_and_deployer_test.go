@@ -144,7 +144,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 
 	iTargetID := manifest.ImageTargets[0].ID()
 	result := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
-	state := store.NewBuildState(result, nil)
+	state := store.NewBuildState(result, nil, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
 	f.dCli.ImageListCount = 1
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)

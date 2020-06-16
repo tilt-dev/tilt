@@ -165,10 +165,6 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 
 	for _, spec := range specs {
 		id := spec.ID()
-		if id.Type != model.TargetTypeImage && id.Type != model.TargetTypeDockerCompose && id.Type != model.TargetTypeLocal {
-			continue
-		}
-
 		status := ms.BuildStatus(id)
 		var filesChanged []string
 		for file := range status.PendingFileChanges {
@@ -176,7 +172,12 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 		}
 		sort.Strings(filesChanged)
 
-		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged)
+		var depsChanged []model.TargetID
+		for dep := range status.PendingDependencyChanges {
+			depsChanged = append(depsChanged, dep)
+		}
+
+		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged, depsChanged)
 
 		// Pass along the container when we can update containers in-place.
 		//
@@ -210,8 +211,8 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 	isLiveUpdateEligibleTrigger := reason.HasTrigger() &&
 		reason.Has(model.BuildReasonFlagChangedFiles) &&
 		manifest.TriggerMode != model.TriggerModeAuto
-	isImageBuildTrigger := reason.HasTrigger() && !isLiveUpdateEligibleTrigger
-	if isImageBuildTrigger {
+	isFullBuildTrigger := reason.HasTrigger() && !isLiveUpdateEligibleTrigger
+	if isFullBuildTrigger {
 		for k, v := range result {
 			result[k] = v.WithFullBuildTriggered(true)
 		}

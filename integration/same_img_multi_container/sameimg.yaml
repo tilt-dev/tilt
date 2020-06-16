@@ -17,7 +17,8 @@ spec:
       containers:
       - name: c1
         image: sameimg
-        command: ["/src/start.sh", "/src/main.sh", "8000"]
+        command: ["/src/start.sh", "/src/main.sh"]
+        args: ["8000"]
         ports:
         - containerPort: 8000
         resources:
@@ -25,7 +26,8 @@ spec:
             cpu: "10m"
       - name: c2
         image: sameimg
-        command: ["/src/start.sh", "/src/main.sh", "8001"]
+        command: ["/src/start.sh", "/src/main.sh"]
+        args: ["8001"]
         ports:
           - containerPort: 8001
         resources:

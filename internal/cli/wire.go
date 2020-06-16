@@ -36,6 +36,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -93,6 +94,7 @@ var BaseWireSet = wire.NewSet(
 
 	provideClock,
 	hud.WireSet,
+	prompt.WireSet,
 
 	provideLogActions,
 	store.NewStore,
@@ -155,6 +157,7 @@ type CmdUpDeps struct {
 	Token        token.Token
 	CloudAddress cloudurl.Address
 	Store        *store.Store
+	Prompt       *prompt.TerminalPrompt
 }
 
 func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics) (CmdCIDeps, error) {

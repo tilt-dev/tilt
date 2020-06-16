@@ -63,6 +63,7 @@ require (
 	github.com/mattn/go-colorable v0.1.4
 	github.com/mattn/go-isatty v0.0.10
 	github.com/mattn/go-sqlite3 v2.0.2+incompatible // indirect
+	github.com/mattn/go-tty v0.0.3
 	github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/moby/buildkit v0.6.3
@@ -85,7 +86,7 @@ require (
 	github.com/theupdateframework/notary v0.6.1 // indirect
 	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 	github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564
-	github.com/tilt-dev/localregistry-go v0.0.0-20200611224805-6fcceac3a065
+	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/uber/jaeger-client-go v2.21.1+incompatible
@@ -93,7 +94,7 @@ require (
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	go.opencensus.io v0.22.2 // indirect
 	go.opentelemetry.io/otel v0.2.0
-	go.starlark.net v0.0.0-20200519165436-0aa95694c768
+	go.starlark.net v0.0.0-20200615180055-61b64bc45990
 	go.uber.org/atomic v1.5.1 // indirect
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect

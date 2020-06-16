@@ -401,10 +401,13 @@ github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.10
 ## explicit
 github.com/mattn/go-isatty
-# github.com/mattn/go-runewidth v0.0.4
+# github.com/mattn/go-runewidth v0.0.6
 github.com/mattn/go-runewidth
 # github.com/mattn/go-sqlite3 v2.0.2+incompatible
 ## explicit
+# github.com/mattn/go-tty v0.0.3
+## explicit
+github.com/mattn/go-tty
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e
@@ -555,7 +558,7 @@ github.com/tilt-dev/fsevents
 # github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564
 ## explicit
 github.com/tilt-dev/fsnotify
-# github.com/tilt-dev/localregistry-go v0.0.0-20200611224805-6fcceac3a065
+# github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 ## explicit
 github.com/tilt-dev/localregistry-go
 # github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564
@@ -610,7 +613,7 @@ go.opentelemetry.io/otel/sdk/export/trace
 go.opentelemetry.io/otel/sdk/internal
 go.opentelemetry.io/otel/sdk/trace
 go.opentelemetry.io/otel/sdk/trace/internal
-# go.starlark.net v0.0.0-20200519165436-0aa95694c768
+# go.starlark.net v0.0.0-20200615180055-61b64bc45990
 ## explicit
 go.starlark.net/internal/compile
 go.starlark.net/internal/spell

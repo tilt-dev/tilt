@@ -1,6 +1,9 @@
 #!/bin/sh
 #
-# A helper script to implement restart_container when the docker runtime isn't available.
+# A helper script to restart a given process as part of a Live Update.
+#
+# Further reading:
+# https://docs.tilt.dev/live_update_reference.html#restarting-your-process
 #
 # Usage:
 #   Copy start.sh and restart.sh to your container working dir.
@@ -11,7 +14,7 @@
 #   To restart the container:
 #   ./restart.sh
 
-set -euo pipefail
+set -eu
 
 process_id=""
 
@@ -34,6 +37,7 @@ while true; do
     EXIT_CODE=$?
     set -e
     if [ ! -f restart.txt ]; then
+        echo "Exiting with code $EXIT_CODE"
         exit $EXIT_CODE
     fi
     echo "Restarting"
