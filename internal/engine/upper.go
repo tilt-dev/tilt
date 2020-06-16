@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -172,6 +173,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleLogAction(state, action)
 	case exit.Action:
 		handleExitAction(state, action)
+	case prompt.SwitchTerminalModeAction:
+		handleSwitchTerminalModeAction(state, action)
 
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
@@ -641,6 +644,10 @@ func handleExitAction(state *store.EngineState, action exit.Action) {
 		state.ExitSignal = action.ExitSignal
 		state.ExitError = action.ExitError
 	}
+}
+
+func handleSwitchTerminalModeAction(state *store.EngineState, action prompt.SwitchTerminalModeAction) {
+	state.TerminalMode = action.Mode
 }
 
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8swatch.ServiceChangeAction) {

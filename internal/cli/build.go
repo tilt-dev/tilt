@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"fmt"
 	"os"
-	"strings"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -37,18 +35,7 @@ func tiltInfo() model.TiltBuild {
 }
 
 func buildStamp() string {
-	info := tiltInfo()
-	version := info.Version
-	date := info.Date
-	timeIndex := strings.Index(date, "T")
-	if timeIndex != -1 {
-		date = date[0:timeIndex]
-	}
-	devSuffix := ""
-	if info.Dev {
-		devSuffix = "-dev"
-	}
-	return fmt.Sprintf("v%s%s, built %s", version, devSuffix, date)
+	return tiltInfo().HumanBuildStamp()
 }
 
 // Returns a build datestamp in the format 2018-08-30

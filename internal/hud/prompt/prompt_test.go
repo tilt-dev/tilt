@@ -3,6 +3,7 @@ package prompt
 import (
 	"context"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
@@ -25,6 +26,34 @@ func TestOpenBrowser(t *testing.T) {
 
 	f.input.nextRune <- ' '
 	assert.Equal(t, FakeURL, f.b.WaitForURL(t))
+}
+
+func TestOpenStream(t *testing.T) {
+	f := newFixture()
+	defer f.TearDown()
+
+	f.prompt.OnChange(f.ctx, f.st)
+
+	assert.Contains(t, f.out.String(), "(s) to stream logs")
+
+	f.input.nextRune <- 's'
+
+	action := f.st.WaitForAction(t, reflect.TypeOf(SwitchTerminalModeAction{}))
+	assert.Equal(t, SwitchTerminalModeAction{Mode: store.TerminalModeStream}, action)
+}
+
+func TestOpenHUD(t *testing.T) {
+	f := newFixture()
+	defer f.TearDown()
+
+	f.prompt.OnChange(f.ctx, f.st)
+
+	assert.Contains(t, f.out.String(), "(h) to open terminal HUD")
+
+	f.input.nextRune <- 'h'
+
+	action := f.st.WaitForAction(t, reflect.TypeOf(SwitchTerminalModeAction{}))
+	assert.Equal(t, SwitchTerminalModeAction{Mode: store.TerminalModeHUD}, action)
 }
 
 type fixture struct {
