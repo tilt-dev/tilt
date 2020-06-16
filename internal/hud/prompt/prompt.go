@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/fatih/color"
 	tty "github.com/mattn/go-tty"
@@ -34,13 +35,20 @@ func BrowserOpen(url string) error {
 }
 
 type TerminalPrompt struct {
-	a          *analytics.TiltAnalytics
-	openInput  OpenInput
-	openURL    OpenURL
-	stdout     hud.Stdout
-	host       model.WebHost
-	url        model.WebURL
-	printed    bool
+	a         *analytics.TiltAnalytics
+	openInput OpenInput
+	openURL   OpenURL
+	stdout    hud.Stdout
+	host      model.WebHost
+	url       model.WebURL
+
+	printed bool
+	term    TerminalInput
+
+	// Make sure that Close() completes both during the teardown sequence and when
+	// we switch modes.
+	closeOnce sync.Once
+
 	initOutput *bytes.Buffer
 }
 
@@ -87,6 +95,14 @@ func (p *TerminalPrompt) isEnabled(st store.RStore) bool {
 	return state.TerminalMode == store.TerminalModePrompt
 }
 
+func (p *TerminalPrompt) TearDown(ctx context.Context) {
+	if p.term != nil {
+		p.closeOnce.Do(func() {
+			_ = p.term.Close()
+		})
+	}
+}
+
 func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 	if !p.isEnabled(st) {
 		return
@@ -103,15 +119,18 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 	_, _ = fmt.Fprintf(p.stdout, "%s\n\n", buildStamp)
 
 	// Print all the init output. See comments on SetInitOutput()
-	//
-	// We expect this to end in an empty newline if non-empty, which we then print
-	// as a blank line. This is intended.
-	infoLines := strings.Split(p.initOutput.String(), "\n")
+	infoLines := strings.Split(strings.TrimRight(p.initOutput.String(), "\n"), "\n")
+	needsNewline := false
 	for _, line := range infoLines {
 		if strings.HasPrefix(line, firstLine) || strings.HasPrefix(line, buildStamp) {
 			continue
 		}
 		_, _ = fmt.Fprintf(p.stdout, "%s\n", line)
+		needsNewline = true
+	}
+
+	if needsNewline {
+		_, _ = fmt.Fprintf(p.stdout, "\n")
 	}
 
 	hasBrowserUI := !p.url.Empty()
@@ -119,8 +138,8 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 		_, _ = fmt.Fprintf(p.stdout, "(space) to open the browser\n")
 	}
 
-	_, _ = fmt.Fprintf(p.stdout, "(s) to stream logs\n")
-	_, _ = fmt.Fprintf(p.stdout, "(h) to open terminal HUD\n")
+	_, _ = fmt.Fprintf(p.stdout, "(s) to stream logs (--hud=false)\n")
+	_, _ = fmt.Fprintf(p.stdout, "(h) to open terminal HUD (--hud=true)\n")
 	_, _ = fmt.Fprintf(p.stdout, "(ctrl-c) to exit\n")
 
 	p.printed = true
@@ -130,6 +149,7 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 		st.Dispatch(store.ErrorAction{Error: err})
 		return
 	}
+	p.term = t
 
 	keyCh := make(chan runeMessage)
 
@@ -161,7 +181,9 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 	// even if it's still blocking on the ReadRune
 	go func() {
 		defer func() {
-			_ = t.Close()
+			p.closeOnce.Do(func() {
+				_ = p.term.Close()
+			})
 		}()
 
 		for ctx.Err() == nil {
@@ -194,7 +216,6 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 					}
 					msg.stopCh <- false
 				default:
-					_, _ = fmt.Fprintf(p.stdout, "Unrecognized option: %s\n", string(r))
 					msg.stopCh <- false
 
 				}
@@ -229,3 +250,4 @@ func StartStatusLine(url model.WebURL, host model.WebHost) string {
 }
 
 var _ store.Subscriber = &TerminalPrompt{}
+var _ store.TearDowner = &TerminalPrompt{}

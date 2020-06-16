@@ -5,20 +5,19 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/tilt-dev/tilt/internal/store"
 )
 
 func TestHudEnabled(t *testing.T) {
 	for _, test := range []struct {
-		name             string
-		args             string
-		expectHUDEnabled bool
+		name     string
+		args     string
+		expected store.TerminalMode
 	}{
-		{"old behavior: no --hud", "--default-hud", true},
-		{"old behavior: --hud", "--default-hud --hud", true},
-		{"old behavior: --hud=false", "--default-hud --hud=false", false},
-		{"new behavior: no --hud", "--default-hud=false", false},
-		{"new behavior: --hud", "--default-hud=false --hud", true},
-		{"new behavior: --hud=false", "--default-hud=false --hud=false", false},
+		{"old behavior: no --hud", "", store.TerminalModePrompt},
+		{"old behavior: --hud", "--hud", store.TerminalModeHUD},
+		{"old behavior: --hud=false", "--hud=false", store.TerminalModeStream},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			cmd := upCmd{}
@@ -31,7 +30,7 @@ func TestHudEnabled(t *testing.T) {
 
 			c.PreRun(c, args)
 
-			require.Equal(t, test.expectHUDEnabled, cmd.isHudEnabledByConfig(), test.args)
+			require.Equal(t, test.expected, cmd.initialTermMode(true), test.args)
 		})
 	}
 }
