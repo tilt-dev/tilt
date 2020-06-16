@@ -77,6 +77,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"tiltfile.error":                                      "false",
 		"up.starttime":                                        state.TiltStartTime.Format(time.RFC3339),
 		"env":                                                 string(k8s.EnvDockerDesktop),
+		"term_mode":                                           "0",
 		"k8s.runtime":                                         "docker",
 		"k8s.registry.host":                                   "1",
 		"k8s.registry.hostFromCluster":                        "1",
@@ -159,6 +160,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 		"tiltfile.error":         "true",
 		"up.starttime":           state.TiltStartTime.Format(time.RFC3339),
 		"env":                    string(k8s.EnvDockerDesktop),
+		"term_mode":              "0",
 		"k8s.runtime":            "docker",
 	}
 
