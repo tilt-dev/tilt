@@ -275,6 +275,9 @@ type BuildState struct {
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
 	FilesChangedSet map[string]bool
 
+	// Dependencies changed since the last result was built
+	DepsChangedSet map[model.TargetID]bool
+
 	// There are three kinds of triggers:
 	//
 	// 1) If a resource is in trigger_mode=TRIGGER_MODE_AUTO, then the resource auto-builds.
@@ -297,14 +300,19 @@ type BuildState struct {
 	RunningContainerError error
 }
 
-func NewBuildState(result BuildResult, files []string) BuildState {
+func NewBuildState(result BuildResult, files []string, pendingDeps []model.TargetID) BuildState {
 	set := make(map[string]bool, len(files))
 	for _, f := range files {
 		set[f] = true
 	}
+	depsSet := make(map[model.TargetID]bool, len(pendingDeps))
+	for _, d := range pendingDeps {
+		depsSet[d] = true
+	}
 	return BuildState{
 		LastSuccessfulResult: result,
 		FilesChangedSet:      set,
+		DepsChangedSet:       depsSet,
 	}
 }
 

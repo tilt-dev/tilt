@@ -2807,8 +2807,10 @@ func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 	call = f.nextCall("m2 build1")
 	assert.Equal(t, m2.K8sTarget(), call.k8s())
 
-	f.WriteFile("common/a.txt", "hello world")
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("common/a.txt"))
+	f.WriteFile(filepath.Join("common", "a.txt"), "hello world")
+
+	aPath := f.JoinPath("common", "a.txt")
+	f.fsWatcher.Events <- watch.NewFileEvent(aPath)
 
 	f.waitForCompletedBuildCount(4)
 
@@ -2817,9 +2819,28 @@ func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 	call = f.nextCall("m1 build2")
 	assert.Equal(t, m1.K8sTarget(), call.k8s())
 
+	state := call.state[m1.ImageTargets[0].ID()]
+	assert.Equal(t, map[string]bool{aPath: true}, state.FilesChangedSet)
+
+	// Make sure that when the second build is triggeredd, we did the bookkeeping
+	// correctly around reusing the image and propagating DepsChanged when
+	// we deploy the second k8s target.
 	call = f.nextCall("m2 build2")
 	assert.Equal(t, m2.K8sTarget(), call.k8s())
 
+	id := m2.ImageTargets[0].ID()
+	result := f.b.resultsByID[id]
+	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
+
+	id = m2.ImageTargets[1].ID()
+	result = f.b.resultsByID[id]
+	assert.Equal(t,
+		store.NewBuildState(result, nil, []model.TargetID{m2.ImageTargets[0].ID()}),
+		call.state[id])
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestConfigChangeThatChangesManifestIsIncludedInManifestsChangedFile(t *testing.T) {

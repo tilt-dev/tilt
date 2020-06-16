@@ -21,6 +21,14 @@ const (
 
 	// An external process called `tilt args`
 	BuildReasonFlagTiltfileArgs
+
+	// Suppose you have
+	// manifestA with imageA depending on imageCommon
+	// manifestB with imageB depending on imageCommon
+	//
+	// Building manifestA will mark imageB
+	// with changed dependencies.
+	BuildReasonFlagChangedDep
 )
 
 func (r BuildReason) With(flag BuildReason) BuildReason {
@@ -53,6 +61,7 @@ var translations = map[BuildReason]string{
 	BuildReasonFlagTriggerCLI:     "CLI Trigger",
 	BuildReasonFlagTriggerUnknown: "Unknown Trigger",
 	BuildReasonFlagTiltfileArgs:   "Tilt Args",
+	BuildReasonFlagChangedDep:     "Image Updated",
 }
 
 var triggerBuildReasons = []BuildReason{
@@ -68,6 +77,7 @@ var allBuildReasons = []BuildReason{
 	BuildReasonFlagCrash,
 	BuildReasonFlagTriggerWeb,
 	BuildReasonFlagTriggerCLI,
+	BuildReasonFlagChangedDep,
 	BuildReasonFlagTriggerUnknown,
 	BuildReasonFlagTiltfileArgs,
 }

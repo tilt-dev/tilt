@@ -1267,6 +1267,106 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestManifestsWithSameTwoImages(t *testing.T) {
+	f := newTestFixture(t)
+	m1, m2 := NewManifestsWithSameTwoImages(f)
+	f.Start([]model.Manifest{m1, m2})
+
+	f.waitForCompletedBuildCount(2)
+
+	call := f.nextCall("m1 build1")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("m2 build1")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	aPath := f.JoinPath("common", "a.txt")
+	f.fsWatcher.Events <- watch.NewFileEvent(aPath)
+
+	f.waitForCompletedBuildCount(4)
+
+	// Make sure that both builds are triggered, and that they
+	// are triggered in a particular order.
+	call = f.nextCall("m1 build2")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	state := call.state[m1.ImageTargets[0].ID()]
+	assert.Equal(t, map[string]bool{aPath: true}, state.FilesChangedSet)
+
+	// Make sure that when the second build is trigged, we did the bookkeeping
+	// correctly around marking the first and second image built and only deploying
+	// the k8s resources.
+	call = f.nextCall("m2 build2")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	id := m2.ImageTargets[0].ID()
+	result := f.b.resultsByID[id]
+	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
+
+	id = m2.ImageTargets[1].ID()
+	result = f.b.resultsByID[id]
+	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestManifestsWithTwoCommonAncestors(t *testing.T) {
+	f := newTestFixture(t)
+	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
+	f.Start([]model.Manifest{m1, m2})
+
+	f.waitForCompletedBuildCount(2)
+
+	call := f.nextCall("m1 build1")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("m2 build1")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	aPath := f.JoinPath("base", "a.txt")
+	f.fsWatcher.Events <- watch.NewFileEvent(aPath)
+
+	f.waitForCompletedBuildCount(4)
+
+	// Make sure that both builds are triggered, and that they
+	// are triggered in a particular order.
+	call = f.nextCall("m1 build2")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	state := call.state[m1.ImageTargets[0].ID()]
+	assert.Equal(t, map[string]bool{aPath: true}, state.FilesChangedSet)
+
+	// Make sure that when the second build is triggered, we did the bookkeeping
+	// correctly around marking the first and second image built, and only
+	// rebuilding the third image and k8s deploy.
+	call = f.nextCall("m2 build2")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	id := m2.ImageTargets[0].ID()
+	result := f.b.resultsByID[id]
+	assert.Equal(t,
+		store.NewBuildState(result, nil, nil),
+		call.state[id])
+
+	id = m2.ImageTargets[1].ID()
+	result = f.b.resultsByID[id]
+	assert.Equal(t,
+		store.NewBuildState(result, nil, nil),
+		call.state[id])
+
+	id = m2.ImageTargets[2].ID()
+	result = f.b.resultsByID[id]
+	assert.Equal(t,
+		store.NewBuildState(result, nil, []model.TargetID{m2.ImageTargets[1].ID()}),
+		call.state[id])
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 func (f *testFixture) waitUntilManifestBuilding(name model.ManifestName) {
 	msg := fmt.Sprintf("manifest %q is building", name)
 	f.WaitUntilManifestState(msg, name, func(ms store.ManifestState) bool {
