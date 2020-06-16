@@ -77,12 +77,9 @@ func TestCustomBuildBadMethodCall(t *testing.T) {
 	defer f.TearDown()
 	f.setupFoo()
 	f.file("Tiltfile", `
-hfb = custom_build(
-  'gcr.io/foo',
-  'docker build -t $TAG foo',
-  ['foo']
-).asdf()
-`)
+	docker_build('gcr.io/foo', 'foo')
+	k8s_resource('foo', 'foo.yaml')
+	`)
 
 	f.loadErrString("Error: custom_build has no .asdf field or method")
 }
@@ -700,11 +697,13 @@ docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
 k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
 `)
+
 	f.loadResourceAssemblyV1()
 	f.assertNextManifest("explicit_a", db(image("gcr.io/a")), deployment("a"), []model.PortForward{{LocalPort: 8000}})
 	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
 	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
+
 }
 
 func TestUnresourcedPodCreatorYamlAsManifest(t *testing.T) {
