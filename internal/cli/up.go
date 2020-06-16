@@ -148,8 +148,13 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}
 
 	termMode := store.TerminalModeStream
-	if isatty.IsTerminal(os.Stdout.Fd()) && c.isHudEnabledByConfig() {
-		termMode = store.TerminalModeHUD
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		if c.isHudEnabledByConfig() {
+			termMode = store.TerminalModeHUD
+		} else if !c.defaultTUI {
+			termMode = store.TerminalModePrompt
+			noBrowser = true
+		}
 	}
 
 	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags)
@@ -245,6 +250,12 @@ func provideNoBrowserFlag() model.NoBrowser {
 func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, error) {
 	if webPort == 0 {
 		return model.WebURL{}, nil
+	}
+
+	if webHost == "0.0.0.0" {
+		// 0.0.0.0 means "listen on all hosts"
+		// For UI displays, we use 127.0.0.01 (loopback)
+		webHost = "127.0.0.1"
 	}
 
 	u, err := url.Parse(fmt.Sprintf("http://%s:%d/", webHost, webPort))
