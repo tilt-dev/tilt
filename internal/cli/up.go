@@ -46,8 +46,7 @@ type upCmd struct {
 	fileName             string
 	outputSnapshotOnExit string
 
-	defaultTUI bool
-	hud        bool
+	hud bool
 	// whether hud was explicitly set or just got the default value
 	hudFlagExplicitlySet bool
 
@@ -93,11 +92,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 
-	// this is to test the new behavior before enabling it in Tilt 1.0
-	// https://app.clubhouse.io/windmill/epic/5549/make-tui-hard-to-find-in-tilt-1-0
-	cmd.Flags().BoolVar(&c.defaultTUI, "default-hud", true, "If false, we'll hide the TUI by default")
-	cmd.Flags().Lookup("default-hud").Hidden = true
-
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
 		c.watchFlagExplicitlySet = cmd.Flag("watch").Changed
@@ -106,27 +100,28 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	return cmd
 }
 
-func (c *upCmd) isHudEnabledByConfig() bool {
-	ret := c.hud
-	// in non-default-TUI mode, we only show the hud if the user explicitly specified --hud
-	if !c.defaultTUI && !c.hudFlagExplicitlySet {
-		ret = false
+func (c *upCmd) initialTermMode(isTerminal bool) store.TerminalMode {
+	if !isTerminal {
+		return store.TerminalModeStream
 	}
 
-	return ret
+	if c.hudFlagExplicitlySet {
+		if c.hud {
+			return store.TerminalModeHUD
+		} else {
+			return store.TerminalModeStream
+		}
+	}
+
+	return store.TerminalModePrompt
 }
 
 func (c *upCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
 
-	termMode := store.TerminalModeStream
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		if c.isHudEnabledByConfig() {
-			termMode = store.TerminalModeHUD
-		} else if !c.defaultTUI {
-			termMode = store.TerminalModePrompt
-			noBrowser = true
-		}
+	termMode := c.initialTermMode(isatty.IsTerminal(os.Stdout.Fd()))
+	if termMode == store.TerminalModePrompt {
+		noBrowser = true
 	}
 
 	cmdUpTags := engineanalytics.CmdTags(map[string]string{
