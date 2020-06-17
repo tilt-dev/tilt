@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -1141,7 +1140,6 @@ k8s_resource('rest', yaml=rest)
 }
 
 func TestFilterYamlNoMatch(t *testing.T) {
-	debug.PrintStack()
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml))
@@ -2956,6 +2954,32 @@ k8s_resource('hello-foo', port_forwards=8000)
 `)
 
 	f.loadErrString("'foo:deployment:default:apps'", "invalid return value", "wanted: string. got: starlark.Int", "Tiltfile:5:1", workloadToResourceFunctionN)
+}
+
+func TestYAMLNone(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml(None)
+`)
+
+	f.loadErrString("k8s_yaml: Empty or Invalid YAML Resource Detected")
+}
+
+func TestYAMLEmptyBlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml(blob(''))
+`)
+
+	f.loadErrString("k8s_yaml: Empty or Invalid YAML Resource Detected")
 }
 
 func TestWorkloadToResourceFunctionTakesNoArgs(t *testing.T) {
