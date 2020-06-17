@@ -2956,7 +2956,7 @@ k8s_resource('hello-foo', port_forwards=8000)
 	f.loadErrString("'foo:deployment:default:apps'", "invalid return value", "wanted: string. got: starlark.Int", "Tiltfile:5:1", workloadToResourceFunctionN)
 }
 
-func TestYAMLNone(t *testing.T) {
+func TestYamlNone(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -2969,7 +2969,7 @@ k8s_yaml(None)
 	f.loadErrString("k8s_yaml: Empty or Invalid YAML Resource Detected")
 }
 
-func TestYAMLEmptyBlob(t *testing.T) {
+func TestYamlEmptyBlob(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 

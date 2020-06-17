@@ -117,15 +117,19 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 	); err != nil {
 		return nil, err
 	}
+	//normalize the starlark value into a slice
 	value := starlarkValueOrSequenceToSlice(yamlValue)
 
+	//if `None` was passed into k8s_yaml, len(val) = 0
 	if len(value) > 0 {
+
 		val, _ := starlark.AsString(value[0])
 
 		entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
 		if err != nil {
 			return nil, err
 		}
+		//the parameter blob('') results in an empty string
 		if len(entities) == 0 && val == "" {
 			return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
 		}
