@@ -117,8 +117,8 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 	); err != nil {
 		return nil, err
 	}
-
 	value := starlarkValueOrSequenceToSlice(yamlValue)
+
 	if len(value) > 0 {
 		entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
 		if err != nil {
@@ -182,7 +182,6 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		"kind?", &kind,
 		"api_version?", &apiVersion,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -708,11 +707,6 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	values := starlarkValueOrSequenceToSlice(v)
 
-	// if starlark picks up that v is nil or None, it returns an empty list
-	// if len(values) == 0 {
-	// 	return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
-	// }
-
 	var ret []k8s.K8sEntity
 
 	for _, value := range values {
@@ -728,9 +722,6 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thre
 
 func parseYAMLFromBlob(blob io.Blob) ([]k8s.K8sEntity, error) {
 	ret, err := k8s.ParseYAMLFromString(blob.String())
-	if len(ret) == 0 {
-		return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
-	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error reading yaml from %s", blob.Source)
 	}
@@ -740,7 +731,7 @@ func parseYAMLFromBlob(blob io.Blob) ([]k8s.K8sEntity, error) {
 func (s *tiltfileState) yamlEntitiesFromSkylarkValue(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	switch v := v.(type) {
 	case nil:
-		return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
+		return nil, nil
 	case io.Blob:
 		return parseYAMLFromBlob(v)
 	default:

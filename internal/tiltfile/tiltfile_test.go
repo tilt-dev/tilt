@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -77,9 +78,12 @@ func TestCustomBuildBadMethodCall(t *testing.T) {
 	defer f.TearDown()
 	f.setupFoo()
 	f.file("Tiltfile", `
-	docker_build('gcr.io/foo', 'foo')
-	k8s_resource('foo', 'foo.yaml')
-	`)
+hfb = custom_build(
+  'gcr.io/foo',
+  'docker build -t $TAG foo',
+  ['foo']
+).asdf()
+`)
 
 	f.loadErrString("Error: custom_build has no .asdf field or method")
 }
@@ -697,13 +701,11 @@ docker_build('gcr.io/c', 'c')
 docker_build('gcr.io/d', 'd')
 k8s_resource('explicit_a', image='gcr.io/a', port_forwards=8000)
 `)
-
 	f.loadResourceAssemblyV1()
 	f.assertNextManifest("explicit_a", db(image("gcr.io/a")), deployment("a"), []model.PortForward{{LocalPort: 8000}})
 	f.assertNextManifest("b", db(image("gcr.io/b")), deployment("b"))
 	f.assertNextManifest("c", db(image("gcr.io/c")), deployment("c"))
 	f.assertNextManifest("d", db(image("gcr.io/d")), deployment("d"))
-
 }
 
 func TestUnresourcedPodCreatorYamlAsManifest(t *testing.T) {
@@ -1139,6 +1141,7 @@ k8s_resource('rest', yaml=rest)
 }
 
 func TestFilterYamlNoMatch(t *testing.T) {
+	debug.PrintStack()
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml))
@@ -5211,11 +5214,13 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 func (f *fixture) loadErrString(msgs ...string) {
 	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
 	err := tlr.Error
+
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
 	f.loadResult = tlr
 	errText := err.Error()
+
 	for _, msg := range msgs {
 		if !strings.Contains(errText, msg) {
 			f.t.Fatalf("error %q does not contain string %q", errText, msg)
