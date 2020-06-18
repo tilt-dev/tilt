@@ -533,7 +533,7 @@ func starlarkValuesToJSONPaths(values []starlark.Value) ([]k8s.JSONPath, error) 
 			return nil, fmt.Errorf("paths must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
 		}
 
-		jp, err := k8s.NewJSONPath(s.String())
+		jp, err := k8s.NewJSONPath(string(s))
 		if err != nil {
 			return nil, errors.Wrapf(err, "error parsing json paths '%s'", s.String())
 		}
