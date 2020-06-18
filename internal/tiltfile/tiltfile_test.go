@@ -1152,6 +1152,32 @@ k8s_resource('rest', yaml=rest)
 	f.loadErrString("could not associate any k8s YAML with this resource")
 }
 
+func TestYamlNone(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml(None)
+`)
+
+	f.loadErrString("Empty or Invalid YAML Resource Detected")
+}
+
+func TestYamlEmptyBlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml(blob(''))
+`)
+
+	f.loadErrString("Empty or Invalid YAML Resource Detected")
+}
+
 // These tests are for behavior that we specifically enabled in Starlark
 // in the init() function
 func TestTopLevelIfStatement(t *testing.T) {
@@ -5212,11 +5238,13 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 func (f *fixture) loadErrString(msgs ...string) {
 	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
 	err := tlr.Error
+
 	if err == nil {
 		f.t.Fatalf("expected error but got nil")
 	}
 	f.loadResult = tlr
 	errText := err.Error()
+
 	for _, msg := range msgs {
 		if !strings.Contains(errText, msg) {
 			f.t.Fatalf("error %q does not contain string %q", errText, msg)

@@ -111,17 +111,34 @@ func (r k8sResource) refSelectorList() []string {
 
 func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var yamlValue starlark.Value
+
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
 	); err != nil {
 		return nil, err
 	}
+	//normalize the starlark value into a slice
+	value := starlarkValueOrSequenceToSlice(yamlValue)
 
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
-	if err != nil {
-		return nil, err
+	//if `None` was passed into k8s_yaml, len(val) = 0
+	if len(value) > 0 {
+
+		val, _ := starlark.AsString(value[0])
+		entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
+
+		if err != nil {
+			return nil, err
+		}
+
+		//the parameter blob('') results in an empty string
+		if len(entities) == 0 && val == "" {
+			return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
+		}
+		s.k8sUnresourced = append(s.k8sUnresourced, entities...)
+
+	} else {
+		return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
 	}
-	s.k8sUnresourced = append(s.k8sUnresourced, entities...)
 
 	return starlark.None, nil
 }
@@ -699,7 +716,9 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 
 func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	values := starlarkValueOrSequenceToSlice(v)
+
 	var ret []k8s.K8sEntity
+
 	for _, value := range values {
 		entities, err := s.yamlEntitiesFromSkylarkValue(thread, value)
 		if err != nil {
@@ -734,6 +753,7 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(thread *starlark.Thread, v 
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading yaml file")
 		}
+
 		entities, err := k8s.ParseYAMLFromString(string(bs))
 		if err != nil {
 			if strings.Contains(err.Error(), "json parse error: ") {
