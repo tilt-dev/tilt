@@ -50,6 +50,7 @@ type k8sResource struct {
 	dependencyIDs []model.TargetID
 
 	triggerMode triggerMode
+	autoInit    bool
 
 	resourceDeps []string
 
@@ -68,6 +69,7 @@ type k8sResourceOptions struct {
 	portForwards      []model.PortForward
 	extraPodSelectors []labels.Selector
 	triggerMode       triggerMode
+	autoInit          bool
 	tiltfilePosition  syntax.Position
 	resourceDeps      []string
 	objects           []string
@@ -390,6 +392,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
 	var objectsVal starlark.Sequence
+	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"workload?", &workload,
@@ -399,6 +402,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"objects?", &objectsVal,
+		"auto_init?", &autoInit,
 	); err != nil {
 		return nil, err
 	}
@@ -449,6 +453,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		extraPodSelectors: extraPodSelectors,
 		tiltfilePosition:  thread.CallFrame(1).Pos,
 		triggerMode:       triggerMode,
+		autoInit:          autoInit,
 		resourceDeps:      resourceDeps,
 		objects:           objects,
 		nonWorkload:       needsToHaveObjects,
@@ -707,6 +712,7 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	r := &k8sResource{
 		name:        name,
 		imageRefMap: make(map[string]int),
+		autoInit:    true,
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r

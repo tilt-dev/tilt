@@ -677,6 +677,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards
 			r.triggerMode = opts.triggerMode
+			r.autoInit = opts.autoInit
 			r.resourceDeps = opts.resourceDeps
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
@@ -1066,9 +1067,9 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	registry := s.decideRegistry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
-		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), true)
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), r.autoInit)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error in resource %s options", mn)
 		}
 
 		var mds []model.ManifestName
@@ -1532,7 +1533,7 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		mn := model.ManifestName(r.name)
 		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), r.autoInit)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error in resource %s options", mn)
 		}
 
 		paths := append(r.deps, r.workdir)

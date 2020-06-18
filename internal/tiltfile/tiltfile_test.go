@@ -3100,18 +3100,21 @@ func TestTriggerModeK8S(t *testing.T) {
 		name                string
 		globalSetting       triggerMode
 		k8sResourceSetting  triggerMode
+		specifyAutoInit     bool
+		autoInit            bool
 		expectedTriggerMode model.TriggerMode
 	}{
-		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
-		{"explicit global manual after initial", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
-		{"kr auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"kr manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
-		{"kr manual after initial", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
-		{"kr override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
-		{"kr override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
-		{"kr override manual after initial", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
+		{"default", TriggerModeUnset, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, false, false, model.TriggerModeManualAfterInitial},
+		{"kr auto", TriggerModeUnset, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"kr manual", TriggerModeUnset, TriggerModeManual, false, false, model.TriggerModeManualAfterInitial},
+		{"kr manual, auto_init=False", TriggerModeUnset, TriggerModeManual, true, false, model.TriggerModeManualIncludingInitial},
+		{"kr manual, auto_init=True", TriggerModeUnset, TriggerModeManual, true, true, model.TriggerModeManualAfterInitial},
+		{"kr override auto", TriggerModeManual, TriggerModeAuto, false, false, model.TriggerModeAuto},
+		{"kr override manual", TriggerModeAuto, TriggerModeManual, false, false, model.TriggerModeManualAfterInitial},
+		{"kr override manual, auto_init=False", TriggerModeAuto, TriggerModeManual, true, false, model.TriggerModeManualIncludingInitial},
+		{"kr override manual, auto_init=True", TriggerModeAuto, TriggerModeManual, true, true, model.TriggerModeManualAfterInitial},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3132,7 +3135,16 @@ func TestTriggerModeK8S(t *testing.T) {
 			case TriggerModeUnset:
 				k8sResourceDirective = ""
 			default:
-				k8sResourceDirective = fmt.Sprintf("k8s_resource('foo', trigger_mode=%s)", testCase.k8sResourceSetting.String())
+				autoInitOption := ""
+				if testCase.specifyAutoInit {
+					autoInitOption = ", auto_init="
+					if testCase.autoInit {
+						autoInitOption += "True"
+					} else {
+						autoInitOption += "False"
+					}
+				}
+				k8sResourceDirective = fmt.Sprintf("k8s_resource('foo', trigger_mode=%s%s)", testCase.k8sResourceSetting.String(), autoInitOption)
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
