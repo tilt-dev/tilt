@@ -274,15 +274,18 @@ func (e K8sEntity) FindImages(imageJSONPaths []JSONPath, envVarImages []containe
 
 	// also look for images in any json paths that were specified for this entity
 	for _, path := range imageJSONPaths {
-		image, err := path.Execute(obj)
+		images, err := path.FindStrings(obj)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error applying json path '%s'", path)
 		}
-		ref, err := container.ParseNamed(image)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing image '%s' at json path '%s'", image, path)
+
+		for _, image := range images {
+			ref, err := container.ParseNamed(image)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error parsing image '%s' at json path '%s'", image, path)
+			}
+			result = append(result, ref)
 		}
-		result = append(result, ref)
 	}
 
 	envVars, err := extractEnvVars(&obj)

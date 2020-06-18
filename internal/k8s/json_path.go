@@ -1,17 +1,16 @@
 package k8s
 
 import (
-	"bytes"
-	"strings"
+	"fmt"
+	"reflect"
 
 	"k8s.io/client-go/util/jsonpath"
 )
 
-// This is just a wrapper around k8s jsonpath, mostly because k8s jsonpath doesn't produce errors containing
-// the problematic path
-// (and as long as we're here, deal with some of its other annoyances, like taking a "name" that doesn't do anything,
-// and having a separate "Parse" step to make an instance actually useful, and making you use an io.Writer, and
-// wrapping string results in quotes)
+// A wrapper around JSONPath with utility functions for
+// locating particular types we need (like strings).
+//
+// Improves the error message to include the problematic path.
 type JSONPath struct {
 	jp   *jsonpath.JSONPath
 	path string
@@ -27,17 +26,42 @@ func NewJSONPath(s string) (JSONPath, error) {
 	return JSONPath{jp, s}, nil
 }
 
-// Gets the value at the specified path
-// NB: currently strips away surrounding quotes, which the underlying parser includes in its return value
-// If, at some point, we want to distinguish between, e.g., ints and strings by the presence of quotes, this
-// will need to be revisited.
-func (jp JSONPath) Execute(obj interface{}) (string, error) {
-	buf := &bytes.Buffer{}
-	err := jp.jp.Execute(buf, obj)
+// Extract all the strings from the given object.
+// Returns an error if the object at the specified path isn't a string.
+func (jp JSONPath) FindStrings(obj interface{}) ([]string, error) {
+	result := []string{}
+	err := jp.VisitStrings(obj, func(match reflect.Value) error {
+		result = append(result, match.String())
+		return nil
+	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return strings.Trim(buf.String(), "\""), nil
+	return result, nil
+}
+
+// Visit all the strings from the given object.
+// Returns an error if the object at the specified path isn't a string.
+func (jp JSONPath) VisitStrings(obj interface{}, visit func(val reflect.Value) error) error {
+	matches, err := jp.jp.FindResults(obj)
+	if err != nil {
+		return fmt.Errorf("Matching strings (json_path=%q): %v", jp.path, err)
+	}
+
+	for _, matchSet := range matches {
+		for _, match := range matchSet {
+			if match.Kind() != reflect.String {
+				return fmt.Errorf("May only match strings (json_path=%q)\nGot Type: %s.\nGot Value: %s",
+					jp.path, match.Type(), match)
+			}
+
+			err := visit(match)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (jp JSONPath) String() string {
