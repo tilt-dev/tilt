@@ -132,12 +132,12 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 
 		//the parameter blob('') results in an empty string
 		if len(entities) == 0 && val == "" {
-			return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
+			return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
 		}
 		s.k8sUnresourced = append(s.k8sUnresourced, entities...)
 
 	} else {
-		return nil, fmt.Errorf("k8s_yaml: Empty or Invalid YAML Resource Detected")
+		return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
 	}
 
 	return starlark.None, nil

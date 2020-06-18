@@ -1152,6 +1152,32 @@ k8s_resource('rest', yaml=rest)
 	f.loadErrString("could not associate any k8s YAML with this resource")
 }
 
+func TestYamlNone(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml(None)
+`)
+
+	f.loadErrString("Empty or Invalid YAML Resource Detected")
+}
+
+func TestYamlEmptyBlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml(blob(''))
+`)
+
+	f.loadErrString("Empty or Invalid YAML Resource Detected")
+}
+
 // These tests are for behavior that we specifically enabled in Starlark
 // in the init() function
 func TestTopLevelIfStatement(t *testing.T) {
@@ -2954,32 +2980,6 @@ k8s_resource('hello-foo', port_forwards=8000)
 `)
 
 	f.loadErrString("'foo:deployment:default:apps'", "invalid return value", "wanted: string. got: starlark.Int", "Tiltfile:5:1", workloadToResourceFunctionN)
-}
-
-func TestYamlNone(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_yaml(None)
-`)
-
-	f.loadErrString("k8s_yaml: Empty or Invalid YAML Resource Detected")
-}
-
-func TestYamlEmptyBlob(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_yaml(blob(''))
-`)
-
-	f.loadErrString("k8s_yaml: Empty or Invalid YAML Resource Detected")
 }
 
 func TestWorkloadToResourceFunctionTakesNoArgs(t *testing.T) {
