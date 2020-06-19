@@ -1106,7 +1106,6 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		result = append(result, m)
 	}
-	s.maybeWarnRestartContainerDeprecation(result)
 
 	return result, nil
 }
@@ -1206,38 +1205,10 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 			return fmt.Errorf("fall_back_on paths '%s' is not a child of any watched filepaths (%v)",
 				path, watchedPaths)
 		}
+
 	}
 
 	return nil
-}
-
-func (s *tiltfileState) maybeWarnRestartContainerDeprecation(manifests []model.Manifest) {
-	var needsWarn []model.ManifestName
-	for _, m := range manifests {
-		if needsRestartContainerDeprecationWarning(m) {
-			needsWarn = append(needsWarn, m.Name)
-		}
-	}
-
-	if len(needsWarn) > 0 {
-		s.logger.Warnf("%s", restartContainerDeprecationWarning(needsWarn))
-	}
-}
-func needsRestartContainerDeprecationWarning(m model.Manifest) bool {
-	// 6/8/20: we're in the process of deprecating restart_container() in favor of the
-	// restart_process extension. If this is a k8s resource with a restart_container
-	// step, give a deprecation warning.
-	if !m.IsK8s() {
-		return false
-	}
-
-	for _, iTarg := range m.ImageTargets {
-		if iTarg.LiveUpdateInfo().ShouldRestart() {
-			return true
-		}
-	}
-
-	return false
 }
 
 // Grabs all image targets for the given references,
