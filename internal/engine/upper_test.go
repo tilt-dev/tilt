@@ -73,7 +73,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
@@ -1266,19 +1265,22 @@ func TestDisabledHudUpdated(t *testing.T) {
 	assert.True(t, call.oneImageState().IsEmpty())
 
 	// Make sure we're done logging stuff, then grab # processed bytes
-	time.Sleep(5 * time.Millisecond)
+	f.WaitUntil("foobar logs appear", func(es store.EngineState) bool {
+		return strings.Contains(f.log.String(), "Initial Build • foobar")
+	})
+
 	assert.True(t, f.ts.ProcessedLogs > 0)
 	oldCheckpoint := f.ts.ProcessedLogs
-	assert.Contains(t, f.log.String(), "Initial Build • foobar")
 
 	// Log something new, make sure it's reflected
 	msg := []byte("hello world!\n")
 	f.store.Dispatch(store.NewGlobalLogAction(logger.InfoLvl, msg))
-	time.Sleep(5 * time.Millisecond)
 
-	assert.Contains(t, f.log.String(), "hello world!")
-	checkpointDiff := f.ts.ProcessedLogs - oldCheckpoint
-	assert.Equal(t, logstore.Checkpoint(1), checkpointDiff)
+	f.WaitUntil("hello world logs appear", func(es store.EngineState) bool {
+		return strings.Contains(f.log.String(), "hello world!")
+	})
+
+	assert.True(t, f.ts.ProcessedLogs > oldCheckpoint)
 
 	err := f.Stop()
 	assert.Equal(t, nil, err)
