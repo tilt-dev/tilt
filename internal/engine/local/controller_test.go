@@ -43,15 +43,9 @@ func TestUpdate(t *testing.T) {
 		}
 		return a.ManifestName == "foo" && a.Status == model.RuntimeStatusError
 	})
-	f.assertNoAction("log for cancel", func(action store.Action) bool {
-		a, ok := action.(store.LogAction)
-		if !ok {
-			return false
-		}
-		return a.ManifestName() == "foo" && strings.Contains(string(a.Message()), "cmd true canceled")
-	})
 	f.fe.RequireNoKnownProcess(t, "true")
 	f.assertLogMessage("foo", "Starting cmd false")
+	f.assertLogMessage("foo", "cmd true canceled")
 }
 
 func TestFailure(t *testing.T) {
