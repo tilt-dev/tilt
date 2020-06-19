@@ -6,7 +6,6 @@ package tiltextension
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -45,12 +44,6 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 	}
 	if !strings.HasPrefix(arg, extensionPrefix) {
 		return "", nil
-	}
-
-	loadIsHappeningInTopLevel := t.CallStackDepth() == 1
-
-	if !loadIsHappeningInTopLevel {
-		return "", fmt.Errorf("extensions cannot be loaded from `load`ed Tiltfiles")
 	}
 
 	moduleName := strings.TrimPrefix(arg, extensionPrefix)
