@@ -222,7 +222,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		}
 	}
 
-	err = s.validateLiveUpdates(manifests)
+	err = s.validateLiveUpdatesForManifests(manifests)
 	if err != nil {
 		return nil, result, err
 	}
@@ -1131,7 +1131,7 @@ func (s *tiltfileState) defaultedPortForwards(pfs []model.PortForward) []model.P
 	return result
 }
 
-func (s *tiltfileState) validateLiveUpdates(manifests []model.Manifest) error {
+func (s *tiltfileState) validateLiveUpdatesForManifests(manifests []model.Manifest) error {
 	for _, m := range manifests {
 		err := s.validateLiveUpdatesForManifest(m)
 		if err != nil {
