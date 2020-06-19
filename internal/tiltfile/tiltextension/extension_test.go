@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/tiltfile/include"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
@@ -61,17 +62,55 @@ printFoo()
 	f.assertError("unfetchable can't be fetched")
 }
 
-func TestExtensionCantIncludeExtension(t *testing.T) {
+func TestIncludedFileMayIncludeExtension(t *testing.T) {
+	f := newExtensionFixture(t)
+	defer f.tearDown()
+
+	f.tiltfile(`include('Tiltfile.prime')`)
+
+	f.skf.File("Tiltfile.prime", `
+load("ext://fetchable", "printFoo")
+printFoo()
+`)
+
+	f.writeModuleLocally("fetchable", libText)
+
+	f.assertExecOutput("foo")
+}
+
+func TestExtensionMayLoadExtension(t *testing.T) {
 	f := newExtensionFixture(t)
 	defer f.tearDown()
 
 	f.tiltfile(`
-load("ext://fetchable", "printFoo")
+load("ext://fooExt", "printFoo")
 printFoo()
 `)
-	f.writeModuleLocally("fetchable", extensionThatLoadsExtension)
+	f.writeModuleLocally("fooExt", extensionThatLoadsExtension)
+	f.writeModuleLocally("barExt", printBar)
 
-	f.assertError("cannot load ext://unfetchable: extensions cannot be loaded from `load`ed Tiltfiles")
+	f.assertExecOutput("foo\nbar")
+}
+
+func TestLoadedFilesResolveExtensionsFromRootTiltfile(t *testing.T) {
+	f := newExtensionFixture(t)
+	defer f.tearDown()
+
+	f.tiltfile(`include('./nested/Tiltfile')`)
+
+	f.tmp.MkdirAll("nested")
+	f.skf.File("nested/Tiltfile", `
+load("ext://unfetchable", "printFoo")
+printFoo()
+`)
+
+	// Note that the extension lives in the tilt_modules directory of the
+	// root Tiltfile. (If we look for this extension in the wrong place and
+	// try to fetch this extension into ./nested/tilt_modules,
+	// the fake fetcher will error.)
+	f.writeModuleLocally("unfetchable", libText)
+
+	f.assertExecOutput("foo")
 }
 
 type extensionFixture struct {
@@ -86,7 +125,7 @@ func newExtensionFixture(t *testing.T) *extensionFixture {
 		&fakeFetcher{},
 		NewLocalStore(tmp.JoinPath("project")),
 	)
-	skf := starkit.NewFixture(t, ext)
+	skf := starkit.NewFixture(t, ext, include.IncludeFn{})
 	skf.UseRealFS()
 
 	return &extensionFixture{
@@ -134,8 +173,13 @@ def printFoo():
   print("foo")
 `
 
+const printBar = `
+def printBar():
+  print("bar")
+`
+
 const extensionThatLoadsExtension = `
-load("ext://unfetchable", "printBar")
+load("ext://barExt", "printBar")
 
 def printFoo():
 	print("foo")
