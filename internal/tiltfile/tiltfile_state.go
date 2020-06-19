@@ -222,6 +222,11 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		}
 	}
 
+	err = s.validateLiveUpdatesForManifests(manifests)
+	if err != nil {
+		return nil, result, err
+	}
+
 	err = s.checkForUnconsumedLiveUpdateSteps()
 	if err != nil {
 		return nil, result, err
@@ -1097,13 +1102,6 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithImageTargets(iTargets)
 
-		if !s.features.Get(feature.MultipleContainersPerPod) {
-			err = s.checkForImpossibleLiveUpdates(m)
-			if err != nil {
-				return nil, err
-			}
-		}
-
 		result = append(result, m)
 	}
 
@@ -1133,14 +1131,19 @@ func (s *tiltfileState) defaultedPortForwards(pfs []model.PortForward) []model.P
 	return result
 }
 
-// checkForImpossibleLiveUpdates logs a warning if the group of image targets contains
-// any impossible LiveUpdates (or FastBuilds).
-//
-// Currently, we only collect container information for the first Tilt-built container
-// on the pod (b/c of how we assemble resources, this corresponds to the first image target).
-// We won't collect container info on any subsequent containers (i.e. subsequent image
-// targets), so will never be able to LiveUpdate them.
-func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
+func (s *tiltfileState) validateLiveUpdatesForManifests(manifests []model.Manifest) error {
+	for _, m := range manifests {
+		err := s.validateLiveUpdatesForManifest(m)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateLiveUpdatesForManifest checks any image targets on the
+// given manifest the contain any illegal LiveUpdates
+func (s *tiltfileState) validateLiveUpdatesForManifest(m model.Manifest) error {
 	g, err := model.NewTargetGraph(m.TargetSpecs())
 	if err != nil {
 		return err
@@ -1326,11 +1329,6 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		}
 
 		m = m.WithImageTargets(iTargets)
-
-		err = s.checkForImpossibleLiveUpdates(m)
-		if err != nil {
-			return nil, err
-		}
 
 		result = append(result, m)
 
