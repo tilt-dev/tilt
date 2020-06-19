@@ -1,0 +1,8 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+
+local_resource('say-hi', 'echo hello world', trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False)
+docker_build('oneup', '.')
+k8s_yaml('oneup.yaml')
+k8s_resource('oneup', port_forwards=8100)

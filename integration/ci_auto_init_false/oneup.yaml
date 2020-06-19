@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oneup
+  namespace: tilt-integration
+  labels:
+    app: oneup
+spec:
+  selector:
+    matchLabels:
+      app: oneup
+  template:
+    metadata:
+      labels:
+        app: oneup
+    spec:
+      containers:
+      - name: oneup
+        image: oneup
+        ports:
+        - containerPort: 8000
