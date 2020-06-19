@@ -185,6 +185,38 @@ func TestExitControlCIJobSuccess(t *testing.T) {
 	assert.Nil(t, f.store.exitError)
 }
 
+func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		manifestAutoInitTrue := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.JobYAML).Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitTrue))
+
+		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", readyPod("pod-a"))
+
+		manifestAutoInitFalse := manifestbuilder.New(f, "local").WithLocalResource("echo hi", nil).
+			WithTriggerMode(model.TriggerModeManualIncludingInitial).Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitFalse))
+	})
+
+	f.c.OnChange(f.ctx, f.store)
+	assert.False(t, f.store.exitSignal)
+
+	f.store.WithState(func(state *store.EngineState) {
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", successPod("pod-a"))
+	})
+
+	// Verify that if one pod fails with an error, it fails immediately.
+	f.c.OnChange(f.ctx, f.store)
+	assert.True(t, f.store.exitSignal)
+	assert.Nil(t, f.store.exitError)
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	ctx   context.Context

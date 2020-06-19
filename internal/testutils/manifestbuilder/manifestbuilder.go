@@ -30,6 +30,7 @@ type ManifestBuilder struct {
 	localServeCmd   string
 	localDeps       []string
 	resourceDeps    []string
+	triggerMode     model.TriggerMode
 
 	iTargets []model.ImageTarget
 }
@@ -64,6 +65,11 @@ func (b ManifestBuilder) WithLocalResource(cmd string, deps []string) ManifestBu
 
 func (b ManifestBuilder) WithLocalServeCmd(cmd string) ManifestBuilder {
 	b.localServeCmd = cmd
+	return b
+}
+
+func (b ManifestBuilder) WithTriggerMode(tm model.TriggerMode) ManifestBuilder {
+	b.triggerMode = tm
 	return b
 }
 
@@ -106,6 +112,8 @@ func (b ManifestBuilder) WithResourceDeps(deps ...string) ManifestBuilder {
 }
 
 func (b ManifestBuilder) Build() model.Manifest {
+	var m model.Manifest
+
 	var rds []model.ManifestName
 	for _, dep := range b.resourceDeps {
 		rds = append(rds, model.ManifestName(dep))
@@ -114,34 +122,32 @@ func (b ManifestBuilder) Build() model.Manifest {
 	if b.k8sYAML != "" {
 		k8sTarget := k8s.MustTarget(model.TargetName(b.name), b.k8sYAML)
 		k8sTarget.ExtraPodSelectors = b.k8sPodSelectors
-		return assembleK8s(
+		m = assembleK8s(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			k8sTarget,
 			b.iTargets...)
-	}
-
-	if len(b.dcConfigPaths) > 0 {
-		return assembleDC(
+	} else if len(b.dcConfigPaths) > 0 {
+		m = assembleDC(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			model.DockerComposeTarget{
 				Name:        model.TargetName(b.name),
 				ConfigPaths: b.dcConfigPaths,
 			},
 			b.iTargets...)
-	}
-
-	if b.localCmd != "" || b.localServeCmd != "" {
+	} else if b.localCmd != "" || b.localServeCmd != "" {
 		lt := model.NewLocalTarget(
 			model.TargetName(b.name),
 			model.ToHostCmd(b.localCmd),
 			model.ToHostCmd(b.localServeCmd),
 			b.localDeps,
 			b.f.Path())
-		return model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
+		m = model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
+	} else {
+		b.f.T().Fatalf("No deploy target specified: %s", b.name)
+		return model.Manifest{}
 	}
-
-	b.f.T().Fatalf("No deploy target specified: %s", b.name)
-	return model.Manifest{}
+	m = m.WithTriggerMode(b.triggerMode)
+	return m
 }
 
 type Fixture interface {
