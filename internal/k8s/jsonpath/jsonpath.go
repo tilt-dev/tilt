@@ -29,8 +29,8 @@ import (
 type JSONPath struct {
 	name       string
 	parser     *Parser
-	stack      [][]reflect.Value // push and pop values in different scopes
-	cur        []reflect.Value   // current scope values
+	stack      [][]Value // push and pop values in different scopes
+	cur        []Value   // current scope values
 	beginRange int
 	inRange    int
 	endRange   int
@@ -76,14 +76,14 @@ func (j *JSONPath) Execute(wr io.Writer, data interface{}) error {
 	return nil
 }
 
-func (j *JSONPath) FindResults(data interface{}) ([][]reflect.Value, error) {
+func (j *JSONPath) FindResults(data interface{}) ([][]Value, error) {
 	if j.parser == nil {
 		return nil, fmt.Errorf("%s is an incomplete jsonpath template", j.name)
 	}
 
-	j.cur = []reflect.Value{reflect.ValueOf(data)}
+	j.cur = []Value{ValueOf(data)}
 	nodes := j.parser.Root.Nodes
-	fullResult := [][]reflect.Value{}
+	fullResult := [][]Value{}
 	for i := 0; i < len(nodes); i++ {
 		node := nodes[i]
 		results, err := j.walk(j.cur, node)
@@ -119,7 +119,7 @@ func (j *JSONPath) FindResults(data interface{}) ([][]reflect.Value, error) {
 }
 
 // PrintResults writes the results into writer
-func (j *JSONPath) PrintResults(wr io.Writer, results []reflect.Value) error {
+func (j *JSONPath) PrintResults(wr io.Writer, results []Value) error {
 	for i, r := range results {
 		text, err := j.evalToText(r)
 		if err != nil {
@@ -136,12 +136,12 @@ func (j *JSONPath) PrintResults(wr io.Writer, results []reflect.Value) error {
 }
 
 // walk visits tree rooted at the given node in DFS order
-func (j *JSONPath) walk(value []reflect.Value, node Node) ([]reflect.Value, error) {
+func (j *JSONPath) walk(value []Value, node Node) ([]Value, error) {
 	switch node := node.(type) {
 	case *ListNode:
 		return j.evalList(value, node)
 	case *TextNode:
-		return []reflect.Value{reflect.ValueOf(node.Text)}, nil
+		return []Value{ValueOf(node.Text)}, nil
 	case *FieldNode:
 		return j.evalField(value, node)
 	case *ArrayNode:
@@ -168,34 +168,34 @@ func (j *JSONPath) walk(value []reflect.Value, node Node) ([]reflect.Value, erro
 }
 
 // evalInt evaluates IntNode
-func (j *JSONPath) evalInt(input []reflect.Value, node *IntNode) ([]reflect.Value, error) {
-	result := make([]reflect.Value, len(input))
+func (j *JSONPath) evalInt(input []Value, node *IntNode) ([]Value, error) {
+	result := make([]Value, len(input))
 	for i := range input {
-		result[i] = reflect.ValueOf(node.Value)
+		result[i] = ValueOf(node.Value)
 	}
 	return result, nil
 }
 
 // evalFloat evaluates FloatNode
-func (j *JSONPath) evalFloat(input []reflect.Value, node *FloatNode) ([]reflect.Value, error) {
-	result := make([]reflect.Value, len(input))
+func (j *JSONPath) evalFloat(input []Value, node *FloatNode) ([]Value, error) {
+	result := make([]Value, len(input))
 	for i := range input {
-		result[i] = reflect.ValueOf(node.Value)
+		result[i] = ValueOf(node.Value)
 	}
 	return result, nil
 }
 
 // evalBool evaluates BoolNode
-func (j *JSONPath) evalBool(input []reflect.Value, node *BoolNode) ([]reflect.Value, error) {
-	result := make([]reflect.Value, len(input))
+func (j *JSONPath) evalBool(input []Value, node *BoolNode) ([]Value, error) {
+	result := make([]Value, len(input))
 	for i := range input {
-		result[i] = reflect.ValueOf(node.Value)
+		result[i] = ValueOf(node.Value)
 	}
 	return result, nil
 }
 
 // evalList evaluates ListNode
-func (j *JSONPath) evalList(value []reflect.Value, node *ListNode) ([]reflect.Value, error) {
+func (j *JSONPath) evalList(value []Value, node *ListNode) ([]Value, error) {
 	var err error
 	curValue := value
 	for _, node := range node.Nodes {
@@ -208,8 +208,8 @@ func (j *JSONPath) evalList(value []reflect.Value, node *ListNode) ([]reflect.Va
 }
 
 // evalIdentifier evaluates IdentifierNode
-func (j *JSONPath) evalIdentifier(input []reflect.Value, node *IdentifierNode) ([]reflect.Value, error) {
-	results := []reflect.Value{}
+func (j *JSONPath) evalIdentifier(input []Value, node *IdentifierNode) ([]Value, error) {
+	results := []Value{}
 	switch node.Name {
 	case "range":
 		j.stack = append(j.stack, j.cur)
@@ -233,11 +233,11 @@ func (j *JSONPath) evalIdentifier(input []reflect.Value, node *IdentifierNode) (
 }
 
 // evalArray evaluates ArrayNode
-func (j *JSONPath) evalArray(input []reflect.Value, node *ArrayNode) ([]reflect.Value, error) {
-	result := []reflect.Value{}
+func (j *JSONPath) evalArray(input []Value, node *ArrayNode) ([]Value, error) {
+	result := []Value{}
 	for _, value := range input {
 
-		value, isNil := template.Indirect(value)
+		value, isNil := template.Indirect(value.Value)
 		if isNil {
 			continue
 		}
@@ -283,15 +283,15 @@ func (j *JSONPath) evalArray(input []reflect.Value, node *ArrayNode) ([]reflect.
 			step = params[2].Value
 		}
 		for i := 0; i < value.Len(); i += step {
-			result = append(result, value.Index(i))
+			result = append(result, Wrap(value.Index(i)))
 		}
 	}
 	return result, nil
 }
 
 // evalUnion evaluates UnionNode
-func (j *JSONPath) evalUnion(input []reflect.Value, node *UnionNode) ([]reflect.Value, error) {
-	result := []reflect.Value{}
+func (j *JSONPath) evalUnion(input []Value, node *UnionNode) ([]Value, error) {
+	result := []Value{}
 	for _, listNode := range node.Nodes {
 		temp, err := j.evalList(input, listNode)
 		if err != nil {
@@ -302,9 +302,9 @@ func (j *JSONPath) evalUnion(input []reflect.Value, node *UnionNode) ([]reflect.
 	return result, nil
 }
 
-func (j *JSONPath) findFieldInValue(value *reflect.Value, node *FieldNode) (reflect.Value, error) {
+func (j *JSONPath) findFieldInValue(value *Value, node *FieldNode) (Value, error) {
 	t := value.Type()
-	var inlineValue *reflect.Value
+	var inlineValue *Value
 	for ix := 0; ix < t.NumField(); ix++ {
 		f := t.Field(ix)
 		jsonTag := f.Tag.Get("json")
@@ -313,10 +313,10 @@ func (j *JSONPath) findFieldInValue(value *reflect.Value, node *FieldNode) (refl
 			continue
 		}
 		if parts[0] == node.Value {
-			return value.Field(ix), nil
+			return Wrap(value.Field(ix)), nil
 		}
 		if len(parts[0]) == 0 {
-			val := value.Field(ix)
+			val := Wrap(value.Field(ix))
 			inlineValue = &val
 		}
 	}
@@ -325,43 +325,47 @@ func (j *JSONPath) findFieldInValue(value *reflect.Value, node *FieldNode) (refl
 			// handle 'inline'
 			match, err := j.findFieldInValue(inlineValue, node)
 			if err != nil {
-				return reflect.Value{}, err
+				return Value{}, err
 			}
 			if match.IsValid() {
 				return match, nil
 			}
 		}
 	}
-	return value.FieldByName(node.Value), nil
+	return Wrap(value.FieldByName(node.Value)), nil
 }
 
 // evalField evaluates field of struct or key of map.
-func (j *JSONPath) evalField(input []reflect.Value, node *FieldNode) ([]reflect.Value, error) {
-	results := []reflect.Value{}
+func (j *JSONPath) evalField(input []Value, node *FieldNode) ([]Value, error) {
+	results := []Value{}
 	// If there's no input, there's no output
 	if len(input) == 0 {
 		return results, nil
 	}
 	for _, value := range input {
-		var result reflect.Value
-		value, isNil := template.Indirect(value)
+		var result Value
+		value, isNil := template.Indirect(value.Value)
 		if isNil {
 			continue
 		}
 
 		if value.Kind() == reflect.Struct {
 			var err error
-			if result, err = j.findFieldInValue(&value, node); err != nil {
+			if result, err = j.findFieldInValue(&Value{Value: value}, node); err != nil {
 				return nil, err
 			}
 		} else if value.Kind() == reflect.Map {
 			mapKeyType := value.Type().Key()
-			nodeValue := reflect.ValueOf(node.Value)
+			nodeValue := ValueOf(node.Value)
 			// node value type must be convertible to map key type
 			if !nodeValue.Type().ConvertibleTo(mapKeyType) {
 				return results, fmt.Errorf("%s is not convertible to %s", nodeValue, mapKeyType)
 			}
-			result = value.MapIndex(nodeValue.Convert(mapKeyType))
+
+			mapKey := nodeValue.Convert(mapKeyType)
+			result = Wrap(value.MapIndex(mapKey))
+			result.parentMap = value
+			result.parentMapKey = mapKey
 		}
 		if result.IsValid() {
 			results = append(results, result)
@@ -377,10 +381,10 @@ func (j *JSONPath) evalField(input []reflect.Value, node *FieldNode) ([]reflect.
 }
 
 // evalWildcard extracts all contents of the given value
-func (j *JSONPath) evalWildcard(input []reflect.Value, node *WildcardNode) ([]reflect.Value, error) {
-	results := []reflect.Value{}
+func (j *JSONPath) evalWildcard(input []Value, node *WildcardNode) ([]Value, error) {
+	results := []Value{}
 	for _, value := range input {
-		value, isNil := template.Indirect(value)
+		value, isNil := template.Indirect(value.Value)
 		if isNil {
 			continue
 		}
@@ -388,15 +392,15 @@ func (j *JSONPath) evalWildcard(input []reflect.Value, node *WildcardNode) ([]re
 		kind := value.Kind()
 		if kind == reflect.Struct {
 			for i := 0; i < value.NumField(); i++ {
-				results = append(results, value.Field(i))
+				results = append(results, Wrap(value.Field(i)))
 			}
 		} else if kind == reflect.Map {
 			for _, key := range value.MapKeys() {
-				results = append(results, value.MapIndex(key))
+				results = append(results, Wrap(value.MapIndex(key)))
 			}
 		} else if kind == reflect.Array || kind == reflect.Slice || kind == reflect.String {
 			for i := 0; i < value.Len(); i++ {
-				results = append(results, value.Index(i))
+				results = append(results, Wrap(value.Index(i)))
 			}
 		}
 	}
@@ -404,11 +408,11 @@ func (j *JSONPath) evalWildcard(input []reflect.Value, node *WildcardNode) ([]re
 }
 
 // evalRecursive visits the given value recursively and pushes all of them to result
-func (j *JSONPath) evalRecursive(input []reflect.Value, node *RecursiveNode) ([]reflect.Value, error) {
-	result := []reflect.Value{}
+func (j *JSONPath) evalRecursive(input []Value, node *RecursiveNode) ([]Value, error) {
+	result := []Value{}
 	for _, value := range input {
-		results := []reflect.Value{}
-		value, isNil := template.Indirect(value)
+		results := []Value{}
+		value, isNil := template.Indirect(value.Value)
 		if isNil {
 			continue
 		}
@@ -416,19 +420,19 @@ func (j *JSONPath) evalRecursive(input []reflect.Value, node *RecursiveNode) ([]
 		kind := value.Kind()
 		if kind == reflect.Struct {
 			for i := 0; i < value.NumField(); i++ {
-				results = append(results, value.Field(i))
+				results = append(results, Wrap(value.Field(i)))
 			}
 		} else if kind == reflect.Map {
 			for _, key := range value.MapKeys() {
-				results = append(results, value.MapIndex(key))
+				results = append(results, Wrap(value.MapIndex(key)))
 			}
 		} else if kind == reflect.Array || kind == reflect.Slice || kind == reflect.String {
 			for i := 0; i < value.Len(); i++ {
-				results = append(results, value.Index(i))
+				results = append(results, Wrap(value.Index(i)))
 			}
 		}
 		if len(results) != 0 {
-			result = append(result, value)
+			result = append(result, Wrap(value))
 			output, err := j.evalRecursive(results, node)
 			if err != nil {
 				return result, err
@@ -440,22 +444,23 @@ func (j *JSONPath) evalRecursive(input []reflect.Value, node *RecursiveNode) ([]
 }
 
 // evalFilter filters array according to FilterNode
-func (j *JSONPath) evalFilter(input []reflect.Value, node *FilterNode) ([]reflect.Value, error) {
-	results := []reflect.Value{}
+func (j *JSONPath) evalFilter(input []Value, node *FilterNode) ([]Value, error) {
+	results := []Value{}
 	for _, value := range input {
-		value, _ = template.Indirect(value)
+		valueInner, _ := template.Indirect(value.Value)
+		value = Wrap(valueInner)
 
 		if value.Kind() != reflect.Array && value.Kind() != reflect.Slice {
 			return input, fmt.Errorf("%v is not array or slice and cannot be filtered", value)
 		}
 		for i := 0; i < value.Len(); i++ {
-			temp := []reflect.Value{value.Index(i)}
+			temp := []Value{Wrap(value.Index(i))}
 			lefts, err := j.evalList(temp, node.Left)
 
 			//case exists
 			if node.Operator == "exists" {
 				if len(lefts) > 0 {
-					results = append(results, value.Index(i))
+					results = append(results, Wrap(value.Index(i)))
 				}
 				continue
 			}
@@ -506,7 +511,7 @@ func (j *JSONPath) evalFilter(input []reflect.Value, node *FilterNode) ([]reflec
 				return results, err
 			}
 			if pass {
-				results = append(results, value.Index(i))
+				results = append(results, Wrap(value.Index(i)))
 			}
 		}
 	}
@@ -514,8 +519,8 @@ func (j *JSONPath) evalFilter(input []reflect.Value, node *FilterNode) ([]reflec
 }
 
 // evalToText translates reflect value to corresponding text
-func (j *JSONPath) evalToText(v reflect.Value) ([]byte, error) {
-	iface, ok := template.PrintableValue(v)
+func (j *JSONPath) evalToText(v Value) ([]byte, error) {
+	iface, ok := template.PrintableValue(v.Value)
 	if !ok {
 		return nil, fmt.Errorf("can't print type %s", v.Type())
 	}
