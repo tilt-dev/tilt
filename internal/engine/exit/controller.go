@@ -55,6 +55,11 @@ func (c *Controller) shouldExit(store store.RStore) Action {
 		// If any of the resources are in error, exit.
 		allOK := true
 		for _, mt := range state.ManifestTargets {
+			// don't wait on resources requiring manual trigger for initial build
+			if mt.Manifest.TriggerMode == model.TriggerModeManualIncludingInitial {
+				continue
+			}
+
 			rs := mt.State.RuntimeState
 			if rs == nil {
 				allOK = false
