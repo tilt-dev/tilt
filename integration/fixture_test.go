@@ -182,13 +182,6 @@ func (f *fixture) TiltWatchExec() {
 	f.activeTiltUp = response
 }
 
-func (f *fixture) TiltCI() {
-	err := f.tilt.CI(f.tiltArgs, f.LogWriter())
-	if err != nil {
-		f.t.Fatalf("TiltCI: %v", err)
-	}
-}
-
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 	file := f.testDirPath(fileBaseName)
 	contentsBytes, err := ioutil.ReadFile(file)

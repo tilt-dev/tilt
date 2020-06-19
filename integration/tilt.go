@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -22,11 +21,7 @@ func NewTiltDriver() *TiltDriver {
 }
 
 func (d *TiltDriver) cmd(args []string, out io.Writer) *exec.Cmd {
-	return d.cmdWithCtx(context.Background(), args, out)
-}
-
-func (d *TiltDriver) cmdWithCtx(ctx context.Context, args []string, out io.Writer) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "tilt", args...)
+	cmd := exec.Command("tilt", args...)
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.Env = os.Environ()
@@ -129,13 +124,4 @@ func (r *TiltUpResponse) KillAndDumpThreads() error {
 	case <-time.After(2 * time.Second):
 	}
 	return nil
-}
-
-func (d *TiltDriver) CI(args []string, out io.Writer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
-	defer cancel()
-
-	mandatoryArgs := []string{"ci"}
-	cmd := d.cmdWithCtx(ctx, append(mandatoryArgs, args...), out)
-	return cmd.Run()
 }
