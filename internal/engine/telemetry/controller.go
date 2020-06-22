@@ -30,13 +30,16 @@ func NewController(clock build.Clock, spans tracer.SpanSource) *Controller {
 	}
 }
 
-var period = 60 * time.Second
-
 func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	ts := state.TelemetrySettings
 	tc := ts.Cmd
 	st.RUnlockState()
+
+	period := ts.Period
+	if period == 0 {
+		period = model.DefaultTelemetryPeriod
+	}
 
 	if tc.Empty() || !t.lastRunAt.Add(period).Before(t.clock.Now()) {
 		return

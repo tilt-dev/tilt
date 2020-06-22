@@ -18,7 +18,9 @@ func NewExtension() Extension {
 }
 
 func (e Extension) NewState() interface{} {
-	return model.TelemetrySettings{}
+	return model.TelemetrySettings{
+		Period: model.DefaultTelemetryPeriod,
+	}
 }
 
 func (Extension) OnStart(env *starkit.Environment) error {
@@ -27,9 +29,11 @@ func (Extension) OnStart(env *starkit.Environment) error {
 
 func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var cmdVal, cmdBatVal starlark.Value
+	var period value.Duration
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"cmd", &cmdVal,
-		"cmd_bat?", &cmdBatVal)
+		"cmd_bat?", &cmdBatVal,
+		"period?", &period)
 	if err != nil {
 		return starlark.None, err
 	}
@@ -50,6 +54,9 @@ func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 
 		settings.Cmd = cmd
 		settings.Workdir = filepath.Dir(starkit.CurrentExecPath(thread))
+		if !period.IsZero() {
+			settings.Period = period.AsDuration()
+		}
 
 		return settings, nil
 	})
