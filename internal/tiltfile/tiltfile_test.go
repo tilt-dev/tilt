@@ -1178,6 +1178,20 @@ k8s_yaml(blob(''))
 	f.loadErrString("Empty or Invalid YAML Resource Detected")
 }
 
+func TestDuplicateLocalResources(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+local_resource('foo', 'echo foo')
+local_resource('foo', 'echo foo')
+`)
+
+	f.loadErrString("Local resource foo has been defined multiple times")
+}
+
 // These tests are for behavior that we specifically enabled in Starlark
 // in the init() function
 func TestTopLevelIfStatement(t *testing.T) {

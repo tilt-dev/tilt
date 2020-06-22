@@ -21,6 +21,7 @@ func UniqueNames(es []K8sEntity, minComponents int) []string {
 	// for each entity, take the shortest name that is uniquely wanted by that entity
 	for i, e := range es {
 		names := potentialNames(e, minComponents)
+
 		for _, name := range names {
 			if counts[name] == 1 {
 				ret[i] = name

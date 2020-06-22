@@ -606,7 +606,6 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 		return true
 	})
 }
-
 func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
