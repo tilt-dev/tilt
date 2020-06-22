@@ -96,6 +96,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		resourceDeps: resourceDeps,
 		ignores:      ignores,
 	}
+	for _, elem := range s.localResources {
+		if elem.name == res.name {
+			return starlark.None, fmt.Errorf("Local resource %s has been defined multiple times", res.name)
+		}
+	}
 	s.localResources = append(s.localResources, res)
 
 	return starlark.None, nil
