@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"testing"
+	"time"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -18,6 +19,17 @@ func TestTelemetryCmdString(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, model.ToHostCmd("foo.sh"), MustState(result).Cmd)
+	assert.Equal(t, model.DefaultTelemetryPeriod, MustState(result).Period)
+}
+
+func TestTelemetryPeriod(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.File("Tiltfile", "experimental_telemetry_cmd('foo.sh', period='5s')")
+
+	result, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, 5*time.Second, MustState(result).Period)
 }
 
 func TestTelemetryCmdArray(t *testing.T) {
