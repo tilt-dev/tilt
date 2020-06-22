@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fatih/color"
 	tty "github.com/mattn/go-tty"
@@ -14,8 +15,11 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+var defaultHudDelay = 6 * time.Second
 
 type TerminalInput interface {
 	ReadRune() (rune, error)
@@ -41,6 +45,7 @@ type TerminalPrompt struct {
 	stdout    hud.Stdout
 	host      model.WebHost
 	url       model.WebURL
+	hudDelay  time.Duration
 
 	printed bool
 	term    TerminalInput
@@ -62,6 +67,7 @@ func NewTerminalPrompt(a *analytics.TiltAnalytics, openInput OpenInput,
 		stdout:    stdout,
 		host:      host,
 		url:       url,
+		hudDelay:  defaultHudDelay,
 	}
 }
 
@@ -203,8 +209,16 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 					msg.stopCh <- true
 
 				case 'h':
+					warningMsg := "We're removing the HUD key shortcut from the prompt.\n" +
+						"In future releases, open the HUD with: tilt up --hud=true"
+					_, _ = fmt.Fprintf(p.stdout, "%s\n", warningMsg)
+
+					time.Sleep(p.hudDelay)
+
+					logger.Get(ctx).Warnf("%s", warningMsg)
 					p.a.Incr("ui.prompt.switch", map[string]string{"type": "hud"})
 					st.Dispatch(SwitchTerminalModeAction{Mode: store.TerminalModeHUD})
+
 					msg.stopCh <- true
 
 				case ' ':
