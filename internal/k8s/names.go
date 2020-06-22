@@ -23,7 +23,6 @@ func UniqueNames(es []K8sEntity, minComponents int) []string {
 		names := potentialNames(e, minComponents)
 		for _, name := range names {
 			if counts[name] == 1 {
-				fmt.Println(name)
 				ret[i] = name
 				break
 			}
