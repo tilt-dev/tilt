@@ -81,13 +81,18 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 	}
 
 	results := make(store.BuildResultSet, len(targets))
-	return &TargetQueue{
+	queue := &TargetQueue{
 		sortedTargets: sortedTargets,
 		state:         state,
 		results:       results,
 		needsOwnBuild: needsOwnBuild,
 		depsNeedBuild: depsNeedBuild,
-	}, nil
+	}
+	err = queue.backfillExistingResults()
+	if err != nil {
+		return nil, err
+	}
+	return queue, nil
 }
 
 // New results that were built with the current queue. Omits results
@@ -140,6 +145,22 @@ func (q *TargetQueue) CountBuilds() int {
 	return result
 }
 
+func (q *TargetQueue) backfillExistingResults() error {
+	for _, target := range q.sortedTargets {
+		id := target.ID()
+		if !q.isBuilding(id) {
+			// We can re-use results from the previous build.
+			lastResult := q.state[id].LastSuccessfulResult
+			image := store.LocalImageRefFromBuildResult(lastResult)
+			if image == nil {
+				return fmt.Errorf("Internal error: build marked clean but last result not found: %+v", q.state[id])
+			}
+			q.results[id] = lastResult
+		}
+	}
+	return nil
+}
+
 func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 	for _, target := range q.sortedTargets {
 		id := target.ID()
@@ -149,15 +170,6 @@ func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 				return err
 			}
 			q.results[id] = result
-		} else {
-			// Otherwise, we can re-use results from the previous build.
-			// If needsOwnBuild is false, then LastSuccessfulResult must exist if it's empty.
-			lastResult := q.state[id].LastSuccessfulResult
-			image := store.LocalImageRefFromBuildResult(lastResult)
-			if image == nil {
-				return fmt.Errorf("Internal error: build marked clean but last result not found: %+v", q.state[id])
-			}
-			q.results[id] = lastResult
 		}
 	}
 	return nil
