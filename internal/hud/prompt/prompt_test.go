@@ -10,10 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tilt-dev/wmclient/pkg/analytics"
-
-	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -83,7 +81,8 @@ type fixture struct {
 }
 
 func newFixture() *fixture {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
+	ctx, cancel := context.WithCancel(ctx)
 	out := bufsync.NewThreadSafeBuffer()
 	st := store.NewTestingStore()
 	st.WithState(func(state *store.EngineState) {
@@ -95,10 +94,8 @@ func newFixture() *fixture {
 
 	url, _ := url.Parse(FakeURL)
 
-	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
-	_, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
-
 	prompt := NewTerminalPrompt(ta, openInput, b.OpenURL, out, "localhost", model.WebURL(*url))
+	prompt.hudDelay = 0
 	return &fixture{
 		ctx:    ctx,
 		cancel: cancel,
