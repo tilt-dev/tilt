@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -74,9 +73,10 @@ type tiltfileState struct {
 	defaultReg container.Registry
 
 	// JSON paths to images in k8s YAML (other than Container specs)
-	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
+	k8sImageLocators map[k8s.ObjectSelector][]k8s.ImageLocator
+
 	// objects of these types are considered workloads, whether or not they have an image
-	workloadTypes []k8sObjectSelector
+	workloadTypes []k8s.ObjectSelector
 
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
@@ -139,7 +139,6 @@ func newTiltfileState(
 		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
-		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
 		usedImages:                 make(map[string]bool),
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
@@ -151,6 +150,7 @@ func newTiltfileState(
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
 		secretSettings:             model.DefaultSecretSettings(),
+		k8sImageLocators:           make(map[k8s.ObjectSelector][]k8s.ImageLocator),
 	}
 }
 
@@ -693,7 +693,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 				s.k8sByName[r.name] = r
 			}
 
-			selectors := make([]k8sObjectSelector, len(opts.objects))
+			selectors := make([]k8s.ObjectSelector, len(opts.objects))
 			for i, o := range opts.objects {
 				s, err := selectorFromString(o)
 				if err != nil {
@@ -762,29 +762,29 @@ func fullNameFromK8sEntity(e k8s.K8sEntity) string {
 }
 
 // format is <name:required>:<kind:optional>:<namespace:optional>
-func selectorFromString(s string) (k8sObjectSelector, error) {
+func selectorFromString(s string) (k8s.ObjectSelector, error) {
 	parts := strings.Split(s, ":")
 	if len(s) == 0 {
-		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
+		return k8s.ObjectSelector{}, fmt.Errorf("selector can't be empty")
 	}
 	if len(parts) == 1 {
-		return newFullmatchCaseInsensitiveK8sObjectSelector("", "", parts[0], "")
+		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", "", parts[0], "")
 	}
 	if len(parts) == 2 {
-		return newFullmatchCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], "")
+		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", parts[1], parts[0], "")
 	}
 	if len(parts) == 3 {
-		return newFullmatchCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], parts[2])
+		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", parts[1], parts[0], parts[2])
 	}
 
-	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
+	return k8s.ObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
 }
 
-func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8sObjectSelector) []k8s.K8sEntity {
+func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8s.ObjectSelector) []k8s.K8sEntity {
 	ret := []k8s.K8sEntity{}
 
 	for _, e := range entities {
-		if sel.matches(e) {
+		if sel.Matches(e) {
 			ret = append(ret, e)
 		}
 	}
@@ -806,9 +806,11 @@ func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEnt
 }
 
 func (s *tiltfileState) assembleK8sByWorkload() error {
+	locators := s.k8sImageLocatorsList()
+
 	var workloads, rest []k8s.K8sEntity
 	for _, e := range s.k8sUnresourced {
-		isWorkload, err := s.isWorkload(e)
+		isWorkload, err := s.isWorkload(e, locators)
 		if err != nil {
 			return err
 		}
@@ -824,13 +826,14 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 	if err != nil {
 		return err
 	}
+
 	for i, resourceName := range resourceNames {
 		workload := workloads[i]
 		res, err := s.makeK8sResource(resourceName)
 		if err != nil {
 			return errors.Wrapf(err, "error making resource for workload %s", newK8sObjectID(workload))
 		}
-		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths, s.envVarImages())
+		err = res.addEntities([]k8s.K8sEntity{workload}, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -842,7 +845,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 			return err
 		}
 
-		err = res.addEntities(match, s.imageJSONPaths, s.envVarImages())
+		err = res.addEntities(match, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -865,14 +868,14 @@ func (s *tiltfileState) envVarImages() []container.RefSelector {
 	return r
 }
 
-func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
+func (s *tiltfileState) isWorkload(e k8s.K8sEntity, locators []k8s.ImageLocator) (bool, error) {
 	for _, sel := range s.workloadTypes {
-		if sel.matches(e) {
+		if sel.Matches(e) {
 			return true, nil
 		}
 	}
 
-	images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
+	images, err := e.FindImages(locators, s.envVarImages())
 	if err != nil {
 		return false, errors.Wrapf(err, "finding images in %s", e.Name())
 	} else {
@@ -1009,7 +1012,7 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	seen := make(map[string]bool)
 
 	for _, e := range s.k8sUnresourced {
-		images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
+		images, err := e.FindImages(s.k8sImageLocatorsList(), s.envVarImages())
 		if err != nil {
 			return nil, err
 		}
@@ -1025,12 +1028,13 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 
 // extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
 func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.RefSelector) error {
-	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.imageJSONPaths, false)
+	locators := s.k8sImageLocatorsList()
+	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, locators, false)
 	if err != nil {
 		return err
 	}
 
-	err = dest.addEntities(extracted, s.imageJSONPaths, s.envVarImages())
+	err = dest.addEntities(extracted, locators, s.envVarImages())
 	if err != nil {
 		return err
 	}
@@ -1043,7 +1047,7 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 			return err
 		}
 
-		err = dest.addEntities(match, s.imageJSONPaths, s.envVarImages())
+		err = dest.addEntities(match, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -1383,109 +1387,6 @@ const (
 	claimPending
 	claimFinished
 )
-
-// A selector matches an entity if all non-empty selector fields match the corresponding entity fields
-type k8sObjectSelector struct {
-	apiVersion       *regexp.Regexp
-	apiVersionString string
-	kind             *regexp.Regexp
-	kindString       string
-
-	// TODO(dmiller): do something like this instead https://github.com/tilt-dev/tilt/blob/c2b2df88de3777eed5f1bb9f54b5c555707c8b42/internal/container/selector.go#L9
-	name            *regexp.Regexp
-	nameString      string
-	namespace       *regexp.Regexp
-	namespaceString string
-}
-
-// TODO(dmiller): this function and newPartialMatchK8sObjectSelector
-// should be written in to a form that can be used like this
-// x := re{pattern: name, ignoreCase: true, fullMatch: true}
-// x.compile()
-// rather than passing around and mutating regex strings
-
-// Creates a new k8sObjectSelector
-// If an arg is an empty string it will become an empty regex that matches all input
-// Otherwise the arg must match the input exactly
-func newFullmatchCaseInsensitiveK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
-	var err error
-
-	ret.apiVersion, err = regexp.Compile(exactOrEmptyRegex(apiVersion))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
-	}
-
-	ret.kind, err = regexp.Compile(exactOrEmptyRegex(kind))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
-	}
-
-	ret.name, err = regexp.Compile(exactOrEmptyRegex(name))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
-	}
-
-	ret.namespace, err = regexp.Compile(exactOrEmptyRegex(namespace))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
-	}
-
-	return ret, nil
-}
-
-func makeCaseInsensitive(s string) string {
-	if s == "" {
-		return s
-	} else {
-		return "(?i)" + s
-	}
-}
-
-func exactOrEmptyRegex(s string) string {
-	if s != "" {
-		s = fmt.Sprintf("^%s$", makeCaseInsensitive(regexp.QuoteMeta(s)))
-	}
-	return s
-}
-
-// Creates a new k8sObjectSelector
-// If an arg is an empty string, it will become an empty regex that matches all input
-// Otherwise the arg will match input from the beginning (prefix matching)
-func newPartialMatchK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
-	var err error
-
-	ret.apiVersion, err = regexp.Compile(makeCaseInsensitive(apiVersion))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
-	}
-
-	ret.kind, err = regexp.Compile(makeCaseInsensitive(kind))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
-	}
-
-	ret.name, err = regexp.Compile(makeCaseInsensitive(name))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
-	}
-
-	ret.namespace, err = regexp.Compile(makeCaseInsensitive(namespace))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
-	}
-
-	return ret, nil
-}
-
-func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
-	gvk := e.GVK()
-	return k.apiVersion.MatchString(gvk.GroupVersion().String()) &&
-		k.kind.MatchString(gvk.Kind) &&
-		k.name.MatchString(e.Name()) &&
-		k.namespace.MatchString(e.Namespace().String())
-}
 
 func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var triggerMode triggerMode
