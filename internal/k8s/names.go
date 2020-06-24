@@ -10,7 +10,6 @@ func UniqueNames(es []K8sEntity, minComponents int) []string {
 	ret := make([]string, len(es))
 	// how many resources potentially map to a given name
 	counts := make(map[string]int)
-
 	// count how many entities want each potential name
 	for _, e := range es {
 		for _, name := range potentialNames(e, minComponents) {
@@ -27,7 +26,6 @@ func UniqueNames(es []K8sEntity, minComponents int) []string {
 				break
 			}
 		}
-
 		if ret[i] == "" {
 			// If we hit this case, this means we have two resources with the same
 			// name/kind/namespace/group This usually means the user is trying to
