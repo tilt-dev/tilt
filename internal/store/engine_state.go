@@ -158,6 +158,7 @@ func (e *EngineState) IsCurrentlyBuilding(name model.ManifestName) bool {
 	return e.CurrentlyBuilding[name]
 }
 
+// Find the first build status. Only suitable for testing.
 func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 	mns := e.ManifestNamesForTargetID(id)
 	for _, mn := range mns {
@@ -168,6 +169,7 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 		}
 	}
 	return BuildStatus{}
+
 }
 
 func (e *EngineState) AvailableBuildSlots() int {
@@ -308,16 +310,35 @@ type BuildStatus struct {
 
 	LastSuccessfulResult BuildResult
 	LastResult           BuildResult
+
+	// Stores the times that dependencies were marked dirty, so we can prioritize
+	// the oldest one first.
+	//
+	// Long-term, we want to process all dependencies as a build graph rather than
+	// a list of manifests. Specifically, we'll build one Target at a time.  Once
+	// the build completes, we'll look at all the targets that depend on it, and
+	// mark PendingDependencyChanges to indicate that they need a rebuild.
+	//
+	// Short-term, we only use this for cases where two manifests share a common
+	// image. This only handles cross-manifest dependencies.
+	//
+	// This approach allows us to start working on the bookkeeping and
+	// dependency-tracking in the short-term, without having to switch over to a
+	// full dependency graph in one swoop.
+	PendingDependencyChanges map[model.TargetID]time.Time
 }
 
 func newBuildStatus() *BuildStatus {
 	return &BuildStatus{
-		PendingFileChanges: make(map[string]time.Time),
+		PendingFileChanges:       make(map[string]time.Time),
+		PendingDependencyChanges: make(map[model.TargetID]time.Time),
 	}
 }
 
 func (s BuildStatus) IsEmpty() bool {
-	return len(s.PendingFileChanges) == 0 && s.LastSuccessfulResult == nil
+	return len(s.PendingFileChanges) == 0 &&
+		len(s.PendingDependencyChanges) == 0 &&
+		s.LastSuccessfulResult == nil
 }
 
 type ManifestState struct {
@@ -501,11 +522,23 @@ func (ms *ManifestState) HasPendingFileChanges() bool {
 	return false
 }
 
+func (ms *ManifestState) HasPendingDependencyChanges() bool {
+	for _, status := range ms.BuildStatuses {
+		if len(status.PendingDependencyChanges) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
 	state := mt.State
 	reason := state.TriggerReason
 	if mt.State.HasPendingFileChanges() {
 		reason = reason.With(model.BuildReasonFlagChangedFiles)
+	}
+	if mt.State.HasPendingDependencyChanges() {
+		reason = reason.With(model.BuildReasonFlagChangedDeps)
 	}
 	if !mt.State.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
@@ -541,6 +574,13 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 
 	for _, status := range ms.BuildStatuses {
 		for _, t := range status.PendingFileChanges {
+			if !t.IsZero() && BeforeOrEqual(t, earliest) {
+				ok = true
+				earliest = t
+			}
+		}
+
+		for _, t := range status.PendingDependencyChanges {
 			if !t.IsZero() && BeforeOrEqual(t, earliest) {
 				ok = true
 				earliest = t

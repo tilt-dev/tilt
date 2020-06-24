@@ -141,6 +141,15 @@ func (m Manifest) WithTriggerMode(mode TriggerMode) Manifest {
 	return m
 }
 
+func (m Manifest) TargetIDSet() map[TargetID]bool {
+	result := make(map[TargetID]bool)
+	specs := m.TargetSpecs()
+	for _, spec := range specs {
+		result[spec.ID()] = true
+	}
+	return result
+}
+
 func (m Manifest) TargetSpecs() []TargetSpec {
 	result := []TargetSpec{}
 	for _, t := range m.ImageTargets {

@@ -665,7 +665,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	// the second does not --> second target needs build
 	iTargetID := targets[0].ID()
 	firstResult := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
-	bs[iTargetID] = store.NewBuildState(firstResult, nil)
+	bs[iTargetID] = store.NewBuildState(firstResult, nil, nil)
 
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
@@ -838,9 +838,9 @@ func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
 		WithImageTargets(sanchoTarg, sidecarTarg).
 		Build()
 	changed := f.WriteFile("a.txt", "a")
-	sanchoState := store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}).
+	sanchoState := store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}, nil).
 		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
-	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed})
+	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed}, nil)
 
 	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
 
@@ -986,9 +986,9 @@ func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, st
 		Build()
 
 	changed := f.WriteFile("a.txt", "a")
-	sanchoState := store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}).
+	sanchoState := store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}, nil).
 		WithRunningContainers([]store.ContainerInfo{sanchoCInfo})
-	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed}).
+	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed}, nil).
 		WithRunningContainers([]store.ContainerInfo{sidecarCInfo})
 
 	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
@@ -1117,7 +1117,7 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 			}
 		}
 
-		state := store.NewBuildState(alreadyBuilt, filesChangingImage)
+		state := store.NewBuildState(alreadyBuilt, filesChangingImage, nil)
 		if manifest.IsImageDeployed(iTarget) {
 			state = state.WithRunningContainers([]store.ContainerInfo{testContainerInfo})
 		}
@@ -1135,7 +1135,7 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 func resultToStateSet(resultSet store.BuildResultSet, files []string, cInfo store.ContainerInfo) store.BuildStateSet {
 	stateSet := store.BuildStateSet{}
 	for id, result := range resultSet {
-		state := store.NewBuildState(result, files).WithRunningContainers([]store.ContainerInfo{cInfo})
+		state := store.NewBuildState(result, files, nil).WithRunningContainers([]store.ContainerInfo{cInfo})
 		stateSet[id] = state
 	}
 	return stateSet
