@@ -158,7 +158,6 @@ func (e *EngineState) IsCurrentlyBuilding(name model.ManifestName) bool {
 	return e.CurrentlyBuilding[name]
 }
 
-// Find the first build status. Only suitable for testing.
 func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 	mns := e.ManifestNamesForTargetID(id)
 	for _, mn := range mns {
@@ -169,46 +168,6 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 		}
 	}
 	return BuildStatus{}
-
-}
-
-// Visit all the matching BuildStatuses for these results.
-//
-// Long-term, the EngineState should have TargetSpec and one TargetStatus for
-// each TargetID. But in the current system, we may duplicate an image across
-// multiple manifests.
-func (e *EngineState) ForEachMutableBuildStatusInResults(results BuildResultSet,
-	visitor func(id model.TargetID, result BuildResult, mn model.ManifestName, bs *BuildStatus)) {
-	for id, result := range results {
-		for _, mt := range e.Targets() {
-			for _, target := range mt.Manifest.TargetSpecs() {
-				if id == target.ID() {
-					visitor(id, result, mt.Manifest.Name, mt.State.MutableBuildStatus(id))
-				}
-			}
-		}
-	}
-}
-
-// Visit all the BuildStatuses for Targets depending on these results.
-//
-// A future graph API might just have a GetReverseDepsOn(id).  But we don't
-// currently store them this way. We batch the results together to avoid too
-// many redundant loops (more for readability/debuggability than speed).
-func (e *EngineState) ForEachMutableBuildStatusDependingOn(results BuildResultSet,
-	visitor func(id, reverseDepID model.TargetID, mn model.ManifestName, reverseDepStatus *BuildStatus)) {
-	for _, mt := range e.Targets() {
-		for _, target := range mt.Manifest.TargetSpecs() {
-			reverseDepID := target.ID()
-			for _, depID := range target.DependencyIDs() {
-				_, inResults := results[depID]
-				if inResults {
-					status := mt.State.MutableBuildStatus(reverseDepID)
-					visitor(depID, reverseDepID, mt.Manifest.Name, status)
-				}
-			}
-		}
-	}
 }
 
 func (e *EngineState) AvailableBuildSlots() int {
@@ -349,28 +308,11 @@ type BuildStatus struct {
 
 	LastSuccessfulResult BuildResult
 	LastResult           BuildResult
-
-	// Stores the times that dependencies were marked dirty, so we can prioritize
-	// the oldest one first.
-	//
-	// Long-term, we want to process all dependencies as a build graph rather than
-	// a list of manifests. Specifically, we'll build one Target at a time.  Once
-	// the build completes, we'll look at all the targets that depend on it, and
-	// mark PendingDependencyChanges to indicate that they need a rebuild.
-	//
-	// Short-term, we only use this for cases where two manifests share a common
-	// image. This only handles cross-manifest dependencies.
-	//
-	// This approach allows us to start working on the bookkeeping and
-	// dependency-tracking in the short-term, without having to switch over to a
-	// full dependency graph in one swoop.
-	PendingDependencyChanges map[model.TargetID]time.Time
 }
 
 func newBuildStatus() *BuildStatus {
 	return &BuildStatus{
-		PendingFileChanges:       make(map[string]time.Time),
-		PendingDependencyChanges: make(map[model.TargetID]time.Time),
+		PendingFileChanges: make(map[string]time.Time),
 	}
 }
 
@@ -599,13 +541,6 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 
 	for _, status := range ms.BuildStatuses {
 		for _, t := range status.PendingFileChanges {
-			if !t.IsZero() && BeforeOrEqual(t, earliest) {
-				ok = true
-				earliest = t
-			}
-		}
-
-		for _, t := range status.PendingDependencyChanges {
 			if !t.IsZero() && BeforeOrEqual(t, earliest) {
 				ok = true
 				earliest = t
