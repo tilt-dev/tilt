@@ -279,15 +279,17 @@ func TestEntityHasImage(t *testing.T) {
 
 	img = container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
 	e := entities[0]
-	jp, err := NewJSONPath("{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
-	if err != nil {
-		t.Fatal(err)
-	}
-	imageJSONPaths := []JSONPath{jp}
-	match, err = e.HasImage(img, imageJSONPaths, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	selector, err := NewPartialMatchObjectSelector("", "", "projects.example.martin-helmich.de", "")
+	require.NoError(t, err)
+
+	jp, err := NewJSONPathImageLocator(
+		selector,
+		"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
+	require.NoError(t, err)
+
+	match, err = e.HasImage(img, []ImageLocator{jp}, false)
+	require.NoError(t, err)
+
 	assert.True(t, match, "CRD yaml should match image %s", img.String())
 
 	entities, err = ParseYAMLFromString(testyaml.SanchoImageInEnvYAML)

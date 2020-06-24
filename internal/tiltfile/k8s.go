@@ -81,11 +81,11 @@ func (r *k8sResource) addRefSelector(selector container.RefSelector) {
 }
 
 func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
-	imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath, envVarImages []container.RefSelector) error {
+	locators []k8s.ImageLocator, envVarImages []container.RefSelector) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
-		images, err := entity.FindImages(imageJSONPaths(entity), envVarImages)
+		images, err := entity.FindImages(locators, envVarImages)
 		if err != nil {
 			return err
 		}
@@ -208,14 +208,14 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	k, err := newPartialMatchK8sObjectSelector(apiVersion, kind, name, namespace)
+	k, err := k8s.NewPartialMatchObjectSelector(apiVersion, kind, name, namespace)
 	if err != nil {
 		return nil, err
 	}
 
 	var match, rest []k8s.K8sEntity
 	for _, e := range entities {
-		if k.matches(e) {
+		if k.Matches(e) {
 			match = append(match, e)
 		} else {
 			rest = append(rest, e)
@@ -303,7 +303,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s %q", fn.Name(), name)
 	}
 
-	err = r.addEntities(entities, s.imageJSONPaths, nil)
+	err = r.addEntities(entities, s.k8sImageLocatorsList(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -323,6 +323,14 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	return starlark.None, nil
+}
+
+func (s *tiltfileState) k8sImageLocatorsList() []k8s.ImageLocator {
+	locators := []k8s.ImageLocator{}
+	for _, list := range s.k8sImageLocators {
+		locators = append(locators, list...)
+	}
+	return locators
 }
 
 func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -525,15 +533,15 @@ func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
 	}
 }
 
-func starlarkValuesToJSONPaths(values []starlark.Value) ([]k8s.JSONPath, error) {
-	var paths []k8s.JSONPath
+func starlarkValuesToJSONPathImageLocators(selector k8s.ObjectSelector, values []starlark.Value) ([]k8s.ImageLocator, error) {
+	var paths []k8s.ImageLocator
 	for _, v := range values {
 		s, ok := v.(starlark.String)
 		if !ok {
 			return nil, fmt.Errorf("paths must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
 		}
 
-		jp, err := k8s.NewJSONPath(string(s))
+		jp, err := k8s.NewJSONPathImageLocator(selector, string(s))
 		if err != nil {
 			return nil, errors.Wrapf(err, "error parsing json paths '%s'", s.String())
 		}
@@ -561,19 +569,19 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, errors.New("at least one of kind, name, or namespace must be specified")
 	}
 
+	k, err := k8s.NewPartialMatchObjectSelector(apiVersion, kind, name, namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	values := starlarkValueOrSequenceToSlice(imageJSONPath)
 
-	paths, err := starlarkValuesToJSONPaths(values)
+	paths, err := starlarkValuesToJSONPathImageLocators(k, values)
 	if err != nil {
 		return nil, err
 	}
 
-	k, err := newPartialMatchK8sObjectSelector(apiVersion, kind, name, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	s.k8sImageJSONPaths[k] = paths
+	s.k8sImageLocators[k] = paths
 
 	return starlark.None, nil
 }
@@ -594,7 +602,7 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	k, err := newPartialMatchK8sObjectSelector(apiVersion, kind, "", "")
+	k, err := k8s.NewPartialMatchObjectSelector(apiVersion, kind, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -603,12 +611,12 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		s.workloadTypes = append(s.workloadTypes, k)
 	} else {
 		values := starlarkValueOrSequenceToSlice(imageJSONPath)
-		paths, err := starlarkValuesToJSONPaths(values)
+		locators, err := starlarkValuesToJSONPathImageLocators(k, values)
 		if err != nil {
 			return nil, err
 		}
 
-		s.k8sImageJSONPaths[k] = paths
+		s.k8sImageLocators[k] = locators
 	}
 
 	return starlark.None, nil
@@ -908,20 +916,6 @@ func stringToPortForward(s starlark.String) (model.PortForward, error) {
 		}
 	}
 	return model.PortForward{LocalPort: local, ContainerPort: container, Host: host}, nil
-}
-
-// returns any defined image JSON paths that apply to the given entity
-func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []k8s.JSONPath {
-	var ret []k8s.JSONPath
-
-	for k, v := range s.k8sImageJSONPaths {
-		if !k.matches(e) {
-			continue
-		}
-		ret = append(ret, v...)
-	}
-
-	return ret
 }
 
 func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
