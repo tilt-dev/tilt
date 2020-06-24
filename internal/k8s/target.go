@@ -3,7 +3,6 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -57,12 +55,17 @@ func NewTarget(
 		duplicates[name[0:len(name)-2]]++
 	}
 
-	l := logger.NewLogger(logger.WarnLvl, os.Stdout)
-	ctx = logger.WithLogger(ctx, l)
-
 	for k, v := range duplicates {
 		if v > 1 {
-			logger.Get(ctx).Warnf("WARNING: Resource %s has been duplicated", k)
+			return model.K8sTarget{
+				Name:              name,
+				YAML:              yaml,
+				PortForwards:      portForwards,
+				ExtraPodSelectors: extraPodSelectors,
+				DisplayNames:      displayNames,
+				ObjectRefs:        objectRefs,
+				NonWorkload:       nonWorkload,
+			}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), errors.New("WARNING: Resource " + k + " has been defined multiple times")
 		}
 	}
 	return model.K8sTarget{
