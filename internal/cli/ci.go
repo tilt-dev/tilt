@@ -60,6 +60,8 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
 
+	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+
 	webHost := provideWebHost()
 	webURL, _ := provideWebURL(webHost, provideWebPort())
 	startLine := prompt.StartStatusLine(webURL, webHost)
