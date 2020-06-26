@@ -229,12 +229,12 @@ func injectCommandInContainers(entity K8sEntity, selector container.RefSelector,
 }
 
 // HasImage indicates whether the given entity is tagged with the given image.
-func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPath, inEnvVars bool) (bool, error) {
+func (e K8sEntity) HasImage(image container.RefSelector, locators []ImageLocator, inEnvVars bool) (bool, error) {
 	var envVarImages []container.RefSelector
 	if inEnvVars {
 		envVarImages = []container.RefSelector{image}
 	}
-	images, err := e.FindImages(imageJSONPaths, envVarImages)
+	images, err := e.FindImages(locators, envVarImages)
 	if err != nil {
 		return false, errors.Wrap(err, "HasImage")
 	}
@@ -248,7 +248,7 @@ func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPa
 	return false, nil
 }
 
-func (e K8sEntity) FindImages(imageJSONPaths []JSONPath, envVarImages []container.RefSelector) ([]reference.Named, error) {
+func (e K8sEntity) FindImages(locators []ImageLocator, envVarImages []container.RefSelector) ([]reference.Named, error) {
 	var result []reference.Named
 
 	// Look for images in instances of Container
@@ -272,20 +272,13 @@ func (e K8sEntity) FindImages(imageJSONPaths []JSONPath, envVarImages []containe
 		obj = e.Obj
 	}
 
-	// also look for images in any json paths that were specified for this entity
-	for _, path := range imageJSONPaths {
-		images, err := path.FindStrings(obj)
+	for _, locator := range locators {
+		refs, err := locator.Extract(e)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, image := range images {
-			ref, err := container.ParseNamed(image)
-			if err != nil {
-				return nil, errors.Wrapf(err, "error parsing image '%s' at json path '%s'", image, path)
-			}
-			result = append(result, ref)
-		}
+		result = append(result, refs...)
 	}
 
 	envVars, err := extractEnvVars(&obj)
