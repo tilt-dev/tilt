@@ -458,6 +458,10 @@ var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	return a.String() == b.String()
 })
 
+var imageLocatorEqual = cmp.Comparer(func(a, b K8sImageLocator) bool {
+	return a.EqualsImageLocator(b)
+})
+
 func DeepEqual(x, y interface{}) bool {
 	return cmp.Equal(x, y,
 		cmpopts.EquateEmpty(),
@@ -469,5 +473,6 @@ func DeepEqual(x, y interface{}) bool {
 		selectorAllowUnexported,
 		refSetAllowUnexported,
 		registryAllowUnexported,
-		dockerRefEqual)
+		dockerRefEqual,
+		imageLocatorEqual)
 }

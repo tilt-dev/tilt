@@ -105,7 +105,7 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 func TestStateToViewNonWorkloadYAMLManifest(t *testing.T) {
 	es, err := k8s.ParseYAMLFromString(testyaml.SecretYaml)
 	require.NoError(t, err)
-	m, err := k8s.NewK8sOnlyManifest(model.ManifestName("foo"), es)
+	m, err := k8s.NewK8sOnlyManifest(model.ManifestName("foo"), es, nil)
 	require.NoError(t, err)
 	state := newState([]model.Manifest{m})
 	v := StateToView(*state, &sync.RWMutex{})

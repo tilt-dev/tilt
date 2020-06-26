@@ -722,9 +722,12 @@ func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {
 	crdYamlWithSanchoImage := strings.ReplaceAll(testyaml.CRDYAML, testyaml.CRDImage, testyaml.SanchoImage)
 
 	cmd := model.ToUnixCmd("./foo.sh bar")
-	manifest := NewSanchoDockerBuildManifestWithYaml(f, crdYamlWithSanchoImage)
-	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
-	manifest = manifest.WithImageTarget(iTarg)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(crdYamlWithSanchoImage).
+		WithNamedJSONPathImageLocator("projects.example.martin-helmich.de",
+			"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}").
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd)).
+		Build()
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if assert.Error(t, err) {

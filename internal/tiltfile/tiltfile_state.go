@@ -245,7 +245,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 
 	if len(unresourced) > 0 {
-		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
+		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced, s.k8sImageLocatorsList())
 		if err != nil {
 			return nil, starkit.Model{}, err
 		}
@@ -1011,8 +1011,9 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	var result []reference.Named
 	seen := make(map[string]bool)
 
+	locators := s.k8sImageLocatorsList()
 	for _, e := range s.k8sUnresourced {
-		images, err := e.FindImages(s.k8sImageLocatorsList(), s.envVarImages())
+		images, err := e.FindImages(locators, s.envVarImages())
 		if err != nil {
 			return nil, err
 		}
@@ -1073,6 +1074,7 @@ func (s *tiltfileState) decideRegistry() container.Registry {
 
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
+	locators := s.k8sImageLocatorsList()
 	registry := s.decideRegistry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
@@ -1092,7 +1094,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
-			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload)
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload, locators)
 		if err != nil {
 			return nil, err
 		}

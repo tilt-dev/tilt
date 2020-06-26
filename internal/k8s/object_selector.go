@@ -72,6 +72,24 @@ func exactOrEmptyRegex(s string) string {
 	return s
 }
 
+// Create a selector that matches the Kind. Useful for testing.
+func MustKindSelector(kind string) ObjectSelector {
+	sel, err := NewFullmatchCaseInsensitiveObjectSelector("", kind, "", "")
+	if err != nil {
+		panic(err)
+	}
+	return sel
+}
+
+// Create a selector that matches the Name. Useful for testing.
+func MustNameSelector(name string) ObjectSelector {
+	sel, err := NewFullmatchCaseInsensitiveObjectSelector("", "", name, "")
+	if err != nil {
+		panic(err)
+	}
+	return sel
+}
+
 // Creates a new ObjectSelector
 // If an arg is an empty string, it will become an empty regex that matches all input
 // Otherwise the arg will match input from the beginning (prefix matching)
