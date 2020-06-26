@@ -231,7 +231,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
@@ -278,7 +278,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
@@ -314,7 +314,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
@@ -349,7 +349,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestK8sUpsertTimeout(t *testing.T) {
