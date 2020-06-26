@@ -227,6 +227,35 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 	removeFromTriggerQueue(state, mn)
 }
 
+// When a Manifest build finishes, update the BuildStatus for all applicable
+// targets in the engine state.
+func handleBuildResults(engineState *store.EngineState,
+	mt *store.ManifestTarget, br model.BuildRecord, results store.BuildResultSet) {
+	isBuildSuccess := br.Error == nil
+
+	ms := mt.State
+	for id, result := range results {
+		ms.MutableBuildStatus(id).LastResult = result
+	}
+
+	// Remove pending file changes that were consumed by this build.
+	for _, status := range ms.BuildStatuses {
+		for file, modTime := range status.PendingFileChanges {
+			if store.BeforeOrEqual(modTime, br.StartTime) {
+				delete(status.PendingFileChanges, file)
+			}
+		}
+	}
+
+	if isBuildSuccess {
+		ms.LastSuccessfulDeployTime = br.FinishTime
+
+		for id, result := range results {
+			ms.MutableBuildStatus(id).LastSuccessfulResult = result
+		}
+	}
+}
+
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) {
 	defer func() {
 		delete(engineState.CurrentlyBuilding, cb.ManifestName)
@@ -259,18 +288,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	ms.CurrentBuild = model.BuildRecord{}
 	ms.NeedsRebuildFromCrash = false
 
-	for id, result := range cb.Result {
-		ms.MutableBuildStatus(id).LastResult = result
-	}
-
-	// Remove pending file changes that were consumed by this build.
-	for _, status := range ms.BuildStatuses {
-		for file, modTime := range status.PendingFileChanges {
-			if store.BeforeOrEqual(modTime, bs.StartTime) {
-				delete(status.PendingFileChanges, file)
-			}
-		}
-	}
+	handleBuildResults(engineState, mt, bs, cb.Result)
 
 	if !ms.PendingManifestChange.IsZero() &&
 		store.BeforeOrEqual(ms.PendingManifestChange, bs.StartTime) {
@@ -283,12 +301,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			return
 		}
 	} else {
-		ms.LastSuccessfulDeployTime = cb.FinishTime
-
-		for id, result := range cb.Result {
-			ms.MutableBuildStatus(id).LastSuccessfulResult = result
-		}
-
 		for _, pod := range ms.K8sRuntimeState().Pods {
 			// Reset the baseline, so that we don't show restarts
 			// from before any live-updates

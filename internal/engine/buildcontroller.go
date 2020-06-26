@@ -172,7 +172,12 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 		}
 		sort.Strings(filesChanged)
 
-		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged)
+		var depsChanged []model.TargetID
+		for dep := range status.PendingDependencyChanges {
+			depsChanged = append(depsChanged, dep)
+		}
+
+		buildState := store.NewBuildState(status.LastSuccessfulResult, filesChanged, depsChanged)
 
 		// Pass along the container when we can update containers in-place.
 		//

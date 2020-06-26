@@ -92,6 +92,9 @@ func RemoveTargetsWithBuildingComponents(mts []*store.ManifestTarget) []*store.M
 	for _, mt := range mts {
 		if mt.State.IsBuilding() {
 			building[mt.Manifest.ID()] = true
+
+			// TODO(nick): This logic isn't quite right.  A manifest can re-use image
+			// results from another manifest's build.
 			for _, spec := range mt.Manifest.TargetSpecs() {
 				building[spec.ID()] = true
 			}
@@ -219,8 +222,9 @@ func IsBuildingLocalTarget(state store.EngineState) bool {
 }
 
 // Go through all the manifests, and check:
-// 1) all pending file changes, and
-// 2) all pending manifest changes
+// 1) all pending file changes
+// 2) all pending dependency changes (where an image has been rebuilt by another manifest), and
+// 3) all pending manifest changes
 // The earliest one is the one we want.
 //
 // If no targets are pending, return nil

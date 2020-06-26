@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
@@ -141,4 +142,22 @@ func TestRelativeTiltfilePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "Tiltfile", actual)
+}
+
+func TestNextBuildReason(t *testing.T) {
+	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
+	assert.NoError(t, err)
+
+	kTarget := m.K8sTarget()
+	mt := NewManifestTarget(m)
+
+	iTargetID := model.ImageID(container.MustParseSelector("sancho"))
+	status := mt.State.MutableBuildStatus(kTarget.ID())
+	status.PendingDependencyChanges[iTargetID] = time.Now()
+	assert.Equal(t, "Initial Build | Dependency Updated",
+		mt.NextBuildReason().String())
+
+	status.PendingFileChanges["a.txt"] = time.Now()
+	assert.Equal(t, "Initial Build | Changed Files | Dependency Updated",
+		mt.NextBuildReason().String())
 }

@@ -171,7 +171,7 @@ func TestImageIsClean(t *testing.T) {
 	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
 
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, []string{}),
+		iTargetID1: store.NewBuildState(result1, []string{}, nil),
 	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -195,7 +195,7 @@ func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 		[]container.ID{container.ID("12345")})
 
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, []string{}),
+		iTargetID1: store.NewBuildState(result1, []string{}, nil),
 	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -294,8 +294,8 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	newFile := f.WriteFile("sancho-base/message.txt", "message")
 
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, []string{newFile}),
-		iTargetID2: store.NewBuildState(result2, nil),
+		iTargetID1: store.NewBuildState(result1, []string{newFile}, nil),
+		iTargetID2: store.NewBuildState(result2, nil, nil),
 	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -330,8 +330,8 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 	newFile := f.WriteFile("sancho/message.txt", "message")
 
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, nil),
-		iTargetID2: store.NewBuildState(result2, []string{newFile}),
+		iTargetID1: store.NewBuildState(result1, nil, nil),
+		iTargetID2: store.NewBuildState(result2, []string{newFile}, nil),
 	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -954,7 +954,7 @@ func (f *ibdFixture) TearDown() {
 func (f *ibdFixture) resultsToNextState(results store.BuildResultSet) store.BuildStateSet {
 	stateSet := store.BuildStateSet{}
 	for id, result := range results {
-		stateSet[id] = store.NewBuildState(result, nil)
+		stateSet[id] = store.NewBuildState(result, nil, nil)
 	}
 	return stateSet
 }
