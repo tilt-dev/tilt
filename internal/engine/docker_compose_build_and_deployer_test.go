@@ -132,7 +132,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
 }
 
 func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
@@ -164,7 +164,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
 }
 
 type dcbdFixture struct {

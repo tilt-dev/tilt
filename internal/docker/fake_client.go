@@ -5,10 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"sort"
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -87,6 +89,7 @@ type FakeClient struct {
 
 	BuildCount        int
 	BuildOptions      BuildOptions
+	BuildContext      *bytes.Buffer
 	BuildOutput       string
 	BuildErrorToThrow error // next call to Build will throw this err (after which we clear the error)
 
@@ -227,8 +230,15 @@ func (c *FakeClient) ImageBuild(ctx context.Context, buildContext io.Reader, opt
 	c.BuildCount++
 	c.BuildOptions = options
 
+	data, err := ioutil.ReadAll(buildContext)
+	if err != nil {
+		return types.ImageBuildResponse{}, errors.Wrap(err, "ImageBuild")
+	}
+
+	c.BuildContext = bytes.NewBuffer(data)
+
 	// If we're supposed to throw an error on this call, throw it (and reset ErrorToThrow)
-	err := c.BuildErrorToThrow
+	err = c.BuildErrorToThrow
 	if err != nil {
 		c.BuildErrorToThrow = nil
 		return types.ImageBuildResponse{}, err
