@@ -841,7 +841,7 @@ func TestTwoManifestsWithCommonImagePrebuilt(t *testing.T) {
 		container.MustParseNamedTagged("gcr.io/common:tilt-prebuilt"))
 
 	stateSet := store.BuildStateSet{}
-	stateSet[iTarget1.ID()] = store.NewBuildState(prebuilt1, nil)
+	stateSet[iTarget1.ID()] = store.NewBuildState(prebuilt1, nil, nil)
 
 	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m1), stateSet)
 	require.NoError(t, err)
