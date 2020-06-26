@@ -14,7 +14,19 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-// The results of a successful build.
+// The results of a build.
+//
+// If a build is successful, the builder should always return a BuildResult to
+// indicate the output artifacts of the build (e.g., any new images).
+//
+// If a build is not successful, things get messier. Certain types of failure
+// may still return a result (e.g., a failed live update might return
+// the container IDs where the error happened).
+//
+// Long-term, we want this interface to be more like Bazel's SpawnResult
+// https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/build/lib/actions/SpawnResult.java#L36
+// where a builder always returns a Result, but with a code for each
+// of the different failure types.
 type BuildResult interface {
 	TargetID() model.TargetID
 	BuildType() model.BuildType
@@ -268,8 +280,8 @@ func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
 // This data structure should be considered immutable.
 // All methods that return a new BuildState should first clone the existing build state.
 type BuildState struct {
-	// The last successful build.
-	LastSuccessfulResult BuildResult
+	// The last result.
+	LastResult BuildResult
 
 	// Files changed since the last result was build.
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
@@ -310,9 +322,9 @@ func NewBuildState(result BuildResult, files []string, pendingDeps []model.Targe
 		depsSet[d] = true
 	}
 	return BuildState{
-		LastSuccessfulResult: result,
-		FilesChangedSet:      set,
-		DepsChangedSet:       depsSet,
+		LastResult:      result,
+		FilesChangedSet: set,
+		DepsChangedSet:  depsSet,
 	}
 }
 
@@ -340,7 +352,7 @@ func (b BuildState) OneContainerInfo() ContainerInfo {
 	return b.RunningContainers[0]
 }
 func (b BuildState) LastLocalImageAsString() string {
-	img := LocalImageRefFromBuildResult(b.LastSuccessfulResult)
+	img := LocalImageRefFromBuildResult(b.LastResult)
 	if img == nil {
 		return ""
 	}
@@ -361,19 +373,19 @@ func (b BuildState) FilesChanged() []string {
 
 // A build state is empty if there are no previous results.
 func (b BuildState) IsEmpty() bool {
-	return b.LastSuccessfulResult == nil
+	return b.LastResult == nil
 }
 
-func (b BuildState) HasLastSuccessfulResult() bool {
-	return b.LastSuccessfulResult != nil
+func (b BuildState) HasLastResult() bool {
+	return b.LastResult != nil
 }
 
 // Whether the image represented by this state needs to be built.
 // If the image has already been built, and no files have been
 // changed since then, then we can re-use the previous result.
 func (b BuildState) NeedsImageBuild() bool {
-	lastBuildWasImgBuild := b.LastSuccessfulResult != nil &&
-		b.LastSuccessfulResult.BuildType() == model.BuildTypeImage
+	lastBuildWasImgBuild := b.LastResult != nil &&
+		b.LastResult.BuildType() == model.BuildTypeImage
 	return !lastBuildWasImgBuild ||
 		len(b.FilesChangedSet) > 0 ||
 		len(b.DepsChangedSet) > 0 ||

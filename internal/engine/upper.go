@@ -249,10 +249,6 @@ func handleBuildResults(engineState *store.EngineState,
 
 	if isBuildSuccess {
 		ms.LastSuccessfulDeployTime = br.FinishTime
-
-		for id, result := range results {
-			ms.MutableBuildStatus(id).LastSuccessfulResult = result
-		}
 	}
 }
 

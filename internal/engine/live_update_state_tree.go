@@ -19,7 +19,7 @@ type liveUpdateStateTree struct {
 func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	iTargetID := t.iTarget.ID()
 	state := t.iTargetState
-	res := state.LastSuccessfulResult
+	res := state.LastResult
 
 	liveUpdatedContainerIDs := []container.ID{}
 	for _, c := range state.RunningContainers {

@@ -461,8 +461,7 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	expectedErr := fmt.Errorf("i can't let you do that dave")
-	f.b.nextBuildFailure = expectedErr
-	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
+	f.SetNextLiveUpdateCompileError(expectedErr, []container.ID{"c1", "c2"})
 
 	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerIDAtIndex("c1", 0).
@@ -586,7 +585,7 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 
 	f.nextCallComplete()
 
-	f.b.nextBuildFailure = errors.New("build failure!")
+	f.b.nextBuildError = errors.New("build failure!")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 	f.nextCallComplete()
 
@@ -962,14 +961,14 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 		WithResourceDeps("foo").
 		Build()
 	manifests := []model.Manifest{foo, bar}
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.Start(manifests)
 
 	call := f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	call = f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
@@ -996,7 +995,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 		Build()
 
 	manifests := []model.Manifest{bar, foo}
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.Start(manifests)
 
 	// trigger a change for bar so that it would try to build if not for its resource dep
@@ -1005,7 +1004,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 	call := f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
 	call = f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
@@ -1235,9 +1234,9 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f.completeAndCheckBuildsForManifests(manA, manB, manC)
 
 	// start builds for all manifests (we only have 2 build slots)
-	f.SetNextBuildFailure(errA)
+	f.SetNextBuildError(errA)
 	f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
-	f.SetNextBuildFailure(errB)
+	f.SetNextBuildError(errB)
 	f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
 	f.editFileAndAssertManifestNotBuilding("manC", "c/main.go")
 
