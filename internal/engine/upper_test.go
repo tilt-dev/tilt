@@ -3463,6 +3463,38 @@ update_settings(max_parallel_updates=123)
 	})
 }
 
+// https://github.com/tilt-dev/tilt/issues/3514
+func TestTiltignoreRespectedOnError(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `local("echo hi > a.txt")
+read_file('a.txt')
+fail('x')`)
+	f.WriteFile(".tiltignore", "a.txt")
+
+	f.Init(InitAction{
+		EngineMode:   store.EngineModeUp,
+		TiltfilePath: f.JoinPath("Tiltfile"),
+		TerminalMode: store.TerminalModeHUD,
+		StartTime:    f.Now(),
+	})
+
+	f.WaitUntil(".tiltignore processed", func(es store.EngineState) bool {
+		return strings.Contains(es.TiltIgnoreContents, "a.txt")
+	})
+
+	f.WriteFile(".tiltignore", "a.txt\nb.txt\n")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+
+	f.WaitUntil(".tiltignore processed", func(es store.EngineState) bool {
+		return strings.Contains(es.TiltIgnoreContents, "b.txt")
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
