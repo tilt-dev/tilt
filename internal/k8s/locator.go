@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/docker/distribution/reference"
@@ -68,16 +69,8 @@ func (l *JSONPathImageLocator) EqualsImageLocator(other interface{}) bool {
 		return false
 	}
 
-	if l.path.path != otherL.path.path {
-		return false
-	}
-
-	o1 := l.selector
-	o2 := otherL.selector
-	return o1.name == o2.name &&
-		o1.namespace == o2.namespace &&
-		o1.kind == o2.kind &&
-		o1.apiVersion == o2.apiVersion
+	return l.path.path == otherL.path.path &&
+		l.selector.EqualsSelector(otherL.selector)
 }
 
 func (l *JSONPathImageLocator) MatchesType(e K8sEntity) bool {
@@ -138,3 +131,125 @@ func (l *JSONPathImageLocator) Inject(e K8sEntity, selector container.RefSelecto
 }
 
 var _ ImageLocator = &JSONPathImageLocator{}
+
+type JSONPathImageObjectLocator struct {
+	selector  ObjectSelector
+	path      JSONPath
+	repoField string
+	tagField  string
+}
+
+func MustJSONPathImageObjectLocator(selector ObjectSelector, path, repoField, tagField string) *JSONPathImageObjectLocator {
+	locator, err := NewJSONPathImageObjectLocator(selector, path, repoField, tagField)
+	if err != nil {
+		panic(err)
+	}
+	return locator
+}
+
+func NewJSONPathImageObjectLocator(selector ObjectSelector, path, repoField, tagField string) (*JSONPathImageObjectLocator, error) {
+	p, err := NewJSONPath(path)
+	if err != nil {
+		return nil, err
+	}
+	return &JSONPathImageObjectLocator{
+		selector:  selector,
+		path:      p,
+		repoField: repoField,
+		tagField:  tagField,
+	}, nil
+}
+
+func (l *JSONPathImageObjectLocator) EqualsImageLocator(other interface{}) bool {
+	otherL, ok := other.(*JSONPathImageObjectLocator)
+	if !ok {
+		return false
+	}
+	return l.path.path == otherL.path.path &&
+		l.repoField == otherL.repoField &&
+		l.tagField == otherL.tagField &&
+		l.selector.EqualsSelector(otherL.selector)
+}
+
+func (l *JSONPathImageObjectLocator) MatchesType(e K8sEntity) bool {
+	return l.selector.Matches(e)
+}
+
+func (l *JSONPathImageObjectLocator) unpack(e K8sEntity) interface{} {
+	if u, ok := e.Obj.(runtime.Unstructured); ok {
+		return u.UnstructuredContent()
+	}
+	return e.Obj
+}
+
+func (l *JSONPathImageObjectLocator) extractImageFromMap(val jsonpath.Value) (reference.Named, error) {
+	m, ok := val.Interface().(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("May only match maps (json_path=%q)\nGot Type: %s\nGot Value: %s",
+			l.path.path, val.Type(), val)
+	}
+
+	repoField, ok := m[l.repoField].(string)
+	imageString := ""
+	if ok {
+		imageString = repoField
+	}
+
+	tagField, ok := m[l.tagField].(string)
+	if ok && tagField != "" {
+		imageString = fmt.Sprintf("%s:%s", repoField, tagField)
+	}
+
+	return container.ParseNamed(imageString)
+}
+
+func (l *JSONPathImageObjectLocator) Extract(e K8sEntity) ([]reference.Named, error) {
+	if !l.selector.Matches(e) {
+		return nil, nil
+	}
+
+	result := make([]reference.Named, 0)
+	err := l.path.Visit(l.unpack(e), func(val jsonpath.Value) error {
+		ref, err := l.extractImageFromMap(val)
+		if err != nil {
+			return err
+		}
+		result = append(result, ref)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (l *JSONPathImageObjectLocator) Inject(e K8sEntity, selector container.RefSelector, injectRef reference.Named) (K8sEntity, bool, error) {
+	if !l.selector.Matches(e) {
+		return e, false, nil
+	}
+
+	tagged, isTagged := injectRef.(reference.Tagged)
+
+	modified := false
+	err := l.path.Visit(l.unpack(e), func(val jsonpath.Value) error {
+		ref, err := l.extractImageFromMap(val)
+		if err != nil {
+			return err
+		}
+		if selector.Matches(ref) {
+			m := val.Interface().(map[string]interface{})
+			m[l.repoField] = reference.FamiliarName(injectRef)
+			if isTagged {
+				m[l.tagField] = tagged.Tag()
+			}
+			modified = true
+		}
+		return nil
+	})
+	if err != nil {
+		return e, false, err
+	}
+	return e, modified, nil
+}
+
+var _ ImageLocator = &JSONPathImageObjectLocator{}

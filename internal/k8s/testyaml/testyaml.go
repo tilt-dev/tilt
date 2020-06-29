@@ -1424,6 +1424,15 @@ spec:
 
 const CRDImage = "docker.io/bitnami/minideb:latest"
 
+const CRDImageObjectYAML = `apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: um
+spec:
+  imageObject:
+    repo: frontend
+`
+
 const MyNamespaceYAML = `apiVersion: v1
 kind: Namespace
 metadata:
