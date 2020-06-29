@@ -1960,7 +1960,7 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			ms, ok := st.ManifestState(model.ManifestName(mName))
 			require.True(t, ok, "couldn't find manifest state for %s", mName)
 
-			runtime := ms.GetOrCreateK8sRuntimeState()
+			runtime := ms.K8sRuntimeState()
 			runtime.Pods = make(map[k8s.PodID]*store.Pod)
 			if test.ancestorSeen {
 				runtime.PodAncestorUID = ancestorUID
@@ -4168,7 +4168,7 @@ func (f *testFixture) registerDeployedPodTemplateSpecHashToManifest(name model.M
 	st := f.store.LockMutableStateForTesting()
 	ms, ok := st.ManifestState(name)
 	require.True(f.T(), ok, "no manifest found on state matching name %q", name)
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	runtime.DeployedPodTemplateSpecHashSet.Add(ptsh)
 	ms.RuntimeState = runtime
 	f.store.UnlockMutableState()

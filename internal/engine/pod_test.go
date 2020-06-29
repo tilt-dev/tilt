@@ -24,7 +24,7 @@ func TestPodDeleteAction(t *testing.T) {
 	m, _ := f.state.Manifest("sancho")
 	hash := k8s.PodTemplateSpecHash("ptsh")
 	pod := podbuilder.New(f.T(), m).WithTemplateSpecHash(hash).Build()
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	runtime.DeployedPodTemplateSpecHashSet.Add(hash)
 
 	assert.Equal(t, 0, len(ms.K8sRuntimeState().Pods))

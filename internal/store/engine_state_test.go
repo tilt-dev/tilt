@@ -73,7 +73,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 		res.Endpoints)
 }
 
-func TestRuntimeStateUnresourced(t *testing.T) {
+func TestRuntimeStateNonWorkload(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
 
@@ -82,7 +82,7 @@ func TestRuntimeStateUnresourced(t *testing.T) {
 		Build()
 	state := newState([]model.Manifest{m})
 	assert.Equal(t, model.RuntimeStatusOK,
-		state.ManifestTargets[m.Name].State.GetOrCreateK8sRuntimeState().RuntimeStatus())
+		state.ManifestTargets[m.Name].State.K8sRuntimeState().RuntimeStatus())
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
@@ -125,7 +125,8 @@ func TestMostRecentPod(t *testing.T) {
 	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
 	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
 	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
-	podSet := NewK8sRuntimeState("fe", podA, podB, podC)
+	m := model.Manifest{Name: "fe"}
+	podSet := NewK8sRuntimeState(m, podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 

@@ -401,7 +401,7 @@ func (f *pwFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 	if !ok {
 		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
-	runtimeState := mState.GetOrCreateK8sRuntimeState()
+	runtimeState := mState.K8sRuntimeState()
 	runtimeState.DeployedUIDSet[uid] = true
 }
 

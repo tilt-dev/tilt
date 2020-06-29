@@ -16,7 +16,7 @@ type ManifestTarget struct {
 func NewManifestTarget(m model.Manifest) *ManifestTarget {
 	return &ManifestTarget{
 		Manifest: m,
-		State:    newManifestState(m.Name),
+		State:    newManifestState(m),
 	}
 }
 

@@ -326,14 +326,14 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if manifest.IsK8s() {
 		deployedUIDSet := cb.Result.DeployedUIDSet()
 		if len(deployedUIDSet) > 0 {
-			state := ms.GetOrCreateK8sRuntimeState()
+			state := ms.K8sRuntimeState()
 			state.DeployedUIDSet = deployedUIDSet
 			ms.RuntimeState = state
 		}
 
 		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
 		if len(deployedPodTemplateSpecHashSet) > 0 {
-			state := ms.GetOrCreateK8sRuntimeState()
+			state := ms.K8sRuntimeState()
 			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
 			ms.RuntimeState = state
 		}
@@ -600,7 +600,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8
 		return
 	}
 
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	runtime.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
@@ -664,7 +664,7 @@ func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState,
 		logger.Get(ctx).Infof("got runtime status information for unknown local resource %s", action.ManifestName)
 	}
 
-	lrs := ms.GetOrCreateLocalRuntimeState()
+	lrs := ms.LocalRuntimeState()
 	lrs.Status = action.Status
 	lrs.PID = action.PID
 	lrs.SpanID = action.SpanID
