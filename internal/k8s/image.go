@@ -36,7 +36,7 @@ func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, e
 //   to ensure that k8s fails hard if the image is missing from docker.
 //
 // Returns: the new entity, whether the image was replaced, and an error.
-func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, matchInEnvVars bool, policy v1.PullPolicy) (K8sEntity, bool, error) {
+func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, locators []ImageLocator, matchInEnvVars bool, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	entity = entity.DeepCopy()
 
 	// NOTE(nick): For some reason, if you have a reference with a digest,
@@ -74,12 +74,14 @@ func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectR
 		}
 	}
 
-	entity, r, err = injectImageDigestInUnstructured(entity, selector, injectRef)
-	if err != nil {
-		return K8sEntity{}, false, err
-	}
-	if r {
-		replaced = true
+	for _, locator := range locators {
+		entity, r, err = locator.Inject(entity, selector, injectRef)
+		if err != nil {
+			return K8sEntity{}, false, err
+		}
+		if r {
+			replaced = true
+		}
 	}
 
 	return entity, replaced, nil
@@ -127,54 +129,6 @@ func injectImageDigestInEnvVars(entity K8sEntity, selector container.RefSelector
 		}
 	}
 
-	return entity, replaced, nil
-}
-
-func injectImageInUnstructuredInterface(ui interface{}, selector container.RefSelector, injectRef reference.Named) (interface{}, bool) {
-	switch x := ui.(type) {
-	case map[string]interface{}:
-		replaced := false
-		for k, v := range x {
-			newV, r := injectImageInUnstructuredInterface(v, selector, injectRef)
-			x[k] = newV
-			if r {
-				replaced = true
-			}
-		}
-		return x, replaced
-	case []interface{}:
-		replaced := false
-		for i, v := range x {
-			newV, r := injectImageInUnstructuredInterface(v, selector, injectRef)
-			x[i] = newV
-			if r {
-				replaced = true
-			}
-		}
-		return x, replaced
-	case string:
-		ref, err := container.ParseNamed(x)
-		if err == nil && selector.Matches(ref) {
-			return container.FamiliarString(injectRef), true
-		} else {
-			return x, false
-		}
-	default:
-		return ui, false
-	}
-}
-
-func injectImageDigestInUnstructured(entity K8sEntity, selector container.RefSelector, injectRef reference.Named) (K8sEntity, bool, error) {
-	u, ok := entity.Obj.(runtime.Unstructured)
-	if !ok {
-		return entity, false, nil
-	}
-
-	n, replaced := injectImageInUnstructuredInterface(u.UnstructuredContent(), selector, injectRef)
-
-	u.SetUnstructuredContent(n.(map[string]interface{}))
-
-	entity.Obj = u
 	return entity, replaced, nil
 }
 

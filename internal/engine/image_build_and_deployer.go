@@ -332,6 +332,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		return nil, err
 	}
 
+	locators := k8s.ToImageLocators(k8sTarget.ImageLocators)
 	depIDs := k8sTarget.DependencyIDs()
 	injectedDepIDs := map[model.TargetID]bool{}
 	for _, e := range entities {
@@ -377,7 +378,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			matchInEnvVars := iTarget.MatchInEnvVars
 
 			var replaced bool
-			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, matchInEnvVars, policy)
+			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, locators, matchInEnvVars, policy)
 			if err != nil {
 				return nil, err
 			}

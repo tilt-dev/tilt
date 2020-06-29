@@ -23,14 +23,15 @@ type ManifestBuilder struct {
 	f    Fixture
 	name model.ManifestName
 
-	k8sYAML         string
-	k8sPodSelectors []labels.Selector
-	dcConfigPaths   []string
-	localCmd        string
-	localServeCmd   string
-	localDeps       []string
-	resourceDeps    []string
-	triggerMode     model.TriggerMode
+	k8sYAML          string
+	k8sPodSelectors  []labels.Selector
+	k8sImageLocators []k8s.ImageLocator
+	dcConfigPaths    []string
+	localCmd         string
+	localServeCmd    string
+	localDeps        []string
+	resourceDeps     []string
+	triggerMode      model.TriggerMode
 
 	iTargets []model.ImageTarget
 }
@@ -40,6 +41,13 @@ func New(f Fixture, name model.ManifestName) ManifestBuilder {
 		f:    f,
 		name: name,
 	}
+}
+
+func (b ManifestBuilder) WithNamedJSONPathImageLocator(name, path string) ManifestBuilder {
+	selector := k8s.MustNameSelector(name)
+	jp := k8s.MustJSONPathImageLocator(selector, path)
+	b.k8sImageLocators = append(b.k8sImageLocators, jp)
+	return b
 }
 
 func (b ManifestBuilder) WithK8sYAML(yaml string) ManifestBuilder {
@@ -122,6 +130,9 @@ func (b ManifestBuilder) Build() model.Manifest {
 	if b.k8sYAML != "" {
 		k8sTarget := k8s.MustTarget(model.TargetName(b.name), b.k8sYAML)
 		k8sTarget.ExtraPodSelectors = b.k8sPodSelectors
+		for _, locator := range b.k8sImageLocators {
+			k8sTarget.ImageLocators = append(k8sTarget.ImageLocators, locator)
+		}
 		m = assembleK8s(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			k8sTarget,

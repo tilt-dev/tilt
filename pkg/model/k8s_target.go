@@ -9,6 +9,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+type K8sImageLocator interface {
+	EqualsImageLocator(other interface{}) bool
+}
+
 type K8sTarget struct {
 	Name         TargetName
 	YAML         string
@@ -27,6 +31,13 @@ type K8sTarget struct {
 	// NonWorkload indicates whether or not a given K8sTarget was
 	// determined to have workloads at assembly time during Tiltfile execution
 	NonWorkload bool
+
+	// Implementations of k8s.ImageLocator
+	//
+	// NOTE(nick): Untangling the circular dependency between k8s and pkg/model is
+	// a longer project. The k8s package needs to be split up a bit between the
+	// API objects and the client objects.
+	ImageLocators []K8sImageLocator
 
 	dependencyIDs []TargetID
 
