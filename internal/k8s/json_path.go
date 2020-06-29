@@ -45,29 +45,36 @@ func (jp JSONPath) FindStrings(obj interface{}) ([]string, error) {
 //
 // Returns an error if the object at the specified path isn't a string.
 func (jp JSONPath) VisitStrings(obj interface{}, visit func(val jsonpath.Value, str string) error) error {
+	return jp.Visit(obj, func(match jsonpath.Value) error {
+		val := match.Interface()
+		str, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("May only match strings (json_path=%q)\nGot Type: %T\nGot Value: %s",
+				jp.path, val, val)
+		}
+
+		return visit(match, str)
+	})
+}
+
+// Visit all the values from the given object on this path.
+func (jp JSONPath) Visit(obj interface{}, visit func(val jsonpath.Value) error) error {
 	// JSONPath is stateful and not thread-safe, so we need to parse a new one
 	// each time
 	matcher := jsonpath.New("jp")
 	err := matcher.Parse(jp.path)
 	if err != nil {
-		return fmt.Errorf("Matching strings (json_path=%q): %v", jp.path, err)
+		return fmt.Errorf("Matching (json_path=%q): %v", jp.path, err)
 	}
 
 	matches, err := matcher.FindResults(obj)
 	if err != nil {
-		return fmt.Errorf("Matching strings (json_path=%q): %v", jp.path, err)
+		return fmt.Errorf("Matching (json_path=%q): %v", jp.path, err)
 	}
 
 	for _, matchSet := range matches {
 		for _, match := range matchSet {
-			val := match.Interface()
-			str, ok := val.(string)
-			if !ok {
-				return fmt.Errorf("May only match strings (json_path=%q)\nGot Type: %T\nGot Value: %s",
-					jp.path, val, val)
-			}
-
-			err := visit(match, str)
+			err := visit(match)
 			if err != nil {
 				return err
 			}

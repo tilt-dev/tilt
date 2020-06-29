@@ -120,6 +120,13 @@ func NewPartialMatchObjectSelector(apiVersion string, kind string, name string, 
 	return ret, nil
 }
 
+func (o1 ObjectSelector) EqualsSelector(o2 ObjectSelector) bool {
+	return o1.name == o2.name &&
+		o1.namespace == o2.namespace &&
+		o1.kind == o2.kind &&
+		o1.apiVersion == o2.apiVersion
+}
+
 func (k ObjectSelector) Matches(e K8sEntity) bool {
 	gvk := e.GVK()
 	return k.apiVersion.MatchString(gvk.GroupVersion().String()) &&

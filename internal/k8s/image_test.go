@@ -271,13 +271,15 @@ func TestEntityHasImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.False(t, match, "deployment yaml should not match image %s", img.String())
+}
 
-	entities, err = ParseYAMLFromString(testyaml.CRDYAML)
+func TestCRDExtract(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.CRDYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	img = container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
+	img := container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
 	e := entities[0]
 	selector, err := NewPartialMatchObjectSelector("", "", "projects.example.martin-helmich.de", "")
 	require.NoError(t, err)
@@ -287,18 +289,20 @@ func TestEntityHasImage(t *testing.T) {
 		"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
 	require.NoError(t, err)
 
-	match, err = e.HasImage(img, []ImageLocator{jp}, false)
+	match, err := e.HasImage(img, []ImageLocator{jp}, false)
 	require.NoError(t, err)
 
 	assert.True(t, match, "CRD yaml should match image %s", img.String())
+}
 
-	entities, err = ParseYAMLFromString(testyaml.SanchoImageInEnvYAML)
+func TestEnvExtract(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.SanchoImageInEnvYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	img = container.MustParseSelector("gcr.io/some-project-162817/sancho")
-	e = entities[0]
-	match, err = e.HasImage(img, nil, false)
+	img := container.MustParseSelector("gcr.io/some-project-162817/sancho")
+	e := entities[0]
+	match, err := e.HasImage(img, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
