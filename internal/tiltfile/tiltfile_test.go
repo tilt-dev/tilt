@@ -2146,6 +2146,29 @@ custom_build(
 	assert.True(t, m.ImageTargets[0].CustomBuildInfo().SkipsPush())
 }
 
+func TestImageObjectJSONPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("um.yaml", `apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: um
+spec:
+  image:
+    repo: tilt.dev/frontend`)
+	f.dockerfile("Dockerfile")
+	f.file("Tiltfile", `
+k8s_yaml('um.yaml')
+k8s_kind(kind='UselessMachine', image_object={'json_path': '{.spec.image}', 'repo_field': 'repo', 'tag_field': 'tag'})
+docker_build('tilt.dev/frontend', '.')
+`)
+
+	f.load()
+	m := f.assertNextManifest("um")
+	assert.Equal(t, "tilt.dev/frontend",
+		m.ImageTargets[0].Refs.LocalRef().String())
+}
+
 func TestExtraImageLocationOneImage(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2511,14 +2534,14 @@ func TestExtraImageLocationNotListOrString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', paths=8)`)
-	f.loadErrString("paths must be a string or list of strings", "Int")
+	f.loadErrString("for parameter \"paths\": Expected string, got: 8")
 }
 
 func TestExtraImageLocationListContainsNonString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', paths=["foo", 8])`)
-	f.loadErrString("paths must be a string or list of strings", "8", "Int")
+	f.loadErrString("for parameter \"paths\": Expected string, got: 8")
 }
 
 func TestExtraImageLocationNoSelectorSpecified(t *testing.T) {
