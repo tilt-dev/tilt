@@ -111,7 +111,7 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 	}
 
 	ms := mt.State
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 
 	// If the event has an ancestor UID attached, but that ancestor isn't in the
 	// deployed UID set anymore, we can ignore it.
@@ -129,7 +129,7 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.Pod, bool) {
 	pod := action.Pod
 	podID := k8s.PodIDFromPod(pod)
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	isCurrentDeploy := runtime.HasOKPodTemplateSpecHash(pod) // is pod from the most recent Tilt deploy?
 
 	// Only attach a new pod to the runtime state if it's from the current deploy;
@@ -278,7 +278,7 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 // that they don't clutter the output.
 func prunePods(ms *store.ManifestState) {
 	// Always remove pods that were manually deleted.
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	for key, pod := range runtime.Pods {
 		if pod.Deleting {
 			delete(runtime.Pods, key)

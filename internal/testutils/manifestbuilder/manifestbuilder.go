@@ -23,6 +23,7 @@ type ManifestBuilder struct {
 	f    Fixture
 	name model.ManifestName
 
+	k8sNonWorkload   bool
 	k8sYAML          string
 	k8sPodSelectors  []labels.Selector
 	k8sImageLocators []k8s.ImageLocator
@@ -38,8 +39,9 @@ type ManifestBuilder struct {
 
 func New(f Fixture, name model.ManifestName) ManifestBuilder {
 	return ManifestBuilder{
-		f:    f,
-		name: name,
+		f:              f,
+		name:           name,
+		k8sNonWorkload: name == model.UnresourcedYAMLManifestName,
 	}
 }
 
@@ -47,6 +49,13 @@ func (b ManifestBuilder) WithNamedJSONPathImageLocator(name, path string) Manife
 	selector := k8s.MustNameSelector(name)
 	jp := k8s.MustJSONPathImageLocator(selector, path)
 	b.k8sImageLocators = append(b.k8sImageLocators, jp)
+	return b
+}
+
+// TODO(nick): A better solution would be to identify whether this
+// is a workload based on the YAML.
+func (b ManifestBuilder) WithK8sNonWorkload() ManifestBuilder {
+	b.k8sNonWorkload = true
 	return b
 }
 
@@ -133,6 +142,8 @@ func (b ManifestBuilder) Build() model.Manifest {
 		for _, locator := range b.k8sImageLocators {
 			k8sTarget.ImageLocators = append(k8sTarget.ImageLocators, locator)
 		}
+		k8sTarget.NonWorkload = b.k8sNonWorkload
+
 		m = assembleK8s(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			k8sTarget,

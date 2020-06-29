@@ -74,18 +74,14 @@ type K8sRuntimeState struct {
 
 	LastReadyOrSucceededTime time.Time
 
-	// NOTE(nick): This is a dumb hack to handle the UnresourcedYAML
-	// case. Long-term, a better way to handle this would be to watch
-	// all K8s resources we deploy and have some notion of health for
-	// each type.
-	IsUnresourced bool
+	NonWorkload bool
 }
 
 func (K8sRuntimeState) RuntimeState() {}
 
 var _ RuntimeState = K8sRuntimeState{}
 
-func NewK8sRuntimeState(mn model.ManifestName, pods ...Pod) K8sRuntimeState {
+func NewK8sRuntimeState(m model.Manifest, pods ...Pod) K8sRuntimeState {
 
 	podMap := make(map[k8s.PodID]*Pod, len(pods))
 	for _, pod := range pods {
@@ -93,7 +89,7 @@ func NewK8sRuntimeState(mn model.ManifestName, pods ...Pod) K8sRuntimeState {
 		podMap[p.PodID] = &p
 	}
 	return K8sRuntimeState{
-		IsUnresourced:                  mn == model.UnresourcedYAMLManifestName,
+		NonWorkload:                    m.K8sTarget().NonWorkload,
 		Pods:                           podMap,
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedUIDSet:                 NewUIDSet(),
@@ -111,7 +107,7 @@ func (s K8sRuntimeState) RuntimeStatusError() error {
 }
 
 func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
-	if s.IsUnresourced {
+	if s.NonWorkload {
 		return model.RuntimeStatusOK
 	}
 
@@ -141,7 +137,7 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 }
 
 func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
-	if s.IsUnresourced {
+	if s.NonWorkload {
 		return true
 	}
 	return !s.LastReadyOrSucceededTime.IsZero()

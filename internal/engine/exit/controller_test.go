@@ -105,7 +105,8 @@ func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", store.Pod{
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeState(mt.Manifest, store.Pod{
 			PodID:  "pod-a",
 			Status: "ErrImagePull",
 			Containers: []store.Container{
@@ -141,14 +142,15 @@ func TestExitControlCISuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", readyPod("pod-a"))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m, readyPod("pod-a"))
 	})
 
 	f.c.OnChange(f.ctx, f.store)
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe2"].State.RuntimeState = store.NewK8sRuntimeState("fe2", readyPod("pod-b"))
+		mt := state.ManifestTargets["fe2"]
+		mt.State.RuntimeState = store.NewK8sRuntimeState(mt.Manifest, readyPod("pod-b"))
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
@@ -169,14 +171,15 @@ func TestExitControlCIJobSuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", readyPod("pod-a"))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m, readyPod("pod-a"))
 	})
 
 	f.c.OnChange(f.ctx, f.store)
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", successPod("pod-a"))
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeState(mt.Manifest, successPod("pod-a"))
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
@@ -193,11 +196,12 @@ func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
 		manifestAutoInitTrue := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.JobYAML).Build()
 		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitTrue))
 
-		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+		mt := state.ManifestTargets["fe"]
+		mt.State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", readyPod("pod-a"))
+		mt.State.RuntimeState = store.NewK8sRuntimeState(mt.Manifest, readyPod("pod-a"))
 
 		manifestAutoInitFalse := manifestbuilder.New(f, "local").WithLocalResource("echo hi", nil).
 			WithTriggerMode(model.TriggerModeManualIncludingInitial).Build()
@@ -208,7 +212,8 @@ func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", successPod("pod-a"))
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeState(mt.Manifest, successPod("pod-a"))
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.

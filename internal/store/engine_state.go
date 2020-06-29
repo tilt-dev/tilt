@@ -395,12 +395,23 @@ func NewState() *EngineState {
 	return ret
 }
 
-func newManifestState(mn model.ManifestName) *ManifestState {
-	return &ManifestState{
+func newManifestState(m model.Manifest) *ManifestState {
+	mn := m.Name
+	ms := &ManifestState{
 		Name:                    mn,
 		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
 	}
+
+	if m.IsK8s() {
+		ms.RuntimeState = NewK8sRuntimeState(m)
+	} else if m.IsLocal() {
+		ms.RuntimeState = LocalRuntimeState{}
+	}
+
+	// For historical reasons, DC state is initialized differently.
+
+	return ms
 }
 
 func (ms *ManifestState) TargetID() model.TargetID {
@@ -438,19 +449,7 @@ func (ms *ManifestState) IsDC() bool {
 }
 
 func (ms *ManifestState) K8sRuntimeState() K8sRuntimeState {
-	ret, ok := ms.RuntimeState.(K8sRuntimeState)
-	if !ok {
-		return NewK8sRuntimeState(ms.Name)
-	}
-	return ret
-}
-
-func (ms *ManifestState) GetOrCreateK8sRuntimeState() K8sRuntimeState {
-	ret, ok := ms.RuntimeState.(K8sRuntimeState)
-	if !ok {
-		ret = NewK8sRuntimeState(ms.Name)
-		ms.RuntimeState = ret
-	}
+	ret, _ := ms.RuntimeState.(K8sRuntimeState)
 	return ret
 }
 
@@ -461,15 +460,6 @@ func (ms *ManifestState) IsK8s() bool {
 
 func (ms *ManifestState) LocalRuntimeState() LocalRuntimeState {
 	ret, _ := ms.RuntimeState.(LocalRuntimeState)
-	return ret
-}
-
-func (ms *ManifestState) GetOrCreateLocalRuntimeState() LocalRuntimeState {
-	ret, ok := ms.RuntimeState.(LocalRuntimeState)
-	if !ok {
-		ret = LocalRuntimeState{}
-		ms.RuntimeState = ret
-	}
 	return ret
 }
 
@@ -593,43 +583,6 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 }
 
 var _ model.TargetStatus = &ManifestState{}
-
-type YAMLManifestState struct {
-	HasBeenDeployed bool
-
-	CurrentApplyStartTime   time.Time
-	LastError               error
-	LastApplyFinishTime     time.Time
-	LastSuccessfulApplyTime time.Time
-	LastApplyStartTime      time.Time
-}
-
-func NewYAMLManifestState() *YAMLManifestState {
-	return &YAMLManifestState{}
-}
-
-func (s *YAMLManifestState) TargetID() model.TargetID {
-	return model.TargetID{
-		Type: model.TargetTypeManifest,
-		Name: model.UnresourcedYAMLManifestName.TargetName(),
-	}
-}
-
-func (s *YAMLManifestState) ActiveBuild() model.BuildRecord {
-	return model.BuildRecord{
-		StartTime: s.CurrentApplyStartTime,
-	}
-}
-
-func (s *YAMLManifestState) LastBuild() model.BuildRecord {
-	return model.BuildRecord{
-		StartTime:  s.LastApplyStartTime,
-		FinishTime: s.LastApplyFinishTime,
-		Error:      s.LastError,
-	}
-}
-
-var _ model.TargetStatus = &YAMLManifestState{}
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	defer func() {
