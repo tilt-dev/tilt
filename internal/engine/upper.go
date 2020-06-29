@@ -484,6 +484,16 @@ func handleConfigsReloaded(
 	// Retroactively scrub secrets
 	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
 
+	// Add tiltignore if it exists, even if execution failed.
+	if event.TiltIgnoreContents != "" || event.Err != nil {
+		state.TiltIgnoreContents = event.TiltIgnoreContents
+	}
+
+	// Add team id if it exists, even if execution failed.
+	if event.TeamID != "" || event.Err != nil {
+		state.TeamID = event.TeamID
+	}
+
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
 	if !b.Empty() {
 		b.FinishTime = event.FinishTime
@@ -552,10 +562,8 @@ func handleConfigsReloaded(
 	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
 	state.ManifestDefinitionOrder = newDefOrder
 	state.ConfigFiles = event.ConfigFiles
-	state.TiltIgnoreContents = event.TiltIgnoreContents
 
 	state.Features = event.Features
-	state.TeamID = event.TeamID
 	state.TelemetrySettings = event.TelemetrySettings
 	state.VersionSettings = event.VersionSettings
 	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
