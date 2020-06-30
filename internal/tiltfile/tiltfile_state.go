@@ -12,8 +12,6 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
-	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
-
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -29,9 +27,11 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/os"
+	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starlarkstruct"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tilt"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
@@ -57,6 +57,7 @@ type tiltfileState struct {
 	webHost       model.WebHost
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
+	tiltExt       tilt.Extension
 	localRegistry container.Registry
 	features      feature.FeatureSet
 
@@ -128,6 +129,7 @@ func newTiltfileState(
 	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
+	tiltExt tilt.Extension,
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
@@ -136,6 +138,7 @@ func newTiltfileState(
 		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
 		versionExt:                 versionExt,
+		tiltExt:                    tiltExt,
 		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -184,6 +187,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		updatesettings.NewExtension(),
 		secretsettings.NewExtension(),
 		encoding.NewExtension(),
+		s.tiltExt,
 		tiltextension.NewExtension(tiltextension.NewGithubFetcher(), tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
 	if err != nil {

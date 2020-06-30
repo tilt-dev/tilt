@@ -13,10 +13,6 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
-	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
-
-	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
-
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -27,7 +23,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tilt"
+	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -104,6 +103,7 @@ func ProvideTiltfileLoader(
 	analytics *analytics.TiltAnalytics,
 	kCli k8s.Client,
 	k8sContextExt k8scontext.Extension,
+	tiltExt tilt.Extension,
 	versionExt version.Extension,
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
@@ -114,6 +114,7 @@ func ProvideTiltfileLoader(
 		kCli:          kCli,
 		k8sContextExt: k8sContextExt,
 		versionExt:    versionExt,
+		tiltExt:       tiltExt,
 		dcCli:         dcCli,
 		webHost:       webHost,
 		fDefaults:     fDefaults,
@@ -129,6 +130,7 @@ type tiltfileLoader struct {
 
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
+	tiltExt       tilt.Extension
 	fDefaults     feature.Defaults
 	env           k8s.Env
 }
@@ -170,7 +172,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	localRegistry := tfl.kCli.LocalRegistry(ctx)
 
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, tfl.versionExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, tfl.versionExt, tfl.tiltExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)
 
