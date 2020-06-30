@@ -60,7 +60,7 @@ function version_check() {
   elif ! [[ $VERSION =~ $TILT_DEV_PATTERN ]]; then
     echo "Tilt installed!"
     echo
-    echo "Note: it looks like it is not the first program named 'tilt' in your path. \`tilt version\` (running from $(command -v tilt)) did not return a a tilt.dev version string."
+    echo "Note: it looks like it is not the first program named 'tilt' in your path. \`tilt version\` (running from $(command -v tilt)) did not return a tilt.dev version string."
     echo "It output this instead:"
     echo
     echo "$VERSION"
