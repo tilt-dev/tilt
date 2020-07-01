@@ -56,10 +56,10 @@ func NewTarget(
 
 	for k, v := range duplicates {
 		if v > 1 {
-			fmt.Println("here it is" + k)
+			//using a print statement here just to debug for now
+			fmt.Println("here's the duplicate resource" + k)
 		}
 	}
-
 	return model.K8sTarget{
 		Name:              name,
 		YAML:              yaml,
