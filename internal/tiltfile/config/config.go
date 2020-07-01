@@ -33,12 +33,8 @@ type Extension struct {
 	TiltSubcommand  TiltSubcommand
 }
 
-type ExtensionProvider func(userConfigState model.UserConfigState) *Extension
-
-func NewExtensionProvider(tiltSubcommand TiltSubcommand) ExtensionProvider {
-	return func(userConfigState model.UserConfigState) *Extension {
-		return &Extension{UserConfigState: userConfigState, TiltSubcommand: tiltSubcommand}
-	}
+func NewExtension(tiltSubcommand TiltSubcommand) *Extension {
+	return &Extension{TiltSubcommand: tiltSubcommand}
 }
 
 func (e *Extension) NewState() interface{} {

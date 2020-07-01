@@ -460,7 +460,9 @@ print(config.tilt_subcommand)
 }
 
 func NewFixture(tb testing.TB, userConfigState model.UserConfigState, tiltSubcommand TiltSubcommand) *starkit.Fixture {
-	ret := starkit.NewFixture(tb, NewExtensionProvider(tiltSubcommand)(userConfigState), io.NewExtension(), include.IncludeFn{})
+	ext := NewExtension(tiltSubcommand)
+	ext.UserConfigState = userConfigState
+	ret := starkit.NewFixture(tb, ext, io.NewExtension(), include.IncludeFn{})
 	ret.UseRealFS()
 	return ret
 }

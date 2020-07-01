@@ -12,5 +12,5 @@ var WireSet = wire.NewSet(
 	ProvideTiltfileLoader,
 	k8scontext.NewExtension,
 	version.NewExtension,
-	config.NewExtensionProvider,
+	config.NewExtension,
 )

@@ -51,14 +51,14 @@ type resourceSet struct {
 
 type tiltfileState struct {
 	// set at creation
-	ctx               context.Context
-	dcCli             dockercompose.DockerComposeClient
-	webHost           model.WebHost
-	k8sContextExt     k8scontext.Extension
-	versionExt        version.Extension
-	configExtProvider config.ExtensionProvider
-	localRegistry     container.Registry
-	features          feature.FeatureSet
+	ctx           context.Context
+	dcCli         dockercompose.DockerComposeClient
+	webHost       model.WebHost
+	k8sContextExt k8scontext.Extension
+	versionExt    version.Extension
+	configExt     *config.Extension
+	localRegistry container.Registry
+	features      feature.FeatureSet
 
 	// added to during execution
 	buildIndex         *buildIndex
@@ -128,7 +128,7 @@ func newTiltfileState(
 	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
-	configExtProvider config.ExtensionProvider,
+	configExt *config.Extension,
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
@@ -137,7 +137,7 @@ func newTiltfileState(
 		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
 		versionExt:                 versionExt,
-		configExtProvider:          configExtProvider,
+		configExt:                  configExt,
 		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -170,6 +170,9 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 // all the mutable state collected by execution.
 func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.UserConfigState) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
+
+	s.configExt.UserConfigState = userConfigState
+
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
@@ -180,7 +183,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		s.versionExt,
-		s.configExtProvider(userConfigState),
+		s.configExt,
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
 		updatesettings.NewExtension(),

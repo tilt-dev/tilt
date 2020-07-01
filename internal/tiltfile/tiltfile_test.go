@@ -5077,8 +5077,8 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
-	configExtProvider := config.NewExtensionProvider("up")
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExtProvider, dcc, f.webHost, features, f.k8sEnv)
+	configExt := config.NewExtension("up")
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {
