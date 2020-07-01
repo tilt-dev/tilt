@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -533,30 +534,11 @@ func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
 	}
 }
 
-func starlarkValuesToJSONPathImageLocators(selector k8s.ObjectSelector, values []starlark.Value) ([]k8s.ImageLocator, error) {
-	var paths []k8s.ImageLocator
-	for _, v := range values {
-		s, ok := v.(starlark.String)
-		if !ok {
-			return nil, fmt.Errorf("paths must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
-		}
-
-		jp, err := k8s.NewJSONPathImageLocator(selector, string(s))
-		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing json paths '%s'", s.String())
-		}
-
-		paths = append(paths, jp)
-	}
-
-	return paths, nil
-}
-
 func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var apiVersion, kind, name, namespace string
-	var imageJSONPath starlark.Value
+	var locatorList tiltfile_k8s.JSONPathImageLocatorListSpec
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"paths", &imageJSONPath,
+		"paths", &locatorList,
 		"api_version?", &apiVersion,
 		"kind?", &kind,
 		"name?", &name,
@@ -574,9 +556,7 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, err
 	}
 
-	values := starlarkValueOrSequenceToSlice(imageJSONPath)
-
-	paths, err := starlarkValuesToJSONPathImageLocators(k, values)
+	paths, err := locatorList.ToImageLocators(k)
 	if err != nil {
 		return nil, err
 	}
@@ -593,11 +573,13 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	var apiVersion, kind string
-	var imageJSONPath starlark.Value
+	var jpLocators tiltfile_k8s.JSONPathImageLocatorListSpec
+	var jpObjectLocator tiltfile_k8s.JSONPathImageObjectLocatorSpec
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"kind", &kind,
-		"image_json_path?", &imageJSONPath,
+		"image_json_path?", &jpLocators,
 		"api_version?", &apiVersion,
+		"image_object?", &jpObjectLocator,
 	); err != nil {
 		return nil, err
 	}
@@ -607,16 +589,25 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, err
 	}
 
-	if imageJSONPath == nil {
-		s.workloadTypes = append(s.workloadTypes, k)
-	} else {
-		values := starlarkValueOrSequenceToSlice(imageJSONPath)
-		locators, err := starlarkValuesToJSONPathImageLocators(k, values)
+	if !jpLocators.IsEmpty() && !jpObjectLocator.IsEmpty() {
+		return nil, fmt.Errorf("Cannot specify both image_json_path and image_object")
+	}
+
+	if !jpLocators.IsEmpty() {
+		locators, err := jpLocators.ToImageLocators(k)
 		if err != nil {
 			return nil, err
 		}
 
 		s.k8sImageLocators[k] = locators
+	} else if !jpObjectLocator.IsEmpty() {
+		locator, err := jpObjectLocator.ToImageLocator(k)
+		if err != nil {
+			return nil, err
+		}
+		s.k8sImageLocators[k] = []k8s.ImageLocator{locator}
+	} else {
+		s.workloadTypes = append(s.workloadTypes, k)
 	}
 
 	return starlark.None, nil
