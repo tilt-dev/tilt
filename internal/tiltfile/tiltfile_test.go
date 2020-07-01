@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 
 	"github.com/stretchr/testify/assert"
@@ -5075,7 +5077,8 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, dcc, f.webHost, features, f.k8sEnv)
+	configExtProvider := config.NewExtensionProvider("up")
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExtProvider, dcc, f.webHost, features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {

@@ -9,12 +9,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/output"
+
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+
 	"github.com/spf13/cobra"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/output"
-	"github.com/tilt-dev/tilt/internal/tiltfile/tilt"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -81,12 +83,27 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	return rootCmd
 }
 
+type ExitCodeError struct {
+	ExitCode int
+	Err      error
+}
+
+func (ece ExitCodeError) Error() string {
+	return ece.Err.Error()
+}
+
 func Execute() {
 	cmd := Cmd()
 
 	if err := cmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		_, _ = fmt.Fprintln(output.OriginalStderr, err)
+
+		exitCode := 1
+		if ece, ok := err.(ExitCodeError); ok {
+			exitCode = ece.ExitCode
+		}
+
+		os.Exit(exitCode)
 	}
 }
 
@@ -158,7 +175,7 @@ func fullSubcommandString(cmd *cobra.Command) string {
 
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
-	cobraChild.Run = func(_ *cobra.Command, args []string) {
+	cobraChild.RunE = func(_ *cobra.Command, args []string) error {
 		subcommand = fullSubcommandString(cobraChild)
 
 		ctx, cleanup := preCommand(context.Background())
@@ -171,19 +188,12 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 			err = err2
 		}
 
-		if err != nil {
-			// TODO(maia): this shouldn't print if we've already pretty-printed it
-			_, printErr := fmt.Fprintf(output.OriginalStderr, "Error: %v\n", err)
-			if printErr != nil {
-				panic(printErr)
-			}
-			os.Exit(1)
-		}
+		return err
 	}
 
 	parent.AddCommand(cobraChild)
 }
 
-func provideTiltSubcommand() tilt.TiltSubcommand {
-	return tilt.TiltSubcommand(subcommand)
+func provideTiltSubcommand() config.TiltSubcommand {
+	return config.TiltSubcommand(subcommand)
 }

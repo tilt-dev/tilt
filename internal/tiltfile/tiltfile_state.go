@@ -31,7 +31,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starlarkstruct"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
-	"github.com/tilt-dev/tilt/internal/tiltfile/tilt"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
@@ -52,14 +51,14 @@ type resourceSet struct {
 
 type tiltfileState struct {
 	// set at creation
-	ctx           context.Context
-	dcCli         dockercompose.DockerComposeClient
-	webHost       model.WebHost
-	k8sContextExt k8scontext.Extension
-	versionExt    version.Extension
-	tiltExt       tilt.Extension
-	localRegistry container.Registry
-	features      feature.FeatureSet
+	ctx               context.Context
+	dcCli             dockercompose.DockerComposeClient
+	webHost           model.WebHost
+	k8sContextExt     k8scontext.Extension
+	versionExt        version.Extension
+	configExtProvider config.ExtensionProvider
+	localRegistry     container.Registry
+	features          feature.FeatureSet
 
 	// added to during execution
 	buildIndex         *buildIndex
@@ -129,7 +128,7 @@ func newTiltfileState(
 	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
-	tiltExt tilt.Extension,
+	configExtProvider config.ExtensionProvider,
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
@@ -138,7 +137,7 @@ func newTiltfileState(
 		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
 		versionExt:                 versionExt,
-		tiltExt:                    tiltExt,
+		configExtProvider:          configExtProvider,
 		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -181,13 +180,12 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		s.versionExt,
-		config.NewExtension(userConfigState),
+		s.configExtProvider(userConfigState),
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
 		updatesettings.NewExtension(),
 		secretsettings.NewExtension(),
 		encoding.NewExtension(),
-		s.tiltExt,
 		tiltextension.NewExtension(tiltextension.NewGithubFetcher(), tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
 	if err != nil {

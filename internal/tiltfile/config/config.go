@@ -25,12 +25,20 @@ type Settings struct {
 	seenWorkingDirectory string
 }
 
+// e.g., "up", "down", "ci"
+type TiltSubcommand string
+
 type Extension struct {
 	UserConfigState model.UserConfigState
+	TiltSubcommand  TiltSubcommand
 }
 
-func NewExtension(userConfigState model.UserConfigState) *Extension {
-	return &Extension{UserConfigState: userConfigState}
+type ExtensionProvider func(userConfigState model.UserConfigState) *Extension
+
+func NewExtensionProvider(tiltSubcommand TiltSubcommand) ExtensionProvider {
+	return func(userConfigState model.UserConfigState) *Extension {
+		return &Extension{UserConfigState: userConfigState, TiltSubcommand: tiltSubcommand}
+	}
 }
 
 func (e *Extension) NewState() interface{} {
@@ -79,7 +87,9 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 		}
 	}
 
-	return nil
+	err := env.AddValue("config.tilt_subcommand", starlark.String(e.TiltSubcommand))
+
+	return err
 }
 
 func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
