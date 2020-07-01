@@ -64,6 +64,7 @@ var K8sWireSet = wire.NewSet(
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
+	provideTiltSubcommand,
 	tiltfile.WireSet,
 	provideKubectlLogLevel,
 

@@ -85,8 +85,10 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		// Some errors won't JSONify properly by default, so just print it
 		// to STDERR and use the exit code to indicate that it's an error
 		// from Tiltfile parsing.
-		fmt.Fprintln(os.Stderr, tlr.Error)
-		os.Exit(TiltfileErrExitCode)
+		return ExitCodeError{
+			ExitCode: TiltfileErrExitCode,
+			Err:      tlr.Error,
+		}
 	}
 
 	err = encodeJSON(tlr)
