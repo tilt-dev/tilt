@@ -7,7 +7,6 @@ package synclet
 
 import (
 	"context"
-
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 )
