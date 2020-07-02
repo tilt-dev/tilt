@@ -10,6 +10,7 @@ import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { numberOfAlerts } from "./alerts"
 import styled, { keyframes } from "styled-components"
+import { formatBuildDuration } from "./format"
 import {
   AnimDuration,
   Color,
@@ -136,7 +137,7 @@ class SidebarItem {
   isTiltfile: boolean
   status: ResourceStatus
   hasEndpoints: boolean
-  lastBuildDur: Date | null
+  lastBuildDur: moment.Duration | null
   lastDeployTime: string
   pendingBuildSince: string
   currentBuildStartTime: string
@@ -207,7 +208,9 @@ class SidebarResources extends PureComponent<SidebarProps> {
       let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
       let hasBuilt = item.lastBuild !== null
       let building = !isZeroTime(item.currentBuildStartTime)
-      let buildDur = item.lastBuildDur ? formatDuration(item.lastBuildDur) : ""
+      let buildDur = item.lastBuildDur
+        ? formatBuildDuration(item.lastBuildDur)
+        : ""
       let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
       let isSelected = this.props.selected === item.name
 
@@ -276,18 +279,11 @@ class SidebarResources extends PureComponent<SidebarProps> {
   }
 }
 
-function timeDiff(start: string, end: string): Date {
+function timeDiff(start: string, end: string): moment.Duration {
   let t1 = moment(start)
   let t2 = moment(end)
-  return t2.diff(t1)
+  return moment.duration(t2.diff(t1))
 }
-
-function formatDuration(dur: Date): string {
-  // TODO(han) — hacky for now. The duration should count up during building!
-  // We also need to display durations of 1m+ (ex: mm:ss)
-  return moment(dur).format("s.S") + "s"
-}
-
 export default SidebarResources
 
 export { SidebarItem }
