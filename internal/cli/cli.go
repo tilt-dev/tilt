@@ -177,6 +177,11 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
 	cobraChild.RunE = func(_ *cobra.Command, args []string) error {
 		subcommand = fullSubcommandString(cobraChild)
+		// by default, cobra prints usage on any kind of error
+		// if we've made it this far, we're past arg-parsing, so an error is not likely to be
+		// a usage error, so printing usage isn't appropriate
+		// cobra doesn't support this well: https://github.com/spf13/cobra/issues/340#issuecomment-374617413
+		cobraChild.SilenceUsage = true
 
 		ctx, cleanup := preCommand(context.Background())
 
