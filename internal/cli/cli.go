@@ -80,6 +80,10 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 		globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
 	}
 
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		subcommand = fullSubcommandString(cmd)
+	}
+
 	return rootCmd
 }
 
@@ -165,9 +169,9 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 // e.g., for 'tilt alpha tiltfile-result', return 'alpha tiltfile-result'
 func fullSubcommandString(cmd *cobra.Command) string {
 	cmdPieces := []string{cmd.Name()}
-	for p := cmd.Parent(); p != nil; p = p.Parent() {
+	cmd.VisitParents(func(p *cobra.Command) {
 		cmdPieces = append([]string{p.Name()}, cmdPieces...)
-	}
+	})
 
 	// skip the first piece, i.e. "tilt"
 	return strings.Join(cmdPieces[1:], " ")
@@ -176,7 +180,6 @@ func fullSubcommandString(cmd *cobra.Command) string {
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
 	cobraChild.RunE = func(_ *cobra.Command, args []string) error {
-		subcommand = fullSubcommandString(cobraChild)
 		// by default, cobra prints usage on any kind of error
 		// if we've made it this far, we're past arg-parsing, so an error is not likely to be
 		// a usage error, so printing usage isn't appropriate
