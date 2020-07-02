@@ -220,7 +220,7 @@ func newTargetQueueFixture(t *testing.T) *targetQueueFixture {
 	}
 }
 
-func (f *targetQueueFixture) imageExists(ctx context.Context, namedTagged reference.NamedTagged) (b bool, e error) {
+func (f *targetQueueFixture) imageExists(ctx context.Context, iTarget model.ImageTarget, namedTagged reference.NamedTagged) (b bool, e error) {
 	for _, ref := range f.missingImages {
 		if ref == namedTagged {
 			return false, nil

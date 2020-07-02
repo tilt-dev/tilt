@@ -922,9 +922,9 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 
 	docker := docker.NewFakeClient()
 
-	// Setting ImageListCount makes the fake ImageExists always return true,
-	// which is the behavior we want when testing the ImageBuildAndDeployer.
-	docker.ImageListCount = 1
+	// Make the fake ImageExists always return true, which is the behavior we want
+	// when testing the ImageBuildAndDeployer.
+	docker.ImageAlwaysExists = true
 
 	out := bufsync.NewThreadSafeBuffer()
 	l := logger.NewLogger(logger.DebugLvl, out)

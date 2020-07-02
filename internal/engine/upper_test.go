@@ -282,7 +282,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	iTargets := model.ExtractImageTargets(specs)
-	fakeImageExistsCheck := func(ctx context.Context, namedTagged reference.NamedTagged) (bool, error) {
+	fakeImageExistsCheck := func(ctx context.Context, iTarget model.ImageTarget, namedTagged reference.NamedTagged) (bool, error) {
 		return true, nil
 	}
 	queue, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, state, fakeImageExistsCheck)

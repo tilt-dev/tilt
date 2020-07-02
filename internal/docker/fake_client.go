@@ -112,7 +112,13 @@ type FakeClient struct {
 	RestartsByContainer map[string]int
 	RemovedImageIDs     []string
 
-	Images            map[string]types.ImageInspect
+	// Images returned by ImageInspect.
+	Images map[string]types.ImageInspect
+
+	// If true, ImageInspectWithRaw will always return an ImageInspect,
+	// even if one hasn't been explicitly pre-loaded.
+	ImageAlwaysExists bool
+
 	Orchestrator      model.Orchestrator
 	CheckConnectedErr error
 
@@ -259,6 +265,11 @@ func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (t
 	if ok {
 		return result, nil, nil
 	}
+
+	if c.ImageAlwaysExists {
+		return types.ImageInspect{}, nil, nil
+	}
+
 	return types.ImageInspect{}, nil, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
 }
 

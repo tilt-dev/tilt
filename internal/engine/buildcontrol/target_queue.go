@@ -7,7 +7,9 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -16,7 +18,7 @@ type BuildHandler func(
 	target model.TargetSpec,
 	depResults []store.BuildResult) (store.BuildResult, error)
 
-type ImageExistsChecker func(ctx context.Context, namedTagged reference.NamedTagged) (bool, error)
+type ReuseRefChecker func(ctx context.Context, iTarget model.ImageTarget, namedTagged reference.NamedTagged) (bool, error)
 
 // A little data structure to help iterate through dirty targets in dependency order.
 type TargetQueue struct {
@@ -42,7 +44,7 @@ type TargetQueue struct {
 	depsNeedBuild map[model.TargetID]bool
 }
 
-func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, state store.BuildStateSet, imageExists ImageExistsChecker) (*TargetQueue, error) {
+func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, state store.BuildStateSet, canReuseRef ReuseRefChecker) (*TargetQueue, error) {
 	targets := make([]model.TargetSpec, 0, len(iTargets))
 	for _, iTarget := range iTargets {
 		targets = append(targets, iTarget)
@@ -60,11 +62,12 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 			needsOwnBuild[id] = true
 		} else if state[id].LastResult != nil {
 			image := store.LocalImageRefFromBuildResult(state[id].LastResult)
-			exists, err := imageExists(ctx, image)
+			ok, err := canReuseRef(ctx, target.(model.ImageTarget), image)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error looking up whether last image built for %s exists", image.String())
 			}
-			if !exists {
+			if !ok {
+				logger.Get(ctx).Infof("Rebuilding %s because image not found in image store", container.FamiliarString(image))
 				needsOwnBuild[id] = true
 			}
 		}

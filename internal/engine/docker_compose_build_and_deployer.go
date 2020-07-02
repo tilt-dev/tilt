@@ -68,7 +68,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	span.SetTag("target", dcTargets[0].Name)
 	defer span.Finish()
 
-	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, currentState, bd.ib.db.ImageExists)
+	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, currentState, bd.ib.CanReuseRef)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
