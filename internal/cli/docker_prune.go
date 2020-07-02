@@ -53,7 +53,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
 
-	deps, err := wireDockerPrune(ctx, a)
+	deps, err := wireDockerPrune(ctx, a, "docker-prune")
 	if err != nil {
 		return err
 	}

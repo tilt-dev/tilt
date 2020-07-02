@@ -7,6 +7,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -64,7 +66,6 @@ var K8sWireSet = wire.NewSet(
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
-	provideTiltSubcommand,
 	tiltfile.WireSet,
 	provideKubectlLogLevel,
 
@@ -135,17 +136,17 @@ var BaseWireSet = wire.NewSet(
 	wire.Value(feature.MainDefaults),
 )
 
-func wireTiltfileResult(ctx context.Context, analytics *analytics.TiltAnalytics) (cmdTiltfileResultDeps, error) {
+func wireTiltfileResult(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (cmdTiltfileResultDeps, error) {
 	wire.Build(BaseWireSet, newTiltfileResultDeps)
 	return cmdTiltfileResultDeps{}, nil
 }
 
-func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics) (dpDeps, error) {
+func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (dpDeps, error) {
 	wire.Build(BaseWireSet, newDPDeps)
 	return dpDeps{}, nil
 }
 
-func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand config.TiltSubcommand) (CmdUpDeps, error) {
 	wire.Build(BaseWireSet,
 		build.ProvideClock,
 		wire.Struct(new(CmdUpDeps), "*"))
@@ -161,7 +162,7 @@ type CmdUpDeps struct {
 	Prompt       *prompt.TerminalPrompt
 }
 
-func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics) (CmdCIDeps, error) {
+func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (CmdCIDeps, error) {
 	wire.Build(BaseWireSet,
 		build.ProvideClock,
 		wire.Value(engineanalytics.CmdTags(map[string]string{})),
@@ -236,7 +237,7 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 	return nil, nil
 }
 
-func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error) {
+func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (DownDeps, error) {
 	wire.Build(BaseWireSet, ProvideDownDeps)
 	return DownDeps{}, nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/engine"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -19,7 +20,7 @@ import (
 type downCmd struct {
 	fileName         string
 	deleteNamespaces bool
-	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error)
+	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (DownDeps, error)
 }
 
 func newDownCmd() *downCmd {
@@ -60,7 +61,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.down", map[string]string{})
 	defer a.Flush(time.Second)
 
-	downDeps, err := c.downDepsProvider(ctx, a)
+	downDeps, err := c.downDepsProvider(ctx, a, "down")
 	if err != nil {
 		return err
 	}

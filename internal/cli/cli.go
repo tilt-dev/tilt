@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/output"
-
-	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 
 	"github.com/spf13/cobra"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
@@ -25,7 +22,6 @@ var debug bool
 var verbose bool
 var trace bool
 var traceType string
-var subcommand string
 
 func logLevel(verbose, debug bool) logger.Level {
 	if debug {
@@ -78,10 +74,6 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 		globalFlags.BoolVar(&trace, "trace", false, "Enable tracing")
 		globalFlags.StringVar(&traceType, "traceBackend", "windmill", "Which tracing backend to use. Valid values are: 'windmill', 'lightstep', 'jaeger'")
 		globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
-	}
-
-	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		subcommand = fullSubcommandString(cmd)
 	}
 
 	return rootCmd
@@ -166,17 +158,6 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 	return ctx, cleanup
 }
 
-// e.g., for 'tilt alpha tiltfile-result', return 'alpha tiltfile-result'
-func fullSubcommandString(cmd *cobra.Command) string {
-	cmdPieces := []string{cmd.Name()}
-	cmd.VisitParents(func(p *cobra.Command) {
-		cmdPieces = append([]string{p.Name()}, cmdPieces...)
-	})
-
-	// skip the first piece, i.e. "tilt"
-	return strings.Join(cmdPieces[1:], " ")
-}
-
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
 	cobraChild.RunE = func(_ *cobra.Command, args []string) error {
@@ -200,8 +181,4 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 	}
 
 	parent.AddCommand(cobraChild)
-}
-
-func provideTiltSubcommand() config.TiltSubcommand {
-	return config.TiltSubcommand(subcommand)
 }
