@@ -7,8 +7,15 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
+	trace2 "go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/cloud"
@@ -46,11 +53,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
-	trace2 "go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
-	"time"
 )
 
 // Injectors from wire.go:

@@ -146,7 +146,6 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	result := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	state := store.NewBuildState(result, nil, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
-	f.dCli.ImageListCount = 1
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
@@ -184,6 +183,11 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	dir := dirs.NewWindmillDirAt(f.Path())
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dCli := docker.NewFakeClient()
+
+	// Make the fake ImageExists always return true, which is the behavior we want
+	// when testing the BuildAndDeployers.
+	dCli.ImageAlwaysExists = true
+
 	dcbad, err := provideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, dir)
 	if err != nil {
 		t.Fatal(err)
