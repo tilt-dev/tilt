@@ -29,6 +29,7 @@ let SidebarAccountButton = styled.button`
   display: flex;
   align-items: center;
   border: 0;
+  outline: 0;
   cursor: pointer;
   background-color: transparent;
   padding-left: ${SizeUnit(0.25)};
