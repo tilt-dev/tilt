@@ -46,6 +46,8 @@ Tilt watches your files for edits, automatically builds your container images,
 and applies any changes to bring your environment
 up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compose up'.
 `,
+		// We're going to print the errors ourselves.
+		SilenceErrors: true,
 	}
 
 	addCommand(rootCmd, &ciCmd{})
@@ -92,7 +94,7 @@ func Execute() {
 	cmd := Cmd()
 
 	if err := cmd.Execute(); err != nil {
-		_, _ = fmt.Fprintln(output.OriginalStderr, err)
+		_, _ = fmt.Fprintf(output.OriginalStderr, "Error: %v\n", err)
 
 		exitCode := 1
 		if ece, ok := err.(ExitCodeError); ok {
