@@ -72,7 +72,7 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		ctx = logger.WithLogger(ctx, logger.NewLogger(logLvl, os.Stderr))
 	}
 
-	deps, err := wireTiltfileResult(ctx, analytics.Get(ctx))
+	deps, err := wireTiltfileResult(ctx, analytics.Get(ctx), "alpha tiltfile-result")
 	if err != nil {
 		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 		return errors.Wrap(err, "wiring dependencies")
@@ -85,8 +85,10 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		// Some errors won't JSONify properly by default, so just print it
 		// to STDERR and use the exit code to indicate that it's an error
 		// from Tiltfile parsing.
-		fmt.Fprintln(os.Stderr, tlr.Error)
-		os.Exit(TiltfileErrExitCode)
+		return ExitCodeError{
+			ExitCode: TiltfileErrExitCode,
+			Err:      tlr.Error,
+		}
 	}
 
 	err = encodeJSON(tlr)

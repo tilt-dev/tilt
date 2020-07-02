@@ -23,4 +23,5 @@ func TestCrash(t *testing.T) {
 	assert.NoError(t, err)
 	<-res.Done()
 	assert.Contains(t, out.String(), "Cannot start Tilt")
+	assert.NotContains(t, out.String(), "Usage:")
 }

@@ -8,14 +8,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/output"
+
+	"github.com/spf13/cobra"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/output"
 	"github.com/tilt-dev/tilt/internal/tracer"
-
-	"github.com/spf13/cobra"
-
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -34,7 +33,7 @@ func logLevel(verbose, debug bool) logger.Level {
 	}
 }
 
-func Execute() {
+func Cmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
 		Short: "Multi-service development with no stress",
@@ -77,9 +76,30 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 		globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
 	}
 
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	return rootCmd
+}
+
+type ExitCodeError struct {
+	ExitCode int
+	Err      error
+}
+
+func (ece ExitCodeError) Error() string {
+	return ece.Err.Error()
+}
+
+func Execute() {
+	cmd := Cmd()
+
+	if err := cmd.Execute(); err != nil {
+		_, _ = fmt.Fprintln(output.OriginalStderr, err)
+
+		exitCode := 1
+		if ece, ok := err.(ExitCodeError); ok {
+			exitCode = ece.ExitCode
+		}
+
+		os.Exit(exitCode)
 	}
 }
 
@@ -140,7 +160,13 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
-	cobraChild.Run = func(_ *cobra.Command, args []string) {
+	cobraChild.RunE = func(_ *cobra.Command, args []string) error {
+		// by default, cobra prints usage on any kind of error
+		// if we've made it this far, we're past arg-parsing, so an error is not likely to be
+		// a usage error, so printing usage isn't appropriate
+		// cobra doesn't support this well: https://github.com/spf13/cobra/issues/340#issuecomment-374617413
+		cobraChild.SilenceUsage = true
+
 		ctx, cleanup := preCommand(context.Background())
 
 		err := child.run(ctx, args)
@@ -151,14 +177,7 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 			err = err2
 		}
 
-		if err != nil {
-			// TODO(maia): this shouldn't print if we've already pretty-printed it
-			_, printErr := fmt.Fprintf(output.OriginalStderr, "Error: %v\n", err)
-			if printErr != nil {
-				panic(printErr)
-			}
-			os.Exit(1)
-		}
+		return err
 	}
 
 	parent.AddCommand(cobraChild)
