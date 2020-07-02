@@ -34,7 +34,7 @@ func TestSetResources(t *testing.T) {
 		{"both, with config.parse", true, []string{"a"}, []model.ManifestName{"b"}, []model.ManifestName{"b"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFixture(t, model.NewUserConfigState(tc.args), "")
+			f := NewFixture(t, model.NewUserConfigState(tc.args))
 			defer f.TearDown()
 
 			setResources := ""
@@ -82,7 +82,7 @@ config.parse()`
 func TestParsePositional(t *testing.T) {
 	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
 
-	f := NewFixture(t, model.NewUserConfigState(args), "")
+	f := NewFixture(t, model.NewUserConfigState(args))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -104,7 +104,7 @@ func TestParseKeyword(t *testing.T) {
 		args = append(args, []string{"--foo", s}...)
 	}
 
-	f := NewFixture(t, model.NewUserConfigState(args), "")
+	f := NewFixture(t, model.NewUserConfigState(args))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -121,7 +121,7 @@ print(cfg['foo'])
 
 func TestParsePositionalAndMultipleInterspersedKeyword(t *testing.T) {
 	args := []string{"--bar", "puerto rico", "--baz", "colombia", "--bar", "venezuela", "--baz", "honduras", "--baz", "guyana", "and", "still"}
-	f := NewFixture(t, model.NewUserConfigState(args), "")
+	f := NewFixture(t, model.NewUserConfigState(args))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -144,7 +144,7 @@ print("baz:", cfg['baz'])
 
 func TestParseKeywordAfterPositional(t *testing.T) {
 	args := []string{"--bar", "puerto rico", "colombia"}
-	f := NewFixture(t, model.NewUserConfigState(args), "")
+	f := NewFixture(t, model.NewUserConfigState(args))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -163,7 +163,7 @@ print("bar:", cfg['bar'])
 }
 
 func TestMultiplePositionalDefs(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -177,7 +177,7 @@ config.define_string_list('bar', args=True)
 }
 
 func TestMultipleArgsSameName(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -191,7 +191,7 @@ config.define_string_list('foo')
 }
 
 func TestUndefinedArg(t *testing.T) {
-	f := NewFixture(t, model.NewUserConfigState([]string{"--bar", "hello"}), "")
+	f := NewFixture(t, model.NewUserConfigState([]string{"--bar", "hello"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -205,7 +205,7 @@ config.parse()
 }
 
 func TestUnprovidedArg(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -220,7 +220,7 @@ print("foo:",cfg['foo'])
 }
 
 func TestUnprovidedPositionalArg(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	f.File("Tiltfile", `
 config.define_string_list('foo', args=True)
 cfg = config.parse()
@@ -233,7 +233,7 @@ print("foo:",cfg['foo'])
 }
 
 func TestProvidedButUnexpectedPositionalArgs(t *testing.T) {
-	f := NewFixture(t, model.NewUserConfigState([]string{"do", "re", "mi"}), "")
+	f := NewFixture(t, model.NewUserConfigState([]string{"do", "re", "mi"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -246,7 +246,7 @@ cfg = config.parse()
 }
 
 func TestUsage(t *testing.T) {
-	f := NewFixture(t, model.NewUserConfigState([]string{"--bar", "hello"}), "")
+	f := NewFixture(t, model.NewUserConfigState([]string{"--bar", "hello"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -263,7 +263,7 @@ config.parse()
 
 // i.e., tilt up foo bar gets you resources foo and bar
 func TestDefaultTiltBehavior(t *testing.T) {
-	f := NewFixture(t, model.NewUserConfigState([]string{"foo", "bar"}), "")
+	f := NewFixture(t, model.NewUserConfigState([]string{"foo", "bar"}))
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -324,7 +324,7 @@ func TestSettingsFromConfigAndArgs(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFixture(t, model.NewUserConfigState(tc.args), "")
+			f := NewFixture(t, model.NewUserConfigState(tc.args))
 			defer f.TearDown()
 
 			f.File("Tiltfile", `
@@ -362,7 +362,7 @@ print("c=", cfg.get('c', 'missing'))
 }
 
 func TestUndefinedArgInConfigFile(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -379,7 +379,7 @@ print("foo:",cfg.get('foo', []))
 }
 
 func TestWrongTypeArgInConfigFile(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -396,7 +396,7 @@ print("foo:",cfg.get('foo', []))
 }
 
 func TestConfigParseFromMultipleDirs(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -417,7 +417,7 @@ cfg = config.parse()
 }
 
 func TestDefineSettingAfterParse(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -431,7 +431,7 @@ config.define_string_list('foo')
 }
 
 func TestConfigFileRecordedRead(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "")
+	f := NewFixture(t, model.UserConfigState{})
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -445,24 +445,8 @@ cfg = config.parse()`)
 	require.Contains(t, rs.Paths, f.JoinPath(UserConfigFileName))
 }
 
-func TestSubCommand(t *testing.T) {
-	f := NewFixture(t, model.UserConfigState{}, "foo")
-	defer f.TearDown()
-
-	f.File("Tiltfile", `
-print(config.tilt_subcommand)
-`)
-
-	_, err := f.ExecFile("Tiltfile")
-	require.NoError(t, err)
-
-	require.Equal(t, "foo\n", f.PrintOutput())
-}
-
-func NewFixture(tb testing.TB, userConfigState model.UserConfigState, tiltSubcommand TiltSubcommand) *starkit.Fixture {
-	ext := NewExtension(tiltSubcommand)
-	ext.UserConfigState = userConfigState
-	ret := starkit.NewFixture(tb, ext, io.NewExtension(), include.IncludeFn{})
+func NewFixture(tb testing.TB, userConfigState model.UserConfigState) *starkit.Fixture {
+	ret := starkit.NewFixture(tb, NewExtension(userConfigState), io.NewExtension(), include.IncludeFn{})
 	ret.UseRealFS()
 	return ret
 }
@@ -533,7 +517,7 @@ func TestTypes(t *testing.T) {
 			}
 			f := NewFixture(t, model.UserConfigState{
 				Args: args,
-			}, "")
+			})
 			defer f.TearDown()
 
 			tf := fmt.Sprintf(`

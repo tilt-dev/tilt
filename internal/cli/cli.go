@@ -5,19 +5,17 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/output"
-
-	"github.com/tilt-dev/tilt/internal/tiltfile/config"
-
-	"github.com/spf13/cobra"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/output"
 	"github.com/tilt-dev/tilt/internal/tracer"
+
+	"github.com/spf13/cobra"
+
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -25,7 +23,6 @@ var debug bool
 var verbose bool
 var trace bool
 var traceType string
-var subcommand string
 
 func logLevel(verbose, debug bool) logger.Level {
 	if debug {
@@ -37,7 +34,7 @@ func logLevel(verbose, debug bool) logger.Level {
 	}
 }
 
-func Cmd() *cobra.Command {
+func Execute() {
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
 		Short: "Multi-service development with no stress",
@@ -80,30 +77,9 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 		globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
 	}
 
-	return rootCmd
-}
-
-type ExitCodeError struct {
-	ExitCode int
-	Err      error
-}
-
-func (ece ExitCodeError) Error() string {
-	return ece.Err.Error()
-}
-
-func Execute() {
-	cmd := Cmd()
-
-	if err := cmd.Execute(); err != nil {
-		_, _ = fmt.Fprintln(output.OriginalStderr, err)
-
-		exitCode := 1
-		if ece, ok := err.(ExitCodeError); ok {
-			exitCode = ece.ExitCode
-		}
-
-		os.Exit(exitCode)
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
@@ -162,22 +138,9 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 	return ctx, cleanup
 }
 
-// e.g., for 'tilt alpha tiltfile-result', return 'alpha tiltfile-result'
-func fullSubcommandString(cmd *cobra.Command) string {
-	cmdPieces := []string{cmd.Name()}
-	for p := cmd.Parent(); p != nil; p = p.Parent() {
-		cmdPieces = append([]string{p.Name()}, cmdPieces...)
-	}
-
-	// skip the first piece, i.e. "tilt"
-	return strings.Join(cmdPieces[1:], " ")
-}
-
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
-	cobraChild.RunE = func(_ *cobra.Command, args []string) error {
-		subcommand = fullSubcommandString(cobraChild)
-
+	cobraChild.Run = func(_ *cobra.Command, args []string) {
 		ctx, cleanup := preCommand(context.Background())
 
 		err := child.run(ctx, args)
@@ -188,12 +151,15 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 			err = err2
 		}
 
-		return err
+		if err != nil {
+			// TODO(maia): this shouldn't print if we've already pretty-printed it
+			_, printErr := fmt.Fprintf(output.OriginalStderr, "Error: %v\n", err)
+			if printErr != nil {
+				panic(printErr)
+			}
+			os.Exit(1)
+		}
 	}
 
 	parent.AddCommand(cobraChild)
-}
-
-func provideTiltSubcommand() config.TiltSubcommand {
-	return config.TiltSubcommand(subcommand)
 }

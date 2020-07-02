@@ -12,6 +12,8 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
+	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
+
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -27,7 +29,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/os"
-	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starlarkstruct"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
@@ -56,7 +57,6 @@ type tiltfileState struct {
 	webHost       model.WebHost
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
-	configExt     *config.Extension
 	localRegistry container.Registry
 	features      feature.FeatureSet
 
@@ -128,7 +128,6 @@ func newTiltfileState(
 	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
-	configExt *config.Extension,
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
@@ -137,7 +136,6 @@ func newTiltfileState(
 		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
 		versionExt:                 versionExt,
-		configExt:                  configExt,
 		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
@@ -170,9 +168,6 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 // all the mutable state collected by execution.
 func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.UserConfigState) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
-
-	s.configExt.UserConfigState = userConfigState
-
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
@@ -183,7 +178,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		s.versionExt,
-		s.configExt,
+		config.NewExtension(userConfigState),
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
 		updatesettings.NewExtension(),

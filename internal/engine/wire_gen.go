@@ -7,7 +7,11 @@ package engine
 
 import (
 	"context"
+
 	"github.com/google/wire"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -19,8 +23,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/synclet"
 	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
 	"github.com/tilt-dev/tilt/internal/tracer"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
-	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 // Injectors from wire.go:
