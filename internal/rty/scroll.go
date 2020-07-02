@@ -370,8 +370,8 @@ func calculateFirstVisibleElement(state ElementScrollState, heights []int, heigh
 		return state.elementIdx
 	} else if state.elementIdx > state.firstVisibleElement {
 		var lastLineOfSelectedElement int
-		for _, h := range heights[state.firstVisibleElement : state.elementIdx+1] {
-			lastLineOfSelectedElement += h
+		for i := state.firstVisibleElement; i < state.elementIdx+1 && i < len(heights); i++ {
+			lastLineOfSelectedElement += heights[i]
 		}
 
 		if lastLineOfSelectedElement > height {
