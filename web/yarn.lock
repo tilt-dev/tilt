@@ -11373,6 +11373,11 @@ react-modal@^3.10.1:
     react-lifecycles-compat "^3.0.0"
     warning "^4.0.3"
 
+react-outline-manager@^1.2.2:
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/react-outline-manager/-/react-outline-manager-1.2.2.tgz#beeceb89cf6840f63e79a68bb2f3a4cc26bdd621"
+  integrity sha512-xgoyqIDE88odLISa6uPsh+OftbFYRGZzzP4Ub8kiDJJqn5HfFuJhRdX40IMIzD0GC9WrhxuEzD6w5eTchGjYCg==
+
 react-popper-tooltip@^2.8.3:
   version "2.11.1"
   resolved "https://registry.yarnpkg.com/react-popper-tooltip/-/react-popper-tooltip-2.11.1.tgz#3c4bdfd8bc10d1c2b9a162e859bab8958f5b2644"
