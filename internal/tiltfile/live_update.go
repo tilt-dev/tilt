@@ -15,14 +15,14 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-const fmtRestartContainerDeprecationWarning = "Found `restart_container()` LiveUpdate step in resource(s): [%s]. `restart_container()`  will soon be deprecated. For recommended ways to restart your process, see https://docs.tilt.dev/live_update_reference.html#restarting-your-process"
+const fmtRestartContainerDeprecationError = "Found `restart_container()` LiveUpdate step in resource(s): [%s]. `restart_container()`  has been deprecated for k8s resources. We recommend the restart_process extension: https://github.com/windmilleng/tilt-extensions/tree/master/restart_process. For more information, see https://docs.tilt.dev/live_update_reference.html#restarting-your-process"
 
-func restartContainerDeprecationWarning(names []model.ManifestName) string {
+func restartContainerDeprecationError(names []model.ManifestName) string {
 	strs := make([]string, len(names))
 	for i, n := range names {
 		strs[i] = n.String()
 	}
-	return fmt.Sprintf(fmtRestartContainerDeprecationWarning, strings.Join(strs, ", "))
+	return fmt.Sprintf(fmtRestartContainerDeprecationError, strings.Join(strs, ", "))
 }
 
 // when adding a new type of `liveUpdateStep`, make sure that any tiltfile functions that create them also call

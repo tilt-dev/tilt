@@ -1115,7 +1115,11 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		result = append(result, m)
 	}
-	s.maybeWarnRestartContainerDeprecation(result)
+
+	err := maybeRestartContainerDeprecationError(result)
+	if err != nil {
+		return nil, err
+	}
 
 	return result, nil
 }
@@ -1225,22 +1229,23 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 	return nil
 }
 
-func (s *tiltfileState) maybeWarnRestartContainerDeprecation(manifests []model.Manifest) {
-	var needsWarn []model.ManifestName
+func maybeRestartContainerDeprecationError(manifests []model.Manifest) error {
+	var needsError []model.ManifestName
 	for _, m := range manifests {
-		if needsRestartContainerDeprecationWarning(m) {
-			needsWarn = append(needsWarn, m.Name)
+		if needsRestartContainerDeprecationError(m) {
+			needsError = append(needsError, m.Name)
 		}
 	}
 
-	if len(needsWarn) > 0 {
-		s.logger.Warnf("%s", restartContainerDeprecationWarning(needsWarn))
+	if len(needsError) > 0 {
+		return fmt.Errorf("%s", restartContainerDeprecationError(needsError))
 	}
+	return nil
 }
-func needsRestartContainerDeprecationWarning(m model.Manifest) bool {
-	// 6/8/20: we're in the process of deprecating restart_container() in favor of the
-	// restart_process extension. If this is a k8s resource with a restart_container
-	// step, give a deprecation warning.
+func needsRestartContainerDeprecationError(m model.Manifest) bool {
+	// 7/2/20: we've deprecated restart_container() in favor of the restart_process extension.
+	// If this is a k8s resource with a restart_container step, throw a deprecation error.
+	// (restart_container is still allowed for Docker Compose resources)
 	if !m.IsK8s() {
 		return false
 	}
