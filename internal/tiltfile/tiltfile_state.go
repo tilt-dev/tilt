@@ -241,9 +241,11 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 
 	if len(unresourced) > 0 {
 		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
+
 		if err != nil {
 			return nil, starkit.Model{}, err
 		}
+		s.warnDuplicateYamlResources(yamlManifest)
 		manifests = append(manifests, yamlManifest)
 	}
 
@@ -1083,6 +1085,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
 			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload)
+
 		if err != nil {
 			s.logger.Warnf(err.Error())
 			return nil, nil
@@ -1106,6 +1109,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		result = append(result, m)
 	}
+
 	s.maybeWarnRestartContainerDeprecation(result)
 
 	return result, nil
@@ -1209,6 +1213,24 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 	}
 
 	return nil
+}
+
+func (s *tiltfileState) warnDuplicateYamlResources(m model.Manifest) {
+	deployTarget := m.K8sTarget()
+	displayNames := deployTarget.DisplayNames
+
+	duplicates := make(map[string]int)
+
+	for _, name := range displayNames {
+		duplicates[name[0:len(name)-2]]++
+	}
+
+	for k, v := range duplicates {
+		if v > 1 {
+			duplicatedResource := strings.Split(k, ":")
+			s.logger.Warnf("The following YAML Resource has been duplicated: " + duplicatedResource[0])
+		}
+	}
 }
 
 func (s *tiltfileState) maybeWarnRestartContainerDeprecation(manifests []model.Manifest) {
