@@ -20,7 +20,7 @@ var (
 	UpdateModeImage UpdateMode = "image"
 
 	// Only do image builds from scratch
-	UpdateModeNaive UpdateMode = "naive"
+	UpdateModeNaive UpdateMode = "naive" // NOTE(maia): this is redundant now?
 
 	// Deploy a synclet to make container updates faster
 	UpdateModeSynclet UpdateMode = "synclet"
