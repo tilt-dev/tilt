@@ -459,7 +459,7 @@ print(config.tilt_subcommand)
 	require.Equal(t, "foo\n", f.PrintOutput())
 }
 
-func NewFixture(tb testing.TB, userConfigState model.UserConfigState, tiltSubcommand TiltSubcommand) *starkit.Fixture {
+func NewFixture(tb testing.TB, userConfigState model.UserConfigState, tiltSubcommand model.TiltSubcommand) *starkit.Fixture {
 	ext := NewExtension(tiltSubcommand)
 	ext.UserConfigState = userConfigState
 	ret := starkit.NewFixture(tb, ext, io.NewExtension(), include.IncludeFn{})

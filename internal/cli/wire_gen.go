@@ -57,7 +57,7 @@ import (
 
 // Injectors from wire.go:
 
-func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (cmdTiltfileResultDeps, error) {
+func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (cmdTiltfileResultDeps, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -95,7 +95,7 @@ var (
 	_wireDefaultsValue = feature.MainDefaults
 )
 
-func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (dpDeps, error) {
+func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (dpDeps, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
@@ -135,7 +135,7 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	return cliDpDeps, nil
 }
 
-func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand config.TiltSubcommand) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
@@ -234,7 +234,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
+	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env, subcommand)
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -292,7 +292,7 @@ var (
 	_wireLabelsValue    = dockerfile.Labels{}
 )
 
-func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (CmdCIDeps, error) {
+func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, error) {
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
@@ -391,7 +391,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
+	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env, subcommand)
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
 		return CmdCIDeps{}, err
@@ -606,7 +606,7 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 	return localClient, nil
 }
 
-func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (DownDeps, error) {
+func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
 	if err != nil {
