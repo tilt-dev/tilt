@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"k8s.io/client-go/util/exec"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -219,7 +220,7 @@ func TestLiveUpdateDockerBuildLocalContainerSameImgMultipleContainers(t *testing
 }
 
 func TestLiveUpdateDockerBuildSyncletSameImgMultipleContainers(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	m := NewSanchoLiveUpdateManifest(f)
@@ -292,7 +293,7 @@ func TestLiveUpdateDockerBuildLocalContainerDiffImgMultipleContainers(t *testing
 }
 
 func TestLiveUpdateDockerBuildSyncletDiffImgMultipleContainers(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)
@@ -504,7 +505,7 @@ func TestLiveUpdateDockerContainerUserRunFailureDoesntFallBack(t *testing.T) {
 // TODO(maia): make this test actually touch gRPC de/serialization,
 // which is where most of this logic lives
 func TestLiveUpdateSyncletUserRunFailureDoesntFallBack(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	f.docker.SetExecError(userFailureErrDocker)
@@ -777,7 +778,7 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 }
 
 func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	runs := []model.LiveUpdateRunStep{
@@ -803,8 +804,36 @@ func TestLiveUpdateRunTriggerSynclet(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
+func TestLiveUpdateRunTriggerExec(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	runs := []model.LiveUpdateRunStep{
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo hello")},
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
+		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+	}
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, false, nil, f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
+		changedFiles:                      []string{"a.txt"},
+		expectDockerBuildCount:            0,
+		expectDockerPushCount:             0,
+		expectSyncletUpdateContainerCount: 0,
+		expectDockerCopyCount:             0,
+		expectDockerExecCount:             0, // one run's triggers don't match -- should only exec the other two.
+		expectDockerRestartCount:          0,
+		expectK8sExecCount:                3, // one copy, two runs (third run's triggers don't match so don't exec it)
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	tCase := testCase{
@@ -821,7 +850,7 @@ func TestLiveUpdateDockerBuildSynclet(t *testing.T) {
 }
 
 func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, nil, f)
@@ -842,8 +871,31 @@ func TestLiveUpdateCustomBuildSynclet(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
-func TestLiveUpdateHotReloadSynclet(t *testing.T) {
+func TestLiveUpdateCustomBuildExec(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoCustomBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
+		changedFiles:                      []string{"app/a.txt"},
+		expectDockerBuildCount:            0,
+		expectDockerPushCount:             0,
+		expectSyncletUpdateContainerCount: 0,
+		expectDockerCopyCount:             0,
+		expectDockerExecCount:             0,
+		expectDockerRestartCount:          0,
+		expectK8sExecCount:                2,
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateHotReloadSynclet(t *testing.T) {
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
@@ -901,13 +953,14 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 		changedFiles:           []string{"a.txt"},
 		expectDockerBuildCount: 0,
 		expectDockerPushCount:  0,
-		expectK8sExecCount:     2, // one tar archive, one run cmd
+		expectK8sExecCount:     2,     // one tar archive, one run cmd
+		expectSyncletDeploy:    false, // exec updater should not deploy synclet
 	}
 	runTestCase(t, f, tCase)
 }
 
 func TestDockerBuildWithoutLiveUpdateDoesNotDeploySynclet(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	tCase := testCase{
@@ -922,7 +975,7 @@ func TestDockerBuildWithoutLiveUpdateDoesNotDeploySynclet(t *testing.T) {
 }
 
 func TestLiveUpdateDockerBuildDeploysSynclet(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	tCase := testCase{
@@ -960,7 +1013,7 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 }
 
 func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
@@ -978,6 +1031,29 @@ func TestLiveUpdateSyncletFallBackOn(t *testing.T) {
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		expectSyncletDeploy:      true, // (and expect that yaml to have contained the synclet)
+		logsContain:              []string{"Detected change to fall_back_on file", "a.txt"},
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateExecFallBackOn(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"a.txt"}, f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
+		changedFiles:             []string{"a.txt"},
+		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
+		expectDockerPushCount:    1,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0,
+		expectDockerRestartCount: 0,
+		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		logsContain:              []string{"Detected change to fall_back_on file", "a.txt"},
 	}
 	runTestCase(t, f, tCase)
@@ -1015,7 +1091,7 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 }
 
 func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
@@ -1039,6 +1115,37 @@ func TestLiveUpdateSyncletChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 		expectDockerRestartCount: 0,
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		expectSyncletDeploy:      true, // (and expect that yaml to have contained the synclet)
+
+		logsContain:     []string{"Found file(s) not matching any sync", "a.txt"},
+		logsDontContain: []string{"unexpected error"},
+	}
+	runTestCase(t, f, tCase)
+}
+
+func TestLiveUpdateExecChangedFileNotMatchingSyncFallsBack(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
+		Source: f.JoinPath("specific/directory"),
+		Dest:   "/go/src/github.com/tilt-dev/sancho",
+	}}
+
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, false, []string{"a.txt"}, f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
+		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
+
+		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
+		expectDockerPushCount:    1,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0,
+		expectDockerRestartCount: 0,
+		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 
 		logsContain:     []string{"Found file(s) not matching any sync", "a.txt"},
 		logsDontContain: []string{"unexpected error"},

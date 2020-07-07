@@ -1013,6 +1013,10 @@ type bdFixture struct {
 }
 
 func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixture {
+	return newBDFixtureWithUpdateMode(t, env, runtime, buildcontrol.UpdateModeAuto)
+}
+
+func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Runtime, um buildcontrol.UpdateMode) *bdFixture {
 	logs := new(bytes.Buffer)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	ctx, cancel := context.WithCancel(ctx)
@@ -1029,7 +1033,7 @@ func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixtu
 	k8s := k8s.NewFakeK8sClient()
 	k8s.Runtime = runtime
 	sCli := synclet.NewTestSyncletClient(docker)
-	mode := buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)
+	mode := buildcontrol.UpdateModeFlag(um)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kl := &fakeKINDLoader{}
 	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kl, ta)
