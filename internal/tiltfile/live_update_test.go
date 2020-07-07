@@ -310,7 +310,7 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
 	f.loadErrString("fall_back_on", f.JoinPath("bar"), f.JoinPath("foo"), "child", "any watched filepaths")
 }
 
-func TestLiveUpdateRestartContainerDeprecationWarnK8s(t *testing.T) {
+func TestLiveUpdateRestartContainerDeprecationErrorK8s(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -324,10 +324,10 @@ docker_build('gcr.io/foo', './foo',
 	restart_container(),
   ]
 )`)
-	f.loadAssertWarnings(restartContainerDeprecationWarning([]model.ManifestName{"foo"}))
+	f.loadErrString(restartContainerDeprecationError([]model.ManifestName{"foo"}))
 }
 
-func TestLiveUpdateRestartContainerDeprecationWarnK8sCustomBuild(t *testing.T) {
+func TestLiveUpdateRestartContainerDeprecationErrorK8sCustomBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -342,10 +342,10 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
   ]
 )`)
 
-	f.loadAssertWarnings(restartContainerDeprecationWarning([]model.ManifestName{"foo"}))
+	f.loadErrString(restartContainerDeprecationError([]model.ManifestName{"foo"}))
 }
 
-func TestLiveUpdateRestartContainerDeprecationWarnMultiple(t *testing.T) {
+func TestLiveUpdateRestartContainerDeprecationErrorMultiple(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -370,10 +370,10 @@ docker_build('gcr.io/d', './d',
   live_update=[sync('./d', '/')]
 )`)
 
-	f.loadAssertWarnings(restartContainerDeprecationWarning([]model.ManifestName{"a", "c"}))
+	f.loadErrString(restartContainerDeprecationError([]model.ManifestName{"a", "c"}))
 }
 
-func TestLiveUpdateNoRestartContainerDeprecationWarnK8sDockerCompose(t *testing.T) {
+func TestLiveUpdateNoRestartContainerDeprecationErrorK8sDockerCompose(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.setupFoo()
@@ -387,7 +387,7 @@ docker_build('gcr.io/foo', 'foo')
 docker_compose('docker-compose.yml')
 `)
 
-	// Expect no deprecation warning b/c restart_container() is still allowed on Docker Compose resources
+	// Expect no deprecation error b/c restart_container() is still allowed on Docker Compose resources
 	f.load()
 	f.assertNextManifest("foo", db(image("gcr.io/foo")))
 }

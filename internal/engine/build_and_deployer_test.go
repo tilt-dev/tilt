@@ -553,7 +553,7 @@ func TestIgnoredFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tr := tar.NewReader(f.docker.BuildOptions.Context)
+	tr := tar.NewReader(f.docker.BuildContext)
 	testutils.AssertFilesInTar(t, tr, []expectedFile{
 		expectedFile{
 			Path:     "a.txt",

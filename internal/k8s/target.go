@@ -17,7 +17,7 @@ func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
-	target, err := NewTarget(name, entities, nil, nil, nil, nil, false)
+	target, err := NewTarget(name, entities, nil, nil, nil, nil, false, nil)
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
@@ -31,8 +31,8 @@ func NewTarget(
 	extraPodSelectors []labels.Selector,
 	dependencyIDs []model.TargetID,
 	refInjectCounts map[string]int,
-	nonWorkload bool) (model.K8sTarget, error) {
-
+	nonWorkload bool,
+	allLocators []ImageLocator) (model.K8sTarget, error) {
 	sorted := SortedEntities(entities)
 	yaml, err := SerializeSpecYAML(sorted)
 	if err != nil {
@@ -48,6 +48,13 @@ func NewTarget(
 	// so that the resource type appears
 	displayNames := UniqueNames(sorted, 2)
 
+	myLocators := []model.K8sImageLocator{}
+	for _, locator := range allLocators {
+		if LocatorMatchesOne(locator, entities) {
+			myLocators = append(myLocators, locator)
+		}
+	}
+
 	return model.K8sTarget{
 		Name:              name,
 		YAML:              yaml,
@@ -56,11 +63,12 @@ func NewTarget(
 		DisplayNames:      displayNames,
 		ObjectRefs:        objectRefs,
 		NonWorkload:       nonWorkload,
+		ImageLocators:     myLocators,
 	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 
-func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, true)
+func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity, allLocators []ImageLocator) (model.Manifest, error) {
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, true, allLocators)
 	if err != nil {
 		return model.Manifest{}, err
 	}
@@ -73,9 +81,17 @@ func NewK8sOnlyManifestFromYAML(yaml string) (model.Manifest, error) {
 		return model.Manifest{}, errors.Wrap(err, "NewK8sOnlyManifestFromYAML")
 	}
 
-	manifest, err := NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, entities)
+	manifest, err := NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, entities, nil)
 	if err != nil {
 		return model.Manifest{}, errors.Wrap(err, "NewK8sOnlyManifestFromYAML")
 	}
 	return manifest, nil
+}
+
+func ToImageLocators(locators []model.K8sImageLocator) []ImageLocator {
+	result := []ImageLocator{}
+	for _, locator := range locators {
+		result = append(result, locator.(ImageLocator))
+	}
+	return result
 }

@@ -74,7 +74,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            12.3s
+            12s
           </span>
         </div>
       </a>
@@ -129,7 +129,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            12.3s
+            12s
           </span>
         </div>
       </a>
@@ -184,7 +184,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            12.3s
+            12s
           </span>
         </div>
       </a>
@@ -239,7 +239,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            12.3s
+            12s
           </span>
         </div>
       </a>
@@ -294,7 +294,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            12.3s
+            12s
           </span>
         </div>
       </a>
@@ -349,7 +349,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            12.3s
+            12s
           </span>
         </div>
       </a>
@@ -404,7 +404,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            12.3s
+            12s
           </span>
         </div>
       </a>
@@ -527,7 +527,7 @@ exports[`sidebar renders list of resources 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            12.3s
+            12s
           </span>
         </div>
       </a>
@@ -582,7 +582,7 @@ exports[`sidebar renders list of resources 1`] = `
           <span
             className="sc-fzpans clZIwH"
           >
-            50.0s
+            -10.0s
           </span>
         </div>
       </a>

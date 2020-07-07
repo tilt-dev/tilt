@@ -7,7 +7,9 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -16,7 +18,7 @@ type BuildHandler func(
 	target model.TargetSpec,
 	depResults []store.BuildResult) (store.BuildResult, error)
 
-type ImageExistsChecker func(ctx context.Context, namedTagged reference.NamedTagged) (bool, error)
+type ReuseRefChecker func(ctx context.Context, iTarget model.ImageTarget, namedTagged reference.NamedTagged) (bool, error)
 
 // A little data structure to help iterate through dirty targets in dependency order.
 type TargetQueue struct {
@@ -42,7 +44,7 @@ type TargetQueue struct {
 	depsNeedBuild map[model.TargetID]bool
 }
 
-func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, state store.BuildStateSet, imageExists ImageExistsChecker) (*TargetQueue, error) {
+func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, state store.BuildStateSet, canReuseRef ReuseRefChecker) (*TargetQueue, error) {
 	targets := make([]model.TargetSpec, 0, len(iTargets))
 	for _, iTarget := range iTargets {
 		targets = append(targets, iTarget)
@@ -58,13 +60,14 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 		id := target.ID()
 		if state[id].NeedsImageBuild() {
 			needsOwnBuild[id] = true
-		} else if state[id].LastSuccessfulResult != nil {
-			image := store.LocalImageRefFromBuildResult(state[id].LastSuccessfulResult)
-			exists, err := imageExists(ctx, image)
+		} else if state[id].LastResult != nil {
+			image := store.LocalImageRefFromBuildResult(state[id].LastResult)
+			ok, err := canReuseRef(ctx, target.(model.ImageTarget), image)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error looking up whether last image built for %s exists", image.String())
 			}
-			if !exists {
+			if !ok {
+				logger.Get(ctx).Infof("Rebuilding %s because image not found in image store", container.FamiliarString(image))
 				needsOwnBuild[id] = true
 			}
 		}
@@ -81,13 +84,18 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 	}
 
 	results := make(store.BuildResultSet, len(targets))
-	return &TargetQueue{
+	queue := &TargetQueue{
 		sortedTargets: sortedTargets,
 		state:         state,
 		results:       results,
 		needsOwnBuild: needsOwnBuild,
 		depsNeedBuild: depsNeedBuild,
-	}, nil
+	}
+	err = queue.backfillExistingResults()
+	if err != nil {
+		return nil, err
+	}
+	return queue, nil
 }
 
 // New results that were built with the current queue. Omits results
@@ -140,6 +148,22 @@ func (q *TargetQueue) CountBuilds() int {
 	return result
 }
 
+func (q *TargetQueue) backfillExistingResults() error {
+	for _, target := range q.sortedTargets {
+		id := target.ID()
+		if !q.isBuilding(id) {
+			// We can re-use results from the previous build.
+			lastResult := q.state[id].LastResult
+			image := store.LocalImageRefFromBuildResult(lastResult)
+			if image == nil {
+				return fmt.Errorf("Internal error: build marked clean but last result not found: %+v", q.state[id])
+			}
+			q.results[id] = lastResult
+		}
+	}
+	return nil
+}
+
 func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 	for _, target := range q.sortedTargets {
 		id := target.ID()
@@ -149,15 +173,6 @@ func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 				return err
 			}
 			q.results[id] = result
-		} else {
-			// Otherwise, we can re-use results from the previous build.
-			// If needsOwnBuild is false, then LastSuccessfulResult must exist if it's empty.
-			lastResult := q.state[id].LastSuccessfulResult
-			image := store.LocalImageRefFromBuildResult(lastResult)
-			if image == nil {
-				return fmt.Errorf("Internal error: build marked clean but last result not found: %+v", q.state[id])
-			}
-			q.results[id] = lastResult
 		}
 	}
 	return nil

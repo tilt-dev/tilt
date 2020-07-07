@@ -61,7 +61,7 @@ const BlorgBackendAmbiguousYAML = `
 apiVersion: v1
 kind: Service
 metadata:
-  name: blorg 
+  name: blorg
   labels:
     app: blorg
     owner: nick
@@ -81,7 +81,7 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: blorg 
+  name: blorg
 spec:
   selector:
     matchLabels:
@@ -91,7 +91,7 @@ spec:
       tier: backend
   template:
     metadata:
-      name: blorg 
+      name: blorg
       labels:
         app: blorg
         owner: nick
@@ -1423,6 +1423,15 @@ spec:
 `
 
 const CRDImage = "docker.io/bitnami/minideb:latest"
+
+const CRDImageObjectYAML = `apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: um
+spec:
+  imageObject:
+    repo: frontend
+`
 
 const MyNamespaceYAML = `apiVersion: v1
 kind: Namespace

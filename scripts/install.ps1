@@ -3,7 +3,7 @@
 # Usage:
 #   iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.ps1')
 
-$version = "0.14.3"
+$version = "0.15.2"
 $url = "https://github.com/tilt-dev/tilt/releases/download/v" + $version + "/tilt." + $version + ".windows.x86_64.zip"
 $zip = "tilt-" + $version + ".zip"
 $extractDir = "tilt-" + $version
@@ -16,7 +16,7 @@ if (Get-Command "scoop" 2>$null) {
 }
 
 if ("true" -eq $useScoop) {
-    Write-Host "Scoop detected! (https://scoop.sh)" 
+    Write-Host "Scoop detected! (https://scoop.sh)"
     scoop bucket add tilt-dev https://github.com/tilt-dev/scoop-bucket
     scoop install tilt
     scoop update tilt

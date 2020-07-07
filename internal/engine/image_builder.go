@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/docker/distribution/reference"
+
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -23,6 +25,19 @@ func NewImageBuilder(db build.DockerBuilder, custb build.CustomBuilder, updateMo
 		custb:      custb,
 		updateMode: updateMode,
 	}
+}
+
+func (icb *imageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTarget, ref reference.NamedTagged) (bool, error) {
+	switch iTarget.BuildDetails.(type) {
+	case model.DockerBuild:
+		return icb.db.ImageExists(ctx, ref)
+	case model.CustomBuild:
+		// Custom build doesn't have a good way to check if the ref still exists in the image
+		// store, so just assume we can.
+		return true, nil
+	}
+	return false, fmt.Errorf("image %q has no valid buildDetails (neither "+
+		"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
 }
 
 func (icb *imageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,

@@ -140,10 +140,9 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	w := LocalServeLogActionWriter{
-		store:               st,
-		manifestName:        spec.ManifestName,
-		procNum:             proc.procNum,
-		stillHasSameProcNum: proc.stillHasSameProcNum(),
+		store:        st,
+		manifestName: spec.ManifestName,
+		procNum:      proc.procNum,
 	}
 	ctx = logger.CtxWithLogHandler(ctx, w)
 
@@ -212,17 +211,12 @@ func (p *currentProcess) currentProcNum() int {
 }
 
 type LocalServeLogActionWriter struct {
-	store               store.RStore
-	manifestName        model.ManifestName
-	stillHasSameProcNum func() bool
-	procNum             int
+	store        store.RStore
+	manifestName model.ManifestName
+	procNum      int
 }
 
 func (w LocalServeLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	if !w.stillHasSameProcNum() {
-		return nil
-	}
-
 	w.store.Dispatch(store.NewLogAction(w.manifestName, SpanIDForServeLog(w.procNum), level, fields, p))
 	return nil
 }

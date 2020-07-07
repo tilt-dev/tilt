@@ -5,10 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"sort"
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -87,6 +89,7 @@ type FakeClient struct {
 
 	BuildCount        int
 	BuildOptions      BuildOptions
+	BuildContext      *bytes.Buffer
 	BuildOutput       string
 	BuildErrorToThrow error // next call to Build will throw this err (after which we clear the error)
 
@@ -109,7 +112,13 @@ type FakeClient struct {
 	RestartsByContainer map[string]int
 	RemovedImageIDs     []string
 
-	Images            map[string]types.ImageInspect
+	// Images returned by ImageInspect.
+	Images map[string]types.ImageInspect
+
+	// If true, ImageInspectWithRaw will always return an ImageInspect,
+	// even if one hasn't been explicitly pre-loaded.
+	ImageAlwaysExists bool
+
 	Orchestrator      model.Orchestrator
 	CheckConnectedErr error
 
@@ -227,8 +236,15 @@ func (c *FakeClient) ImageBuild(ctx context.Context, buildContext io.Reader, opt
 	c.BuildCount++
 	c.BuildOptions = options
 
+	data, err := ioutil.ReadAll(buildContext)
+	if err != nil {
+		return types.ImageBuildResponse{}, errors.Wrap(err, "ImageBuild")
+	}
+
+	c.BuildContext = bytes.NewBuffer(data)
+
 	// If we're supposed to throw an error on this call, throw it (and reset ErrorToThrow)
-	err := c.BuildErrorToThrow
+	err = c.BuildErrorToThrow
 	if err != nil {
 		c.BuildErrorToThrow = nil
 		return types.ImageBuildResponse{}, err
@@ -249,6 +265,11 @@ func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (t
 	if ok {
 		return result, nil, nil
 	}
+
+	if c.ImageAlwaysExists {
+		return types.ImageInspect{}, nil, nil
+	}
+
 	return types.ImageInspect{}, nil, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
 }
 

@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 
 	"github.com/stretchr/testify/assert"
@@ -1178,6 +1180,20 @@ k8s_yaml(blob(''))
 	f.loadErrString("Empty or Invalid YAML Resource Detected")
 }
 
+func TestDuplicateLocalResources(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+local_resource('foo', 'echo foo')
+local_resource('foo', 'echo foo')
+`)
+
+	f.loadErrString("Local resource foo has been defined multiple times")
+}
+
 // These tests are for behavior that we specifically enabled in Starlark
 // in the init() function
 func TestTopLevelIfStatement(t *testing.T) {
@@ -2132,6 +2148,29 @@ custom_build(
 	assert.True(t, m.ImageTargets[0].CustomBuildInfo().SkipsPush())
 }
 
+func TestImageObjectJSONPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("um.yaml", `apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: um
+spec:
+  image:
+    repo: tilt.dev/frontend`)
+	f.dockerfile("Dockerfile")
+	f.file("Tiltfile", `
+k8s_yaml('um.yaml')
+k8s_kind(kind='UselessMachine', image_object={'json_path': '{.spec.image}', 'repo_field': 'repo', 'tag_field': 'tag'})
+docker_build('tilt.dev/frontend', '.')
+`)
+
+	f.load()
+	m := f.assertNextManifest("um")
+	assert.Equal(t, "tilt.dev/frontend",
+		m.ImageTargets[0].Refs.LocalRef().String())
+}
+
 func TestExtraImageLocationOneImage(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -2497,14 +2536,14 @@ func TestExtraImageLocationNotListOrString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', paths=8)`)
-	f.loadErrString("paths must be a string or list of strings", "Int")
+	f.loadErrString("for parameter \"paths\": Expected string, got: 8")
 }
 
 func TestExtraImageLocationListContainsNonString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', paths=["foo", 8])`)
-	f.loadErrString("paths must be a string or list of strings", "8", "Int")
+	f.loadErrString("for parameter \"paths\": Expected string, got: 8")
 }
 
 func TestExtraImageLocationNoSelectorSpecified(t *testing.T) {
@@ -3100,18 +3139,21 @@ func TestTriggerModeK8S(t *testing.T) {
 		name                string
 		globalSetting       triggerMode
 		k8sResourceSetting  triggerMode
+		specifyAutoInit     bool
+		autoInit            bool
 		expectedTriggerMode model.TriggerMode
 	}{
-		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
-		{"explicit global manual after initial", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
-		{"kr auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"kr manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
-		{"kr manual after initial", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
-		{"kr override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
-		{"kr override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
-		{"kr override manual after initial", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
+		{"default", TriggerModeUnset, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, false, false, model.TriggerModeManualAfterInitial},
+		{"kr auto", TriggerModeUnset, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"kr manual", TriggerModeUnset, TriggerModeManual, false, false, model.TriggerModeManualAfterInitial},
+		{"kr manual, auto_init=False", TriggerModeUnset, TriggerModeManual, true, false, model.TriggerModeManualIncludingInitial},
+		{"kr manual, auto_init=True", TriggerModeUnset, TriggerModeManual, true, true, model.TriggerModeManualAfterInitial},
+		{"kr override auto", TriggerModeManual, TriggerModeAuto, false, false, model.TriggerModeAuto},
+		{"kr override manual", TriggerModeAuto, TriggerModeManual, false, false, model.TriggerModeManualAfterInitial},
+		{"kr override manual, auto_init=False", TriggerModeAuto, TriggerModeManual, true, false, model.TriggerModeManualIncludingInitial},
+		{"kr override manual, auto_init=True", TriggerModeAuto, TriggerModeManual, true, true, model.TriggerModeManualAfterInitial},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -3132,7 +3174,16 @@ func TestTriggerModeK8S(t *testing.T) {
 			case TriggerModeUnset:
 				k8sResourceDirective = ""
 			default:
-				k8sResourceDirective = fmt.Sprintf("k8s_resource('foo', trigger_mode=%s)", testCase.k8sResourceSetting.String())
+				autoInitOption := ""
+				if testCase.specifyAutoInit {
+					autoInitOption = ", auto_init="
+					if testCase.autoInit {
+						autoInitOption += "True"
+					} else {
+						autoInitOption += "False"
+					}
+				}
+				k8sResourceDirective = fmt.Sprintf("k8s_resource('foo', trigger_mode=%s%s)", testCase.k8sResourceSetting.String(), autoInitOption)
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
@@ -5037,16 +5088,16 @@ type fixture struct {
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	features := feature.Defaults{
-		"testflag_disabled":              feature.Value{Enabled: false},
-		"testflag_enabled":               feature.Value{Enabled: true},
-		"obsoleteflag":                   feature.Value{Status: feature.Obsolete, Enabled: true},
-		feature.MultipleContainersPerPod: feature.Value{Enabled: false},
-		feature.Snapshots:                feature.Value{Enabled: true},
+		"testflag_disabled": feature.Value{Enabled: false},
+		"testflag_enabled":  feature.Value{Enabled: true},
+		"obsoleteflag":      feature.Value{Status: feature.Obsolete, Enabled: true},
+		feature.Snapshots:   feature.Value{Enabled: true},
 	}
 
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, dcc, f.webHost, features, f.k8sEnv)
+	configExt := config.NewExtension("up")
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {

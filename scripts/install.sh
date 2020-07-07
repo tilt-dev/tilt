@@ -7,7 +7,7 @@
 
 # When releasing Tilt, the releaser should update this version number
 # AFTER they upload new binaries.
-VERSION="0.14.3"
+VERSION="0.15.2"
 BREW=$(command -v brew)
 
 set -e
@@ -60,7 +60,7 @@ function version_check() {
   elif ! [[ $VERSION =~ $TILT_DEV_PATTERN ]]; then
     echo "Tilt installed!"
     echo
-    echo "Note: it looks like it is not the first program named 'tilt' in your path. \`tilt version\` (running from $(command -v tilt)) did not return a a tilt.dev version string."
+    echo "Note: it looks like it is not the first program named 'tilt' in your path. \`tilt version\` (running from $(command -v tilt)) did not return a tilt.dev version string."
     echo "It output this instead:"
     echo
     echo "$VERSION"

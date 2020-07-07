@@ -10,8 +10,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/opencontainers/go-digest"
@@ -122,11 +121,14 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 }
 
 func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error) {
-	images, err := d.dCli.ImageList(ctx, types.ImageListOptions{Filters: filters.NewArgs(filters.Arg("reference", ref.String()))})
+	_, _, err := d.dCli.ImageInspectWithRaw(ctx, ref.String())
 	if err != nil {
+		if client.IsErrNotFound(err) {
+			return false, nil
+		}
 		return false, errors.Wrapf(err, "error checking if %s exists", ref.String())
 	}
-	return len(images) > 0, nil
+	return true, nil
 }
 
 func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, refs container.RefSet) (container.TaggedRefs, error) {
@@ -152,6 +154,10 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 			_ = pw.Close()
 		}
 	}(ctx)
+
+	defer func() {
+		_ = pr.Close()
+	}()
 
 	ps.StartBuildStep(ctx, "Building image")
 	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")

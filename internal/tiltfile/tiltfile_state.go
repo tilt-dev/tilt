@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -12,8 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
-
-	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -30,6 +27,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/os"
+	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starlarkstruct"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
@@ -58,6 +56,7 @@ type tiltfileState struct {
 	webHost       model.WebHost
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
+	configExt     *config.Extension
 	localRegistry container.Registry
 	features      feature.FeatureSet
 
@@ -74,9 +73,10 @@ type tiltfileState struct {
 	defaultReg container.Registry
 
 	// JSON paths to images in k8s YAML (other than Container specs)
-	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
+	k8sImageLocators map[k8s.ObjectSelector][]k8s.ImageLocator
+
 	// objects of these types are considered workloads, whether or not they have an image
-	workloadTypes []k8sObjectSelector
+	workloadTypes []k8s.ObjectSelector
 
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
@@ -128,6 +128,7 @@ func newTiltfileState(
 	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
+	configExt *config.Extension,
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
@@ -136,10 +137,10 @@ func newTiltfileState(
 		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
 		versionExt:                 versionExt,
+		configExt:                  configExt,
 		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
 		k8sByName:                  make(map[string]*k8sResource),
-		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
 		usedImages:                 make(map[string]bool),
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
@@ -151,6 +152,7 @@ func newTiltfileState(
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
 		secretSettings:             model.DefaultSecretSettings(),
+		k8sImageLocators:           make(map[k8s.ObjectSelector][]k8s.ImageLocator),
 	}
 }
 
@@ -168,6 +170,9 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 // all the mutable state collected by execution.
 func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.UserConfigState) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
+
+	s.configExt.UserConfigState = userConfigState
+
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
@@ -178,7 +183,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		s.versionExt,
-		config.NewExtension(userConfigState),
+		s.configExt,
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
 		updatesettings.NewExtension(),
@@ -222,6 +227,11 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		}
 	}
 
+	err = s.validateLiveUpdatesForManifests(manifests)
+	if err != nil {
+		return nil, result, err
+	}
+
 	err = s.checkForUnconsumedLiveUpdateSteps()
 	if err != nil {
 		return nil, result, err
@@ -240,8 +250,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 
 	if len(unresourced) > 0 {
-		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
-
+		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced, s.k8sImageLocatorsList())
 		if err != nil {
 			return nil, starkit.Model{}, err
 		}
@@ -255,6 +264,24 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 
 	return manifests, result, nil
+}
+
+func (s *tiltfileState) warnDuplicateYamlResources(m model.Manifest) {
+	deployTarget := m.K8sTarget()
+	displayNames := deployTarget.DisplayNames
+
+	duplicates := make(map[string]int)
+
+	for _, name := range displayNames {
+		duplicates[name[0:len(name)-2]]++
+	}
+
+	for k, v := range duplicates {
+		if v > 1 {
+			duplicatedResource := strings.Split(k, ":")
+			s.logger.Warnf("The following YAML Resource has been duplicated: " + duplicatedResource[0])
+		}
+	}
 }
 
 // Builtin functions
@@ -679,6 +706,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 			r.extraPodSelectors = opts.extraPodSelectors
 			r.portForwards = opts.portForwards
 			r.triggerMode = opts.triggerMode
+			r.autoInit = opts.autoInit
 			r.resourceDeps = opts.resourceDeps
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
@@ -689,7 +717,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 				s.k8sByName[r.name] = r
 			}
 
-			selectors := make([]k8sObjectSelector, len(opts.objects))
+			selectors := make([]k8s.ObjectSelector, len(opts.objects))
 			for i, o := range opts.objects {
 				s, err := selectorFromString(o)
 				if err != nil {
@@ -758,29 +786,29 @@ func fullNameFromK8sEntity(e k8s.K8sEntity) string {
 }
 
 // format is <name:required>:<kind:optional>:<namespace:optional>
-func selectorFromString(s string) (k8sObjectSelector, error) {
+func selectorFromString(s string) (k8s.ObjectSelector, error) {
 	parts := strings.Split(s, ":")
 	if len(s) == 0 {
-		return k8sObjectSelector{}, fmt.Errorf("selector can't be empty")
+		return k8s.ObjectSelector{}, fmt.Errorf("selector can't be empty")
 	}
 	if len(parts) == 1 {
-		return newFullmatchCaseInsensitiveK8sObjectSelector("", "", parts[0], "")
+		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", "", parts[0], "")
 	}
 	if len(parts) == 2 {
-		return newFullmatchCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], "")
+		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", parts[1], parts[0], "")
 	}
 	if len(parts) == 3 {
-		return newFullmatchCaseInsensitiveK8sObjectSelector("", parts[1], parts[0], parts[2])
+		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", parts[1], parts[0], parts[2])
 	}
 
-	return k8sObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
+	return k8s.ObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
 }
 
-func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8sObjectSelector) []k8s.K8sEntity {
+func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8s.ObjectSelector) []k8s.K8sEntity {
 	ret := []k8s.K8sEntity{}
 
 	for _, e := range entities {
-		if sel.matches(e) {
+		if sel.Matches(e) {
 			ret = append(ret, e)
 		}
 	}
@@ -802,9 +830,11 @@ func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEnt
 }
 
 func (s *tiltfileState) assembleK8sByWorkload() error {
+	locators := s.k8sImageLocatorsList()
+
 	var workloads, rest []k8s.K8sEntity
 	for _, e := range s.k8sUnresourced {
-		isWorkload, err := s.isWorkload(e)
+		isWorkload, err := s.isWorkload(e, locators)
 		if err != nil {
 			return err
 		}
@@ -820,13 +850,14 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 	if err != nil {
 		return err
 	}
+
 	for i, resourceName := range resourceNames {
 		workload := workloads[i]
 		res, err := s.makeK8sResource(resourceName)
 		if err != nil {
 			return errors.Wrapf(err, "error making resource for workload %s", newK8sObjectID(workload))
 		}
-		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths, s.envVarImages())
+		err = res.addEntities([]k8s.K8sEntity{workload}, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -838,7 +869,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 			return err
 		}
 
-		err = res.addEntities(match, s.imageJSONPaths, s.envVarImages())
+		err = res.addEntities(match, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -861,14 +892,14 @@ func (s *tiltfileState) envVarImages() []container.RefSelector {
 	return r
 }
 
-func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
+func (s *tiltfileState) isWorkload(e k8s.K8sEntity, locators []k8s.ImageLocator) (bool, error) {
 	for _, sel := range s.workloadTypes {
-		if sel.matches(e) {
+		if sel.Matches(e) {
 			return true, nil
 		}
 	}
 
-	images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
+	images, err := e.FindImages(locators, s.envVarImages())
 	if err != nil {
 		return false, errors.Wrapf(err, "finding images in %s", e.Name())
 	} else {
@@ -1004,8 +1035,9 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	var result []reference.Named
 	seen := make(map[string]bool)
 
+	locators := s.k8sImageLocatorsList()
 	for _, e := range s.k8sUnresourced {
-		images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
+		images, err := e.FindImages(locators, s.envVarImages())
 		if err != nil {
 			return nil, err
 		}
@@ -1021,12 +1053,13 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 
 // extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
 func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.RefSelector) error {
-	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.imageJSONPaths, false)
+	locators := s.k8sImageLocatorsList()
+	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, locators, false)
 	if err != nil {
 		return err
 	}
 
-	err = dest.addEntities(extracted, s.imageJSONPaths, s.envVarImages())
+	err = dest.addEntities(extracted, locators, s.envVarImages())
 	if err != nil {
 		return err
 	}
@@ -1039,7 +1072,7 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 			return err
 		}
 
-		err = dest.addEntities(match, s.imageJSONPaths, s.envVarImages())
+		err = dest.addEntities(match, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -1065,12 +1098,13 @@ func (s *tiltfileState) decideRegistry() container.Registry {
 
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
+	locators := s.k8sImageLocatorsList()
 	registry := s.decideRegistry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
-		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), true)
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), r.autoInit)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error in resource %s options", mn)
 		}
 
 		var mds []model.ManifestName
@@ -1084,8 +1118,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
-			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload)
-
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload, locators)
 		if err != nil {
 			s.logger.Warnf(err.Error())
 			return nil, nil
@@ -1100,17 +1133,13 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithImageTargets(iTargets)
 
-		if !s.features.Get(feature.MultipleContainersPerPod) {
-			err = s.checkForImpossibleLiveUpdates(m)
-			if err != nil {
-				return nil, err
-			}
-		}
-
 		result = append(result, m)
 	}
 
-	s.maybeWarnRestartContainerDeprecation(result)
+	err := maybeRestartContainerDeprecationError(result)
+	if err != nil {
+		return nil, err
+	}
 
 	return result, nil
 }
@@ -1138,14 +1167,19 @@ func (s *tiltfileState) defaultedPortForwards(pfs []model.PortForward) []model.P
 	return result
 }
 
-// checkForImpossibleLiveUpdates logs a warning if the group of image targets contains
-// any impossible LiveUpdates (or FastBuilds).
-//
-// Currently, we only collect container information for the first Tilt-built container
-// on the pod (b/c of how we assemble resources, this corresponds to the first image target).
-// We won't collect container info on any subsequent containers (i.e. subsequent image
-// targets), so will never be able to LiveUpdate them.
-func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
+func (s *tiltfileState) validateLiveUpdatesForManifests(manifests []model.Manifest) error {
+	for _, m := range manifests {
+		err := s.validateLiveUpdatesForManifest(m)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateLiveUpdatesForManifest checks any image targets on the
+// given manifest the contain any illegal LiveUpdates
+func (s *tiltfileState) validateLiveUpdatesForManifest(m model.Manifest) error {
 	g, err := model.NewTargetGraph(m.TargetSpecs())
 	if err != nil {
 		return err
@@ -1215,40 +1249,23 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 	return nil
 }
 
-func (s *tiltfileState) warnDuplicateYamlResources(m model.Manifest) {
-	deployTarget := m.K8sTarget()
-	displayNames := deployTarget.DisplayNames
-
-	duplicates := make(map[string]int)
-
-	for _, name := range displayNames {
-		duplicates[name[0:len(name)-2]]++
-	}
-
-	for k, v := range duplicates {
-		if v > 1 {
-			duplicatedResource := strings.Split(k, ":")
-			s.logger.Warnf("The following YAML Resource has been duplicated: " + duplicatedResource[0])
-		}
-	}
-}
-
-func (s *tiltfileState) maybeWarnRestartContainerDeprecation(manifests []model.Manifest) {
-	var needsWarn []model.ManifestName
+func maybeRestartContainerDeprecationError(manifests []model.Manifest) error {
+	var needsError []model.ManifestName
 	for _, m := range manifests {
-		if needsRestartContainerDeprecationWarning(m) {
-			needsWarn = append(needsWarn, m.Name)
+		if needsRestartContainerDeprecationError(m) {
+			needsError = append(needsError, m.Name)
 		}
 	}
 
-	if len(needsWarn) > 0 {
-		s.logger.Warnf("%s", restartContainerDeprecationWarning(needsWarn))
+	if len(needsError) > 0 {
+		return fmt.Errorf("%s", restartContainerDeprecationError(needsError))
 	}
+	return nil
 }
-func needsRestartContainerDeprecationWarning(m model.Manifest) bool {
-	// 6/8/20: we're in the process of deprecating restart_container() in favor of the
-	// restart_process extension. If this is a k8s resource with a restart_container
-	// step, give a deprecation warning.
+func needsRestartContainerDeprecationError(m model.Manifest) bool {
+	// 7/2/20: we've deprecated restart_container() in favor of the restart_process extension.
+	// If this is a k8s resource with a restart_container step, throw a deprecation error.
+	// (restart_container is still allowed for Docker Compose resources)
 	if !m.IsK8s() {
 		return false
 	}
@@ -1378,11 +1395,6 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 
 		m = m.WithImageTargets(iTargets)
 
-		err = s.checkForImpossibleLiveUpdates(m)
-		if err != nil {
-			return nil, err
-		}
-
 		result = append(result, m)
 
 		// TODO(maia): might get config files from dc.yml that are overridden by imageTarget :-/
@@ -1407,109 +1419,6 @@ const (
 	claimPending
 	claimFinished
 )
-
-// A selector matches an entity if all non-empty selector fields match the corresponding entity fields
-type k8sObjectSelector struct {
-	apiVersion       *regexp.Regexp
-	apiVersionString string
-	kind             *regexp.Regexp
-	kindString       string
-
-	// TODO(dmiller): do something like this instead https://github.com/tilt-dev/tilt/blob/c2b2df88de3777eed5f1bb9f54b5c555707c8b42/internal/container/selector.go#L9
-	name            *regexp.Regexp
-	nameString      string
-	namespace       *regexp.Regexp
-	namespaceString string
-}
-
-// TODO(dmiller): this function and newPartialMatchK8sObjectSelector
-// should be written in to a form that can be used like this
-// x := re{pattern: name, ignoreCase: true, fullMatch: true}
-// x.compile()
-// rather than passing around and mutating regex strings
-
-// Creates a new k8sObjectSelector
-// If an arg is an empty string it will become an empty regex that matches all input
-// Otherwise the arg must match the input exactly
-func newFullmatchCaseInsensitiveK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
-	var err error
-
-	ret.apiVersion, err = regexp.Compile(exactOrEmptyRegex(apiVersion))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
-	}
-
-	ret.kind, err = regexp.Compile(exactOrEmptyRegex(kind))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
-	}
-
-	ret.name, err = regexp.Compile(exactOrEmptyRegex(name))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
-	}
-
-	ret.namespace, err = regexp.Compile(exactOrEmptyRegex(namespace))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
-	}
-
-	return ret, nil
-}
-
-func makeCaseInsensitive(s string) string {
-	if s == "" {
-		return s
-	} else {
-		return "(?i)" + s
-	}
-}
-
-func exactOrEmptyRegex(s string) string {
-	if s != "" {
-		s = fmt.Sprintf("^%s$", makeCaseInsensitive(regexp.QuoteMeta(s)))
-	}
-	return s
-}
-
-// Creates a new k8sObjectSelector
-// If an arg is an empty string, it will become an empty regex that matches all input
-// Otherwise the arg will match input from the beginning (prefix matching)
-func newPartialMatchK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	ret := k8sObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
-	var err error
-
-	ret.apiVersion, err = regexp.Compile(makeCaseInsensitive(apiVersion))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
-	}
-
-	ret.kind, err = regexp.Compile(makeCaseInsensitive(kind))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
-	}
-
-	ret.name, err = regexp.Compile(makeCaseInsensitive(name))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
-	}
-
-	ret.namespace, err = regexp.Compile(makeCaseInsensitive(namespace))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
-	}
-
-	return ret, nil
-}
-
-func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
-	gvk := e.GVK()
-	return k.apiVersion.MatchString(gvk.GroupVersion().String()) &&
-		k.kind.MatchString(gvk.Kind) &&
-		k.name.MatchString(e.Name()) &&
-		k.namespace.MatchString(e.Namespace().String())
-}
 
 func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var triggerMode triggerMode
@@ -1555,7 +1464,7 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		mn := model.ManifestName(r.name)
 		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), r.autoInit)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error in resource %s options", mn)
 		}
 
 		paths := append(r.deps, r.workdir)

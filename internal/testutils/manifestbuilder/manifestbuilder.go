@@ -23,22 +23,40 @@ type ManifestBuilder struct {
 	f    Fixture
 	name model.ManifestName
 
-	k8sYAML         string
-	k8sPodSelectors []labels.Selector
-	dcConfigPaths   []string
-	localCmd        string
-	localServeCmd   string
-	localDeps       []string
-	resourceDeps    []string
+	k8sNonWorkload   bool
+	k8sYAML          string
+	k8sPodSelectors  []labels.Selector
+	k8sImageLocators []k8s.ImageLocator
+	dcConfigPaths    []string
+	localCmd         string
+	localServeCmd    string
+	localDeps        []string
+	resourceDeps     []string
+	triggerMode      model.TriggerMode
 
 	iTargets []model.ImageTarget
 }
 
 func New(f Fixture, name model.ManifestName) ManifestBuilder {
 	return ManifestBuilder{
-		f:    f,
-		name: name,
+		f:              f,
+		name:           name,
+		k8sNonWorkload: name == model.UnresourcedYAMLManifestName,
 	}
+}
+
+func (b ManifestBuilder) WithNamedJSONPathImageLocator(name, path string) ManifestBuilder {
+	selector := k8s.MustNameSelector(name)
+	jp := k8s.MustJSONPathImageLocator(selector, path)
+	b.k8sImageLocators = append(b.k8sImageLocators, jp)
+	return b
+}
+
+// TODO(nick): A better solution would be to identify whether this
+// is a workload based on the YAML.
+func (b ManifestBuilder) WithK8sNonWorkload() ManifestBuilder {
+	b.k8sNonWorkload = true
+	return b
 }
 
 func (b ManifestBuilder) WithK8sYAML(yaml string) ManifestBuilder {
@@ -64,6 +82,11 @@ func (b ManifestBuilder) WithLocalResource(cmd string, deps []string) ManifestBu
 
 func (b ManifestBuilder) WithLocalServeCmd(cmd string) ManifestBuilder {
 	b.localServeCmd = cmd
+	return b
+}
+
+func (b ManifestBuilder) WithTriggerMode(tm model.TriggerMode) ManifestBuilder {
+	b.triggerMode = tm
 	return b
 }
 
@@ -106,6 +129,8 @@ func (b ManifestBuilder) WithResourceDeps(deps ...string) ManifestBuilder {
 }
 
 func (b ManifestBuilder) Build() model.Manifest {
+	var m model.Manifest
+
 	var rds []model.ManifestName
 	for _, dep := range b.resourceDeps {
 		rds = append(rds, model.ManifestName(dep))
@@ -114,34 +139,37 @@ func (b ManifestBuilder) Build() model.Manifest {
 	if b.k8sYAML != "" {
 		k8sTarget := k8s.MustTarget(model.TargetName(b.name), b.k8sYAML)
 		k8sTarget.ExtraPodSelectors = b.k8sPodSelectors
-		return assembleK8s(
+		for _, locator := range b.k8sImageLocators {
+			k8sTarget.ImageLocators = append(k8sTarget.ImageLocators, locator)
+		}
+		k8sTarget.NonWorkload = b.k8sNonWorkload
+
+		m = assembleK8s(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			k8sTarget,
 			b.iTargets...)
-	}
-
-	if len(b.dcConfigPaths) > 0 {
-		return assembleDC(
+	} else if len(b.dcConfigPaths) > 0 {
+		m = assembleDC(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			model.DockerComposeTarget{
 				Name:        model.TargetName(b.name),
 				ConfigPaths: b.dcConfigPaths,
 			},
 			b.iTargets...)
-	}
-
-	if b.localCmd != "" || b.localServeCmd != "" {
+	} else if b.localCmd != "" || b.localServeCmd != "" {
 		lt := model.NewLocalTarget(
 			model.TargetName(b.name),
 			model.ToHostCmd(b.localCmd),
 			model.ToHostCmd(b.localServeCmd),
 			b.localDeps,
 			b.f.Path())
-		return model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
+		m = model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
+	} else {
+		b.f.T().Fatalf("No deploy target specified: %s", b.name)
+		return model.Manifest{}
 	}
-
-	b.f.T().Fatalf("No deploy target specified: %s", b.name)
-	return model.Manifest{}
+	m = m.WithTriggerMode(b.triggerMode)
+	return m
 }
 
 type Fixture interface {

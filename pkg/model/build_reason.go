@@ -28,7 +28,7 @@ const (
 	//
 	// Building manifestA will mark imageB
 	// with changed dependencies.
-	BuildReasonFlagChangedDep
+	BuildReasonFlagChangedDeps
 )
 
 func (r BuildReason) With(flag BuildReason) BuildReason {
@@ -61,7 +61,7 @@ var translations = map[BuildReason]string{
 	BuildReasonFlagTriggerCLI:     "CLI Trigger",
 	BuildReasonFlagTriggerUnknown: "Unknown Trigger",
 	BuildReasonFlagTiltfileArgs:   "Tilt Args",
-	BuildReasonFlagChangedDep:     "Image Updated",
+	BuildReasonFlagChangedDeps:    "Dependency Updated",
 }
 
 var triggerBuildReasons = []BuildReason{
@@ -77,7 +77,7 @@ var allBuildReasons = []BuildReason{
 	BuildReasonFlagCrash,
 	BuildReasonFlagTriggerWeb,
 	BuildReasonFlagTriggerCLI,
-	BuildReasonFlagChangedDep,
+	BuildReasonFlagChangedDeps,
 	BuildReasonFlagTriggerUnknown,
 	BuildReasonFlagTiltfileArgs,
 }

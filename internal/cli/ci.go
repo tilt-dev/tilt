@@ -60,6 +60,8 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
 
+	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+
 	webHost := provideWebHost()
 	webURL, _ := provideWebURL(webHost, provideWebPort())
 	startLine := prompt.StartStatusLine(webURL, webHost)
@@ -73,7 +75,7 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	// TODO(nick): Make this better than a global variable.
 	noBrowser = true
 
-	cmdCIDeps, err := wireCmdCI(ctx, a)
+	cmdCIDeps, err := wireCmdCI(ctx, a, "ci")
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err

@@ -227,92 +227,29 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 	removeFromTriggerQueue(state, mn)
 }
 
-func updateBuildStatus(status *store.BuildStatus, br model.BuildRecord, result store.BuildResult, isBuildSuccess bool) {
-	// Record the result
-	status.LastResult = result
-
-	// Remove pending file changes that were consumed by this build.
-	for file, modTime := range status.PendingFileChanges {
-		if store.BeforeOrEqual(modTime, br.StartTime) {
-			delete(status.PendingFileChanges, file)
-		}
-	}
-
-	// Remove pending dependency changes that were consumed by this build.
-	for id, modTime := range status.PendingDependencyChanges {
-		if store.BeforeOrEqual(modTime, br.StartTime) {
-			delete(status.PendingDependencyChanges, id)
-		}
-	}
-
-	// If the whole build succeeded, mark all of the images in the
-	// build as successful.
-	//
-	// This has a minor bug: if one of the images in a set failed, but another one
-	// succeeded, this doesn't mark any of them as successful. We should fix this,
-	// though personally, I (Nick) think LastSuccessfulResult has problematic
-	// semantics to begin with, and it might make sense to replace it entirely.
-	if isBuildSuccess {
-		status.LastSuccessfulResult = result
-	}
-}
-
 // When a Manifest build finishes, update the BuildStatus for all applicable
 // targets in the engine state.
 func handleBuildResults(engineState *store.EngineState,
 	mt *store.ManifestTarget, br model.BuildRecord, results store.BuildResultSet) {
 	isBuildSuccess := br.Error == nil
 
-	// Update all the build statuses for the current manifest.
-	for _, target := range mt.Manifest.TargetSpecs() {
-		status := mt.State.MutableBuildStatus(target.ID())
-		updateBuildStatus(status, br, results[target.ID()], isBuildSuccess)
+	ms := mt.State
+	for id, result := range results {
+		ms.MutableBuildStatus(id).LastResult = result
 	}
 
-	// Update build statuses for duplicated image targets in other manifests.
-	// This ensures that those images targets aren't redundantly rebuilt.
-	engineState.ForEachMutableBuildStatusInResults(results, func(id model.TargetID, result store.BuildResult, mn model.ManifestName, status *store.BuildStatus) {
-		if mt.Manifest.Name == mn {
-			return
+	// Remove pending file changes that were consumed by this build.
+	for _, status := range ms.BuildStatuses {
+		for file, modTime := range status.PendingFileChanges {
+			if store.BeforeOrEqual(modTime, br.StartTime) {
+				delete(status.PendingFileChanges, file)
+			}
 		}
+	}
 
-		// We can only reuse image update, not live-updates or other kinds of
-		// deploys.
-		_, isImageResult := result.(store.ImageBuildResult)
-		if !isImageResult {
-			return
-		}
-
-		updateBuildStatus(status, br, result, isBuildSuccess)
-	})
-
-	// Suppose we built manifestA, which contains imageA depending on imageCommon.
-	//
-	// We also have manifestB, which contains imageB depending on imageCommon.
-	//
-	// We need to mark imageB as dirty, because it was not built in the manifestA
-	// build but its dependency was built.
-	//
-	// Note that this logic also applies to deploy targets depending on image
-	// targets. If we built manifestA, which contains imageX and deploy target
-	// k8sA, and manifestB contains imageX and deploy target k8sB, we need to mark
-	// target k8sB as dirty so that Tilt actually deploys the changes to imageX.
-	engineState.ForEachMutableBuildStatusDependingOn(results, func(id, reverseDepID model.TargetID, mn model.ManifestName, reverseDepStatus *store.BuildStatus) {
-		if mn == mt.Manifest.Name {
-			// We're only worried about manifests that we didn't just build.
-			return
-		}
-
-		_, ok := results[reverseDepID]
-		if ok {
-			// The reverseDep is fresh (i.e. was just built)! Skip it.
-			return
-		}
-
-		// This target was not built, but one of its dependencies was
-		// built, so we have to mark the target for rebuild.
-		reverseDepStatus.PendingDependencyChanges[id] = br.StartTime
-	})
+	if isBuildSuccess {
+		ms.LastSuccessfulDeployTime = br.FinishTime
+	}
 }
 
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) {
@@ -360,8 +297,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			return
 		}
 	} else {
-		ms.LastSuccessfulDeployTime = cb.FinishTime
-
 		for _, pod := range ms.K8sRuntimeState().Pods {
 			// Reset the baseline, so that we don't show restarts
 			// from before any live-updates
@@ -391,14 +326,14 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	if manifest.IsK8s() {
 		deployedUIDSet := cb.Result.DeployedUIDSet()
 		if len(deployedUIDSet) > 0 {
-			state := ms.GetOrCreateK8sRuntimeState()
+			state := ms.K8sRuntimeState()
 			state.DeployedUIDSet = deployedUIDSet
 			ms.RuntimeState = state
 		}
 
 		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
 		if len(deployedPodTemplateSpecHashSet) > 0 {
-			state := ms.GetOrCreateK8sRuntimeState()
+			state := ms.K8sRuntimeState()
 			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
 			ms.RuntimeState = state
 		}
@@ -549,6 +484,16 @@ func handleConfigsReloaded(
 	// Retroactively scrub secrets
 	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
 
+	// Add tiltignore if it exists, even if execution failed.
+	if event.TiltIgnoreContents != "" || event.Err != nil {
+		state.TiltIgnoreContents = event.TiltIgnoreContents
+	}
+
+	// Add team id if it exists, even if execution failed.
+	if event.TeamID != "" || event.Err != nil {
+		state.TeamID = event.TeamID
+	}
+
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
 	if !b.Empty() {
 		b.FinishTime = event.FinishTime
@@ -617,10 +562,8 @@ func handleConfigsReloaded(
 	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
 	state.ManifestDefinitionOrder = newDefOrder
 	state.ConfigFiles = event.ConfigFiles
-	state.TiltIgnoreContents = event.TiltIgnoreContents
 
 	state.Features = event.Features
-	state.TeamID = event.TeamID
 	state.TelemetrySettings = event.TelemetrySettings
 	state.VersionSettings = event.VersionSettings
 	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
@@ -657,7 +600,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8
 		return
 	}
 
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	runtime.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
@@ -721,7 +664,7 @@ func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState,
 		logger.Get(ctx).Infof("got runtime status information for unknown local resource %s", action.ManifestName)
 	}
 
-	lrs := ms.GetOrCreateLocalRuntimeState()
+	lrs := ms.LocalRuntimeState()
 	lrs.Status = action.Status
 	lrs.PID = action.PID
 	lrs.SpanID = action.SpanID

@@ -1,0 +1,8 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+k8s_yaml('crd.yaml')
+k8s_yaml('um.yaml')
+
+docker_build('bobo', '.')
+k8s_kind('UselessMachine', image_json_path='{.spec.image}')

@@ -461,8 +461,7 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	expectedErr := fmt.Errorf("i can't let you do that dave")
-	f.b.nextBuildFailure = expectedErr
-	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
+	f.SetNextLiveUpdateCompileError(expectedErr, []container.ID{"c1", "c2"})
 
 	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerIDAtIndex("c1", 0).
@@ -586,7 +585,7 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 
 	f.nextCallComplete()
 
-	f.b.nextBuildFailure = errors.New("build failure!")
+	f.b.nextBuildError = errors.New("build failure!")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 	f.nextCallComplete()
 
@@ -606,7 +605,6 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 		return true
 	})
 }
-
 func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -963,14 +961,14 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 		WithResourceDeps("foo").
 		Build()
 	manifests := []model.Manifest{foo, bar}
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.Start(manifests)
 
 	call := f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	call = f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
@@ -997,7 +995,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 		Build()
 
 	manifests := []model.Manifest{bar, foo}
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.Start(manifests)
 
 	// trigger a change for bar so that it would try to build if not for its resource dep
@@ -1006,7 +1004,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 	call := f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
 	call = f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
@@ -1236,9 +1234,9 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f.completeAndCheckBuildsForManifests(manA, manB, manC)
 
 	// start builds for all manifests (we only have 2 build slots)
-	f.SetNextBuildFailure(errA)
+	f.SetNextBuildError(errA)
 	f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
-	f.SetNextBuildFailure(errB)
+	f.SetNextBuildError(errB)
 	f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
 	f.editFileAndAssertManifestNotBuilding("manC", "c/main.go")
 
@@ -1261,106 +1259,6 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f.WaitUntilManifestState("last manC build recorded and has no error", "manC", func(ms store.ManifestState) bool {
 		return len(ms.BuildHistory) == 2 && ms.LastBuild().Error == nil
 	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
-func TestManifestsWithSameTwoImages(t *testing.T) {
-	f := newTestFixture(t)
-	m1, m2 := NewManifestsWithSameTwoImages(f)
-	f.Start([]model.Manifest{m1, m2})
-
-	f.waitForCompletedBuildCount(2)
-
-	call := f.nextCall("m1 build1")
-	assert.Equal(t, m1.K8sTarget(), call.k8s())
-
-	call = f.nextCall("m2 build1")
-	assert.Equal(t, m2.K8sTarget(), call.k8s())
-
-	aPath := f.JoinPath("common", "a.txt")
-	f.fsWatcher.Events <- watch.NewFileEvent(aPath)
-
-	f.waitForCompletedBuildCount(4)
-
-	// Make sure that both builds are triggered, and that they
-	// are triggered in a particular order.
-	call = f.nextCall("m1 build2")
-	assert.Equal(t, m1.K8sTarget(), call.k8s())
-
-	state := call.state[m1.ImageTargets[0].ID()]
-	assert.Equal(t, map[string]bool{aPath: true}, state.FilesChangedSet)
-
-	// Make sure that when the second build is trigged, we did the bookkeeping
-	// correctly around marking the first and second image built and only deploying
-	// the k8s resources.
-	call = f.nextCall("m2 build2")
-	assert.Equal(t, m2.K8sTarget(), call.k8s())
-
-	id := m2.ImageTargets[0].ID()
-	result := f.b.resultsByID[id]
-	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
-
-	id = m2.ImageTargets[1].ID()
-	result = f.b.resultsByID[id]
-	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
-func TestManifestsWithTwoCommonAncestors(t *testing.T) {
-	f := newTestFixture(t)
-	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
-	f.Start([]model.Manifest{m1, m2})
-
-	f.waitForCompletedBuildCount(2)
-
-	call := f.nextCall("m1 build1")
-	assert.Equal(t, m1.K8sTarget(), call.k8s())
-
-	call = f.nextCall("m2 build1")
-	assert.Equal(t, m2.K8sTarget(), call.k8s())
-
-	aPath := f.JoinPath("base", "a.txt")
-	f.fsWatcher.Events <- watch.NewFileEvent(aPath)
-
-	f.waitForCompletedBuildCount(4)
-
-	// Make sure that both builds are triggered, and that they
-	// are triggered in a particular order.
-	call = f.nextCall("m1 build2")
-	assert.Equal(t, m1.K8sTarget(), call.k8s())
-
-	state := call.state[m1.ImageTargets[0].ID()]
-	assert.Equal(t, map[string]bool{aPath: true}, state.FilesChangedSet)
-
-	// Make sure that when the second build is triggered, we did the bookkeeping
-	// correctly around marking the first and second image built, and only
-	// rebuilding the third image and k8s deploy.
-	call = f.nextCall("m2 build2")
-	assert.Equal(t, m2.K8sTarget(), call.k8s())
-
-	id := m2.ImageTargets[0].ID()
-	result := f.b.resultsByID[id]
-	assert.Equal(t,
-		store.NewBuildState(result, nil, nil),
-		call.state[id])
-
-	id = m2.ImageTargets[1].ID()
-	result = f.b.resultsByID[id]
-	assert.Equal(t,
-		store.NewBuildState(result, nil, nil),
-		call.state[id])
-
-	id = m2.ImageTargets[2].ID()
-	result = f.b.resultsByID[id]
-	assert.Equal(t,
-		store.NewBuildState(result, nil, []model.TargetID{m2.ImageTargets[1].ID()}),
-		call.state[id])
 
 	err := f.Stop()
 	assert.NoError(t, err)

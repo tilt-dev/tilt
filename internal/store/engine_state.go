@@ -172,45 +172,6 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 
 }
 
-// Visit all the matching BuildStatuses for these results.
-//
-// Long-term, the EngineState should have TargetSpec and one TargetStatus for
-// each TargetID. But in the current system, we may duplicate an image across
-// multiple manifests.
-func (e *EngineState) ForEachMutableBuildStatusInResults(results BuildResultSet,
-	visitor func(id model.TargetID, result BuildResult, mn model.ManifestName, bs *BuildStatus)) {
-	for id, result := range results {
-		for _, mt := range e.Targets() {
-			for _, target := range mt.Manifest.TargetSpecs() {
-				if id == target.ID() {
-					visitor(id, result, mt.Manifest.Name, mt.State.MutableBuildStatus(id))
-				}
-			}
-		}
-	}
-}
-
-// Visit all the BuildStatuses for Targets depending on these results.
-//
-// A future graph API might just have a GetReverseDepsOn(id).  But we don't
-// currently store them this way. We batch the results together to avoid too
-// many redundant loops (more for readability/debuggability than speed).
-func (e *EngineState) ForEachMutableBuildStatusDependingOn(results BuildResultSet,
-	visitor func(id, reverseDepID model.TargetID, mn model.ManifestName, reverseDepStatus *BuildStatus)) {
-	for _, mt := range e.Targets() {
-		for _, target := range mt.Manifest.TargetSpecs() {
-			reverseDepID := target.ID()
-			for _, depID := range target.DependencyIDs() {
-				_, inResults := results[depID]
-				if inResults {
-					status := mt.State.MutableBuildStatus(reverseDepID)
-					visitor(depID, reverseDepID, mt.Manifest.Name, status)
-				}
-			}
-		}
-	}
-}
-
 func (e *EngineState) AvailableBuildSlots() int {
 	currentlyBuilding := len(e.CurrentlyBuilding)
 	if currentlyBuilding >= e.UpdateSettings.MaxParallelUpdates() {
@@ -347,8 +308,7 @@ type BuildStatus struct {
 	// This map is mutable.
 	PendingFileChanges map[string]time.Time
 
-	LastSuccessfulResult BuildResult
-	LastResult           BuildResult
+	LastResult BuildResult
 
 	// Stores the times that dependencies were marked dirty, so we can prioritize
 	// the oldest one first.
@@ -375,7 +335,9 @@ func newBuildStatus() *BuildStatus {
 }
 
 func (s BuildStatus) IsEmpty() bool {
-	return len(s.PendingFileChanges) == 0 && s.LastSuccessfulResult == nil
+	return len(s.PendingFileChanges) == 0 &&
+		len(s.PendingDependencyChanges) == 0 &&
+		s.LastResult == nil
 }
 
 type ManifestState struct {
@@ -433,12 +395,23 @@ func NewState() *EngineState {
 	return ret
 }
 
-func newManifestState(mn model.ManifestName) *ManifestState {
-	return &ManifestState{
+func newManifestState(m model.Manifest) *ManifestState {
+	mn := m.Name
+	ms := &ManifestState{
 		Name:                    mn,
 		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
 	}
+
+	if m.IsK8s() {
+		ms.RuntimeState = NewK8sRuntimeState(m)
+	} else if m.IsLocal() {
+		ms.RuntimeState = LocalRuntimeState{}
+	}
+
+	// For historical reasons, DC state is initialized differently.
+
+	return ms
 }
 
 func (ms *ManifestState) TargetID() model.TargetID {
@@ -476,19 +449,7 @@ func (ms *ManifestState) IsDC() bool {
 }
 
 func (ms *ManifestState) K8sRuntimeState() K8sRuntimeState {
-	ret, ok := ms.RuntimeState.(K8sRuntimeState)
-	if !ok {
-		return NewK8sRuntimeState(ms.Name)
-	}
-	return ret
-}
-
-func (ms *ManifestState) GetOrCreateK8sRuntimeState() K8sRuntimeState {
-	ret, ok := ms.RuntimeState.(K8sRuntimeState)
-	if !ok {
-		ret = NewK8sRuntimeState(ms.Name)
-		ms.RuntimeState = ret
-	}
+	ret, _ := ms.RuntimeState.(K8sRuntimeState)
 	return ret
 }
 
@@ -499,15 +460,6 @@ func (ms *ManifestState) IsK8s() bool {
 
 func (ms *ManifestState) LocalRuntimeState() LocalRuntimeState {
 	ret, _ := ms.RuntimeState.(LocalRuntimeState)
-	return ret
-}
-
-func (ms *ManifestState) GetOrCreateLocalRuntimeState() LocalRuntimeState {
-	ret, ok := ms.RuntimeState.(LocalRuntimeState)
-	if !ok {
-		ret = LocalRuntimeState{}
-		ms.RuntimeState = ret
-	}
 	return ret
 }
 
@@ -559,11 +511,23 @@ func (ms *ManifestState) HasPendingFileChanges() bool {
 	return false
 }
 
+func (ms *ManifestState) HasPendingDependencyChanges() bool {
+	for _, status := range ms.BuildStatuses {
+		if len(status.PendingDependencyChanges) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
 	state := mt.State
 	reason := state.TriggerReason
 	if mt.State.HasPendingFileChanges() {
 		reason = reason.With(model.BuildReasonFlagChangedFiles)
+	}
+	if mt.State.HasPendingDependencyChanges() {
+		reason = reason.With(model.BuildReasonFlagChangedDeps)
 	}
 	if !mt.State.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
@@ -619,43 +583,6 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 }
 
 var _ model.TargetStatus = &ManifestState{}
-
-type YAMLManifestState struct {
-	HasBeenDeployed bool
-
-	CurrentApplyStartTime   time.Time
-	LastError               error
-	LastApplyFinishTime     time.Time
-	LastSuccessfulApplyTime time.Time
-	LastApplyStartTime      time.Time
-}
-
-func NewYAMLManifestState() *YAMLManifestState {
-	return &YAMLManifestState{}
-}
-
-func (s *YAMLManifestState) TargetID() model.TargetID {
-	return model.TargetID{
-		Type: model.TargetTypeManifest,
-		Name: model.UnresourcedYAMLManifestName.TargetName(),
-	}
-}
-
-func (s *YAMLManifestState) ActiveBuild() model.BuildRecord {
-	return model.BuildRecord{
-		StartTime: s.CurrentApplyStartTime,
-	}
-}
-
-func (s *YAMLManifestState) LastBuild() model.BuildRecord {
-	return model.BuildRecord{
-		StartTime:  s.LastApplyStartTime,
-		FinishTime: s.LastApplyFinishTime,
-		Error:      s.LastError,
-	}
-}
-
-var _ model.TargetStatus = &YAMLManifestState{}
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	defer func() {
