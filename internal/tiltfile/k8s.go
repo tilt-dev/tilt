@@ -55,7 +55,7 @@ type k8sResource struct {
 
 	resourceDeps []string
 
-	nonWorkload bool
+	manuallyGrouped bool
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
@@ -74,7 +74,7 @@ type k8sResourceOptions struct {
 	tiltfilePosition  syntax.Position
 	resourceDeps      []string
 	objects           []string
-	nonWorkload       bool
+	manuallyGrouped   bool
 }
 
 func (r *k8sResource) addRefSelector(selector container.RefSelector) {
@@ -417,11 +417,11 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	resourceName := workload
-	needsToHaveObjects := false
+	manuallyGrouped := false
 	if workload == "" {
 		resourceName = newName
-		// If a resource doesn't specify a workload then it needs to have objects to be valid
-		needsToHaveObjects = true
+		// If a resource doesn't specify an existing workload then it needs to have objects to be valid
+		manuallyGrouped = true
 	}
 
 	portForwards, err := convertPortForwards(portForwardsVal)
@@ -448,11 +448,11 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	if needsToHaveObjects && len(objects) == 0 {
+	if manuallyGrouped && len(objects) == 0 {
 		return nil, fmt.Errorf("k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
 	}
 
-	if needsToHaveObjects && len(objects) > 0 && newName == "" {
+	if manuallyGrouped && len(objects) > 0 && newName == "" {
 		return nil, fmt.Errorf("k8s_resource has only non-workload objects but doesn't provide a new_name")
 	}
 
@@ -465,7 +465,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		autoInit:          autoInit,
 		resourceDeps:      resourceDeps,
 		objects:           objects,
-		nonWorkload:       needsToHaveObjects,
+		manuallyGrouped:   manuallyGrouped,
 	}
 
 	return starlark.None, nil

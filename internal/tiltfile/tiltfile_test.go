@@ -1447,7 +1447,8 @@ func TestExtraPodSelectors(t *testing.T) {
 	f.load()
 
 	f.assertNextManifest("foo",
-		extraPodSelectors(labels.Set{"foo": "bar", "baz": "qux"}, labels.Set{"quux": "corge"}))
+		extraPodSelectors(labels.Set{"foo": "bar", "baz": "qux"}, labels.Set{"quux": "corge"}),
+		nonWorkload(false))
 }
 
 func TestExtraPodSelectorsNotList(t *testing.T) {
@@ -1465,7 +1466,8 @@ func TestExtraPodSelectorsDict(t *testing.T) {
 	f.setupExtraPodSelectors("{'foo': 'bar'}")
 	f.load()
 	f.assertNextManifest("foo",
-		extraPodSelectors(labels.Set{"foo": "bar"}))
+		extraPodSelectors(labels.Set{"foo": "bar"}),
+		nonWorkload(false))
 }
 
 func TestExtraPodSelectorsElementNotDict(t *testing.T) {
@@ -2166,7 +2168,8 @@ docker_build('tilt.dev/frontend', '.')
 `)
 
 	f.load()
-	m := f.assertNextManifest("um")
+	m := f.assertNextManifest("um",
+		nonWorkload(false))
 	assert.Equal(t, "tilt.dev/frontend",
 		m.ImageTargets[0].Refs.LocalRef().String())
 }
