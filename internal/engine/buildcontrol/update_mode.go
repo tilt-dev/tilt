@@ -19,9 +19,6 @@ var (
 	// Only do image builds
 	UpdateModeImage UpdateMode = "image"
 
-	// Only do image builds from scratch
-	UpdateModeNaive UpdateMode = "naive" // NOTE(maia): this is redundant now?
-
 	// Deploy a synclet to make container updates faster
 	UpdateModeSynclet UpdateMode = "synclet"
 
@@ -36,7 +33,6 @@ var (
 var AllUpdateModes = []UpdateMode{
 	UpdateModeAuto,
 	UpdateModeImage,
-	UpdateModeNaive,
 	UpdateModeSynclet,
 	UpdateModeContainer,
 	UpdateModeKubectlExec,

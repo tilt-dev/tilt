@@ -123,7 +123,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer,
 	ltbad *LocalTargetBuildAndDeployer, updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
-	if updMode == buildcontrol.UpdateModeImage || updMode == buildcontrol.UpdateModeNaive {
+	if updMode == buildcontrol.UpdateModeImage {
 		return BuildOrder{dcbad, ibad, ltbad}
 	}
 
