@@ -155,6 +155,11 @@ func (r K8sBuildResult) Facets() []model.Facet {
 
 // For kubernetes deploy targets.
 func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
+	// Remove verbose fields from the YAML.
+	for _, e := range appliedEntities {
+		e.Clean()
+	}
+
 	appliedEntitiesText, err := k8s.SerializeSpecYAML(appliedEntities)
 	if err != nil {
 		appliedEntitiesText = fmt.Sprintf("unable to serialize entities to yaml: %s", err.Error())
