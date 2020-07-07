@@ -48,18 +48,6 @@ func NewTarget(
 	// so that the resource type appears
 	displayNames := UniqueNames(sorted, 2)
 
-	duplicates := make(map[string]int)
-
-	for _, name := range displayNames {
-		duplicates[name[0:len(name)-2]]++
-	}
-
-	for k, v := range duplicates {
-		if v > 1 {
-			//using a print statement here just to debug for now
-			fmt.Println("here's the duplicate resource" + k)
-		}
-	}
 	return model.K8sTarget{
 		Name:              name,
 		YAML:              yaml,
