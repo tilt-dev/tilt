@@ -266,24 +266,6 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	return manifests, result, nil
 }
 
-func (s *tiltfileState) warnDuplicateYamlResources(m model.Manifest) {
-	deployTarget := m.K8sTarget()
-	displayNames := deployTarget.DisplayNames
-
-	duplicates := make(map[string]int)
-
-	for _, name := range displayNames {
-		duplicates[name[0:len(name)-2]]++
-	}
-
-	for k, v := range duplicates {
-		if v > 1 {
-			duplicatedResource := strings.Split(k, ":")
-			s.logger.Warnf("The following YAML Resource has been duplicated: " + duplicatedResource[0])
-		}
-	}
-}
-
 // Builtin functions
 
 const (
@@ -1492,6 +1474,23 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 	}
 
 	return result, nil
+}
+func (s *tiltfileState) warnDuplicateYamlResources(m model.Manifest) {
+	deployTarget := m.K8sTarget()
+	displayNames := deployTarget.DisplayNames
+
+	duplicates := make(map[string]int)
+
+	for _, name := range displayNames {
+		duplicates[name[0:len(name)-2]]++
+	}
+
+	for k, v := range duplicates {
+		if v > 1 {
+			duplicatedResource := strings.Split(k, ":")
+			s.logger.Warnf("The following YAML Resource has been duplicated: " + duplicatedResource[0])
+		}
+	}
 }
 
 func validateResourceDependencies(ms []model.Manifest) error {
