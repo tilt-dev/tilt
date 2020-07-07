@@ -169,7 +169,6 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 		}
 	}
 	return BuildStatus{}
-
 }
 
 func (e *EngineState) AvailableBuildSlots() int {
@@ -241,6 +240,19 @@ func (e EngineState) Targets() []*ManifestTarget {
 		if !ok {
 			continue
 		}
+		result = append(result, mt)
+	}
+	return result
+}
+
+func (e EngineState) TargetsBesides(mn model.ManifestName) []*ManifestTarget {
+	targets := e.Targets()
+	result := make([]*ManifestTarget, 0, len(targets))
+	for _, mt := range targets {
+		if mt.Manifest.Name == mn {
+			continue
+		}
+
 		result = append(result, mt)
 	}
 	return result
@@ -338,6 +350,19 @@ func (s BuildStatus) IsEmpty() bool {
 	return len(s.PendingFileChanges) == 0 &&
 		len(s.PendingDependencyChanges) == 0 &&
 		s.LastResult == nil
+}
+
+func (s *BuildStatus) ClearPendingChangesBefore(startTime time.Time) {
+	for file, modTime := range s.PendingFileChanges {
+		if BeforeOrEqual(modTime, startTime) {
+			delete(s.PendingFileChanges, file)
+		}
+	}
+	for file, modTime := range s.PendingDependencyChanges {
+		if BeforeOrEqual(modTime, startTime) {
+			delete(s.PendingDependencyChanges, file)
+		}
+	}
 }
 
 type ManifestState struct {

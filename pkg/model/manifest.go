@@ -63,6 +63,22 @@ func (m Manifest) DependencyIDs() []TargetID {
 	return result
 }
 
+// A map from each target id to the target IDs that depend on it.
+func (m Manifest) ReverseDependencyIDs() map[TargetID][]TargetID {
+	result := make(map[TargetID][]TargetID)
+	for _, iTarget := range m.ImageTargets {
+		for _, depID := range iTarget.DependencyIDs() {
+			result[depID] = append(result[depID], iTarget.ID())
+		}
+	}
+	if !m.deployTarget.ID().Empty() {
+		for _, depID := range m.deployTarget.DependencyIDs() {
+			result[depID] = append(result[depID], m.deployTarget.ID())
+		}
+	}
+	return result
+}
+
 func (m Manifest) WithImageTarget(iTarget ImageTarget) Manifest {
 	m.ImageTargets = []ImageTarget{iTarget}
 	return m
