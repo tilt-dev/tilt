@@ -80,8 +80,66 @@ func TestGKEDeploy(t *testing.T) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
 
+	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
+		t.Errorf("Should not deploy synclet without explicitly specifying updateMode=Synclet: %s", f.k8s.Yaml)
+	}
+}
+
+func TestGKEDeployWithSynclet(t *testing.T) {
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
+	defer f.TearDown()
+
+	manifest := NewSanchoLiveUpdateManifest(f)
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 1 {
+		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
+	}
+
+	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
+	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
+		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
+	}
+
 	if !strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should deploy the synclet on docker-for-desktop: %s", f.k8s.Yaml)
+		t.Errorf("Should deploy the synclet when updateMode=Synclet specified: %s", f.k8s.Yaml)
+	}
+}
+
+func TestNoSyncletDeployIfNoLiveUpdate(t *testing.T) {
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
+	defer f.TearDown()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+	targets := buildTargets(manifest)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 1 {
+		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
+	}
+
+	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
+	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
+		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
+	}
+
+	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
+		t.Errorf("Should not deploy the synclet if manifest has no LiveUpdate instructions: %s", f.k8s.Yaml)
 	}
 }
 
@@ -115,7 +173,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 }
 
 func TestSyncletNamespaceGKE(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	assert.Equal(t, "", string(f.sCli.Namespace))
@@ -157,176 +215,6 @@ func TestYamlManifestDeploy(t *testing.T) {
 	assert.Equal(t, 0, f.docker.BuildCount)
 	assert.Equal(t, 0, f.docker.PushCount)
 	f.assertK8sUpsertCalled(true)
-}
-
-func TestContainerBuildLocal(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
-
-	changed := f.WriteFile("a.txt", "a")
-	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
-	}
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-	if f.docker.CopyCount != 1 {
-		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.CopyCount)
-	}
-	if len(f.docker.ExecCalls) != 1 {
-		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
-	}
-	f.assertContainerRestarts(1)
-
-	id := manifest.ImageTargetAt(0).ID()
-	_, hasResult := result[id]
-	assert.True(t, hasResult)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
-}
-
-func TestContainerBuildSynclet(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
-
-	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
-	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 0, f.docker.BuildCount,
-		"Expected no docker build, actual: %d", f.docker.BuildCount)
-	assert.Equal(t, 0, f.docker.PushCount,
-		"Expected no push to docker, actual: %d", f.docker.PushCount)
-	assert.Equal(t, 1, f.sCli.UpdateContainerCount,
-		"Expected 1 synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
-	assert.Equal(t, 1, f.docker.CopyCount,
-		"Expected 1 docker CopyToContainer (via synclet), actual: %d", f.docker.CopyCount)
-	assert.Len(t, f.docker.ExecCalls, 1,
-		"Expected 1 docker Exec call (via synclet), actual: %d", len(f.docker.ExecCalls))
-	f.assertContainerRestarts(1)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
-}
-
-func TestContainerBuildLocalTriggeredRuns(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
-
-	manifest := NewSanchoLiveUpdateManifestWithTriggeredRuns(f, true)
-	changed := f.WriteFile("a.txt", "a") // matches one run trigger, not the other
-
-	targets := buildTargets(manifest)
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
-	}
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-	if f.docker.CopyCount != 1 {
-		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.CopyCount)
-	}
-	if len(f.docker.ExecCalls) != 2 {
-		t.Errorf("Expected 2 exec in container calls, actual: %d", len(f.docker.ExecCalls))
-	}
-	f.assertContainerRestarts(1)
-
-	id := manifest.ImageTargetAt(0).ID()
-	_, hasResult := result[id]
-	assert.True(t, hasResult)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
-}
-
-func TestContainerBuildSyncletTriggeredRuns(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
-
-	manifest := NewSanchoLiveUpdateManifestWithTriggeredRuns(f, true)
-	changed := f.WriteFile("a.txt", "a") // matches one run trigger, not the other
-
-	targets := buildTargets(manifest)
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 0, f.docker.BuildCount, "Expected no docker build, actual: %d", f.docker.BuildCount)
-	assert.Equal(t, 0, f.docker.PushCount, "Expected no push to docker, actual: %d", f.docker.PushCount)
-	assert.Equal(t, 1, f.sCli.UpdateContainerCount,
-		"Expected 1 synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
-	assert.Equal(t, 1, f.docker.CopyCount,
-		"Expected 1 docker CopyToContainer (via synclet), actual: %d", f.docker.CopyCount)
-	assert.Len(t, f.docker.ExecCalls, 2,
-		"Expected 1 docker Exec call (via synclet), actual: %d", len(f.docker.ExecCalls))
-	f.assertContainerRestarts(1)
-	assert.Equal(t, k8s.MagicTestContainerID, result.OneAndOnlyLiveUpdatedContainerID().String())
-}
-
-func TestContainerBuildSyncletHotReload(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
-
-	manifest := NewSanchoLiveUpdateManifestWithTriggeredRuns(f, false)
-	changed := f.WriteFile("a.txt", "a") // matches one run trigger, not the other
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-
-	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 1, f.sCli.UpdateContainerCount,
-		"Expected 1 synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
-	f.assertContainerRestarts(0)
-}
-
-func TestLiveUpdateFailure(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
-
-	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-	f.docker.SetExecError(docker.ExitError{ExitCode: 1})
-
-	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
-	msg := "Run step \"go install github.com/tilt-dev/sancho\" failed with exit code: 1"
-	if err == nil || !strings.Contains(err.Error(), msg) {
-		t.Fatalf("Expected error message %q, actual: %v", msg, err)
-	}
-
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
-	}
-
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-	if f.docker.CopyCount != 1 {
-		t.Errorf("Expected 1 copy to docker container call, actual: %d", f.docker.CopyCount)
-	}
-	if len(f.docker.ExecCalls) != 1 {
-		t.Errorf("Expected 1 exec in container call, actual: %d", len(f.docker.ExecCalls))
-	}
-	f.assertContainerRestarts(0)
 }
 
 func TestLiveUpdateTaskKilled(t *testing.T) {
@@ -570,33 +458,6 @@ func TestIgnoredFiles(t *testing.T) {
 	})
 }
 
-func TestCustomBuildWithLiveUpdate(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
-	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
-
-	manifest := NewSanchoCustomBuildManifestWithLiveUpdate(f)
-	targets := buildTargets(manifest)
-
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected 0 docker build, actual: %d", f.docker.BuildCount)
-	}
-
-	if f.docker.PushCount != 1 {
-		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
-	}
-
-	if !strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should deploy the synclet for a custom build with a live update: %s", f.k8s.Yaml)
-	}
-}
-
 func TestCustomBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
@@ -617,10 +478,6 @@ func TestCustomBuild(t *testing.T) {
 
 	if f.docker.PushCount != 1 {
 		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
-	}
-
-	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should not deploy the synclet for a custom build: %s", f.k8s.Yaml)
 	}
 }
 
@@ -645,10 +502,6 @@ func TestCustomBuildDeterministicTag(t *testing.T) {
 
 	if f.docker.PushCount != 1 {
 		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
-	}
-
-	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should not deploy the synclet for a custom build: %s", f.k8s.Yaml)
 	}
 }
 
@@ -704,14 +557,12 @@ func TestDockerComposeImageBuild(t *testing.T) {
 
 	assert.Equal(t, 1, f.docker.BuildCount)
 	assert.Equal(t, 0, f.docker.PushCount)
-	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should not deploy the synclet for a docker-compose build: %s", f.k8s.Yaml)
-	}
+	assert.Empty(t, f.k8s.Yaml, "expect no k8s YAML for DockerCompose resource")
 	assert.Len(t, f.dcCli.UpCalls, 1)
 }
 
 func TestDockerComposeLiveUpdate(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateDCManifest(f)
@@ -728,16 +579,14 @@ func TestDockerComposeLiveUpdate(t *testing.T) {
 	assert.Equal(t, 0, f.docker.PushCount)
 	assert.Equal(t, 1, f.docker.CopyCount)
 	assert.Equal(t, 1, len(f.docker.ExecCalls))
-	assert.Equal(t, 0, f.sCli.UpdateContainerCount,
-		"Expected no synclet UpdateContainer call, actual: %d", f.sCli.UpdateContainerCount)
-	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should not deploy the synclet for a docker-compose build: %s", f.k8s.Yaml)
-	}
+	assert.Empty(t, f.k8s.Yaml, "expect no k8s YAML for DockerCompose resource")
+	assert.Empty(t, 0, f.k8s.ExecCalls,
+		"Expected no k8s Exec calls, actual: %d", f.k8s.ExecCalls)
 	f.assertContainerRestarts(1)
 }
 
 func TestReturnLastUnexpectedError(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	// next Docker build will throw an unexpected error -- this is one we want to return,
@@ -801,7 +650,7 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 }
 
 func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
 	defer f.TearDown()
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
