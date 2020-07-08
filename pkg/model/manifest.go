@@ -45,10 +45,6 @@ type Manifest struct {
 	ResourceDependencies []ManifestName
 }
 
-func (m Manifest) GetDeployTarget() TargetSpec {
-	return m.deployTarget
-}
-
 func (m Manifest) ID() TargetID {
 	return TargetID{
 		Type: TargetTypeManifest,
