@@ -123,17 +123,13 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer,
 	ltbad *LocalTargetBuildAndDeployer, updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
-	if updMode == buildcontrol.UpdateModeImage || updMode == buildcontrol.UpdateModeNaive {
+	if updMode == buildcontrol.UpdateModeImage {
 		return BuildOrder{dcbad, ibad, ltbad}
 	}
 
-	if updMode == buildcontrol.UpdateModeSynclet || shouldUseSynclet(updMode, env, runtime) {
+	if updMode == buildcontrol.UpdateModeSynclet {
 		ibad.SetInjectSynclet(true)
 	}
 
 	return BuildOrder{lubad, dcbad, ibad, ltbad}
-}
-
-func shouldUseSynclet(updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) bool {
-	return updMode == buildcontrol.UpdateModeAuto && !env.UsesLocalDockerRegistry() && runtime == container.RuntimeDocker
 }

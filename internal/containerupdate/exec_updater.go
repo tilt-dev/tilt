@@ -39,6 +39,7 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.Containe
 	l := logger.Get(ctx)
 	w := logger.Get(ctx).Writer(logger.InfoLvl)
 
+	// delete files (if any)
 	if len(filesToDelete) > 0 {
 		err := cu.kCli.Exec(ctx,
 			cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
@@ -48,12 +49,14 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.Containe
 		}
 	}
 
+	// copy files to container
 	err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
 		[]string{"tar", "-C", "/", "-x", "-f", "-"}, archiveToCopy, w, w)
 	if err != nil {
 		return err
 	}
 
+	// run commands
 	for i, c := range cmds {
 		l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
 		err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
