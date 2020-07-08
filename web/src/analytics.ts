@@ -1,5 +1,7 @@
 type Tags = { [key: string]: string }
 
+export type counter = (name: string, tags: Tags) => void
+
 // Fire and forget all analytics events
 const incr = (name: string, tags: Tags = {}): void => {
   let url = `//${window.location.host}/api/analytics`
@@ -8,6 +10,17 @@ const incr = (name: string, tags: Tags = {}): void => {
     method: "post",
     body: JSON.stringify([{ verb: "incr", name: name, tags: tags }]),
   })
+}
+
+export type Count = {
+  name: string
+  tags: Tags
+}
+
+export function memoryIncr(counts: Array<Count>): counter {
+  return (name: string, tags: Tags) => {
+    counts.push({ name: name, tags: tags })
+  }
 }
 
 const pathToTag = (path: string): string => {
