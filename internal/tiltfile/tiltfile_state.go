@@ -1101,9 +1101,10 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
 			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload, locators)
+
+		// removed the warnf over here
 		if err != nil {
-			s.logger.Warnf(err.Error())
-			return nil, nil
+			return nil, err
 		}
 
 		m = m.WithDeployTarget(k8sTarget)
@@ -1476,19 +1477,24 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 	return result, nil
 }
 func (s *tiltfileState) warnDuplicateYamlResources(m model.Manifest) {
+	var tempName []string
 	deployTarget := m.K8sTarget()
 	displayNames := deployTarget.DisplayNames
 
 	duplicates := make(map[string]int)
 
+	// depends on the fact that the duplicate resource has formatting of doggos:service:default:core:n where n is nth
+	//occurrence of that resource.
 	for _, name := range displayNames {
-		duplicates[name[0:len(name)-2]]++
+		tempName = strings.Split(name, ":")
+		if len(tempName) > 4 { //if it is > 4 that means there's an n
+			duplicates[tempName[0]]++ // we only care about the name of the resource
+		}
 	}
 
-	for k, v := range duplicates {
-		if v > 1 {
-			duplicatedResource := strings.Split(k, ":")
-			s.logger.Warnf("The following YAML Resource has been duplicated: " + duplicatedResource[0])
+	for resource, numOccurences := range duplicates {
+		if numOccurences > 1 {
+			s.logger.Warnf("The following YAML Resource has been duplicated: " + resource)
 		}
 	}
 }
