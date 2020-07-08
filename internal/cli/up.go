@@ -125,7 +125,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	}
 
 	cmdUpTags := engineanalytics.CmdTags(map[string]string{
-		"update_mode": updateModeFlag,
+		"update_mode": updateModeFlag, // before 7/8/20 this was just called "mode"
 		"term_mode":   strconv.Itoa(int(termMode)),
 	})
 	a.Incr("cmd.up", cmdUpTags.AsMap())
