@@ -93,6 +93,11 @@ func (r BuildReason) String() string {
 		}
 	}
 
+	// The Init build reason should be listed alone too.
+	if r.Has(BuildReasonFlagInit) {
+		return translations[BuildReasonFlagInit]
+	}
+
 	// Use an array to iterate over the translations to ensure the iteration order
 	// is consistent.
 	for _, v := range allBuildReasons {

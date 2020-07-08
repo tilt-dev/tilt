@@ -676,12 +676,12 @@ func (s *tiltfileState) assembleK8sV2() error {
 	}
 
 	for workload, opts := range s.k8sResourceOptions {
-		if opts.nonWorkload {
+		if opts.manuallyGrouped {
 			r, err := s.makeK8sResource(opts.newName)
 			if err != nil {
 				return err
 			}
-			r.nonWorkload = true
+			r.manuallyGrouped = true
 			s.k8sByName[opts.newName] = r
 		}
 		if r, ok := s.k8sByName[workload]; ok {
@@ -1099,10 +1099,13 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			ResourceDependencies: mds,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
-			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, r.nonWorkload, locators)
+		nonWorkload := false
+		if r.manuallyGrouped {
+			nonWorkload = len(r.extraPodSelectors) == 0 && len(r.dependencyIDs) == 0
+		}
 
-		// removed the warnf over here
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, nonWorkload, locators)
 		if err != nil {
 			return nil, err
 		}

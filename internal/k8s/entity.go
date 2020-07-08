@@ -37,17 +37,21 @@ type k8sMeta interface {
 	GetUID() types.UID
 	GetLabels() map[string]string
 	GetOwnerReferences() []metav1.OwnerReference
+	GetAnnotations() map[string]string
 	SetNamespace(ns string)
+	SetManagedFields(managedFields []metav1.ManagedFieldsEntry)
 }
 
 type emptyMeta struct{}
 
-func (emptyMeta) GetName() string                             { return "" }
-func (emptyMeta) GetNamespace() string                        { return "" }
-func (emptyMeta) GetUID() types.UID                           { return "" }
-func (emptyMeta) GetLabels() map[string]string                { return make(map[string]string) }
-func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference { return nil }
-func (emptyMeta) SetNamespace(ns string)                      {}
+func (emptyMeta) GetName() string                                 { return "" }
+func (emptyMeta) GetNamespace() string                            { return "" }
+func (emptyMeta) GetUID() types.UID                               { return "" }
+func (emptyMeta) GetAnnotations() map[string]string               { return make(map[string]string) }
+func (emptyMeta) GetLabels() map[string]string                    { return make(map[string]string) }
+func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference     { return nil }
+func (emptyMeta) SetNamespace(ns string)                          {}
+func (emptyMeta) SetManagedFields(mf []metav1.ManagedFieldsEntry) {}
 
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
@@ -103,6 +107,18 @@ func (e K8sEntity) GVK() schema.GroupVersionKind {
 		}
 	}
 	return gvk
+}
+
+// Clean up internal bookkeeping fields. See
+// https://github.com/kubernetes/kubernetes/issues/90066
+func (e K8sEntity) Clean() {
+	m := e.meta()
+	m.SetManagedFields(nil)
+
+	annotations := m.GetAnnotations()
+	if len(annotations) != 0 {
+		delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
+	}
 }
 
 func (e K8sEntity) meta() k8sMeta {

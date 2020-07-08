@@ -234,21 +234,90 @@ func handleBuildResults(engineState *store.EngineState,
 	isBuildSuccess := br.Error == nil
 
 	ms := mt.State
+	mn := mt.Manifest.Name
 	for id, result := range results {
 		ms.MutableBuildStatus(id).LastResult = result
 	}
 
 	// Remove pending file changes that were consumed by this build.
 	for _, status := range ms.BuildStatuses {
-		for file, modTime := range status.PendingFileChanges {
-			if store.BeforeOrEqual(modTime, br.StartTime) {
-				delete(status.PendingFileChanges, file)
-			}
-		}
+		status.ClearPendingChangesBefore(br.StartTime)
 	}
 
 	if isBuildSuccess {
 		ms.LastSuccessfulDeployTime = br.FinishTime
+	}
+
+	// Update build statuses for duplicated image targets in other manifests.
+	// This ensures that those images targets aren't redundantly rebuilt.
+	for _, currentMT := range engineState.TargetsBesides(mn) {
+		// We only want to update image targets for Manifests that are already queued
+		// for rebuild and not currently building. This has two benefits:
+		//
+		// 1) If there's a bug in Tilt's image caching (e.g.,
+		//    https://github.com/tilt-dev/tilt/pull/3542), this prevents infinite
+		//    builds.
+		//
+		// 2) If the current manifest build was kicked off by a trigger, we don't
+		//    want to queue manifests with the same image.
+		if currentMT.NextBuildReason() == model.BuildReasonNone ||
+			engineState.IsCurrentlyBuilding(currentMT.Manifest.Name) {
+			continue
+		}
+
+		currentMS := currentMT.State
+		idSet := currentMT.Manifest.TargetIDSet()
+		updatedIDSet := make(map[model.TargetID]bool)
+
+		for id, result := range results {
+			_, ok := idSet[id]
+			if !ok {
+				continue
+			}
+
+			// We can only reuse image update, not live-updates or other kinds of
+			// deploys.
+			_, isImageResult := result.(store.ImageBuildResult)
+			if !isImageResult {
+				continue
+			}
+
+			currentStatus := currentMS.MutableBuildStatus(id)
+			currentStatus.LastResult = result
+			currentStatus.ClearPendingChangesBefore(br.StartTime)
+			updatedIDSet[id] = true
+		}
+
+		if len(updatedIDSet) == 0 {
+			continue
+		}
+
+		// Suppose we built manifestA, which contains imageA depending on imageCommon.
+		//
+		// We also have manifestB, which contains imageB depending on imageCommon.
+		//
+		// We need to mark imageB as dirty, because it was not built in the manifestA
+		// build but its dependency was built.
+		//
+		// Note that this logic also applies to deploy targets depending on image
+		// targets. If we built manifestA, which contains imageX and deploy target
+		// k8sA, and manifestB contains imageX and deploy target k8sB, we need to mark
+		// target k8sB as dirty so that Tilt actually deploys the changes to imageX.
+		rDepsMap := currentMT.Manifest.ReverseDependencyIDs()
+		for updatedID := range updatedIDSet {
+
+			// Go through each target depending on an image we just built.
+			for _, rDepID := range rDepsMap[updatedID] {
+
+				// If that target was also built, it's up-to-date.
+				if updatedIDSet[rDepID] {
+					continue
+				}
+
+				// Otherwise, we need to mark it for rebuild to pick up the new image.
+				currentMS.MutableBuildStatus(rDepID).PendingDependencyChanges[updatedID] = br.StartTime
+			}
+		}
 	}
 }
 

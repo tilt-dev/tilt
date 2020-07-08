@@ -81,6 +81,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"k8s.runtime":                                         "docker",
 		"k8s.registry.host":                                   "1",
 		"k8s.registry.hostFromCluster":                        "1",
+		"subcommand":                                          "up",
 	}
 
 	tf.assertStats(t, expectedTags)
@@ -162,6 +163,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 		"env":                    string(k8s.EnvDockerDesktop),
 		"term_mode":              "0",
 		"k8s.runtime":            "docker",
+		"subcommand":             "up",
 	}
 
 	tf.assertStats(t, expectedTags)
@@ -180,7 +182,7 @@ func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
 	kClient := k8s.NewFakeK8sClient()
-	ar := ProvideAnalyticsReporter(a, st, kClient, k8s.EnvDockerDesktop)
+	ar := ProvideAnalyticsReporter(a, st, kClient, k8s.EnvDockerDesktop, "up")
 	return &analyticsReporterTestFixture{
 		manifestCount: 0,
 		ar:            ar,

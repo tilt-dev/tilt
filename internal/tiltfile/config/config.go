@@ -25,15 +25,12 @@ type Settings struct {
 	seenWorkingDirectory string
 }
 
-// e.g., "up", "down", "ci"
-type TiltSubcommand string
-
 type Extension struct {
 	UserConfigState model.UserConfigState
-	TiltSubcommand  TiltSubcommand
+	TiltSubcommand  model.TiltSubcommand
 }
 
-func NewExtension(tiltSubcommand TiltSubcommand) *Extension {
+func NewExtension(tiltSubcommand model.TiltSubcommand) *Extension {
 	return &Extension{TiltSubcommand: tiltSubcommand}
 }
 

@@ -132,6 +132,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Println("---")
 	fmt.Println("Analytics Settings")
+	fmt.Println("--> (These results reflect your personal opt in/out status and may be overridden by an `analytics_settings` call in your Tiltfile)")
 
 	a := analytics.Get(ctx)
 	opt := a.UserOpt()

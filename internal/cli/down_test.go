@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tilt-dev/tilt/internal/tiltfile/config"
-
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -143,7 +141,7 @@ func newDownFixture(t *testing.T) downFixture {
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kCli := k8s.NewFakeK8sClient()
 	downDeps := DownDeps{tfl, dcc, kCli}
-	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand config.TiltSubcommand) (deps DownDeps, err error) {
+	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (deps DownDeps, err error) {
 		return downDeps, nil
 	}}
 	return downFixture{

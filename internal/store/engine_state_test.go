@@ -154,11 +154,18 @@ func TestNextBuildReason(t *testing.T) {
 
 	iTargetID := model.ImageID(container.MustParseSelector("sancho"))
 	status := mt.State.MutableBuildStatus(kTarget.ID())
+	assert.Equal(t, "Initial Build",
+		mt.NextBuildReason().String())
+
 	status.PendingDependencyChanges[iTargetID] = time.Now()
-	assert.Equal(t, "Initial Build | Dependency Updated",
+	assert.Equal(t, "Initial Build",
+		mt.NextBuildReason().String())
+
+	mt.State.AddCompletedBuild(model.BuildRecord{StartTime: time.Now(), FinishTime: time.Now()})
+	assert.Equal(t, "Dependency Updated",
 		mt.NextBuildReason().String())
 
 	status.PendingFileChanges["a.txt"] = time.Now()
-	assert.Equal(t, "Initial Build | Changed Files | Dependency Updated",
+	assert.Equal(t, "Changed Files | Dependency Updated",
 		mt.NextBuildReason().String())
 }

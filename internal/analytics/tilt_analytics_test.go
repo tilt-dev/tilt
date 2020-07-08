@@ -114,6 +114,32 @@ func TestWithoutGlobalTags(t *testing.T) {
 	assert.Equal(t, 1, len(ma.Counts))
 }
 
+func TestOptPrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		name                 string
+		envOpt               analytics.Opt
+		userOpt              analytics.Opt
+		tiltfileOpt          analytics.Opt
+		expectedEffectiveOpt analytics.Opt
+	}{
+		{"env opt overrides all", analytics.OptOut, analytics.OptIn, analytics.OptIn, analytics.OptOut},
+		{"tiltfile opt overrides user", analytics.OptDefault, analytics.OptOut, analytics.OptIn, analytics.OptIn},
+		{"user opt controls if others unset", analytics.OptDefault, analytics.OptOut, analytics.OptDefault, analytics.OptOut},
+		{"default opt if none set", analytics.OptDefault, analytics.OptDefault, analytics.OptDefault, analytics.OptDefault},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ma := analytics.NewMemoryAnalytics()
+			os := &userOptSetting{opt: tc.userOpt}
+			a, _ := NewTiltAnalytics(os, ma, versionTest)
+			a.opt.env = tc.envOpt
+			a.SetTiltfileOpt(tc.tiltfileOpt)
+
+			// compare strings for readability
+			assert.Equal(t, tc.expectedEffectiveOpt.String(), a.EffectiveOpt().String())
+		})
+	}
+}
+
 func analyticsViaTransition(t *testing.T, initialOpt, newOpt analytics.Opt) (*TiltAnalytics, *analytics.MemoryAnalytics) {
 	ma := analytics.NewMemoryAnalytics()
 	os := &userOptSetting{opt: initialOpt}
