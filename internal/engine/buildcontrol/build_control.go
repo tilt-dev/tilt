@@ -32,6 +32,15 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		targets = RemoveLocalTargets(targets)
 	}
 
+	// Uncategorized YAML might contain namespaces or volumes that
+	// we don't want to parallelize.
+	//
+	// TODO(nick): Long-term, we should try to infer dependencies between Kuberentes
+	// resources. A general library might make sense.
+	if IsBuildingUncategorizedYAML(state) {
+		targets = RemoveK8sTargets(targets)
+	}
+
 	targets = RemoveTargetsWithBuildingComponents(targets)
 	targets = RemoveTargetsWaitingOnDependencies(state, targets)
 
@@ -201,6 +210,16 @@ func RemoveLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget
 	return result
 }
 
+func RemoveK8sTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
+	result := []*store.ManifestTarget{}
+	for _, target := range targets {
+		if !target.Manifest.IsK8s() {
+			result = append(result, target)
+		}
+	}
+	return result
+}
+
 func IsBuildingAnything(state store.EngineState) bool {
 	mts := state.Targets()
 	for _, mt := range mts {
@@ -215,6 +234,16 @@ func IsBuildingLocalTarget(state store.EngineState) bool {
 	mts := state.Targets()
 	for _, mt := range mts {
 		if mt.State.IsBuilding() && mt.Manifest.IsLocal() {
+			return true
+		}
+	}
+	return false
+}
+
+func IsBuildingUncategorizedYAML(state store.EngineState) bool {
+	mts := state.Targets()
+	for _, mt := range mts {
+		if mt.State.IsBuilding() && mt.Manifest.Name == model.UnresourcedYAMLManifestName {
 			return true
 		}
 	}

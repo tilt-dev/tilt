@@ -48,6 +48,19 @@ func TestCurrentlyBuildingK8sResourceDisablesLocalScheduling(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 }
 
+func TestCurrentlyBuildingUncategorizedDisablesOtherK8sTargets(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	_ = f.upsertK8sManifest("k8s1")
+	k8sUnresourced := f.upsertK8sManifest(model.UnresourcedYAMLManifestName)
+	_ = f.upsertK8sManifest("k8s2")
+
+	f.assertNextTargetToBuild(model.UnresourcedYAMLManifestName)
+	k8sUnresourced.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNoTargetNextToBuild()
+}
+
 func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
