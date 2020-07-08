@@ -55,6 +55,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, &versionCmd{})
 	addCommand(rootCmd, &dockerPruneCmd{})
 	addCommand(rootCmd, newArgsCmd())
+	addCommand(rootCmd, &logsCmd{})
 
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newKubectlCmd())
