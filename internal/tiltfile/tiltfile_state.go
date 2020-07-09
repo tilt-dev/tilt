@@ -254,7 +254,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		if err != nil {
 			return nil, starkit.Model{}, err
 		}
-		s.warnDuplicateYamlResources(yamlManifest)
+
 		manifests = append(manifests, yamlManifest)
 	}
 
@@ -263,6 +263,9 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		return nil, starkit.Model{}, err
 	}
 
+	for _, manifest := range manifests {
+		s.warnDuplicateYamlEntities(manifest)
+	}
 	return manifests, result, nil
 }
 
@@ -1126,7 +1129,9 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	if err != nil {
 		return nil, err
 	}
-
+	for _, manifest := range result {
+		s.warnDuplicateYamlEntities(manifest)
+	}
 	return result, nil
 }
 
@@ -1391,6 +1396,9 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, dc.configPaths...)
 	}
 
+	for _, manifest := range result {
+		s.warnDuplicateYamlEntities(manifest)
+	}
 	return result, nil
 }
 
@@ -1476,29 +1484,34 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 
 		result = append(result, m)
 	}
+	for _, manifest := range result {
+		s.warnDuplicateYamlEntities(manifest)
+	}
 
 	return result, nil
 }
-func (s *tiltfileState) warnDuplicateYamlResources(m model.Manifest) {
-	var tempName []string
+
+//this deals with alerting the user if there are multiple instances of a
+//the same yaml entity (same name:kind:namespace:group) which may have been
+//defined in the same way or in multiple ways.
+func (s *tiltfileState) warnDuplicateYamlEntities(m model.Manifest) {
 	deployTarget := m.K8sTarget()
 	displayNames := deployTarget.DisplayNames
 
 	duplicates := make(map[string]int)
 
-	// depends on the fact that the duplicate resource has formatting of doggos:service:default:core:n where n is nth
-	//occurrence of that resource.
+	//when the same entity appears more than once, Tilt handles it by storing it as name:kind:namespace:group:n where n is
+	//the nth occurence of that entity, so as to not cause execution to halt. In the future, it might be better to surface an
+	//error about the duplicated resource closer to the actual manifest assembly.
 	for _, name := range displayNames {
-		tempName = strings.Split(name, ":")
-		if len(tempName) > 4 { //if it is > 4 that means there's an n
-			duplicates[tempName[0]]++ // we only care about the name of the resource
+		tempName := strings.Split(name, ":")
+		if len(tempName) > 4 { //this means there's an n which was appended at the manifest assembly because of multiple same entities present
+			duplicates[strings.Join(tempName[:4], ":")]++
 		}
 	}
 
-	for resource, numOccurences := range duplicates {
-		if numOccurences > 1 {
-			s.logger.Warnf("The following YAML Resource has been duplicated: " + resource)
-		}
+	for entity := range duplicates {
+		s.logger.Warnf("The following YAML Resource has been duplicated: " + entity)
 	}
 }
 
