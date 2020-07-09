@@ -3835,7 +3835,7 @@ func TestDuplicateResource(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml('resource.yaml')
 `)
-	duplicateWarningStr := "The following YAML Resource has been duplicated: doggos"
+	duplicateWarningStr := "The following YAML Resource has been duplicated: doggos:service:default:core"
 	f.loadAssertWarnings(duplicateWarningStr)
 
 }
