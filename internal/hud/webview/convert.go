@@ -9,6 +9,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
@@ -254,4 +255,12 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 	}
 
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
+}
+
+// TODO(maia): maybe I should convert to some new type that fulfils the LogEvent interface? but this is here.
+func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_webview.LogSpan) store.LogAction {
+	mn := spans[seg.SpanId].ManifestName
+	// TODO(maia): actually get level (just spoofing for now)
+	spoofedLevel := logger.InfoLvl
+	return store.NewLogAction(model.ManifestName(mn), logstore.SpanID(seg.SpanId), spoofedLevel, seg.Fields, []byte(seg.Text))
 }

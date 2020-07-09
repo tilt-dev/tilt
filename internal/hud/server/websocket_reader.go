@@ -15,12 +15,15 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/mattn/go-colorable"
+	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/webview"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
-
-type ViewHandler func(v proto_webview.View) error
 
 // TODO: interface
 type WebsocketReader struct {
@@ -28,22 +31,50 @@ type WebsocketReader struct {
 	handler ViewHandler
 }
 
-var rName = "make-install"
-
-func StreamLogs(v proto_webview.View) error {
-	fmt.Println("found resources:", v.Resources)
-	return nil
-}
-
 func ProvideWebsockerReader() *WebsocketReader {
 	return &WebsocketReader{
 		url:     url.URL{Scheme: "ws", Host: "localhost:10350", Path: "/ws/view"},
-		handler: StreamLogs,
+		handler: NewLogStreamer(),
 	}
+}
+
+type ViewHandler interface {
+	Handle(v proto_webview.View) error
+}
+
+type LogStreamer struct {
+	logstore *logstore.LogStore
+	printer  *hud.IncrementalPrinter
+	// todo: ProcessedLogs logstore.Checkpoint
+}
+
+func NewLogStreamer() *LogStreamer {
+	// TODO: wire this
+	printer := hud.NewIncrementalPrinter(hud.Stdout(colorable.NewColorableStdout()))
+	return &LogStreamer{
+		logstore: logstore.NewLogStore(),
+		printer:  printer,
+	}
+}
+func (ls *LogStreamer) Handle(v proto_webview.View) error {
+	// TODO(maia): secrets???
+	// TODO(maia): filter for the resources that we care about (`tilt logs resourceA resourceC`)
+	//   --> and if there's only one resource, don't prefix logs with resource name?
+	fmt.Printf("✨ got %d log segments", len(v.LogList.Segments))
+	for _, seg := range v.LogList.Segments {
+		ls.logstore.Append(webview.LogSegmentToEvent(seg, v.LogList.Spans), model.SecretSet{})
+	}
+
+	ls.printer.Print(ls.logstore.ContinuingLines(0))
+
+	// process new checkpoint etc.
+
+	return nil
 }
 
 func (wsr *WebsocketReader) Listen() {
 	// catch signals to kill
+	// TODO: use signal catching we already use in `up` etc.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
@@ -58,6 +89,7 @@ func (wsr *WebsocketReader) Listen() {
 	done := make(chan struct{})
 
 	go func() {
+		// TODO(maia): make sure this closes okay 😅
 		defer close(done)
 		for {
 			_, data, err := c.ReadMessage()
@@ -65,13 +97,14 @@ func (wsr *WebsocketReader) Listen() {
 				log.Println("🚨 error reading:", err)
 				return
 			}
+			// todo: ack for incremental logs
 			v := proto_webview.View{}
 			jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
 			err = jspb.Unmarshal(data, &v)
 			if err != nil {
 				log.Println("🚨 error unmarshalling:", err)
 			}
-			err = wsr.handler(v)
+			err = wsr.handler.Handle(v)
 			if err != nil {
 				log.Println("🚨 handler error:", err)
 			}
