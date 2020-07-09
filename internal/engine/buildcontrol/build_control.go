@@ -95,6 +95,43 @@ func isWaitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) 
 	return false
 }
 
+// Check to see if this is an ImageTarget where the built image
+// can be potentially reused.
+//
+// Note that this is a quick heuristic check for making parallelization decisions.
+//
+// The "correct" decision about whether an image can be re-used is more complex
+// and expensive, and includes:
+//
+// 1) Checks of dependent images
+// 2) Live-update sync checks
+// 3) Checks that the image still exists on the image store
+//
+// But in this particular context, we can cheat a bit.
+func canReuseImageTargetHeuristic(spec model.TargetSpec, status store.BuildStatus) bool {
+	id := spec.ID()
+	if id.Type != model.TargetTypeImage {
+		return false
+	}
+
+	// NOTE(nick): A more accurate check might see if the pending file changes
+	// are potentially live-updatable, but this is OK for the case of a base image.
+	if len(status.PendingFileChanges) > 0 || len(status.PendingDependencyChanges) > 0 {
+		return false
+	}
+
+	result := status.LastResult
+	if result == nil {
+		return false
+	}
+
+	switch result.(type) {
+	case store.ImageBuildResult, store.LiveUpdateBuildResult:
+		return true
+	}
+	return false
+}
+
 func RemoveTargetsWithBuildingComponents(mts []*store.ManifestTarget) []*store.ManifestTarget {
 	building := make(map[model.TargetID]bool)
 
@@ -102,20 +139,27 @@ func RemoveTargetsWithBuildingComponents(mts []*store.ManifestTarget) []*store.M
 		if mt.State.IsBuilding() {
 			building[mt.Manifest.ID()] = true
 
-			// TODO(nick): This logic isn't quite right.  A manifest can re-use image
-			// results from another manifest's build.
 			for _, spec := range mt.Manifest.TargetSpecs() {
+				if canReuseImageTargetHeuristic(spec, mt.State.BuildStatus(spec.ID())) {
+					continue
+				}
+
 				building[spec.ID()] = true
 			}
 		}
 	}
 
-	isBuilding := func(m model.Manifest) bool {
+	hasBuildingComponent := func(mt *store.ManifestTarget) bool {
+		m := mt.Manifest
 		if building[m.ID()] {
 			return true
 		}
 
 		for _, spec := range m.TargetSpecs() {
+			if canReuseImageTargetHeuristic(spec, mt.State.BuildStatus(spec.ID())) {
+				continue
+			}
+
 			if building[spec.ID()] {
 				return true
 			}
@@ -125,7 +169,7 @@ func RemoveTargetsWithBuildingComponents(mts []*store.ManifestTarget) []*store.M
 
 	var ret []*store.ManifestTarget
 	for _, mt := range mts {
-		if !isBuilding(mt.Manifest) {
+		if !hasBuildingComponent(mt) {
 			ret = append(ret, mt)
 		}
 	}

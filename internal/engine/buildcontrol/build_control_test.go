@@ -108,6 +108,36 @@ func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	f.assertNextTargetToBuild("sancho-two")
 }
 
+func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	baseImage := model.MustNewImageTarget(container.MustParseSelector("sancho-base"))
+	sanchoOneImage := model.MustNewImageTarget(container.MustParseSelector("sancho-one")).
+		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+	sanchoTwoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-two")).
+		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+
+	sanchoOne := f.upsertManifest(manifestbuilder.New(f, "sancho-one").
+		WithImageTargets(baseImage, sanchoOneImage).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build())
+	sanchoTwo := f.upsertManifest(manifestbuilder.New(f, "sancho-two").
+		WithImageTargets(baseImage, sanchoTwoImage).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build())
+
+	sanchoOne.State.MutableBuildStatus(baseImage.ID()).LastResult = store.ImageBuildResult{}
+	sanchoTwo.State.MutableBuildStatus(baseImage.ID()).LastResult = store.ImageBuildResult{}
+
+	f.assertNextTargetToBuild("sancho-one")
+
+	sanchoOne.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+
+	// Make sure sancho-two can start while sanchoOne is still pending.
+	f.assertNextTargetToBuild("sancho-two")
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t  *testing.T
