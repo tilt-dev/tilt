@@ -13,6 +13,7 @@ import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as TiltCloudLogoSvg } from "./assets/svg/logo-Tilt-Cloud.svg"
 import ButtonLink from "./ButtonLink"
 import ButtonInput from "./ButtonInput"
+import ReactOutlineManager from "react-outline-manager"
 
 export const SidebarAccountRoot = styled.div`
   position: relative; // Anchor SidebarAccountMenu
@@ -259,12 +260,14 @@ function SidebarAccount(props: SidebarAccountProps) {
   return (
     <SidebarAccountRoot>
       <SidebarAccountHeader>
-        <SidebarAccountButton
-          onClick={() => toggleAccountMenu(!accountMenuIsVisible)}
-        >
-          <SidebarAccountLabel>Your Tilt Cloud status</SidebarAccountLabel>
-          <SidebarAccountIcon />
-        </SidebarAccountButton>
+        <ReactOutlineManager>
+          <SidebarAccountButton
+            onClick={() => toggleAccountMenu(!accountMenuIsVisible)}
+          >
+            <SidebarAccountLabel>Your Tilt Cloud status</SidebarAccountLabel>
+            <SidebarAccountIcon />
+          </SidebarAccountButton>
+        </ReactOutlineManager>
       </SidebarAccountHeader>
       <SidebarAccountMenu className={accountMenuIsVisible ? "is-visible" : ""}>
         <SidebarAccountMenuHeader>
