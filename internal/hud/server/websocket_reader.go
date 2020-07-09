@@ -5,7 +5,6 @@ package server
 // TODO(maia): figure out if this should live here, or elsewhere.
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
@@ -27,6 +27,8 @@ type WebsocketReader struct {
 	url     url.URL
 	handler ViewHandler
 }
+
+var rName = "make-install"
 
 func StreamLogs(v proto_webview.View) error {
 	fmt.Println("found resources:", v.Resources)
@@ -58,13 +60,14 @@ func (wsr *WebsocketReader) Listen() {
 	go func() {
 		defer close(done)
 		for {
-			_, message, err := c.ReadMessage()
+			_, data, err := c.ReadMessage()
 			if err != nil {
 				log.Println("🚨 error reading:", err)
 				return
 			}
 			v := proto_webview.View{}
-			err = json.Unmarshal(message, &v)
+			jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+			err = jspb.Unmarshal(data, &v)
 			if err != nil {
 				log.Println("🚨 error unmarshalling:", err)
 			}
