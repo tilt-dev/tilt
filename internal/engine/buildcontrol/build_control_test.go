@@ -61,6 +61,55 @@ func TestCurrentlyBuildingUncategorizedDisablesOtherK8sTargets(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 }
 
+func TestK8sDependsOnLocal(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	k8s1 := f.upsertK8sManifest("k8s1", withResourceDeps("local1"))
+	k8s2 := f.upsertK8sManifest("k8s2")
+	local1 := f.upsertLocalManifest("local1")
+
+	f.assertNextTargetToBuild("local1")
+
+	local1.State.AddCompletedBuild(model.BuildRecord{
+		StartTime:  time.Now(),
+		FinishTime: time.Now(),
+	})
+	local1.State.RuntimeState = store.LocalRuntimeState{HasSucceededAtLeastOnce: true}
+
+	f.assertNextTargetToBuild("k8s1")
+	k8s1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNextTargetToBuild("k8s2")
+
+	_ = k8s2
+}
+
+func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	local1 := f.upsertLocalManifest("local1", withResourceDeps("k8s1"))
+	k8s1 := f.upsertK8sManifest("k8s1", withK8sNonWorkload())
+	k8s2 := f.upsertK8sManifest("k8s2", withK8sNonWorkload())
+
+	f.assertNextTargetToBuild("k8s1")
+
+	k8s1.State.AddCompletedBuild(model.BuildRecord{
+		StartTime:  time.Now(),
+		FinishTime: time.Now(),
+	})
+	k8s1.State.RuntimeState = store.K8sRuntimeState{NonWorkload: true, HasEverDeployedSuccessfully: true}
+
+	f.assertNextTargetToBuild("local1")
+	local1.State.AddCompletedBuild(model.BuildRecord{
+		StartTime:  time.Now(),
+		FinishTime: time.Now(),
+	})
+	f.assertNextTargetToBuild("k8s2")
+
+	_ = k8s2
+}
+
 func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -173,16 +222,20 @@ func (f *testFixture) upsertManifest(m model.Manifest) *store.ManifestTarget {
 	return mt
 }
 
-func (f *testFixture) upsertK8sManifest(name model.ManifestName) *store.ManifestTarget {
-	return f.upsertManifest(manifestbuilder.New(f, name).
-		WithK8sYAML(testyaml.SanchoYAML).
-		Build())
+func (f *testFixture) upsertK8sManifest(name model.ManifestName, opts ...manifestOption) *store.ManifestTarget {
+	b := manifestbuilder.New(f, name)
+	for _, o := range opts {
+		b = o(b)
+	}
+	return f.upsertManifest(b.WithK8sYAML(testyaml.SanchoYAML).Build())
 }
 
-func (f *testFixture) upsertLocalManifest(name model.ManifestName) *store.ManifestTarget {
-	return f.upsertManifest(manifestbuilder.New(f, name).
-		WithLocalResource(fmt.Sprintf("exec-%s", name), nil).
-		Build())
+func (f *testFixture) upsertLocalManifest(name model.ManifestName, opts ...manifestOption) *store.ManifestTarget {
+	b := manifestbuilder.New(f, name)
+	for _, o := range opts {
+		b = o(b)
+	}
+	return f.upsertManifest(b.WithLocalResource(fmt.Sprintf("exec-%s", name), nil).Build())
 }
 
 func (f *testFixture) manifestNeedingCrashRebuild() *store.ManifestTarget {
@@ -198,4 +251,17 @@ func (f *testFixture) manifestNeedingCrashRebuild() *store.ManifestTarget {
 	}
 	mt.State.NeedsRebuildFromCrash = true
 	return mt
+}
+
+type manifestOption func(manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder
+
+func withResourceDeps(deps ...string) manifestOption {
+	return manifestOption(func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
+		return m.WithResourceDeps(deps...)
+	})
+}
+func withK8sNonWorkload() manifestOption {
+	return manifestOption(func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
+		return m.WithK8sNonWorkload()
+	})
 }

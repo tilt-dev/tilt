@@ -393,19 +393,22 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	manifest := mt.Manifest
 	if manifest.IsK8s() {
+		state := ms.K8sRuntimeState()
 		deployedUIDSet := cb.Result.DeployedUIDSet()
 		if len(deployedUIDSet) > 0 {
-			state := ms.K8sRuntimeState()
 			state.DeployedUIDSet = deployedUIDSet
-			ms.RuntimeState = state
 		}
 
 		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
 		if len(deployedPodTemplateSpecHashSet) > 0 {
-			state := ms.K8sRuntimeState()
 			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
-			ms.RuntimeState = state
 		}
+
+		if err == nil {
+			state.HasEverDeployedSuccessfully = true
+		}
+
+		ms.RuntimeState = state
 	}
 
 	if mt.Manifest.IsDC() {
@@ -437,10 +440,12 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	if mt.Manifest.IsLocal() {
-		ms.RuntimeState = store.LocalRuntimeState{
-			Status:                  model.RuntimeStatusNotApplicable,
-			HasSucceededAtLeastOnce: err == nil,
+		lrs := ms.LocalRuntimeState()
+		lrs.Status = model.RuntimeStatusNotApplicable
+		if err == nil {
+			lrs.HasSucceededAtLeastOnce = true
 		}
+		ms.RuntimeState = lrs
 	}
 }
 

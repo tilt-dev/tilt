@@ -1368,6 +1368,33 @@ func TestManifestsWithTwoCommonAncestors(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	local1 := manifestbuilder.New(f, "local").
+		WithLocalResource("exec-local", nil).
+		WithResourceDeps("k8s1").
+		Build()
+	k8s1 := manifestbuilder.New(f, "k8s1").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithK8sNonWorkload().
+		Build()
+	f.Start([]model.Manifest{local1, k8s1})
+
+	f.waitForCompletedBuildCount(2)
+
+	call := f.nextCall("k8s1 build")
+	assert.Equal(t, k8s1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("local build")
+	assert.Equal(t, local1.LocalTarget(), call.local())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
 func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
 	f := newTestFixture(t)
 	m1, m2 := NewManifestsWithCommonAncestor(f)
