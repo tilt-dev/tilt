@@ -1501,7 +1501,7 @@ func (s *tiltfileState) warnDuplicateYamlEntities(m model.Manifest) {
 	duplicates := make(map[string]int)
 
 	//when the same entity appears more than once, Tilt handles it by storing it as name:kind:namespace:group:n where n is
-	//the nth occurence of that entity, so as to not cause execution to halt. In the future, it might be better to surface an
+	//the nth repeat of that entity, so as to not cause execution to halt. In the future, it might be better to surface an
 	//error about the duplicated resource closer to the actual manifest assembly.
 	for _, name := range displayNames {
 		tempName := strings.Split(name, ":")
