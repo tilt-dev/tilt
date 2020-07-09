@@ -1,6 +1,10 @@
 package value
 
-import "go.starlark.net/starlark"
+import (
+	"fmt"
+
+	"go.starlark.net/starlark"
+)
 
 type ImplicitStringer interface {
 	ImplicitString() string
@@ -17,31 +21,31 @@ func AsString(x starlark.Value) (string, bool) {
 
 // Unpack an argument that can either be expressed as
 // a string or as a list of strings.
-func AsStringOrStringList(x starlark.Value) ([]string, bool) {
+func AsStringOrStringList(x starlark.Value) ([]string, error) {
 	if x == nil {
-		return []string{}, true
+		return []string{}, nil
 	}
 
 	s, ok := AsString(x)
 	if ok {
-		return []string{s}, true
+		return []string{s}, nil
 	}
 
-	iterable, ok := x.(starlark.Iterable)
-	if ok {
-		result := []string{}
-		iter := iterable.Iterate()
-		defer iter.Done()
-		var item starlark.Value
-		for iter.Next(&item) {
-			s, ok := AsString(item)
-			if !ok {
-				return nil, false
-			}
-			result = append(result, s)
+	list, ok := x.(*starlark.List)
+	if !ok {
+		return nil, fmt.Errorf("value should be a string or List of strings, but is of type %s", x.Type())
+	}
+
+	result := []string{}
+	iter := list.Iterate()
+	defer iter.Done()
+	var item starlark.Value
+	for iter.Next(&item) {
+		s, ok := AsString(item)
+		if !ok {
+			return nil, fmt.Errorf("list should contain only strings, but element %q was of type %s", item.String(), item.Type())
 		}
-		return result, true
+		result = append(result, s)
 	}
-
-	return nil, false
+	return result, nil
 }

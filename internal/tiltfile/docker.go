@@ -192,18 +192,19 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	ssh, ok := value.AsStringOrStringList(sshVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'ssh' must be string or list of strings. Actual: %T", sshVal)
+	ssh, err := value.AsStringOrStringList(sshVal)
+	if err != nil {
+		return nil, errors.Wrap(err, "Argument 'ssh'")
 	}
 
-	secret, ok := value.AsStringOrStringList(secretVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'secret' must be string or list of strings. Actual: %T", secretVal)
+	secret, err := value.AsStringOrStringList(secretVal)
+	if err != nil {
+		return nil, errors.Wrap(err, "Argument 'secret'")
 	}
 
 	network := ""
 	if networkVal != nil {
+		var ok bool
 		network, ok = value.AsString(networkVal)
 		if !ok {
 			return nil, fmt.Errorf("Argument 'network' must be string. Actual: %T", networkVal)
@@ -224,9 +225,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
 	}
 
-	extraTags, ok := value.AsStringOrStringList(extraTagsVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'extra_tag' must be string or list of strings. Actual: %T", extraTagsVal)
+	extraTags, err := value.AsStringOrStringList(extraTagsVal)
+	if err != nil {
+		return nil, errors.Wrap(err, "Argument 'extra_tag'")
 	}
 
 	for _, extraTag := range extraTags {
