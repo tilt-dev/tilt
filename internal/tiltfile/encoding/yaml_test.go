@@ -305,6 +305,7 @@ key5: 3
 key6:
 - foo
 - 7
+key7: []
 '''
 observed = encode_yaml({
   'key1': 'foo',
@@ -316,7 +317,8 @@ observed = encode_yaml({
   'key6': [
     'foo',
     7,
-  ]
+  ],
+  'key7': []
 })
 
 load('assert.tilt', 'assert')
