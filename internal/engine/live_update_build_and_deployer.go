@@ -76,8 +76,10 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return nil, buildcontrol.SilentRedirectToNextBuilderf("no targets for Live Update found")
 	}
 
+	consumedFiles := map[string]interface{}{}
 	for _, luStateTree := range liveUpdateStateSet {
-		luInfo, err := liveUpdateInfoForStateTree(luStateTree)
+		luInfo, c, err := liveUpdateInfoForStateTree(luStateTree, consumedFiles)
+		consumedFiles = c
 		if err != nil {
 			return store.BuildResultSet{}, err
 		}
@@ -196,7 +198,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 
 // liveUpdateInfoForStateTree validates the state tree for LiveUpdate and returns
 // all the info we need to execute the update.
-func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, error) {
+func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree, consumedFiles map[string]interface{}) (liveUpdInfo, map[string]interface{}, error) {
 	iTarget := stateTree.iTarget
 	state := stateTree.iTargetState
 	filesChanged := stateTree.filesChanged
@@ -210,22 +212,33 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		var pathsMatchingNoSync []string
 		fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
 		if err != nil {
-			return liveUpdInfo{}, err
+			return liveUpdInfo{}, consumedFiles, err
+		}
+		for _, m := range fileMappings {
+			consumedFiles[m.LocalPath] = struct{}{}
 		}
 		if len(pathsMatchingNoSync) > 0 {
-			prettyPaths := ospath.FileListDisplayNames(iTarget.LocalPaths(), pathsMatchingNoSync)
-			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
-				"Found file(s) not matching any sync (files: %s)", strings.Join(prettyPaths, ", "))
+			filesNotMatching := []string{}
+			for _, n := range pathsMatchingNoSync {
+				if _, ok := consumedFiles[n]; !ok {
+					filesNotMatching = append(filesNotMatching, n)
+				}
+			}
+			if len(filesNotMatching) > 0 {
+				prettyPaths := ospath.FileListDisplayNames(iTarget.LocalPaths(), filesNotMatching)
+				return liveUpdInfo{}, consumedFiles, buildcontrol.RedirectToNextBuilderInfof(
+					"Found file(s) not matching any sync (files: %s)", strings.Join(prettyPaths, ", "))
+			}
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
 		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(fileMappings))
 		if err != nil {
-			return liveUpdInfo{}, err
+			return liveUpdInfo{}, consumedFiles, err
 		}
 		if anyMatch {
 			prettyFile := ospath.FileListDisplayNames(iTarget.LocalPaths(), []string{file})[0]
-			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
+			return liveUpdInfo{}, consumedFiles, buildcontrol.RedirectToNextBuilderInfof(
 				"Detected change to fall_back_on file %q", prettyFile)
 		}
 
@@ -239,7 +252,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 
 	if len(fileMappings) == 0 {
 		// No files matched a sync for this image, no Live Update to run
-		return liveUpdInfo{}, nil
+		return liveUpdInfo{}, consumedFiles, nil
 	}
 
 	return liveUpdInfo{
@@ -248,7 +261,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		changedFiles: fileMappings,
 		runs:         runs,
 		hotReload:    hotReload,
-	}, nil
+	}, consumedFiles, nil
 }
 
 func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec) containerupdate.ContainerUpdater {

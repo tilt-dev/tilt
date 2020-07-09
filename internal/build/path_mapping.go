@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -92,6 +93,8 @@ func FilterMappings(mappings []PathMapping, matcher model.PathMatcher) ([]PathMa
 // associates local filepaths with their syncs and destination paths), returning those
 // that it cannot associate with a sync.
 func FilesToPathMappings(files []string, syncs []model.Sync) ([]PathMapping, []string, error) {
+	log.Printf("Files: %v", files)
+	log.Printf("Syncs: %+v", syncs)
 	pms := make([]PathMapping, 0, len(files))
 	pathsMatchingNoSync := []string{}
 	for _, f := range files {
