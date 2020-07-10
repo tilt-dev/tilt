@@ -10,7 +10,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-	v1 "k8s.io/api/core/v1"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -679,11 +678,14 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8
 }
 
 func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.K8sEventAction) {
-	evt := action.Event
-
-	if evt.Type != v1.EventTypeNormal {
-		handleLogAction(state, action.ToLogAction(action.ManifestName))
-	}
+	// TODO(nick): I think we whould so something more intelligent here, where we
+	// have special treatment for different types of events, e.g.:
+	//
+	// - Attach Image Pulling/Pulled events to the pod state, and display how much
+	//   time elapsed between them.
+	// - Display Node unready events as part of a health indicator, and display how
+	//   long it takes them to resolve.
+	handleLogAction(state, action.ToLogAction(action.ManifestName))
 }
 
 func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {

@@ -44,6 +44,49 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 	f.assertActions(expected)
 }
 
+type eventTestCase struct {
+	Reason   string
+	Type     string
+	Expected bool
+}
+
+func TestEventWatchManagerDifferentEvents(t *testing.T) {
+	cases := []eventTestCase{
+		eventTestCase{Reason: "Bumble", Type: v1.EventTypeNormal, Expected: false},
+		eventTestCase{Reason: "Bumble", Type: v1.EventTypeWarning, Expected: true},
+		eventTestCase{Reason: ImagePulledReason, Type: v1.EventTypeNormal, Expected: true},
+		eventTestCase{Reason: ImagePullingReason, Type: v1.EventTypeNormal, Expected: true},
+	}
+
+	for i, c := range cases {
+		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
+			f := newEWMFixture(t)
+			defer f.TearDown()
+
+			mn := model.ManifestName("someK8sManifest")
+
+			// Seed the k8s client with a pod and its owner tree
+			manifest := f.addManifest(mn)
+			pb := podbuilder.New(t, manifest)
+			f.addDeployedUID(manifest, pb.DeploymentUID())
+			f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+
+			evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
+			evt.Reason = c.Reason
+			evt.Type = c.Type
+
+			f.ewm.OnChange(f.ctx, f.store)
+			f.kClient.EmitEvent(f.ctx, evt)
+			if c.Expected {
+				expected := store.K8sEventAction{Event: evt, ManifestName: mn}
+				f.assertActions(expected)
+			} else {
+				f.assertNoActions()
+			}
+		})
+	}
+}
+
 func TestEventWatchManager_listensOnce(t *testing.T) {
 	f := newEWMFixture(t)
 	defer f.TearDown()
@@ -131,6 +174,7 @@ func (f *ewmFixture) makeEvent(obj k8s.K8sEntity) *v1.Event {
 		Reason:         "test event reason",
 		Message:        "test event message",
 		InvolvedObject: v1.ObjectReference{UID: obj.UID(), Name: obj.Name()},
+		Type:           v1.EventTypeWarning,
 	}
 }
 
