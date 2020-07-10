@@ -121,14 +121,14 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	var path starlark.Value
 	var name string
 	var namespace string
-	var valueFilesV starlark.Value
-	var setV starlark.Value
+	var valueFiles value.StringOrStringList
+	var set value.StringOrStringList
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"paths", &path,
 		"name?", &name,
 		"namespace?", &namespace,
-		"values?", &valueFilesV,
-		"set?", &setV)
+		"values?", &valueFiles,
+		"set?", &set)
 	if err != nil {
 		return nil, err
 	}
@@ -136,16 +136,6 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	localPath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
-	}
-
-	valueFiles, err := value.AsStringOrStringList(valueFilesV)
-	if err != nil {
-		return nil, errors.Wrap(err, "Argument 'values'")
-	}
-
-	set, err := value.AsStringOrStringList(setV)
-	if err != nil {
-		return nil, errors.Wrap(err, "Argument 'set'")
 	}
 
 	info, err := os.Stat(localPath)
@@ -193,14 +183,14 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	if namespace != "" {
 		cmd = append(cmd, "--namespace", namespace)
 	}
-	for _, valueFile := range valueFiles {
+	for _, valueFile := range valueFiles.Values {
 		cmd = append(cmd, "--values", valueFile)
 		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchFileOnly, starkit.AbsPath(thread, valueFile))
 		if err != nil {
 			return nil, err
 		}
 	}
-	for _, setArg := range set {
+	for _, setArg := range set.Values {
 		cmd = append(cmd, "--set", setArg)
 	}
 

@@ -93,11 +93,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		liveUpdateVal,
 		ignoreVal,
 		onlyVal,
-		sshVal,
-		secretVal,
 		networkVal,
-		entrypoint,
-		extraTagsVal starlark.Value
+		entrypoint starlark.Value
+	var ssh, secret, extraTags value.StringOrStringList
 	var matchInEnvVars bool
 	var containerArgsVal starlark.Sequence
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -114,10 +112,10 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"entrypoint?", &entrypoint,
 		"container_args?", &containerArgsVal,
 		"target?", &targetStage,
-		"ssh?", &sshVal,
-		"secret?", &secretVal,
+		"ssh?", &ssh,
+		"secret?", &secret,
 		"network?", &networkVal,
-		"extra_tag?", &extraTagsVal,
+		"extra_tag?", &extraTags,
 	); err != nil {
 		return nil, err
 	}
@@ -192,16 +190,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	ssh, err := value.AsStringOrStringList(sshVal)
-	if err != nil {
-		return nil, errors.Wrap(err, "Argument 'ssh'")
-	}
-
-	secret, err := value.AsStringOrStringList(secretVal)
-	if err != nil {
-		return nil, errors.Wrap(err, "Argument 'secret'")
-	}
-
 	network := ""
 	if networkVal != nil {
 		var ok bool
@@ -225,12 +213,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
 	}
 
-	extraTags, err := value.AsStringOrStringList(extraTagsVal)
-	if err != nil {
-		return nil, errors.Wrap(err, "Argument 'extra_tag'")
-	}
-
-	for _, extraTag := range extraTags {
+	for _, extraTag := range extraTags.Values {
 		_, err := container.ParseNamed(extraTag)
 		if err != nil {
 			return nil, fmt.Errorf("Argument extra_tag=%q not a valid image reference: %v", extraTag, err)
@@ -246,15 +229,15 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbBuildArgs:      sba,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
-		sshSpecs:         ssh,
-		secretSpecs:      secret,
+		sshSpecs:         ssh.Values,
+		secretSpecs:      secret.Values,
 		ignores:          ignores,
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
 		containerArgs:    containerArgs,
 		targetStage:      targetStage,
 		network:          network,
-		extraTags:        extraTags,
+		extraTags:        extraTags.Values,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {

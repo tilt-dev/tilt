@@ -19,33 +19,45 @@ func AsString(x starlark.Value) (string, bool) {
 	return starlark.AsString(x)
 }
 
+type StringOrStringList struct {
+	Values []string
+}
+
+var _ starlark.Unpacker = &StringOrStringList{}
+
 // Unpack an argument that can either be expressed as
 // a string or as a list of strings.
-func AsStringOrStringList(x starlark.Value) ([]string, error) {
-	if x == nil {
-		return []string{}, nil
+func (s *StringOrStringList) Unpack(v starlark.Value) error {
+	s.Values = nil
+	if v == nil {
+		return nil
 	}
 
-	s, ok := AsString(x)
+	vs, ok := AsString(v)
 	if ok {
-		return []string{s}, nil
+		s.Values = []string{vs}
+		return nil
 	}
 
-	list, ok := x.(*starlark.List)
-	if !ok {
-		return nil, fmt.Errorf("value should be a string or List of strings, but is of type %s", x.Type())
+	var iter starlark.Iterator
+	switch x := v.(type) {
+	case *starlark.List:
+		iter = x.Iterate()
+	case starlark.Tuple:
+		iter = x.Iterate()
+	default:
+		return fmt.Errorf("value should be a string or List or Tuple of strings, but is of type %s", v.Type())
 	}
 
-	result := []string{}
-	iter := list.Iterate()
 	defer iter.Done()
 	var item starlark.Value
 	for iter.Next(&item) {
-		s, ok := AsString(item)
+		sv, ok := AsString(item)
 		if !ok {
-			return nil, fmt.Errorf("list should contain only strings, but element %q was of type %s", item.String(), item.Type())
+			return fmt.Errorf("list should contain only strings, but element %q was of type %s", item.String(), item.Type())
 		}
-		result = append(result, s)
+		s.Values = append(s.Values, sv)
 	}
-	return result, nil
+
+	return nil
 }

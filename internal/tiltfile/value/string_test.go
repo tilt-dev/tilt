@@ -8,31 +8,35 @@ import (
 )
 
 func TestAsStringOrStringList_String(t *testing.T) {
-	actual, err := AsStringOrStringList(starlark.String("foo"))
+	var v StringOrStringList
+	err := v.Unpack(starlark.String("foo"))
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"foo"}, actual)
+	require.Equal(t, []string{"foo"}, v.Values)
 }
 
 func TestAsStringOrStringList_ListOfStrings(t *testing.T) {
-	actual, err := AsStringOrStringList(starlark.NewList([]starlark.Value{
+	var v StringOrStringList
+	err := v.Unpack(starlark.NewList([]starlark.Value{
 		starlark.String("foo"),
 		starlark.String("bar"),
 		starlark.String("baz"),
 	}))
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"foo", "bar", "baz"}, actual)
+	require.Equal(t, []string{"foo", "bar", "baz"}, v.Values)
 }
 
 func TestAsStringOrStringList_NonStringOrList(t *testing.T) {
-	_, err := AsStringOrStringList(starlark.Bool(true))
+	var v StringOrStringList
+	err := v.Unpack(starlark.Bool(true))
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "value should be a string or List of strings, but is of type bool")
+	require.Contains(t, err.Error(), "value should be a string or List or Tuple of strings, but is of type bool")
 }
 
 func TestAsStringOrStringList_ListWithNonStringElement(t *testing.T) {
-	_, err := AsStringOrStringList(starlark.NewList([]starlark.Value{starlark.String("foo"), starlark.Bool(true)}))
+	var v StringOrStringList
+	err := v.Unpack(starlark.NewList([]starlark.Value{starlark.String("foo"), starlark.Bool(true)}))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "list should contain only strings, but element \"True\" was of type bool")
 }
@@ -45,7 +49,8 @@ func TestAsStringOrStringList_Map(t *testing.T) {
 	err = m.SetKey(starlark.String("bar"), starlark.String("2"))
 	require.NoError(t, err)
 
-	_, err = AsStringOrStringList(m)
+	var v StringOrStringList
+	err = v.Unpack(m)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "value should be a string or List of strings, but is of type dict")
+	require.Contains(t, err.Error(), "value should be a string or List or Tuple of strings, but is of type dict")
 }

@@ -52,7 +52,7 @@ yml = helm('./helm', name='rose-quartz', namespace='garnet', set={'a': 'b'})
 k8s_yaml(yml)
 `)
 
-	f.loadErrString("Argument 'set': value should be a string or List of strings, but is of type dict")
+	f.loadErrString("helm: for parameter \"set\"", "string", "List", "type dict")
 }
 
 const exampleHelmV2VersionOutput = `Client: v2.12.3geecf22f`
