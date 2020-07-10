@@ -215,7 +215,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		if len(pathsMatchingNoSync) > 0 {
 			prettyPaths := ospath.FileListDisplayNames(iTarget.LocalPaths(), pathsMatchingNoSync)
 			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
-				"Found file(s) not matching any sync (files: %s)", strings.Join(prettyPaths, ", "))
+				"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(), strings.Join(prettyPaths, ", "))
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
