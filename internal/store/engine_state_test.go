@@ -81,8 +81,12 @@ func TestRuntimeStateNonWorkload(t *testing.T) {
 		WithK8sYAML(testyaml.SecretYaml).
 		Build()
 	state := newState([]model.Manifest{m})
-	assert.Equal(t, model.RuntimeStatusOK,
-		state.ManifestTargets[m.Name].State.K8sRuntimeState().RuntimeStatus())
+	runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()
+	assert.Equal(t, model.RuntimeStatusPending, runtimeState.RuntimeStatus())
+
+	runtimeState.HasEverDeployedSuccessfully = true
+
+	assert.Equal(t, model.RuntimeStatusOK, runtimeState.RuntimeStatus())
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
@@ -126,7 +130,7 @@ func TestMostRecentPod(t *testing.T) {
 	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
 	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
 	m := model.Manifest{Name: "fe"}
-	podSet := NewK8sRuntimeState(m, podA, podB, podC)
+	podSet := NewK8sRuntimeStateWithPods(m, podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 

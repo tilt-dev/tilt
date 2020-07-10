@@ -72,7 +72,8 @@ type K8sRuntimeState struct {
 	DeployedUIDSet                 UIDSet                 // for the most recent successful deploy
 	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet // for the most recent successful deploy
 
-	LastReadyOrSucceededTime time.Time
+	LastReadyOrSucceededTime    time.Time
+	HasEverDeployedSuccessfully bool
 
 	NonWorkload bool
 }
@@ -81,16 +82,20 @@ func (K8sRuntimeState) RuntimeState() {}
 
 var _ RuntimeState = K8sRuntimeState{}
 
-func NewK8sRuntimeState(m model.Manifest, pods ...Pod) K8sRuntimeState {
-
-	podMap := make(map[k8s.PodID]*Pod, len(pods))
+func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...Pod) K8sRuntimeState {
+	state := NewK8sRuntimeState(m)
 	for _, pod := range pods {
 		p := pod
-		podMap[p.PodID] = &p
+		state.Pods[p.PodID] = &p
 	}
+	state.HasEverDeployedSuccessfully = len(pods) > 0
+	return state
+}
+
+func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 	return K8sRuntimeState{
 		NonWorkload:                    m.K8sTarget().NonWorkload,
-		Pods:                           podMap,
+		Pods:                           make(map[k8s.PodID]*Pod),
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedUIDSet:                 NewUIDSet(),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
@@ -107,6 +112,10 @@ func (s K8sRuntimeState) RuntimeStatusError() error {
 }
 
 func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
+	if !s.HasEverDeployedSuccessfully {
+		return model.RuntimeStatusPending
+	}
+
 	if s.NonWorkload {
 		return model.RuntimeStatusOK
 	}
@@ -137,6 +146,9 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 }
 
 func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
+	if !s.HasEverDeployedSuccessfully {
+		return false
+	}
 	if s.NonWorkload {
 		return true
 	}
