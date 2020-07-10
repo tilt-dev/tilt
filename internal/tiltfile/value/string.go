@@ -1,6 +1,10 @@
 package value
 
-import "go.starlark.net/starlark"
+import (
+	"fmt"
+
+	"go.starlark.net/starlark"
+)
 
 type ImplicitStringer interface {
 	ImplicitString() string
@@ -15,33 +19,45 @@ func AsString(x starlark.Value) (string, bool) {
 	return starlark.AsString(x)
 }
 
+type StringOrStringList struct {
+	Values []string
+}
+
+var _ starlark.Unpacker = &StringOrStringList{}
+
 // Unpack an argument that can either be expressed as
 // a string or as a list of strings.
-func AsStringOrStringList(x starlark.Value) ([]string, bool) {
-	if x == nil {
-		return []string{}, true
+func (s *StringOrStringList) Unpack(v starlark.Value) error {
+	s.Values = nil
+	if v == nil {
+		return nil
 	}
 
-	s, ok := AsString(x)
+	vs, ok := AsString(v)
 	if ok {
-		return []string{s}, true
+		s.Values = []string{vs}
+		return nil
 	}
 
-	iterable, ok := x.(starlark.Iterable)
-	if ok {
-		result := []string{}
-		iter := iterable.Iterate()
-		defer iter.Done()
-		var item starlark.Value
-		for iter.Next(&item) {
-			s, ok := AsString(item)
-			if !ok {
-				return nil, false
-			}
-			result = append(result, s)
+	var iter starlark.Iterator
+	switch x := v.(type) {
+	case *starlark.List:
+		iter = x.Iterate()
+	case starlark.Tuple:
+		iter = x.Iterate()
+	default:
+		return fmt.Errorf("value should be a string or List or Tuple of strings, but is of type %s", v.Type())
+	}
+
+	defer iter.Done()
+	var item starlark.Value
+	for iter.Next(&item) {
+		sv, ok := AsString(item)
+		if !ok {
+			return fmt.Errorf("list should contain only strings, but element %q was of type %s", item.String(), item.Type())
 		}
-		return result, true
+		s.Values = append(s.Values, sv)
 	}
 
-	return nil, false
+	return nil
 }

@@ -41,6 +41,20 @@ k8s_yaml(yml)
 	assert.Contains(t, yaml, "servicePort: 1234")
 }
 
+func TestHelmSetArgsMap(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace='garnet', set={'a': 'b'})
+k8s_yaml(yml)
+`)
+
+	f.loadErrString("helm: for parameter \"set\"", "string", "List", "type dict")
+}
+
 const exampleHelmV2VersionOutput = `Client: v2.12.3geecf22f`
 const exampleHelmV3VersionOutput = `v3.0.0`
 

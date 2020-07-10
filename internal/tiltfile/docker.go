@@ -93,11 +93,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		liveUpdateVal,
 		ignoreVal,
 		onlyVal,
-		sshVal,
-		secretVal,
 		networkVal,
-		entrypoint,
-		extraTagsVal starlark.Value
+		entrypoint starlark.Value
+	var ssh, secret, extraTags value.StringOrStringList
 	var matchInEnvVars bool
 	var containerArgsVal starlark.Sequence
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -114,10 +112,10 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"entrypoint?", &entrypoint,
 		"container_args?", &containerArgsVal,
 		"target?", &targetStage,
-		"ssh?", &sshVal,
-		"secret?", &secretVal,
+		"ssh?", &ssh,
+		"secret?", &secret,
 		"network?", &networkVal,
-		"extra_tag?", &extraTagsVal,
+		"extra_tag?", &extraTags,
 	); err != nil {
 		return nil, err
 	}
@@ -192,18 +190,9 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	ssh, ok := value.AsStringOrStringList(sshVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'ssh' must be string or list of strings. Actual: %T", sshVal)
-	}
-
-	secret, ok := value.AsStringOrStringList(secretVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'secret' must be string or list of strings. Actual: %T", secretVal)
-	}
-
 	network := ""
 	if networkVal != nil {
+		var ok bool
 		network, ok = value.AsString(networkVal)
 		if !ok {
 			return nil, fmt.Errorf("Argument 'network' must be string. Actual: %T", networkVal)
@@ -224,12 +213,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
 	}
 
-	extraTags, ok := value.AsStringOrStringList(extraTagsVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'extra_tag' must be string or list of strings. Actual: %T", extraTagsVal)
-	}
-
-	for _, extraTag := range extraTags {
+	for _, extraTag := range extraTags.Values {
 		_, err := container.ParseNamed(extraTag)
 		if err != nil {
 			return nil, fmt.Errorf("Argument extra_tag=%q not a valid image reference: %v", extraTag, err)
@@ -245,15 +229,15 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbBuildArgs:      sba,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
-		sshSpecs:         ssh,
-		secretSpecs:      secret,
+		sshSpecs:         ssh.Values,
+		secretSpecs:      secret.Values,
 		ignores:          ignores,
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
 		containerArgs:    containerArgs,
 		targetStage:      targetStage,
 		network:          network,
-		extraTags:        extraTags,
+		extraTags:        extraTags.Values,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
