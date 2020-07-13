@@ -1129,9 +1129,11 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 	if err != nil {
 		return nil, err
 	}
+
 	for _, manifest := range result {
 		s.warnDuplicateYamlEntities(manifest)
 	}
+
 	return result, nil
 }
 
@@ -1399,6 +1401,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 	for _, manifest := range result {
 		s.warnDuplicateYamlEntities(manifest)
 	}
+
 	return result, nil
 }
 
