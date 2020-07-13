@@ -3835,9 +3835,14 @@ func TestDuplicateResource(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml('resource.yaml')
 `)
-	duplicateWarningStr := "The following YAML Resource has been duplicated: doggos:service:default:core"
-	f.loadAssertWarnings(duplicateWarningStr)
+	f.loadAllowWarnings()
+	m := f.assertNextManifestUnresourced("doggos", "doggos")
+	displayNames := []string{}
+	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
+	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
 
+	duplicateWarningStr := "The following YAML Resource has been duplicated: doggos:service:default:core"
+	f.assertWarnings(duplicateWarningStr)
 }
 
 func TestSetTeamID(t *testing.T) {
