@@ -1484,6 +1484,7 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 
 		result = append(result, m)
 	}
+
 	for _, manifest := range result {
 		s.warnDuplicateYamlEntities(manifest)
 	}
@@ -1511,7 +1512,7 @@ func (s *tiltfileState) warnDuplicateYamlEntities(m model.Manifest) {
 	}
 
 	for entity := range duplicates {
-		s.logger.Warnf("The following YAML Resource has been duplicated: " + entity)
+		s.logger.Warnf("The following YAML Entity has been duplicated: " + entity)
 	}
 }
 
