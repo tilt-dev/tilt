@@ -43,9 +43,9 @@ type ViewHandler interface {
 }
 
 type LogStreamer struct {
-	logstore *logstore.LogStore
-	printer  *hud.IncrementalPrinter
-	// todo: ProcessedLogs logstore.Checkpoint
+	logstore   *logstore.LogStore
+	printer    *hud.IncrementalPrinter
+	checkpoint logstore.Checkpoint
 }
 
 func NewLogStreamer() *LogStreamer {
@@ -57,17 +57,34 @@ func NewLogStreamer() *LogStreamer {
 	}
 }
 func (ls *LogStreamer) Handle(v proto_webview.View) error {
-	// TODO(maia): secrets???
+	fmt.Printf("✨ got %d log segments\n", len(v.LogList.Segments))
+	fromCheckpoint := logstore.Checkpoint(v.LogList.FromCheckpoint)
+	toCheckpoint := logstore.Checkpoint(v.LogList.ToCheckpoint)
+
+	fmt.Printf("✨ checkpoints:\n\tfrom: %d\n\tto: %d\n\tls.checkpoint: %d\n",
+		fromCheckpoint, toCheckpoint, ls.checkpoint)
+
+	segments := v.LogList.Segments
+	if fromCheckpoint < ls.checkpoint {
+		// The server is re-sending some logs we already have, so slice them off.
+		deleteCount := ls.checkpoint - fromCheckpoint
+		segments = segments[deleteCount:]
+		fmt.Printf("✨ server resent %d segments\n", deleteCount)
+	}
+
+	fmt.Printf("✨ after processing, %d log segments\n", len(segments))
 	// TODO(maia): filter for the resources that we care about (`tilt logs resourceA resourceC`)
 	//   --> and if there's only one resource, don't prefix logs with resource name?
-	fmt.Printf("✨ got %d log segments", len(v.LogList.Segments))
-	for _, seg := range v.LogList.Segments {
+	for _, seg := range segments {
+		// TODO(maia): secrets???
 		ls.logstore.Append(webview.LogSegmentToEvent(seg, v.LogList.Spans), model.SecretSet{})
 	}
 
-	ls.printer.Print(ls.logstore.ContinuingLines(0))
+	ls.printer.Print(ls.logstore.ContinuingLines(ls.checkpoint))
 
-	// process new checkpoint etc.
+	if toCheckpoint > ls.checkpoint {
+		ls.checkpoint = toCheckpoint
+	}
 
 	return nil
 }

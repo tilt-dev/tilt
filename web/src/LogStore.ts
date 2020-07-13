@@ -122,9 +122,11 @@ class LogStore {
       return
     }
 
+    console.log('✨ got ' + newSegments.length + ' log segments')
     if (fromCheckpoint < this.checkpoint) {
       // The server is re-sending some logs we already have, so slice them off.
       let deleteCount = this.checkpoint - fromCheckpoint
+      console.log('✨ server resent '+ deleteCount + ' segments')
       newSegments = newSegments.slice(deleteCount)
     }
 
