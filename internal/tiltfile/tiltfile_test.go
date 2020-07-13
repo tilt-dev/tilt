@@ -3841,7 +3841,7 @@ k8s_yaml('resource.yaml')
 	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
 	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
 
-	duplicateWarningStr := "The following YAML Resource has been duplicated: doggos:service:default:core"
+	duplicateWarningStr := "The following YAML Entity has been duplicated: doggos:service:default:core"
 	f.assertWarnings(duplicateWarningStr)
 }
 
