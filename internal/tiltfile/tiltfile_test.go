@@ -3836,7 +3836,7 @@ func TestDuplicateResource(t *testing.T) {
 k8s_yaml('resource.yaml')
 `)
 	f.loadAllowWarnings()
-	m := f.assertNextManifestUnresourced("doggos", "doggos", "cats")
+	m := f.assertNextManifestUnresourced("doggos", "doggos")
 	displayNames := []string{}
 	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
 	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
