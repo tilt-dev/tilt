@@ -1130,10 +1130,6 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		return nil, err
 	}
 
-	for _, manifest := range result {
-		s.warnDuplicateYamlEntities(manifest)
-	}
-
 	return result, nil
 }
 
@@ -1398,10 +1394,6 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, dc.configPaths...)
 	}
 
-	for _, manifest := range result {
-		s.warnDuplicateYamlEntities(manifest)
-	}
-
 	return result, nil
 }
 
@@ -1488,10 +1480,6 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		result = append(result, m)
 	}
 
-	for _, manifest := range result {
-		s.warnDuplicateYamlEntities(manifest)
-	}
-
 	return result, nil
 }
 
@@ -1503,7 +1491,6 @@ func (s *tiltfileState) warnDuplicateYamlEntities(m model.Manifest) {
 	displayNames := deployTarget.DisplayNames
 
 	duplicates := make(map[string]int)
-
 	//when the same entity appears more than once, Tilt handles it by storing it as name:kind:namespace:group:n where n is
 	//the nth repeat of that entity, so as to not cause execution to halt. In the future, it might be better to surface an
 	//error about the duplicated resource closer to the actual manifest assembly.
@@ -1515,7 +1502,8 @@ func (s *tiltfileState) warnDuplicateYamlEntities(m model.Manifest) {
 	}
 
 	for entity := range duplicates {
-		s.logger.Warnf("The following YAML Entity has been duplicated: " + entity)
+		s.logger.Warnf("Resource %s contains multiple specifications of k8s entity: %s. Only one can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications",
+			m.Name, entity)
 	}
 }
 

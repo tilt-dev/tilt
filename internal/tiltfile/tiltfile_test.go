@@ -3836,12 +3836,12 @@ func TestDuplicateResource(t *testing.T) {
 k8s_yaml('resource.yaml')
 `)
 	f.loadAllowWarnings()
-	m := f.assertNextManifestUnresourced("doggos", "doggos")
+	m := f.assertNextManifestUnresourced("doggos", "doggos", "cats")
 	displayNames := []string{}
 	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
 	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
 
-	duplicateWarningStr := "The following YAML Entity has been duplicated: doggos:service:default:core"
+	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity: doggos:service:default:core. Only one can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
 	f.assertWarnings(duplicateWarningStr)
 }
 
