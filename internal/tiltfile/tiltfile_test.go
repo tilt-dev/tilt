@@ -3835,13 +3835,44 @@ func TestDuplicateResource(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml('resource.yaml')
 `)
-
-	f.load()
+	f.loadAllowWarnings()
 	m := f.assertNextManifestUnresourced("doggos", "doggos")
-
 	displayNames := []string{}
 	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
 	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
+
+	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity(s): doggos:service:default:core. Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
+	f.assertWarnings(duplicateWarningStr)
+}
+
+func TestMultipleDuplicateResources(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("resource.yaml", fmt.Sprintf(`
+%s
+---
+%s
+---
+%s
+---
+%s
+`, testyaml.DoggosServiceYaml, testyaml.DoggosServiceYaml, testyaml.CatsServiceYaml, testyaml.CatsServiceYaml))
+	f.file("Tiltfile", `
+k8s_yaml('resource.yaml')
+`)
+	f.loadAllowWarnings()
+
+	m := f.assertNextManifestUnresourced("doggos", "doggos", "cats", "cats")
+	displayNames := []string{}
+	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
+	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1", "cats:service:default:core:2", "cats:service:default:core:3"}, displayNames)
+
+	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity(s): doggos:service:default:core, cats:service:default:core. Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
+
+	f.assertWarnings(duplicateWarningStr)
+
 }
 
 func TestSetTeamID(t *testing.T) {
