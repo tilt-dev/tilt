@@ -3841,7 +3841,7 @@ k8s_yaml('resource.yaml')
 	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
 	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
 
-	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity(s): doggos:service:default:core. Only one can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
+	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity(s): doggos:service:default:core. Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
 	f.assertWarnings(duplicateWarningStr)
 }
 
@@ -3869,7 +3869,7 @@ k8s_yaml('resource.yaml')
 	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
 	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1", "cats:service:default:core:2", "cats:service:default:core:3"}, displayNames)
 
-	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity(s): doggos:service:default:core, cats:service:default:core. Only one can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
+	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity(s): doggos:service:default:core, cats:service:default:core. Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
 
 	f.assertWarnings(duplicateWarningStr)
 
