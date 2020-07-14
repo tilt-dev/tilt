@@ -909,6 +909,23 @@ spec:
   selector:
     app: doggos
 `
+const CatsServiceYaml = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: cats
+  labels:
+    app: cats
+    whosAGoodCat: meow
+spec:
+  ports:
+    - port: 60
+      targetPort: 6083
+      protocol: TCP
+  selector:
+    app: cats
+`
+
 const (
 	DoggosName      = "doggos"
 	DoggosNamespace = "the-dog-zone"

@@ -1501,9 +1501,14 @@ func (s *tiltfileState) warnDuplicateYamlEntities(m model.Manifest) {
 		}
 	}
 
-	for entity := range duplicates {
-		s.logger.Warnf("Resource %s contains multiple specifications of k8s entity: %s. Only one can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications",
-			m.Name, entity)
+	//get the names of all the duplicates
+	var duplicateNames []string
+	for key := range duplicates {
+		duplicateNames = append(duplicateNames, key)
+	}
+	if len(duplicateNames) != 0 {
+		s.logger.Warnf("Resource %s contains multiple specifications of k8s entity(s): %s. Only one can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications",
+			m.Name, strings.Join(duplicateNames, ", "))
 	}
 }
 
