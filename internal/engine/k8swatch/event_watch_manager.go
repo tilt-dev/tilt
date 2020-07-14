@@ -188,8 +188,7 @@ func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v
 				continue
 			}
 
-			// Ignore normal events.
-			if event.Type == v1.EventTypeNormal {
+			if !ShouldLogEvent(event) {
 				continue
 			}
 
@@ -199,4 +198,15 @@ func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v
 			return
 		}
 	}
+}
+
+const ImagePullingReason = "Pulling"
+const ImagePulledReason = "Pulled"
+
+func ShouldLogEvent(e *v1.Event) bool {
+	if e.Type != v1.EventTypeNormal {
+		return true
+	}
+
+	return e.Reason == ImagePullingReason || e.Reason == ImagePulledReason
 }

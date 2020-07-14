@@ -2449,34 +2449,6 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 		"should not log event message b/c it doesn't have a UID -> Manifest mapping")
 }
 
-func TestK8sEventDoNotLogNormalEvents(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(string(name))
-
-	f.Start([]model.Manifest{manifest})
-	f.waitForCompletedBuildCount(1)
-
-	normalEvt := &v1.Event{
-		InvolvedObject: v1.ObjectReference{UID: f.lastDeployedUID(name)},
-		Message:        "all systems are go",
-		Type:           v1.EventTypeNormal, // we should NOT log this message
-		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.Now()}},
-	}
-	f.kClient.EmitEvent(f.ctx, normalEvt)
-
-	time.Sleep(10 * time.Millisecond)
-	f.withState(func(es store.EngineState) {
-		assert.NotContains(t, es.LogStore.String(), "all systems are go",
-			"message for event of type 'normal' should not appear in log")
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
 func TestHudExitNoError(t *testing.T) {
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{})
