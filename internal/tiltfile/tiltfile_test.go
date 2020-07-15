@@ -328,6 +328,20 @@ local('echo foobar', quiet=True)
 	assert.NotContains(t, f.out.String(), " → foobar")
 }
 
+func TestLocalEchoOff(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+local('echo foobar', echo_off=True)
+`)
+
+	f.load()
+
+	assert.NotContains(t, f.out.String(), "local: echo foobar")
+}
 func TestLocalArgvCmd(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("windows doesn't support argv commands. Go converts it to a single string")
