@@ -5,6 +5,7 @@ package server
 // TODO(maia): figure out if this should live here, or elsewhere.
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -13,8 +14,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/websocket"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/mattn/go-colorable"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
@@ -63,6 +64,11 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 
 	fmt.Printf("✨ checkpoints:\n\tfrom: %d\n\tto: %d\n\tls.checkpoint: %d\n",
 		fromCheckpoint, toCheckpoint, ls.checkpoint)
+
+	if fromCheckpoint == -1 {
+		// Server has no new logs to send
+		return nil
+	}
 
 	segments := v.LogList.Segments
 	if fromCheckpoint < ls.checkpoint {
@@ -114,10 +120,10 @@ func (wsr *WebsocketReader) Listen() {
 				log.Println("🚨 error reading:", err)
 				return
 			}
-			// todo: ack for incremental logs
+
 			v := proto_webview.View{}
-			jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
-			err = jspb.Unmarshal(data, &v)
+			unmarshaller := jsonpb.Unmarshaler{}
+			err = unmarshaller.Unmarshal(bytes.NewReader(data), &v)
 			if err != nil {
 				log.Println("🚨 error unmarshalling:", err)
 			}
@@ -125,6 +131,28 @@ func (wsr *WebsocketReader) Listen() {
 			if err != nil {
 				log.Println("🚨 handler error:", err)
 			}
+
+			toCheckpoint := v.LogList.ToCheckpoint
+			if toCheckpoint > 0 {
+				// If server is using the incremental logs protocol, ack the
+				// message so the next time the websocket sends data, it only
+				// sends logs from here on forward
+				resp := proto_webview.AckWebsocketRequest{
+					ToCheckpoint:  toCheckpoint,
+					TiltStartTime: v.TiltStartTime,
+				}
+				marshaller := jsonpb.Marshaler{OrigName: false, EmitDefaults: true}
+				respJson, err := marshaller.MarshalToString(&resp)
+				if err != nil {
+					log.Println("🚨 marshalling response:", err)
+				}
+
+				err = c.WriteMessage(websocket.TextMessage, []byte(respJson))
+				if err != nil {
+					log.Println("🚨 sending response:", err)
+				}
+			}
+
 		}
 	}()
 
