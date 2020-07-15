@@ -1,15 +1,16 @@
 package server
 
+import "net/url"
+
 // A thinger to connect to the HUD server websocket, for CLI commands that
 // want to read state from a running Tilt (e.g. `tilt logs`).
-// TODO(maia): figure out if this should live here, or elsewhere.
+// TODO(maia): figure out if this should live here, or elsewhere (I assume
+//   it's worth it to make a generic state-reader b/c we may want other cmds
+//   that interact with a running Tilt e.g. `tilt status`.)
 
 import (
 	"bytes"
-	"flag"
-	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/signal"
 	"time"
@@ -24,8 +25,6 @@ import (
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
-var addr = flag.String("addr", "localhost:8080", "http service address")
-
 // TODO: interface
 type WebsocketReader struct {
 	url     url.URL
@@ -34,6 +33,7 @@ type WebsocketReader struct {
 
 func ProvideWebsockerReader() *WebsocketReader {
 	return &WebsocketReader{
+		// TODO(maia): pass this URL instead of hardcoding / wire this
 		url:     url.URL{Scheme: "ws", Host: "localhost:10350", Path: "/ws/view"},
 		handler: NewLogStreamer(),
 	}
@@ -50,7 +50,7 @@ type LogStreamer struct {
 }
 
 func NewLogStreamer() *LogStreamer {
-	// TODO: wire this
+	// TODO(maia): wire this
 	printer := hud.NewIncrementalPrinter(hud.Stdout(colorable.NewColorableStdout()))
 	return &LogStreamer{
 		logstore: logstore.NewLogStore(),
@@ -58,12 +58,8 @@ func NewLogStreamer() *LogStreamer {
 	}
 }
 func (ls *LogStreamer) Handle(v proto_webview.View) error {
-	fmt.Printf("✨ got %d log segments\n", len(v.LogList.Segments))
 	fromCheckpoint := logstore.Checkpoint(v.LogList.FromCheckpoint)
 	toCheckpoint := logstore.Checkpoint(v.LogList.ToCheckpoint)
-
-	fmt.Printf("✨ checkpoints:\n\tfrom: %d\n\tto: %d\n\tls.checkpoint: %d\n",
-		fromCheckpoint, toCheckpoint, ls.checkpoint)
 
 	if fromCheckpoint == -1 {
 		// Server has no new logs to send
@@ -75,10 +71,8 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 		// The server is re-sending some logs we already have, so slice them off.
 		deleteCount := ls.checkpoint - fromCheckpoint
 		segments = segments[deleteCount:]
-		fmt.Printf("✨ server resent %d segments\n", deleteCount)
 	}
 
-	fmt.Printf("✨ after processing, %d log segments\n", len(segments))
 	// TODO(maia): filter for the resources that we care about (`tilt logs resourceA resourceC`)
 	//   --> and if there's only one resource, don't prefix logs with resource name?
 	for _, seg := range segments {

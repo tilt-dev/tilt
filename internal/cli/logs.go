@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -14,19 +13,22 @@ import (
 )
 
 type logsCmd struct {
-	// port?
+	// TODO(maia): port
 }
 
 func (c *logsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "logs [resource1, resource2...]",
 		DisableFlagsInUseLine: true,
+		Hidden:                true, // show when out of alpha
 		Short:                 "stuff",
 		Long: `
 stuff and things
 `,
 	}
-
+	// TODO(maia):
+	//   - can pass port
+	//   - pass resource names
 	return cmd
 }
 
@@ -42,8 +44,6 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
-
-	fmt.Println("you ran a command, go you!")
 
 	reader := server.ProvideWebsockerReader()
 	reader.Listen()
