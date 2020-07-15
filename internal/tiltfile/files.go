@@ -37,7 +37,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 	if err != nil {
 		return nil, err
 	}
-	s.logger.Infof("local: %s", cmd)
+	//Removed the info log that logged the local command being executed as per https://github.com/tilt-dev/tilt/issues/3528
 	out, err := s.execLocalCmd(thread, exec.Command(cmd.Argv[0], cmd.Argv[1:]...), !quiet)
 	if err != nil {
 		return nil, err
