@@ -7,6 +7,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+
 	"github.com/tilt-dev/tilt/internal/hud/server"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
