@@ -36,5 +36,5 @@ HTTP_STATUS="$(curl --output /dev/stderr --write-out "%{http_code}" -sSL "$URL" 
 if [[ HTTP_STATUS -eq 401 ]]; then
   die "error: user unauthorized to record a Tilt release.
 
-Ensure your Tilt token is registered to a Tilt Cloud account, and that Tilt Cloud account is a member of the 'Tilt Employees' Tilt Cloud team."
+Ensure your Tilt token is registered to a Tilt Cloud account, and that Tilt Cloud account is a member of the 'Tilt Employees' Tilt Cloud team (have a Tilter with DB access manually add you)."
 fi
