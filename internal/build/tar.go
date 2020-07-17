@@ -55,6 +55,7 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 		Name:       "Dockerfile",
 		Typeflag:   tar.TypeReg,
 		Size:       int64(len(df)),
+		Mode:       0644,
 		ModTime:    time.Now(),
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
