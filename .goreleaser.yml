@@ -47,6 +47,10 @@ brews:
   description: "Tilt powers multi-service developments for teams that deploy to Kubernetes."
   test: |
     system "#{bin}/tilt version"
+  custom_block: |
+    if  Gem::Specification::find_all_by_name('tilt').any?
+      keg_only :param, 'because you you requested it'
+    end 
 dockers:
 - image_templates:
     - "tiltdev/tilt"
