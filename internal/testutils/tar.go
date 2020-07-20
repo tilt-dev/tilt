@@ -30,6 +30,9 @@ type ExpectedFile struct {
 	// If true, we will assert that this is a symlink with a linkname.
 	Linkname string
 
+	// If non-zero, assert that file permission and mode bits match this value
+	Mode int64
+
 	// Windows filesystem APIs don't expose an executable bit.
 	// So when we create docker images on windows, we set the executable
 	// bit on all files, for consistency with Docker.
@@ -113,6 +116,10 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 
 		if expected.AssertUidAndGidAreZero && header.Gid != expectedUidAndGid {
 			t.Errorf("Expected %s to have GID 0, got %d (%s)", header.Name, header.Gid, msg)
+		}
+
+		if expected.Mode != 0 && header.Mode != expected.Mode {
+			t.Errorf("Expected %s to have mode %d, got %d", header.Name, expected.Mode, header.Mode)
 		}
 
 		if expected.HasExecBitWindows && runtime.GOOS == "windows" && (os.FileMode(header.Mode)&0111 == 0) {

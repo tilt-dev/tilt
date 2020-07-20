@@ -40,6 +40,7 @@ func TestArchiveDf(t *testing.T) {
 		Path:                   "Dockerfile",
 		Contents:               dfText,
 		AssertUidAndGidAreZero: true,
+		Mode:                   0644,
 	})
 }
 
