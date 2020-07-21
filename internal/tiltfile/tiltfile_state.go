@@ -263,9 +263,6 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		return nil, starkit.Model{}, err
 	}
 
-	for _, manifest := range manifests {
-		s.warnDuplicateYamlEntities(manifest)
-	}
 	return manifests, result, nil
 }
 
@@ -654,7 +651,14 @@ func (s *tiltfileState) assembleK8sV1() error {
 }
 
 func (s *tiltfileState) assembleK8sV2() error {
-	err := s.assembleK8sByWorkload()
+	//Note: We're using UniqueNames() over here just to check for duplicate resources, hence
+	//why only the error is being considered here
+	_, err := k8s.UniqueNames(s.k8sUnresourced, 1)
+	if err != nil {
+		return err
+	}
+
+	err = s.assembleK8sByWorkload()
 	if err != nil {
 		return err
 	}
@@ -1481,35 +1485,6 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 	}
 
 	return result, nil
-}
-
-//this deals with alerting the user if there are multiple instances of a
-//the same yaml entity (same name:kind:namespace:group) which may have been
-//defined in the same way or in multiple ways.
-func (s *tiltfileState) warnDuplicateYamlEntities(m model.Manifest) {
-	deployTarget := m.K8sTarget()
-	displayNames := deployTarget.DisplayNames
-
-	duplicates := make(map[string]int)
-	//when the same entity appears more than once, Tilt handles it by storing it as name:kind:namespace:group:n where n is
-	//the nth repeat of that entity, so as to not cause execution to halt. In the future, it might be better to surface an
-	//error about the duplicated resource closer to the actual manifest assembly.
-	for _, name := range displayNames {
-		tempName := strings.Split(name, ":")
-		if len(tempName) > 4 { //this means there's an n which was appended at the manifest assembly because of multiple same entities present
-			duplicates[strings.Join(tempName[:4], ":")]++
-		}
-	}
-
-	//get the names of all the duplicates
-	var duplicateNames []string
-	for key := range duplicates {
-		duplicateNames = append(duplicateNames, key)
-	}
-	if len(duplicateNames) != 0 {
-		s.logger.Warnf("Resource %s contains multiple specifications of k8s entity(s): %s. Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications",
-			m.Name, strings.Join(duplicateNames, ", "))
-	}
 }
 
 func validateResourceDependencies(ms []model.Manifest) error {

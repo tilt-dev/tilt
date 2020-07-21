@@ -5,8 +5,14 @@ import (
 	"strings"
 )
 
+const FmtduplicateYamlDetectedError = "Duplicate YAML Entity(s): [%s] has been detected across one or more resources.  Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications."
+
+func DuplicateYamlDetectedError(duplicatedYaml string) string {
+	return fmt.Sprintf(FmtduplicateYamlDetectedError, duplicatedYaml)
+}
+
 // Calculates names for workloads by using the shortest uniquely matching identifiers
-func UniqueNames(es []K8sEntity, minComponents int) []string {
+func UniqueNames(es []K8sEntity, minComponents int) ([]string, error) {
 	ret := make([]string, len(es))
 	// how many resources potentially map to a given name
 	counts := make(map[string]int)
@@ -28,21 +34,13 @@ func UniqueNames(es []K8sEntity, minComponents int) []string {
 			}
 		}
 		if ret[i] == "" {
-			// If we hit this case, this means we have two resources with the same
-			// name/kind/namespace/group This usually means the user is trying to
-			// deploy the same resource twice. Kubernetes will not treat these as
-			// unique.
-			//
-			// We should surface a warning or error about this somewhere else that has
-			// more context on how to fix it.
-			// https://github.com/tilt-dev/tilt/issues/1852
-			//
-			// But for now, append the index to the name to make it unique
-			ret[i] = fmt.Sprintf("%s:%d", names[len(names)-1], i)
+			// Previously, we appended an index to the duplicate yaml entity, but as of July 21st 2020, we return an error
+			//if we've detected a duplicate yaml entity.
+			return nil, fmt.Errorf(DuplicateYamlDetectedError(names[len(names)-1]))
 		}
 	}
 
-	return ret
+	return ret, nil
 }
 
 // FragmentsToEntities maps all possible fragments (e.g. foo, foo:secret, foo:secret:default) to the k8s entity or entities that they correspond to
