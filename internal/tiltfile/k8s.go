@@ -944,7 +944,7 @@ func (s *tiltfileState) calculateResourceNames(workloads []k8s.K8sEntity) ([]str
 		}
 		return names, nil
 	} else {
-		return k8s.UniqueNames(workloads, 1), nil
+		return k8s.UniqueNames(workloads, 1)
 	}
 }
 
