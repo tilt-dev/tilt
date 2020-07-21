@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const FmtduplicateYamlDetectedError = "Duplicate YAML Entity(s): [%s] has been detected across one or more resources.  Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications."
+const FmtduplicateYamlDetectedError = "Duplicate YAML Entity: %s has been detected across one or more resources.  Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications."
 
 func DuplicateYamlDetectedError(duplicatedYaml string) string {
 	return fmt.Sprintf(FmtduplicateYamlDetectedError, duplicatedYaml)

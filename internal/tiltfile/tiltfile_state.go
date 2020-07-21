@@ -651,7 +651,7 @@ func (s *tiltfileState) assembleK8sV1() error {
 }
 
 func (s *tiltfileState) assembleK8sV2() error {
-	//Note: We're using UniqueNames() over here just to check for duplicate resources, hence
+	//Note: We're using UniqueNames() over here just to check for duplicate YAML Entities, hence
 	//why only the error is being considered here
 	_, err := k8s.UniqueNames(s.k8sUnresourced, 1)
 	if err != nil {
