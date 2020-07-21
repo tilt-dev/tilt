@@ -11,6 +11,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -21,6 +22,19 @@ func TestTrue(t *testing.T) {
 	f.start("exit 0")
 
 	f.assertCmdSucceeds()
+}
+
+func TestWorkdir(t *testing.T) {
+	f := newProcessExecFixture(t)
+	defer f.tearDown()
+
+	d := tempdir.NewTempDirFixture(t)
+	defer d.TearDown()
+
+	f.startWithWorkdir("pwd", d.Path())
+
+	f.assertCmdSucceeds()
+	f.assertLogContains(d.Path())
 }
 
 func TestSleep(t *testing.T) {
@@ -156,12 +170,16 @@ func (f *processExecFixture) tearDown() {
 
 func (f *processExecFixture) startMalformedCommand() {
 	c := model.Cmd{Argv: []string{"\""}}
-	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+	f.execer.Start(f.ctx, c, ".", f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+}
+
+func (f *processExecFixture) startWithWorkdir(cmd string, workdir string) {
+	c := model.ToHostCmd(cmd)
+	f.execer.Start(f.ctx, c, workdir, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
 }
 
 func (f *processExecFixture) start(cmd string) {
-	c := model.ToHostCmd(cmd)
-	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+	f.startWithWorkdir(cmd, ".")
 }
 
 func (f *processExecFixture) assertCmdSucceeds() {

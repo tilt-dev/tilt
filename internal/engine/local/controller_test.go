@@ -28,12 +28,12 @@ func TestUpdate(t *testing.T) {
 	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
-	f.resource("foo", "true", t1)
+	f.resource("foo", "true", ".", t1)
 	f.step()
 	f.assertStatus("foo", model.RuntimeStatusOK, 1)
 
 	t2 := time.Unix(2, 0)
-	f.resource("foo", "false", t2)
+	f.resource("foo", "false", ".", t2)
 	f.step()
 	f.assertStatus("foo", model.RuntimeStatusOK, 2)
 	f.assertNoAction("error for cancel", func(action store.Action) bool {
@@ -48,12 +48,26 @@ func TestUpdate(t *testing.T) {
 	f.assertLogMessage("foo", "cmd true canceled")
 }
 
+func TestServe(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+	f.resource("foo", "sleep 60", "testdir", t1)
+	f.step()
+	f.assertStatus("foo", model.RuntimeStatusOK, 1)
+
+	require.Equal(t, "testdir", f.fe.processes["sleep 60"].workdir)
+
+	f.assertLogMessage("foo", "Starting cmd sleep 60")
+}
+
 func TestFailure(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
-	f.resource("foo", "true", t1)
+	f.resource("foo", "true", ".", t1)
 	f.step()
 	f.assertStatus("foo", model.RuntimeStatusOK, 1)
 	f.assertLogMessage("foo", "Starting cmd true")
@@ -70,8 +84,8 @@ func TestUniqueSpanIDs(t *testing.T) {
 	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
-	f.resource("foo", "foo.sh", t1)
-	f.resource("bar", "bar.sh", t1)
+	f.resource("foo", "foo.sh", ".", t1)
+	f.resource("bar", "bar.sh", ".", t1)
 	f.step()
 
 	fooStart := f.waitForLogEventContaining("Starting cmd foo.sh")
@@ -84,8 +98,8 @@ func TestTearDown(t *testing.T) {
 	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
-	f.resource("foo", "foo.sh", t1)
-	f.resource("bar", "bar.sh", t1)
+	f.resource("foo", "foo.sh", ".", t1)
+	f.resource("bar", "bar.sh", ".", t1)
 	f.step()
 
 	f.c.TearDown(f.ctx)
@@ -129,12 +143,12 @@ func (f *fixture) teardown() {
 	f.cancel()
 }
 
-func (f *fixture) resource(name string, cmd string, lastDeploy time.Time) {
+func (f *fixture) resource(name string, cmd string, workdir string, lastDeploy time.Time) {
 	n := model.ManifestName(name)
 	m := model.Manifest{
 		Name: n,
 	}.WithDeployTarget(model.NewLocalTarget(
-		model.TargetName(name), model.Cmd{}, model.ToHostCmd(cmd), nil, ""))
+		model.TargetName(name), model.Cmd{}, model.ToHostCmd(cmd), nil, workdir))
 	f.state.UpsertManifestTarget(&store.ManifestTarget{
 		Manifest: m,
 		State: &store.ManifestState{
