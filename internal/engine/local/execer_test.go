@@ -31,7 +31,12 @@ func TestWorkdir(t *testing.T) {
 	d := tempdir.NewTempDirFixture(t)
 	defer d.TearDown()
 
-	f.startWithWorkdir("pwd", d.Path())
+	cmd := "pwd"
+	if runtime.GOARCH == "windows" {
+		cmd = "cd"
+	}
+
+	f.startWithWorkdir(cmd, d.Path())
 
 	f.assertCmdSucceeds()
 	f.assertLogContains(d.Path())
