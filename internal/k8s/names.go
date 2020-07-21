@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-const FmtduplicateYamlDetectedError = "Duplicate YAML Entity: %s has been detected across one or more resources.  Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications."
+const fmtduplicateYAMLDetectedError = "Duplicate YAML Entity: %s has been detected across one or more resources.  Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications."
 
-func DuplicateYamlDetectedError(duplicatedYaml string) string {
-	return fmt.Sprintf(FmtduplicateYamlDetectedError, duplicatedYaml)
+func DuplicateYAMLDetectedError(duplicatedYaml string) string {
+	return fmt.Sprintf(fmtduplicateYAMLDetectedError, duplicatedYaml)
 }
 
 // Calculates names for workloads by using the shortest uniquely matching identifiers
@@ -36,7 +36,7 @@ func UniqueNames(es []K8sEntity, minComponents int) ([]string, error) {
 		if ret[i] == "" {
 			// Previously, we appended an index to the duplicate yaml entity, but as of July 21st 2020, we return an error
 			//if we've detected a duplicate yaml entity.
-			return nil, fmt.Errorf(DuplicateYamlDetectedError(names[len(names)-1]))
+			return nil, fmt.Errorf(DuplicateYAMLDetectedError(names[len(names)-1]))
 		}
 	}
 

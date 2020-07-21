@@ -3837,7 +3837,7 @@ k8s_yaml('foo.yaml')
 		f.assertNextManifest("foo").ImageTargets[0].OverrideArgs)
 }
 
-func TestDuplicateYamlEntityWithinSingleResource(t *testing.T) {
+func TestDuplicateYAMLEntityWithinSingleResource(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3848,9 +3848,9 @@ func TestDuplicateYamlEntityWithinSingleResource(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml('resource.yaml')
 `)
-	f.loadErrString(k8s.DuplicateYamlDetectedError("doggos:service:default:core"))
+	f.loadErrString(k8s.DuplicateYAMLDetectedError("doggos:service:default:core"))
 }
-func TestDuplicateYamlEntityAcrossResources(t *testing.T) {
+func TestDuplicateYAMLEntityAcrossResources(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3861,10 +3861,10 @@ func TestDuplicateYamlEntityAcrossResources(t *testing.T) {
 k8s_yaml(['foo1.yaml', 'foo1.yaml'])
 k8s_resource('foo:deployment:ns1', new_name='foo')
 `)
-	f.loadErrString(k8s.DuplicateYamlDetectedError("foo:deployment:ns1:apps"))
+	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo:deployment:ns1:apps"))
 }
 
-func TestDuplicateYamlEntityInSingleWorkload(t *testing.T) {
+func TestDuplicateYAMLEntityInSingleWorkload(t *testing.T) {
 	//Services corresponding to a deployment get pulled into the same resource.
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3877,10 +3877,10 @@ func TestDuplicateYamlEntityInSingleWorkload(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml('all.yaml')
 `)
-	f.loadErrString(k8s.DuplicateYamlDetectedError("foo-service:service:default:core"))
+	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo-service:service:default:core"))
 }
 
-func TestDuplicateYamlEntityInUserAssembledNonWorkloadResource(t *testing.T) {
+func TestDuplicateYAMLEntityInUserAssembledNonWorkloadResource(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 	f.gitInit("")
@@ -3891,7 +3891,7 @@ func TestDuplicateYamlEntityInUserAssembledNonWorkloadResource(t *testing.T) {
 k8s_yaml('all.yaml')
 k8s_resource(objects=['foo-service:Service:default'], new_name='my-services')
 `)
-	f.loadErrString(k8s.DuplicateYamlDetectedError("foo-service:service:default:core"))
+	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo-service:service:default:core"))
 }
 
 func TestSetTeamID(t *testing.T) {

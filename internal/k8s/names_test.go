@@ -31,7 +31,7 @@ func TestUniqueResourceNames(t *testing.T) {
 		{"one workload, same name", []workload{
 			{"foo", "Deployment", "default", "", ""},
 			{"foo", "Deployment", "default", "", ""},
-		}, DuplicateYamlDetectedError("foo:deployment:default:core")},
+		}, DuplicateYAMLDetectedError("foo:deployment:default:core")},
 		{"one workload, by name", []workload{
 			{"foo", "Deployment", "default", "", "foo"},
 			{"bar", "Deployment", "default", "", "bar"},
