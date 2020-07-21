@@ -32,7 +32,7 @@ func TestWorkdir(t *testing.T) {
 	defer d.TearDown()
 
 	cmd := "pwd"
-	if runtime.GOARCH == "windows" {
+	if runtime.GOOS == "windows" {
 		cmd = "cd"
 	}
 
