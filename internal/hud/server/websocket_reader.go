@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"log"
 	"net/url"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/pkg/errors"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -18,11 +20,8 @@ import (
 // it and the LogStreamer handler into a single struct.)
 
 import (
-	"bytes"
-	"log"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/websocket"
 	"github.com/mattn/go-colorable"
 
@@ -35,15 +34,20 @@ import (
 
 // TODO: interface
 type WebsocketReader struct {
-	url     url.URL
-	handler ViewHandler
+	url          url.URL
+	conn         WebsocketConn
+	marshaller   jsonpb.Marshaler
+	unmarshaller jsonpb.Unmarshaler
+	handler      ViewHandler
 }
 
 func ProvideWebsockerReader() *WebsocketReader {
 	return &WebsocketReader{
 		// TODO(maia): pass this URL instead of hardcoding / wire this
-		url:     url.URL{Scheme: "ws", Host: "localhost:10350", Path: "/ws/view"},
-		handler: NewLogStreamer(),
+		url:          url.URL{Scheme: "ws", Host: "localhost:10350", Path: "/ws/view"},
+		handler:      NewLogStreamer(),
+		marshaller:   jsonpb.Marshaler{OrigName: false, EmitDefaults: true},
+		unmarshaller: jsonpb.Unmarshaler{},
 	}
 }
 
@@ -58,7 +62,8 @@ type LogStreamer struct {
 }
 
 func NewLogStreamer() *LogStreamer {
-	// TODO(maia): wire this
+	// TODO(maia): wire this (/ maybe this isn't the thing that needs to be wired, but
+	//   should be created after we have a conn to pass it?)
 	printer := hud.NewIncrementalPrinter(hud.Stdout(colorable.NewColorableStdout()))
 	return &LogStreamer{
 		logstore: logstore.NewLogStore(),
@@ -100,51 +105,40 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 	logger.Get(ctx).Debugf("connecting to %s", wsr.url.String())
 
-	c, _, err := websocket.DefaultDialer.Dial(wsr.url.String(), nil)
+	var err error
+	wsr.conn, _, err = websocket.DefaultDialer.Dial(wsr.url.String(), nil)
 	if err != nil {
 		return errors.Wrapf(err, "dialing websocket %s", wsr.url.String())
 	}
-	defer c.Close()
+	defer wsr.conn.Close()
 
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
-			_, data, err := c.ReadMessage()
+			messageType, reader, err := wsr.conn.NextReader()
 			if err != nil {
-				log.Println("🚨 error reading:", err)
+				// uh do i need to do anything with this error? or does it just mean that the socket has closed?
 				return
 			}
 
-			v := proto_webview.View{}
-			unmarshaller := jsonpb.Unmarshaler{}
-			err = unmarshaller.Unmarshal(bytes.NewReader(data), &v)
-			if err != nil {
-				log.Println("🚨 error unmarshalling:", err)
-			}
-			err = wsr.handler.Handle(v)
-			if err != nil {
-				log.Println("🚨 handler error:", err)
-			}
+			if messageType == websocket.TextMessage {
+				v := proto_webview.View{}
+				err = wsr.unmarshaller.Unmarshal(reader, &v)
+				if err != nil {
+					logger.Get(ctx).Infof("Error unmarshalling websocket message: %v", err)
+				}
 
-			toCheckpoint := v.LogList.ToCheckpoint
-			if toCheckpoint > 0 {
+				err = wsr.handler.Handle(v)
+				if err != nil {
+					log.Println("Error handling Tilt state from websocket:", err)
+				}
+
 				// If server is using the incremental logs protocol, ack the
 				// message so the next time the websocket sends data, it only
 				// sends logs from here on forward
-				resp := proto_webview.AckWebsocketRequest{
-					ToCheckpoint:  toCheckpoint,
-					TiltStartTime: v.TiltStartTime,
-				}
-				marshaller := jsonpb.Marshaler{OrigName: false, EmitDefaults: true}
-				respJson, err := marshaller.MarshalToString(&resp)
-				if err != nil {
-					log.Println("🚨 marshalling response:", err)
-				}
-
-				err = c.WriteMessage(websocket.TextMessage, []byte(respJson))
-				if err != nil {
-					log.Println("🚨 sending response:", err)
+				if v.LogList.ToCheckpoint > 0 {
+					wsr.writeIncrementalLogResp(ctx, &v)
 				}
 			}
 		}
@@ -162,15 +156,51 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
-			err = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			w, err := wsr.conn.NextWriter(websocket.CloseMessage)
 			if err != nil {
-				return errors.Wrapf(err, "writing CloseMessage to websocket")
+				logger.Get(ctx).Verbosef("getting writer: %v", err)
 			}
+			defer func() {
+				err := w.Close()
+				if err != nil {
+					logger.Get(ctx).Verbosef("error closing websocket writer: %v", err)
+				}
+			}()
+			msg := websocket.FormatCloseMessage(1000, "All well")
+			w.Write(msg)
 			select {
 			case <-done:
+				log.Printf("okay it's done!")
 			case <-time.After(time.Second):
+				log.Printf("lol timed out")
 			}
 			return nil
 		}
+	}
+}
+
+// Ack a websocket message so the next time the websocket sends data, it only
+// sends logs from here on forward
+func (wsr *WebsocketReader) writeIncrementalLogResp(ctx context.Context, v *proto_webview.View) {
+	resp := proto_webview.AckWebsocketRequest{
+		ToCheckpoint:  v.LogList.ToCheckpoint,
+		TiltStartTime: v.TiltStartTime,
+	}
+
+	w, err := wsr.conn.NextWriter(websocket.TextMessage)
+	if err != nil {
+		logger.Get(ctx).Verbosef("getting writer: %v", err)
+		return
+	}
+	defer func() {
+		err := w.Close()
+		if err != nil {
+			logger.Get(ctx).Verbosef("closing writer: %v", err)
+		}
+	}()
+
+	err = wsr.marshaller.Marshal(w, &resp)
+	if err != nil {
+		logger.Get(ctx).Verbosef("sending response: %v", err)
 	}
 }
