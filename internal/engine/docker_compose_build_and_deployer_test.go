@@ -123,7 +123,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 	assert.Equal(t, 2, f.dCli.BuildCount)
 	assert.Equal(t, 0, f.dCli.PushCount)
 
-expected := `
+	expected := `
 FROM sancho-base:latest
 ADD . .
 RUN go install github.com/tilt-dev/sancho

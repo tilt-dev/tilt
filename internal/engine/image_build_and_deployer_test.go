@@ -222,7 +222,7 @@ func TestMultiStageDockerBuild(t *testing.T) {
 	assert.Equal(t, 1, f.docker.PushCount)
 	assert.Equal(t, 0, f.kl.loadCount)
 
-expected := `
+	expected := `
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/tilt-dev/sancho
@@ -265,7 +265,7 @@ ENTRYPOINT /go/bin/sancho
 	assert.Equal(t, 1, f.docker.PushCount)
 	assert.Equal(t, 0, f.kl.loadCount)
 
-expected := `# syntax = docker/dockerfile:experimental
+	expected := `# syntax = docker/dockerfile:experimental
 
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
@@ -299,7 +299,7 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 	assert.Equal(t, 1, f.docker.PushCount)
 
-expected := `
+	expected := `
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/tilt-dev/sancho
