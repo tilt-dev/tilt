@@ -1,7 +1,14 @@
 package server
 
-import "net/url"
+import (
+	"context"
+	"net/url"
 
+	"github.com/pkg/errors"
+	"github.com/tilt-dev/tilt/pkg/logger"
+)
+
+// TODO(maia): rename file to logs_reader.go?
 // This file defines machinery to connect to the HUD server websocket and
 // read logs from a running Tilt instance.
 // In future, we can use WebsocketReader more generically to read state
@@ -13,8 +20,6 @@ import "net/url"
 import (
 	"bytes"
 	"log"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -92,24 +97,17 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 	return nil
 }
 
-func (wsr *WebsocketReader) Listen() {
-	// catch signals to kill
-	// TODO: use signal catching we already use in `up` etc.
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	log.Printf("connecting to %s", wsr.url.String())
+func (wsr *WebsocketReader) Listen(ctx context.Context) error {
+	logger.Get(ctx).Debugf("connecting to %s", wsr.url.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(wsr.url.String(), nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		return errors.Wrapf(err, "dialing websocket %s", wsr.url.String())
 	}
 	defer c.Close()
 
 	done := make(chan struct{})
-
 	go func() {
-		// TODO(maia): make sure this closes okay 😅
 		defer close(done)
 		for {
 			_, data, err := c.ReadMessage()
@@ -149,29 +147,30 @@ func (wsr *WebsocketReader) Listen() {
 					log.Println("🚨 sending response:", err)
 				}
 			}
-
 		}
 	}()
 
 	for {
 		select {
 		case <-done:
-			return
-		case <-interrupt:
-			log.Println("interrupt")
+			return nil
+		case <-ctx.Done():
+			err := ctx.Err()
+			if err != context.Canceled {
+				return err
+			}
 
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			err = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
-				log.Println("write close:", err)
-				return
+				return errors.Wrapf(err, "writing CloseMessage to websocket")
 			}
 			select {
 			case <-done:
 			case <-time.After(time.Second):
 			}
-			return
+			return nil
 		}
 	}
 }

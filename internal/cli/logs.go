@@ -47,7 +47,5 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 	}
 
 	reader := server.ProvideWebsockerReader()
-	reader.Listen()
-
-	return nil
+	return reader.Listen(ctx)
 }
