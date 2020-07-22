@@ -20,8 +20,6 @@ import (
 // it and the LogStreamer handler into a single struct.)
 
 import (
-	"time"
-
 	"github.com/gorilla/websocket"
 	"github.com/mattn/go-colorable"
 
@@ -142,25 +140,7 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 				return err
 			}
 
-			// Cleanly close the connection by sending a close message and then
-			// waiting (with timeout) for the server to close the connection.
-			w, err := wsr.conn.NextWriter(websocket.CloseMessage)
-			if err != nil {
-				return errors.Wrap(err, "getting writer for websocket close")
-			}
-			defer func() {
-				err := w.Close()
-				if err != nil {
-					logger.Get(ctx).Verbosef("error closing websocket writer: %v", err)
-				}
-			}()
-			msg := websocket.FormatCloseMessage(1000, "All well")
-			w.Write(msg)
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
-			return nil
+			return wsr.conn.Close()
 		}
 	}
 }
