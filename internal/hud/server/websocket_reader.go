@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"log"
+	"io"
 	"net/url"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -123,22 +123,10 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 			}
 
 			if messageType == websocket.TextMessage {
-				v := proto_webview.View{}
-				err = wsr.unmarshaller.Unmarshal(reader, &v)
+				err = wsr.handleTextMessage(ctx, reader)
 				if err != nil {
-					logger.Get(ctx).Infof("Error unmarshalling websocket message: %v", err)
-				}
-
-				err = wsr.handler.Handle(v)
-				if err != nil {
-					log.Println("Error handling Tilt state from websocket:", err)
-				}
-
-				// If server is using the incremental logs protocol, ack the
-				// message so the next time the websocket sends data, it only
-				// sends logs from here on forward
-				if v.LogList.ToCheckpoint > 0 {
-					wsr.writeIncrementalLogResp(ctx, &v)
+					// will I want this to be an Info sometimes??
+					logger.Get(ctx).Verbosef("Error handling websocket message: %v", err)
 				}
 			}
 		}
@@ -158,7 +146,7 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 			// waiting (with timeout) for the server to close the connection.
 			w, err := wsr.conn.NextWriter(websocket.CloseMessage)
 			if err != nil {
-				logger.Get(ctx).Verbosef("getting writer: %v", err)
+				return errors.Wrap(err, "getting writer for websocket close")
 			}
 			defer func() {
 				err := w.Close()
@@ -170,18 +158,38 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 			w.Write(msg)
 			select {
 			case <-done:
-				log.Printf("okay it's done!")
 			case <-time.After(time.Second):
-				log.Printf("lol timed out")
 			}
 			return nil
 		}
 	}
 }
 
+func (wsr *WebsocketReader) handleTextMessage(ctx context.Context, reader io.Reader) error {
+	v := proto_webview.View{}
+	err := wsr.unmarshaller.Unmarshal(reader, &v)
+	if err != nil {
+		return errors.Wrap(err, "Unmarshalling websocket message")
+	}
+
+	err = wsr.handler.Handle(v)
+	if err != nil {
+		return errors.Wrap(err, "Handling Tilt state from websocket")
+	}
+
+	// If server is using the incremental logs protocol, send back an ACK
+	if v.LogList.ToCheckpoint > 0 {
+		err = wsr.sendIncrementalLogResp(ctx, &v)
+		if err != nil {
+			return errors.Wrap(err, "sending websocket ack")
+		}
+	}
+	return nil
+}
+
 // Ack a websocket message so the next time the websocket sends data, it only
 // sends logs from here on forward
-func (wsr *WebsocketReader) writeIncrementalLogResp(ctx context.Context, v *proto_webview.View) {
+func (wsr *WebsocketReader) sendIncrementalLogResp(ctx context.Context, v *proto_webview.View) error {
 	resp := proto_webview.AckWebsocketRequest{
 		ToCheckpoint:  v.LogList.ToCheckpoint,
 		TiltStartTime: v.TiltStartTime,
@@ -189,8 +197,7 @@ func (wsr *WebsocketReader) writeIncrementalLogResp(ctx context.Context, v *prot
 
 	w, err := wsr.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
-		logger.Get(ctx).Verbosef("getting writer: %v", err)
-		return
+		return errors.Wrap(err, "getting writer")
 	}
 	defer func() {
 		err := w.Close()
@@ -201,6 +208,7 @@ func (wsr *WebsocketReader) writeIncrementalLogResp(ctx context.Context, v *prot
 
 	err = wsr.marshaller.Marshal(w, &resp)
 	if err != nil {
-		logger.Get(ctx).Verbosef("sending response: %v", err)
+		return errors.Wrap(err, "sending response")
 	}
+	return nil
 }
