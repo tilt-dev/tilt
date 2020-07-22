@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,36 @@ type ExpectedFile struct {
 	// So when we create docker images on windows, we set the executable
 	// bit on all files, for consistency with Docker.
 	HasExecBitWindows bool
+}
+
+func fileNameLooksLikeDockerfile(name string) bool {
+	return strings.HasPrefix(name, ".dockerfile.")
+}
+
+func AssertDockerfileInTar(t testing.TB, tr *tar.Reader, contents string) {
+	dockerfileContents := bytes.NewBuffer(nil)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatalf("Error reading tar fike: %v", err)
+		}
+
+		if fileNameLooksLikeDockerfile(header.Name) {
+			_, err := io.Copy(dockerfileContents, tr)
+			if err != nil {
+				t.Fatalf("Error reading tar file: %v", err)
+			}
+			break
+		}
+	}
+
+	if dockerfileContents.Len() == 0 {
+		t.Errorf("Unable to find a file that looks like the Dockerfile")
+	}
+
+	assert.Equal(t, contents, dockerfileContents.String())
 }
 
 // Asserts whether or not this file is in the tar.

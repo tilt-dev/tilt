@@ -12,6 +12,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/stringid"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/opencontainers/go-digest"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -145,9 +146,10 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 		}
 	}
 
+	dockerfileName := ".dockerfile." + stringid.GenerateRandomID()[:20]
 	pr, pw := io.Pipe()
 	go func(ctx context.Context) {
-		err := tarContextAndUpdateDf(ctx, pw, dockerfile.Dockerfile(db.Dockerfile), paths, filter)
+		err := tarContextAndUpdateDf(ctx, pw, dockerfile.Dockerfile(db.Dockerfile), dockerfileName, paths, filter)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		} else {
@@ -164,7 +166,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	imageBuildResponse, err := d.dCli.ImageBuild(
 		ctx,
 		pr,
-		Options(pr, db),
+		Options(pr, db, dockerfileName),
 	)
 	spanBuild.Finish()
 	if err != nil {

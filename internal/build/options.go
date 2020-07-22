@@ -8,10 +8,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func Options(archive io.Reader, db model.DockerBuild) docker.BuildOptions {
+func Options(archive io.Reader, db model.DockerBuild, dockerfileName string) docker.BuildOptions {
 	return docker.BuildOptions{
 		Context:     archive,
-		Dockerfile:  "Dockerfile",
+		Dockerfile:  dockerfileName,
 		Remove:      shouldRemoveImage(),
 		BuildArgs:   manifestBuildArgsToDockerBuildArgs(db.BuildArgs),
 		Target:      string(db.TargetStage),

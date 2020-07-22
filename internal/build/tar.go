@@ -3,7 +3,9 @@ package build
 import (
 	"archive/tar"
 	"context"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -47,12 +49,12 @@ func clearUIDAndGID(h *tar.Header) {
 	h.Gid = 0
 }
 
-func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile) error {
+func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile, dockerfileName string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
 	_ = ctx
 	defer span.Finish()
 	tarHeader := &tar.Header{
-		Name:       "Dockerfile",
+		Name:       dockerfileName,
 		Typeflag:   tar.TypeReg,
 		Size:       int64(len(df)),
 		Mode:       0644,
@@ -66,6 +68,44 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 		return err
 	}
 	_, err = a.tw.Write([]byte(df))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *ArchiveBuilder) archiveDockerignore(ctx context.Context, paths []PathMapping, dockerfileName string) error {
+	// check to see if a dockerignore exists
+	dockerignoreContents := ""
+	for _, pm := range paths {
+		if pm.LocalPath == ".dockerignore" {
+			di, err := ioutil.ReadFile(pm.LocalPath)
+			if err != nil {
+				return err
+			}
+			dockerignoreContents = string(di)
+			break
+		}
+	}
+
+	newDockerignoreContents := fmt.Sprintf("%s\n%s", dockerignoreContents, dockerfileName)
+	tarHeader := &tar.Header{
+		Name:       ".dockerignore",
+		Typeflag:   tar.TypeReg,
+		Size:       int64(len(newDockerignoreContents)),
+		Mode:       0644,
+		Uid:        0,
+		Gid:        0,
+		ModTime:    time.Now(),
+		AccessTime: time.Now(),
+		ChangeTime: time.Now(),
+	}
+	err := a.tw.WriteHeader(tarHeader)
+	if err != nil {
+		return err
+	}
+	_, err = a.tw.Write([]byte(newDockerignoreContents))
 	if err != nil {
 		return err
 	}
@@ -215,6 +255,11 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, localPath, containe
 }
 
 func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
+	// Skip the root dockerignore, we handle that later outside of this function
+	if entry.path == ".dockerignore" {
+		return nil
+	}
+
 	path := entry.path
 	header := entry.header
 	info := entry.info
@@ -248,7 +293,7 @@ func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 	return nil
 }
 
-func tarContextAndUpdateDf(ctx context.Context, writer io.Writer, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher) error {
+func tarContextAndUpdateDf(ctx context.Context, writer io.Writer, df dockerfile.Dockerfile, dockerfileName string, paths []PathMapping, filter model.PathMatcher) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
 	defer span.Finish()
 
@@ -258,20 +303,16 @@ func tarContextAndUpdateDf(ctx context.Context, writer io.Writer, df dockerfile.
 		return errors.Wrap(err, "archivePaths")
 	}
 
-	err = ab.archiveDf(ctx, df)
+	err = ab.archiveDf(ctx, df, dockerfileName)
 	if err != nil {
 		return errors.Wrap(err, "archiveDf")
 	}
 
-	return ab.Close()
-}
-
-func TarDfOnly(ctx context.Context, writer io.Writer, df dockerfile.Dockerfile) error {
-	ab := NewArchiveBuilder(writer, model.EmptyMatcher)
-	err := ab.archiveDf(ctx, df)
+	err = ab.archiveDockerignore(ctx, paths, dockerfileName)
 	if err != nil {
-		return errors.Wrap(err, "tarDfOnly")
+		return errors.Wrap(err, "createOrModifyDockerignore")
 	}
+
 	return ab.Close()
 }
 

@@ -222,16 +222,13 @@ func TestMultiStageDockerBuild(t *testing.T) {
 	assert.Equal(t, 1, f.docker.PushCount)
 	assert.Equal(t, 0, f.kl.loadCount)
 
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `
+expected := `
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
-`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
+`
+	testutils.AssertDockerfileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
@@ -268,17 +265,14 @@ ENTRYPOINT /go/bin/sancho
 	assert.Equal(t, 1, f.docker.PushCount)
 	assert.Equal(t, 0, f.kl.loadCount)
 
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `# syntax = docker/dockerfile:experimental
+expected := `# syntax = docker/dockerfile:experimental
 
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
-`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
+`
+	testutils.AssertDockerfileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
@@ -305,16 +299,13 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 	assert.Equal(t, 1, f.docker.PushCount)
 
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `
+expected := `
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
 RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
-`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
+`
+	testutils.AssertDockerfileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
@@ -340,16 +331,13 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 
 	assert.Equal(t, 1, f.docker.BuildCount)
 
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `
+	expected := `
 FROM sancho-base:tilt-prebuilt1
 ADD . .
 RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
-`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
+`
+	testutils.AssertDockerfileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestK8sUpsertTimeout(t *testing.T) {

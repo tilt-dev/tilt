@@ -123,16 +123,13 @@ func TestMultiStageDockerCompose(t *testing.T) {
 	assert.Equal(t, 2, f.dCli.BuildCount)
 	assert.Equal(t, 0, f.dCli.PushCount)
 
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `
+expected := `
 FROM sancho-base:latest
 ADD . .
 RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
-`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
+`
+	testutils.AssertDockerfileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
 }
 
 func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
@@ -154,16 +151,13 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	assert.Equal(t, 1, f.dCli.BuildCount)
 	assert.Equal(t, 0, f.dCli.PushCount)
 
-	expected := expectedFile{
-		Path: "Dockerfile",
-		Contents: `
+	expected := `
 FROM sancho-base:tilt-prebuilt
 ADD . .
 RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
-`,
-	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
+`
+	testutils.AssertDockerfileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
 }
 
 type dcbdFixture struct {
