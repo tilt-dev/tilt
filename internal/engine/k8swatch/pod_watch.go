@@ -126,7 +126,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 		w.addWatch(pw)
 		ch, err := w.kCli.WatchPods(ctx, pw.labels)
 		if err != nil {
-			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\n")
+			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods`")
 			st.Dispatch(store.NewErrorAction(err))
 			return
 		}

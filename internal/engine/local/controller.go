@@ -51,6 +51,7 @@ func (c *Controller) determineServeSpecs(ctx context.Context, st store.RStore) [
 		r = append(r, ServeSpec{
 			mt.Manifest.Name,
 			lt.ServeCmd,
+			lt.Workdir,
 			mt.State.LastSuccessfulDeployTime,
 		})
 	}
@@ -151,7 +152,7 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	go processStatuses(statusCh, st, spec.ManifestName, proc.stillHasSameProcNum())
 
 	spanID := SpanIDForServeLog(proc.procNum)
-	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
+	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, spec.WorkDir, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
 }
 
 func processStatuses(
@@ -229,6 +230,7 @@ func SpanIDForServeLog(procNum int) logstore.SpanID {
 type ServeSpec struct {
 	ManifestName model.ManifestName
 	ServeCmd     model.Cmd
+	WorkDir      string
 	TriggerTime  time.Time // TriggerTime is how Runner knows to restart; if it's newer than the TriggerTime of the currently running command, then Runner should restart it
 }
 
