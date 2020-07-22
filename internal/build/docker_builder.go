@@ -37,6 +37,7 @@ type dockerImageBuilder struct {
 
 type DockerBuilder interface {
 	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error)
+	DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) error
 	TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error)
 	ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error)
@@ -66,6 +67,31 @@ func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, 
 		},
 	}
 	return d.buildFromDf(ctx, ps, db, paths, filter, refs)
+}
+
+func (d *dockerImageBuilder) DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error) {
+	refParsed, err := container.ParseNamed(ref)
+	if err != nil {
+		return nil, errors.Wrap(err, "DumpImageDeployRef")
+	}
+
+	data, _, err := d.dCli.ImageInspectWithRaw(ctx, ref)
+	if err != nil {
+		return nil, errors.Wrap(err, "DumpImageDeployRef")
+	}
+	dig := digest.Digest(data.ID)
+
+	tag, err := digestAsTag(dig)
+	if err != nil {
+		return nil, errors.Wrap(err, "DumpImageDeployRef")
+	}
+
+	tagged, err := reference.WithTag(refParsed, tag)
+	if err != nil {
+		return nil, errors.Wrap(err, "DumpImageDeployRef")
+	}
+
+	return tagged, nil
 }
 
 // Tag the digest with the given name and wm-tilt tag.

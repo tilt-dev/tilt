@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -91,6 +92,17 @@ func TestDigestFromOutputV1_23(t *testing.T) {
 	if actual != expected {
 		t.Errorf("Expected %s, got %s", expected, actual)
 	}
+}
+
+func TestDumpImageDeployRef(t *testing.T) {
+	f := newFakeDockerBuildFixture(t)
+	defer f.teardown()
+
+	digest := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.fakeDocker.Images["example-image:dev"] = types.ImageInspect{ID: string(digest)}
+	ref, err := f.b.DumpImageDeployRef(f.ctx, "example-image:dev")
+	require.NoError(t, err)
+	assert.Equal(t, "docker.io/library/example-image:tilt-11cd0eb38bc3ceb9", ref.String())
 }
 
 func makeDockerBuildErrorOutput(s string) string {

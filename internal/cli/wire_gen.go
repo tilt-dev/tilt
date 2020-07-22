@@ -640,6 +640,44 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	return downDeps, nil
 }
 
+func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, error) {
+	clientConfig := k8s.ProvideClientConfig()
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	if err != nil {
+		return DumpImageDeployRefDeps{}, err
+	}
+	env := k8s.ProvideEnv(ctx, apiConfig)
+	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
+	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
+	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
+	if err != nil {
+		return DumpImageDeployRefDeps{}, err
+	}
+	int2 := provideKubectlLogLevel()
+	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
+	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
+	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, kubectlRunner, minikubeClient, clientConfig)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	clusterEnv := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, clusterEnv)
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
+	if err != nil {
+		return DumpImageDeployRefDeps{}, err
+	}
+	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
+	labels := _wireLabelsValue
+	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
+	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	dumpImageDeployRefDeps := DumpImageDeployRefDeps{
+		DockerBuilder: dockerBuilder,
+		DockerClient:  switchCli,
+	}
+	return dumpImageDeployRefDeps, nil
+}
+
 // wire.go:
 
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
@@ -689,4 +727,9 @@ func ProvideDownDeps(
 
 func provideClock() func() time.Time {
 	return time.Now
+}
+
+type DumpImageDeployRefDeps struct {
+	DockerBuilder build.DockerBuilder
+	DockerClient  docker.Client
 }
