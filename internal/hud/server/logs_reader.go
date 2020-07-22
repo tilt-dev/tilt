@@ -2,11 +2,13 @@ package server
 
 import "net/url"
 
-// A thinger to connect to the HUD server websocket, for CLI commands that
-// want to read state from a running Tilt (e.g. `tilt logs`).
-// TODO(maia): figure out if this should live here, or elsewhere (I assume
-//   it's worth it to make a generic state-reader b/c we may want other cmds
-//   that interact with a running Tilt e.g. `tilt status`.)
+// This file defines machinery to connect to the HUD server websocket and
+// read logs from a running Tilt instance.
+// In future, we can use WebsocketReader more generically to read state
+// from a running Tilt, and do different things with that state depending
+// on the handler provided (if we ever implement e.g. `tilt status`).
+// (If we never use the WebsocketReader elsewhere, we might want to collapse
+// it and the LogStreamer handler into a single struct.)
 
 import (
 	"bytes"

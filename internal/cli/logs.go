@@ -39,7 +39,7 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.logs", nil)
 	defer a.Flush(time.Second)
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Logs")
 	defer span.Finish()
 
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
