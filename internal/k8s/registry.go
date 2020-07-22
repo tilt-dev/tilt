@@ -148,7 +148,7 @@ func (r *registryAsync) inferRegistryFromNodeAnnotations(ctx context.Context) co
 func (r *registryAsync) inferRegistryFromConfigMap(ctx context.Context) (registry container.Registry, help string) {
 	hosting, err := localregistry.Discover(ctx, r.core)
 	if err != nil {
-		logger.Get(ctx).Warnf("Local registry discovery error: %v", err)
+		logger.Get(ctx).Debugf("Local registry discovery error: %v", err)
 		return container.Registry{}, ""
 	}
 
@@ -159,7 +159,7 @@ func (r *registryAsync) inferRegistryFromConfigMap(ctx context.Context) (registr
 	registry, err = container.NewRegistryWithHostFromCluster(
 		hosting.Host, hosting.HostFromContainerRuntime)
 	if err != nil {
-		logger.Get(ctx).Warnf("Local registry discovery error: %v", err)
+		logger.Get(ctx).Debugf("Local registry discovery error: %v", err)
 		return container.Registry{}, hosting.Help
 	}
 	return registry, hosting.Help
