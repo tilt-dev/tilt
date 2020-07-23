@@ -11,7 +11,6 @@ KWARGS_BLACKLIST = [
     'target',
 ]
 
-
 def docker_build_with_restart(ref, context, entrypoint, live_update,
                               base_suffix='-base', restart_file=RESTART_FILE, **kwargs):
     """Wrap a docker_build call and its associated live_update steps so that the last step
@@ -43,9 +42,10 @@ def docker_build_with_restart(ref, context, entrypoint, live_update,
     # declare a new docker build that adds a static binary of tilt-restart-wrapper
     # (which makes use of `entr` to watch files and restart processes) to the user's image
     df = '''
-    FROM tiltdev/restart-helper:2020-04-27 as restart-helper
+    FROM tiltdev/restart-helper:2020-07-16 as restart-helper
 
     FROM {}
+    USER root
     RUN ["touch", "{}"]
     COPY --from=restart-helper /tilt-restart-wrapper /
     COPY --from=restart-helper /entr /
