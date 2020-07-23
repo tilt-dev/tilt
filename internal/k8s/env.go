@@ -24,6 +24,7 @@ const (
 	EnvDockerDesktop Env = "docker-for-desktop"
 	EnvMicroK8s      Env = "microk8s"
 	EnvCRC           Env = "crc"
+	EnvKrucible      Env = "krucible"
 
 	// Kind v0.6 substantially changed the protocol for detecting and pulling,
 	// so we represent them as two separate envs.
@@ -37,8 +38,8 @@ func (e Env) UsesLocalDockerRegistry() bool {
 	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s
 }
 
-func (e Env) IsLocalCluster() bool {
-	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvCRC || e == EnvKIND5 || e == EnvKIND6 || e == EnvK3D
+func (e Env) IsDevCluster() bool {
+	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvCRC || e == EnvKIND5 || e == EnvKIND6 || e == EnvK3D || e == EnvKrucible
 }
 
 func ProvideKubeContext(config *api.Config) (KubeContext, error) {
@@ -94,6 +95,8 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 		return EnvMicroK8s
 	} else if strings.HasPrefix(cn, "api-crc-testing") {
 		return EnvCRC
+	} else if strings.HasPrefix(cn, "krucible-") {
+		return EnvKrucible
 	}
 
 	loc := c.LocationOfOrigin

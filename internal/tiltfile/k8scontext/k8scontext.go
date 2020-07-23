@@ -88,7 +88,7 @@ func (s State) KubeContext() k8s.KubeContext {
 }
 
 func (s State) IsAllowed() bool {
-	if s.env == k8s.EnvNone || s.env.IsLocalCluster() {
+	if s.env == k8s.EnvNone || s.env.IsDevCluster() {
 		return true
 	}
 
