@@ -2,9 +2,11 @@ package cli
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 )
 
 type verifyInstallCmd struct {
@@ -19,6 +21,15 @@ func (c *verifyInstallCmd) register() *cobra.Command {
 }
 
 func (c *verifyInstallCmd) run(ctx context.Context, args []string) error {
-	fmt.Println("wohooo this cmd works>")
+	a := analytics.Get(ctx)
+	machineID, _ := a.GlobalTag("machine")
+
+	cmdVerifyInstallTags := engineanalytics.CmdTags(map[string]string{
+		"machine": machineID,
+	})
+	a.Incr("cmd.verifyInstall", cmdVerifyInstallTags.AsMap())
+
+	defer a.Flush(time.Second)
+
 	return nil
 }
