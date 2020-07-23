@@ -9,7 +9,6 @@ $zip = "tilt-" + $version + ".zip"
 $extractDir = "tilt-" + $version
 $binDir = "$HOME\bin"
 $dest = "$binDir\tilt.exe"
-$verifyInstall = "tilt verify-install"
 
 $useScoop = ""
 if (Get-Command "scoop" 2>$null) {
