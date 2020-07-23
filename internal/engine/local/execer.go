@@ -20,11 +20,12 @@ import (
 var DefaultGracePeriod = 30 * time.Second
 
 type Execer interface {
-	Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{}
+	Start(ctx context.Context, cmd model.Cmd, workdir string, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{}
 }
 
 type fakeExecProcess struct {
-	exitCh chan int
+	exitCh  chan int
+	workdir string
 }
 
 type FakeExecer struct {
@@ -39,7 +40,7 @@ func NewFakeExecer() *FakeExecer {
 	}
 }
 
-func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
+func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, workdir string, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
 	e.mu.Lock()
 	_, ok := e.processes[cmd.String()]
 	e.mu.Unlock()
@@ -52,7 +53,8 @@ func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, stat
 
 	e.mu.Lock()
 	e.processes[cmd.String()] = &fakeExecProcess{
-		exitCh: exitCh,
+		exitCh:  exitCh,
+		workdir: workdir,
 	}
 	e.mu.Unlock()
 
@@ -127,18 +129,18 @@ func NewProcessExecer() *processExecer {
 	}
 }
 
-func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
+func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, workdir string, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
 	doneCh := make(chan struct{})
 
 	go func() {
-		e.processRun(ctx, cmd, w, statusCh, spanID)
+		e.processRun(ctx, cmd, workdir, w, statusCh, spanID)
 		close(doneCh)
 	}()
 
 	return doneCh
 }
 
-func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) {
+func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, workdir string, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) {
 	defer close(statusCh)
 
 	logger.Get(ctx).Infof("Running serve cmd: %s", cmd.String())
@@ -148,6 +150,7 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	procutil.SetOptNewProcessGroup(c.SysProcAttr)
 	c.Stderr = w
 	c.Stdout = w
+	c.Dir = workdir
 
 	err := c.Start()
 	if err != nil {

@@ -254,6 +254,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		if err != nil {
 			return nil, starkit.Model{}, err
 		}
+
 		manifests = append(manifests, yamlManifest)
 	}
 
@@ -650,7 +651,14 @@ func (s *tiltfileState) assembleK8sV1() error {
 }
 
 func (s *tiltfileState) assembleK8sV2() error {
-	err := s.assembleK8sByWorkload()
+	//Note: We're using UniqueNames() over here just to check for duplicate YAML Entities, hence
+	//why only the error is being considered here
+	_, err := k8s.UniqueNames(s.k8sUnresourced, 1)
+	if err != nil {
+		return err
+	}
+
+	err = s.assembleK8sByWorkload()
 	if err != nil {
 		return err
 	}

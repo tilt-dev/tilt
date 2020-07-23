@@ -63,7 +63,7 @@ func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore) {
 
 	ch, err := w.kCli.WatchServices(ctx, k8s.ManagedByTiltSelector())
 	if err != nil {
-		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\n")
+		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\nTry running `kubectl get services`")
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
