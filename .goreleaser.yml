@@ -47,6 +47,7 @@ brews:
   description: "Tilt powers multi-service developments for teams that deploy to Kubernetes."
   test: |
     system "#{bin}/tilt version"
+    system "#{bin}/tilt verify-install"
 dockers:
 - image_templates:
     - "tiltdev/tilt"

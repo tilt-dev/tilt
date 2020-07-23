@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tilt-dev/tilt/internal/analytics"
-	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 )
 
 type verifyInstallCmd struct {
@@ -22,13 +21,7 @@ func (c *verifyInstallCmd) register() *cobra.Command {
 
 func (c *verifyInstallCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
-	machineID, _ := a.GlobalTag("machine")
-
-	cmdVerifyInstallTags := engineanalytics.CmdTags(map[string]string{
-		"machine": machineID,
-	})
-	a.Incr("cmd.verifyInstall", cmdVerifyInstallTags.AsMap())
-
+	a.Incr("cmd.verifyInstall", nil)
 	defer a.Flush(time.Second)
 
 	return nil
