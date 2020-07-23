@@ -1302,7 +1302,8 @@ k8s_yaml(yml)
 	entities, err := k8s.ParseYAMLFromString(yaml)
 	require.NoError(t, err)
 
-	names := k8s.UniqueNames(entities, 2)
+	names, err := k8s.UniqueNames(entities, 2)
+	assert.NoError(t, err)
 	expectedNames := []string{"rose-quartz-helloworld-chart:service"}
 	assert.ElementsMatch(t, expectedNames, names)
 
@@ -3836,57 +3837,61 @@ k8s_yaml('foo.yaml')
 		f.assertNextManifest("foo").ImageTargets[0].OverrideArgs)
 }
 
-func TestDuplicateResource(t *testing.T) {
+func TestDuplicateYAMLEntityWithinSingleResource(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.gitInit("")
-	f.file("resource.yaml", fmt.Sprintf(`
-%s
----
-%s
-`, testyaml.DoggosServiceYaml, testyaml.DoggosServiceYaml))
+	f.yaml("resource.yaml",
+		service("doggos"),
+		service("doggos"))
 	f.file("Tiltfile", `
 k8s_yaml('resource.yaml')
 `)
-	f.loadAllowWarnings()
-	m := f.assertNextManifestUnresourced("doggos", "doggos")
-	displayNames := []string{}
-	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
-	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1"}, displayNames)
+	f.loadErrString(k8s.DuplicateYAMLDetectedError("doggos:service:default:core"))
+}
+func TestDuplicateYAMLEntityAcrossResources(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
 
-	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity(s): doggos:service:default:core. Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
-	f.assertWarnings(duplicateWarningStr)
+	f.dockerfile("foo1/Dockerfile")
+	f.yaml("foo1.yaml", deployment("foo", image("gcr.io/foo1"), namespace("ns1")))
+	f.file("Tiltfile", `
+
+k8s_yaml(['foo1.yaml', 'foo1.yaml'])
+k8s_resource('foo:deployment:ns1', new_name='foo')
+`)
+	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo:deployment:ns1:apps"))
 }
 
-func TestMultipleDuplicateResources(t *testing.T) {
+func TestDuplicateYAMLEntityInSingleWorkload(t *testing.T) {
+	//Services corresponding to a deployment get pulled into the same resource.
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.gitInit("")
-	f.file("resource.yaml", fmt.Sprintf(`
-%s
----
-%s
----
-%s
----
-%s
-`, testyaml.DoggosServiceYaml, testyaml.DoggosServiceYaml, testyaml.CatsServiceYaml, testyaml.CatsServiceYaml))
+	labelsFoo := map[string]string{"foo": "bar"}
+	f.yaml("all.yaml",
+		deployment("foo-deployment", image("gcr.io/foo1"), namespace("ns1"), withLabels(labelsFoo)),
+		service("foo-service", withLabels(labelsFoo)),
+		service("foo-service", withLabels(labelsFoo)))
 	f.file("Tiltfile", `
-k8s_yaml('resource.yaml')
+k8s_yaml('all.yaml')
 `)
-	f.loadAllowWarnings()
+	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo-service:service:default:core"))
+}
 
-	m := f.assertNextManifestUnresourced("doggos", "doggos", "cats", "cats")
-	displayNames := []string{}
-	displayNames = append(displayNames, m.K8sTarget().DisplayNames...)
-	assert.Equal(t, []string{"doggos:service:default:core:0", "doggos:service:default:core:1", "cats:service:default:core:2", "cats:service:default:core:3"}, displayNames)
-
-	duplicateWarningStr := "Resource uncategorized contains multiple specifications of k8s entity(s): doggos:service:default:core, cats:service:default:core. Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications"
-
-	f.assertWarnings(duplicateWarningStr)
-
+func TestDuplicateYAMLEntityInUserAssembledNonWorkloadResource(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.gitInit("")
+	f.yaml("all.yaml",
+		service("foo-service"),
+		service("foo-service"))
+	f.file("Tiltfile", `
+k8s_yaml('all.yaml')
+k8s_resource(objects=['foo-service:Service:default'], new_name='my-services')
+`)
+	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo-service:service:default:core"))
 }
 
 func TestSetTeamID(t *testing.T) {
