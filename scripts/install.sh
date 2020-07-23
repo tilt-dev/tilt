@@ -14,6 +14,9 @@ set -e
 
 function copy_binary() {
   if [[ ":$PATH:" == *":$HOME/.local/bin:"* ]]; then
+      if [ ! -d "$HOME/.local/bin" ]; then
+        mkdir -p "$HOME/.local/bin"
+      fi
       mv tilt "$HOME/.local/bin/tilt"
   else
       echo "Installing Tilt to /usr/local/bin which is write protected"
