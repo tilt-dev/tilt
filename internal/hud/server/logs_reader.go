@@ -5,8 +5,9 @@ import (
 	"io"
 	"net/url"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/pkg/errors"
+
+	"github.com/golang/protobuf/jsonpb"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
