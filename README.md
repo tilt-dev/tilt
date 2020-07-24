@@ -25,6 +25,12 @@ up-to-date. Think `docker build && kubectl apply` or `docker-compose up`.
 
 Installing the `tilt` binary is a one-step command.
 
+### macOS using Homebrew
+
+```bash
+brew install tilt-dev/homebrew-tap/tilt
+```
+
 ### macOS/Linux
 
 ```bash
