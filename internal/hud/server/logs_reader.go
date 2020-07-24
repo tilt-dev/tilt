@@ -5,14 +5,19 @@ import (
 	"io"
 	"net/url"
 
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/gorilla/websocket"
+	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/jsonpb"
-
+	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
+	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
-// TODO(maia): rename file to logs_reader.go?
 // This file defines machinery to connect to the HUD server websocket and
 // read logs from a running Tilt instance.
 // In future, we can use WebsocketReader more generically to read state
@@ -21,18 +26,6 @@ import (
 // (If we never use the WebsocketReader elsewhere, we might want to collapse
 // it and the LogStreamer handler into a single struct.)
 
-import (
-	"github.com/gorilla/websocket"
-	"github.com/mattn/go-colorable"
-
-	"github.com/tilt-dev/tilt/internal/hud"
-	"github.com/tilt-dev/tilt/internal/hud/webview"
-	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
-	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
-)
-
-// TODO: interface
 type WebsocketReader struct {
 	url          url.URL
 	conn         WebsocketConn
