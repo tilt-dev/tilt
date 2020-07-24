@@ -257,7 +257,7 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
-// TODO(maia): maybe I should convert to some new type that fulfils the LogEvent interface? but this is here.
+// TODO(maia): maybe I should convert to some new type that fulfills the LogEvent interface? but this is here.
 func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_webview.LogSpan) store.LogAction {
 	mn := spans[seg.SpanId].ManifestName
 	// TODO(maia): actually get level (just spoofing for now)
