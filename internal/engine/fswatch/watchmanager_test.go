@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -147,6 +148,25 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 	actions := f.Stop(t)
 	f.AssertActionsNotContain(actions, filepath.Join("bar", "foo"))
 	f.AssertActionsContain(actions, filepath.Join("bar", "baz", "foo"))
+}
+
+func TestWatchManagerShortRead(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
+	f.SetManifestTarget(target)
+
+	f.fakeMultiWatcher.Errors <- fmt.Errorf("short read on readEvents()")
+
+	action := f.store.WaitForAction(t, reflect.TypeOf(store.ErrorAction{}))
+	msg := action.(store.ErrorAction).Error.Error()
+	assert.Contains(t, msg, "short read")
+	if runtime.GOOS == "windows" {
+		assert.Contains(t, msg, "https://github.com/tilt-dev/tilt/issues/3556")
+	}
+	f.store.ClearActions()
 }
 
 type wmFixture struct {
