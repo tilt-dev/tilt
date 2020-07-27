@@ -189,7 +189,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
+	dockerContainerUpdater := containerupdate.NewDockerUpdater(switchCli)
 	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -346,7 +346,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(switchCli)
+	dockerContainerUpdater := containerupdate.NewDockerUpdater(switchCli)
 	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
 	if err != nil {
 		return CmdCIDeps{}, err
