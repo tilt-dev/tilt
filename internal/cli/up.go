@@ -41,7 +41,6 @@ var noBrowser bool = false
 var logActionsFlag bool = false
 
 type upCmd struct {
-	watch                bool
 	traceTags            string
 	fileName             string
 	outputSnapshotOnExit string
@@ -78,8 +77,6 @@ you can use tilt down (https://docs.tilt.dev/cli/tilt_down.html) to delete these
 local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 `,
 	}
-
-	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(buildcontrol.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
@@ -94,7 +91,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
-		c.watchFlagExplicitlySet = cmd.Flag("watch").Changed
 	}
 
 	return cmd
@@ -151,11 +147,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	log.Print(startLine)
 	log.Print(buildStamp())
 
-	//if --watch was set, warn user about deprecation
-	if c.watchFlagExplicitlySet {
-		logger.Get(ctx).Warnf("Flag --watch has been deprecated, it will be removed in future releases.")
-	}
-
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
@@ -192,9 +183,11 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	defer cancel()
 
 	engineMode := store.EngineModeUp
-	if !c.watch {
-		engineMode = store.EngineModeApply
-	}
+	//don't quite understand whats going on here, will clarify and remove later
+
+	// if !c.watch {
+	// 	engineMode = store.EngineModeApply
+	// }
 
 	err = upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
 		c.fileName, termMode, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
