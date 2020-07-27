@@ -21,7 +21,7 @@ if ("true" -eq $useScoop) {
     scoop install tilt
     scoop update tilt
     Write-Output "Tilt installed with Scoop! Run 'tilt up' to start."
-    exit
+    return
 }
 
 Write-Output "Downloading $url"
