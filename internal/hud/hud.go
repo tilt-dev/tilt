@@ -258,7 +258,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 func (h *Hud) isEnabled(st store.RStore) bool {
 	state := st.RLockState()
 	defer st.RUnlockState()
-	return state.TerminalMode == store.TerminalModeHUD
+	return state.TerminalMode == store.TerminalModeLegacy
 }
 
 func (h *Hud) OnChange(ctx context.Context, st store.RStore) {

@@ -45,9 +45,9 @@ type upCmd struct {
 	fileName             string
 	outputSnapshotOnExit string
 
-	hud bool
-	// whether hud was explicitly set or just got the default value
-	hudFlagExplicitlySet bool
+	legacy bool
+	// whether legacy was explicitly set or just got the default value
+	legacyFlagExplicitlySet bool
 
 	//whether watch was explicitly set in the cmdline
 	watchFlagExplicitlySet bool
@@ -80,7 +80,7 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(buildcontrol.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
-	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
+	cmd.Flags().BoolVar(&c.legacy, "legacy", true, "If true, tilt will open in Legacy mode.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	addStartServerFlags(cmd)
 	addDevServerFlags(cmd)
@@ -90,7 +90,7 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
-		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
+		c.legacyFlagExplicitlySet = cmd.Flag("legacy").Changed
 	}
 
 	return cmd
@@ -101,9 +101,9 @@ func (c *upCmd) initialTermMode(isTerminal bool) store.TerminalMode {
 		return store.TerminalModeStream
 	}
 
-	if c.hudFlagExplicitlySet {
-		if c.hud {
-			return store.TerminalModeHUD
+	if c.legacyFlagExplicitlySet {
+		if c.legacy {
+			return store.TerminalModeLegacy
 		} else {
 			return store.TerminalModeStream
 		}

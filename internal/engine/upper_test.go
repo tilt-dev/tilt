@@ -641,7 +641,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	f.Init(InitAction{
 		EngineMode:   store.EngineModeApply,
 		TiltfilePath: f.JoinPath("Tiltfile"),
-		TerminalMode: store.TerminalModeHUD,
+		TerminalMode: store.TerminalModeLegacy,
 		StartTime:    f.Now(),
 	})
 
@@ -2729,7 +2729,7 @@ func TestEmptyTiltfile(t *testing.T) {
 	closeCh := make(chan error)
 	go func() {
 		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, store.EngineModeUp,
-			f.JoinPath("Tiltfile"), store.TerminalModeHUD,
+			f.JoinPath("Tiltfile"), store.TerminalModeLegacy,
 			analytics.OptIn, token.Token("unit test token"),
 			"nonexistent.example.com")
 		closeCh <- err
@@ -2764,7 +2764,7 @@ func TestUpperStart(t *testing.T) {
 	f.WriteFile("Tiltfile", "")
 	go func() {
 		err := f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{},
-			store.EngineModeUp, f.JoinPath("Tiltfile"), store.TerminalModeHUD,
+			store.EngineModeUp, f.JoinPath("Tiltfile"), store.TerminalModeLegacy,
 			analytics.OptIn, tok, cloudAddress)
 		closeCh <- err
 	}()
@@ -3473,7 +3473,7 @@ fail('x')`)
 	f.Init(InitAction{
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
-		TerminalMode: store.TerminalModeHUD,
+		TerminalMode: store.TerminalModeLegacy,
 		StartTime:    f.Now(),
 	})
 
@@ -3649,7 +3649,7 @@ func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOptio
 	ia := InitAction{
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
-		TerminalMode: store.TerminalModeHUD,
+		TerminalMode: store.TerminalModeLegacy,
 		StartTime:    f.Now(),
 	}
 	for _, o := range initOptions {
@@ -4062,7 +4062,7 @@ func (f *testFixture) loadAndStart(initOptions ...initOption) {
 	ia := InitAction{
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
-		TerminalMode: store.TerminalModeHUD,
+		TerminalMode: store.TerminalModeLegacy,
 		StartTime:    f.Now(),
 	}
 	for _, opt := range initOptions {
