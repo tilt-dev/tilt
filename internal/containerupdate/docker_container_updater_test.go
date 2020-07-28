@@ -110,12 +110,12 @@ type dockerContainerUpdaterFixture struct {
 	t    testing.TB
 	ctx  context.Context
 	dCli *docker.FakeClient
-	dcu  *DockerContainerUpdater
+	dcu  *DockerUpdater
 }
 
 func newDCUFixture(t testing.TB) *dockerContainerUpdaterFixture {
 	fakeCli := docker.NewFakeClient()
-	cu := &DockerContainerUpdater{dCli: fakeCli}
+	cu := &DockerUpdater{dCli: fakeCli}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	return &dockerContainerUpdaterFixture{
