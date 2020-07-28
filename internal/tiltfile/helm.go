@@ -49,12 +49,15 @@ type helmVersion int
 const (
 	unknownHelmVersion helmVersion = iota
 	helmV2
-	helmV3
+	helmV3_0
+	helmV3_1andAbove
 )
 
 func parseVersion(version string) helmVersion {
-	if strings.HasPrefix(version, "v3") {
-		return helmV3
+	if strings.HasPrefix(version, "v3.0.") {
+		return helmV3_0
+	} else if strings.HasPrefix(version, "v3.") {
+		return helmV3_1andAbove
 	} else if strings.HasPrefix(version, "Client: v2") {
 		return helmV2
 	}
