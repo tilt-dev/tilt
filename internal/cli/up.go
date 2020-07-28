@@ -183,11 +183,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	defer cancel()
 
 	engineMode := store.EngineModeUp
-	//don't quite understand whats going on here, will clarify and remove later
-
-	// if !c.watch {
-	// 	engineMode = store.EngineModeApply
-	// }
 
 	err = upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
 		c.fileName, termMode, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))

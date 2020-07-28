@@ -115,9 +115,6 @@ var ErrHelp = errors.New("pflag: help requested")
 // ErrorHandling defines how to handle flag parsing errors.
 type ErrorHandling int
 
-//put the deprecated flags in here for reference when prompting errors if any of them are invoked.
-var deprecatedFlags = []string{"watch"}
-
 const (
 	// ContinueOnError will return an err from Parse() if an error is found
 	ContinueOnError ErrorHandling = iota
@@ -951,14 +948,6 @@ func stripUnknownFlagValue(args []string) []string {
 	}
 	return nil
 }
-func checkContains(flags []string, q string) bool {
-	for _, val := range flags {
-		if val == q {
-			return true
-		}
-	}
-	return false
-}
 
 func (f *FlagSet) parseLongArg(s string, args []string, fn parseFunc) (a []string, err error) {
 	a = args
@@ -986,10 +975,6 @@ func (f *FlagSet) parseLongArg(s string, args []string, fn parseFunc) (a []strin
 
 			return stripUnknownFlagValue(a), nil
 		default:
-			if checkContains(deprecatedFlags, name) {
-				err = f.failf("Alert! The following flag that you used has been deprecated: %s", name)
-				return
-			}
 			err = f.failf("unknown flag: --%s", name)
 			return
 		}
