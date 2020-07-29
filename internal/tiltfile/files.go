@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -63,6 +65,9 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput 
 	c.Dir = starkit.AbsWorkingDir(t)
 	c.Stdout = stdout
 	c.Stderr = stderr
+	if runtime.GOOS == "windows" {
+		log.Println("ABS WORKING DIR", c.Dir)
+	}
 
 	if logOutput {
 		logOutput := logger.NewMutexWriter(logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl))

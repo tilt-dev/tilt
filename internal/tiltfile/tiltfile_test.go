@@ -409,7 +409,7 @@ func TestKustomization(t *testing.T) {
 	defer f.TearDown()
 
 	f.setupFoo()
-	f.file("Kustomization", kustomizeFileText)
+	f.file("kustomization.yaml", kustomizeFileText)
 	f.file("configMap.yaml", kustomizeConfigMapText)
 	f.file("deployment.yaml", kustomizeDeploymentText)
 	f.file("service.yaml", kustomizeServiceText)
@@ -421,7 +421,7 @@ k8s_resource("the-deployment", "foo")
 `)
 	f.load()
 	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(2))
-	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "Kustomization", "service.yaml")
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
 func TestDockerBuildTarget(t *testing.T) {
