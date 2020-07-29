@@ -71,7 +71,7 @@ docker_build('gcr.io/fe', '.', dockerfile="Dockerfile.custom", live_update=[
 		m.ImageTargetAt(0).Dockerignores())
 }
 
-func TestCustomBuldDepsAreLocalRepos(t *testing.T) {
+func TestCustomBuildDepsAreLocalRepos(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
