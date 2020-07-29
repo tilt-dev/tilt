@@ -25,6 +25,7 @@ docker_build('gcr.io/fe', '.', live_update=[
 ])
 `)
 	f.file(".dockerignore", "build")
+	f.file("Dockerfile.custom.dockerignore", "shouldntmatch")
 	f.file(filepath.Join("src", "index.html"), "Hello world!")
 	f.file(filepath.Join("src", ".dockerignore"), "**")
 
@@ -55,6 +56,7 @@ docker_build('gcr.io/fe', '.', dockerfile="Dockerfile.custom", live_update=[
   sync('./src', '/src')
 ])
 `)
+	f.file(".dockerignore", "shouldntmatch")
 	f.file("Dockerfile.custom.dockerignore", "build")
 	f.file(filepath.Join("src", "index.html"), "Hello world!")
 	f.file(filepath.Join("src", "Dockerfile.custom.dockerignore"), "**")
