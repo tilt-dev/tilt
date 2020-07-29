@@ -488,6 +488,34 @@ docker_build("gcr.io/foo", "foo", network='default')
 	assert.Equal(t, "default", m.ImageTargets[0].BuildDetails.(model.DockerBuild).Network)
 }
 
+func TestDockerBuildPull(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", pull=True)
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.True(t, m.ImageTargets[0].BuildDetails.(model.DockerBuild).PullParent)
+}
+
+func TestDockerBuildCacheFrom(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", cache_from='gcr.io/foo')
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, []string{"gcr.io/foo"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).CacheFrom)
+}
+
 func TestDockerBuildExtraTagString(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
