@@ -189,7 +189,6 @@ services:
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
-
 func TestMultipleDockerComposeDifferentDirsNotSupported(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
