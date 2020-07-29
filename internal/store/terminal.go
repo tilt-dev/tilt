@@ -9,7 +9,7 @@ const (
 	TerminalModeDefault TerminalMode = iota
 
 	// A termbox UI takes over your terminal screen.
-	TerminalModeHUD
+	TerminalModeLegacy
 
 	// Logs are incrementally written to stdout.
 	// This is the only available mode if the user
