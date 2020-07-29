@@ -128,11 +128,11 @@ func (m Manifest) IsK8s() bool {
 	return ok
 }
 
-func (m Manifest) NonWorkloadManifest() bool {
+func (m Manifest) PodReadinessMode() PodReadinessMode {
 	if k8sTarget, ok := m.deployTarget.(K8sTarget); ok {
-		return k8sTarget.NonWorkload
+		return k8sTarget.PodReadinessMode
 	}
-	return false
+	return PodReadinessNone
 }
 
 func (m Manifest) DeployTarget() TargetSpec {

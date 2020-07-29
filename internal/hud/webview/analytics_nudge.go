@@ -18,12 +18,7 @@ func NeedsNudge(st store.EngineState) bool {
 	}
 
 	for _, targ := range manifestTargs {
-		if targ.Manifest.NonWorkloadManifest() {
-			continue
-		}
-
 		if !targ.State.LastSuccessfulDeployTime.IsZero() {
-			// A resource has been green at some point
 			return true
 		}
 	}
