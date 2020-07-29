@@ -40,6 +40,37 @@ docker_build('gcr.io/fe', '.', live_update=[
 		m.ImageTargetAt(0).Dockerignores())
 }
 
+func TestNonDefaultDockerignoreInSyncDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
+	f.file("Dockerfile.custom", `
+FROM alpine
+ADD ./src /src
+`)
+	f.file("Tiltfile", `
+k8s_yaml('fe.yaml')
+docker_build('gcr.io/fe', '.', dockerfile="Dockerfile.custom", live_update=[
+  sync('./src', '/src')
+])
+`)
+	f.file("Dockerfile.custom.dockerignore", "build")
+	f.file(filepath.Join("src", "index.html"), "Hello world!")
+	f.file(filepath.Join("src", "Dockerfile.custom.dockerignore"), "**")
+
+	f.load()
+	m := f.assertNextManifest("fe")
+	assert.Equal(t,
+		[]model.Dockerignore{
+			model.Dockerignore{
+				LocalPath: f.Path(),
+				Contents:  "build",
+			},
+		},
+		m.ImageTargetAt(0).Dockerignores())
+}
+
 func TestCustomBuldDepsAreLocalRepos(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
