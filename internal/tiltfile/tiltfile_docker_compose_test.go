@@ -157,6 +157,39 @@ services:
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
+func TestDockerComposeManifestAlternateDockerfileAndDockerIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	dcYAML := fmt.Sprintf(`build:
+  context: %s
+  dockerfile: alternate-Dockerfile`,
+		f.JoinPath("baz"))
+	f.dockerfile("baz/alternate-Dockerfile")
+	f.dockerignore("baz/alternate-Dockerfile.dockerignore")
+	f.file("docker-compose.yml", fmt.Sprintf(`
+version: '3'
+services:
+  baz:
+    build:
+      context: %s
+      dockerfile: alternate-Dockerfile`, f.JoinPath("baz")))
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+	f.load("baz")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	f.assertDcManifest("baz",
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(dcYAML),
+		dcDfRaw(simpleDockerfile),
+		// TODO(maia): assert m.tiltFilename
+	)
+
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "baz/alternate-Dockerfile", "baz/alternate-Dockerfile.dockerignore"}
+	f.assertConfigFiles(expectedConfFiles...)
+}
+
+
 func TestMultipleDockerComposeDifferentDirsNotSupported(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
