@@ -83,6 +83,15 @@ To install `tilt` on PATH, run
 make install
 ```
 
+This will install the new `tilt` binary in `$GOPATH/bin` - typically `$HOME/go/bin`. You can verify this is the binary you just built with:
+```
+cd $GOPATH
+./bin/tilt version
+```
+
+The build date should match the current date. Be aware that you might already have a `tilt` binary in your $PATH, so running `tilt` without specifying exactly which `tilt` binary you want might have you running the wrong binary.
+
+
 To start using Tilt, just run `tilt up` in any project with a `Tiltfile` -- i.e., NOT the root of the Tilt source code.
 There are plenty of toy projects to play with in the [integration](https://github.com/tilt-dev/tilt/tree/master/integration) directory
 (see e.g. `./integration/oneup`), or check out one of these sample repos to get started:

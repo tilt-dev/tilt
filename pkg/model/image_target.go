@@ -230,6 +230,9 @@ type DockerBuild struct {
 
 	Network string
 
+	PullParent bool
+	CacheFrom  []string
+
 	// By default, Tilt creates a new temporary image reference for each build.
 	// The user can also specify their own reference, to integrate with other tooling
 	// (like build IDs for Jenkins build pipelines)
