@@ -11,5 +11,7 @@ type BuildOptions struct {
 	SSHSpecs    []string
 	SecretSpecs []string
 	Network     string
+	CacheFrom   []string
+	PullParent  bool
 	ExtraTags   []string
 }
