@@ -28,7 +28,7 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, sCli *synclet.TestSyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
-	dockerContainerUpdater := containerupdate.NewDockerUpdater(docker2)
+	dockerUpdater := containerupdate.NewDockerUpdater(docker2)
 	syncletClient, err := synclet.FakeGRPCWrapper(ctx, sCli)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	if err != nil {
 		return nil, err
 	}
-	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, buildcontrolUpdateMode, env, runtime, clock)
+	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerUpdater, syncletUpdater, execUpdater, buildcontrolUpdateMode, env, runtime, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)

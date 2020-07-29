@@ -189,7 +189,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	dockerContainerUpdater := containerupdate.NewDockerUpdater(switchCli)
+	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
 	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -203,7 +203,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	clock := build.ProvideClock()
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime, clock)
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
@@ -346,7 +346,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
-	dockerContainerUpdater := containerupdate.NewDockerUpdater(switchCli)
+	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
 	syncletImageRef, err := sidecar.ProvideSyncletImageRef(ctx)
 	if err != nil {
 		return CmdCIDeps{}, err
@@ -360,7 +360,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	clock := build.ProvideClock()
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime, clock)
+	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerUpdater, syncletUpdater, execUpdater, updateMode, env, runtime, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
@@ -640,6 +640,15 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	return downDeps, nil
 }
 
+func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (LogsDeps, error) {
+	modelWebHost := provideWebHost()
+	modelWebPort := provideWebPort()
+	stdout := hud.ProvideStdout()
+	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
+	logsDeps := ProvideLogsDeps(modelWebHost, modelWebPort, incrementalPrinter)
+	return logsDeps, nil
+}
+
 func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, error) {
 	clientConfig := k8s.ProvideClientConfig()
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
@@ -722,6 +731,20 @@ func ProvideDownDeps(
 		tfl:      tfl,
 		dcClient: dcClient,
 		kClient:  kClient,
+	}
+}
+
+type LogsDeps struct {
+	host    model.WebHost
+	port    model.WebPort
+	printer *hud.IncrementalPrinter
+}
+
+func ProvideLogsDeps(host model.WebHost, port model.WebPort, p *hud.IncrementalPrinter) LogsDeps {
+	return LogsDeps{
+		host:    host,
+		port:    port,
+		printer: p,
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -39,13 +38,14 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.logs", nil)
 	defer a.Flush(time.Second)
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Logs")
-	defer span.Finish()
-
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	reader := server.ProvideWebsockerReader()
-	return reader.Listen(ctx)
+	logDeps, err := wireLogsDeps(ctx, a, "logs")
+	if err != nil {
+		return err
+	}
+
+	return server.StreamLogs(ctx, logDeps.host, logDeps.port, logDeps.printer)
 }
