@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -527,7 +528,7 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 	return starlark.None, nil
 }
 
-func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, ignores []string, onlys []string) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, ignores []string, onlys []string, dbDockerfilePath string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
 	ignoreContents := ignoresToDockerignoreContents(ignores)
@@ -558,6 +559,12 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, 
 		}
 
 		diFile := filepath.Join(path, ".dockerignore")
+		customDiFile := dbDockerfilePath + ".dockerignore"
+		_, err := os.Stat(customDiFile)
+		if !os.IsNotExist(err) {
+			diFile = customDiFile
+		}
+
 		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, diFile)
 
 		contents, err := ioutil.ReadFile(diFile)
@@ -609,5 +616,5 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 	case CustomBuild:
 		paths = append(paths, image.customDeps...)
 	}
-	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys)
+	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys, image.dbDockerfilePath)
 }

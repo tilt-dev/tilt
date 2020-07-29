@@ -46,6 +46,8 @@ import (
 
 const simpleDockerfile = "FROM golang:1.10"
 
+const simpleDockerignore = "build/"
+
 func TestNoTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -5233,6 +5235,10 @@ type k8sOpts interface{}
 
 func (f *fixture) dockerfile(path string) {
 	f.file(path, simpleDockerfile)
+}
+
+func (f *fixture) dockerignore(path string) {
+	f.file(path, simpleDockerignore)
 }
 
 func (f *fixture) yaml(path string, entities ...k8sOpts) {
