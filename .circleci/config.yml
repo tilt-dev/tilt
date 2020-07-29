@@ -11,7 +11,8 @@ jobs:
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 19.03.12
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - restore_cache:
@@ -90,7 +91,8 @@ jobs:
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 19.03.12
       - run: .circleci/integration_tests.sh
       - store_test_results:
           path: test-results
