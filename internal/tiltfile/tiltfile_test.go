@@ -379,10 +379,6 @@ k8s_yaml(yaml)
 }
 
 func TestKustomize(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO(nick): investigate")
-	}
-
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -411,10 +407,6 @@ func TestKustomizeError(t *testing.T) {
 }
 
 func TestKustomization(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO(nick): investigate")
-	}
-
 	f := newFixture(t)
 	defer f.TearDown()
 
