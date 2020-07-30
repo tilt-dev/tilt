@@ -23,7 +23,7 @@ type ManifestBuilder struct {
 	f    Fixture
 	name model.ManifestName
 
-	k8sNonWorkload   bool
+	k8sPodReadiness  model.PodReadinessMode
 	k8sYAML          string
 	k8sPodSelectors  []labels.Selector
 	k8sImageLocators []k8s.ImageLocator
@@ -38,10 +38,18 @@ type ManifestBuilder struct {
 }
 
 func New(f Fixture, name model.ManifestName) ManifestBuilder {
+	k8sPodReadiness := model.PodReadinessWait
+
+	// TODO(nick): A better solution would be to identify whether this
+	// is a workload based on the YAML.
+	if name == model.UnresourcedYAMLManifestName {
+		k8sPodReadiness = model.PodReadinessIgnore
+	}
+
 	return ManifestBuilder{
-		f:              f,
-		name:           name,
-		k8sNonWorkload: name == model.UnresourcedYAMLManifestName,
+		f:               f,
+		name:            name,
+		k8sPodReadiness: k8sPodReadiness,
 	}
 }
 
@@ -52,10 +60,8 @@ func (b ManifestBuilder) WithNamedJSONPathImageLocator(name, path string) Manife
 	return b
 }
 
-// TODO(nick): A better solution would be to identify whether this
-// is a workload based on the YAML.
-func (b ManifestBuilder) WithK8sNonWorkload() ManifestBuilder {
-	b.k8sNonWorkload = true
+func (b ManifestBuilder) WithK8sPodReadiness(pr model.PodReadinessMode) ManifestBuilder {
+	b.k8sPodReadiness = pr
 	return b
 }
 
@@ -142,7 +148,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 		for _, locator := range b.k8sImageLocators {
 			k8sTarget.ImageLocators = append(k8sTarget.ImageLocators, locator)
 		}
-		k8sTarget.NonWorkload = b.k8sNonWorkload
+		k8sTarget.PodReadinessMode = b.k8sPodReadiness
 
 		m = assembleK8s(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},

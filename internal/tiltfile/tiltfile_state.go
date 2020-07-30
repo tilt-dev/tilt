@@ -693,6 +693,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 		}
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
+			r.podReadinessMode = opts.podReadinessMode
 			r.portForwards = opts.portForwards
 			r.triggerMode = opts.triggerMode
 			r.autoInit = opts.autoInit
@@ -1106,13 +1107,36 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			ResourceDependencies: mds,
 		}
 
-		nonWorkload := false
-		if r.manuallyGrouped {
-			nonWorkload = len(r.extraPodSelectors) == 0 && len(r.dependencyIDs) == 0
+		podReadinessMode := r.podReadinessMode
+		if podReadinessMode == model.PodReadinessNone {
+			// Auto-infer the readiness mode
+			//
+			// CONVO:
+			// jazzdan: This still feels overloaded to me
+			// nicks: i think whenever we define a new CRD, we need to know:
+
+			// how to find the images in it
+			// how to find any pods it deploys (if they can't be found by owner references)
+			// if it should not expect pods at all (e.g., PostgresVersion)
+			// if it should wait for the pods to be ready before building the next resource (e.g., servers)
+			// if it should wait for the pods to be complete before building the next resource (e.g., jobs)
+			// and it's complicated a bit by the fact that there are both normal CRDs where the image shows up in the same place each time, and more meta CRDs (like HelmRelease) where it might appear in different places
+			//
+			// feels like wer're still doing this very ad-hoc rather than holistically
+			podReadinessMode = model.PodReadinessWait
+
+			// If the resource was
+			// 1) manually grouped (i.e., we didn't find any images in it)
+			// 2) doesn't have pod selectors, and
+			// 3) doesn't depend on images
+			// assume that it will never create pods.
+			if r.manuallyGrouped && len(r.extraPodSelectors) == 0 && len(r.dependencyIDs) == 0 {
+				podReadinessMode = model.PodReadinessIgnore
+			}
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
-			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, nonWorkload, locators)
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, podReadinessMode, locators)
 		if err != nil {
 			return nil, err
 		}

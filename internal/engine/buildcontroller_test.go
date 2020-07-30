@@ -1378,7 +1378,7 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 		Build()
 	k8s1 := manifestbuilder.New(f, "k8s1").
 		WithK8sYAML(testyaml.SanchoYAML).
-		WithK8sNonWorkload().
+		WithK8sPodReadiness(model.PodReadinessIgnore).
 		Build()
 	f.Start([]model.Manifest{local1, k8s1})
 

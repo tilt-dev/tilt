@@ -89,8 +89,8 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 	defer f.TearDown()
 
 	local1 := f.upsertLocalManifest("local1", withResourceDeps("k8s1"))
-	k8s1 := f.upsertK8sManifest("k8s1", withK8sNonWorkload())
-	k8s2 := f.upsertK8sManifest("k8s2", withK8sNonWorkload())
+	k8s1 := f.upsertK8sManifest("k8s1", withK8sPodReadiness(model.PodReadinessIgnore))
+	k8s2 := f.upsertK8sManifest("k8s2", withK8sPodReadiness(model.PodReadinessIgnore))
 
 	f.assertNextTargetToBuild("k8s1")
 
@@ -98,7 +98,10 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 		StartTime:  time.Now(),
 		FinishTime: time.Now(),
 	})
-	k8s1.State.RuntimeState = store.K8sRuntimeState{NonWorkload: true, HasEverDeployedSuccessfully: true}
+	k8s1.State.RuntimeState = store.K8sRuntimeState{
+		PodReadinessMode:            model.PodReadinessIgnore,
+		HasEverDeployedSuccessfully: true,
+	}
 
 	f.assertNextTargetToBuild("local1")
 	local1.State.AddCompletedBuild(model.BuildRecord{
@@ -260,8 +263,8 @@ func withResourceDeps(deps ...string) manifestOption {
 		return m.WithResourceDeps(deps...)
 	})
 }
-func withK8sNonWorkload() manifestOption {
+func withK8sPodReadiness(pr model.PodReadinessMode) manifestOption {
 	return manifestOption(func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
-		return m.WithK8sNonWorkload()
+		return m.WithK8sPodReadiness(pr)
 	})
 }

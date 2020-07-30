@@ -756,7 +756,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		runStatus = mt.State.RuntimeState.RuntimeStatus()
 	}
 
-	if mt.Manifest.NonWorkloadManifest() {
+	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
 		return view.YAMLResourceInfo{
 			K8sDisplayNames: mt.Manifest.K8sTarget().DisplayNames,
 		}
