@@ -58,7 +58,7 @@ func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runti
 	}
 
 	if mode == UpdateModeSynclet {
-		return "", fmt.Errorf("update mode %q has been deprecated; please use update mode %q instead. "+
+		return "", fmt.Errorf("update mode %q has been removed; please use update mode %q instead. "+
 			"If this breaks your workflow, contact us: https://tilt.dev/contact", flag, UpdateModeKubectlExec)
 	}
 
