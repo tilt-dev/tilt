@@ -157,7 +157,7 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
 	defer func() {
 		err := w.Close()
 		if err != nil {
-			logger.Get(ctx).Verbosef("error closing websocket: %v", err)
+			logger.Get(ctx).Verbosef("error closing websocket writer: %v", err)
 		}
 	}()
 

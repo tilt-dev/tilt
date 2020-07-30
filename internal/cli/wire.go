@@ -260,3 +260,14 @@ func ProvideDownDeps(
 func provideClock() func() time.Time {
 	return time.Now
 }
+
+type DumpImageDeployRefDeps struct {
+	DockerBuilder build.DockerBuilder
+	DockerClient  docker.Client
+}
+
+func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, error) {
+	wire.Build(BaseWireSet,
+		wire.Struct(new(DumpImageDeployRefDeps), "*"))
+	return DumpImageDeployRefDeps{}, nil
+}

@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
@@ -180,7 +183,9 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		name = "chart"
 	}
 
-	if version == helmV3 {
+	if version == helmV3_1andAbove {
+		cmd = []string{"helm", "template", name, localPath, "--include-crds"}
+	} else if version == helmV3_0 {
 		cmd = []string{"helm", "template", name, localPath}
 	} else {
 		cmd = []string{"helm", "template", localPath, "--name", name}
@@ -214,6 +219,16 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	yaml := filterHelmTestYAML(string(stdout))
 
+	if version == helmV3_0 {
+		// Helm v3.0 has a bug where it doesn't include CRDs in the template output
+		// https://github.com/tilt-dev/tilt/issues/3605
+		crds, err := getHelmCRDs(localPath)
+		if err != nil {
+			return nil, err
+		}
+		yaml = strings.Join(append([]string{yaml}, crds...), "\n---\n")
+	}
+
 	if namespace != "" {
 		// helm template --namespace doesn't inject the namespace, nor provide
 		// YAML that defines the namespace, so we have to do both ourselves :\
@@ -234,4 +249,39 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 
 	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("helm: %s", localPath)), nil
+}
+
+// NOTE(nick): This isn't perfect. For example, it doesn't handle chart deps
+// properly. When possible, prefer Helm 3.1's --include-crds
+func getHelmCRDs(path string) ([]string, error) {
+	crdPath := filepath.Join(path, "crds")
+	result := []string{}
+	err := filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		isYAML := info != nil && info.Mode().IsRegular() && hasYAMLExtension(path)
+		if !isYAML {
+			return nil
+		}
+		contents, err := ioutil.ReadFile(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		result = append(result, string(contents))
+		return nil
+	})
+
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	return result, nil
+}
+
+func hasYAMLExtension(fname string) bool {
+	ext := filepath.Ext(fname)
+	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml")
 }

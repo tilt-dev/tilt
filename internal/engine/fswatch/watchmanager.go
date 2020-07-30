@@ -265,7 +265,16 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			if !ok {
 				return
 			}
-			if err.Error() == fsnotify.ErrEventOverflow.Error() {
+			if watch.IsWindowsShortReadError(err) {
+				st.Dispatch(store.NewErrorAction(fmt.Errorf("Windows I/O overflow.\n"+
+					"You may be able to fix this by setting the env var %s.\n"+
+					"Current buffer size: %d\n"+
+					"More details: https://github.com/tilt-dev/tilt/issues/3556\n"+
+					"Caused by: %v",
+					watch.WindowsBufferSizeEnvVar,
+					watch.DesiredWindowsBufferSize(),
+					err)))
+			} else if err.Error() == fsnotify.ErrEventOverflow.Error() {
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err)))
 			} else {
 				st.Dispatch(store.NewErrorAction(err))
@@ -274,6 +283,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			return
 
 		case fsEvents, ok := <-eventsCh:
+
 			if !ok {
 				return
 			}

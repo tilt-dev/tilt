@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -35,6 +36,8 @@ type dockerImage struct {
 	targetStage      string    // optional: if specified, we build a particular target in the dockerfile
 	network          string
 	extraTags        []string // Extra tags added at build-time.
+	cacheFrom        []string
+	pullParent       bool
 
 	// Overrides the container args. Used as an escape hatch in case people want the old entrypoint behavior.
 	// See discussion here:
@@ -95,8 +98,8 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		onlyVal,
 		networkVal,
 		entrypoint starlark.Value
-	var ssh, secret, extraTags value.StringOrStringList
-	var matchInEnvVars bool
+	var ssh, secret, extraTags, cacheFrom value.StringOrStringList
+	var matchInEnvVars, pullParent bool
 	var containerArgsVal starlark.Sequence
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -116,6 +119,8 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"secret?", &secret,
 		"network?", &networkVal,
 		"extra_tag?", &extraTags,
+		"cache_from?", &cacheFrom,
+		"pull?", &pullParent,
 	); err != nil {
 		return nil, err
 	}
@@ -238,6 +243,8 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		targetStage:      targetStage,
 		network:          network,
 		extraTags:        extraTags.Values,
+		cacheFrom:        cacheFrom.Values,
+		pullParent:       pullParent,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -521,7 +528,7 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 	return starlark.None, nil
 }
 
-func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, ignores []string, onlys []string) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, ignores []string, onlys []string, dbDockerfilePath string) []model.Dockerignore {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
 	ignoreContents := ignoresToDockerignoreContents(ignores)
@@ -552,6 +559,12 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, 
 		}
 
 		diFile := filepath.Join(path, ".dockerignore")
+		customDiFile := dbDockerfilePath + ".dockerignore"
+		_, err := os.Stat(customDiFile)
+		if !os.IsNotExist(err) {
+			diFile = customDiFile
+		}
+
 		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, diFile)
 
 		contents, err := ioutil.ReadFile(diFile)
@@ -603,5 +616,5 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Docker
 	case CustomBuild:
 		paths = append(paths, image.customDeps...)
 	}
-	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys)
+	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys, image.dbDockerfilePath)
 }

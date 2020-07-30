@@ -39,7 +39,7 @@ var DeployerBaseWireSet = wire.NewSet(
 	// BuildOrder
 	NewLocalTargetBuildAndDeployer,
 	NewImageBuildAndDeployer,
-	containerupdate.NewDockerContainerUpdater,
+	containerupdate.NewDockerUpdater,
 	containerupdate.NewSyncletUpdater,
 	containerupdate.NewExecUpdater,
 	NewLiveUpdateBuildAndDeployer,
