@@ -85,64 +85,6 @@ func TestGKEDeploy(t *testing.T) {
 	}
 }
 
-func TestGKEDeployWithSynclet(t *testing.T) {
-	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
-	defer f.TearDown()
-
-	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.docker.BuildCount != 1 {
-		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
-	}
-
-	if f.docker.PushCount != 1 {
-		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
-	}
-
-	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
-		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
-	}
-
-	if !strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should deploy the synclet when updateMode=Synclet specified: %s", f.k8s.Yaml)
-	}
-}
-
-func TestNoSyncletDeployIfNoLiveUpdate(t *testing.T) {
-	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
-	defer f.TearDown()
-
-	manifest := NewSanchoDockerBuildManifest(f)
-	targets := buildTargets(manifest)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if f.docker.BuildCount != 1 {
-		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
-	}
-
-	if f.docker.PushCount != 1 {
-		t.Errorf("Expected 1 push to docker, actual: %d", f.docker.PushCount)
-	}
-
-	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
-	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
-		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
-	}
-
-	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should not deploy the synclet if manifest has no LiveUpdate instructions: %s", f.k8s.Yaml)
-	}
-}
-
 func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
@@ -170,33 +112,6 @@ func TestDockerForMacDeploy(t *testing.T) {
 	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
 		t.Errorf("Should not deploy the synclet on docker-for-desktop: %s", f.k8s.Yaml)
 	}
-}
-
-func TestSyncletNamespaceGKE(t *testing.T) {
-	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
-	defer f.TearDown()
-
-	assert.Equal(t, "", string(f.sCli.Namespace))
-	assert.Equal(t, "", string(f.k8s.LastPodQueryNamespace))
-
-	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
-	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cInfo := testContainerInfo
-	cInfo.Namespace = "sancho-ns"
-
-	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(result, []string{changed}, cInfo)
-	_, err = f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, "sancho-ns", string(f.sCli.Namespace))
 }
 
 func TestYamlManifestDeploy(t *testing.T) {
@@ -650,7 +565,7 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 }
 
 func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
-	f := newBDFixtureWithUpdateMode(t, k8s.EnvGKE, container.RuntimeDocker, buildcontrol.UpdateModeSynclet)
+	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
@@ -660,12 +575,18 @@ func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
 	}
 
 	// expect live update and NOT an image build
-	assert.Equal(t, 0, f.docker.BuildCount)
-	assert.Equal(t, 0, f.docker.PushCount)
+	require.Equal(t, 0, f.docker.BuildCount)
+	require.Equal(t, 0, f.docker.PushCount)
 	f.assertK8sUpsertCalled(false)
 
-	// one for each container update
-	assert.Equal(t, 2, f.sCli.UpdateContainerCount)
+	// (1 x sync / run / restart) x 2 containers
+	require.Equal(t, 2, f.docker.CopyCount)
+	require.Equal(t, 2, len(f.docker.ExecCalls))
+	require.Equal(t, 2, len(f.docker.RestartsByContainer))
+	for k, v := range f.docker.RestartsByContainer {
+		assert.Equal(t, 1, v, "# restarts for container %q", k)
+	}
+
 }
 
 func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
