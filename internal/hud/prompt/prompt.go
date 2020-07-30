@@ -144,8 +144,8 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 		_, _ = fmt.Fprintf(p.stdout, "(space) to open the browser\n")
 	}
 
-	_, _ = fmt.Fprintf(p.stdout, "(s) to stream logs (--hud=false)\n")
-	_, _ = fmt.Fprintf(p.stdout, "(h) to open terminal HUD (--hud=true)\n")
+	_, _ = fmt.Fprintf(p.stdout, "(s) to stream logs (--stream=true)\n")
+	_, _ = fmt.Fprintf(p.stdout, "(t) to open legacy terminal mode(--legacy=true)\n")
 	_, _ = fmt.Fprintf(p.stdout, "(ctrl-c) to exit\n")
 
 	p.printed = true
@@ -208,9 +208,9 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 					st.Dispatch(SwitchTerminalModeAction{Mode: store.TerminalModeStream})
 					msg.stopCh <- true
 
-				case 'h':
-					warningMsg := "We're removing the HUD key shortcut from the prompt.\n" +
-						"In future releases, open the HUD with: tilt up --hud=true"
+				case 't':
+					warningMsg := "We're removing the legacy terminal mode key shortcut from the prompt.\n" +
+						"In future releases, open the legacy terminal mode with: tilt up --legacy=true"
 					_, _ = fmt.Fprintf(p.stdout, "%s\n", warningMsg)
 
 					time.Sleep(p.hudDelay)

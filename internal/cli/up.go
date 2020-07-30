@@ -46,10 +46,13 @@ type upCmd struct {
 	fileName             string
 	outputSnapshotOnExit string
 
-	hud bool
-	// whether hud was explicitly set or just got the default value
-	hudFlagExplicitlySet bool
-
+	hud    bool
+	legacy bool
+	stream bool
+	// whether hud/legacy/stream flags were explicitly set or just got the default value
+	hudFlagExplicitlySet    bool
+	legacyFlagExplicitlySet bool
+	streamFlagExplicitlySet bool
 	//whether watch was explicitly set in the cmdline
 	watchFlagExplicitlySet bool
 }
@@ -84,6 +87,8 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
+	cmd.Flags().BoolVar(&c.legacy, "legacy", true, "If true, tilt will open in legacy terminal mode.")
+	cmd.Flags().BoolVar(&c.stream, "stream", true, "If true, tilt will stream logs in the terminal.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	addStartServerFlags(cmd)
 	addDevServerFlags(cmd)
@@ -95,6 +100,8 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
 		c.watchFlagExplicitlySet = cmd.Flag("watch").Changed
+		c.legacyFlagExplicitlySet = cmd.Flag("legacy").Changed
+		c.streamFlagExplicitlySet = cmd.Flag("stream").Changed
 	}
 
 	return cmd
@@ -108,11 +115,19 @@ func (c *upCmd) initialTermMode(isTerminal bool) store.TerminalMode {
 	if c.hudFlagExplicitlySet {
 		if c.hud {
 			return store.TerminalModeHUD
-		} else {
-			return store.TerminalModeStream
 		}
 	}
 
+	if c.legacyFlagExplicitlySet {
+		if c.legacy {
+			return store.TerminalModeHUD
+		}
+	}
+	if c.streamFlagExplicitlySet {
+		if c.stream {
+			return store.TerminalModeStream
+		}
+	}
 	return store.TerminalModePrompt
 }
 
