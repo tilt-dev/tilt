@@ -257,6 +257,23 @@ func ProvideDownDeps(
 	}
 }
 
+func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (LogsDeps, error) {
+	wire.Build(BaseWireSet, ProvideLogsDeps)
+	return LogsDeps{}, nil
+}
+
+type LogsDeps struct {
+	url     model.WebURL
+	printer *hud.IncrementalPrinter
+}
+
+func ProvideLogsDeps(u model.WebURL, p *hud.IncrementalPrinter) LogsDeps {
+	return LogsDeps{
+		url:     u,
+		printer: p,
+	}
+}
+
 func provideClock() func() time.Time {
 	return time.Now
 }
