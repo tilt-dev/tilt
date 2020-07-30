@@ -58,11 +58,8 @@ func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runti
 	}
 
 	if mode == UpdateModeSynclet {
-		if runtime != container.RuntimeDocker {
-			return "", fmt.Errorf("update mode %q is only valid with Docker container runtime (and will NOT work with"+
-				"containerd, cri-o, etc.)", flag)
-
-		}
+		return "", fmt.Errorf("update mode %q has been removed; please use update mode %q instead. "+
+			"If this breaks your workflow, contact us: https://tilt.dev/contact", flag, UpdateModeKubectlExec)
 	}
 
 	return mode, nil
