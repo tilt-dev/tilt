@@ -13,9 +13,7 @@ import (
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
-const fooSpanID = "spanIDFoo"
-
-var messages = []string{"alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf"}
+var defaultMessages = []string{"alpha", "bravo", "charlie", "delta"}
 
 type expectedLine struct {
 	prefix  string // ~manifestName (leave blank for "global" / unprefixed)
@@ -24,25 +22,40 @@ type expectedLine struct {
 
 func TestLogStreamerPrintsLogs(t *testing.T) {
 	f := newFixture(t)
-	view := newViewWithLogs(0)
-	err := f.ls.Handle(view)
-	require.NoError(t, err)
+	view := f.newViewWithLogsForManifest(defaultMessages, "foo")
+	f.handle(view)
 
-	expected := f.expectedLinesWithPrefix(messages, "foo")
+	expected := f.expectedLinesWithPrefix(defaultMessages, "foo")
 
 	f.assertExpectedLogLines(expected)
 }
 
-func TestLogStreamerPrintsStartingAtPreviousCheckpoint(t *testing.T) {
+func TestLogStreamerPrefixing(t *testing.T) {
+	f := newFixture(t)
+	manifestNames := []string{"foo", "", "foo", "bar"}
+	view := f.newViewWithLogsForManifests(defaultMessages, manifestNames)
+	f.handle(view)
 
-}
+	expected := f.expectedLinesWithPrefixes(defaultMessages, manifestNames)
 
-func TestLogStreamerPrintsNothingIfServerSentNoNewLogs(t *testing.T) {
-
+	f.assertExpectedLogLines(expected)
 }
 
 func TestLogStreamerDoesNotPrintResentLogs(t *testing.T) {
+	f := newFixture(t)
+	view := f.newViewWithLogsForManifest(defaultMessages, "foo")
+	f.handle(view)
 
+	view.LogList.Segments = append(view.LogList.Segments, &proto_webview.LogSegment{
+		SpanId: spanID("foo"),
+		Text:   "echo",
+	})
+	view.LogList.ToCheckpoint = int32(len(view.LogList.Segments))
+	f.handle(view)
+
+	expected := f.expectedLinesWithPrefix(append(defaultMessages, "echo"), "foo")
+
+	f.assertExpectedLogLines(expected)
 }
 
 type fixture struct {
@@ -62,25 +75,43 @@ func newFixture(t *testing.T) *fixture {
 		ls:         NewLogStreamer(printer),
 	}
 }
+func (f *fixture) handle(view proto_webview.View) {
+	err := f.ls.Handle(view)
+	require.NoError(f.t, err)
+}
 
-func newViewWithLogs(from int32) proto_webview.View {
+func (f *fixture) newViewWithLogsForManifest(messages []string, manifestName string) proto_webview.View {
+	dummyManifestNames := make([]string, len(messages))
+	for i := 0; i < len(messages); i++ {
+		dummyManifestNames[i] = manifestName
+	}
+	return f.newViewWithLogsForManifests(messages, dummyManifestNames)
+}
+
+func (f *fixture) newViewWithLogsForManifests(messages []string, manifestNames []string) proto_webview.View {
+	if len(messages) != len(manifestNames) {
+		f.t.Fatalf("Need same number of prefixes and manifestNames (got %d and %d)",
+			len(messages), len(manifestNames))
+	}
+
 	segs := make([]*proto_webview.LogSegment, len(messages))
 	for i, msg := range messages {
 		segs[i] = &proto_webview.LogSegment{
-			SpanId: fooSpanID, // TODO
+			SpanId: spanID(manifestNames[i]),
 			Text:   msg + "\n",
 			Level:  0, // TODO
 		}
 	}
-	fooSpan := proto_webview.LogSpan{ManifestName: "foo"}
+	spans := make(map[string]*proto_webview.LogSpan)
+	for _, mn := range manifestNames {
+		spans[spanID(mn)] = &proto_webview.LogSpan{ManifestName: mn}
+	}
 
 	return proto_webview.View{
 		LogList: &proto_webview.LogList{ // TODO: be better
-			Spans: map[string]*proto_webview.LogSpan{
-				fooSpanID: &fooSpan,
-			},
+			Spans:          spans,
 			Segments:       segs,
-			FromCheckpoint: from,
+			FromCheckpoint: 0,
 			ToCheckpoint:   int32(len(segs)),
 		},
 	}
@@ -96,13 +127,17 @@ func (f *fixture) assertExpectedLogLines(expectedLines []expectedLine) {
 	}
 
 	for i, ln := range outLines {
+		lnTrimmed := strings.TrimSpace(ln)
 		expected := expectedLines[i]
-		assert.True(f.t, strings.Contains(ln, expected.message),
+		assert.True(f.t, strings.Contains(lnTrimmed, expected.message),
 			"expect message %q in line: %q", expected.message, ln)
 		if expected.prefix != "" {
-			lnTrimmed := strings.TrimSpace(ln)
 			assert.True(f.t, strings.HasPrefix(lnTrimmed, expected.prefix),
 				"expect prefix %q in line: %q", expected.prefix, lnTrimmed)
+		} else {
+			// Expect no prefix
+			assert.False(f.t, strings.Contains(lnTrimmed, "|"),
+				"expect no prefix but found \"|\" in line: %q", lnTrimmed)
 		}
 	}
 
@@ -121,7 +156,7 @@ func (f *fixture) expectedLinesWithPrefix(messages []string, prefix string) []ex
 
 func (f *fixture) expectedLinesWithPrefixes(messages []string, prefixes []string) []expectedLine {
 	if len(prefixes) != len(messages) {
-		f.t.Fatalf("Must pass same number of prefixes and messages (got %d and %d)",
+		f.t.Fatalf("Need same number of prefixes and messages (got %d and %d)",
 			len(prefixes), len(messages))
 	}
 	expected := make([]expectedLine, len(messages))
@@ -129,4 +164,8 @@ func (f *fixture) expectedLinesWithPrefixes(messages []string, prefixes []string
 		expected[i] = expectedLine{prefixes[i], msg}
 	}
 	return expected
+}
+
+func spanID(mn string) string {
+	return fmt.Sprintf("spanID-%s", mn)
 }
