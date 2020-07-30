@@ -643,9 +643,13 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (LogsDeps, error) {
 	modelWebHost := provideWebHost()
 	modelWebPort := provideWebPort()
+	webURL, err := provideWebURL(modelWebHost, modelWebPort)
+	if err != nil {
+		return LogsDeps{}, err
+	}
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	logsDeps := ProvideLogsDeps(modelWebHost, modelWebPort, incrementalPrinter)
+	logsDeps := ProvideLogsDeps(webURL, incrementalPrinter)
 	return logsDeps, nil
 }
 
@@ -735,15 +739,13 @@ func ProvideDownDeps(
 }
 
 type LogsDeps struct {
-	host    model.WebHost
-	port    model.WebPort
+	url     model.WebURL
 	printer *hud.IncrementalPrinter
 }
 
-func ProvideLogsDeps(host model.WebHost, port model.WebPort, p *hud.IncrementalPrinter) LogsDeps {
+func ProvideLogsDeps(u model.WebURL, p *hud.IncrementalPrinter) LogsDeps {
 	return LogsDeps{
-		host:    host,
-		port:    port,
+		url:     u,
 		printer: p,
 	}
 }

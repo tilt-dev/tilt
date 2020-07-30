@@ -2,9 +2,7 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"net/url"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/websocket"
@@ -90,10 +88,10 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 
 	return nil
 }
-func StreamLogs(ctx context.Context, host model.WebHost, port model.WebPort, printer *hud.IncrementalPrinter) error {
-	baseUrl := fmt.Sprintf("%s:%d", string(host), int(port))
-	url := url.URL{Scheme: "ws", Host: baseUrl, Path: "/ws/view"}
-	logger.Get(ctx).Debugf("connecting to %s", url)
+func StreamLogs(ctx context.Context, url model.WebURL, printer *hud.IncrementalPrinter) error {
+	url.Scheme = "ws"
+	url.Path = "/ws/view"
+	logger.Get(ctx).Debugf("connecting to %s", url.String())
 
 	conn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
 	if err != nil {

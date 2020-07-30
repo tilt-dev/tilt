@@ -263,15 +263,13 @@ func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 }
 
 type LogsDeps struct {
-	host    model.WebHost
-	port    model.WebPort
+	url     model.WebURL
 	printer *hud.IncrementalPrinter
 }
 
-func ProvideLogsDeps(host model.WebHost, port model.WebPort, p *hud.IncrementalPrinter) LogsDeps {
+func ProvideLogsDeps(u model.WebURL, p *hud.IncrementalPrinter) LogsDeps {
 	return LogsDeps{
-		host:    host,
-		port:    port,
+		url:     u,
 		printer: p,
 	}
 }
