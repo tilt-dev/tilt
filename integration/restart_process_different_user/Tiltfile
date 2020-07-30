@@ -15,11 +15,11 @@ default_registry(read_json('tilt_option.json', {})
 # 1) A SYNC step
 # 2) A RUN step that executes at build time (cp source.txt compiled.txt)
 # 3) Process restart (via `docker_build_with_restart`)
-docker_build_with_restart('sameimg', '.',
+docker_build_with_restart('rpdu', '.',
              entrypoint=['/src/main.sh'],
              live_update=[
                  sync('.', '/src'),
                  run('cp source.txt compiled.txt'),
              ])
-k8s_yaml('sameimg.yaml')
-k8s_resource('sameimg', port_forwards=['8100:8000', '8101:8001'])
+k8s_yaml('rpdu.yaml')
+k8s_resource('rpdu', port_forwards=['8100:8000', '8101:8001'])

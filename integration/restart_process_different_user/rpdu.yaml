@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sameimg
+  name: rpdu
   namespace: tilt-integration
   labels:
-    app: sameimg
+    app: rpdu
 spec:
   selector:
     matchLabels:
-      app: sameimg
+      app: rpdu
   template:
     metadata:
       labels:
-        app: sameimg
+        app: rpdu
     spec:
       containers:
       - name: c1
-        image: sameimg
+        image: rpdu
         command: ["/src/start.sh", "/src/main.sh"]
         args: ["8000"]
         ports:
@@ -25,7 +25,7 @@ spec:
           requests:
             cpu: "10m"
       - name: c2
-        image: sameimg
+        image: rpdu
         command: ["/src/start.sh", "/src/main.sh"]
         args: ["8001"]
         ports:
