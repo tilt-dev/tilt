@@ -18,7 +18,7 @@ func TestRestartProcessDifferentUser(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	firstPods := f.WaitForAllPodsReady(ctx, "app=sameimg")
+	firstPods := f.WaitForAllPodsReady(ctx, "app=rpdu")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -32,7 +32,7 @@ func TestRestartProcessDifferentUser(t *testing.T) {
 	f.CurlUntil(ctx, "http://localhost:8100", "🍄 Two-Up! 🍄")
 	f.CurlUntil(ctx, "http://localhost:8101", "🍄 Two-Up! 🍄")
 
-	secondPods := f.WaitForAllPodsReady(ctx, "app=sameimg")
+	secondPods := f.WaitForAllPodsReady(ctx, "app=rpdu")
 
 	// Assert that the pods were changed in-place, and not that we
 	// created new pods.
@@ -47,6 +47,6 @@ func TestRestartProcessDifferentUser(t *testing.T) {
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:8101", "🍄 Two-Up! 🍄")
 
-	replacedPods := f.WaitForAllPodsReady(ctx, "app=sameimg")
+	replacedPods := f.WaitForAllPodsReady(ctx, "app=rpdu")
 	assert.NotEqual(t, secondPods, replacedPods)
 }
