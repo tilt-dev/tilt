@@ -48,9 +48,6 @@ type upCmd struct {
 	hud bool
 	// whether hud was explicitly set or just got the default value
 	hudFlagExplicitlySet bool
-
-	//whether watch was explicitly set in the cmdline
-	watchFlagExplicitlySet bool
 }
 
 func (c *upCmd) register() *cobra.Command {
