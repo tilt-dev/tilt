@@ -3,7 +3,7 @@
 # Usage:
 #   iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.ps1')
 
-$version = "0.16.1"
+$version = "0.17.0"
 $url = "https://github.com/tilt-dev/tilt/releases/download/v" + $version + "/tilt." + $version + ".windows.x86_64.zip"
 $zip = "tilt-" + $version + ".zip"
 $extractDir = "tilt-" + $version
@@ -21,7 +21,7 @@ if ("true" -eq $useScoop) {
     scoop install tilt
     scoop update tilt
     Write-Output "Tilt installed with Scoop! Run 'tilt up' to start."
-    exit
+    return
 }
 
 Write-Output "Downloading $url"

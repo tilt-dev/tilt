@@ -46,6 +46,8 @@ import (
 
 const simpleDockerfile = "FROM golang:1.10"
 
+const simpleDockerignore = "build/"
+
 func TestNoTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -478,6 +480,34 @@ docker_build("gcr.io/foo", "foo", network='default')
 	f.load()
 	m := f.assertNextManifest("foo")
 	assert.Equal(t, "default", m.ImageTargets[0].BuildDetails.(model.DockerBuild).Network)
+}
+
+func TestDockerBuildPull(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", pull=True)
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.True(t, m.ImageTargets[0].BuildDetails.(model.DockerBuild).PullParent)
+}
+
+func TestDockerBuildCacheFrom(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build("gcr.io/foo", "foo", cache_from='gcr.io/foo')
+`)
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, []string{"gcr.io/foo"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).CacheFrom)
 }
 
 func TestDockerBuildExtraTagString(t *testing.T) {
@@ -1463,7 +1493,7 @@ func TestExtraPodSelectors(t *testing.T) {
 
 	f.assertNextManifest("foo",
 		extraPodSelectors(labels.Set{"foo": "bar", "baz": "qux"}, labels.Set{"quux": "corge"}),
-		nonWorkload(false))
+		podReadiness(model.PodReadinessWait))
 }
 
 func TestExtraPodSelectorsNotList(t *testing.T) {
@@ -1482,7 +1512,7 @@ func TestExtraPodSelectorsDict(t *testing.T) {
 	f.load()
 	f.assertNextManifest("foo",
 		extraPodSelectors(labels.Set{"foo": "bar"}),
-		nonWorkload(false))
+		podReadiness(model.PodReadinessWait))
 }
 
 func TestExtraPodSelectorsElementNotDict(t *testing.T) {
@@ -1507,6 +1537,102 @@ func TestExtraPodSelectorsValueNotString(t *testing.T) {
 
 	f.setupExtraPodSelectors("[{'hello': 54321}]")
 	f.loadErrString("values must be strings", "54321")
+}
+
+func TestPodReadinessDefaultDeployment(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		deployment("foo"),
+		podReadiness(model.PodReadinessWait),
+	)
+}
+
+func TestPodReadinessDefaultConfigMap(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("config.yaml", `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  foo: bar
+`)
+	f.file("Tiltfile", `
+k8s_yaml('config.yaml')
+k8s_resource(new_name='config', objects=['config'])
+`)
+
+	f.load("config")
+	f.assertNextManifest("config",
+		podReadiness(model.PodReadinessIgnore),
+	)
+}
+
+func TestPodReadinessOverrideDeployment(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', pod_readiness='ignore')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		deployment("foo"),
+		podReadiness(model.PodReadinessIgnore),
+	)
+}
+
+func TestPodReadinessOverrideConfigMap(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("config.yaml", `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  foo: "bar"
+`)
+	f.file("Tiltfile", `
+k8s_yaml('config.yaml')
+k8s_resource(new_name='config', objects=['config'], pod_readiness='wait')
+`)
+
+	f.load("config")
+	f.assertNextManifest("config",
+		podReadiness(model.PodReadinessWait),
+	)
+}
+
+func TestPodReadinessInvalid(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("config.yaml", `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  foo: bar
+`)
+	f.file("Tiltfile", `
+k8s_yaml('config.yaml')
+k8s_resource(new_name='config', objects=['config'], pod_readiness='w')
+`)
+
+	f.loadErrString("Invalid value. Allowed: {ignore, wait}. Got: w")
 }
 
 func TestDockerBuildMatchingTag(t *testing.T) {
@@ -2184,7 +2310,32 @@ docker_build('tilt.dev/frontend', '.')
 
 	f.load()
 	m := f.assertNextManifest("um",
-		nonWorkload(false))
+		podReadiness(model.PodReadinessWait))
+	assert.Equal(t, "tilt.dev/frontend",
+		m.ImageTargets[0].Refs.LocalRef().String())
+}
+
+func TestImageObjectJSONPathPodReadinessIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("um.yaml", `apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: um
+spec:
+  image:
+    repo: tilt.dev/frontend`)
+	f.dockerfile("Dockerfile")
+	f.file("Tiltfile", `
+k8s_yaml('um.yaml')
+k8s_kind(kind='UselessMachine', pod_readiness='ignore',
+         image_object={'json_path': '{.spec.image}', 'repo_field': 'repo', 'tag_field': 'tag'})
+docker_build('tilt.dev/frontend', '.')
+`)
+
+	f.load()
+	m := f.assertNextManifest("um",
+		podReadiness(model.PodReadinessIgnore))
 	assert.Equal(t, "tilt.dev/frontend",
 		m.ImageTargets[0].Refs.LocalRef().String())
 }
@@ -4636,7 +4787,8 @@ k8s_resource('foo', objects=['bar', 'baz:namespace:default'])
 
 	f.load()
 
-	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"), nonWorkload(false))
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"),
+		podReadiness(model.PodReadinessWait))
 	f.assertNoMoreManifests()
 }
 
@@ -5000,7 +5152,7 @@ k8s_resource(new_name='foo', objects=['bar', 'baz:namespace:default'])
 
 	f.load()
 
-	f.assertNextManifest("foo", k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"), nonWorkload(true))
+	f.assertNextManifest("foo", k8sObject("bar", "Secret"), k8sObject("baz", "Namespace"), podReadiness(model.PodReadinessIgnore))
 	f.assertNoMoreManifests()
 }
 
@@ -5197,6 +5349,10 @@ type k8sOpts interface{}
 
 func (f *fixture) dockerfile(path string) {
 	f.file(path, simpleDockerfile)
+}
+
+func (f *fixture) dockerignore(path string) {
+	f.file(path, simpleDockerignore)
 }
 
 func (f *fixture) yaml(path string, entities ...k8sOpts) {
@@ -5513,8 +5669,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
-		case nonWorkloadHelper:
-			assert.Equal(f.t, opt.nonWorkload, m.K8sTarget().NonWorkload)
+		case podReadinessHelper:
+			assert.Equal(f.t, opt.podReadiness, m.K8sTarget().PodReadinessMode)
 		case namespaceHelper:
 			yaml := m.K8sTarget().YAML
 			found := false
@@ -5752,12 +5908,12 @@ func deployment(name string, opts ...interface{}) deploymentHelper {
 	return r
 }
 
-type nonWorkloadHelper struct {
-	nonWorkload bool
+type podReadinessHelper struct {
+	podReadiness model.PodReadinessMode
 }
 
-func nonWorkload(nonWorkload bool) nonWorkloadHelper {
-	return nonWorkloadHelper{nonWorkload: nonWorkload}
+func podReadiness(podReadiness model.PodReadinessMode) podReadinessHelper {
+	return podReadinessHelper{podReadiness: podReadiness}
 }
 
 type serviceHelper struct {

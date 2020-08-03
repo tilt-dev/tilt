@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rpdu
+  namespace: tilt-integration
+  labels:
+    app: rpdu
+spec:
+  selector:
+    matchLabels:
+      app: rpdu
+  template:
+    metadata:
+      labels:
+        app: rpdu
+    spec:
+      containers:
+      - name: c1
+        image: rpdu
+        command: ["/src/start.sh", "/src/main.sh"]
+        args: ["8000"]
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "10m"
+      - name: c2
+        image: rpdu
+        command: ["/src/start.sh", "/src/main.sh"]
+        args: ["8001"]
+        ports:
+          - containerPort: 8001
+        resources:
+          requests:
+            cpu: "10m"

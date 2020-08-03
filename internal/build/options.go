@@ -19,6 +19,8 @@ func Options(archive io.Reader, db model.DockerBuild) docker.BuildOptions {
 		Network:     db.Network,
 		ExtraTags:   db.ExtraTags,
 		SecretSpecs: db.SecretSpecs,
+		CacheFrom:   db.CacheFrom,
+		PullParent:  db.PullParent,
 	}
 }
 

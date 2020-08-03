@@ -555,7 +555,7 @@ github.com/theupdateframework/notary/tuf/validation
 # github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 ## explicit
 github.com/tilt-dev/fsevents
-# github.com/tilt-dev/fsnotify v1.4.8-0.20200507235935-249ce517a564
+# github.com/tilt-dev/fsnotify v1.4.8-0.20200727200623-991e307aab7f
 ## explicit
 github.com/tilt-dev/fsnotify
 # github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7

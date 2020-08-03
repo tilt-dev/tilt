@@ -11,11 +11,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sync"
 	"syscall"
 	"unsafe"
 )
+
+const defaultBufSize = 4096
 
 // Watcher watches a set of files, delivering events to a channel.
 type Watcher struct {
@@ -28,6 +31,7 @@ type Watcher struct {
 	input     chan *input    // Inputs to the reader are sent on this channel
 	quit      chan chan<- error
 	recursive bool
+	bufSize   int
 }
 
 // NewWatcher establishes a new watcher with the underlying OS and begins waiting for events.
@@ -44,9 +48,16 @@ func NewWatcher() (*Watcher, error) {
 		Errors:    make(chan error),
 		quit:      make(chan chan<- error, 1),
 		recursive: false,
+		bufSize:   defaultBufSize,
 	}
 	go w.readEvents()
 	return w, nil
+}
+
+func (w *Watcher) SetBufferSize(bufSize int) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.bufSize = bufSize
 }
 
 // Recursively watches directories if this file system supports that.
@@ -181,7 +192,7 @@ type watch struct {
 	mask   uint64            // Directory itself is being watched with these notify flags
 	names  map[string]uint64 // Map of names being watched and their notify flags
 	rename string            // Remembers the old name while renaming a file
-	buf    [4096]byte
+	buf    []byte            // An array to pass to the windows API. Must only be allocated once.
 }
 
 type indexMap map[uint64]*watch
@@ -264,6 +275,7 @@ func (w *Watcher) addWatch(pathname string, flags uint64) error {
 	}
 	w.mu.Lock()
 	watchEntry := w.watches.get(ino)
+	bufSize := w.bufSize
 	w.mu.Unlock()
 	if watchEntry == nil {
 		if _, e := syscall.CreateIoCompletionPort(ino.handle, w.port, 0, 0); e != nil {
@@ -274,6 +286,7 @@ func (w *Watcher) addWatch(pathname string, flags uint64) error {
 			ino:   ino,
 			path:  dir,
 			names: make(map[string]uint64),
+			buf:   make([]byte, bufSize),
 		}
 		w.mu.Lock()
 		w.watches.set(ino, watchEntry)
@@ -360,8 +373,11 @@ func (w *Watcher) startRead(watch *watch) error {
 		w.mu.Unlock()
 		return nil
 	}
-	e := syscall.ReadDirectoryChanges(watch.ino.handle, &watch.buf[0],
-		uint32(unsafe.Sizeof(watch.buf)), w.recursive, mask, nil, &watch.ov, 0)
+
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&watch.buf))
+
+	e := syscall.ReadDirectoryChanges(watch.ino.handle, (*byte)(unsafe.Pointer(hdr.Data)),
+		uint32(hdr.Len), w.recursive, mask, nil, &watch.ov, 0)
 	if e != nil {
 		err := os.NewSyscallError("ReadDirectoryChanges", e)
 		if e == syscall.ERROR_ACCESS_DENIED && watch.mask&provisional == 0 {

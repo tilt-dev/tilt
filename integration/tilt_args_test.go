@@ -18,7 +18,7 @@ func TestTiltArgs(t *testing.T) {
 
 	f.TiltWatch()
 
-	err := f.logs.WaitUntilContains("foo run", time.Second)
+	err := f.logs.WaitUntilContains("foo run", 5*time.Second)
 	require.NoError(t, err)
 
 	f.logs.Reset()

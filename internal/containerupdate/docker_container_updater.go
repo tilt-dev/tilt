@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/build"
@@ -16,18 +17,21 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type DockerContainerUpdater struct {
+type DockerUpdater struct {
 	dCli docker.Client
 }
 
-var _ ContainerUpdater = &DockerContainerUpdater{}
+var _ ContainerUpdater = &DockerUpdater{}
 
-func NewDockerContainerUpdater(dCli docker.Client) *DockerContainerUpdater {
-	return &DockerContainerUpdater{dCli: dCli}
+func NewDockerUpdater(dCli docker.Client) *DockerUpdater {
+	return &DockerUpdater{dCli: dCli}
 }
 
-func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
+func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerUpdater-UpdateContainer")
+	defer span.Finish()
+
 	l := logger.Get(ctx)
 
 	err := cu.rmPathsFromContainer(ctx, cInfo.ContainerID, filesToDelete)
@@ -64,7 +68,7 @@ func (cu *DockerContainerUpdater) UpdateContainer(ctx context.Context, cInfo sto
 	return nil
 }
 
-func (cu *DockerContainerUpdater) rmPathsFromContainer(ctx context.Context, cID container.ID, paths []string) error {
+func (cu *DockerUpdater) rmPathsFromContainer(ctx context.Context, cID container.ID, paths []string) error {
 	if len(paths) == 0 {
 		return nil
 	}

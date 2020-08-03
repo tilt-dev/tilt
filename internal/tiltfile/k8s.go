@@ -48,6 +48,8 @@ type k8sResource struct {
 	// labels for pods that we should watch and associate with this resource
 	extraPodSelectors []labels.Selector
 
+	podReadinessMode model.PodReadinessMode
+
 	dependencyIDs []model.TargetID
 
 	triggerMode triggerMode
@@ -75,6 +77,7 @@ type k8sResourceOptions struct {
 	resourceDeps      []string
 	objects           []string
 	manuallyGrouped   bool
+	podReadinessMode  model.PodReadinessMode
 }
 
 func (r *k8sResource) addRefSelector(selector container.RefSelector) {
@@ -328,8 +331,8 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 
 func (s *tiltfileState) k8sImageLocatorsList() []k8s.ImageLocator {
 	locators := []k8s.ImageLocator{}
-	for _, list := range s.k8sImageLocators {
-		locators = append(locators, list...)
+	for _, info := range s.k8sKinds {
+		locators = append(locators, info.ImageLocators...)
 	}
 	return locators
 }
@@ -401,6 +404,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
 	var objectsVal starlark.Sequence
+	var podReadinessMode tiltfile_k8s.PodReadinessMode
 	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -412,6 +416,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		"resource_deps?", &resourceDepsVal,
 		"objects?", &objectsVal,
 		"auto_init?", &autoInit,
+		"pod_readiness?", &podReadinessMode,
 	); err != nil {
 		return nil, err
 	}
@@ -456,6 +461,8 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, fmt.Errorf("k8s_resource has only non-workload objects but doesn't provide a new_name")
 	}
 
+	// NOTE(nick): right now this overwrites all previously set options on this
+	// resource. Is it worthwhile to make this additive?
 	s.k8sResourceOptions[resourceName] = k8sResourceOptions{
 		newName:           newName,
 		portForwards:      portForwards,
@@ -466,6 +473,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		resourceDeps:      resourceDeps,
 		objects:           objects,
 		manuallyGrouped:   manuallyGrouped,
+		podReadinessMode:  podReadinessMode.Value,
 	}
 
 	return starlark.None, nil
@@ -561,7 +569,12 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, err
 	}
 
-	s.k8sImageLocators[k] = paths
+	kindInfo, ok := s.k8sKinds[k]
+	if !ok {
+		kindInfo = &tiltfile_k8s.KindInfo{}
+		s.k8sKinds[k] = kindInfo
+	}
+	kindInfo.ImageLocators = paths
 
 	return starlark.None, nil
 }
@@ -575,11 +588,13 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	var apiVersion, kind string
 	var jpLocators tiltfile_k8s.JSONPathImageLocatorListSpec
 	var jpObjectLocator tiltfile_k8s.JSONPathImageObjectLocatorSpec
+	var podReadiness tiltfile_k8s.PodReadinessMode
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"kind", &kind,
 		"image_json_path?", &jpLocators,
 		"api_version?", &apiVersion,
 		"image_object?", &jpObjectLocator,
+		"pod_readiness?", &podReadiness,
 	); err != nil {
 		return nil, err
 	}
@@ -593,21 +608,29 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 		return nil, fmt.Errorf("Cannot specify both image_json_path and image_object")
 	}
 
+	kindInfo, ok := s.k8sKinds[k]
+	if !ok {
+		kindInfo = &tiltfile_k8s.KindInfo{}
+		s.k8sKinds[k] = kindInfo
+	}
+
 	if !jpLocators.IsEmpty() {
 		locators, err := jpLocators.ToImageLocators(k)
 		if err != nil {
 			return nil, err
 		}
 
-		s.k8sImageLocators[k] = locators
+		kindInfo.ImageLocators = locators
 	} else if !jpObjectLocator.IsEmpty() {
 		locator, err := jpObjectLocator.ToImageLocator(k)
 		if err != nil {
 			return nil, err
 		}
-		s.k8sImageLocators[k] = []k8s.ImageLocator{locator}
-	} else {
-		s.workloadTypes = append(s.workloadTypes, k)
+		kindInfo.ImageLocators = []k8s.ImageLocator{locator}
+	}
+
+	if podReadiness.Value != "" {
+		kindInfo.PodReadinessMode = podReadiness.Value
 	}
 
 	return starlark.None, nil

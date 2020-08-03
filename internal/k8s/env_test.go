@@ -66,6 +66,11 @@ func TestProvideEnv(t *testing.T) {
 			Cluster: "microk8s-cluster-dev-cluster-1",
 		},
 	}
+	krucibleContexts := map[string]*api.Context{
+		"krucible-c-74701fe1a05596b3": &api.Context{
+			Cluster: "krucible-c-74701fe1a05596b3",
+		},
+	}
 	crcContexts := map[string]*api.Context{
 		"api-crc-testing": &api.Context{
 			Cluster: "api-crc-testing",
@@ -111,6 +116,7 @@ func TestProvideEnv(t *testing.T) {
 		{EnvMicroK8s, &api.Config{CurrentContext: "microk8s-dev-cluster-1", Contexts: microK8sPrefixContexts}},
 		{EnvCRC, &api.Config{CurrentContext: "api-crc-testing", Contexts: crcContexts}},
 		{EnvCRC, &api.Config{CurrentContext: "api-crc-testing:6443", Contexts: crcPrefixContexts}},
+		{EnvKrucible, &api.Config{CurrentContext: "krucible-c-74701fe1a05596b3", Contexts: krucibleContexts}},
 		{EnvK3D, &api.Config{CurrentContext: "default", Contexts: k3dContexts}},
 		{EnvKIND5, &api.Config{CurrentContext: "default", Contexts: kind5NamedClusterContexts}},
 		{EnvKIND6, &api.Config{CurrentContext: "kind-custom-name", Contexts: kind6Contexts}},

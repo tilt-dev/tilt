@@ -115,6 +115,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	startTime := time.Now()
 	defer func() {
+		// todo: image tag?
 		ibd.analytics.Timer("build.image", time.Since(startTime), nil)
 	}()
 

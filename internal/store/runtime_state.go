@@ -75,7 +75,7 @@ type K8sRuntimeState struct {
 	LastReadyOrSucceededTime    time.Time
 	HasEverDeployedSuccessfully bool
 
-	NonWorkload bool
+	PodReadinessMode model.PodReadinessMode
 }
 
 func (K8sRuntimeState) RuntimeState() {}
@@ -94,7 +94,7 @@ func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...Pod) K8sRuntimeState {
 
 func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 	return K8sRuntimeState{
-		NonWorkload:                    m.K8sTarget().NonWorkload,
+		PodReadinessMode:               m.PodReadinessMode(),
 		Pods:                           make(map[k8s.PodID]*Pod),
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedUIDSet:                 NewUIDSet(),
@@ -116,7 +116,7 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 		return model.RuntimeStatusPending
 	}
 
-	if s.NonWorkload {
+	if s.PodReadinessMode == model.PodReadinessIgnore {
 		return model.RuntimeStatusOK
 	}
 
@@ -149,7 +149,7 @@ func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
 	if !s.HasEverDeployedSuccessfully {
 		return false
 	}
-	if s.NonWorkload {
+	if s.PodReadinessMode == model.PodReadinessIgnore {
 		return true
 	}
 	return !s.LastReadyOrSucceededTime.IsZero()

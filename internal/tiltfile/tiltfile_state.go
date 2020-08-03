@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/git"
 	"github.com/tilt-dev/tilt/internal/tiltfile/include"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/os"
 	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
@@ -72,11 +73,7 @@ type tiltfileState struct {
 	// ensure that any images are pushed to/pulled from this registry, rewriting names if needed
 	defaultReg container.Registry
 
-	// JSON paths to images in k8s YAML (other than Container specs)
-	k8sImageLocators map[k8s.ObjectSelector][]k8s.ImageLocator
-
-	// objects of these types are considered workloads, whether or not they have an image
-	workloadTypes []k8s.ObjectSelector
+	k8sKinds map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo
 
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
@@ -152,7 +149,7 @@ func newTiltfileState(
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
 		secretSettings:             model.DefaultSecretSettings(),
-		k8sImageLocators:           make(map[k8s.ObjectSelector][]k8s.ImageLocator),
+		k8sKinds:                   make(map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo),
 	}
 }
 
@@ -693,6 +690,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 		}
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
+			r.podReadinessMode = opts.podReadinessMode
 			r.portForwards = opts.portForwards
 			r.triggerMode = opts.triggerMode
 			r.autoInit = opts.autoInit
@@ -882,7 +880,7 @@ func (s *tiltfileState) envVarImages() []container.RefSelector {
 }
 
 func (s *tiltfileState) isWorkload(e k8s.K8sEntity, locators []k8s.ImageLocator) (bool, error) {
-	for _, sel := range s.workloadTypes {
+	for sel := range s.k8sKinds {
 		if sel.Matches(e) {
 			return true, nil
 		}
@@ -1085,6 +1083,65 @@ func (s *tiltfileState) decideRegistry() container.Registry {
 	return s.defaultReg
 }
 
+// Auto-infer the readiness mode
+//
+// CONVO:
+// jazzdan: This still feels overloaded to me
+// nicks: i think whenever we define a new CRD, we need to know:
+
+// how to find the images in it
+// how to find any pods it deploys (if they can't be found by owner references)
+// if it should not expect pods at all (e.g., PostgresVersion)
+// if it should wait for the pods to be ready before building the next resource (e.g., servers)
+// if it should wait for the pods to be complete before building the next resource (e.g., jobs)
+// and it's complicated a bit by the fact that there are both normal CRDs where the image shows up in the same place each time, and more meta CRDs (like HelmRelease) where it might appear in different places
+//
+// feels like wer're still doing this very ad-hoc rather than holistically
+func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadinessMode {
+	// The mode set directly on the resource has highest priority.
+	if r.podReadinessMode != model.PodReadinessNone {
+		return r.podReadinessMode
+	}
+
+	// Next, check if any of the k8s kinds have a mode.
+	hasWaitMode := false
+	hasIgnoreMode := false
+	for _, e := range r.entities {
+		for sel, info := range s.k8sKinds {
+			if sel.Matches(e) {
+				if info.PodReadinessMode == model.PodReadinessWait {
+					hasWaitMode = true
+				}
+
+				if info.PodReadinessMode == model.PodReadinessIgnore {
+					hasIgnoreMode = true
+				}
+			}
+		}
+	}
+
+	if hasWaitMode {
+		return model.PodReadinessWait
+	}
+
+	if hasIgnoreMode {
+		return model.PodReadinessIgnore
+	}
+
+	// Auto-infer based on context
+	//
+	// If the resource was
+	// 1) manually grouped (i.e., we didn't find any images in it)
+	// 2) doesn't have pod selectors, and
+	// 3) doesn't depend on images
+	// assume that it will never create pods.
+	if r.manuallyGrouped && len(r.extraPodSelectors) == 0 && len(r.dependencyIDs) == 0 {
+		return model.PodReadinessIgnore
+	}
+
+	return model.PodReadinessWait
+}
+
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
 	locators := s.k8sImageLocatorsList()
@@ -1106,13 +1163,8 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 			ResourceDependencies: mds,
 		}
 
-		nonWorkload := false
-		if r.manuallyGrouped {
-			nonWorkload = len(r.extraPodSelectors) == 0 && len(r.dependencyIDs) == 0
-		}
-
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
-			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, nonWorkload, locators)
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, s.inferPodReadinessMode(r), locators)
 		if err != nil {
 			return nil, err
 		}
@@ -1329,6 +1381,8 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				SSHSpecs:    image.sshSpecs,
 				SecretSpecs: image.secretSpecs,
 				Network:     image.network,
+				CacheFrom:   image.cacheFrom,
+				PullParent:  image.pullParent,
 				ExtraTags:   image.extraTags,
 			})
 		case CustomBuild:

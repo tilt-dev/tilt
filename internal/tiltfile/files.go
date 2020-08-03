@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
@@ -92,26 +95,34 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	kustomizePath, err := value.ValueToAbsPath(thread, path)
+	absKustomizePath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	cmd := []string{"kustomize", "build", kustomizePath}
+	// NOTE(nick): There's a bug in kustomize where it doesn't properly
+	// handle absolute paths. Convert to relative paths instead:
+	// https://github.com/kubernetes-sigs/kustomize/issues/2789
+	relKustomizePath, err := filepath.Rel(starkit.AbsWorkingDir(thread), absKustomizePath)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := []string{"kustomize", "build", relKustomizePath}
 
 	_, err = exec.LookPath(cmd[0])
 	if err != nil {
 		s.logger.Infof("Falling back to `kubectl kustomize` since `%s` was not found in PATH", cmd[0])
-		cmd = []string{"kubectl", "kustomize", kustomizePath}
+		cmd = []string{"kubectl", "kustomize", relKustomizePath}
 	}
 
 	yaml, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
 	}
-	deps, err := kustomize.Deps(kustomizePath)
+	deps, err := kustomize.Deps(absKustomizePath)
 	if err != nil {
-		return nil, fmt.Errorf("internal error: %v", err)
+		return nil, fmt.Errorf("resolving deps: %v", err)
 	}
 	for _, d := range deps {
 		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, d)
@@ -120,7 +131,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		}
 	}
 
-	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("kustomize: %s", kustomizePath)), nil
+	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("kustomize: %s", absKustomizePath)), nil
 }
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -180,7 +191,9 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		name = "chart"
 	}
 
-	if version == helmV3 {
+	if version == helmV3_1andAbove {
+		cmd = []string{"helm", "template", name, localPath, "--include-crds"}
+	} else if version == helmV3_0 {
 		cmd = []string{"helm", "template", name, localPath}
 	} else {
 		cmd = []string{"helm", "template", localPath, "--name", name}
@@ -214,6 +227,16 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	yaml := filterHelmTestYAML(string(stdout))
 
+	if version == helmV3_0 {
+		// Helm v3.0 has a bug where it doesn't include CRDs in the template output
+		// https://github.com/tilt-dev/tilt/issues/3605
+		crds, err := getHelmCRDs(localPath)
+		if err != nil {
+			return nil, err
+		}
+		yaml = strings.Join(append([]string{yaml}, crds...), "\n---\n")
+	}
+
 	if namespace != "" {
 		// helm template --namespace doesn't inject the namespace, nor provide
 		// YAML that defines the namespace, so we have to do both ourselves :\
@@ -234,4 +257,39 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 
 	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("helm: %s", localPath)), nil
+}
+
+// NOTE(nick): This isn't perfect. For example, it doesn't handle chart deps
+// properly. When possible, prefer Helm 3.1's --include-crds
+func getHelmCRDs(path string) ([]string, error) {
+	crdPath := filepath.Join(path, "crds")
+	result := []string{}
+	err := filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		isYAML := info != nil && info.Mode().IsRegular() && hasYAMLExtension(path)
+		if !isYAML {
+			return nil
+		}
+		contents, err := ioutil.ReadFile(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		result = append(result, string(contents))
+		return nil
+	})
+
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	return result, nil
+}
+
+func hasYAMLExtension(fname string) bool {
+	ext := filepath.Ext(fname)
+	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml")
 }

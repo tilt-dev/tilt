@@ -14,6 +14,8 @@ builds:
   - windows
   goarch:
   - amd64
+  - arm
+  - arm64
 archives:
 - name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
   replacements:
@@ -22,6 +24,8 @@ archives:
     linux: linux
     386: i386
     amd64: x86_64
+    arm: arm_ALPHA
+    arm64: arm64_ALPHA
   format_overrides:
     - goos: windows
       format: zip
@@ -47,6 +51,7 @@ brews:
   description: "Tilt powers multi-service developments for teams that deploy to Kubernetes."
   test: |
     system "#{bin}/tilt version"
+    system "#{bin}/tilt verify-install"
 dockers:
 - image_templates:
     - "tiltdev/tilt"
