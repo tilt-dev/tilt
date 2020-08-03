@@ -50,9 +50,9 @@ func TestOpenHUD(t *testing.T) {
 
 	f.prompt.OnChange(f.ctx, f.st)
 
-	assert.Contains(t, f.out.String(), "(h) to open terminal HUD")
+	assert.Contains(t, f.out.String(), "(t) to open legacy terminal mode")
 
-	f.input.nextRune <- 'h'
+	f.input.nextRune <- 't'
 
 	action := f.st.WaitForAction(t, reflect.TypeOf(SwitchTerminalModeAction{}))
 	assert.Equal(t, SwitchTerminalModeAction{Mode: store.TerminalModeHUD}, action)
