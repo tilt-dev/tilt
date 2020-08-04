@@ -221,6 +221,19 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 
 					msg.stopCh <- true
 
+				case 'h':
+					warningMsg := "We're removing the legacy terminal mode key shortcut from the prompt.\n" +
+						"In future releases, open the legacy terminal mode with: tilt up --legacy=true"
+					_, _ = fmt.Fprintf(p.stdout, "%s\n", warningMsg)
+
+					time.Sleep(p.hudDelay)
+
+					logger.Get(ctx).Warnf("%s", warningMsg)
+					p.a.Incr("ui.prompt.switch", map[string]string{"type": "hud"})
+					st.Dispatch(SwitchTerminalModeAction{Mode: store.TerminalModeHUD})
+
+					msg.stopCh <- true
+
 				case ' ':
 					p.a.Incr("ui.prompt.browser", map[string]string{})
 					_, _ = fmt.Fprintf(p.stdout, "Opening browser: %s\n", p.url.String())
