@@ -81,5 +81,6 @@ if [[ -z $NO_INSTALL ]]; then
 fi
 
 version_check
+
 tilt verify-install
 
