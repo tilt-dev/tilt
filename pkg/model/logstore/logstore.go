@@ -395,6 +395,13 @@ func (s *LogStore) IsLastSegmentUncompleted() bool {
 }
 
 func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
+	return s.ContinuingLinesWithOptions(checkpoint, nil, true)
+}
+
+// ContinuingLines, but configurable.
+// `manifestNames` is a list of manifest names to filter on (i.e. only return logs for
+//     those manifests). If this list is empty, return logs for all manifests.
+func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, manifestNames []model.ManifestName, showPrefix bool) []LogLine {
 	isSameSpanContinuation := false
 	isChangingSpanContinuation := false
 	checkpointIndex := s.checkpointToIndex(checkpoint)
@@ -422,9 +429,13 @@ func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 	}
 	tempLogStore.recomputeDerivedValues()
 
+	spanOptions := tempLogStore.spans
+	if len(manifestNames) != 0 {
+		spanOptions = tempLogStore.spansForManifests(manifestNames)
+	}
 	result := tempLogStore.toLogLines(logOptions{
-		spans:                       tempLogStore.spans,
-		showManifestPrefix:          true,
+		spans:                       spanOptions,
+		showManifestPrefix:          showPrefix,
 		skipFirstLineManifestPrefix: isSameSpanContinuation,
 	})
 
@@ -501,6 +512,17 @@ func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
 			result[spanID] = span
 		}
 	}
+	return result
+}
+
+func (s *LogStore) spansForManifests(mns []model.ManifestName) map[SpanID]*Span {
+	result := make(map[SpanID]*Span)
+	for _, mn := range mns {
+		for spanID, span := range s.spansForManifest(mn) {
+			result[spanID] = span
+		}
+	}
+
 	return result
 }
 

@@ -355,14 +355,23 @@ func TestContinuingLines(t *testing.T) {
 		ts:      now,
 		fields:  map[string]string{logger.FieldNameProgressID: "layer 2"},
 	}, nil)
+	l.Append(testLogEvent{
+		name:    "be",
+		message: "layer 1: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+	}, nil)
 
-	assert.Equal(t, "           fe │ layer 1: pending\n           fe │ layer 2: pending\n",
-		l.ContinuingString(c1))
+	assert.Equal(t, `           fe │ layer 1: pending
+           fe │ layer 2: pending
+           be │ layer 1: pending
+`, l.ContinuingString(c1))
 
 	c2 := l.Checkpoint()
 	assert.Equal(t, []LogLine{
 		LogLine{Text: "           fe │ layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
 		LogLine{Text: "           fe │ layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
+		LogLine{Text: "           be │ layer 1: pending\n", SpanID: "be", ProgressID: "layer 1", Time: now},
 	}, l.ContinuingLines(c1))
 
 	l.Append(testLogEvent{
@@ -384,6 +393,60 @@ func TestContinuingLines(t *testing.T) {
 			Time:              now,
 		},
 	}, l.ContinuingLines(c2))
+}
+
+func TestContinuingLinesWithOptionsShowPrefix(t *testing.T) {
+	l := NewLogStore()
+	c1 := l.Checkpoint()
+
+	now := time.Now()
+	l.Append(testLogEvent{
+		name:    "fe",
+		message: "layer 1: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "fe",
+		message: "layer 2: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 2"},
+	}, nil)
+
+	assert.Equal(t, []LogLine{
+		LogLine{Text: "layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
+		LogLine{Text: "layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
+	}, l.ContinuingLinesWithOptions(c1, nil, false))
+}
+
+func TestContinuingLinesWithOptionsSpans(t *testing.T) {
+	l := NewLogStore()
+	c1 := l.Checkpoint()
+
+	now := time.Now()
+	l.Append(testLogEvent{
+		name:    "foo",
+		message: "layer 1: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "foo",
+		message: "layer 2: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 2"},
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "bar",
+		message: "layer 1: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+	}, nil)
+
+	assert.Equal(t, []LogLine{
+		LogLine{Text: "          foo │ layer 1: pending\n", SpanID: "foo", ProgressID: "layer 1", Time: now},
+		LogLine{Text: "          foo │ layer 2: pending\n", SpanID: "foo", ProgressID: "layer 2", Time: now},
+	}, l.ContinuingLinesWithOptions(c1, []model.ManifestName{"foo"}, true))
 }
 
 func TestBuildEventInit(t *testing.T) {
