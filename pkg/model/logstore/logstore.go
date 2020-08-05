@@ -191,6 +191,48 @@ func (s *LogStore) checkpointToIndex(c Checkpoint) int {
 	return index
 }
 
+// Find the greatest index < index corresponding to a log matching one of the manifests in mns.
+// (If mns is empty, all logs match.)
+// If no valid i found, return -1
+func (s *LogStore) prevIndexMatchingManifests(index int, mns mnSet) int {
+	if len(mns) == 0 || index == 0 {
+		return index - 1
+	}
+
+	for i := index - 1; index >= 0; i-- {
+		span, ok := s.spans[s.segments[i].SpanID]
+		if !ok {
+			continue
+		}
+		mn := span.ManifestName
+		if mns[mn] {
+			return i
+		}
+	}
+	return -1
+}
+
+// Find the greatest index >= index corresponding to a log matching one of the manifests in mns.
+// (If mns is empty, all logs match.)
+// If no valid i found, return -1
+func (s *LogStore) nextIndexMatchingManifests(index int, mns mnSet) int {
+	if len(mns) == 0 {
+		return index
+	}
+
+	for i := index; index < len(s.segments); i++ {
+		span, ok := s.spans[s.segments[i].SpanID]
+		if !ok {
+			continue
+		}
+		mn := span.ManifestName
+		if mns[mn] {
+			return i
+		}
+	}
+	return -1
+}
+
 func (s *LogStore) ScrubSecretsStartingAt(secrets model.SecretSet, checkpoint Checkpoint) {
 	index := s.checkpointToIndex(checkpoint)
 	for i := index; i < len(s.segments); i++ {
@@ -378,7 +420,11 @@ func (s *LogStore) recomputeDerivedValues() {
 // Print(store.ContinuingString(state.LastCheckpoint))
 // state.LastCheckpoint = store.Checkpoint()
 func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
-	lines := s.ContinuingLines(checkpoint)
+	return s.ContinuingStringWithOptions(checkpoint, lineOptions{})
+}
+
+func (s *LogStore) ContinuingStringWithOptions(checkpoint Checkpoint, opts lineOptions) string {
+	lines := s.ContinuingLinesWithOptions(checkpoint, opts)
 	sb := strings.Builder{}
 	for _, line := range lines {
 		sb.WriteString(line.Text)
@@ -400,24 +446,32 @@ func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 
 func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts lineOptions) []LogLine {
 	isSameSpanContinuation := false
-	isChangingSpanContinuation := false
+	isDifferentSpan := false
 	checkpointIndex := s.checkpointToIndex(checkpoint)
-	precedingIndex := checkpointIndex - 1
+	precedingIndexToPrint := s.prevIndexMatchingManifests(checkpointIndex, opts.mnSet)
+	nextIndexToPrint := s.nextIndexMatchingManifests(checkpointIndex, opts.mnSet)
 	var precedingSegment = LogSegment{}
-	if precedingIndex >= 0 && checkpointIndex < len(s.segments) {
-		// Check the last thing we printed. If it was wasn't complete,
+
+	if precedingIndexToPrint >= 0 && nextIndexToPrint < len(s.segments) && nextIndexToPrint > 0 {
+		// Check the last thing we printed. If it wasn't complete,
 		// we have to do some extra work to properly continue the previous print.
-		precedingSegment = s.segments[precedingIndex]
-		currentSegment := s.segments[checkpointIndex]
+		precedingSegment = s.segments[precedingIndexToPrint]
+		nextSegment := s.segments[nextIndexToPrint]
 		if !precedingSegment.IsComplete() {
 			// If this is the same span id, remove the prefix from this line.
-			if precedingSegment.CanContinueLine(currentSegment) {
+			if precedingSegment.CanContinueLine(nextSegment) {
 				isSameSpanContinuation = true
 			} else {
-				isChangingSpanContinuation = true
+				// Otherwise, it's from a different span, which means we want a
+				// newline after the segment we just printed (even if that segment
+				// isn't technically "complete")
+				isDifferentSpan = true
 			}
 		}
 	}
+
+	// --> if checkpointIndex == len(s.segments)
+	// nothing new to print, return!
 
 	tempSegments := s.segments[checkpointIndex:]
 	tempLogStore := &LogStore{
@@ -427,8 +481,8 @@ func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts lineOp
 	tempLogStore.recomputeDerivedValues()
 
 	spans := tempLogStore.spans
-	if len(opts.manifestNames) != 0 {
-		spans = tempLogStore.spansForManifests(opts.manifestNames)
+	if len(opts.mnSet) != 0 {
+		spans = tempLogStore.spansForManifests(opts.mnSet)
 	}
 	result := tempLogStore.toLogLines(logOptions{
 		spans:                       spans,
@@ -439,7 +493,7 @@ func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts lineOp
 	if isSameSpanContinuation {
 		return result
 	}
-	if isChangingSpanContinuation {
+	if isDifferentSpan {
 		return append([]LogLine{
 			LogLine{
 				Text:              "\n",
@@ -512,10 +566,10 @@ func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
 	return result
 }
 
-func (s *LogStore) spansForManifests(mns []model.ManifestName) map[SpanID]*Span {
+func (s *LogStore) spansForManifests(mnSet mnSet) map[SpanID]*Span {
 	result := make(map[SpanID]*Span)
-	for _, mn := range mns {
-		for spanID, span := range s.spansForManifest(mn) {
+	for spanID, span := range s.spans {
+		if mnSet[span.ManifestName] {
 			result[spanID] = span
 		}
 	}
@@ -601,13 +655,15 @@ func (s *LogStore) startAndLastIndices(spans map[SpanID]*Span) (startIndex, last
 }
 
 type logOptions struct {
-	spans                       map[SpanID]*Span
+	spans                       map[SpanID]*Span // only print logs for these spans
 	showManifestPrefix          bool
 	skipFirstLineManifestPrefix bool
 }
 
+type mnSet map[model.ManifestName]bool
+
 type lineOptions struct {
-	manifestNames  []model.ManifestName // only print logs for these manifests
+	mnSet          mnSet // only print logs for these manifests
 	suppressPrefix bool
 }
 

@@ -198,6 +198,52 @@ func TestContinuingStringTwoSources(t *testing.T) {
 	assert.Equal(t, "           fe │ z\n", l.ContinuingString(c4))
 }
 
+func TestContinuingStringNextSpanFiltered(t *testing.T) {
+	l := NewLogStore()
+	opts := lineOptionsWithManifests("foo")
+
+	c1 := l.Checkpoint()
+	l.Append(newTestLogEvent("foo", time.Now(), "hello "), nil)
+	assert.Equal(t, "          foo │ hello ", l.ContinuingStringWithOptions(c1, opts))
+
+	c2 := l.Checkpoint()
+	l.Append(newTestLogEvent("bar", time.Now(), "INTERRUPTING COW!\n"), nil)
+	l.Append(newTestLogEvent("foo", time.Now(), "world\n"), nil)
+	assert.Equal(t, "          foo │ hello world\n", l.ContinuingStringWithOptions(c1, opts))
+	assert.Equal(t, "world\n", l.ContinuingStringWithOptions(c2, opts))
+}
+
+func TestContinuingStringProceedingSpanFiltered(t *testing.T) {
+	l := NewLogStore()
+	opts := lineOptionsWithManifests("foo")
+
+	c1 := l.Checkpoint()
+	l.Append(newTestLogEvent("foo", time.Now(), "hello "), nil)
+	l.Append(newTestLogEvent("bar", time.Now(), "INTERRUPTING COW!\n"), nil)
+	assert.Equal(t, "          foo │ hello ", l.ContinuingStringWithOptions(c1, opts))
+
+	c2 := l.Checkpoint()
+	l.Append(newTestLogEvent("foo", time.Now(), "world\n"), nil)
+	assert.Equal(t, "          foo │ hello world\n", l.ContinuingStringWithOptions(c1, opts))
+	assert.Equal(t, "world\n", l.ContinuingStringWithOptions(c2, opts))
+}
+
+func TestContinuingStringProceedingAndNextSpanFiltered(t *testing.T) {
+	l := NewLogStore()
+	opts := lineOptionsWithManifests("foo")
+
+	c1 := l.Checkpoint()
+	l.Append(newTestLogEvent("foo", time.Now(), "hello "), nil)
+	l.Append(newTestLogEvent("bar", time.Now(), "INTERRUPTING COW!\n"), nil)
+	assert.Equal(t, "          foo │ hello ", l.ContinuingStringWithOptions(c1, opts))
+
+	c2 := l.Checkpoint()
+	l.Append(newTestLogEvent("bar", time.Now(), "INTERRUPTING COW!\n"), nil)
+	l.Append(newTestLogEvent("foo", time.Now(), "world\n"), nil)
+	assert.Equal(t, "          foo │ hello world\n", l.ContinuingStringWithOptions(c1, opts))
+	assert.Equal(t, "world\n", l.ContinuingStringWithOptions(c2, opts))
+}
+
 func TestContinuingStringAfterLimit(t *testing.T) {
 	l := NewLogStore()
 	l.maxLogLengthInBytes = 20
@@ -446,7 +492,7 @@ func TestContinuingLinesWithOptionsSpans(t *testing.T) {
 	assert.Equal(t, []LogLine{
 		LogLine{Text: "          foo │ layer 1: pending\n", SpanID: "foo", ProgressID: "layer 1", Time: now},
 		LogLine{Text: "          foo │ layer 2: pending\n", SpanID: "foo", ProgressID: "layer 2", Time: now},
-	}, l.ContinuingLinesWithOptions(c1, lineOptions{manifestNames: []model.ManifestName{"foo"}}))
+	}, l.ContinuingLinesWithOptions(c1, lineOptionsWithManifests("foo")))
 }
 
 func TestBuildEventInit(t *testing.T) {
@@ -491,4 +537,12 @@ func assertSnapshot(t *testing.T, output string) {
 	}
 
 	assert.Equal(t, string(expected), output)
+}
+
+func lineOptionsWithManifests(mns ...model.ManifestName) lineOptions {
+	mnSet := make(mnSet)
+	for _, mn := range mns {
+		mnSet[mn] = true
+	}
+	return lineOptions{mnSet: mnSet}
 }
