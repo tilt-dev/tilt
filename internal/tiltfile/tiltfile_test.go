@@ -37,6 +37,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
 	"github.com/tilt-dev/tilt/internal/yaml"
@@ -1332,8 +1333,7 @@ k8s_yaml(yml)
 	entities, err := k8s.ParseYAMLFromString(yaml)
 	require.NoError(t, err)
 
-	names, err := k8s.UniqueNames(entities, 2)
-	assert.NoError(t, err)
+	names := k8s.UniqueNames(entities, 2)
 	expectedNames := []string{"rose-quartz-helloworld-chart:service"}
 	assert.ElementsMatch(t, expectedNames, names)
 
@@ -3999,8 +3999,26 @@ func TestDuplicateYAMLEntityWithinSingleResource(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml('resource.yaml')
 `)
-	f.loadErrString(k8s.DuplicateYAMLDetectedError("doggos:service:default:core"))
+	stack := fmt.Sprintf(`Traceback (most recent call last):
+  %s:2:9: in <toplevel>
+  <builtin>: in k8s_yaml`, f.JoinPath("Tiltfile"))
+	f.loadErrString(tiltfile_k8s.DuplicateYAMLDetectedError("Service doggos", stack).Error())
 }
+
+func TestDuplicateYAMLEntityWithinSingleResourceAllowed(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.yaml("resource.yaml",
+		service("doggos"),
+		service("doggos"))
+	f.file("Tiltfile", `
+k8s_yaml('resource.yaml', allow_duplicates=True)
+`)
+	f.load()
+}
+
 func TestDuplicateYAMLEntityAcrossResources(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -4012,7 +4030,11 @@ func TestDuplicateYAMLEntityAcrossResources(t *testing.T) {
 k8s_yaml(['foo1.yaml', 'foo1.yaml'])
 k8s_resource('foo:deployment:ns1', new_name='foo')
 `)
-	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo:deployment:ns1:apps"))
+
+	stack := fmt.Sprintf(`Traceback (most recent call last):
+  %s:3:9: in <toplevel>
+  <builtin>: in k8s_yaml`, f.JoinPath("Tiltfile"))
+	f.loadErrString(tiltfile_k8s.DuplicateYAMLDetectedError("Deployment foo (Namespace: ns1)", stack).Error())
 }
 
 func TestDuplicateYAMLEntityInSingleWorkload(t *testing.T) {
@@ -4028,7 +4050,11 @@ func TestDuplicateYAMLEntityInSingleWorkload(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml('all.yaml')
 `)
-	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo-service:service:default:core"))
+
+	stack := fmt.Sprintf(`Traceback (most recent call last):
+  %s:2:9: in <toplevel>
+  <builtin>: in k8s_yaml`, f.JoinPath("Tiltfile"))
+	f.loadErrString(tiltfile_k8s.DuplicateYAMLDetectedError("Service foo-service", stack).Error())
 }
 
 func TestDuplicateYAMLEntityInUserAssembledNonWorkloadResource(t *testing.T) {
@@ -4042,7 +4068,11 @@ func TestDuplicateYAMLEntityInUserAssembledNonWorkloadResource(t *testing.T) {
 k8s_yaml('all.yaml')
 k8s_resource(objects=['foo-service:Service:default'], new_name='my-services')
 `)
-	f.loadErrString(k8s.DuplicateYAMLDetectedError("foo-service:service:default:core"))
+
+	stack := fmt.Sprintf(`Traceback (most recent call last):
+  %s:2:9: in <toplevel>
+  <builtin>: in k8s_yaml`, f.JoinPath("Tiltfile"))
+	f.loadErrString(tiltfile_k8s.DuplicateYAMLDetectedError("Service foo-service", stack).Error())
 }
 
 func TestSetTeamID(t *testing.T) {

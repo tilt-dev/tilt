@@ -17,14 +17,14 @@ jobs:
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - restore_cache:
           keys:
-            - golangci_lint_v2_{{ .Revision }}
-            - golangci_lint_v2_ # Else find the most recently generated cache
+            - golangci_lint_v3_{{ .Revision }}
+            - golangci_lint_v3_ # Else find the most recently generated cache
       - run: make lint
       - run: make test_install_version_check
       - save_cache:
           paths:
             - /home/circleci/.cache/golangci-lint
-          key: golangci_lint_v2_{{ .Revision }}
+          key: golangci_lint_v3_{{ .Revision }}
       - run: make wire-check
       - run: make test-go
       - store_test_results:

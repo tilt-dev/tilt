@@ -117,9 +117,11 @@ func (r k8sResource) refSelectorList() []string {
 
 func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var yamlValue starlark.Value
+	var allowDuplicates bool
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
+		"allow_duplicates?", &allowDuplicates,
 	); err != nil {
 		return nil, err
 	}
@@ -140,6 +142,11 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 		if len(entities) == 0 && val == "" {
 			return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
 		}
+		err = s.k8sObjectIndex.Append(thread, entities, allowDuplicates)
+		if err != nil {
+			return nil, err
+		}
+
 		s.k8sUnresourced = append(s.k8sUnresourced, entities...)
 
 	} else {
@@ -967,7 +974,7 @@ func (s *tiltfileState) calculateResourceNames(workloads []k8s.K8sEntity) ([]str
 		}
 		return names, nil
 	} else {
-		return k8s.UniqueNames(workloads, 1)
+		return k8s.UniqueNames(workloads, 1), nil
 	}
 }
 

@@ -62,10 +62,20 @@ type tiltfileState struct {
 	features      feature.FeatureSet
 
 	// added to during execution
-	buildIndex         *buildIndex
-	k8s                []*k8sResource
-	k8sByName          map[string]*k8sResource
-	k8sUnresourced     []k8s.K8sEntity
+	buildIndex     *buildIndex
+	k8sObjectIndex *tiltfile_k8s.State
+
+	// The mutation semantics of these 3 things are a bit fuzzy
+	// Objects are moved back and forth between them in different
+	// phases of tiltfile execution and post-execution assembly.
+	//
+	// TODO(nick): Move these into a unified k8sObjectIndex that
+	// maintains consistent internal state. Right now the state
+	// is duplicated.
+	k8s            []*k8sResource
+	k8sByName      map[string]*k8sResource
+	k8sUnresourced []k8s.K8sEntity
+
 	dc                 dcResourceSet // currently only support one d-c.yml
 	k8sResourceOptions map[string]k8sResourceOptions
 	localResources     []localResource
@@ -137,6 +147,7 @@ func newTiltfileState(
 		configExt:                  configExt,
 		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
+		k8sObjectIndex:             tiltfile_k8s.NewState(),
 		k8sByName:                  make(map[string]*k8sResource),
 		usedImages:                 make(map[string]bool),
 		logger:                     logger.Get(ctx),
@@ -648,14 +659,7 @@ func (s *tiltfileState) assembleK8sV1() error {
 }
 
 func (s *tiltfileState) assembleK8sV2() error {
-	//Note: We're using UniqueNames() over here just to check for duplicate YAML Entities, hence
-	//why only the error is being considered here
-	_, err := k8s.UniqueNames(s.k8sUnresourced, 1)
-	if err != nil {
-		return err
-	}
-
-	err = s.assembleK8sByWorkload()
+	err := s.assembleK8sByWorkload()
 	if err != nil {
 		return err
 	}

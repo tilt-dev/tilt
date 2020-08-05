@@ -21,38 +21,37 @@ type workload struct {
 
 func TestUniqueResourceNames(t *testing.T) {
 	testCases := []struct {
-		testName      string
-		workloads     []workload
-		expectedError string
+		testName  string
+		workloads []workload
 	}{
 		{"one workload, just name", []workload{
 			{"foo", "Deployment", "default", "", "foo"},
-		}, ""},
+		}},
 		{"one workload, same name", []workload{
-			{"foo", "Deployment", "default", "", ""},
-			{"foo", "Deployment", "default", "", ""},
-		}, DuplicateYAMLDetectedError("foo:deployment:default:core")},
+			{"foo", "Deployment", "default", "", "foo:deployment:default:core:0"},
+			{"foo", "Deployment", "default", "", "foo:deployment:default:core:1"},
+		}},
 		{"one workload, by name", []workload{
 			{"foo", "Deployment", "default", "", "foo"},
 			{"bar", "Deployment", "default", "", "bar"},
-		}, ""},
+		}},
 		{"two workloads, by kind", []workload{
 			{"foo", "Deployment", "default", "", "foo:deployment"},
 			{"foo", "CronJob", "default", "", "foo:cronjob"},
-		}, ""},
+		}},
 		{"two workloads, by namespace", []workload{
 			{"foo", "Deployment", "default", "", "foo:deployment:default"},
 			{"foo", "Deployment", "fission", "", "foo:deployment:fission"},
-		}, ""},
+		}},
 		{"two workloads, by group", []workload{
 			{"foo", "Deployment", "default", "a", "foo:deployment:default:a"},
 			{"foo", "Deployment", "default", "b", "foo:deployment:default:b"},
-		}, ""},
+		}},
 		{"three workloads, one by kind, two by namespace", []workload{
 			{"foo", "Deployment", "default", "a", "foo:deployment:default"},
 			{"foo", "Deployment", "fission", "b", "foo:deployment:fission"},
 			{"foo", "CronJob", "default", "b", "foo:cronjob"},
-		}, ""},
+		}},
 	}
 
 	for _, test := range testCases {
@@ -70,14 +69,8 @@ func TestUniqueResourceNames(t *testing.T) {
 				expectedNames = append(expectedNames, w.expectedResourceName)
 			}
 
-			actualNames, err := UniqueNames(entities, 1)
-			if test.expectedError == "" {
-				require.NoError(t, err)
-				require.Equal(t, expectedNames, actualNames)
-			} else {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), test.expectedError)
-			}
+			actualNames := UniqueNames(entities, 1)
+			require.Equal(t, expectedNames, actualNames)
 		})
 	}
 }
