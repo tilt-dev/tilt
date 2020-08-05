@@ -395,13 +395,10 @@ func (s *LogStore) IsLastSegmentUncompleted() bool {
 }
 
 func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
-	return s.ContinuingLinesWithOptions(checkpoint, nil, true)
+	return s.ContinuingLinesWithOptions(checkpoint, lineOptions{})
 }
 
-// ContinuingLines, but configurable.
-// `manifestNames` is a list of manifest names to filter on (i.e. only return logs for
-//     those manifests). If this list is empty, return logs for all manifests.
-func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, manifestNames []model.ManifestName, showPrefix bool) []LogLine {
+func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts lineOptions) []LogLine {
 	isSameSpanContinuation := false
 	isChangingSpanContinuation := false
 	checkpointIndex := s.checkpointToIndex(checkpoint)
@@ -429,13 +426,13 @@ func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, manifestNam
 	}
 	tempLogStore.recomputeDerivedValues()
 
-	spanOptions := tempLogStore.spans
-	if len(manifestNames) != 0 {
-		spanOptions = tempLogStore.spansForManifests(manifestNames)
+	spans := tempLogStore.spans
+	if len(opts.manifestNames) != 0 {
+		spans = tempLogStore.spansForManifests(opts.manifestNames)
 	}
 	result := tempLogStore.toLogLines(logOptions{
-		spans:                       spanOptions,
-		showManifestPrefix:          showPrefix,
+		spans:                       spans,
+		showManifestPrefix:          !opts.suppressPrefix,
 		skipFirstLineManifestPrefix: isSameSpanContinuation,
 	})
 
@@ -607,6 +604,11 @@ type logOptions struct {
 	spans                       map[SpanID]*Span
 	showManifestPrefix          bool
 	skipFirstLineManifestPrefix bool
+}
+
+type lineOptions struct {
+	manifestNames  []model.ManifestName // only print logs for these manifests
+	suppressPrefix bool
 }
 
 func (s *LogStore) toLogString(options logOptions) string {

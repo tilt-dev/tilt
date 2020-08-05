@@ -395,7 +395,7 @@ func TestContinuingLines(t *testing.T) {
 	}, l.ContinuingLines(c2))
 }
 
-func TestContinuingLinesWithOptionsShowPrefix(t *testing.T) {
+func TestContinuingLinesWithOptionsSuppressPrefix(t *testing.T) {
 	l := NewLogStore()
 	c1 := l.Checkpoint()
 
@@ -416,7 +416,7 @@ func TestContinuingLinesWithOptionsShowPrefix(t *testing.T) {
 	assert.Equal(t, []LogLine{
 		LogLine{Text: "layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
 		LogLine{Text: "layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
-	}, l.ContinuingLinesWithOptions(c1, nil, false))
+	}, l.ContinuingLinesWithOptions(c1, lineOptions{suppressPrefix: true}))
 }
 
 func TestContinuingLinesWithOptionsSpans(t *testing.T) {
@@ -446,7 +446,7 @@ func TestContinuingLinesWithOptionsSpans(t *testing.T) {
 	assert.Equal(t, []LogLine{
 		LogLine{Text: "          foo │ layer 1: pending\n", SpanID: "foo", ProgressID: "layer 1", Time: now},
 		LogLine{Text: "          foo │ layer 2: pending\n", SpanID: "foo", ProgressID: "layer 2", Time: now},
-	}, l.ContinuingLinesWithOptions(c1, []model.ManifestName{"foo"}, true))
+	}, l.ContinuingLinesWithOptions(c1, lineOptions{manifestNames: []model.ManifestName{"foo"}}))
 }
 
 func TestBuildEventInit(t *testing.T) {
