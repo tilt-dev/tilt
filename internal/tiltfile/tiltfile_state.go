@@ -107,7 +107,10 @@ type tiltfileState struct {
 
 	logger                           logger.Logger
 	warnedDeprecatedResourceAssembly bool
-	postExecReadFiles                []string
+
+	// postExecReadFiles is generally a mistake -- it means that if tiltfile execution fails,
+	// these will never be read. Remove these when you can!!!
+	postExecReadFiles []string
 }
 
 type k8sResourceAssemblyVersionReason int
@@ -1424,7 +1427,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 	var result []model.Manifest
 
 	for _, svc := range dc.services {
-		m, configFiles, err := s.dcServiceToManifest(svc, dc)
+		m, err := s.dcServiceToManifest(svc, dc)
 		if err != nil {
 			return nil, err
 		}
@@ -1443,13 +1446,6 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		m = m.WithImageTargets(iTargets)
 
 		result = append(result, m)
-
-		// TODO(maia): might get config files from dc.yml that are overridden by imageTarget :-/
-		// e.g. dc.yml specifies one Dockerfile but the imageTarget specifies another
-		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, configFiles...)
-	}
-	if len(dc.configPaths) != 0 {
-		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, dc.configPaths...)
 	}
 
 	return result, nil

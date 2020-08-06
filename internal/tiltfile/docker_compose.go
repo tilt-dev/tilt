@@ -14,6 +14,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -45,6 +46,11 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 			return nil, fmt.Errorf("docker_compose files must be a string or a sequence of strings; found a %T", v)
 		}
 		configPaths = append(configPaths, path)
+
+		err = io.RecordReadPath(thread, io.WatchFileOnly, path)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	dc := s.dc
@@ -63,6 +69,18 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	services, err := parseDCConfig(s.ctx, s.dcCli, allConfigPaths)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, s := range services {
+		dfPath := s.DfPath
+		if dfPath == "" {
+			continue
+		}
+
+		err = io.RecordReadPath(thread, io.WatchFileOnly, s.DfPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	s.dc = dcResourceSet{
@@ -261,8 +279,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 	return services, nil
 }
 
-func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (manifest model.Manifest,
-	configFiles []string, err error) {
+func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (model.Manifest, error) {
 	dcInfo := model.DockerComposeTarget{
 		ConfigPaths: dcSet.configPaths,
 		YAMLRaw:     service.ServiceConfig,
@@ -273,7 +290,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 
 	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode), true)
 	if err != nil {
-		return model.Manifest{}, nil, err
+		return model.Manifest{}, err
 	}
 
 	var mds []model.ManifestName
@@ -289,7 +306,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 
 	if service.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
-		return m, nil, nil
+		return m, nil
 	}
 
 	dcInfo = dcInfo.WithBuildPath(service.BuildContext)
@@ -306,7 +323,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 	localPaths := []string{dcSet.tiltfilePath}
 	for _, p := range paths {
 		if !filepath.IsAbs(p) {
-			return model.Manifest{}, nil, fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/tilt-dev/tilt/issues : %s", p)
+			return model.Manifest{}, fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/tilt-dev/tilt/issues : %s", p)
 		}
 		localPaths = append(localPaths, p)
 	}
@@ -315,5 +332,5 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 
 	m = m.WithDeployTarget(dcInfo)
 
-	return m, []string{service.DfPath}, nil
+	return m, nil
 }

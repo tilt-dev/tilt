@@ -584,6 +584,23 @@ dc_resource('no-svc-with-this-name-eek', 'gcr.io/foo')
 	f.loadErrString("no Docker Compose service found with name")
 }
 
+func TestDockerComposeLoadConfigFilesOnFailure(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `docker_build('gcr.io/foo', './foo')
+docker_compose('docker-compose.yml')
+fail("deliberate exit")
+`)
+	f.loadErrString("deliberate exit")
+
+	// Make sure that even though tiltfile execution failed, we still
+	// loaded config files correctly.
+	f.assertConfigFiles(".tiltignore", "Tiltfile", "docker-compose.yml", "foo/Dockerfile")
+}
+
 func TestDockerComposeDoesntSupportEntrypointOverride(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
