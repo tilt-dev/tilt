@@ -82,3 +82,5 @@ fi
 
 version_check
 
+tilt verify-install
+
