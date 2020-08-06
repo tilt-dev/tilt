@@ -82,6 +82,7 @@ jobs:
       # Check to make sure Windows binaries compile
       - run: go install -mod vendor ./cmd/tilt
       - run: make shorttestsum
+      - run: iex ./scripts/install.ps1
       - store_test_results:
           path: test-results
 
