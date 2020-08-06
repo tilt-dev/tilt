@@ -12,9 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 )
 
-type logsCmd struct {
-	// TODO(maia): port
-}
+type logsCmd struct{}
 
 func (c *logsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
@@ -26,9 +24,8 @@ func (c *logsCmd) register() *cobra.Command {
 stuff and things
 `,
 	}
-	// TODO(maia):
-	//   - can pass port
-	//   - pass resource names
+
+	addConnectServerFlags(cmd)
 	return cmd
 }
 
