@@ -20,6 +20,8 @@ if ("true" -eq $useScoop) {
     scoop bucket add tilt-dev https://github.com/tilt-dev/scoop-bucket
     scoop install tilt
     scoop update tilt
+    tilt version
+    tilt verify-install
     Write-Output "Tilt installed with Scoop! Run 'tilt up' to start."
     return
 }
@@ -42,6 +44,9 @@ Move-Item -Force -Path "$extractDir\tilt.exe" -Destination "$dest"
 
 Remove-Item -Force -Path "$zip"
 Remove-Item -Force -Recurse -Path "$extractDir"
+
+iex "$dest version"
+iex "$dest verify-install"
 
 Write-Output "Tilt installed!"
 Write-Output "Run '$dest up' to start."
