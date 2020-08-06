@@ -100,8 +100,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
 		c.watchFlagExplicitlySet = cmd.Flag("watch").Changed
-		c.legacyFlagExplicitlySet = cmd.Flag("legacy").Changed
-		c.streamFlagExplicitlySet = cmd.Flag("stream").Changed
 	}
 
 	return cmd
@@ -118,17 +116,14 @@ func (c *upCmd) initialTermMode(isTerminal bool) store.TerminalMode {
 		}
 	}
 
-	if c.legacyFlagExplicitlySet {
-		if c.legacy {
-			return store.TerminalModeHUD
-		}
+	if c.legacy {
+		return store.TerminalModeHUD
 	}
 
-	if c.streamFlagExplicitlySet {
-		if c.stream {
-			return store.TerminalModeStream
-		}
+	if c.stream {
+		return store.TerminalModeStream
 	}
+
 	return store.TerminalModePrompt
 }
 
