@@ -38,7 +38,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 	st.NotifySubscribers(ctx)
 	conn.AssertNextWriteMsg(t).Ack()
 
-	conn.readCh <- fmt.Errorf("read error")
+	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
 
 	conn.AssertClose(t, done)
 }
@@ -64,7 +64,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 
 	// Send a read error, and make sure the connection
 	// doesn't close immediately.
-	conn.readCh <- fmt.Errorf("read error")
+	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
 	time.Sleep(10 * time.Millisecond)
 	assert.False(t, conn.closed)
 
@@ -93,13 +93,17 @@ func TestWebsocketNextWriterError(t *testing.T) {
 	st.NotifySubscribers(ctx)
 	time.Sleep(10 * time.Millisecond)
 
-	conn.readCh <- fmt.Errorf("read error")
+	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
 	conn.AssertClose(t, done)
 }
 
+type readerOrErr struct {
+	reader io.Reader
+	err    error
+}
 type fakeConn struct {
 	// Write an error to this channel to stop the Read consumer
-	readCh chan error
+	readCh chan readerOrErr
 
 	// Consume messages written to this channel. The caller should Ack() to acknowledge receipt.
 	writeCh chan msg
@@ -111,18 +115,23 @@ type fakeConn struct {
 
 func newFakeConn() *fakeConn {
 	return &fakeConn{
-		readCh:  make(chan error),
+		readCh:  make(chan readerOrErr),
 		writeCh: make(chan msg),
 	}
 }
 
 func (c *fakeConn) NextReader() (int, io.Reader, error) {
-	return 1, nil, <-c.readCh
+	next := <-c.readCh
+	return 1, next.reader, next.err
 }
 
 func (c *fakeConn) Close() error {
 	c.closed = true
 	return nil
+}
+
+func (c *fakeConn) newMessageToRead(r io.Reader) {
+	c.readCh <- readerOrErr{reader: r}
 }
 
 func (c *fakeConn) WriteJSON(v interface{}) error {

@@ -44,5 +44,5 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	return server.StreamLogs(ctx, args, logDeps.url, logDeps.printer)
+	return server.StreamLogs(ctx, logDeps.url, args, logDeps.printer)
 }
