@@ -31,10 +31,10 @@ type WebsocketReader struct {
 	handler      ViewHandler
 }
 
-func newWebsocketReaderForLogs(conn WebsocketConn, p *hud.IncrementalPrinter) *WebsocketReader {
+func newWebsocketReaderForLogs(resources []string, conn WebsocketConn, p *hud.IncrementalPrinter) *WebsocketReader {
 	return &WebsocketReader{
 		conn:         conn,
-		handler:      NewLogStreamer(p),
+		handler:      NewLogStreamer(resources, p),
 		marshaller:   jsonpb.Marshaler{OrigName: false, EmitDefaults: true},
 		unmarshaller: jsonpb.Unmarshaler{},
 	}
@@ -46,18 +46,27 @@ type ViewHandler interface {
 
 type LogStreamer struct {
 	logstore   *logstore.LogStore
-	printer    *hud.IncrementalPrinter
 	checkpoint logstore.Checkpoint
+	resources  model.ManifestNameSet // if present, resource(s) to stream logs for
+	printer    *hud.IncrementalPrinter
 }
 
-func NewLogStreamer(p *hud.IncrementalPrinter) *LogStreamer {
+func NewLogStreamer(resources []string, p *hud.IncrementalPrinter) *LogStreamer {
+	mnSet := make(map[model.ManifestName]bool, len(resources))
+	for _, r := range resources {
+		mnSet[model.ManifestName(r)] = true
+	}
+
 	return &LogStreamer{
-		logstore: logstore.NewLogStore(),
-		printer:  p,
+		resources: mnSet,
+		logstore:  logstore.NewLogStore(),
+		printer:   p,
 	}
 }
 
 func (ls *LogStreamer) Handle(v proto_webview.View) error {
+	// if printing logs for only one resource, don't need resource name prefix
+	suppressPrefix := len(ls.resources) == 1
 	fromCheckpoint := logstore.Checkpoint(v.LogList.FromCheckpoint)
 	toCheckpoint := logstore.Checkpoint(v.LogList.ToCheckpoint)
 
@@ -73,14 +82,15 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 		segments = segments[deleteCount:]
 	}
 
-	// TODO(maia): filter for the resources that we care about (`tilt logs resourceA resourceC`)
-	//   --> and if there's only one resource, don't prefix logs with resource name?
 	for _, seg := range segments {
 		// TODO(maia): secrets???
 		ls.logstore.Append(webview.LogSegmentToEvent(seg, v.LogList.Spans), model.SecretSet{})
 	}
 
-	ls.printer.Print(ls.logstore.ContinuingLines(ls.checkpoint))
+	ls.printer.Print(ls.logstore.ContinuingLinesWithOptions(ls.checkpoint, logstore.LineOptions{
+		ManifestNames:  ls.resources,
+		SuppressPrefix: suppressPrefix,
+	}))
 
 	if toCheckpoint > ls.checkpoint {
 		ls.checkpoint = toCheckpoint
@@ -88,7 +98,7 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 
 	return nil
 }
-func StreamLogs(ctx context.Context, url model.WebURL, printer *hud.IncrementalPrinter) error {
+func StreamLogs(ctx context.Context, resources []string, url model.WebURL, printer *hud.IncrementalPrinter) error {
 	url.Scheme = "ws"
 	url.Path = "/ws/view"
 	logger.Get(ctx).Debugf("connecting to %s", url.String())
@@ -99,7 +109,7 @@ func StreamLogs(ctx context.Context, url model.WebURL, printer *hud.IncrementalP
 	}
 	defer conn.Close()
 
-	wsr := newWebsocketReaderForLogs(conn, printer)
+	wsr := newWebsocketReaderForLogs(resources, conn, printer)
 	return wsr.Listen(ctx)
 }
 
