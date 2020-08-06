@@ -17,7 +17,7 @@ func TestHudEnabled(t *testing.T) {
 	}{
 		{"old behavior: no --hud", "", store.TerminalModePrompt},
 		{"old behavior: --hud", "--hud", store.TerminalModeHUD},
-		{"old behavior: --hud=false", "--hud=false", store.TerminalModeStream},
+		{"old behavior: --stream=true", "--stream=true", store.TerminalModeStream},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			cmd := upCmd{}

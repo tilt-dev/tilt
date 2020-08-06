@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/fatih/color"
 	tty "github.com/mattn/go-tty"
@@ -15,11 +14,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
-
-var defaultHudDelay = 6 * time.Second
 
 type TerminalInput interface {
 	ReadRune() (rune, error)
@@ -45,7 +41,6 @@ type TerminalPrompt struct {
 	stdout    hud.Stdout
 	host      model.WebHost
 	url       model.WebURL
-	hudDelay  time.Duration
 
 	printed bool
 	term    TerminalInput
@@ -67,7 +62,6 @@ func NewTerminalPrompt(a *analytics.TiltAnalytics, openInput OpenInput,
 		stdout:    stdout,
 		host:      host,
 		url:       url,
-		hudDelay:  defaultHudDelay,
 	}
 }
 
@@ -144,8 +138,8 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 		_, _ = fmt.Fprintf(p.stdout, "(space) to open the browser\n")
 	}
 
-	_, _ = fmt.Fprintf(p.stdout, "(s) to stream logs (--hud=false)\n")
-	_, _ = fmt.Fprintf(p.stdout, "(h) to open terminal HUD (--hud=true)\n")
+	_, _ = fmt.Fprintf(p.stdout, "(s) to stream logs (--stream=true)\n")
+	_, _ = fmt.Fprintf(p.stdout, "(t) to open legacy terminal mode(--legacy=true)\n")
 	_, _ = fmt.Fprintf(p.stdout, "(ctrl-c) to exit\n")
 
 	p.printed = true
@@ -208,14 +202,7 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 					st.Dispatch(SwitchTerminalModeAction{Mode: store.TerminalModeStream})
 					msg.stopCh <- true
 
-				case 'h':
-					warningMsg := "We're removing the HUD key shortcut from the prompt.\n" +
-						"In future releases, open the HUD with: tilt up --hud=true"
-					_, _ = fmt.Fprintf(p.stdout, "%s\n", warningMsg)
-
-					time.Sleep(p.hudDelay)
-
-					logger.Get(ctx).Warnf("%s", warningMsg)
+				case 't', 'h':
 					p.a.Incr("ui.prompt.switch", map[string]string{"type": "hud"})
 					st.Dispatch(SwitchTerminalModeAction{Mode: store.TerminalModeHUD})
 

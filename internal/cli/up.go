@@ -46,8 +46,10 @@ type upCmd struct {
 	fileName             string
 	outputSnapshotOnExit string
 
-	hud bool
-	// whether hud was explicitly set or just got the default value
+	hud    bool
+	legacy bool
+	stream bool
+	// whether hud/legacy/stream flags were explicitly set or just got the default value
 	hudFlagExplicitlySet bool
 
 	//whether watch was explicitly set in the cmdline
@@ -84,6 +86,8 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
 	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
+	cmd.Flags().BoolVar(&c.legacy, "legacy", false, "If true, tilt will open in legacy terminal mode.")
+	cmd.Flags().BoolVar(&c.stream, "stream", false, "If true, tilt will stream logs in the terminal.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	addStartServerFlags(cmd)
 	addDevServerFlags(cmd)
@@ -108,9 +112,15 @@ func (c *upCmd) initialTermMode(isTerminal bool) store.TerminalMode {
 	if c.hudFlagExplicitlySet {
 		if c.hud {
 			return store.TerminalModeHUD
-		} else {
-			return store.TerminalModeStream
 		}
+	}
+
+	if c.legacy {
+		return store.TerminalModeHUD
+	}
+
+	if c.stream {
+		return store.TerminalModeStream
 	}
 
 	return store.TerminalModePrompt
