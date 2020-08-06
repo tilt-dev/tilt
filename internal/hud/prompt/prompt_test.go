@@ -95,7 +95,6 @@ func newFixture() *fixture {
 	url, _ := url.Parse(FakeURL)
 
 	prompt := NewTerminalPrompt(ta, openInput, b.OpenURL, out, "localhost", model.WebURL(*url))
-	prompt.hudDelay = 0
 	return &fixture{
 		ctx:    ctx,
 		cancel: cancel,
