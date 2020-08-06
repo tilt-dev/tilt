@@ -29,7 +29,7 @@ import (
 var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
-	dcu     *containerupdate.DockerContainerUpdater
+	dcu     *containerupdate.DockerUpdater
 	scu     *containerupdate.SyncletUpdater
 	ecu     *containerupdate.ExecUpdater
 	updMode buildcontrol.UpdateMode
@@ -38,7 +38,7 @@ type LiveUpdateBuildAndDeployer struct {
 	clock   build.Clock
 }
 
-func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerContainerUpdater,
+func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
 	scu *containerupdate.SyncletUpdater, ecu *containerupdate.ExecUpdater,
 	updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime, c build.Clock) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{

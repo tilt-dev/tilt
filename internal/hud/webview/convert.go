@@ -212,7 +212,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) error {
 	r.RuntimeStatus = string(model.RuntimeStatusNotApplicable)
 
-	if mt.Manifest.NonWorkloadManifest() {
+	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
 		r.YamlResourceInfo = &proto_webview.YAMLResourceInfo{
 			K8SResources: mt.Manifest.K8sTarget().DisplayNames,
 		}
@@ -257,10 +257,14 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
-// TODO(maia): maybe I should convert to some new type that fulfills the LogEvent interface? but this is here.
 func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_webview.LogSpan) store.LogAction {
-	mn := spans[seg.SpanId].ManifestName
+	span, ok := spans[seg.SpanId]
+	if !ok {
+		// nonexistent span, ignore
+		return store.LogAction{}
+	}
+
 	// TODO(maia): actually get level (just spoofing for now)
 	spoofedLevel := logger.InfoLvl
-	return store.NewLogAction(model.ManifestName(mn), logstore.SpanID(seg.SpanId), spoofedLevel, seg.Fields, []byte(seg.Text))
+	return store.NewLogAction(model.ManifestName(span.ManifestName), logstore.SpanID(seg.SpanId), spoofedLevel, seg.Fields, []byte(seg.Text))
 }

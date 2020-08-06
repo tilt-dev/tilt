@@ -28,7 +28,7 @@ import (
 // Injectors from wire.go:
 
 func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.WindmillDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, sCli *synclet.TestSyncletClient, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
-	dockerContainerUpdater := containerupdate.NewDockerContainerUpdater(docker2)
+	dockerUpdater := containerupdate.NewDockerUpdater(docker2)
 	syncletClient, err := synclet.FakeGRPCWrapper(ctx, sCli)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	if err != nil {
 		return nil, err
 	}
-	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerContainerUpdater, syncletUpdater, execUpdater, buildcontrolUpdateMode, env, runtime, clock)
+	liveUpdateBuildAndDeployer := NewLiveUpdateBuildAndDeployer(dockerUpdater, syncletUpdater, execUpdater, buildcontrolUpdateMode, env, runtime, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
@@ -137,7 +137,7 @@ var (
 // wire.go:
 
 var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), sidecar.WireSet, k8s.ProvideMinikubeClient, build.DefaultDockerBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)), NewLocalTargetBuildAndDeployer,
-	NewImageBuildAndDeployer, containerupdate.NewDockerContainerUpdater, containerupdate.NewSyncletUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
+	NewImageBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewSyncletUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageBuilder,
 	DefaultBuildOrder, tracer.InitOpenTelemetry, wire.Bind(new(BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer, buildcontrol.ProvideUpdateMode,

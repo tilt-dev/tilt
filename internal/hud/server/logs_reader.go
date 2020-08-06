@@ -3,11 +3,9 @@ package server
 import (
 	"context"
 	"io"
-	"net/url"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/websocket"
-	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -27,18 +25,16 @@ import (
 // it and the LogStreamer handler into a single struct.)
 
 type WebsocketReader struct {
-	url          url.URL
 	conn         WebsocketConn
 	marshaller   jsonpb.Marshaler
 	unmarshaller jsonpb.Unmarshaler
 	handler      ViewHandler
 }
 
-func ProvideWebsockerReader() *WebsocketReader {
+func newWebsocketReaderForLogs(conn WebsocketConn, p *hud.IncrementalPrinter) *WebsocketReader {
 	return &WebsocketReader{
-		// TODO(maia): pass this URL instead of hardcoding / wire this
-		url:          url.URL{Scheme: "ws", Host: "localhost:10350", Path: "/ws/view"},
-		handler:      NewLogStreamer(),
+		conn:         conn,
+		handler:      NewLogStreamer(p),
 		marshaller:   jsonpb.Marshaler{OrigName: false, EmitDefaults: true},
 		unmarshaller: jsonpb.Unmarshaler{},
 	}
@@ -54,15 +50,13 @@ type LogStreamer struct {
 	checkpoint logstore.Checkpoint
 }
 
-func NewLogStreamer() *LogStreamer {
-	// TODO(maia): wire this (/ maybe this isn't the thing that needs to be wired, but
-	//   should be created after we have a conn to pass it?)
-	printer := hud.NewIncrementalPrinter(hud.Stdout(colorable.NewColorableStdout()))
+func NewLogStreamer(p *hud.IncrementalPrinter) *LogStreamer {
 	return &LogStreamer{
 		logstore: logstore.NewLogStore(),
-		printer:  printer,
+		printer:  p,
 	}
 }
+
 func (ls *LogStreamer) Handle(v proto_webview.View) error {
 	fromCheckpoint := logstore.Checkpoint(v.LogList.FromCheckpoint)
 	toCheckpoint := logstore.Checkpoint(v.LogList.ToCheckpoint)
@@ -94,17 +88,22 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 
 	return nil
 }
+func StreamLogs(ctx context.Context, url model.WebURL, printer *hud.IncrementalPrinter) error {
+	url.Scheme = "ws"
+	url.Path = "/ws/view"
+	logger.Get(ctx).Debugf("connecting to %s", url.String())
+
+	conn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
+	if err != nil {
+		return errors.Wrapf(err, "dialing websocket %s", url.String())
+	}
+	defer conn.Close()
+
+	wsr := newWebsocketReaderForLogs(conn, printer)
+	return wsr.Listen(ctx)
+}
 
 func (wsr *WebsocketReader) Listen(ctx context.Context) error {
-	logger.Get(ctx).Debugf("connecting to %s", wsr.url.String())
-
-	var err error
-	wsr.conn, _, err = websocket.DefaultDialer.Dial(wsr.url.String(), nil)
-	if err != nil {
-		return errors.Wrapf(err, "dialing websocket %s", wsr.url.String())
-	}
-	defer wsr.conn.Close()
-
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
