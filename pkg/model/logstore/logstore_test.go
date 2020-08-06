@@ -462,7 +462,7 @@ func TestContinuingLinesWithOptionsSuppressPrefix(t *testing.T) {
 	assert.Equal(t, []LogLine{
 		LogLine{Text: "layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
 		LogLine{Text: "layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
-	}, l.ContinuingLinesWithOptions(c1, lineOptions{suppressPrefix: true}))
+	}, l.ContinuingLinesWithOptions(c1, LineOptions{SuppressPrefix: true}))
 }
 
 func TestContinuingLinesWithOptionsSpans(t *testing.T) {
@@ -539,10 +539,10 @@ func assertSnapshot(t *testing.T, output string) {
 	assert.Equal(t, string(expected), output)
 }
 
-func lineOptionsWithManifests(mns ...model.ManifestName) lineOptions {
-	mnSet := make(mnSet)
+func lineOptionsWithManifests(mns ...model.ManifestName) LineOptions {
+	mnSet := make(model.ManifestNameSet)
 	for _, mn := range mns {
 		mnSet[mn] = true
 	}
-	return lineOptions{mnSet: mnSet}
+	return LineOptions{ManifestNames: mnSet}
 }

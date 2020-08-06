@@ -194,7 +194,7 @@ func (s *LogStore) checkpointToIndex(c Checkpoint) int {
 // Find the greatest index < index corresponding to a log matching one of the manifests in mns.
 // (If mns is empty, all logs match.)
 // If no valid i found, return -1
-func (s *LogStore) prevIndexMatchingManifests(index int, mns mnSet) int {
+func (s *LogStore) prevIndexMatchingManifests(index int, mns model.ManifestNameSet) int {
 	if len(mns) == 0 || index == 0 {
 		return index - 1
 	}
@@ -215,12 +215,12 @@ func (s *LogStore) prevIndexMatchingManifests(index int, mns mnSet) int {
 // Find the greatest index >= index corresponding to a log matching one of the manifests in mns.
 // (If mns is empty, all logs match.)
 // If no valid i found, return -1
-func (s *LogStore) nextIndexMatchingManifests(index int, mns mnSet) int {
+func (s *LogStore) nextIndexMatchingManifests(index int, mns model.ManifestNameSet) int {
 	if len(mns) == 0 {
 		return index
 	}
 
-	for i := index; index < len(s.segments); i++ {
+	for i := index; i < len(s.segments); i++ {
 		span, ok := s.spans[s.segments[i].SpanID]
 		if !ok {
 			continue
@@ -420,10 +420,10 @@ func (s *LogStore) recomputeDerivedValues() {
 // Print(store.ContinuingString(state.LastCheckpoint))
 // state.LastCheckpoint = store.Checkpoint()
 func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
-	return s.ContinuingStringWithOptions(checkpoint, lineOptions{})
+	return s.ContinuingStringWithOptions(checkpoint, LineOptions{})
 }
 
-func (s *LogStore) ContinuingStringWithOptions(checkpoint Checkpoint, opts lineOptions) string {
+func (s *LogStore) ContinuingStringWithOptions(checkpoint Checkpoint, opts LineOptions) string {
 	lines := s.ContinuingLinesWithOptions(checkpoint, opts)
 	sb := strings.Builder{}
 	for _, line := range lines {
@@ -441,15 +441,15 @@ func (s *LogStore) IsLastSegmentUncompleted() bool {
 }
 
 func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
-	return s.ContinuingLinesWithOptions(checkpoint, lineOptions{})
+	return s.ContinuingLinesWithOptions(checkpoint, LineOptions{})
 }
 
-func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts lineOptions) []LogLine {
+func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts LineOptions) []LogLine {
 	isSameSpanContinuation := false
 	isDifferentSpan := false
 	checkpointIndex := s.checkpointToIndex(checkpoint)
-	precedingIndexToPrint := s.prevIndexMatchingManifests(checkpointIndex, opts.mnSet)
-	nextIndexToPrint := s.nextIndexMatchingManifests(checkpointIndex, opts.mnSet)
+	precedingIndexToPrint := s.prevIndexMatchingManifests(checkpointIndex, opts.ManifestNames)
+	nextIndexToPrint := s.nextIndexMatchingManifests(checkpointIndex, opts.ManifestNames)
 	var precedingSegment = LogSegment{}
 
 	if precedingIndexToPrint >= 0 && nextIndexToPrint < len(s.segments) && nextIndexToPrint > 0 {
@@ -481,12 +481,12 @@ func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts lineOp
 	tempLogStore.recomputeDerivedValues()
 
 	spans := tempLogStore.spans
-	if len(opts.mnSet) != 0 {
-		spans = tempLogStore.spansForManifests(opts.mnSet)
+	if len(opts.ManifestNames) != 0 {
+		spans = tempLogStore.spansForManifests(opts.ManifestNames)
 	}
 	result := tempLogStore.toLogLines(logOptions{
 		spans:                       spans,
-		showManifestPrefix:          !opts.suppressPrefix,
+		showManifestPrefix:          !opts.SuppressPrefix,
 		skipFirstLineManifestPrefix: isSameSpanContinuation,
 	})
 
@@ -566,7 +566,7 @@ func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
 	return result
 }
 
-func (s *LogStore) spansForManifests(mnSet mnSet) map[SpanID]*Span {
+func (s *LogStore) spansForManifests(mnSet model.ManifestNameSet) map[SpanID]*Span {
 	result := make(map[SpanID]*Span)
 	for spanID, span := range s.spans {
 		if mnSet[span.ManifestName] {
@@ -660,11 +660,9 @@ type logOptions struct {
 	skipFirstLineManifestPrefix bool
 }
 
-type mnSet map[model.ManifestName]bool
-
-type lineOptions struct {
-	mnSet          mnSet // only print logs for these manifests
-	suppressPrefix bool
+type LineOptions struct {
+	ManifestNames  model.ManifestNameSet // only print logs for these manifests
+	SuppressPrefix bool
 }
 
 func (s *LogStore) toLogString(options logOptions) string {

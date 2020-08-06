@@ -18,6 +18,7 @@ import (
 
 // TODO(nick): We should probably get rid of ManifestName completely and just use TargetName everywhere.
 type ManifestName string
+type ManifestNameSet map[ManifestName]bool
 
 const TiltfileManifestName = ManifestName("(Tiltfile)")
 
