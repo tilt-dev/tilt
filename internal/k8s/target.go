@@ -46,11 +46,7 @@ func NewTarget(
 
 	// Use a min component count of 2 for computing names,
 	// so that the resource type appears
-	displayNames, err := UniqueNames(sorted, 2)
-	if err != nil {
-		return model.K8sTarget{}, err
-	}
-
+	displayNames := UniqueNames(sorted, 2)
 	myLocators := []model.K8sImageLocator{}
 	for _, locator := range allLocators {
 		if LocatorMatchesOne(locator, entities) {

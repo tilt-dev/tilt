@@ -12,7 +12,7 @@ func DuplicateYAMLDetectedError(duplicatedYaml string) string {
 }
 
 // Calculates names for workloads by using the shortest uniquely matching identifiers
-func UniqueNames(es []K8sEntity, minComponents int) ([]string, error) {
+func UniqueNames(es []K8sEntity, minComponents int) []string {
 	ret := make([]string, len(es))
 	// how many resources potentially map to a given name
 	counts := make(map[string]int)
@@ -34,13 +34,21 @@ func UniqueNames(es []K8sEntity, minComponents int) ([]string, error) {
 			}
 		}
 		if ret[i] == "" {
-			// Previously, we appended an index to the duplicate yaml entity, but as of July 21st 2020, we return an error
-			//if we've detected a duplicate yaml entity.
-			return nil, fmt.Errorf(DuplicateYAMLDetectedError(names[len(names)-1]))
+			// If we hit this case, this means we have two resources with the same
+			// name/kind/namespace/group This usually means the user is trying to
+			// deploy the same resource twice. Kubernetes will not treat these as
+			// unique.
+			//
+			// Ideally, we should use the k8s object index to remove these before they
+			// get to this point. This only happens if the user has specified
+			// k8s_yaml(allow_duplicates).
+			//
+			// But for now, append the index to the name to make it unique
+			ret[i] = fmt.Sprintf("%s:%d", names[len(names)-1], i)
 		}
 	}
 
-	return ret, nil
+	return ret
 }
 
 // FragmentsToEntities maps all possible fragments (e.g. foo, foo:secret, foo:secret:default) to the k8s entity or entities that they correspond to
