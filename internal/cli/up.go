@@ -50,9 +50,8 @@ type upCmd struct {
 	legacy bool
 	stream bool
 	// whether hud/legacy/stream flags were explicitly set or just got the default value
-	hudFlagExplicitlySet    bool
-	legacyFlagExplicitlySet bool
-	streamFlagExplicitlySet bool
+	hudFlagExplicitlySet bool
+
 	//whether watch was explicitly set in the cmdline
 	watchFlagExplicitlySet bool
 }
