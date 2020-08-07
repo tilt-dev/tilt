@@ -44,34 +44,49 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 }
 
 func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
-	// docker-compose up is not thread-safe, because network operations are non-atomic. See:
-	// https://github.com/tilt-dev/tilt/issues/2817
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	var args []string
+	var genArgs []string
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
-		args = []string{"--verbose"}
+		genArgs = []string{"--verbose"}
 	}
 
 	for _, config := range configPaths {
-		args = append(args, "-f", config)
+		genArgs = append(genArgs, "-f", config)
 	}
 
-	args = append(args, "up", "--no-deps", "-d")
-
 	if shouldBuild {
-		args = append(args, "--build")
-	} else {
+		var buildArgs = append([]string{}, genArgs...)
+		buildArgs = append(buildArgs, "build", serviceName.String())
+		cmd := c.dcCommand(ctx, buildArgs)
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+		err := cmd.Run()
+		if err != nil {
+			return FormatError(cmd, nil, err)
+		}
+	}
+
+	// docker-compose up is not thread-safe, because network operations are non-atomic. See:
+	// https://github.com/tilt-dev/tilt/issues/2817
+	//
+	// docker-compose build can run in parallel fine, so we only want the mutex on the 'up' call.
+	//
+	// TODO(nick): It might make sense to use a CondVar so that we can log a message
+	// when we're waiting on another build...
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	runArgs := append([]string{}, genArgs...)
+	runArgs = append(runArgs, "up", "--no-deps", "--no-build", "-d")
+
+	if !shouldBuild {
 		// !shouldBuild implies that Tilt will take care of building, which implies that
 		// we should recreate container so that we pull the new image
 		// NOTE(maia): this is maybe the WRONG thing to do if we're deploying a service
 		// but none of the code changed (i.e. it was just a dockercompose.yml change)?
-		args = append(args, "--force-recreate")
+		runArgs = append(runArgs, "--force-recreate")
 	}
 
-	args = append(args, serviceName.String())
-	cmd := c.dcCommand(ctx, args)
+	runArgs = append(runArgs, serviceName.String())
+	cmd := c.dcCommand(ctx, runArgs)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
