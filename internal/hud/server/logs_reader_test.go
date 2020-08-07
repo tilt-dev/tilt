@@ -26,7 +26,7 @@ type expectedLine struct {
 }
 
 func TestLogStreamerPrintsLogs(t *testing.T) {
-	f := newFixture(t)
+	f := newLogStreamerFixture(t)
 
 	view := f.newViewWithLogsForManifest(alphabet[:4], "foo", 0)
 	f.handle(view)
@@ -37,7 +37,7 @@ func TestLogStreamerPrintsLogs(t *testing.T) {
 }
 
 func TestLogStreamerPrefixing(t *testing.T) {
-	f := newFixture(t)
+	f := newLogStreamerFixture(t)
 	manifestNames := []string{"foo", "", "foo", "bar"}
 
 	view := f.newViewWithLogsForManifests(alphabet[:4], manifestNames, 0)
@@ -49,7 +49,7 @@ func TestLogStreamerPrefixing(t *testing.T) {
 }
 
 func TestLogStreamerDoesNotPrintResentLogs(t *testing.T) {
-	f := newFixture(t)
+	f := newLogStreamerFixture(t)
 
 	view := f.newViewWithLogsForManifest(alphabet[:4], "foo", 0)
 	f.handle(view)
@@ -63,7 +63,7 @@ func TestLogStreamerDoesNotPrintResentLogs(t *testing.T) {
 }
 
 func TestLogStreamerCheckpointHandling(t *testing.T) {
-	f := newFixture(t)
+	f := newLogStreamerFixture(t)
 	resourceNames := []string{
 		"foo", "", "foo", "bar",
 		"bar", "bar", "", "bar",
@@ -82,7 +82,7 @@ func TestLogStreamerCheckpointHandling(t *testing.T) {
 }
 
 func TestLogStreamerFiltersOnResourceNamesSingle(t *testing.T) {
-	f := newFixture(t).withResourceNames("foo")
+	f := newLogStreamerFixture(t).withResourceNames("foo")
 	manifestNames := []string{"foo", "", "foo", "bar"}
 	view := f.newViewWithLogsForManifests(alphabet[:4], manifestNames, 0)
 	f.handle(view)
@@ -93,7 +93,7 @@ func TestLogStreamerFiltersOnResourceNamesSingle(t *testing.T) {
 }
 
 func TestLogStreamerFiltersOnResourceNamesMultiple(t *testing.T) {
-	f := newFixture(t).withResourceNames("foo", "baz")
+	f := newLogStreamerFixture(t).withResourceNames("foo", "baz")
 	manifestNames := []string{"foo", "", "foo", "bar", "baz", "bar", "baz", "foo"}
 	view := f.newViewWithLogsForManifests(alphabet[:8], manifestNames, 0)
 	f.handle(view)
@@ -104,7 +104,7 @@ func TestLogStreamerFiltersOnResourceNamesMultiple(t *testing.T) {
 }
 
 func TestLogStreamerCheckpointHandlingWithFiltering(t *testing.T) {
-	f := newFixture(t).withResourceNames("foo", "baz")
+	f := newLogStreamerFixture(t).withResourceNames("foo", "baz")
 	view := f.newViewWithLogsForManifests(alphabet[:4], []string{"foo", "", "foo", "bar"}, 0)
 	f.handle(view)
 
@@ -119,17 +119,17 @@ func TestLogStreamerCheckpointHandlingWithFiltering(t *testing.T) {
 	f.assertExpectedLogLines(expected)
 }
 
-type fixture struct {
+type logStreamerFixture struct {
 	t          *testing.T
 	fakeStdout *bytes.Buffer
 	printer    *hud.IncrementalPrinter
 	ls         *LogStreamer
 }
 
-func newFixture(t *testing.T) *fixture {
+func newLogStreamerFixture(t *testing.T) *logStreamerFixture {
 	fakeStdout := &bytes.Buffer{}
 	printer := hud.NewIncrementalPrinter(hud.Stdout(fakeStdout))
-	return &fixture{
+	return &logStreamerFixture{
 		t:          t,
 		fakeStdout: fakeStdout,
 		printer:    printer,
@@ -137,7 +137,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-func (f *fixture) withResourceNames(resourceNames ...string) *fixture {
+func (f *logStreamerFixture) withResourceNames(resourceNames ...string) *logStreamerFixture {
 	rns := make(model.ManifestNameSet, len(resourceNames))
 	for _, rn := range resourceNames {
 		rns[model.ManifestName(rn)] = true
@@ -146,12 +146,12 @@ func (f *fixture) withResourceNames(resourceNames ...string) *fixture {
 	return f
 }
 
-func (f *fixture) handle(view proto_webview.View) {
+func (f *logStreamerFixture) handle(view proto_webview.View) {
 	err := f.ls.Handle(view)
 	require.NoError(f.t, err)
 }
 
-func (f *fixture) newViewWithLogsForManifest(messages []string, manifestName string, fromChkpt int32) proto_webview.View {
+func (f *logStreamerFixture) newViewWithLogsForManifest(messages []string, manifestName string, fromChkpt int32) proto_webview.View {
 	dummyManifestNames := make([]string, len(messages))
 	for i := 0; i < len(messages); i++ {
 		dummyManifestNames[i] = manifestName
@@ -159,7 +159,7 @@ func (f *fixture) newViewWithLogsForManifest(messages []string, manifestName str
 	return f.newViewWithLogsForManifests(messages, dummyManifestNames, fromChkpt)
 }
 
-func (f *fixture) newViewWithLogsForManifests(messages []string, manifestNames []string, fromChkpt int32) proto_webview.View {
+func (f *logStreamerFixture) newViewWithLogsForManifests(messages []string, manifestNames []string, fromChkpt int32) proto_webview.View {
 	segs := f.segments(messages, manifestNames)
 	spans := f.spans(manifestNames, nil)
 
@@ -173,7 +173,7 @@ func (f *fixture) newViewWithLogsForManifests(messages []string, manifestNames [
 	}
 }
 
-func (f *fixture) addLogs(view proto_webview.View, messages []string, manifestNames []string) proto_webview.View {
+func (f *logStreamerFixture) addLogs(view proto_webview.View, messages []string, manifestNames []string) proto_webview.View {
 	view.LogList.FromCheckpoint = view.LogList.ToCheckpoint
 	newSegs := f.segments(messages, manifestNames)
 	view.LogList.Segments = append(view.LogList.Segments, newSegs...)
@@ -184,7 +184,7 @@ func (f *fixture) addLogs(view proto_webview.View, messages []string, manifestNa
 	return view
 }
 
-func (f *fixture) segments(messages []string, manifestNames []string) []*proto_webview.LogSegment {
+func (f *logStreamerFixture) segments(messages []string, manifestNames []string) []*proto_webview.LogSegment {
 	if len(messages) != len(manifestNames) {
 		f.t.Fatalf("Need same number of messages and manifestNames (got %d and %d)",
 			len(messages), len(manifestNames))
@@ -202,7 +202,7 @@ func (f *fixture) segments(messages []string, manifestNames []string) []*proto_w
 	return segs
 }
 
-func (f *fixture) spans(manifestNames []string,
+func (f *logStreamerFixture) spans(manifestNames []string,
 	existingSpans map[string]*proto_webview.LogSpan) map[string]*proto_webview.LogSpan {
 
 	if existingSpans == nil {
@@ -216,7 +216,7 @@ func (f *fixture) spans(manifestNames []string,
 	return existingSpans
 }
 
-func (f *fixture) assertExpectedLogLines(expectedLines []expectedLine) {
+func (f *logStreamerFixture) assertExpectedLogLines(expectedLines []expectedLine) {
 	out := strings.TrimRight(f.fakeStdout.String(), "\n")
 	outLines := strings.Split(out, "\n")
 	if len(outLines) != len(expectedLines) {
@@ -245,7 +245,7 @@ func (f *fixture) assertExpectedLogLines(expectedLines []expectedLine) {
 	}
 }
 
-func (f *fixture) expectedLinesWithPrefix(messages []string, prefix string) []expectedLine {
+func (f *logStreamerFixture) expectedLinesWithPrefix(messages []string, prefix string) []expectedLine {
 	expected := make([]expectedLine, len(messages))
 	for i, msg := range messages {
 		expected[i] = expectedLine{prefix, msg}
@@ -253,7 +253,7 @@ func (f *fixture) expectedLinesWithPrefix(messages []string, prefix string) []ex
 	return expected
 }
 
-func (f *fixture) expectedLinesWithPrefixes(messages []string, prefixes []string) []expectedLine {
+func (f *logStreamerFixture) expectedLinesWithPrefixes(messages []string, prefixes []string) []expectedLine {
 	if len(prefixes) != len(messages) {
 		f.t.Fatalf("Need same number of prefixes and messages (got %d and %d)",
 			len(prefixes), len(messages))

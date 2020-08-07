@@ -31,10 +31,15 @@ type WebsocketReader struct {
 	handler      ViewHandler
 }
 
-func newWebsocketReaderForLogs(resources []string, conn WebsocketConn, p *hud.IncrementalPrinter) *WebsocketReader {
+func newWebsocketReaderForLogs(conn WebsocketConn, resources []string, p *hud.IncrementalPrinter) *WebsocketReader {
+	ls := NewLogStreamer(resources, p)
+	return newWebsocketReader(conn, ls)
+}
+
+func newWebsocketReader(conn WebsocketConn, handler ViewHandler) *WebsocketReader {
 	return &WebsocketReader{
 		conn:         conn,
-		handler:      NewLogStreamer(resources, p),
+		handler:      handler,
 		marshaller:   jsonpb.Marshaler{OrigName: false, EmitDefaults: true},
 		unmarshaller: jsonpb.Unmarshaler{},
 	}
@@ -98,7 +103,7 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 
 	return nil
 }
-func StreamLogs(ctx context.Context, resources []string, url model.WebURL, printer *hud.IncrementalPrinter) error {
+func StreamLogs(ctx context.Context, url model.WebURL, resources []string, printer *hud.IncrementalPrinter) error {
 	url.Scheme = "ws"
 	url.Path = "/ws/view"
 	logger.Get(ctx).Debugf("connecting to %s", url.String())
@@ -109,7 +114,7 @@ func StreamLogs(ctx context.Context, resources []string, url model.WebURL, print
 	}
 	defer conn.Close()
 
-	wsr := newWebsocketReaderForLogs(resources, conn, printer)
+	wsr := newWebsocketReaderForLogs(conn, resources, printer)
 	return wsr.Listen(ctx)
 }
 
@@ -120,7 +125,6 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 		for {
 			messageType, reader, err := wsr.conn.NextReader()
 			if err != nil {
-				// uh do i need to do anything with this error? or does it just mean that the socket has closed?
 				return
 			}
 
@@ -162,7 +166,7 @@ func (wsr *WebsocketReader) handleTextMessage(ctx context.Context, reader io.Rea
 	}
 
 	// If server is using the incremental logs protocol, send back an ACK
-	if v.LogList.ToCheckpoint > 0 {
+	if v.LogList != nil && v.LogList.ToCheckpoint > 0 {
 		err = wsr.sendIncrementalLogResp(ctx, &v)
 		if err != nil {
 			return errors.Wrap(err, "sending websocket ack")
