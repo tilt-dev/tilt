@@ -18,13 +18,15 @@ func (c *logsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "logs [resource1, resource2...]",
 		DisableFlagsInUseLine: true,
-		Hidden:                true, // show when out of alpha
-		Short:                 "stuff",
-		Long: `
-stuff and things
+		Short:                 "stream logs from a running Tilt instance (optionally filtered for the specified resources)",
+		Long: `Stream logs from a running Tilt instance (optionally filtered for the specified resources).
+
+By default, looks for a running Tilt instance on localhost:10350
+(this is configurable with the --port and --host flags).
 `,
 	}
 
+	// TODO: log level flags
 	addConnectServerFlags(cmd)
 	return cmd
 }
