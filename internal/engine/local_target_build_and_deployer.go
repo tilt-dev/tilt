@@ -2,9 +2,11 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -29,6 +31,14 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf(
 			"LocalTargetBuildAndDeployer requires exactly one LocalTarget (got %d)", len(targets))
 	}
+
+	startTime := time.Now()
+	defer func() {
+		analytics.Get(ctx).Timer("update", time.Since(startTime), map[string]string{
+			"type":     "local",
+			"hasError": fmt.Sprintf("%t", err != nil),
+		})
+	}()
 
 	targ := targets[0]
 	err = bd.run(ctx, targ.UpdateCmd, targ.Workdir)

@@ -116,14 +116,17 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	return createResultSet(liveUpdateStateSet, liveUpdInfos), err
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-buildAndDeploy")
 	span.SetTag("target", iTarget.Refs.ConfigurationRef.String())
 	defer span.Finish()
 
 	startTime := time.Now()
 	defer func() {
-		analytics.Get(ctx).Timer("build.container", time.Since(startTime), nil)
+		analytics.Get(ctx).Timer("update", time.Since(startTime), map[string]string{
+			"type":     "container",
+			"hasError": fmt.Sprintf("%t", err != nil),
+		})
 	}()
 
 	l := logger.Get(ctx)

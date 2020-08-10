@@ -3,10 +3,13 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/opentracing/opentracing-go"
+
+	"github.com/tilt-dev/tilt/internal/analytics"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -56,7 +59,7 @@ func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) ([]mo
 	return iTargets, dcTargets
 }
 
-func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
+func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (res store.BuildResultSet, err error) {
 	iTargets, dcTargets := bd.extract(specs)
 	if len(dcTargets) != 1 {
 		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf(
@@ -67,6 +70,14 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerComposeBuildAndDeployer-BuildAndDeploy")
 	span.SetTag("target", dcTargets[0].Name)
 	defer span.Finish()
+
+	startTime := time.Now()
+	defer func() {
+		analytics.Get(ctx).Timer("update", time.Since(startTime), map[string]string{
+			"type":     "local",
+			"hasError": fmt.Sprintf("%t", err != nil),
+		})
+	}()
 
 	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, currentState, bd.ib.CanReuseRef)
 	if err != nil {
