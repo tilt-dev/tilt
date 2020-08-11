@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+
 	"github.com/tilt-dev/tilt/internal/testutils"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
@@ -79,7 +81,7 @@ type websocketReaderFixture struct {
 	t       *testing.T
 	ctx     context.Context
 	cancel  context.CancelFunc
-	out     *bytes.Buffer
+	out     *bufsync.ThreadSafeBuffer
 	conn    *fakeConn
 	handler *fakeViewHandler
 	wsr     *WebsocketReader
@@ -87,7 +89,7 @@ type websocketReaderFixture struct {
 }
 
 func newWebsocketReaderFixture(t *testing.T) *websocketReaderFixture {
-	out := new(bytes.Buffer)
+	out := bufsync.NewThreadSafeBuffer()
 	baseCtx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(out)
 	ctx, cancel := context.WithCancel(baseCtx)
 	conn := newFakeConn()
@@ -149,8 +151,8 @@ func (f *websocketReaderFixture) assertHandlerCallCount(n int) {
 }
 
 func (f *websocketReaderFixture) assertLogs(msg string) {
-	logs := f.out.String()
-	assert.Contains(f.t, logs, msg)
+	err := f.out.WaitUntilContains(msg, time.Millisecond*50)
+	assert.NoError(f.t, err)
 }
 
 func (f *websocketReaderFixture) tearDown() {
