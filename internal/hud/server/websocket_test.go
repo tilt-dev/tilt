@@ -142,7 +142,7 @@ func (c *fakeConn) WriteJSON(v interface{}) error {
 
 func (c *fakeConn) AssertNextWriteMsg(t *testing.T) msg {
 	select {
-	case <-time.After(150 * time.Millisecond):
+	case <-time.After(250 * time.Millisecond):
 		t.Fatal("timed out waiting for WriteJSON")
 	case msg := <-c.writeCh:
 		return msg
