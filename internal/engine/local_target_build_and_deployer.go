@@ -35,7 +35,6 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 	startTime := time.Now()
 	defer func() {
 		analytics.Get(ctx).Timer("build.local", time.Since(startTime), map[string]string{
-			"type":     "local",
 			"hasError": fmt.Sprintf("%t", err != nil),
 		})
 	}()
