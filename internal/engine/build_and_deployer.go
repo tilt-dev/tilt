@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"go.opentelemetry.io/otel/api/core"
 	"go.opentelemetry.io/otel/api/trace"
-
-	"github.com/tilt-dev/tilt/internal/analytics"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -135,18 +132,4 @@ func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDep
 	}
 
 	return BuildOrder{lubad, dcbad, ibad, ltbad}
-}
-
-func sendBuildCompleteTiming(ctx context.Context, startTime time.Time, updateType string, err error) {
-	hasErr := fmt.Sprintf("%t", err != nil)
-
-	analytics.Get(ctx).Timer("update", time.Since(startTime), map[string]string{
-		"type":     updateType,
-		"hasError": hasErr,
-	})
-
-	// legacy format ("build.image" etc.)
-	analytics.Get(ctx).Timer(fmt.Sprintf("build.%s", updateType), time.Since(startTime), map[string]string{
-		"hasError": hasErr,
-	})
 }

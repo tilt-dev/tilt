@@ -2,9 +2,11 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -32,7 +34,10 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 
 	startTime := time.Now()
 	defer func() {
-		sendBuildCompleteTiming(ctx, startTime, "local", err)
+		analytics.Get(ctx).Timer("build.local", time.Since(startTime), map[string]string{
+			"type":     "local",
+			"hasError": fmt.Sprintf("%t", err != nil),
+		})
 	}()
 
 	targ := targets[0]

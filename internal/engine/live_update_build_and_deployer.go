@@ -12,6 +12,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/ospath"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -122,7 +123,9 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 
 	startTime := time.Now()
 	defer func() {
-		sendBuildCompleteTiming(ctx, startTime, "container", err)
+		analytics.Get(ctx).Timer("build.container", time.Since(startTime), map[string]string{
+			"hasError": fmt.Sprintf("%t", err != nil),
+		})
 	}()
 
 	l := logger.Get(ctx)
