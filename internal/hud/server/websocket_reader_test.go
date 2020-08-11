@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 
 	"github.com/tilt-dev/tilt/internal/testutils"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
@@ -80,7 +81,7 @@ type websocketReaderFixture struct {
 	t       *testing.T
 	ctx     context.Context
 	cancel  context.CancelFunc
-	out     *bytes.Buffer
+	out     *bufsync.ThreadSafeBuffer
 	conn    *fakeConn
 	handler *fakeViewHandler
 	wsr     *WebsocketReader
@@ -88,7 +89,7 @@ type websocketReaderFixture struct {
 }
 
 func newWebsocketReaderFixture(t *testing.T) *websocketReaderFixture {
-	out := new(bytes.Buffer)
+	out := bufsync.NewThreadSafeBuffer()
 	baseCtx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(out)
 	ctx, cancel := context.WithCancel(baseCtx)
 	conn := newFakeConn()
@@ -150,27 +151,7 @@ func (f *websocketReaderFixture) assertHandlerCallCount(n int) {
 }
 
 func (f *websocketReaderFixture) assertLogs(msg string) {
-	ctx, cancel := context.WithTimeout(f.ctx, time.Millisecond*10)
-	defer cancel()
-	isCanceled := false
-
-	for {
-		logs := f.out.String()
-		if strings.Contains(logs, msg) {
-			return
-		}
-		if isCanceled {
-			f.t.Fatalf("Timed out waiting for logs to contain message: %q\nLOGS:\n%s",
-				msg, logs)
-		}
-
-		select {
-		case <-ctx.Done():
-			// Let the loop run the check one more time
-			isCanceled = true
-		case <-time.After(time.Millisecond):
-		}
-	}
+	f.out.WaitUntilContains(msg, time.Millisecond*50)
 }
 
 func (f *websocketReaderFixture) tearDown() {
