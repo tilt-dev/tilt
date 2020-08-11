@@ -45,7 +45,6 @@ func (d *TiltDriver) Up(args []string, out io.Writer) (*TiltUpResponse, error) {
 	mandatoryArgs := []string{"up",
 		// Can't attach a HUD or install browsers in headless mode
 		"--hud=false",
-		"--no-browser",
 
 		// Debug logging for integration tests
 		"--debug",
