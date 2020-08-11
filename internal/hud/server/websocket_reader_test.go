@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -149,8 +150,27 @@ func (f *websocketReaderFixture) assertHandlerCallCount(n int) {
 }
 
 func (f *websocketReaderFixture) assertLogs(msg string) {
-	logs := f.out.String()
-	assert.Contains(f.t, logs, msg)
+	ctx, cancel := context.WithTimeout(f.ctx, time.Millisecond*10)
+	defer cancel()
+	isCanceled := false
+
+	for {
+		logs := f.out.String()
+		if strings.Contains(logs, msg) {
+			return
+		}
+		if isCanceled {
+			f.t.Fatalf("Timed out waiting for logs to contain message: %q\nLOGS:\n%s",
+				msg, logs)
+		}
+
+		select {
+		case <-ctx.Done():
+			// Let the loop run the check one more time
+			isCanceled = true
+		case <-time.After(time.Millisecond):
+		}
+	}
 }
 
 func (f *websocketReaderFixture) tearDown() {
