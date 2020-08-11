@@ -115,10 +115,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	startTime := time.Now()
 	defer func() {
-		ibd.analytics.Timer("update", time.Since(startTime), map[string]string{
-			"type":     "image",
-			"hasError": fmt.Sprintf("%t", err != nil),
-		})
+		sendBuildCompleteTiming(ctx, startTime, "image", err)
 	}()
 
 	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.CanReuseRef)

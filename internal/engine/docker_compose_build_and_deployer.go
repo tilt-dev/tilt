@@ -9,8 +9,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/tilt-dev/tilt/internal/analytics"
-
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -73,10 +71,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	startTime := time.Now()
 	defer func() {
-		analytics.Get(ctx).Timer("update", time.Since(startTime), map[string]string{
-			"type":     "local",
-			"hasError": fmt.Sprintf("%t", err != nil),
-		})
+		sendBuildCompleteTiming(ctx, startTime, "docker-compose", err)
 	}()
 
 	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, currentState, bd.ib.CanReuseRef)
