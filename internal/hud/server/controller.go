@@ -25,7 +25,6 @@ type HeadsUpServerController struct {
 	hudServer   *HeadsUpServer
 	assetServer assets.Server
 	webURL      model.WebURL
-	webLoadDone bool
 	initDone    bool
 }
 
