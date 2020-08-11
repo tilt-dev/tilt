@@ -139,7 +139,7 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	_, _ = fmt.Fprintf(p.stdout, "(s) to stream logs (--stream=true)\n")
-	_, _ = fmt.Fprintf(p.stdout, "(t) to open legacy terminal mode(--legacy=true)\n")
+	_, _ = fmt.Fprintf(p.stdout, "(t) to open legacy terminal mode (--legacy=true)\n")
 	_, _ = fmt.Fprintf(p.stdout, "(ctrl-c) to exit\n")
 
 	p.printed = true
