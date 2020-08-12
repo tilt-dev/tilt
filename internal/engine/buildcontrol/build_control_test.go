@@ -127,6 +127,27 @@ func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 }
 
+func TestCurrentlyBuildingParallelLocalResource(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.upsertK8sManifest("k8s1")
+	local1 := f.upsertLocalManifest("local1", func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
+		return m.WithLocalAllowParallel(true)
+	})
+	local2 := f.upsertLocalManifest("local2", func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
+		return m.WithLocalAllowParallel(true)
+	})
+
+	f.assertNextTargetToBuild("local1")
+
+	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNextTargetToBuild("local2")
+
+	local2.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNextTargetToBuild("k8s1")
+}
+
 func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
