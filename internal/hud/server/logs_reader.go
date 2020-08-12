@@ -28,20 +28,22 @@ type WebsocketReader struct {
 	conn         WebsocketConn
 	marshaller   jsonpb.Marshaler
 	unmarshaller jsonpb.Unmarshaler
+	keepAlive    bool // whether to keep listening on websocket, or close after first message
 	handler      ViewHandler
 }
 
-func newWebsocketReaderForLogs(conn WebsocketConn, resources []string, p *hud.IncrementalPrinter) *WebsocketReader {
+func newWebsocketReaderForLogs(conn WebsocketConn, keepAlive bool, resources []string, p *hud.IncrementalPrinter) *WebsocketReader {
 	ls := NewLogStreamer(resources, p)
-	return newWebsocketReader(conn, ls)
+	return newWebsocketReader(conn, keepAlive, ls)
 }
 
-func newWebsocketReader(conn WebsocketConn, handler ViewHandler) *WebsocketReader {
+func newWebsocketReader(conn WebsocketConn, keepAlive bool, handler ViewHandler) *WebsocketReader {
 	return &WebsocketReader{
 		conn:         conn,
-		handler:      handler,
 		marshaller:   jsonpb.Marshaler{OrigName: false, EmitDefaults: true},
 		unmarshaller: jsonpb.Unmarshaler{},
+		keepAlive:    keepAlive,
+		handler:      handler,
 	}
 }
 
@@ -103,7 +105,7 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 
 	return nil
 }
-func StreamLogs(ctx context.Context, url model.WebURL, resources []string, printer *hud.IncrementalPrinter) error {
+func StreamLogs(ctx context.Context, follow bool, url model.WebURL, resources []string, printer *hud.IncrementalPrinter) error {
 	url.Scheme = "ws"
 	url.Path = "/ws/view"
 	logger.Get(ctx).Debugf("connecting to %s", url.String())
@@ -114,7 +116,7 @@ func StreamLogs(ctx context.Context, url model.WebURL, resources []string, print
 	}
 	defer conn.Close()
 
-	wsr := newWebsocketReaderForLogs(conn, resources, printer)
+	wsr := newWebsocketReaderForLogs(conn, follow, resources, printer)
 	return wsr.Listen(ctx)
 }
 
@@ -133,6 +135,9 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 				if err != nil {
 					// will I want this to be an Info sometimes??
 					logger.Get(ctx).Verbosef("Error handling websocket message: %v", err)
+				}
+				if !wsr.keepAlive {
+					return
 				}
 			}
 		}

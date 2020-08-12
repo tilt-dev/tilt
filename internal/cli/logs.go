@@ -12,19 +12,23 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 )
 
-type logsCmd struct{}
+type logsCmd struct {
+	follow bool // if true, follow logs (otherwise print current logs and exit)
+}
 
 func (c *logsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "logs [resource1, resource2...]",
 		DisableFlagsInUseLine: true,
-		Short:                 "stream logs from a running Tilt instance (optionally filtered for the specified resources)",
-		Long: `Stream logs from a running Tilt instance (optionally filtered for the specified resources).
+		Short:                 "Get logs from a running Tilt instance (optionally filtered for the specified resources)",
+		Long: `Get logs from a running Tilt instance (optionally filtered for the specified resources).
 
 By default, looks for a running Tilt instance on localhost:10350
 (this is configurable with the --port and --host flags).
 `,
 	}
+
+	cmd.Flags().BoolVarP(&c.follow, "follow", "f", false, "If true, stream the requested logs; otherwise, print the requested logs at the current moment in time, then exit.")
 
 	// TODO: log level flags
 	addConnectServerFlags(cmd)
@@ -46,5 +50,5 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	return server.StreamLogs(ctx, logDeps.url, args, logDeps.printer)
+	return server.StreamLogs(ctx, c.follow, logDeps.url, args, logDeps.printer)
 }
