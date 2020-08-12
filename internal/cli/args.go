@@ -11,6 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type argsCmd struct {
@@ -21,6 +23,8 @@ type argsCmd struct {
 func newArgsCmd() *argsCmd {
 	return &argsCmd{post: http.Post}
 }
+
+func (c *argsCmd) name() model.TiltSubcommand { return "args" }
 
 func (c *argsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{

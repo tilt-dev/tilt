@@ -234,7 +234,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env, subcommand)
+	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -391,7 +391,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
-	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env, subcommand)
+	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
 	webMode, err := provideWebMode(tiltBuild)
 	if err != nil {
 		return CmdCIDeps{}, err

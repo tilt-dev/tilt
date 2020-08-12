@@ -12,10 +12,13 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type doctorCmd struct {
 }
+
+func (c *doctorCmd) name() model.TiltSubcommand { return "doctor" }
 
 func (c *doctorCmd) register() *cobra.Command {
 	cmd := &cobra.Command{

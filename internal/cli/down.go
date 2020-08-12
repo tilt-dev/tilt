@@ -26,6 +26,8 @@ func newDownCmd() *downCmd {
 	return &downCmd{downDepsProvider: wireDownDeps}
 }
 
+func (c *downCmd) name() model.TiltSubcommand { return "down" }
+
 func (c *downCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "down [<tilt flags>] [-- <Tiltfile args>]",

@@ -8,6 +8,7 @@ import (
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 
 	giturls "github.com/whilp/git-urls"
 
@@ -43,14 +44,14 @@ func (al analyticsLogger) Printf(fmt string, v ...interface{}) {
 	al.logger.Debugf(fmt, v...)
 }
 
-func newAnalytics(l logger.Logger) (*tiltanalytics.TiltAnalytics, error) {
+func newAnalytics(l logger.Logger, cmdName model.TiltSubcommand) (*tiltanalytics.TiltAnalytics, error) {
 	var err error
 
 	options := []analytics.Option{}
 	// enabled: true because TiltAnalytics wraps the RemoteAnalytics and has its own guards for whether analytics
 	//   is enabled. When TiltAnalytics decides to pass a call through to RemoteAnalytics, it should always work.
 	options = append(options,
-		analytics.WithGlobalTags(globalTags()),
+		analytics.WithGlobalTags(globalTags(cmdName)),
 		analytics.WithEnabled(true),
 		analytics.WithLogger(analyticsLogger{logger: l}))
 	analyticsURL := os.Getenv(analyticsURLEnvVar)
@@ -65,10 +66,11 @@ func newAnalytics(l logger.Logger) (*tiltanalytics.TiltAnalytics, error) {
 	return tiltanalytics.NewTiltAnalytics(analyticsOpter{}, backingAnalytics, provideTiltInfo().AnalyticsVersion())
 }
 
-func globalTags() map[string]string {
+func globalTags(cmdName model.TiltSubcommand) map[string]string {
 	ret := map[string]string{
-		tiltanalytics.TagVersion: provideTiltInfo().AnalyticsVersion(),
-		tiltanalytics.TagOS:      runtime.GOOS,
+		tiltanalytics.TagVersion:    provideTiltInfo().AnalyticsVersion(),
+		tiltanalytics.TagOS:         runtime.GOOS,
+		tiltanalytics.TagSubcommand: cmdName.String(),
 	}
 
 	// store a hash of the git remote to help us guess how many users are running it on the same repository

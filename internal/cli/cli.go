@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
+	"github.com/tilt-dev/tilt/pkg/model"
+
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/output"
 	"github.com/tilt-dev/tilt/internal/tracer"
@@ -84,16 +86,17 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 }
 
 type tiltCmd interface {
+	name() model.TiltSubcommand
 	register() *cobra.Command
 	run(ctx context.Context, args []string) error
 }
 
-func preCommand(ctx context.Context) (context.Context, func() error) {
+func preCommand(ctx context.Context, cmdName model.TiltSubcommand) (context.Context, func() error) {
 	cleanup := func() error { return nil }
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
 
-	a, err := newAnalytics(l)
+	a, err := newAnalytics(l, cmdName)
 	if err != nil {
 		l.Errorf("Fatal error initializing analytics: %v", err)
 		os.Exit(1)
@@ -141,7 +144,7 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
-		ctx, cleanup := preCommand(context.Background())
+		ctx, cleanup := preCommand(context.Background(), child.name())
 
 		err := child.run(ctx, args)
 

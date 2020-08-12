@@ -8,11 +8,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 )
 
 type logsCmd struct{}
+
+func (c *logsCmd) name() model.TiltSubcommand { return "logs" }
 
 func (c *logsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{

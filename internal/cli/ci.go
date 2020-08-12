@@ -15,12 +15,15 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ciCmd struct {
 	fileName             string
 	outputSnapshotOnExit string
 }
+
+func (c *ciCmd) name() model.TiltSubcommand { return "ci" }
 
 func (c *ciCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
