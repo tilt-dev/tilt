@@ -44,13 +44,13 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 		// If the tag is coming from the user script, we expect that the user script
 		// also doesn't know about the local registry. So we have to strip off
 		// the registry, and re-add it later.
-		expectedBuildRefs, err = refs.WithoutRegistry().TagRefs(expectedTag)
+		expectedBuildRefs, err = refs.WithoutRegistry().AddTagSuffix(expectedTag)
 		if err != nil {
 			return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
 		}
 	} else {
 		// In "normal" mode, the user's script should use whichever registry tag we give it.
-		expectedBuildRefs, err = refs.TagRefs(fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix()))
+		expectedBuildRefs, err = refs.AddTagSuffix(fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix()))
 		if err != nil {
 			return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
 		}
@@ -103,7 +103,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
 	}
 
-	taggedWithDigest, err := refs.TagRefs(tag)
+	taggedWithDigest, err := refs.AddTagSuffix(tag)
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
 	}
