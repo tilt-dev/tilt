@@ -502,10 +502,11 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return starlark.None, errors.New("default registry already defined")
 	}
 
-	var host, hostFromCluster string
+	var host, hostFromCluster, singleName string
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"host", &host,
-		"host_from_cluster?", &hostFromCluster); err != nil {
+		"host_from_cluster?", &hostFromCluster,
+		"single_name?", &singleName); err != nil {
 		return nil, err
 	}
 
@@ -513,6 +514,8 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 	if err != nil {
 		return starlark.None, errors.Wrapf(err, "validating defaultRegistry")
 	}
+
+	reg.SingleName = singleName
 
 	s.defaultReg = reg
 

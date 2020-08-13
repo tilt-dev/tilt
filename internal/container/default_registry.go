@@ -25,6 +25,28 @@ type Registry struct {
 	// but sometimes users will specify a hostFromCluster separately (e.g. using a local registry with KIND:
 	// YAMLs will specify the image as `registry:5000/my-img`, so the hostFromCluster will be `registry:5000`).
 	hostFromCluster string
+
+	// ECR Image registries work differently than other image registries.
+	//
+	// The registry takes the form
+	// https://aws_account_id.dkr.ecr.region.amazonaws.com
+	//
+	// And each image name in that registry must be pre-created ಠ_ಠ and assigned IAM permissions.
+	// https://aws_account_id.dkr.ecr.region.amazonaws.com/my-repo
+	// (They call this a repo).
+	//
+	// For this reason, some users using ECR prefer to push all images to a single image name.
+	//
+	// I (Nick) am hoping people use this to create a "personal" dev image repo
+	// for each user for dev.
+	//
+	// People have also suggested having a "image name transform function" that matches
+	// the "normal" image name to an existing repo.
+	//
+	// See:
+	// https://docs.aws.amazon.com/AmazonECR/latest/userguide/Repositories.html
+	// https://github.com/tilt-dev/tilt/issues/2419
+	SingleName string
 }
 
 func (r Registry) Empty() bool { return r.Host == "" }
@@ -99,25 +121,31 @@ func (r Registry) HostFromCluster() string {
 // replaceRegistry produces a new image name that is in the specified registry.
 // The name might be ugly, favoring uniqueness and simplicity and assuming that the prettiness of ephemeral dev image
 // names is not that important.
-func replaceRegistry(defaultReg string, rs RefSelector) (reference.Named, error) {
+func (r Registry) replaceRegistry(defaultReg string, rs RefSelector) (reference.Named, error) {
 	if defaultReg == "" {
 		return rs.AsNamedOnly(), nil
 	}
 
 	// validate the ref produced
-	newNs := fmt.Sprintf("%s/%s", defaultReg, escapeName(rs.RefFamiliarName()))
-	newN, err := reference.ParseNamed(newNs)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error parsing %s after applying default registry %s", newNs, defaultReg)
+	newRefString := ""
+	if r.SingleName == "" {
+		newRefString = fmt.Sprintf("%s/%s", defaultReg, escapeName(rs.RefFamiliarName()))
+	} else {
+		newRefString = fmt.Sprintf("%s/%s", defaultReg, r.SingleName)
 	}
 
-	return newN, nil
+	newRef, err := reference.ParseNamed(newRefString)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error parsing %s after applying default registry %s", newRefString, defaultReg)
+	}
+
+	return newRef, nil
 }
 
 func (r Registry) ReplaceRegistryForLocalRef(rs RefSelector) (reference.Named, error) {
-	return replaceRegistry(r.Host, rs)
+	return r.replaceRegistry(r.Host, rs)
 }
 
 func (r Registry) ReplaceRegistryForClusterRef(rs RefSelector) (reference.Named, error) {
-	return replaceRegistry(r.HostFromCluster(), rs)
+	return r.replaceRegistry(r.HostFromCluster(), rs)
 }

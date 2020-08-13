@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -107,8 +108,18 @@ func (rs RefSet) ClusterRef() reference.Named {
 	return ref
 }
 
-// TagRefs tags both of the references used for build/deploy with the given tag.
-func (rs RefSet) TagRefs(tag string) (TaggedRefs, error) {
+// AddTagSuffix tags the references for build/deploy.
+//
+// In most cases, we will use the tag given as-is.
+//
+// If we're in the mode where we're pushing to a single image name (for ECR), we'll
+// tag it with [escaped-original-name]-[suffix].
+func (rs RefSet) AddTagSuffix(suffix string) (TaggedRefs, error) {
+	tag := suffix
+	if rs.registry.SingleName != "" {
+		tag = fmt.Sprintf("%s-%s", escapeName(path.Base(rs.ConfigurationRef.RefFamiliarName())), tag)
+	}
+
 	localTagged, err := reference.WithTag(rs.LocalRef(), tag)
 	if err != nil {
 		return TaggedRefs{}, errors.Wrapf(err, "tagging localRef %s as %s", rs.LocalRef().String(), tag)
