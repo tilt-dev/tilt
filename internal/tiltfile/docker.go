@@ -96,8 +96,8 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		liveUpdateVal,
 		ignoreVal,
 		onlyVal,
-		networkVal,
 		entrypoint starlark.Value
+	var network value.Stringable
 	var ssh, secret, extraTags, cacheFrom value.StringOrStringList
 	var matchInEnvVars, pullParent bool
 	var containerArgsVal starlark.Sequence
@@ -117,7 +117,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"target?", &targetStage,
 		"ssh?", &ssh,
 		"secret?", &secret,
-		"network?", &networkVal,
+		"network?", &network,
 		"extra_tag?", &extraTags,
 		"cache_from?", &cacheFrom,
 		"pull?", &pullParent,
@@ -195,15 +195,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	network := ""
-	if networkVal != nil {
-		var ok bool
-		network, ok = value.AsString(networkVal)
-		if !ok {
-			return nil, fmt.Errorf("Argument 'network' must be string. Actual: %T", networkVal)
-		}
-	}
-
 	entrypointCmd, err := value.ValueToUnixCmd(entrypoint)
 	if err != nil {
 		return nil, err
@@ -241,7 +232,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		entrypoint:       entrypointCmd,
 		containerArgs:    containerArgs,
 		targetStage:      targetStage,
-		network:          network,
+		network:          network.Value,
 		extraTags:        extraTags.Values,
 		cacheFrom:        cacheFrom.Values,
 		pullParent:       pullParent,

@@ -41,17 +41,12 @@ func readJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 
 // reads json from a string
 func decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var contents starlark.Value
+	var contents value.Stringable
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "json", &contents); err != nil {
 		return nil, err
 	}
 
-	s, ok := value.AsString(contents)
-	if !ok {
-		return nil, fmt.Errorf("%s arg must be a string or blob. got %s", fn.Name(), contents.Type())
-	}
-
-	return jsonStringToStarlark(s, "")
+	return jsonStringToStarlark(contents.Value, "")
 }
 
 func jsonStringToStarlark(s string, source string) (starlark.Value, error) {
