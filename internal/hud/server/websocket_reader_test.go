@@ -67,8 +67,8 @@ func TestHandlerErrorDoesntStopLoop(t *testing.T) {
 	f.tearDown()
 }
 
-func TestKeepAliveFalseExistsAfterHandling(t *testing.T) {
-	f := newWebsocketReaderFixture(t).withKeepAlive(false)
+func TestNonPersistentReaderExistsAfterHandling(t *testing.T) {
+	f := newWebsocketReaderFixture(t).withPersistent(false)
 	f.start()
 
 	v := &proto_webview.View{Log: "hello world"}
@@ -120,8 +120,8 @@ func newWebsocketReaderFixture(t *testing.T) *websocketReaderFixture {
 	}
 }
 
-func (f *websocketReaderFixture) withKeepAlive(keepAlive bool) *websocketReaderFixture {
-	f.wsr.keepAlive = keepAlive
+func (f *websocketReaderFixture) withPersistent(persistent bool) *websocketReaderFixture {
+	f.wsr.persistent = persistent
 	return f
 }
 

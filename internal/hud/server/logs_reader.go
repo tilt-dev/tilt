@@ -28,21 +28,21 @@ type WebsocketReader struct {
 	conn         WebsocketConn
 	marshaller   jsonpb.Marshaler
 	unmarshaller jsonpb.Unmarshaler
-	keepAlive    bool // whether to keep listening on websocket, or close after first message
+	persistent   bool // whether to keep listening on websocket, or close after first message
 	handler      ViewHandler
 }
 
-func newWebsocketReaderForLogs(conn WebsocketConn, keepAlive bool, resources []string, p *hud.IncrementalPrinter) *WebsocketReader {
+func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, resources []string, p *hud.IncrementalPrinter) *WebsocketReader {
 	ls := NewLogStreamer(resources, p)
-	return newWebsocketReader(conn, keepAlive, ls)
+	return newWebsocketReader(conn, persistent, ls)
 }
 
-func newWebsocketReader(conn WebsocketConn, keepAlive bool, handler ViewHandler) *WebsocketReader {
+func newWebsocketReader(conn WebsocketConn, persistent bool, handler ViewHandler) *WebsocketReader {
 	return &WebsocketReader{
 		conn:         conn,
 		marshaller:   jsonpb.Marshaler{OrigName: false, EmitDefaults: true},
 		unmarshaller: jsonpb.Unmarshaler{},
-		keepAlive:    keepAlive,
+		persistent:   persistent,
 		handler:      handler,
 	}
 }
@@ -136,7 +136,7 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 					// will I want this to be an Info sometimes??
 					logger.Get(ctx).Verbosef("Error handling websocket message: %v", err)
 				}
-				if !wsr.keepAlive {
+				if !wsr.persistent {
 					return
 				}
 			}
