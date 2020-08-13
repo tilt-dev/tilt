@@ -15,6 +15,10 @@ type LocalTarget struct {
 	ignores   []Dockerignore
 
 	repos []LocalGitRepo
+
+	// Indicates that we should allow this to run in parallel with other
+	// resources  (by default, this is presumed unsafe and is not allowed).
+	AllowParallel bool
 }
 
 var _ TargetSpec = LocalTarget{}
@@ -31,6 +35,11 @@ func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string,
 
 func (lt LocalTarget) Empty() bool {
 	return lt.UpdateCmd.Empty() && lt.ServeCmd.Empty()
+}
+
+func (lt LocalTarget) WithAllowParallel(val bool) LocalTarget {
+	lt.AllowParallel = val
+	return lt
 }
 
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {

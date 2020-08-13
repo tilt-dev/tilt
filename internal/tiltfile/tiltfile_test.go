@@ -4665,6 +4665,22 @@ local_resource('e', 'echo e')
 	}
 }
 
+func TestLocalResourceAllowParallel(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("a", ["echo", "hi"], allow_parallel=True)
+local_resource("b", ["echo", "hi"])
+`)
+
+	f.load()
+	a := f.assertNextManifest("a")
+	assert.True(t, a.LocalTarget().AllowParallel)
+	b := f.assertNextManifest("b")
+	assert.False(t, b.LocalTarget().AllowParallel)
+}
+
 func TestMaxParallelUpdates(t *testing.T) {
 	for _, tc := range []struct {
 		name                       string
