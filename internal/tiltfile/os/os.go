@@ -86,7 +86,7 @@ func osName() string {
 }
 
 func getenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var key starlark.Value
+	var key value.Stringable
 	var defaultVal starlark.Value = starlark.None
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"key", &key,
@@ -96,12 +96,7 @@ func getenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwarg
 		return nil, err
 	}
 
-	keyStr, ok := value.AsString(key)
-	if !ok {
-		return nil, fmt.Errorf("key must be a string, actual: %s", key)
-	}
-
-	envVal, found := os.LookupEnv(keyStr)
+	envVal, found := os.LookupEnv(key.Value)
 	if !found {
 		return defaultVal, nil
 	}
@@ -110,7 +105,7 @@ func getenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwarg
 }
 
 func putenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var key, v starlark.String
+	var key, v value.Stringable
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"key", &key,
 		"value", &v,
@@ -119,22 +114,12 @@ func putenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwarg
 		return nil, err
 	}
 
-	keyStr, ok := value.AsString(key)
-	if !ok {
-		return nil, fmt.Errorf("key must be a string, actual: %s", key)
-	}
-
-	valueStr, ok := value.AsString(v)
-	if !ok {
-		return nil, fmt.Errorf("value must be a string, actual: %s", v)
-	}
-
-	os.Setenv(keyStr, valueStr)
+	os.Setenv(key.Value, v.Value)
 	return starlark.None, nil
 }
 
 func unsetenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var key starlark.Value
+	var key value.Stringable
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"key", &key,
 	)
@@ -142,12 +127,7 @@ func unsetenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwa
 		return nil, err
 	}
 
-	keyStr, ok := value.AsString(key)
-	if !ok {
-		return nil, fmt.Errorf("key must be a string, actual: %s", key)
-	}
-
-	os.Unsetenv(keyStr)
+	os.Unsetenv(key.Value)
 	return starlark.None, nil
 }
 

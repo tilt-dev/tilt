@@ -80,17 +80,12 @@ func readYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 }
 
 func decodeYAMLStreamAsStarlarkList(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (*starlark.List, error) {
-	var contents starlark.Value
+	var contents value.Stringable
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "yaml", &contents); err != nil {
 		return nil, err
 	}
 
-	s, ok := value.AsString(contents)
-	if !ok {
-		return nil, fmt.Errorf("%s arg must be a string or blob. got %s", fn.Name(), contents.Type())
-	}
-
-	return yamlStreamToStarlark(s, "")
+	return yamlStreamToStarlark(contents.Value, "")
 }
 
 func decodeYAMLStream(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

@@ -61,7 +61,7 @@ func TraceID(ctx context.Context) (string, error) {
 	case zipkin.SpanContext:
 		return t.TraceID.ToHex(), nil
 	case lightstep.SpanContext:
-		return string(t.TraceID), nil
+		return fmt.Sprintf("%d", t.TraceID), nil
 	case jaeger.SpanContext:
 		return t.TraceID().String(), nil
 	default:
