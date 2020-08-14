@@ -1,21 +1,34 @@
 project_name: tilt
-before:
-  hooks:
-    - ./scripts/upload-assets.py latest
 builds:
-- env:
-  main: ./cmd/tilt/main.go
+- main: ./cmd/tilt/main.go
+  id: tilt-darwin
+  flags:
+  - -tags=osusergo
+  - -mod=vendor
+  goos:
+  - darwin
+  goarch:
+  - amd64
+  - arm
+  - arm64
+  env:
+  # Compiles against the MacOS FSEvents system libraries.
+  - CGO_ENABLED=1
+  - CC=/osxcross/target/bin/x86_64h-apple-darwin14-clang
+- main: ./cmd/tilt/main.go
+  id: tilt
   flags:
   - -tags=osusergo
   - -mod=vendor
   goos:
   - linux
-  - darwin
   - windows
   goarch:
   - amd64
   - arm
   - arm64
+  env:
+  - CGO_ENABLED=0
 archives:
 - name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
   replacements:
@@ -40,7 +53,7 @@ changelog:
     - '^docs:'
     - '^test:'
 brews:
-- github:
+- tap:
     owner: tilt-dev
     name: homebrew-tap
   commit_author:
@@ -56,7 +69,7 @@ dockers:
 - image_templates:
     - "tiltdev/tilt"
     - "tiltdev/tilt:{{ .Tag }}"
-  dockerfile: scripts/goreleaser.Dockerfile
+  dockerfile: scripts/tilt.Dockerfile
 scoop:
   url_template: "http://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   bucket:

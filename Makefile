@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor shellcheck
+.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor shellcheck release-container
 
 all: check-go check-js test-js
 
@@ -146,6 +146,10 @@ wire-check:
 	wire check ./internal/cli
 	wire check ./internal/synclet
 
+release-container:
+	docker build -t gcr.io/windmill-public-containers/tilt-releaser -f scripts/release.Dockerfile scripts
+	docker push gcr.io/windmill-public-containers/tilt-releaser
+
 ci-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
 	docker push gcr.io/windmill-public-containers/tilt-ci
@@ -175,8 +179,7 @@ custom-synclet-release:
 	docker push $(SYNCLET_IMAGE):$(TAG)
 
 release:
-	goreleaser --rm-dist
-	scripts/record-release.sh "$$(git describe --abbrev=0 --tags)"
+	./scripts/release.sh
 
 prettier:
 	cd web && yarn install

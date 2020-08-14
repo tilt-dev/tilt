@@ -264,14 +264,12 @@ you've got it working.
 We use [goreleaser](https://goreleaser.com) for releases.
 
 Requirements:
-- goreleaser: `go get -u github.com/goreleaser/goreleaser`
-- MacOS
 - Python
 - [gsutil](https://cloud.google.com/storage/docs/gsutil_install)
-- `GITHUB_TOKEN` env variable with repo scope
+- `GITHUB_API_TOKEN` env variable with repo scope
 
-Currently, releases have to be built on MacOS due to cross-compilation issues with Apple FSEvents.
-Cross-compiling a Linux target binary with a MacOS toolchain works fine.
+We cross-compile the binary in a container, so that you don't need to have xcode
+or goreleaser installed.
 
 To create a new release at tag `$TAG`:
 
