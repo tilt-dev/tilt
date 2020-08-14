@@ -266,7 +266,7 @@ We use [goreleaser](https://goreleaser.com) for releases.
 Requirements:
 - Python
 - [gsutil](https://cloud.google.com/storage/docs/gsutil_install)
-- `GITHUB_API_TOKEN` env variable with repo scope
+- `GITHUB_TOKEN` env variable with repo scope
 
 We cross-compile the binary in a container, so that you don't need to have xcode
 or goreleaser installed.

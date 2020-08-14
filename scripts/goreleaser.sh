@@ -5,8 +5,8 @@
 
 set -ex
 
-if [[ "$GITHUB_API_TOKEN" == "" ]]; then
-    echo "Missing GITHUB_API_TOKEN"
+if [[ "$GITHUB_TOKEN" == "" ]]; then
+    echo "Missing GITHUB_TOKEN"
     exit 1
 fi
 
@@ -14,7 +14,7 @@ DIR=$(dirname "$0")
 cd "$DIR/.."
 
 docker run --rm --privileged \
-       -e GITHUB_TOKEN="$GITHUB_API_TOKEN" \
+       -e GITHUB_TOKEN="$GITHUB_TOKEN" \
        -w /src/tilt \
        -v "$PWD:/src/tilt" \
        -v /var/run/docker.sock:/var/run/docker.sock \
