@@ -241,7 +241,14 @@ func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.Str
 		contentBytes = []byte(contents)
 	}
 
-	return starlark.ExecFile(t, localPath, contentBytes, e.predeclared)
+	// Create a copy of predeclared variables so we can specify Tiltfile-specific values.
+	predeclared := starlark.StringDict{}
+	for k, v := range e.predeclared {
+		predeclared[k] = v
+	}
+	predeclared["__file__"] = starlark.String(localPath)
+
+	return starlark.ExecFile(t, localPath, contentBytes, predeclared)
 }
 
 type ArgUnpacker func(fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error
