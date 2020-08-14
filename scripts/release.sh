@@ -5,8 +5,8 @@
 
 set -ex
 
-if [[ "$GITHUB_API_TOKEN" == "" ]]; then
-    echo "Missing GITHUB_API_TOKEN"
+if [[ "$GITHUB_TOKEN" == "" ]]; then
+    echo "Missing GITHUB_TOKEN"
     exit 1
 fi
 
