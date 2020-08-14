@@ -221,6 +221,14 @@ func (e K8sEntity) Namespace() Namespace {
 	return Namespace(n)
 }
 
+func (e K8sEntity) NamespaceOrDefault(defaultVal string) string {
+	n := e.meta().GetNamespace()
+	if n == "" {
+		return defaultVal
+	}
+	return n
+}
+
 func (e K8sEntity) UID() types.UID {
 	return e.meta().GetUID()
 }
