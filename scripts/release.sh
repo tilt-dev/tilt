@@ -15,4 +15,4 @@ cd "$DIR/.."
 
 ./scripts/upload-assets.py latest
 ./scripts/goreleaser.sh
-./scripts/record-release.sh "$$(git describe --abbrev=0 --tags)"
+./scripts/record-release.sh "$(git describe --abbrev=0 --tags)"
