@@ -247,7 +247,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		}
 
 		for i, e := range parsed {
-			parsed[i] = e.WithNamespace(namespace)
+			parsed[i] = e.WithNamespace(e.NamespaceOrDefault(namespace))
 		}
 
 		yaml, err = k8s.SerializeSpecYAML(parsed)
