@@ -198,3 +198,25 @@ load('../bar/Tiltfile', 'unused')
 	path := strings.TrimSpace(f.out.String())
 	require.Equal(t, "bar", filepath.Base(filepath.Dir(path)))
 }
+
+// Tiltfile loads Tiltfile2
+// 1 prints its __file__ and calls a method in 2 to do the same
+func TestUseMagicFileVar(t *testing.T) {
+	f := NewFixture(t, PwdExtension{})
+	f.File("Tiltfile2", `
+def print_mypath():
+  print(__file__)
+`)
+	f.File("Tiltfile", `
+load('Tiltfile2', 'print_mypath')
+print(__file__)
+print_mypath()
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	paths := strings.Split(strings.TrimSpace(f.out.String()), "\n")
+	require.Equal(t, "Tiltfile", filepath.Base(paths[0]))
+	require.Equal(t, "Tiltfile2", filepath.Base(paths[1]))
+}
