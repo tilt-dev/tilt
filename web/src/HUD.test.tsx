@@ -10,9 +10,8 @@ import {
   oneResourceNoAlerts,
 } from "./testdata"
 import { createMemoryHistory } from "history"
-import { SnapshotHighlight, SocketState } from "./types"
+import { SocketState } from "./types"
 import ReactModal from "react-modal"
-import { Count, memoryIncr } from "./analytics"
 
 ReactModal.setAppElement(document.body)
 
@@ -27,17 +26,17 @@ declare global {
 }
 
 const fakeHistory = createMemoryHistory()
-const emptyHUD = (counts: Array<Count> = []) => {
+const emptyHUD = () => {
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <HUD history={fakeHistory} incr={memoryIncr(counts)} />
+      <HUD history={fakeHistory} />
     </MemoryRouter>
   )
 }
 const HUDAtPath = (path: string) => {
   return (
     <MemoryRouter initialEntries={[path]}>
-      <HUD history={fakeHistory} incr={memoryIncr([])} />
+      <HUD history={fakeHistory} />
     </MemoryRouter>
   )
 }
@@ -159,7 +158,7 @@ it("renders number of errors in tabnav when no resource is selected", () => {
 it("renders the number of errors a resource has in tabnav when a resource is selected", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/r/vigoda"]}>
-      <HUD history={fakeHistory} incr={memoryIncr([])} />
+      <HUD history={fakeHistory} />
     </MemoryRouter>
   )
   const hud = root.find(HUD)
@@ -340,23 +339,4 @@ it("renders logs to snapshot", async () => {
       { text: "line2\n", time: now, spanId: "_", fields: { buildEvent: "1" } },
     ],
   })
-})
-
-it("reports highlights", async () => {
-  let counts: Array<Count> = []
-  const root = mount(emptyHUD(counts))
-  const hud = root.find(HUD).instance() as HUD
-
-  var highlight: SnapshotHighlight = {
-    beginningLogID: "",
-    endingLogID: "",
-    text: "",
-  }
-  // send a few to make sure it's debounced
-  hud.handleSetHighlight(highlight)
-  hud.handleSetHighlight(highlight)
-  hud.handleSetHighlight(highlight)
-  hud.flush()
-  let highlightCounts = counts.filter(c => c.name == "ui.web.highlight")
-  expect(highlightCounts.length).toEqual(1)
 })
