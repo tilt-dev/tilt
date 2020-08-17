@@ -13,7 +13,7 @@ import PathBuilder from "./PathBuilder"
 import { matchPath } from "react-router"
 import { Route, Switch, RouteComponentProps } from "react-router-dom"
 import { History, UnregisterCallback } from "history"
-import { counter, pathToTag } from "./analytics"
+import { incr, pathToTag } from "./analytics"
 import SecondaryNav from "./SecondaryNav"
 import SocketBar from "./SocketBar"
 import "./HUD.scss"
@@ -40,11 +40,9 @@ import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 import { traceNav } from "./trace"
 import ErrorModal from "./ErrorModal"
-import { debounce, Cancelable } from "lodash"
 
 type HudProps = {
   history: History
-  incr: counter
 }
 
 // The Main HUD view, as specified in
@@ -55,13 +53,11 @@ class HUD extends Component<HudProps, HudState> {
   private controller: AppController
   private history: History
   private unlisten: UnregisterCallback
-  private incrHighlight: (() => void) & Cancelable
-  flush: () => void
 
   constructor(props: HudProps) {
     super(props)
 
-    props.incr("ui.web.init", { ua: window.navigator.userAgent })
+    incr("ui.web.init", { ua: window.navigator.userAgent })
 
     this.pathBuilder = new PathBuilder(
       window.location.host,
@@ -71,7 +67,7 @@ class HUD extends Component<HudProps, HudState> {
     this.history = props.history
     this.unlisten = this.history.listen((location, _) => {
       let tags = { type: pathToTag(location.pathname) }
-      props.incr("ui.web.navigation", tags)
+      incr("ui.web.navigation", tags)
 
       this.handleClearHighlight()
       let selection = document.getSelection()
@@ -109,12 +105,6 @@ class HUD extends Component<HudProps, HudState> {
     this.handleClearHighlight = this.handleClearHighlight.bind(this)
     this.handleSetHighlight = this.handleSetHighlight.bind(this)
     this.handleOpenModal = this.handleOpenModal.bind(this)
-
-    this.incrHighlight = debounce(
-      () => props.incr("ui.web.highlight", {}),
-      3000 /* ms */
-    )
-    this.flush = this.incrHighlight.flush
   }
 
   componentDidMount() {
@@ -231,7 +221,6 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   handleSetHighlight(highlight: SnapshotHighlight) {
-    this.incrHighlight()
     this.setState({
       snapshotHighlight: highlight,
     })
