@@ -126,6 +126,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleHudExitAction(state, action)
 	case fswatch.TargetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
+	case fswatch.GitBranchStatusAction:
+		handleGitBranchStatus(state, action)
 	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
 	case k8swatch.PodDeleteAction:
@@ -514,6 +516,10 @@ func handleFSEvent(
 			status.PendingFileChanges[f] = event.Time
 		}
 	}
+}
+
+func handleGitBranchStatus(state *store.EngineState, bsa fswatch.GitBranchStatusAction) {
+	// TODO(nick): Do something with this data.
 }
 
 func handleConfigsReloadStarted(

@@ -3511,6 +3511,7 @@ type testFixture struct {
 	store                      *store.Store
 	bc                         *BuildController
 	fwm                        *fswatch.WatchManager
+	gm                         *fswatch.GitManager
 	cc                         *configs.ConfigsController
 	dcc                        *dockercompose.FakeDCClient
 	tfl                        tiltfile.TiltfileLoader
@@ -3557,6 +3558,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	fwm := fswatch.NewWatchManager(watcher.NewSub, timerMaker.Maker())
+	gm := fswatch.NewGitManager(watcher.NewSub)
 	pfc := portforward.NewController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env, "up")
@@ -3605,6 +3607,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		bc:             bc,
 		onchangeCh:     fSub.ch,
 		fwm:            fwm,
+		gm:             gm,
 		cc:             cc,
 		dcc:            fakeDcc,
 		tfl:            tfl,
@@ -3619,7 +3622,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	podm := k8srollout.NewPodMonitor()
 	ec := exit.NewController()
 
-	subs := ProvideSubscribers(h, ts, tp, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
+	subs := ProvideSubscribers(h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, cuu, dp, tc, lc, podm, ec)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {
