@@ -21,3 +21,11 @@ func NewTargetFilesChangedAction(targetID model.TargetID, files ...string) Targe
 		Time:     time.Now(),
 	}
 }
+
+type GitBranchStatusAction struct {
+	Time time.Time
+	Repo model.LocalGitRepo
+	Head string
+}
+
+func (GitBranchStatusAction) Action() {}
