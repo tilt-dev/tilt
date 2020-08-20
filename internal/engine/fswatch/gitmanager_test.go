@@ -44,6 +44,9 @@ func TestGitManagerRemove(t *testing.T) {
 	f.WriteFile(head, "ref: refs/heads/nicks/branch")
 	f.UpsertManifestTarget("fe", model.LocalGitRepo{LocalPath: f.Path()})
 	f.gm.OnChange(f.ctx, f.store)
+	assert.Equal(t, "ref: refs/heads/nicks/branch",
+		f.NextGitBranchStatusAction().Head)
+	f.store.ClearActions()
 
 	f.WriteFile(head, "ref: refs/heads/nicks/branch2")
 	f.fakeMultiWatcher.Events <- watch.NewFileEvent(head)
