@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -246,9 +245,6 @@ func timeoutError(timeout time.Duration) error {
 }
 
 func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-k8sUpsert")
-	defer span.Finish()
-
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
