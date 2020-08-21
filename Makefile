@@ -147,8 +147,7 @@ wire-check:
 	wire check ./internal/synclet
 
 release-container:
-	docker build -t gcr.io/windmill-public-containers/tilt-releaser -f scripts/release.Dockerfile scripts
-	docker push gcr.io/windmill-public-containers/tilt-releaser
+	scripts/build-tilt-releaser.sh
 
 ci-container:
 	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
