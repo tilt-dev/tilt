@@ -14,7 +14,6 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/opencontainers/go-digest"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -57,9 +56,6 @@ func NewDockerImageBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *d
 }
 
 func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "dib-BuildImage")
-	defer span.Finish()
-
 	paths := []PathMapping{
 		{
 			LocalPath:     db.BuildPath,
@@ -123,9 +119,6 @@ func (d *dockerImageBuilder) TagRefs(ctx context.Context, refs container.RefSet,
 func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) error {
 	l := logger.Get(ctx)
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-PushImage")
-	defer span.Finish()
-
 	imagePushResponse, err := d.dCli.ImagePush(ctx, ref)
 	if err != nil {
 		return errors.Wrap(err, "PushImage#ImagePush")
@@ -159,8 +152,6 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 
 func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, refs container.RefSet) (container.TaggedRefs, error) {
 	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(db.Dockerfile, "  "))
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-buildFromDf")
-	defer span.Finish()
 
 	ps.StartBuildStep(ctx, "Tarring context…")
 
@@ -186,13 +177,11 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	}()
 
 	ps.StartBuildStep(ctx, "Building image")
-	spanBuild, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuild")
 	imageBuildResponse, err := d.dCli.ImageBuild(
 		ctx,
 		pr,
 		Options(pr, db),
 	)
-	spanBuild.Finish()
 	if err != nil {
 		return container.TaggedRefs{}, err
 	}
@@ -269,21 +258,13 @@ type dockerMessageID string
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
 func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-readDockerOutput")
-	defer span.Finish()
-
 	progressLastPrinted := make(map[dockerMessageID]time.Time)
 
 	result := dockerOutput{}
 	decoder := json.NewDecoder(reader)
-	var innerSpan opentracing.Span
-
 	b := newBuildkitPrinter(logger.Get(ctx))
 
 	for decoder.More() {
-		if innerSpan != nil {
-			innerSpan.Finish()
-		}
 		message := jsonmessage.JSONMessage{}
 		err := decoder.Decode(&message)
 		if err != nil {
@@ -300,9 +281,6 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 			}
 
 			logger.Get(ctx).Write(logger.InfoLvl, []byte(msg))
-			if strings.HasPrefix(msg, "Run") || strings.HasPrefix(msg, "Running") {
-				innerSpan, ctx = opentracing.StartSpanFromContext(ctx, msg)
-			}
 		}
 
 		if message.ErrorMessage != "" {
@@ -345,9 +323,6 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 		}
 	}
 
-	if innerSpan != nil {
-		innerSpan.Finish()
-	}
 	if ctx.Err() != nil {
 		return dockerOutput{}, ctx.Err()
 	}

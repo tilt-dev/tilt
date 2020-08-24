@@ -46,7 +46,6 @@ github.com/PuerkitoBio/urlesc
 ## explicit
 # github.com/Shopify/sarama v1.18.0
 ## explicit
-github.com/Shopify/sarama
 # github.com/Shopify/toxiproxy v2.1.4+incompatible
 ## explicit
 # github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412
@@ -55,7 +54,6 @@ github.com/agl/ed25519
 github.com/agl/ed25519/edwards25519
 # github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d
 ## explicit
-github.com/apache/thrift/lib/go/thrift
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
 # github.com/bitly/go-hostpool v0.1.0
@@ -228,13 +226,10 @@ github.com/docker/spdystream
 github.com/docker/spdystream/spdy
 # github.com/eapache/go-resiliency v1.1.0
 ## explicit
-github.com/eapache/go-resiliency/breaker
 # github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21
 ## explicit
-github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
 ## explicit
-github.com/eapache/queue
 # github.com/emicklei/go-restful v2.9.5+incompatible
 github.com/emicklei/go-restful
 github.com/emicklei/go-restful/log
@@ -257,8 +252,6 @@ github.com/gdamore/tcell/terminfo/dynamic
 # github.com/ghodss/yaml v1.0.0
 ## explicit
 github.com/ghodss/yaml
-# github.com/go-logfmt/logfmt v0.4.0
-github.com/go-logfmt/logfmt
 # github.com/go-logr/logr v0.1.0
 github.com/go-logr/logr
 # github.com/go-openapi/jsonpointer v0.19.3
@@ -295,7 +288,6 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
 # github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 ## explicit
-github.com/golang/snappy
 # github.com/google/btree v1.0.0
 github.com/google/btree
 # github.com/google/go-cmp v0.3.1
@@ -374,18 +366,10 @@ github.com/json-iterator/go/extra
 ## explicit
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
-github.com/kr/logfmt
 # github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
 github.com/liggitt/tabwriter
 # github.com/lightstep/lightstep-tracer-go v0.15.6
 ## explicit
-github.com/lightstep/lightstep-tracer-go
-github.com/lightstep/lightstep-tracer-go/collectorpb
-github.com/lightstep/lightstep-tracer-go/lightstep/rand
-github.com/lightstep/lightstep-tracer-go/lightstep_thrift
-github.com/lightstep/lightstep-tracer-go/lightsteppb
-github.com/lightstep/lightstep-tracer-go/thrift_0_9_2/lib/go/thrift
 # github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 ## explicit
 github.com/looplab/tarjan
@@ -468,7 +452,6 @@ github.com/opencontainers/runc/libcontainer/user
 github.com/opencontainers/runtime-spec/specs-go
 # github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492
 ## explicit
-github.com/opentracing-contrib/go-observer
 # github.com/opentracing/opentracing-go v1.1.1-0.20190913142402-a7454ce5950e
 ## explicit
 github.com/opentracing/opentracing-go
@@ -476,18 +459,10 @@ github.com/opentracing/opentracing-go/ext
 github.com/opentracing/opentracing-go/log
 # github.com/openzipkin/zipkin-go-opentracing v0.3.2
 ## explicit
-github.com/openzipkin/zipkin-go-opentracing
-github.com/openzipkin/zipkin-go-opentracing/flag
-github.com/openzipkin/zipkin-go-opentracing/thrift/gen-go/scribe
-github.com/openzipkin/zipkin-go-opentracing/thrift/gen-go/zipkincore
-github.com/openzipkin/zipkin-go-opentracing/types
-github.com/openzipkin/zipkin-go-opentracing/wire
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
 # github.com/pierrec/lz4 v2.4.0+incompatible
 ## explicit
-github.com/pierrec/lz4
-github.com/pierrec/lz4/internal/xxh32
 # github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 ## explicit
 github.com/pkg/browser
@@ -512,7 +487,6 @@ github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
 # github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 ## explicit
-github.com/rcrowley/go-metrics
 # github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 ## explicit
 github.com/rivo/tview
@@ -574,26 +548,8 @@ github.com/tonistiigi/fsutil/types
 github.com/tonistiigi/units
 # github.com/uber/jaeger-client-go v2.21.1+incompatible
 ## explicit
-github.com/uber/jaeger-client-go
-github.com/uber/jaeger-client-go/config
-github.com/uber/jaeger-client-go/internal/baggage
-github.com/uber/jaeger-client-go/internal/baggage/remote
-github.com/uber/jaeger-client-go/internal/spanlog
-github.com/uber/jaeger-client-go/internal/throttler
-github.com/uber/jaeger-client-go/internal/throttler/remote
-github.com/uber/jaeger-client-go/log
-github.com/uber/jaeger-client-go/rpcmetrics
-github.com/uber/jaeger-client-go/thrift
-github.com/uber/jaeger-client-go/thrift-gen/agent
-github.com/uber/jaeger-client-go/thrift-gen/baggage
-github.com/uber/jaeger-client-go/thrift-gen/jaeger
-github.com/uber/jaeger-client-go/thrift-gen/sampling
-github.com/uber/jaeger-client-go/thrift-gen/zipkincore
-github.com/uber/jaeger-client-go/transport
-github.com/uber/jaeger-client-go/utils
 # github.com/uber/jaeger-lib v2.2.0+incompatible
 ## explicit
-github.com/uber/jaeger-lib/metrics
 # github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 ## explicit
 github.com/whilp/git-urls
@@ -623,7 +579,6 @@ go.starlark.net/starlarkstruct
 go.starlark.net/syntax
 # go.uber.org/atomic v1.5.1
 ## explicit
-go.uber.org/atomic
 # golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 golang.org/x/crypto/cast5
 golang.org/x/crypto/chacha20
@@ -644,8 +599,6 @@ golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f
 ## explicit
-golang.org/x/lint
-golang.org/x/lint/golint
 # golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 ## explicit
 golang.org/x/net/context
@@ -690,9 +643,6 @@ golang.org/x/text/width
 golang.org/x/time/rate
 # golang.org/x/tools v0.0.0-20200110213125-a7a6caa82ab2
 ## explicit
-golang.org/x/tools/go/ast/astutil
-golang.org/x/tools/go/gcexportdata
-golang.org/x/tools/go/internal/gcimporter
 # google.golang.org/appengine v1.5.0
 google.golang.org/appengine
 google.golang.org/appengine/internal
