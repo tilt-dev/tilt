@@ -7,6 +7,7 @@ require (
 	github.com/Shopify/sarama v1.18.0 // indirect
 	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
+	github.com/alessio/shellescape v1.2.2
 	github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d // indirect
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/bitly/go-simplejson v0.5.0 // indirect

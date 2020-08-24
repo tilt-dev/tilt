@@ -29,6 +29,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/os"
 	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
+	"github.com/tilt-dev/tilt/internal/tiltfile/shlex"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starlarkstruct"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
@@ -200,6 +201,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		updatesettings.NewExtension(),
 		secretsettings.NewExtension(),
 		encoding.NewExtension(),
+		shlex.NewExtension(),
 		tiltextension.NewExtension(tiltextension.NewGithubFetcher(), tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
 	if err != nil {
