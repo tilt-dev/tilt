@@ -59,8 +59,6 @@ declare namespace Proto {
   }
   export interface webviewResource {
     name?: string;
-    directoriesWatched?: string[];
-    pathsWatched?: string[];
     lastDeployTime?: string;
     triggerMode?: number;
     buildHistory?: webviewBuildRecord[];

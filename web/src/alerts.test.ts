@@ -382,12 +382,10 @@ function k8sResource(): Resource {
     name: "snack",
     buildHistory: [],
     crashLog: "",
-    directoriesWatched: [],
     endpoints: [],
     podID: "podID",
     isTiltfile: false,
     lastDeployTime: "",
-    pathsWatched: [],
     pendingBuildEdits: [],
     pendingBuildReason: 0,
     pendingBuildSince: "",
@@ -410,8 +408,6 @@ function k8sResource(): Resource {
 function dcResource(): Resource {
   return {
     name: "vigoda",
-    directoriesWatched: [],
-    pathsWatched: ["Tiltfile.dc"],
     lastDeployTime: "2019-08-07T11:43:37.568629-04:00",
     triggerMode: 0,
     buildHistory: [

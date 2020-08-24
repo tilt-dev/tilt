@@ -111,11 +111,9 @@ func (lri LocalResourceInfo) Status() string                     { return string
 func (lri LocalResourceInfo) RuntimeStatus() model.RuntimeStatus { return lri.status }
 
 type Resource struct {
-	Name               model.ManifestName
-	DirectoriesWatched []string
-	PathsWatched       []string
-	LastDeployTime     time.Time
-	TriggerMode        model.TriggerMode
+	Name           model.ManifestName
+	LastDeployTime time.Time
+	TriggerMode    model.TriggerMode
 
 	BuildHistory []model.BuildRecord
 	CurrentBuild model.BuildRecord

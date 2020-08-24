@@ -34,18 +34,18 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 		ms := mt.State
 
 		var absWatchDirs []string
-		var absWatchPaths []string
-		for _, p := range mt.Manifest.LocalPaths() {
+		for i, p := range mt.Manifest.LocalPaths() {
+			if i > 50 {
+				// to avoid pathological perf cases, stop after 50
+				break
+			}
 			fi, err := os.Stat(p)
-			if err == nil && !fi.IsDir() {
-				absWatchPaths = append(absWatchPaths, p)
-			} else {
+
+			// Treat this as a directory if there's an error
+			if err != nil || fi.IsDir() {
 				absWatchDirs = append(absWatchDirs, p)
 			}
 		}
-		absWatchPaths = append(absWatchPaths, s.TiltfilePath)
-		relWatchDirs := ospath.TryAsCwdChildren(absWatchDirs)
-		relWatchPaths := ospath.TryAsCwdChildren(absWatchPaths)
 
 		var pendingBuildEdits []string
 		for _, status := range ms.BuildStatuses {
@@ -104,8 +104,6 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 
 		r := &proto_webview.Resource{
 			Name:               name.String(),
-			DirectoriesWatched: relWatchDirs,
-			PathsWatched:       relWatchPaths,
 			LastDeployTime:     lastDeploy,
 			BuildHistory:       bh,
 			PendingBuildEdits:  pendingBuildEdits,

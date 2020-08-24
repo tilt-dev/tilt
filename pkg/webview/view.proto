@@ -104,8 +104,13 @@ message Facet {
 
 message Resource {
   string name = 1;
-  repeated string directories_watched = 2;
-  repeated string paths_watched = 3;
+
+  reserved "directories_watched";
+  reserved 2;
+
+  reserved "paths_watched";
+  reserved 3;
+  
   google.protobuf.Timestamp last_deploy_time = 4;
   int32 trigger_mode = 5;
   repeated BuildRecord build_history = 6;

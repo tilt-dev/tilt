@@ -1260,7 +1260,6 @@ func TestHudUpdated(t *testing.T) {
 	assert.Equal(t, store.TiltfileManifestName, f.fakeHud().LastView.Resources[0].Name)
 	rv := f.fakeHud().LastView.Resources[1]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
-	assert.Equal(t, f.Path(), rv.DirectoriesWatched[0])
 	f.assertAllBuildsConsumed()
 }
 
