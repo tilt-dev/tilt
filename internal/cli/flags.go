@@ -27,5 +27,5 @@ func addStartServerFlags(cmd *cobra.Command) {
 
 func addDevServerFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&webDevPort, "webdev-port", DefaultWebDevPort, "Port for the Tilt Dev Webpack server. Only applies when using --web-mode=local")
-	cmd.Flags().Var(&webModeFlag, "web-mode", "Values: local, prod. Controls whether to use prod assets or a local dev server")
+	cmd.Flags().Var(&webModeFlag, "web-mode", "Values: local, prod. Controls whether to use prod assets or a local dev server. (If flag not specified: if Tilt was built from source, it will use a local asset server; otherwise, prod assets.)")
 }

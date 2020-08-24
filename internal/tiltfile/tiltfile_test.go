@@ -2878,6 +2878,47 @@ default_registry('example.com')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml", "baz/Dockerfile", "baz/.dockerignore", "baz.yaml")
 }
 
+func TestDefaultRegistrySingleName(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("fe/Dockerfile")
+	f.yaml("fe.yaml", deployment("fe", image("fe")))
+
+	f.dockerfile("be/Dockerfile")
+	f.yaml("be.yaml", deployment("be", image("be")))
+
+	f.gitInit("")
+	f.file("Tiltfile", `
+
+docker_build('fe', './fe')
+docker_build('be', './be')
+k8s_yaml('fe.yaml')
+k8s_yaml('be.yaml')
+default_registry('123.dkr.ecr.us-east-1.amazonaws.com', single_name='team-a/dev')
+`)
+
+	f.load()
+
+	fe := f.assertNextManifest("fe",
+		db(image("fe").withLocalRef("123.dkr.ecr.us-east-1.amazonaws.com/team-a/dev")),
+		deployment("fe"))
+
+	feTaggedRefs, err := fe.ImageTargets[0].Refs.AddTagSuffix("tilt-build-123")
+	assert.NoError(t, err)
+	assert.Equal(t, "123.dkr.ecr.us-east-1.amazonaws.com/team-a/dev:fe-tilt-build-123",
+		feTaggedRefs.LocalRef.String())
+
+	be := f.assertNextManifest("be",
+		db(image("be").withLocalRef("123.dkr.ecr.us-east-1.amazonaws.com/team-a/dev")),
+		deployment("be"))
+
+	beTaggedRefs, err := be.ImageTargets[0].Refs.AddTagSuffix("tilt-build-456")
+	assert.NoError(t, err)
+	assert.Equal(t, "123.dkr.ecr.us-east-1.amazonaws.com/team-a/dev:be-tilt-build-456",
+		beTaggedRefs.LocalRef.String())
+}
+
 func TestDefaultReadFile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -4622,6 +4663,22 @@ local_resource('e', 'echo e')
 			}
 		})
 	}
+}
+
+func TestLocalResourceAllowParallel(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("a", ["echo", "hi"], allow_parallel=True)
+local_resource("b", ["echo", "hi"])
+`)
+
+	f.load()
+	a := f.assertNextManifest("a")
+	assert.True(t, a.LocalTarget().AllowParallel)
+	b := f.assertNextManifest("b")
+	assert.False(t, b.LocalTarget().AllowParallel)
 }
 
 func TestMaxParallelUpdates(t *testing.T) {

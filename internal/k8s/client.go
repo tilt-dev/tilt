@@ -42,6 +42,7 @@ type NodeID string
 type ServiceName string
 type KubeContext string
 
+// NOTE(nick): This isn't right. DefaultNamespace is a function of your kubectl context.
 const DefaultNamespace = Namespace("default")
 
 var ForbiddenFieldsRe = regexp.MustCompile(`updates to .* are forbidden`)

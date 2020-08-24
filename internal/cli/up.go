@@ -37,7 +37,6 @@ var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
 var webHost = DefaultWebHost
 var webDevPort = 0
-var noBrowser bool = false
 var logActionsFlag bool = false
 
 type upCmd struct {
@@ -95,7 +94,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
 	cmd.Flags().Lookup("logactions").Hidden = true
-	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
@@ -132,9 +130,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
 
 	termMode := c.initialTermMode(isatty.IsTerminal(os.Stdout.Fd()))
-	if termMode == store.TerminalModePrompt {
-		noBrowser = true
-	}
 
 	cmdUpTags := engineanalytics.CmdTags(map[string]string{
 		"update_mode": updateModeFlag, // before 7/8/20 this was just called "mode"
@@ -256,10 +251,6 @@ func provideWebHost() model.WebHost {
 
 func provideWebPort() model.WebPort {
 	return model.WebPort(webPort)
-}
-
-func provideNoBrowserFlag() model.NoBrowser {
-	return model.NoBrowser(noBrowser)
 }
 
 func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, error) {

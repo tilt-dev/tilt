@@ -9,6 +9,36 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
 )
 
+func TestHelmNamespace(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+	f.file("helm/templates/public-config.yaml", `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: public-config
+  namespace: kube-public
+data:
+  noData: "true"
+`)
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace='garnet')
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	m := f.assertNextManifestUnresourced(
+		"public-config",
+		"rose-quartz-helloworld-chart")
+	yaml := m.K8sTarget().YAML
+
+	assert.Contains(t, yaml, "name: rose-quartz-helloworld-chart\n  namespace: garnet")
+	assert.Contains(t, yaml, "name: public-config\n  namespace: kube-public")
+}
+
 func TestHelmSetArgs(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

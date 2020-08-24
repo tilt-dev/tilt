@@ -75,9 +75,6 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	// TODO(nick): Make this better than a global variable.
-	noBrowser = true
-
 	cmdCIDeps, err := wireCmdCI(ctx, a, "ci")
 	if err != nil {
 		deferred.SetOutput(deferred.Original())

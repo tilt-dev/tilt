@@ -13,16 +13,17 @@ import (
 )
 
 type localResource struct {
-	name         string
-	updateCmd    model.Cmd
-	serveCmd     model.Cmd
-	workdir      string
-	deps         []string
-	triggerMode  triggerMode
-	autoInit     bool
-	repos        []model.LocalGitRepo
-	resourceDeps []string
-	ignores      []string
+	name          string
+	updateCmd     model.Cmd
+	serveCmd      model.Cmd
+	workdir       string
+	deps          []string
+	triggerMode   triggerMode
+	autoInit      bool
+	repos         []model.LocalGitRepo
+	resourceDeps  []string
+	ignores       []string
+	allowParallel bool
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -32,6 +33,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var deps starlark.Value
 	var resourceDepsVal starlark.Sequence
 	var ignoresVal starlark.Value
+	var allowParallel bool
 	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -45,6 +47,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"serve_cmd?", &serveCmdVal,
 		"cmd_bat?", &updateCmdBatVal,
 		"serve_cmd_bat?", &serveCmdBatVal,
+		"allow_parallel?", &allowParallel,
 	); err != nil {
 		return nil, err
 	}
@@ -85,16 +88,17 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	res := localResource{
-		name:         name,
-		updateCmd:    updateCmd,
-		serveCmd:     serveCmd,
-		workdir:      filepath.Dir(starkit.CurrentExecPath(thread)),
-		deps:         depsStrings,
-		triggerMode:  triggerMode,
-		autoInit:     autoInit,
-		repos:        repos,
-		resourceDeps: resourceDeps,
-		ignores:      ignores,
+		name:          name,
+		updateCmd:     updateCmd,
+		serveCmd:      serveCmd,
+		workdir:       filepath.Dir(starkit.CurrentExecPath(thread)),
+		deps:          depsStrings,
+		triggerMode:   triggerMode,
+		autoInit:      autoInit,
+		repos:         repos,
+		resourceDeps:  resourceDeps,
+		ignores:       ignores,
+		allowParallel: allowParallel,
 	}
 
 	//check for duplicate resources by name and throw error if found

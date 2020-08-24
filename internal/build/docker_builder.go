@@ -101,7 +101,7 @@ func (d *dockerImageBuilder) TagRefs(ctx context.Context, refs container.RefSet,
 		return container.TaggedRefs{}, errors.Wrap(err, "TagImage")
 	}
 
-	tagged, err := refs.TagRefs(tag)
+	tagged, err := refs.AddTagSuffix(tag)
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "TagImage")
 	}

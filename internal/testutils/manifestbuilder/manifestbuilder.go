@@ -23,16 +23,17 @@ type ManifestBuilder struct {
 	f    Fixture
 	name model.ManifestName
 
-	k8sPodReadiness  model.PodReadinessMode
-	k8sYAML          string
-	k8sPodSelectors  []labels.Selector
-	k8sImageLocators []k8s.ImageLocator
-	dcConfigPaths    []string
-	localCmd         string
-	localServeCmd    string
-	localDeps        []string
-	resourceDeps     []string
-	triggerMode      model.TriggerMode
+	k8sPodReadiness    model.PodReadinessMode
+	k8sYAML            string
+	k8sPodSelectors    []labels.Selector
+	k8sImageLocators   []k8s.ImageLocator
+	dcConfigPaths      []string
+	localCmd           string
+	localServeCmd      string
+	localDeps          []string
+	localAllowParallel bool
+	resourceDeps       []string
+	triggerMode        model.TriggerMode
 
 	iTargets []model.ImageTarget
 }
@@ -88,6 +89,11 @@ func (b ManifestBuilder) WithLocalResource(cmd string, deps []string) ManifestBu
 
 func (b ManifestBuilder) WithLocalServeCmd(cmd string) ManifestBuilder {
 	b.localServeCmd = cmd
+	return b
+}
+
+func (b ManifestBuilder) WithLocalAllowParallel(v bool) ManifestBuilder {
+	b.localAllowParallel = v
 	return b
 }
 
@@ -168,7 +174,8 @@ func (b ManifestBuilder) Build() model.Manifest {
 			model.ToHostCmd(b.localCmd),
 			model.ToHostCmd(b.localServeCmd),
 			b.localDeps,
-			b.f.Path())
+			b.f.Path()).
+			WithAllowParallel(b.localAllowParallel)
 		m = model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
 	} else {
 		b.f.T().Fatalf("No deploy target specified: %s", b.name)

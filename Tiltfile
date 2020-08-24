@@ -46,7 +46,7 @@ def go_vendor():
 
 all_go_files = get_all_go_files(".")
 
-go("Tilt", "cmd/tilt/main.go", all_go_files, srv="cd /tmp/ && ./tilt up --hud=false --no-browser --web-mode=prod --port=9765")
+go("Tilt", "cmd/tilt/main.go", all_go_files, srv="cd /tmp/ && ./tilt up --hud=false --web-mode=prod --port=9765")
 go_lint(all_go_files)
 go_vendor()
 

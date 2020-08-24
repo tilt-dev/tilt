@@ -74,6 +74,6 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 }
 
 func (t *Controller) logError(st store.RStore, err error) {
-	spanID := logstore.SpanID(fmt.Sprintf("telemetry:%s", string(t.runCounter)))
+	spanID := logstore.SpanID(fmt.Sprintf("telemetry:%d", t.runCounter))
 	st.Dispatch(store.NewLogAction(model.TiltfileManifestName, spanID, logger.InfoLvl, nil, []byte(err.Error())))
 }

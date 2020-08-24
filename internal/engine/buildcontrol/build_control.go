@@ -19,17 +19,16 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		return nil
 	}
 
-	// Local targets aren't parallelizable with any other kind of target.
-	// So if we're already building a local target, bail immediately.
-	if IsBuildingLocalTarget(state) {
+	// If we're already building an unparallelizable local target, bail immediately.
+	if IsBuildingUnparallelizableLocalTarget(state) {
 		return nil
 	}
 
 	targets := state.Targets()
 	if IsBuildingAnything(state) {
-		// Local targets aren't parallelizable with any other kind of target.
-		// So if we're already building any targets, remove all the local ones.
-		targets = RemoveLocalTargets(targets)
+		// If we're building a target already, remove anything that's not parallelizable
+		// with what's currently building.
+		targets = RemoveUnparallelizableLocalTargets(targets)
 	}
 
 	// Uncategorized YAML might contain namespaces or volumes that
@@ -244,12 +243,14 @@ func FindLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
 	return result
 }
 
-func RemoveLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
+func RemoveUnparallelizableLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
 	result := []*store.ManifestTarget{}
 	for _, target := range targets {
-		if !target.Manifest.IsLocal() {
-			result = append(result, target)
+		if target.Manifest.IsLocal() && !target.Manifest.LocalTarget().AllowParallel {
+			continue
 		}
+
+		result = append(result, target)
 	}
 	return result
 }
@@ -274,10 +275,11 @@ func IsBuildingAnything(state store.EngineState) bool {
 	return false
 }
 
-func IsBuildingLocalTarget(state store.EngineState) bool {
+func IsBuildingUnparallelizableLocalTarget(state store.EngineState) bool {
 	mts := state.Targets()
 	for _, mt := range mts {
-		if mt.State.IsBuilding() && mt.Manifest.IsLocal() {
+		if mt.State.IsBuilding() && mt.Manifest.IsLocal() &&
+			!mt.Manifest.LocalTarget().AllowParallel {
 			return true
 		}
 	}

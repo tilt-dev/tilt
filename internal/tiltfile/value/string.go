@@ -6,6 +6,19 @@ import (
 	"go.starlark.net/starlark"
 )
 
+type Stringable struct {
+	Value string
+}
+
+func (s *Stringable) Unpack(v starlark.Value) error {
+	str, ok := AsString(v)
+	if !ok {
+		return fmt.Errorf("Value should be convertible to string, but is type %s", v.Type())
+	}
+	s.Value = str
+	return nil
+}
+
 type ImplicitStringer interface {
 	ImplicitString() string
 }

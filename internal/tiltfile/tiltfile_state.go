@@ -1524,7 +1524,8 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 
 		lt := model.NewLocalTarget(model.TargetName(r.name), r.updateCmd, r.serveCmd, r.deps, r.workdir).
 			WithRepos(reposForPaths(paths)).
-			WithIgnores(ignores)
+			WithIgnores(ignores).
+			WithAllowParallel(r.allowParallel)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
 			mds = append(mds, model.ManifestName(md))
