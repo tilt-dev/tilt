@@ -277,6 +277,33 @@ assert.equals(expected, observed)
 	require.NoError(t, err)
 }
 
+func TestDecodeYAMLStreamEmptyEntries(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	yaml := `name: hello
+---
+
+---
+name: goodbye
+---
+
+---`
+	d := fmt.Sprintf("observed = decode_yaml_stream('''%s''')\n", yaml)
+	tf := d + `
+load('assert.tilt', 'assert')
+assert.equals(['hello', 'goodbye'], [r['name'] for r in observed])
+
+`
+	f.File("Tiltfile", tf)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
+}
+
 func TestDecodeYAMLUnexpectedStream(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

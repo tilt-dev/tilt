@@ -103,9 +103,9 @@ func decodeYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 
 func yamlStreamToStarlark(s string, source string) (*starlark.List, error) {
 	var ret []starlark.Value
-	var decodedYAML interface{}
 	d := k8syaml.NewYAMLToJSONDecoder(strings.NewReader(s))
 	for {
+		var decodedYAML interface{}
 		err := d.Decode(&decodedYAML)
 		if err == io.EOF {
 			break
@@ -126,6 +126,9 @@ func yamlStreamToStarlark(s string, source string) (*starlark.List, error) {
 				errmsg += fmt.Sprintf(" from %s", source)
 			}
 			return nil, errors.Wrap(err, errmsg)
+		}
+		if v == starlark.None {
+			continue // ignore empty entries
 		}
 
 		ret = append(ret, v)
