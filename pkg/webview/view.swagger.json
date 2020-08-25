@@ -317,18 +317,6 @@
         "name": {
           "type": "string"
         },
-        "directories_watched": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "paths_watched": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "last_deploy_time": {
           "type": "string",
           "format": "date-time"

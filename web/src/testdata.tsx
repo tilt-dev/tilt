@@ -62,7 +62,6 @@ function oneResource(): Resource {
   const tsPast = new Date(Date.now() - 12300).toISOString()
   const resource: Resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -94,7 +93,6 @@ function oneResource(): Resource {
     endpoints: [],
     podID: "",
     isTiltfile: false,
-    pathsWatched: [],
     facets: [],
     queued: false,
   }
@@ -105,7 +103,6 @@ function oneResourceNoAlerts(): any {
   const ts = Date.now().valueOf()
   const resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -134,7 +131,6 @@ function oneResourceImagePullBackOff(): any {
   const ts = Date.now().valueOf()
   const resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -163,7 +159,6 @@ function oneResourceErrImgPull(): any {
   const ts = Date.now().valueOf()
   const resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -192,7 +187,6 @@ function oneResourceUnrecognizedError(): any {
   const ts = Date.now().valueOf()
   const resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -227,7 +221,6 @@ function twoResourceView(): view {
 
   const snack: Resource = {
     name: "snack",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: new Date(time - 10000).toISOString(),
     buildHistory: [
       {
@@ -249,7 +242,6 @@ function twoResourceView(): view {
     crashLog: "",
     isTiltfile: false,
     podID: "",
-    pathsWatched: [],
     pendingBuildReason: 0,
     k8sResourceInfo: {
       podStatus: "Running",
@@ -270,8 +262,6 @@ function allResourcesOK(): any {
   return [
     {
       name: "(Tiltfile)",
-      directoriesWatched: null,
-      pathsWatched: null,
       lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
       buildHistory: [
         {
@@ -299,8 +289,6 @@ function allResourcesOK(): any {
     },
     {
       name: "fe",
-      directoriesWatched: ["fe"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
       buildHistory: [
         {
@@ -335,8 +323,6 @@ function allResourcesOK(): any {
     },
     {
       name: "vigoda",
-      directoriesWatched: ["vigoda"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
       buildHistory: [
         {
@@ -371,8 +357,6 @@ function allResourcesOK(): any {
     },
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
       buildHistory: [
         {
@@ -407,8 +391,6 @@ function allResourcesOK(): any {
     },
     {
       name: "doggos",
-      directoriesWatched: ["doggos", "sidecar"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:07.804953-04:00",
       buildHistory: [
         {
@@ -443,8 +425,6 @@ function allResourcesOK(): any {
     },
     {
       name: "fortune",
-      directoriesWatched: ["fortune"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:09.205571-04:00",
       buildHistory: [
         {
@@ -479,8 +459,6 @@ function allResourcesOK(): any {
     },
     {
       name: "hypothesizer",
-      directoriesWatched: ["hypothesizer"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:11.203884-04:00",
       buildHistory: [
         {
@@ -515,8 +493,6 @@ function allResourcesOK(): any {
     },
     {
       name: "spoonerisms",
-      directoriesWatched: ["spoonerisms"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:12.42127-04:00",
       buildHistory: [
         {
@@ -551,8 +527,6 @@ function allResourcesOK(): any {
     },
     {
       name: "emoji",
-      directoriesWatched: ["emoji"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:13.940312-04:00",
       buildHistory: [
         {
@@ -587,8 +561,6 @@ function allResourcesOK(): any {
     },
     {
       name: "words",
-      directoriesWatched: ["words"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:15.745111-04:00",
       buildHistory: [
         {
@@ -623,8 +595,6 @@ function allResourcesOK(): any {
     },
     {
       name: "secrets",
-      directoriesWatched: ["secrets"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:17.035014-04:00",
       buildHistory: [
         {
@@ -659,8 +629,6 @@ function allResourcesOK(): any {
     },
     {
       name: "echo-hi",
-      directoriesWatched: [],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T10:59:56.010299-04:00",
       buildHistory: [
         {
@@ -695,8 +663,6 @@ function allResourcesOK(): any {
     },
     {
       name: "sleep",
-      directoriesWatched: ["sleeper"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:18.621166-04:00",
       buildHistory: [
         {
@@ -731,8 +697,6 @@ function allResourcesOK(): any {
     },
     {
       name: "hello-world",
-      directoriesWatched: [],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T10:59:56.300083-04:00",
       buildHistory: [
         {
@@ -767,8 +731,6 @@ function allResourcesOK(): any {
     },
     {
       name: "tick",
-      directoriesWatched: [],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T10:59:56.48933-04:00",
       buildHistory: [
         {
@@ -803,38 +765,6 @@ function allResourcesOK(): any {
     },
     {
       name: "k8s_yaml",
-      directoriesWatched: [
-        "Tiltfile",
-        ".tiltignore",
-        "tilt_option.json",
-        "deploy/fe.yaml",
-        "deploy/vigoda.yaml",
-        "deploy/snack.yaml",
-        "deploy/doggos.yaml",
-        "deploy/fortune.yaml",
-        "deploy/hypothesizer.yaml",
-        "deploy/spoonerisms.yaml",
-        "deploy/emoji.yaml",
-        "deploy/words.yaml",
-        "deploy/secrets.yaml",
-        "deploy/job.yaml",
-        "deploy/sleeper.yaml",
-        "deploy/hello_world.yaml",
-        "deploy/tick.yaml",
-        "vigoda/Dockerfile",
-        "snack/Dockerfile",
-        "doggos/Dockerfile",
-        "emoji/Dockerfile",
-        "words/Dockerfile",
-        "secrets/Dockerfile",
-        "sleeper/Dockerfile",
-        "sidecar/Dockerfile",
-        "fe/Dockerfile",
-        "hypothesizer/Dockerfile",
-        "fortune/Dockerfile",
-        "spoonerisms/Dockerfile",
-      ],
-      pathsWatched: null,
       lastDeployTime: "2019-04-22T10:59:56.007895-04:00",
       buildHistory: [
         {
@@ -874,8 +804,6 @@ function oneResourceFailedToBuild(): any {
   return [
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
       buildHistory: [
         {
@@ -922,8 +850,6 @@ function oneResourceBuilding() {
   return [
     {
       name: "(Tiltfile)",
-      directoriesWatched: null,
-      pathsWatched: null,
       lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
       buildHistory: [
         {
@@ -951,8 +877,6 @@ function oneResourceBuilding() {
     },
     {
       name: "fe",
-      directoriesWatched: ["fe"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
       buildHistory: [
         {
@@ -987,8 +911,6 @@ function oneResourceBuilding() {
     },
     {
       name: "vigoda",
-      directoriesWatched: ["vigoda"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
       buildHistory: [
         {
@@ -1023,8 +945,6 @@ function oneResourceBuilding() {
     },
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:05:58.928369-04:00",
       buildHistory: [
         {
@@ -1071,8 +991,6 @@ function oneResourceCrashedOnStart(): any {
   return [
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T13:34:59.442147-04:00",
       buildHistory: [
         {
@@ -1119,8 +1037,6 @@ function oneResourceManualTriggerDirty(): any {
   return [
     {
       name: "(Tiltfile)",
-      directoriesWatched: null,
-      pathsWatched: null,
       lastDeployTime: "2019-06-12T12:33:27.831613-04:00",
       triggerMode: 0,
       buildHistory: [
@@ -1163,8 +1079,6 @@ function oneResourceManualTriggerDirty(): any {
     },
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-06-12T12:33:48.331048-04:00",
       triggerMode: 1,
       buildHistory: [
