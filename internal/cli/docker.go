@@ -14,10 +14,13 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type dockerCmd struct {
 }
+
+func (c *dockerCmd) name() model.TiltSubcommand { return "docker" }
 
 func (c *dockerCmd) register() *cobra.Command {
 	cmd := &cobra.Command{

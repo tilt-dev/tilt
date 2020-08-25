@@ -3561,7 +3561,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	gm := fswatch.NewGitManager(watcher.NewSub)
 	pfc := portforward.NewController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
-	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env, "up")
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", env)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})

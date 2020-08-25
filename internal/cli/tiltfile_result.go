@@ -39,6 +39,8 @@ func newTiltfileResultCmd() *tiltfileResultCmd {
 	return &tiltfileResultCmd{}
 }
 
+func (c *tiltfileResultCmd) name() model.TiltSubcommand { return "tiltfile-result" }
+
 func (c *tiltfileResultCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tiltfile-result",

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 )
@@ -15,6 +16,8 @@ import (
 type logsCmd struct {
 	follow bool // if true, follow logs (otherwise print current logs and exit)
 }
+
+func (c *logsCmd) name() model.TiltSubcommand { return "logs" }
 
 func (c *logsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{

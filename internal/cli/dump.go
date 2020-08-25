@@ -164,7 +164,7 @@ More info on custom build scripts: https://docs.tilt.dev/custom_build.html
 }
 
 func dumpImageDeployRef(cmd *cobra.Command, args []string) {
-	ctx, cleanup := preCommand(context.Background())
+	ctx, cleanup := preCommand(context.Background(), "dump")
 	defer func() {
 		_ = cleanup()
 	}()

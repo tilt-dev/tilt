@@ -52,6 +52,8 @@ type upCmd struct {
 	watchFlagExplicitlySet bool
 }
 
+func (c *upCmd) name() model.TiltSubcommand { return "up" }
+
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "up [<tilt flags>] [-- <Tiltfile args>]",
