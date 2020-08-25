@@ -28,7 +28,7 @@ type tiltfileResultCmd struct {
 
 	// for Builtin Timings mode
 	builtinTimings bool
-	durThreshold   string
+	durThreshold   time.Duration
 }
 
 var _ tiltCmd = &tiltfileResultCmd{}
@@ -62,7 +62,7 @@ Run with -v | --verbose to print Tiltfile execution logs on stderr, regardless o
 
 	addTiltfileFlag(cmd, &c.fileName)
 	cmd.Flags().BoolVarP(&c.builtinTimings, "builtin-timings", "b", false, "If true, print timing data for Tiltfile builtin calls instead of Tiltfile result JSON")
-	cmd.Flags().StringVar(&c.durThreshold, "dur-threshold", "", "Only compatible with Builtin Timings mode. Should be a Go duration string. If passed, only print information about builtin calls lasting this duration and longer.")
+	cmd.Flags().DurationVar(&c.durThreshold, "dur-threshold", 0, "Only compatible with Builtin Timings mode. Should be a Go duration string. If passed, only print information about builtin calls lasting this duration and longer.")
 
 	return cmd
 }
@@ -106,15 +106,8 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		if len(tlr.BuiltinCalls) == 0 {
 			return fmt.Errorf("oh no, got no builtin calls :(")
 		}
-		var durThreshold time.Duration
-		if c.durThreshold != "" {
-			durThreshold, err = time.ParseDuration(c.durThreshold)
-			if err != nil {
-				return errors.Wrapf(err, "parsing dur-threshold %q", c.durThreshold)
-			}
-		}
 		for _, call := range tlr.BuiltinCalls {
-			if call.Dur < durThreshold {
+			if call.Dur < c.durThreshold {
 				continue
 			}
 			argsStr := tupleRE.ReplaceAllString(fmt.Sprintf("%v", call.Args), ")") // clean up tuple stringification
