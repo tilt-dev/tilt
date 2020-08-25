@@ -104,7 +104,7 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 	// Instead of printing result JSON, print Builtin Timings instead
 	if c.builtinTimings {
 		if len(tlr.BuiltinCalls) == 0 {
-			return fmt.Errorf("oh no, got no builtin calls :(")
+			return fmt.Errorf("executed Tiltfile, but recorded no Builtin calls")
 		}
 		for _, call := range tlr.BuiltinCalls {
 			if call.Dur < c.durThreshold {
