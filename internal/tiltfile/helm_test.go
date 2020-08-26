@@ -9,6 +9,25 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
 )
 
+func TestHelmMalformedChart(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("./helm/Chart.yaml", "brrrrr")
+
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.loadErrString("error unmarshaling JSON")
+	f.assertConfigFiles(
+		"Tiltfile",
+		".tiltignore",
+		"helm",
+	)
+}
+
 func TestHelmNamespace(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

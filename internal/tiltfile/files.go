@@ -165,6 +165,11 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("helm() may only be called on directories with Chart.yaml: %q", localPath)
 	}
 
+	err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, localPath)
+	if err != nil {
+		return nil, err
+	}
+
 	deps, err := localSubchartDependenciesFromPath(localPath)
 	if err != nil {
 		return nil, err
@@ -216,11 +221,6 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	s.logger.Infof("Running: %s", cmd)
 
 	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
-	if err != nil {
-		return nil, err
-	}
-
-	err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, localPath)
 	if err != nil {
 		return nil, err
 	}
