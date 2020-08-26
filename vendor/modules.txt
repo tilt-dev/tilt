@@ -52,6 +52,9 @@ github.com/PuerkitoBio/urlesc
 ## explicit
 github.com/agl/ed25519
 github.com/agl/ed25519/edwards25519
+# github.com/alessio/shellescape v1.2.2
+## explicit
+github.com/alessio/shellescape
 # github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d
 ## explicit
 # github.com/beorn7/perks v1.0.1

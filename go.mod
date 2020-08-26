@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
+	github.com/alessio/shellescape v1.2.2
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
