@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 
 	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/resolve"
@@ -56,6 +57,9 @@ type TiltfileLoadResult struct {
 	AnalyticsOpt        wmanalytics.Opt
 	VersionSettings     model.VersionSettings
 	UpdateSettings      model.UpdateSettings
+
+	// For diagnostic purposes only
+	BuiltinCalls []starkit.BuiltinCall `json:"-"`
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -176,6 +180,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, tfl.versionExt, tfl.configExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)
+
+	tlr.BuiltinCalls = result.BuiltinCalls
 
 	// NOTE(maia): if/when add secret settings that affect the engine, add them to tlr here
 	ss, _ := secretsettings.GetState(result)

@@ -1260,7 +1260,6 @@ func TestHudUpdated(t *testing.T) {
 	assert.Equal(t, store.TiltfileManifestName, f.fakeHud().LastView.Resources[0].Name)
 	rv := f.fakeHud().LastView.Resources[1]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
-	assert.Equal(t, f.Path(), rv.DirectoriesWatched[0])
 	f.assertAllBuildsConsumed()
 }
 
@@ -3561,7 +3560,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	gm := fswatch.NewGitManager(watcher.NewSub)
 	pfc := portforward.NewController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
-	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env, "up")
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", env)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})

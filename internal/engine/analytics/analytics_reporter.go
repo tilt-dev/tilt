@@ -8,19 +8,17 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // How often to periodically report data for analytics while Tilt is running
 const analyticsReportingInterval = time.Minute * 15
 
 type AnalyticsReporter struct {
-	a          *analytics.TiltAnalytics
-	subcommand model.TiltSubcommand
-	store      store.RStore
-	kClient    k8s.Client
-	env        k8s.Env
-	started    bool
+	a       *analytics.TiltAnalytics
+	store   store.RStore
+	kClient k8s.Client
+	env     k8s.Env
+	started bool
 }
 
 func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
@@ -61,15 +59,13 @@ func ProvideAnalyticsReporter(
 	a *analytics.TiltAnalytics,
 	st store.RStore,
 	kClient k8s.Client,
-	env k8s.Env,
-	subcommand model.TiltSubcommand) *AnalyticsReporter {
+	env k8s.Env) *AnalyticsReporter {
 	return &AnalyticsReporter{
-		a:          a,
-		subcommand: subcommand,
-		store:      st,
-		kClient:    kClient,
-		env:        env,
-		started:    false,
+		a:       a,
+		store:   st,
+		kClient: kClient,
+		env:     env,
+		started: false,
 	}
 }
 
@@ -120,8 +116,6 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 		"env": string(ar.env),
 
 		"term_mode": strconv.Itoa(int(st.TerminalMode)),
-
-		"subcommand": ar.subcommand.String(),
 	}
 
 	if k8sCount > 1 {

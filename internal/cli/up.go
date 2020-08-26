@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/mattn/go-isatty"
-	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -41,7 +39,6 @@ var logActionsFlag bool = false
 
 type upCmd struct {
 	watch                bool
-	traceTags            string
 	fileName             string
 	outputSnapshotOnExit string
 
@@ -54,6 +51,8 @@ type upCmd struct {
 	//whether watch was explicitly set in the cmdline
 	watchFlagExplicitlySet bool
 }
+
+func (c *upCmd) name() model.TiltSubcommand { return "up" }
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
@@ -83,7 +82,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(buildcontrol.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
-	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().BoolVar(&c.legacy, "legacy", false, "If true, tilt will open in legacy terminal mode.")
 	cmd.Flags().BoolVar(&c.stream, "stream", false, "If true, tilt will stream logs in the terminal.")
@@ -136,15 +134,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.up", cmdUpTags.AsMap())
 	defer a.Flush(time.Second)
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
-	defer span.Finish()
-
-	tags := tracer.TagStrToMap(c.traceTags)
-
-	for k, v := range tags {
-		span.SetTag(k, v)
-	}
-
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
 
@@ -183,14 +172,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	ctx = redirectLogs(ctx, l)
 	if c.outputSnapshotOnExit != "" {
 		defer cloud.WriteSnapshot(ctx, cmdUpDeps.Store, c.outputSnapshotOnExit)
-	}
-
-	if trace {
-		traceID, err := tracer.TraceID(ctx)
-		if err != nil {
-			return err
-		}
-		logger.Get(ctx).Infof("TraceID: %s", traceID)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)

@@ -660,18 +660,18 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 		ms := mt.State
 
 		var absWatchDirs []string
-		var absWatchPaths []string
-		for _, p := range mt.Manifest.LocalPaths() {
+		for i, p := range mt.Manifest.LocalPaths() {
+			if i > 50 {
+				// Bail out after 50 to avoid pathological performance issues.
+				break
+			}
 			fi, err := os.Stat(p)
-			if err == nil && !fi.IsDir() {
-				absWatchPaths = append(absWatchPaths, p)
-			} else {
+
+			// Treat this as a directory when there's an error.
+			if err != nil || fi.IsDir() {
 				absWatchDirs = append(absWatchDirs, p)
 			}
 		}
-		absWatchPaths = append(absWatchPaths, s.TiltfilePath)
-		relWatchDirs := ospath.TryAsCwdChildren(absWatchDirs)
-		relWatchPaths := ospath.TryAsCwdChildren(absWatchPaths)
 
 		var pendingBuildEdits []string
 		for _, status := range ms.BuildStatuses {
@@ -703,8 +703,6 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 		_, pendingBuildSince := ms.HasPendingChanges()
 		r := view.Resource{
 			Name:               name,
-			DirectoriesWatched: relWatchDirs,
-			PathsWatched:       relWatchPaths,
 			LastDeployTime:     ms.LastSuccessfulDeployTime,
 			TriggerMode:        mt.Manifest.TriggerMode,
 			BuildHistory:       buildHistory,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -15,12 +17,18 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+var tupleRE = regexp.MustCompile(`,\)$`)
+
 // arbitrary non-1 value chosen to allow callers to distinguish between
 // Tilt errors and Tiltfile errors
 const TiltfileErrExitCode = 5
 
 type tiltfileResultCmd struct {
 	fileName string
+
+	// for Builtin Timings mode
+	builtinTimings bool
+	durThreshold   time.Duration
 }
 
 var _ tiltCmd = &tiltfileResultCmd{}
@@ -39,13 +47,15 @@ func newTiltfileResultCmd() *tiltfileResultCmd {
 	return &tiltfileResultCmd{}
 }
 
+func (c *tiltfileResultCmd) name() model.TiltSubcommand { return "tiltfile-result" }
+
 func (c *tiltfileResultCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tiltfile-result",
-		Short: "Exec the Tiltfile and print results as JSON (note: the API is unstable and may change)",
-		Long: `Exec the Tiltfile and print results as JSON (note: the API is unstable and may change).
+		Short: "Exec the Tiltfile and print data about execution. By default, prints Tiltfile execution results as JSON (note: the API is unstable and may change); can also print timings of Tiltfile Builtin calls.",
+		Long: `Exec the Tiltfile and print data about execution. By default, prints Tiltfile execution results as JSON (note: the API is unstable and may change); can also print timings of Tiltfile Builtin calls.
 
-Exit code 0: successful Tiltfile evaluation (JSON printed to stdout)
+Exit code 0: successful Tiltfile evaluation (data printed to stdout)
 Exit code 1: some failure in setup, printing results, etc. (any logs printed to stderr)
 Exit code 5: error when evaluating the Tiltfile, such as syntax error, illegal Tiltfile operation, etc. (any logs printed to stderr)
 
@@ -53,6 +63,8 @@ Run with -v | --verbose to print Tiltfile execution logs on stderr, regardless o
 	}
 
 	addTiltfileFlag(cmd, &c.fileName)
+	cmd.Flags().BoolVarP(&c.builtinTimings, "builtin-timings", "b", false, "If true, print timing data for Tiltfile builtin calls instead of Tiltfile result JSON")
+	cmd.Flags().DurationVar(&c.durThreshold, "dur-threshold", 0, "Only compatible with Builtin Timings mode. Should be a Go duration string. If passed, only print information about builtin calls lasting this duration and longer.")
 
 	return cmd
 }
@@ -78,7 +90,9 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		return errors.Wrap(err, "wiring dependencies")
 	}
 
+	start := time.Now()
 	tlr := deps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
+	tflDur := time.Since(start)
 	if tlr.Error != nil {
 		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 
@@ -87,6 +101,22 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		// from Tiltfile parsing.
 		fmt.Fprintln(os.Stderr, tlr.Error)
 		os.Exit(TiltfileErrExitCode)
+	}
+
+	// Instead of printing result JSON, print Builtin Timings instead
+	if c.builtinTimings {
+		if len(tlr.BuiltinCalls) == 0 {
+			return fmt.Errorf("executed Tiltfile, but recorded no Builtin calls")
+		}
+		for _, call := range tlr.BuiltinCalls {
+			if call.Dur < c.durThreshold {
+				continue
+			}
+			argsStr := tupleRE.ReplaceAllString(fmt.Sprintf("%v", call.Args), ")") // clean up tuple stringification
+			fmt.Fprintf(os.Stdout, "- %s%s took %s\n", call.Name, argsStr, call.Dur)
+		}
+		fmt.Fprintf(os.Stdout, "Tiltfile execution took %s\n", tflDur.String())
+		return nil
 	}
 
 	err = encodeJSON(tlr)

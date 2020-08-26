@@ -7,10 +7,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type verifyInstallCmd struct {
 }
+
+func (c *verifyInstallCmd) name() model.TiltSubcommand { return "verify-install" }
 
 func (c *verifyInstallCmd) register() *cobra.Command {
 	cmd := &cobra.Command{

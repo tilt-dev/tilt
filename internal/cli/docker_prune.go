@@ -33,6 +33,8 @@ func newDPDeps(dCli docker.Client, tfl tiltfile.TiltfileLoader) dpDeps {
 	}
 }
 
+func (c *dockerPruneCmd) name() model.TiltSubcommand { return "docker-prune" }
+
 func (c *dockerPruneCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "docker-prune",

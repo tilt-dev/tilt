@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/options"
 	"github.com/tilt-dev/tilt/internal/synclet"
 	"github.com/tilt-dev/tilt/internal/synclet/proto"
-	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -46,17 +44,6 @@ func (sc *SyncletCmd) run() {
 		context.Background(),
 		logger.NewLogger(logLevel(sc.verbose, sc.debug), os.Stdout))
 
-	closer, err := tracer.Init(ctx, tracer.Windmill)
-	if err != nil {
-		log.Fatalf("error initializing tracer: %v", err)
-	}
-	defer func() {
-		err := closer()
-		if err != nil {
-			log.Fatalf("error closing tracer: %v", err)
-		}
-	}()
-
 	addr := fmt.Sprintf("127.0.0.1:%d", sc.port)
 	log.Printf("Running synclet listening on %s", addr)
 	l, err := net.Listen("tcp", addr)
@@ -64,12 +51,7 @@ func (sc *SyncletCmd) run() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	// TODO(matt) figure out how to reconcile this with opt-in tracing
-	t := opentracing.GlobalTracer()
-
 	opts := options.MaxMsgServer()
-	opts = append(opts, options.TracingInterceptorsServer(t)...)
-
 	serv := grpc.NewServer(opts...)
 
 	// TODO(nick): Fix this to detect the container runtime inside k8s.

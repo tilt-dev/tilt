@@ -14,11 +14,12 @@ DIR=$(dirname "$0")
 cd "$DIR/.."
 
 docker login
+docker pull gcr.io/windmill-public-containers/tilt-releaser
 docker run --rm --privileged \
        -e GITHUB_TOKEN="$GITHUB_TOKEN" \
        -w /src/tilt \
        -v ~/.docker:/root/.docker \
-       -v "$PWD:/src/tilt" \
+       -v "$PWD:/src/tilt:delegated" \
        -v /var/run/docker.sock:/var/run/docker.sock \
-       gcr.io/windmill-public-containers/tilt-releaser@sha256:d033db8b2180aef7dcdefb28bd094aa6f162dbe182c923d84c7e61826c49e33f \
+       gcr.io/windmill-public-containers/tilt-releaser \
        --rm-dist

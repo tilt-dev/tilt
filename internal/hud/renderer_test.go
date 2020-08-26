@@ -60,9 +60,8 @@ func TestRender(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
 	v := newView(view.Resource{
-		Name:               "foo",
-		DirectoriesWatched: []string{"bar"},
-		ResourceInfo:       view.K8sResourceInfo{},
+		Name:         "foo",
+		ResourceInfo: view.K8sResourceInfo{},
 	})
 
 	plainVs := fakeViewState(1, view.CollapseNo)
@@ -137,9 +136,8 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 
 	ts := time.Now().Add(-5 * time.Minute)
 	v = newView(view.Resource{
-		Name:               "a-a-a-aaaaabe vigoda",
-		DirectoriesWatched: []string{"foo", "bar"},
-		LastDeployTime:     ts,
+		Name:           "a-a-a-aaaaabe vigoda",
+		LastDeployTime: ts,
 		BuildHistory: []model.BuildRecord{{
 			Edits:      []string{"main.go", "cli.go"},
 			Error:      fmt.Errorf("the build failed!"),
@@ -169,9 +167,8 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 	rtf.run("all the data at once 10w", 10, 20, v, plainVs)
 
 	v = newView(view.Resource{
-		Name:               "abe vigoda",
-		DirectoriesWatched: []string{"foo", "bar"},
-		LastDeployTime:     ts,
+		Name:           "abe vigoda",
+		LastDeployTime: ts,
 		BuildHistory: []model.BuildRecord{{
 			Edits: []string{"main.go"},
 		}},
@@ -193,9 +190,8 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 	rtf.run("crash rebuild", 70, 20, v, plainVs)
 
 	v = newView(view.Resource{
-		Name:               "vigoda",
-		DirectoriesWatched: []string{"foo", "bar"},
-		LastDeployTime:     ts,
+		Name:           "vigoda",
+		LastDeployTime: ts,
 		BuildHistory: []model.BuildRecord{{
 			Edits:      []string{"main.go", "cli.go"},
 			FinishTime: ts,
@@ -306,13 +302,11 @@ func TestAutoCollapseModes(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
 	goodView := newView(view.Resource{
-		Name:               "vigoda",
-		DirectoriesWatched: []string{"bar"},
-		ResourceInfo:       view.K8sResourceInfo{},
+		Name:         "vigoda",
+		ResourceInfo: view.K8sResourceInfo{},
 	})
 	badView := newView(view.Resource{
-		Name:               "vigoda",
-		DirectoriesWatched: []string{"bar"},
+		Name: "vigoda",
 		BuildHistory: []model.BuildRecord{{
 			FinishTime: time.Now(),
 			Error:      fmt.Errorf("oh no the build failed"),

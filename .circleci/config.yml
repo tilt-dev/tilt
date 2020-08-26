@@ -6,7 +6,7 @@ orbs:
 jobs:
   build-linux:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:4463a50592482e4bf1c5269f0230f3eac5b0211fe86afae25270e9cc79d1305f
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:ec0de85b79df9ed8c32a713fc6374c4a9e452cfb9d33a22d90b2036dbd82d893
 
     steps:
       - checkout
@@ -15,16 +15,8 @@ jobs:
           version: 19.03.12
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
-      - restore_cache:
-          keys:
-            - golangci_lint_v3_{{ .Revision }}
-            - golangci_lint_v3_ # Else find the most recently generated cache
       - run: make lint
       - run: make test_install_version_check
-      - save_cache:
-          paths:
-            - /home/circleci/.cache/golangci-lint
-          key: golangci_lint_v3_{{ .Revision }}
       - run: make wire-check
       - run: make test-go
       - store_test_results:
@@ -33,7 +25,7 @@ jobs:
           only_for_branches: master
   helm2:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:4463a50592482e4bf1c5269f0230f3eac5b0211fe86afae25270e9cc79d1305f
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:ec0de85b79df9ed8c32a713fc6374c4a9e452cfb9d33a22d90b2036dbd82d893
     steps:
       - checkout
       - run: sudo mv /usr/bin/helm2 /usr/bin/helm

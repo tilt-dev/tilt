@@ -11,16 +11,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
+	"github.com/tilt-dev/tilt/pkg/model"
+
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/output"
-	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 var debug bool
 var verbose bool
-var trace bool
-var traceType string
 
 func logLevel(verbose, debug bool) logger.Level {
 	if debug {
@@ -72,8 +71,6 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 		globalFlags := rootCmd.PersistentFlags()
 		globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 		globalFlags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-		globalFlags.BoolVar(&trace, "trace", false, "Enable tracing")
-		globalFlags.StringVar(&traceType, "traceBackend", "windmill", "Which tracing backend to use. Valid values are: 'windmill', 'lightstep', 'jaeger'")
 		globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
 	}
 
@@ -84,16 +81,17 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 }
 
 type tiltCmd interface {
+	name() model.TiltSubcommand
 	register() *cobra.Command
 	run(ctx context.Context, args []string) error
 }
 
-func preCommand(ctx context.Context) (context.Context, func() error) {
+func preCommand(ctx context.Context, cmdName model.TiltSubcommand) (context.Context, func() error) {
 	cleanup := func() error { return nil }
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
 
-	a, err := newAnalytics(l)
+	a, err := newAnalytics(l, cmdName)
 	if err != nil {
 		l.Errorf("Fatal error initializing analytics: %v", err)
 		os.Exit(1)
@@ -102,17 +100,6 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 	ctx = tiltanalytics.WithAnalytics(ctx, a)
 
 	initKlog(l.Writer(logger.InfoLvl))
-
-	if trace {
-		backend, err := tracer.StringToTracerBackend(traceType)
-		if err != nil {
-			l.Warnf("invalid tracer backend: %v", err)
-		}
-		cleanup, err = tracer.Init(ctx, backend)
-		if err != nil {
-			l.Warnf("unable to initialize tracer: %s", err)
-		}
-	}
 
 	// SIGNAL TRAPPING
 	ctx, cancel := context.WithCancel(ctx)
@@ -141,7 +128,7 @@ func preCommand(ctx context.Context) (context.Context, func() error) {
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
-		ctx, cleanup := preCommand(context.Background())
+		ctx, cleanup := preCommand(context.Background(), child.name())
 
 		err := child.run(ctx, args)
 
