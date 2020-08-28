@@ -63,6 +63,7 @@ Run with -v | --verbose to print Tiltfile execution logs on stderr, regardless o
 	}
 
 	addTiltfileFlag(cmd, &c.fileName)
+	addKubeContextFlag(cmd)
 	cmd.Flags().BoolVarP(&c.builtinTimings, "builtin-timings", "b", false, "If true, print timing data for Tiltfile builtin calls instead of Tiltfile result JSON")
 	cmd.Flags().DurationVar(&c.durThreshold, "dur-threshold", 0, "Only compatible with Builtin Timings mode. Should be a Go duration string. If passed, only print information about builtin calls lasting this duration and longer.")
 

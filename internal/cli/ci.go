@@ -46,6 +46,7 @@ While Tilt is running, you can view the UI at %s:%d
 	addStartServerFlags(cmd)
 	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
+	addKubeContextFlag(cmd)
 
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().Lookup("logactions").Hidden = true

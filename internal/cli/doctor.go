@@ -25,6 +25,7 @@ func (c *doctorCmd) register() *cobra.Command {
 		Use:   "doctor",
 		Short: "Print diagnostic information about the Tilt environment, for filing bug reports",
 	}
+	addKubeContextFlag(cmd)
 	return cmd
 }
 

@@ -102,12 +102,13 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
 	updateModeFlag := _wireBuildcontrolUpdateModeFlagValue
 	env := _wireEnvValue
-	clientConfig := k8s.ProvideClientConfig()
+	kubeContextOverride := _wireKubeContextOverrideValue
+	clientConfig := k8s.ProvideClientConfig(kubeContextOverride)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	config, err := k8s.ProvideKubeConfig(clientConfig)
+	config, err := k8s.ProvideKubeConfig(clientConfig, kubeContextOverride)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +133,7 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 var (
 	_wireBuildcontrolUpdateModeFlagValue = buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)
 	_wireEnvValue                        = k8s.Env(k8s.EnvNone)
+	_wireKubeContextOverrideValue        = k8s.KubeContextOverride("")
 )
 
 // wire.go:

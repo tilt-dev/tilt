@@ -46,14 +46,26 @@ func ProvideKubeContext(config *api.Config) (KubeContext, error) {
 	return KubeContext(config.CurrentContext), nil
 }
 
-func ProvideKubeConfig(clientLoader clientcmd.ClientConfig) (*api.Config, error) {
-	access := clientLoader.ConfigAccess()
-	config, err := access.GetStartingConfig()
+func ProvideKubeConfig(clientLoader clientcmd.ClientConfig, contextOverride KubeContextOverride) (*api.Config, error) {
+	config, err := clientLoader.RawConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "Loading Kubernetes current-context")
 	}
 
-	return config, nil
+	// NOTE(nick): The RawConfig() accessor doesn't handle overrides.
+	// The other accessors do. So we do what ClientConfig does internally, and
+	// apply the overrides ourselves.
+	if contextOverride != "" {
+		config.CurrentContext = string(contextOverride)
+
+		// If the user explicitly passed an override, validate it.
+		err := clientcmd.ConfirmUsable(config, string(contextOverride))
+		if err != nil {
+			return nil, errors.Wrap(err, "Overriding Kubernetes context")
+		}
+	}
+
+	return &config, nil
 }
 
 func ProvideClusterName(ctx context.Context, config *api.Config) ClusterName {
