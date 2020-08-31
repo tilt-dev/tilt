@@ -564,13 +564,18 @@ func handleConfigsReloaded(
 	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
 
 	// Add tiltignore if it exists, even if execution failed.
-	if event.TiltIgnoreContents != "" || event.Err != nil {
+	if event.TiltIgnoreContents != "" || event.Err == nil {
 		state.TiltIgnoreContents = event.TiltIgnoreContents
 	}
 
 	// Add team id if it exists, even if execution failed.
-	if event.TeamID != "" || event.Err != nil {
+	if event.TeamID != "" || event.Err == nil {
 		state.TeamID = event.TeamID
+	}
+
+	// Add metrics if it exists, even if execution failed.
+	if event.MetricsSettings.Enabled || event.Err == nil {
+		state.MetricsSettings = event.MetricsSettings
 	}
 
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build

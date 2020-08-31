@@ -3084,6 +3084,39 @@ fail('goodnight moon')
 	})
 }
 
+func TestEnableMetrics(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `
+experimental_metrics_settings(enabled=True)
+fail('goodnight moon')
+`)
+
+	f.loadAndStart()
+
+	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 1
+	})
+	f.withState(func(state store.EngineState) {
+		assert.True(t, state.MetricsSettings.Enabled)
+	})
+
+	f.WriteFile("Tiltfile", `
+experimental_metrics_settings(enabled=False)
+k8s_yaml('snack.yaml')
+`)
+	f.WriteFile("snack.yaml", simpleYAML)
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+
+	f.WaitUntil("Tiltfile reloaded", func(state store.EngineState) bool {
+		return len(state.TiltfileState.BuildHistory) == 2
+	})
+	f.withState(func(state store.EngineState) {
+		assert.False(t, state.MetricsSettings.Enabled)
+	})
+}
+
 func TestSecretScrubbed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
