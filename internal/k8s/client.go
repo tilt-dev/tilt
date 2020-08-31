@@ -246,26 +246,29 @@ func timeoutError(timeout time.Duration) error {
 }
 
 func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	result := make([]K8sEntity, 0, len(entities))
 
 	mutable, immutable := MutableAndImmutableEntities(entities)
 
-	if len(mutable) > 0 {
-		newEntities, err := k.applyEntitiesAndMaybeForce(ctx, mutable)
+	for _, e := range mutable {
+		innerCtx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		newEntity, err := k.applyEntityAndMaybeForce(innerCtx, e)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return nil, timeoutError(timeout)
 			}
 			return nil, err
 		}
-		result = append(result, newEntities...)
+		result = append(result, newEntity...)
 	}
 
-	if len(immutable) > 0 {
-		newEntities, err := k.forceReplaceEntities(ctx, immutable)
+	for _, e := range immutable {
+		innerCtx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		newEntities, err := k.forceReplaceEntity(innerCtx, e)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return nil, timeoutError(timeout)
@@ -278,8 +281,8 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout tim
 	return result, nil
 }
 
-func (k K8sClient) forceReplaceEntities(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
-	stdout, stderr, err := k.actOnEntities(ctx, []string{"replace", "-o", "yaml", "--force"}, entities)
+func (k K8sClient) forceReplaceEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+	stdout, stderr, err := k.actOnEntity(ctx, []string{"replace", "-o", "yaml", "--force"}, entity)
 	if err != nil {
 		return nil, errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
 	}
@@ -287,10 +290,10 @@ func (k K8sClient) forceReplaceEntities(ctx context.Context, entities []K8sEntit
 	return parseYAMLFromStringWithDeletedResources(stdout)
 }
 
-// applyEntitiesAndMaybeForce `kubectl apply`'s the given entities, and if the call fails with
-// an immutible field error, attempts to `replace --force` them.
-func (k K8sClient) applyEntitiesAndMaybeForce(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
-	stdout, stderr, err := k.actOnEntities(ctx, []string{"apply", "-o", "yaml"}, entities)
+// applyEntityAndMaybeForce `kubectl apply`'s the given entity, and if the call fails with
+// an immutible field error, attempts to `replace --force` it.
+func (k K8sClient) applyEntityAndMaybeForce(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+	stdout, stderr, err := k.actOnEntity(ctx, []string{"apply", "-o", "yaml"}, entity)
 	if err != nil {
 		reason, shouldTryReplace := maybeShouldTryReplaceReason(stderr)
 
@@ -301,13 +304,13 @@ func (k K8sClient) applyEntitiesAndMaybeForce(ctx context.Context, entities []K8
 		// NOTE(maia): we don't use `kubecutl replace --force`, because we want to ensure that all
 		// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
 		// and recreated so they have all the new labels, etc. of their controlling k8s entity.
-		logger.Get(ctx).Infof("Falling back to 'kubectl delete && create': %s", reason)
+		logger.Get(ctx).Infof("Applying %s failed. Retrying with 'kubectl delete && create': %s", entity.Name(), reason)
 		// --ignore-not-found because, e.g., if we fell back due to large metadata.annotations, the object might not exist
-		_, stderr, err = k.actOnEntities(ctx, []string{"delete", "--ignore-not-found=true"}, entities)
+		_, stderr, err = k.actOnEntity(ctx, []string{"delete", "--ignore-not-found=true"}, entity)
 		if err != nil {
 			return nil, errors.Wrapf(err, "kubectl delete (as part of delete && create):\nstderr: %s", stderr)
 		}
-		stdout, stderr, err = k.actOnEntities(ctx, []string{"create", "-o", "yaml"}, entities)
+		stdout, stderr, err = k.actOnEntity(ctx, []string{"create", "-o", "yaml"}, entity)
 		if err != nil {
 			return nil, errors.Wrapf(err, "kubectl create (as part of delete && create):\nstderr: %s", stderr)
 		}
@@ -371,20 +374,20 @@ func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	l.Infof("Deleting via kubectl:")
 	for _, e := range entities {
 		l.Infof("→ %s/%s", e.GVK().Kind, e.Name())
-	}
 
-	_, stderr, err := k.actOnEntities(ctx, []string{"delete", "--ignore-not-found"}, entities)
-	if err != nil {
-		return errors.Wrapf(err, "kubectl delete:\nstderr: %s", stderr)
+		_, stderr, err := k.actOnEntity(ctx, []string{"delete", "--ignore-not-found"}, e)
+		if err != nil {
+			return errors.Wrapf(err, "kubectl delete:\nstderr: %s", stderr)
+		}
 	}
 	return nil
 }
 
-func (k K8sClient) actOnEntities(ctx context.Context, cmdArgs []string, entities []K8sEntity) (stdout string, stderr string, err error) {
+func (k K8sClient) actOnEntity(ctx context.Context, cmdArgs []string, entity K8sEntity) (stdout string, stderr string, err error) {
 	args := append([]string{}, cmdArgs...)
 	args = append(args, "-f", "-")
 
-	rawYAML, err := SerializeSpecYAML(entities)
+	rawYAML, err := SerializeSpecYAML([]K8sEntity{entity})
 	if err != nil {
 		return "", "", errors.Wrapf(err, "serializeYaml for kubectl %s", cmdArgs)
 	}

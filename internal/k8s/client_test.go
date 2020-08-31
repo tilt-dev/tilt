@@ -44,7 +44,7 @@ func TestUpsert(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(f.runner.calls))
+	assert.Equal(t, 5, len(f.runner.calls))
 	assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
 }
 
@@ -61,24 +61,26 @@ func TestUpsertMutableAndImmutable(t *testing.T) {
 
 	// two different calls: one for mutable entities (namespace, deployment),
 	// one for immutable (job)
-	require.Len(t, f.runner.calls, 2)
+	require.Len(t, f.runner.calls, 3)
 
 	call0 := f.runner.calls[0]
+	call1 := f.runner.calls[1]
 	require.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, call0.argv, "expected args for call 0")
+	require.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, call1.argv, "expected args for call 1")
 
 	// compare entities instead of strings because str > entity > string gets weird
-	call0Entities := mustParseYAML(t, call0.stdin)
-	require.Len(t, call0Entities, 2, "expect two mutable entities applied")
+	call0Entity := mustParseYAML(t, call0.stdin)[0]
+	call1Entity := mustParseYAML(t, call1.stdin)[0]
 
 	// `apply` should preserve input order of entities (we sort them further upstream)
-	require.Equal(t, eDeploy, call0Entities[0], "expect call 0 to have applied deployment first (preserve input order)")
-	require.Equal(t, eNamespace, call0Entities[1], "expect call 0 to have applied namespace second (preserve input order)")
+	require.Equal(t, eDeploy, call0Entity, "expect call 0 to have applied deployment first (preserve input order)")
+	require.Equal(t, eNamespace, call1Entity, "expect call 0 to have applied namespace second (preserve input order)")
 
-	call1 := f.runner.calls[1]
-	require.Equal(t, []string{"replace", "-o", "yaml", "--force", "-f", "-"}, call1.argv, "expected args for call 1")
-	call1Entities := mustParseYAML(t, call1.stdin)
-	require.Len(t, call1Entities, 1, "expect only one immutable entity applied")
-	require.Equal(t, eJob, call1Entities[0], "expect call 1 to have applied job")
+	call2 := f.runner.calls[2]
+	require.Equal(t, []string{"replace", "-o", "yaml", "--force", "-f", "-"}, call2.argv, "expected args for call 1")
+	call2Entities := mustParseYAML(t, call2.stdin)
+	require.Len(t, call2Entities, 1, "expect only one immutable entity applied")
+	require.Equal(t, eJob, call2Entities[0], "expect call 1 to have applied job")
 }
 
 func TestUpsertAnnotationTooLong(t *testing.T) {
@@ -95,13 +97,17 @@ func TestUpsertAnnotationTooLong(t *testing.T) {
 		{"apply", "-o", "yaml", "-f", "-"},
 		{"delete", "--ignore-not-found=true", "-f", "-"},
 		{"create", "-o", "yaml", "-f", "-"},
+		{"apply", "-o", "yaml", "-f", "-"},
+		{"apply", "-o", "yaml", "-f", "-"},
+		{"apply", "-o", "yaml", "-f", "-"},
+		{"apply", "-o", "yaml", "-f", "-"},
 	}
 	require.Len(t, f.runner.calls, len(expectedArgs))
 
 	for i, call := range f.runner.calls {
 		require.Equalf(t, expectedArgs[i], call.argv, "expected args for call %d", i)
 		observedEntities := mustParseYAML(t, call.stdin)
-		require.Lenf(t, observedEntities, len(postgres), "expect %d entities", len(postgres))
+		require.Len(t, observedEntities, 1, "expect 1 entity")
 	}
 }
 
@@ -112,10 +118,14 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 
 	f.setStderr(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
 	_, err = f.k8sUpsert(f.ctx, postgres)
-	if assert.Nil(t, err) && assert.Equal(t, 3, len(f.runner.calls)) {
+	if assert.Nil(t, err) && assert.Equal(t, 7, len(f.runner.calls)) {
 		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
 		assert.Equal(t, []string{"delete", "--ignore-not-found=true", "-f", "-"}, f.runner.calls[1].argv)
 		assert.Equal(t, []string{"create", "-o", "yaml", "-f", "-"}, f.runner.calls[2].argv)
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[3].argv)
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[4].argv)
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[5].argv)
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[6].argv)
 	}
 }
 
