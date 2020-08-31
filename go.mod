@@ -3,6 +3,7 @@ module github.com/tilt-dev/tilt
 go 1.14
 
 require (
+	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/alessio/shellescape v1.2.2
@@ -34,8 +35,8 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
-	github.com/golang/protobuf v1.3.2
-	github.com/google/go-cmp v0.3.1
+	github.com/golang/protobuf v1.4.2
+	github.com/google/go-cmp v0.4.0
 	github.com/google/go-github/v29 v29.0.3
 	github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf // indirect
 	github.com/google/uuid v1.1.1
@@ -43,7 +44,7 @@ require (
 	github.com/gorilla/mux v1.7.2
 	github.com/gorilla/websocket v1.4.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.11.3
+	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/jinzhu/gorm v1.9.12 // indirect
@@ -77,14 +78,12 @@ require (
 	github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
-	go.opencensus.io v0.22.2 // indirect
+	go.opencensus.io v0.22.4
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20200615180055-61b64bc45990
-	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20191220142924-d4481acd189f // indirect
-	google.golang.org/genproto v0.0.0-20191220175831-5c49e3ecc1c1
-	google.golang.org/grpc v1.26.0
+	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+	google.golang.org/genproto v0.0.0-20200527145253-8367513e4ece
+	google.golang.org/grpc v1.29.1
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/dancannon/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
