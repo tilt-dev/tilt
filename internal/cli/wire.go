@@ -31,6 +31,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
@@ -70,6 +71,8 @@ var BaseWireSet = wire.NewSet(
 
 	docker.SwitchWireSet,
 
+	ProvideDeferredExporter,
+	metrics.NewController,
 	dockercompose.NewDockerComposeClient,
 
 	clockwork.NewRealClock,

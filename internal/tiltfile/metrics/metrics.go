@@ -15,10 +15,7 @@ func NewExtension() Extension {
 }
 
 func (e Extension) NewState() interface{} {
-	return model.MetricsSettings{
-		Address:         "opentelemetry.tilt.dev:443",
-		ReportingPeriod: model.DefaultReportingPeriod,
-	}
+	return model.DefaultMetricsSettings()
 }
 
 func (Extension) OnStart(env *starkit.Environment) error {

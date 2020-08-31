@@ -15,3 +15,11 @@ type MetricsSettings struct {
 	// https://pkg.go.dev/go.opencensus.io/stats/view?tab=doc#SetReportingPeriod
 	ReportingPeriod time.Duration
 }
+
+func DefaultMetricsSettings() MetricsSettings {
+	return MetricsSettings{
+		Enabled:         false,
+		Address:         "opentelemetry.tilt.dev:443",
+		ReportingPeriod: DefaultReportingPeriod,
+	}
+}
