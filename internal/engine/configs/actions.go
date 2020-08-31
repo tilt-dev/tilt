@@ -19,6 +19,7 @@ type ConfigsReloadStartedAction struct {
 func (ConfigsReloadStartedAction) Action() {}
 
 type ConfigsReloadedAction struct {
+	// TODO(nick): Embed TiltfileLoadResult instead of copying fields.
 	Manifests          []model.Manifest
 	TiltIgnoreContents string
 	ConfigFiles        []string
@@ -29,6 +30,7 @@ type ConfigsReloadedAction struct {
 	Features             map[string]bool
 	TeamID               string
 	TelemetrySettings    model.TelemetrySettings
+	MetricsSettings      model.MetricsSettings
 	Secrets              model.SecretSet
 	DockerPruneSettings  model.DockerPruneSettings
 	AnalyticsTiltfileOpt analytics.Opt

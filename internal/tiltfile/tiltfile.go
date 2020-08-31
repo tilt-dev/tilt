@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+	"github.com/tilt-dev/tilt/internal/tiltfile/metrics"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 
 	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
@@ -51,6 +52,7 @@ type TiltfileLoadResult struct {
 	FeatureFlags        map[string]bool
 	TeamID              string
 	TelemetrySettings   model.TelemetrySettings
+	MetricsSettings     model.MetricsSettings
 	Secrets             model.SecretSet
 	Error               error
 	DockerPruneSettings model.DockerPruneSettings
@@ -207,6 +209,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	telemetrySettings, _ := telemetry.GetState(result)
 	tlr.TelemetrySettings = telemetrySettings
+
+	metricsSettings, _ := metrics.GetState(result)
+	tlr.MetricsSettings = metricsSettings
 
 	us, _ := updatesettings.GetState(result)
 	tlr.UpdateSettings = us
