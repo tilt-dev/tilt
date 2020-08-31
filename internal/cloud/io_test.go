@@ -24,28 +24,18 @@ func TestWriteSnapshotTo(t *testing.T) {
         "lastDeployTime": "0001-01-01T00:00:00Z",
         "buildHistory": [
           {
-            "warnings": [
-            ],
             "startTime": "0001-01-01T00:00:00Z",
-            "finishTime": "0001-01-01T00:00:00Z",
-            "updateTypes": [
-            ]
+            "finishTime": "0001-01-01T00:00:00Z"
           }
         ],
         "currentBuild": {
-          "warnings": [
-          ],
           "startTime": "0001-01-01T00:00:00Z",
-          "finishTime": "0001-01-01T00:00:00Z",
-          "updateTypes": [
-          ]
+          "finishTime": "0001-01-01T00:00:00Z"
         },
         "runtimeStatus": "ok",
         "isTiltfile": true
       }
     ],
-    "featureFlags": {
-    },
     "runningTiltBuild": {
 
     },
