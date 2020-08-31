@@ -58,8 +58,9 @@ import (
 // Injectors from wire.go:
 
 func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (cmdTiltfileResultDeps, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return cmdTiltfileResultDeps{}, err
 	}
@@ -96,8 +97,9 @@ var (
 )
 
 func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (dpDeps, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return dpDeps{}, err
 	}
@@ -154,8 +156,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	openInput := _wireOpenInputValue
 	openURL := _wireOpenURLValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, modelWebHost, webURL)
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -310,8 +313,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	openInput := _wireOpenInputValue
 	openURL := _wireOpenURLValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, modelWebHost, webURL)
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -445,8 +449,9 @@ var (
 )
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return "", err
 	}
@@ -458,8 +463,9 @@ func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 }
 
 func wireKubeConfig(ctx context.Context) (*api.Config, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return nil, err
 	}
@@ -467,8 +473,9 @@ func wireKubeConfig(ctx context.Context) (*api.Config, error) {
 }
 
 func wireEnv(ctx context.Context) (k8s.Env, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return "", err
 	}
@@ -477,14 +484,16 @@ func wireEnv(ctx context.Context) (k8s.Env, error) {
 }
 
 func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
-	clientConfig := k8s.ProvideClientConfig()
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	return namespace, nil
 }
 
 func wireClusterName(ctx context.Context) (k8s.ClusterName, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return "", err
 	}
@@ -493,8 +502,9 @@ func wireClusterName(ctx context.Context) (k8s.ClusterName, error) {
 }
 
 func wireRuntime(ctx context.Context) (container.Runtime, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return "", err
 	}
@@ -516,8 +526,9 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 }
 
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +549,8 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 }
 
 func wireK8sVersion(ctx context.Context) (*version2.Info, error) {
-	clientConfig := k8s.ProvideClientConfig()
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	info, err := k8s.ProvideServerVersion(clientsetOrError)
@@ -549,8 +561,9 @@ func wireK8sVersion(ctx context.Context) (*version2.Info, error) {
 }
 
 func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return nil, err
 	}
@@ -579,8 +592,9 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 }
 
 func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return nil, err
 	}
@@ -605,8 +619,9 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 }
 
 func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return DownDeps{}, err
 	}
@@ -652,8 +667,9 @@ func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 }
 
 func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, error) {
-	clientConfig := k8s.ProvideClientConfig()
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
 		return DumpImageDeployRefDeps{}, err
 	}
@@ -691,7 +707,7 @@ func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, er
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher)
+var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher, ProvideKubeContextOverride)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward.NewController, engine.NewBuildController, local.ProvideExecer, local.NewController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, exit.NewController, provideClock, hud.WireSet, prompt.WireSet, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewGitManager, fswatch.NewWatchManager, fswatch.ProvideFsWatcherMaker, fswatch.ProvideTimerMaker, provideWebVersion,

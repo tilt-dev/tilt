@@ -40,6 +40,7 @@ type PodID string
 type NodeID string
 type ServiceName string
 type KubeContext string
+type KubeContextOverride string
 
 // NOTE(nick): This isn't right. DefaultNamespace is a function of your kubectl context.
 const DefaultNamespace = Namespace("default")
@@ -474,11 +475,13 @@ func ProvideClientset(cfg RESTConfigOrError) ClientsetOrError {
 	return ClientsetOrError{Clientset: clientset, Error: err}
 }
 
-func ProvideClientConfig() clientcmd.ClientConfig {
+func ProvideClientConfig(contextOverride KubeContextOverride) clientcmd.ClientConfig {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 
-	overrides := &clientcmd.ConfigOverrides{}
+	overrides := &clientcmd.ConfigOverrides{
+		CurrentContext: string(contextOverride),
+	}
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		rules,
 		overrides)

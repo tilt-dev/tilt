@@ -123,6 +123,7 @@ func provideDockerComposeBuildAndDeployer(
 
 		// EnvNone ensures that we get an exploding k8s client.
 		wire.Value(k8s.Env(k8s.EnvNone)),
+		wire.Value(k8s.KubeContextOverride("")),
 		k8s.ProvideClientConfig,
 		k8s.ProvideConfigNamespace,
 		k8s.ProvideKubeContext,

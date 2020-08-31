@@ -52,6 +52,7 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 	}
 
 	addTiltfileFlag(cmd, &c.fileName)
+	addKubeContextFlag(cmd)
 	cmd.Flags().BoolVar(&c.deleteNamespaces, "delete-namespaces", false, "delete namespaces defined in the Tiltfile (by default, don't)")
 
 	return cmd
