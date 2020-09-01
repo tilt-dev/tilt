@@ -52,6 +52,18 @@ func StringSliceEquals(a, b []string) bool {
 	return true
 }
 
+func StringSliceElementsMatch(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	aCopy := append([]string{}, a...)
+	sort.Strings(aCopy)
+	bCopy := append([]string{}, b...)
+	sort.Strings(bCopy)
+	return StringSliceEquals(aCopy, bCopy)
+}
+
 // StringSliceStartsWith returns true if slice A starts with the given elem.
 func StringSliceStartsWith(a []string, elem string) bool {
 	if len(a) == 0 {

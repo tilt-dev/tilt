@@ -295,34 +295,43 @@ var equalitytests = []struct {
 		true,
 	},
 	{
-		"LocalTarget.Deps unequal",
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
-		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"quux", "baz"}, "path/to/tiltfile")),
-		false,
-		true,
-	},
-	{
 		"LocalTarget.workdir unequal",
 		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
 		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "some/other/path")),
 		false,
 		true,
 	},
+	{
+		"LocalTarget.Deps unequal and doesn't invalidate",
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"bar", "baz"}, "path/to/tiltfile")),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", ToHostCmd("beep boop"), Cmd{}, []string{"quux", "baz"}, "path/to/tiltfile")),
+		false,
+		false,
+	},
+	{
+		"CustomBuild.Deps unequal and doesn't invalidate",
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(CustomBuild{Deps: []string{"foo", "bar"}})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(CustomBuild{Deps: []string{"bar", "quux"}})),
+		false,
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
-	for i, c := range equalitytests {
-		actualEqual := c.m1.Equal(c.m2)
+	for _, c := range equalitytests {
+		t.Run(c.name, func(t *testing.T) {
+			actualEqual := c.m1.Equal(c.m2)
 
-		if actualEqual != c.expectedEqual {
-			t.Errorf("Test case %s (#%d): Expected %+v == %+v to be %t, but got %t", c.name, i, c.m1, c.m2, c.expectedEqual, actualEqual)
-		}
+			if actualEqual != c.expectedEqual {
+				t.Errorf("Expected m1==m2 to be %t, but got %t\n\tm1: %+v\n\tm2: %+v", c.expectedEqual, actualEqual, c.m1, c.m2)
+			}
 
-		actualInvalidates := ChangesInvalidateBuild(c.m1, c.m2)
+			actualInvalidates := ChangesInvalidateBuild(c.m1, c.m2)
 
-		if actualInvalidates != c.expectedInvalidates {
-			t.Errorf("Test case %s (#%d): Expected %+v => %+v InvalidatesBuild = %t, but got %t", c.name, i, c.m1, c.m2, c.expectedInvalidates, actualInvalidates)
-		}
+			if actualInvalidates != c.expectedInvalidates {
+				t.Errorf("Expected m1 -> m2 invalidates build to be %t, but got %t\n\tm1: %+v\n\tm2: %+v", c.expectedInvalidates, actualInvalidates, c.m1, c.m2)
+			}
+		})
 	}
 }
 

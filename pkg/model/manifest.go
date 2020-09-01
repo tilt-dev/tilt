@@ -196,13 +196,13 @@ func (m Manifest) LocalPaths() []string {
 	case LocalTarget:
 		return di.Dependencies()
 	case ImageTarget, K8sTarget:
-		paths := []string{}
-		for _, iTarget := range m.ImageTargets {
-			paths = append(paths, iTarget.LocalPaths()...)
-		}
-		return sliceutils.DedupedAndSorted(paths)
+		// fall through to paths for image targets, below
 	}
-	panic(fmt.Sprintf("Unknown deploy target type (%T) while trying to get LocalPaths", m.deployTarget))
+	paths := []string{}
+	for _, iTarget := range m.ImageTargets {
+		paths = append(paths, iTarget.LocalPaths()...)
+	}
+	return sliceutils.DedupedAndSorted(paths)
 }
 
 func (m Manifest) Validate() error {
@@ -228,22 +228,22 @@ func (m Manifest) Validate() error {
 }
 
 func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesEq, dockerEq, k8sEq, dcEq, localEq, depsEq := m1.fieldGroupsEqual(m2)
-	return primitivesEq && dockerEq && k8sEq && dcEq && localEq && depsEq
+	primitivesEq, dockerEq, k8sEq, dcEq, localEq, depsEq, resourceDepsEq := m1.fieldGroupsEqual(m2)
+	return primitivesEq && dockerEq && k8sEq && dcEq && localEq && depsEq && resourceDepsEq
 }
 
 // ChangesInvalidateBuild checks whether the changes from old => new manifest
 // invalidate our build of the old one; i.e. if we're replacing `old` with `new`,
 // should we perform a full rebuild?
 func ChangesInvalidateBuild(old, new Manifest) bool {
-	_, dockerEq, k8sEq, dcEq, localEq, _ := old.fieldGroupsEqual(new)
+	_, dockerEq, k8sEq, dcEq, localEq, _, _ := old.fieldGroupsEqual(new)
 
 	// We only need to update for this manifest if any of the field-groups
 	// affecting build+deploy have changed (i.e. a change in primitives doesn't matter)
 	return !dockerEq || !k8sEq || !dcEq || !localEq
 
 }
-func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq, dcEq, localEq, depsEq bool) {
+func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq, dcEq, localEq, depsEq, resourceDepsEq bool) {
 	primitivesEq = m1.Name == m2.Name && m1.TriggerMode == m2.TriggerMode
 
 	dockerEq = DeepEqual(m1.ImageTargets, m2.ImageTargets)
@@ -260,9 +260,11 @@ func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq,
 	lt2 := m2.LocalTarget()
 	localEq = DeepEqual(lt1, lt2)
 
-	depsEq = DeepEqual(m1.ResourceDependencies, m2.ResourceDependencies)
+	depsEq = sliceutils.StringSliceElementsMatch(m1.LocalPaths(), m2.LocalPaths())
 
-	return primitivesEq, dockerEq, dcEq, k8sEq, localEq, depsEq
+	resourceDepsEq = DeepEqual(m1.ResourceDependencies, m2.ResourceDependencies)
+
+	return primitivesEq, dockerEq, dcEq, k8sEq, localEq, depsEq, resourceDepsEq
 }
 
 func (m Manifest) ManifestName() ManifestName {
@@ -460,6 +462,8 @@ var localTargetAllowUnexported = cmp.AllowUnexported(LocalTarget{})
 var selectorAllowUnexported = cmp.AllowUnexported(container.RefSelector{})
 var refSetAllowUnexported = cmp.AllowUnexported(container.RefSet{})
 var registryAllowUnexported = cmp.AllowUnexported(container.Registry{})
+var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
+var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
@@ -491,5 +495,8 @@ func DeepEqual(x, y interface{}) bool {
 		refSetAllowUnexported,
 		registryAllowUnexported,
 		dockerRefEqual,
-		imageLocatorEqual)
+		imageLocatorEqual,
+		ignoreCustomBuildDepsField,
+		ignoreLocalTargetDepsField,
+	)
 }
