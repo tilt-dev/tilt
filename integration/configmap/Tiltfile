@@ -1,0 +1,6 @@
+include('../Tiltfile')
+
+watch_file('small.txt')
+watch_file('large.txt')
+k8s_yaml(local('kubectl create configmap -n tilt-integration large-configmap --from-file=key.txt=./large.txt --dry-run=client -o=yaml', quiet=True))
+k8s_yaml(local('kubectl create configmap -n tilt-integration small-configmap --from-file=key.txt=./small.txt --dry-run=client -o=yaml', quiet=True))
