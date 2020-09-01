@@ -34,6 +34,40 @@ func TestGlob(t *testing.T) {
 	tf.AssertResult(tf.JoinPath("somedir", "temp"), true)
 }
 
+func TestCurrentDirDoubleGlob(t *testing.T) {
+	tf := newTestFixture(t, "**/temp*")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "c", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("b", "c", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("..", "a", "b", "temporary.txt"), false)
+}
+
+func TestInnerDirDoubleGlob(t *testing.T) {
+	tf := newTestFixture(t, "a/**/temp*")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "c", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("b", "c", "temporary.txt"), false)
+	tf.AssertResult(tf.JoinPath("..", "a", "b", "temporary.txt"), false)
+}
+
+func TestUplevel(t *testing.T) {
+	tf := newTestFixture(t, "../a/b.txt")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("..", "a", "b.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b.txt"), false)
+}
+
+func TestUplevelDoubleGlob(t *testing.T) {
+	tf := newTestFixture(t, "../**/b.txt")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("..", "a", "b.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b.txt"), true)
+}
+
 func TestOneCharacterExtension(t *testing.T) {
 	tf := newTestFixture(t, "temp?")
 	defer tf.TearDown()
@@ -106,6 +140,7 @@ func (tf *testFixture) JoinPath(path ...string) string {
 }
 
 func (tf *testFixture) AssertResult(path string, expectedMatches bool) {
+	tf.t.Helper()
 	isIgnored, err := tf.tester.Matches(path)
 	if err != nil {
 		tf.t.Fatal(err)
