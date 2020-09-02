@@ -246,23 +246,23 @@ func ChangesInvalidateBuild(old, new Manifest) bool {
 func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq, dcEq, localEq, depsEq, resourceDepsEq bool) {
 	primitivesEq = m1.Name == m2.Name && m1.TriggerMode == m2.TriggerMode
 
-	dockerEq = DeepEqual(m1.ImageTargets, m2.ImageTargets)
+	dockerEq = EqualForBuildInvalidation(m1.ImageTargets, m2.ImageTargets)
 
 	dc1 := m1.DockerComposeTarget()
 	dc2 := m2.DockerComposeTarget()
-	dcEq = DeepEqual(dc1, dc2)
+	dcEq = EqualForBuildInvalidation(dc1, dc2)
 
 	k8s1 := m1.K8sTarget()
 	k8s2 := m2.K8sTarget()
-	k8sEq = DeepEqual(k8s1, k8s2)
+	k8sEq = EqualForBuildInvalidation(k8s1, k8s2)
 
 	lt1 := m1.LocalTarget()
 	lt2 := m2.LocalTarget()
-	localEq = DeepEqual(lt1, lt2)
+	localEq = EqualForBuildInvalidation(lt1, lt2)
 
 	depsEq = sliceutils.StringSliceElementsMatch(m1.LocalPaths(), m2.LocalPaths())
 
-	resourceDepsEq = DeepEqual(m1.ResourceDependencies, m2.ResourceDependencies)
+	resourceDepsEq = EqualForBuildInvalidation(m1.ResourceDependencies, m2.ResourceDependencies)
 
 	return primitivesEq, dockerEq, dcEq, k8sEq, localEq, depsEq, resourceDepsEq
 }
@@ -483,7 +483,8 @@ var imageLocatorEqual = cmp.Comparer(func(a, b K8sImageLocator) bool {
 	return a.EqualsImageLocator(b)
 })
 
-func DeepEqual(x, y interface{}) bool {
+// Determine whether interfaces x and y are equal, excluding fields that don't invalidate a build.
+func EqualForBuildInvalidation(x, y interface{}) bool {
 	return cmp.Equal(x, y,
 		cmpopts.EquateEmpty(),
 		imageTargetAllowUnexported,
@@ -496,6 +497,8 @@ func DeepEqual(x, y interface{}) bool {
 		registryAllowUnexported,
 		dockerRefEqual,
 		imageLocatorEqual,
+
+		// deps changes don't invalidate a build, so don't compare fields used only for deps
 		ignoreCustomBuildDepsField,
 		ignoreLocalTargetDepsField,
 	)
