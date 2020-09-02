@@ -227,52 +227,36 @@ func (m Manifest) Validate() error {
 	return nil
 }
 
-func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesEq, dockerEq, k8sEq, dcEq, localEq, depsEq, resourceDepsEq := m1.fieldGroupsEqual(m2)
-	return primitivesEq && dockerEq && k8sEq && dcEq && localEq && depsEq && resourceDepsEq
-}
-
 // ChangesInvalidateBuild checks whether the changes from old => new manifest
 // invalidate our build of the old one; i.e. if we're replacing `old` with `new`,
 // should we perform a full rebuild?
 func ChangesInvalidateBuild(old, new Manifest) bool {
-	_, dockerEq, k8sEq, dcEq, localEq, _, _ := old.fieldGroupsEqual(new)
+	dockerEq, k8sEq, dcEq, localEq := old.fieldGroupsEqualForBuildInvalidation(new)
 
-	// We only need to update for this manifest if any of the field-groups
-	// affecting build+deploy have changed (i.e. a change in primitives doesn't matter)
 	return !dockerEq || !k8sEq || !dcEq || !localEq
-
 }
-func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq, dcEq, localEq, depsEq, resourceDepsEq bool) {
-	primitivesEq = m1.Name == m2.Name && m1.TriggerMode == m2.TriggerMode
 
-	dockerEq = EqualForBuildInvalidation(m1.ImageTargets, m2.ImageTargets)
+// Compare all fields that might invalidate a build
+func (m1 Manifest) fieldGroupsEqualForBuildInvalidation(m2 Manifest) (dockerEq, k8sEq, dcEq, localEq bool) {
+	dockerEq = equalForBuildInvalidation(m1.ImageTargets, m2.ImageTargets)
 
 	dc1 := m1.DockerComposeTarget()
 	dc2 := m2.DockerComposeTarget()
-	dcEq = EqualForBuildInvalidation(dc1, dc2)
+	dcEq = equalForBuildInvalidation(dc1, dc2)
 
 	k8s1 := m1.K8sTarget()
 	k8s2 := m2.K8sTarget()
-	k8sEq = EqualForBuildInvalidation(k8s1, k8s2)
+	k8sEq = equalForBuildInvalidation(k8s1, k8s2)
 
 	lt1 := m1.LocalTarget()
 	lt2 := m2.LocalTarget()
-	localEq = EqualForBuildInvalidation(lt1, lt2)
+	localEq = equalForBuildInvalidation(lt1, lt2)
 
-	depsEq = sliceutils.StringSliceElementsMatch(m1.LocalPaths(), m2.LocalPaths())
-
-	resourceDepsEq = EqualForBuildInvalidation(m1.ResourceDependencies, m2.ResourceDependencies)
-
-	return primitivesEq, dockerEq, dcEq, k8sEq, localEq, depsEq, resourceDepsEq
+	return dockerEq, dcEq, k8sEq, localEq
 }
 
 func (m Manifest) ManifestName() ManifestName {
 	return m.Name
-}
-
-func (m Manifest) Empty() bool {
-	return m.Equal(Manifest{})
 }
 
 func LocalRefSelectorsForManifests(manifests []Manifest) []container.RefSelector {
@@ -484,7 +468,7 @@ var imageLocatorEqual = cmp.Comparer(func(a, b K8sImageLocator) bool {
 })
 
 // Determine whether interfaces x and y are equal, excluding fields that don't invalidate a build.
-func EqualForBuildInvalidation(x, y interface{}) bool {
+func equalForBuildInvalidation(x, y interface{}) bool {
 	return cmp.Equal(x, y,
 		cmpopts.EquateEmpty(),
 		imageTargetAllowUnexported,
