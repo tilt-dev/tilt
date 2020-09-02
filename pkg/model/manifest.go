@@ -227,11 +227,6 @@ func (m Manifest) Validate() error {
 	return nil
 }
 
-func (m1 Manifest) Equal(m2 Manifest) bool {
-	primitivesEq, dockerEq, k8sEq, dcEq, localEq, depsEq := m1.fieldGroupsEqual(m2)
-	return primitivesEq && dockerEq && k8sEq && dcEq && localEq && depsEq
-}
-
 // ChangesInvalidateBuild checks whether the changes from old => new manifest
 // invalidate our build of the old one; i.e. if we're replacing `old` with `new`,
 // should we perform a full rebuild?
@@ -267,10 +262,6 @@ func (m1 Manifest) fieldGroupsEqual(m2 Manifest) (primitivesEq, dockerEq, k8sEq,
 
 func (m Manifest) ManifestName() ManifestName {
 	return m.Name
-}
-
-func (m Manifest) Empty() bool {
-	return m.Equal(Manifest{})
 }
 
 func LocalRefSelectorsForManifests(manifests []Manifest) []container.RefSelector {
