@@ -1406,7 +1406,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				SkipsLocalDocker: image.skipsLocalDocker,
 				LiveUpdate:       lu,
 			}
-			iTarget = iTarget.WithBuildDetails(r)
+			iTarget = iTarget.WithBuildDetails(r).
+				MaybeIgnoreRegistry()
+
 			// TODO(dbentley): validate that syncs is a subset of deps
 		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef)

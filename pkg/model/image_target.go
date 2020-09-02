@@ -143,6 +143,35 @@ func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 	return i
 }
 
+// I (Nick) am deeply unhappy with the parameters of CustomBuild.  They're not
+// well-specified, and often interact in weird and unpredictable ways.  This
+// function is a good example.
+//
+// custom_build(tag) means "My custom_build script already has a tag that it
+// wants to use". In practice, it becomes the "You can't tell me what to do"
+// flag.
+//
+// custom_build(skips_local_docker) means "My custom_build script doesn't use
+// Docker for storage, so you shouldn't expect to find the image there." In
+// practice, it becomes the "You can't touch my outputs" flag.
+//
+// When used together, you have a script that takes no inputs and doesn't let Tilt
+// fix the outputs. So people use custom_build(tag=x, skips_local_docker=True) to
+// enable all sorts of off-road experimental image-building flows that need better
+// primitives.
+//
+// For now, when we detect this case, we strip off registry information, since
+// the script isn't going to use it anyway.  This is tightly coupled with
+// CustomBuilder, which already has similar logic for handling these two cases
+// together.
+func (i ImageTarget) MaybeIgnoreRegistry() ImageTarget {
+	customBuild, ok := i.BuildDetails.(CustomBuild)
+	if ok && customBuild.SkipsLocalDocker && customBuild.Tag != "" {
+		i.Refs = i.Refs.WithoutRegistry()
+	}
+	return i
+}
+
 func (i ImageTarget) WithCachePaths(paths []string) ImageTarget {
 	i.cachePaths = append(append([]string{}, i.cachePaths...), paths...)
 	sort.Strings(i.cachePaths)
