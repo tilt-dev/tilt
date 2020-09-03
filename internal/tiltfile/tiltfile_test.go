@@ -4832,15 +4832,7 @@ allow_k8s_contexts("hello")
 
 	f.load()
 
-	// get the exactly one CountEvent named tiltfile.loaded
-	var countEvent analytics.CountEvent
-	for _, ce := range f.an.Counts {
-		if ce.Name == "tiltfile.loaded" {
-			require.Equal(t, "", countEvent.Name, "two count events named tiltfile.loaded")
-			countEvent = ce
-		}
-	}
-	require.NotEqual(t, "", countEvent.Name, "no count event named tiltfile.loaded")
+	countEvent := f.SingleAnalyticsEvent("tiltfile.loaded")
 
 	// make sure it has all the expected builtin call counts
 	expectedCounts := map[string]string{
@@ -4854,6 +4846,21 @@ allow_k8s_contexts("hello")
 	for k, v := range expectedCounts {
 		require.Equal(t, v, countEvent.Tags[k], "count for %s", k)
 	}
+}
+
+func TestCustomTagsReported(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+experimental_report_custom_tags({'foo': 'bar'})
+`)
+
+	f.load()
+
+	countEvent := f.SingleAnalyticsEvent("tiltfile.custom.report")
+
+	require.Equal(t, map[string]string{"foo": "bar"}, countEvent.Tags)
 }
 
 func TestK8sResourceObjectsAddsNonWorkload(t *testing.T) {
@@ -6375,4 +6382,17 @@ func overwriteSelectorsForService(entity *k8s.K8sEntity, labels map[string]strin
 	}
 	svc.Spec.Selector = labels
 	return nil
+}
+
+func (f *fixture) SingleAnalyticsEvent(name string) analytics.CountEvent {
+	var ret analytics.CountEvent
+	for _, ce := range f.an.Counts {
+		if ce.Name == name {
+			require.Equalf(f.t, "", ret.Name, "two count events named %s", name)
+			ret = ce
+		}
+	}
+	require.NotEqualf(f.t, "", ret.Name, "no count event named %s", name)
+
+	return ret
 }
