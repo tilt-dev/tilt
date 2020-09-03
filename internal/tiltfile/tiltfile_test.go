@@ -4029,6 +4029,24 @@ k8s_yaml('foo.yaml')
 		f.assertNextManifest("foo").ImageTargets[0].OverrideArgs)
 }
 
+// See comments on ImageTarget#MaybeIgnoreRegistry()
+func TestCustomBuildSkipsLocalDockerAndTagPassedIgnoresLocalRegistry(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+default_registry('localhost:5000')
+custom_build('gcr.io/foo', ':', ["."], tag='gcr.io/foo:latest', skips_local_docker=True)
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	refs := f.assertNextManifest("foo").ImageTargets[0].Refs
+	assert.Equal(t, "gcr.io/foo", refs.ClusterRef().String())
+}
+
 func TestDuplicateYAMLEntityWithinSingleResource(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
