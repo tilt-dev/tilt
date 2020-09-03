@@ -17,6 +17,19 @@ cd "$DIR/.."
 ./scripts/goreleaser.sh
 
 VERSION=$(git describe --abbrev=0 --tags)
-./scripts/release-update-tilt-repo.sh "$VERSION"
-./scripts/release-update-tilt-docs-repo.sh "$VERSION"
+
+docker run --rm \
+       -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+       -w /src/tilt \
+       -v "$PWD:/src/tilt:delegated" \
+       --entrypoint /src/tilt/scripts/release-update-tilt-repo.sh \
+       gcr.io/windmill-public-containers/tilt-releaser "$VERSION"
+
+docker run --rm \
+       -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+       -w /src/tilt \
+       -v "$PWD:/src/tilt:delegated" \
+       --entrypoint /src/tilt/scripts/release-update-tilt-docs-repo.sh \
+       gcr.io/windmill-public-containers/tilt-releaser "$VERSION"
+
 ./scripts/record-release.sh "$VERSION"
