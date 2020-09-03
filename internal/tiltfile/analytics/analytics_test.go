@@ -42,9 +42,9 @@ analytics_settings(enable=False)
 func TestReportToAnalytics(t *testing.T) {
 	f := NewFixture(t)
 	f.File("Tiltfile", `
-experimental_report_custom_tags({'1': '2'})
+experimental_analytics_report({'1': '2'})
 # the second call's "1" value replaces the first
-experimental_report_custom_tags({'1': '2a', '3': '4'})
+experimental_analytics_report({'1': '2a', '3': '4'})
 `)
 	result, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)

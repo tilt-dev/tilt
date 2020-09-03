@@ -4853,7 +4853,7 @@ func TestCustomTagsReported(t *testing.T) {
 	defer f.TearDown()
 
 	f.file("Tiltfile", `
-experimental_report_custom_tags({'foo': 'bar'})
+experimental_analytics_report({'foo': 'bar'})
 `)
 
 	f.load()

@@ -36,7 +36,7 @@ func (Extension) OnStart(env *starkit.Environment) error {
 	// This is an experimental feature to allow Tiltfiles to specify custom data to report to analytics
 	// to allow teams to get more visibility into, e.g., who's using Tilt or what k8s distributions are
 	// their members using. It is not intended for use without coordinating with the Tilt team.
-	err = env.AddBuiltin("experimental_report_custom_tags", reportCustomTags)
+	err = env.AddBuiltin("experimental_analytics_report", reportCustomTags)
 	if err != nil {
 		return err
 	}
