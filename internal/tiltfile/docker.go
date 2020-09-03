@@ -90,13 +90,13 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	var dockerRef, targetStage string
 	var contextVal,
 		dockerfilePathVal,
-		buildArgs,
 		dockerfileContentsVal,
 		cacheVal,
 		liveUpdateVal,
 		ignoreVal,
 		onlyVal,
 		entrypoint starlark.Value
+	var buildArgs value.StringStringMap
 	var network value.Stringable
 	var ssh, secret, extraTags, cacheFrom value.StringOrStringList
 	var matchInEnvVars, pullParent bool
@@ -136,11 +136,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	context, err := value.ValueToAbsPath(thread, contextVal)
 	if err != nil {
 		return nil, err
-	}
-
-	sba, err := value.ValueToStringMap(buildArgs)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 3 (build_args): %v", err)
 	}
 
 	dockerfilePath := filepath.Join(context, "Dockerfile")
@@ -222,7 +217,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
 		configurationRef: container.NewRefSelector(ref),
-		dbBuildArgs:      sba,
+		dbBuildArgs:      buildArgs.AsMap(),
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
 		sshSpecs:         ssh.Values,
