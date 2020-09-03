@@ -11,7 +11,7 @@ type LocalTarget struct {
 	UpdateCmd Cmd      // e.g. `make proto`
 	ServeCmd  Cmd      // e.g. `python main.py`
 	Workdir   string   // directory from which the commands should be run
-	deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
+	Deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
 	ignores   []Dockerignore
 
 	repos []LocalGitRepo
@@ -28,7 +28,7 @@ func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string,
 		Name:      name,
 		UpdateCmd: updateCmd,
 		Workdir:   workdir,
-		deps:      deps,
+		Deps:      deps,
 		ServeCmd:  serveCmd,
 	}
 }
@@ -74,7 +74,7 @@ func (lt LocalTarget) Validate() error {
 
 // Implements: engine.WatchableManifest
 func (lt LocalTarget) Dependencies() []string {
-	return sliceutils.DedupedAndSorted(lt.deps)
+	return sliceutils.DedupedAndSorted(lt.Deps)
 }
 
 func (lt LocalTarget) LocalRepos() []LocalGitRepo {
