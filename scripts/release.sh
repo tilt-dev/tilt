@@ -15,4 +15,8 @@ cd "$DIR/.."
 
 ./scripts/upload-assets.py latest
 ./scripts/goreleaser.sh
-./scripts/record-release.sh "$(git describe --abbrev=0 --tags)"
+
+VERSION=$(git describe --abbrev=0 --tags)
+./scripts/release-update-tilt-repo.sh "$VERSION"
+./scripts/release-update-tilt-docs-repo.sh "$VERSION"
+./scripts/record-release.sh "$VERSION"

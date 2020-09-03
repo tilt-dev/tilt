@@ -287,22 +287,7 @@ release ought to be.
 Add a [summary section](https://github.com/tilt-dev/company/blob/master/user-support/README.md#releases) 
 in the release notes.
 
-After updating the release notes,
-update the [install](https://github.com/tilt-dev/tilt.build/tree/master/docs/install.md) and [upgrade](https://github.com/tilt-dev/tilt.build/blob/master/docs/upgrade.md) docs,
-the [default dev version](internal/cli/build.go),
-the [installer bash script](scripts/install.sh), and
-the [installer powershell script](scripts/install.ps1).
-
-These should be updated as soon as possible to match the newest Tilt version
-available, especially since the Tilt update nudge will send people to the upgrade
-docs page to get the newest version. These version bump PRs can be merged
-immediately without review.
-
-To auto-generate new CLI docs, make sure you have tilt.build in a sibling directory of tilt, and run:
-
-```
-make cli-docs
-```
+The script has been updated to automatically update install scripts and docs.
 
 ### Version numbers
 For pre-v1.0:
