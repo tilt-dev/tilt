@@ -17,7 +17,7 @@ import (
 // For distributed binaries, version is automatically baked
 // into the binary with goreleaser. If this doesn't get updated
 // on every release, it's often not that big a deal.
-const devVersion = "0.17.3"
+const devVersion = "0.17.4"
 
 var commitSHA string
 var globalTiltInfo model.TiltBuild

@@ -7,7 +7,7 @@
 
 # When releasing Tilt, the releaser should update this version number
 # AFTER they upload new binaries.
-VERSION="0.17.3"
+VERSION="0.17.4"
 BREW=$(command -v brew)
 
 set -e
@@ -51,7 +51,7 @@ function install_tilt() {
 }
 
 function version_check() {
-  VERSION="$(tilt version 2>&1 || true)"
+  VERSION="0.17.4"
   RUBY_TILT_PATTERN="template engine not found"
   TILT_DEV_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+(-dev)?, built [0-9]+-[0-9]+-[0-9]+$'
   if [[ $VERSION =~ $RUBY_TILT_PATTERN ]]; then
