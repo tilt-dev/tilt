@@ -195,11 +195,12 @@ func (s *tiltfileState) maybeExtractSecrets(e k8s.K8sEntity) model.SecretSet {
 }
 
 func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var yamlValue, labelsValue starlark.Value
+	var yamlValue starlark.Value
+	var metaLabels value.StringStringMap
 	var name, namespace, kind, apiVersion string
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
-		"labels?", &labelsValue,
+		"labels?", &metaLabels,
 		"name?", &name,
 		"namespace?", &namespace,
 		"kind?", &kind,
@@ -207,11 +208,6 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	metaLabels, err := value.ValueToStringMap(labelsValue)
-	if err != nil {
-		return nil, fmt.Errorf("kwarg `labels`: %v", err)
 	}
 
 	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
@@ -233,9 +229,9 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		}
 	}
 
-	if len(metaLabels) > 0 {
+	if len(metaLabels.Map) > 0 {
 		var r []k8s.K8sEntity
-		match, r, err = k8s.FilterByMetadataLabels(match, metaLabels)
+		match, r, err = k8s.FilterByMetadataLabels(match, metaLabels.Map)
 		if err != nil {
 			return nil, err
 		}
