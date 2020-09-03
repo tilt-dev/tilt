@@ -220,6 +220,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
 	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration)
 
+	if len(aSettings.CustomTagsToReport) > 0 {
+		reportCustomTags(tfl.analytics, aSettings.CustomTagsToReport)
+	}
+
 	return tlr
 }
 
@@ -230,6 +234,10 @@ func tiltIgnorePath(tiltfilePath string) string {
 
 func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	return value.ValueOrSequenceToSlice(v)
+}
+
+func reportCustomTags(a *analytics.TiltAnalytics, tags map[string]string) {
+	a.Incr("tiltfile.custom.report", tags)
 }
 
 func (tfl *tiltfileLoader) reportTiltfileLoaded(callCounts map[string]int,
