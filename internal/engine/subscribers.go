@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
@@ -47,6 +48,7 @@ func ProvideSubscribers(
 	lc *local.Controller,
 	podm *k8srollout.PodMonitor,
 	ec *exit.Controller,
+	mc *metrics.Controller,
 ) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
@@ -74,5 +76,6 @@ func ProvideSubscribers(
 		lc,
 		podm,
 		ec,
+		mc,
 	}
 }
