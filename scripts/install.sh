@@ -51,22 +51,22 @@ function install_tilt() {
 }
 
 function version_check() {
-  VERSION="0.17.4"
+  VERSION_FROM_BIN="$(tilt version 2>&1 || true)"
   RUBY_TILT_PATTERN="template engine not found"
   TILT_DEV_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+(-dev)?, built [0-9]+-[0-9]+-[0-9]+$'
-  if [[ $VERSION =~ $RUBY_TILT_PATTERN ]]; then
+  if [[ $VERSION_FROM_BIN =~ $RUBY_TILT_PATTERN ]]; then
     echo "Tilt installed!"
     echo
     echo "Note: the ruby templating program named 'tilt' (at $(command -v tilt)) appears before tilt.dev's tilt in your \$PATH."
     echo "You'll need to adjust your \$PATH, uninstall the other tilt, rename tilt, or use an absolute path to run tilt.dev's tilt. See https://docs.tilt.dev/faq.html."
     exit 1
-  elif ! [[ $VERSION =~ $TILT_DEV_PATTERN ]]; then
+  elif ! [[ $VERSION_FROM_BIN =~ $TILT_DEV_PATTERN ]]; then
     echo "Tilt installed!"
     echo
     echo "Note: it looks like it is not the first program named 'tilt' in your path. \`tilt version\` (running from $(command -v tilt)) did not return a tilt.dev version string."
     echo "It output this instead:"
     echo
-    echo "$VERSION"
+    echo "$VERSION_FROM_BIN"
     echo
     echo "Perhaps you have a different program named tilt in your \$PATH?"
     exit 1
