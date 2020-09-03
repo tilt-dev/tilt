@@ -688,8 +688,8 @@ github.com/tilt-dev/json-patch/v4 v4.8.1 h1:AbrhK3NMDfk/+/oMXz3NcKaCNwHYdhUJMDjB
 github.com/tilt-dev/json-patch/v4 v4.8.1/go.mod h1:tS8rrXPNPgltwGinFPfBjCwHFLxMa3ozjPngreH2eW0=
 github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7 h1:ysHGLJJRVcnG6WoZJt7GGD4hsMSwMxEg7Rxx4fJrSrY=
 github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7/go.mod h1:bZecZHy8tHzZWeF+MEQMugKbGhi9cF1A7tuaZNIxoDs=
-github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564 h1:bEnkuD0b4rcHJbO3isFgtZhoGzA9NL0D4Qfo4jKvLlM=
-github.com/tilt-dev/wmclient v0.0.0-20200515134039-dd6b302e2564/go.mod h1:CmwKPbHUwMhi/BZXZUjLW1LuxKkRa9qLtJ7p9p9zitE=
+github.com/tilt-dev/wmclient v0.0.0-20200901155816-d8d972f01eb9 h1:RW79Zk+stsHTJGAsvmncc9wU0P8S6CkRZaUQ8NWNb0g=
+github.com/tilt-dev/wmclient v0.0.0-20200901155816-d8d972f01eb9/go.mod h1:CmwKPbHUwMhi/BZXZUjLW1LuxKkRa9qLtJ7p9p9zitE=
 github.com/timakin/bodyclose v0.0.0-20190930140734-f7f2e9bca95e/go.mod h1:Qimiffbc6q9tBWlVV6x0P9sat/ao1xEkREYPPj9hphk=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tonistiigi/fsutil v0.0.0-20191018213012-0f039a052ca1 h1:WRlNtJ2whFMKo95/e6uaNuAnn5TxLcMzczqMcfbIDxo=

@@ -53,6 +53,8 @@ func NewCommand() *cobra.Command {
 		Use:   "analytics",
 		Short: "info and status about windmill analytics",
 		RunE:  analyticsStatus,
+		DisableFlagsInUseLine: true,
+		Args: cobra.NoArgs,
 	}
 
 	opt := &cobra.Command{
