@@ -6,14 +6,12 @@ import (
 	"go.starlark.net/starlark"
 )
 
-type StringStringMap struct {
-	Map map[string]string
-}
+type StringStringMap map[string]string
 
 var _ starlark.Unpacker = &StringStringMap{}
 
 func (s *StringStringMap) Unpack(v starlark.Value) error {
-	s.Map = make(map[string]string)
+	*s = make(map[string]string)
 	if v != nil && v != starlark.None {
 		d, ok := v.(*starlark.Dict)
 		if !ok {
@@ -31,9 +29,13 @@ func (s *StringStringMap) Unpack(v starlark.Value) error {
 				return fmt.Errorf("value is not a string: %T (%v)", tuple[1], tuple[1])
 			}
 
-			s.Map[k] = v
+			(*s)[k] = v
 		}
 	}
 
 	return nil
+}
+
+func (s *StringStringMap) AsMap() map[string]string {
+	return *s
 }

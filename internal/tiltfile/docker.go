@@ -217,7 +217,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
 		configurationRef: container.NewRefSelector(ref),
-		dbBuildArgs:      buildArgs.Map,
+		dbBuildArgs:      buildArgs.AsMap(),
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
 		sshSpecs:         ssh.Values,

@@ -19,8 +19,8 @@ func TestStringStringMap(t *testing.T) {
 	err = v.Unpack(sv)
 	require.NoError(t, err)
 
-	expected := map[string]string{"a": "b", "c": "d"}
-	require.Equal(t, expected, v.Map)
+	expected := StringStringMap{"a": "b", "c": "d"}
+	require.Equal(t, expected, v)
 }
 
 func TestStringStringMapNotDict(t *testing.T) {
@@ -72,5 +72,5 @@ func TestStringStringMapUnpackClearsExistingData(t *testing.T) {
 	sv = starlark.NewDict(0)
 	err = v.Unpack(sv)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(v.Map))
+	require.Equal(t, 0, len(v))
 }

@@ -229,9 +229,9 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		}
 	}
 
-	if len(metaLabels.Map) > 0 {
+	if len(metaLabels) > 0 {
 		var r []k8s.K8sEntity
-		match, r, err = k8s.FilterByMetadataLabels(match, metaLabels.Map)
+		match, r, err = k8s.FilterByMetadataLabels(match, metaLabels)
 		if err != nil {
 			return nil, err
 		}
