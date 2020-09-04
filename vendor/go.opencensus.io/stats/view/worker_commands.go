@@ -178,9 +178,24 @@ type setReportingPeriodReq struct {
 func (cmd *setReportingPeriodReq) handleCommand(w *worker) {
 	w.timer.Stop()
 	if cmd.d <= 0 {
-		w.timer = time.NewTicker(defaultReportingDuration)
+		w.reportingDuration = defaultReportingDuration
 	} else {
-		w.timer = time.NewTicker(cmd.d)
+		w.reportingDuration = cmd.d
 	}
+
+	w.timer = time.NewTicker(w.reportingDuration)
+	cmd.c <- true
+}
+
+type flushReq struct {
+	c chan bool
+}
+
+func (cmd *flushReq) handleCommand(w *worker) {
+	w.reportUsage()
+
+	// Reset the timer
+	w.timer = time.NewTicker(w.reportingDuration)
+
 	cmd.c <- true
 }
