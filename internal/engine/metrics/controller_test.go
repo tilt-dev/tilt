@@ -21,9 +21,7 @@ func TestEnableMetrics(t *testing.T) {
 	// Verify that enabling metrics creates a remote exporter.
 	ms := model.DefaultMetricsSettings()
 	ms.Enabled = true
-	f.st.SetState(store.EngineState{
-		MetricsSettings: ms,
-	})
+	f.st.SetState(newLoggedInEngineState(ms))
 	f.mc.OnChange(f.ctx, f.st)
 
 	remote := f.exp.remote
@@ -34,17 +32,13 @@ func TestEnableMetrics(t *testing.T) {
 
 	// Verify that changing the metrics settings creates a new remote exporter.
 	ms.Insecure = true
-	f.st.SetState(store.EngineState{
-		MetricsSettings: ms,
-	})
+	f.st.SetState(newLoggedInEngineState(ms))
 	f.mc.OnChange(f.ctx, f.st)
 	assert.NotSame(t, remote, f.exp.remote)
 
 	// Verify that disabling the metrics settings nulls out the remote exporter.
 	ms.Enabled = false
-	f.st.SetState(store.EngineState{
-		MetricsSettings: ms,
-	})
+	f.st.SetState(newLoggedInEngineState(ms))
 	f.mc.OnChange(f.ctx, f.st)
 	assert.Nil(t, f.exp.remote)
 }
@@ -66,12 +60,23 @@ func newFixture(t *testing.T) *fixture {
 	ctx := logger.WithLogger(context.Background(), l)
 
 	exp := NewDeferredExporter()
-	mc := NewController(exp)
+	mc := NewController(exp, model.TiltBuild{}, "")
 	return &fixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		st:             st,
 		exp:            exp,
 		mc:             mc,
+	}
+}
+
+func newLoggedInEngineState(ms model.MetricsSettings) store.EngineState {
+	return store.EngineState{
+		Token:  "x",
+		TeamID: "bar",
+		CloudStatus: store.CloudStatus{
+			Username: "nicks",
+		},
+		MetricsSettings: ms,
 	}
 }
