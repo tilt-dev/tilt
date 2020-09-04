@@ -70,9 +70,10 @@ func (c *Controller) OnChange(ctx context.Context, rStore store.RStore) {
 		if err != nil {
 			logger.Get(ctx).Debugf("Setting metrics exporter: %v", err)
 		}
+	}
 
-		// TODO(nick): We need a mechanism to synchronously send the existing
-		// aggregates to the remote.
-
+	if newMetricsSettings.Enabled && !oldMetricsSettings.Enabled {
+		// If we're exporting for the first time, flush now.
+		c.exporter.Flush()
 	}
 }

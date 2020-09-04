@@ -24,13 +24,25 @@ type DeferredExporter struct {
 	deferred []*view.Data
 }
 
-func (d *DeferredExporter) Shutdown() error {
+func (d *DeferredExporter) Flush() {
+	view.Flush()
+
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	if d.remote == nil {
+		return
+	}
+	d.remote.Flush()
+}
+
+func (d *DeferredExporter) Stop() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	if d.remote == nil {
 		return nil
 	}
-	d.remote.Flush()
 	return d.remote.Stop()
 }
 

@@ -688,6 +688,8 @@ github.com/tilt-dev/json-patch/v4 v4.8.1 h1:AbrhK3NMDfk/+/oMXz3NcKaCNwHYdhUJMDjB
 github.com/tilt-dev/json-patch/v4 v4.8.1/go.mod h1:tS8rrXPNPgltwGinFPfBjCwHFLxMa3ozjPngreH2eW0=
 github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7 h1:ysHGLJJRVcnG6WoZJt7GGD4hsMSwMxEg7Rxx4fJrSrY=
 github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7/go.mod h1:bZecZHy8tHzZWeF+MEQMugKbGhi9cF1A7tuaZNIxoDs=
+github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353 h1:lxM1v8P9oYChoHZjnno3s8FlH0w3h2nWeq86FH4sAag=
+github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
 github.com/tilt-dev/wmclient v0.0.0-20200901155816-d8d972f01eb9 h1:RW79Zk+stsHTJGAsvmncc9wU0P8S6CkRZaUQ8NWNb0g=
 github.com/tilt-dev/wmclient v0.0.0-20200901155816-d8d972f01eb9/go.mod h1:CmwKPbHUwMhi/BZXZUjLW1LuxKkRa9qLtJ7p9p9zitE=
 github.com/timakin/bodyclose v0.0.0-20190930140734-f7f2e9bca95e/go.mod h1:Qimiffbc6q9tBWlVV6x0P9sat/ao1xEkREYPPj9hphk=
@@ -738,13 +740,6 @@ github.com/zmap/zlint v0.0.0-20190806154020-fd021b4cfbeb/go.mod h1:29UiAJNsiVdvT
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.3 h1:MUGmc65QhB3pIlaQ5bB4LwqSj6GIonVJXpZiaKNyaKk=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
-go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
-go.opencensus.io v0.22.0 h1:C9hSCOW830chIVkdja34wa6Ky+IzWllkUinR+BtRZd4=
-go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
-go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
-go.opencensus.io v0.22.3/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
-go.opencensus.io v0.22.4 h1:LYy1Hy3MJdrCdMwwzxA/dRok4ejH+RwNGbuoD9fCjto=
-go.opencensus.io v0.22.4/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
 go.opentelemetry.io/otel v0.2.0 h1:s7SAglwrmzYso5kCAMwtaHgJxsghZpKm1iWEsaRnMtU=
 go.opentelemetry.io/otel v0.2.0/go.mod h1:DztlYhVA/vOw2JNr1nYhZNHXY40sm34xHavb5BDig3s=
 go.starlark.net v0.0.0-20200615180055-61b64bc45990 h1:uDQRBsInkx8dnsM61qp8NPorEWHq2LBvVYiZK9ikCag=
@@ -796,7 +791,6 @@ golang.org/x/net v0.0.0-20190108225652-1e06a53dbb7e/go.mod h1:mL1N/T3taQHkDXs73r
 golang.org/x/net v0.0.0-20190213061140-3a22650c66bd/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20190311183353-d8887717615a/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
-golang.org/x/net v0.0.0-20190501004415-9ce7a6920f09/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190522155817-f3200d17e092/go.mod h1:HSz+uSET+XFnRR8LxR5pz3Of3rY3CfYBVs4xY44aLks=
 golang.org/x/net v0.0.0-20190603091049-60506f45cf65/go.mod h1:HSz+uSET+XFnRR8LxR5pz3Of3rY3CfYBVs4xY44aLks=

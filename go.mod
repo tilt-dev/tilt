@@ -110,6 +110,7 @@ replace (
 	github.com/evanphx/json-patch => github.com/tilt-dev/json-patch/v4 v4.8.1 // indirect
 	// TODO(dmiller) remove this replace once https://github.com/moby/buildkit/pull/1297 is merged
 	github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
+	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
 	k8s.io/client-go => github.com/tilt-dev/client-go v0.0.0-20200326150806-41017343d309

@@ -40,7 +40,8 @@ func initMetrics(ctx context.Context, cmdName model.TiltSubcommand) (context.Con
 	// sort of Flush() mechanism to flush the whole reporting pipeline, not just
 	// the exporter.
 	cleanup := func() error {
-		return exporter.Shutdown()
+		exporter.Flush()
+		return exporter.Stop()
 	}
 
 	err := view.Register(CommandCount)
