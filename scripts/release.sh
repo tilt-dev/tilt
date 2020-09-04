@@ -15,4 +15,21 @@ cd "$DIR/.."
 
 ./scripts/upload-assets.py latest
 ./scripts/goreleaser.sh
-./scripts/record-release.sh "$(git describe --abbrev=0 --tags)"
+
+VERSION=$(git describe --abbrev=0 --tags)
+
+docker run --rm \
+       -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+       -w /src/tilt \
+       -v "$PWD:/src/tilt:delegated" \
+       --entrypoint /src/tilt/scripts/release-update-tilt-repo.sh \
+       gcr.io/windmill-public-containers/tilt-releaser "$VERSION"
+
+docker run --rm \
+       -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+       -w /src/tilt \
+       -v "$PWD:/src/tilt:delegated" \
+       --entrypoint /src/tilt/scripts/release-update-tilt-docs-repo.sh \
+       gcr.io/windmill-public-containers/tilt-releaser "$VERSION"
+
+./scripts/record-release.sh "$VERSION"
