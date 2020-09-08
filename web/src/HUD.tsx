@@ -40,6 +40,7 @@ import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 import { traceNav } from "./trace"
 import ErrorModal from "./ErrorModal"
+import Mousetrap from "mousetrap"
 
 type HudProps = {
   history: History
@@ -117,11 +118,13 @@ class HUD extends Component<HudProps, HudState> {
     } else {
       this.controller.createNewSocket()
     }
+    Mousetrap.bind("s", this.handleOpenModal)
   }
 
   componentWillUnmount() {
     this.controller.dispose()
     this.unlisten()
+    Mousetrap.unbind("s")
   }
 
   setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
