@@ -99,7 +99,7 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) (context.Cont
 
 	stats.Record(ctx, CommandCountMeasure.M(1))
 
-	a, err := newAnalytics(l, cmdName)
+	a, err := wireAnalytics(l, cmdName)
 	if err != nil {
 		l.Errorf("Fatal error initializing analytics: %v", err)
 		os.Exit(1)

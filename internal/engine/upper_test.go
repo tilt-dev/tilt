@@ -3655,7 +3655,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ec := exit.NewController()
 
 	de := metrics.NewDeferredExporter()
-	mc := metrics.NewController(de)
+	mc := metrics.NewController(de, model.TiltBuild{}, "")
 
 	subs := ProvideSubscribers(h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, dp, tc, lc, podm, ec, mc)
 	ret.upper = NewUpper(ctx, st, subs)

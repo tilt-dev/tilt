@@ -1,12 +1,12 @@
-package cli
+package git
 
 import (
 	"os/exec"
 	"testing"
 
-	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 )
 
 func TestNormalizeGitRemoteSuffix(t *testing.T) {

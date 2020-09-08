@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
@@ -36,6 +37,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/feature"
+	"github.com/tilt-dev/tilt/internal/git"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -44,6 +46,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -68,6 +71,7 @@ var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 	tiltfile.WireSet,
 	provideKubectlLogLevel,
+	git.ProvideGitRemote,
 
 	docker.SwitchWireSet,
 
@@ -291,4 +295,10 @@ func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, er
 	wire.Build(BaseWireSet,
 		wire.Struct(new(DumpImageDeployRefDeps), "*"))
 	return DumpImageDeployRefDeps{}, nil
+}
+
+func wireAnalytics(l logger.Logger, cmdName model.TiltSubcommand) (*tiltanalytics.TiltAnalytics, error) {
+	wire.Build(BaseWireSet,
+		newAnalytics)
+	return nil, nil
 }
