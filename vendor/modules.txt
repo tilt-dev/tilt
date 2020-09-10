@@ -190,7 +190,6 @@ github.com/docker/docker/api/types/volume
 github.com/docker/docker/builder/dockerignore
 github.com/docker/docker/client
 github.com/docker/docker/errdefs
-github.com/docker/docker/pkg/fileutils
 github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/ioutils
 github.com/docker/docker/pkg/jsonmessage
@@ -358,7 +357,7 @@ github.com/json-iterator/go
 github.com/json-iterator/go/extra
 # github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 ## explicit
-# github.com/konsorten/go-windows-terminal-sequences v1.0.2
+# github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
 github.com/liggitt/tabwriter
@@ -479,7 +478,7 @@ github.com/russross/blackfriday
 # github.com/schollz/closestmatch v2.1.0+incompatible
 ## explicit
 github.com/schollz/closestmatch
-# github.com/sirupsen/logrus v1.4.2
+# github.com/sirupsen/logrus v1.6.0
 github.com/sirupsen/logrus
 # github.com/spf13/cobra v0.0.5
 ## explicit
@@ -510,6 +509,9 @@ github.com/theupdateframework/notary/tuf/data
 github.com/theupdateframework/notary/tuf/signed
 github.com/theupdateframework/notary/tuf/utils
 github.com/theupdateframework/notary/tuf/validation
+# github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277
+## explicit
+github.com/tilt-dev/dockerignore
 # github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 ## explicit
 github.com/tilt-dev/fsevents
@@ -1165,6 +1167,6 @@ vbom.ml/util/sortorder
 # github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
 # github.com/evanphx/json-patch => github.com/tilt-dev/json-patch/v4 v4.8.1
 # github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
+# go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 # k8s.io/client-go => github.com/tilt-dev/client-go v0.0.0-20200326150806-41017343d309
-# go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
