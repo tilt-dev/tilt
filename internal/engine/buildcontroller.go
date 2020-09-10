@@ -53,7 +53,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 		return buildEntry{}, false
 	}
 
-	mt := buildcontrol.NextTargetToBuild(state)
+	mt, _ := buildcontrol.NextTargetToBuild(state)
 	if mt == nil {
 		return buildEntry{}, false
 	}

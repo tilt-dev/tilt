@@ -97,6 +97,15 @@ func (m Manifest) ImageTargetAt(i int) ImageTarget {
 	return ImageTarget{}
 }
 
+func (m Manifest) ImageTargetWithID(id TargetID) ImageTarget {
+	for _, target := range m.ImageTargets {
+		if target.ID() == id {
+			return target
+		}
+	}
+	return ImageTarget{}
+}
+
 type DockerBuildArgs map[string]string
 
 func (m Manifest) LocalTarget() LocalTarget {

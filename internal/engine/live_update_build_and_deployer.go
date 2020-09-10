@@ -221,7 +221,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(fileMappings))
+		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(filesChanged)
 		if err != nil {
 			return liveUpdInfo{}, err
 		}

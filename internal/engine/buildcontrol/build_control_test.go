@@ -5,10 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
@@ -211,6 +214,74 @@ func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
 	f.assertNextTargetToBuild("sancho-two")
 }
 
+func TestHoldForDeploy(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	srcFile := f.JoinPath("src", "a.txt")
+	objFile := f.JoinPath("obj", "a.out")
+	fallbackFile := f.JoinPath("src", "package.json")
+	f.WriteFile(srcFile, "hello")
+	f.WriteFile(objFile, "hello")
+	f.WriteFile(fallbackFile, "hello")
+
+	lu, err := model.NewLiveUpdate([]model.LiveUpdateStep{
+		model.LiveUpdateFallBackOnStep{Files: []string{f.JoinPath("src", "package.json")}},
+		model.LiveUpdateSyncStep{Source: f.JoinPath("src"), Dest: "/src"},
+	}, f.Path())
+	require.NoError(t, err)
+
+	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho")).
+		WithBuildDetails(model.DockerBuild{BuildPath: f.Path()})
+	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").
+		WithImageTargets(sanchoImage).
+		WithLiveUpdate(lu).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build())
+
+	f.assertNextTargetToBuild("sancho")
+
+	sancho.State.AddCompletedBuild(model.BuildRecord{
+		StartTime:  time.Now(),
+		FinishTime: time.Now(),
+	})
+	f.assertNoTargetNextToBuild()
+
+	status := sancho.State.MutableBuildStatus(sanchoImage.ID())
+
+	status.PendingFileChanges[objFile] = time.Now()
+	f.assertNextTargetToBuild("sancho")
+	delete(status.PendingFileChanges, objFile)
+
+	status.PendingFileChanges[fallbackFile] = time.Now()
+	f.assertNextTargetToBuild("sancho")
+	delete(status.PendingFileChanges, fallbackFile)
+
+	status.PendingFileChanges[srcFile] = time.Now()
+	f.assertNoTargetNextToBuild()
+	f.assertHold("sancho", store.HoldWaitingForDeploy)
+
+	sancho.State.K8sRuntimeState().Pods["pod-1"] = successPod("pod-1", sanchoImage.Refs.ClusterRef())
+	f.assertNextTargetToBuild("sancho")
+}
+
+func successPod(podID k8s.PodID, ref reference.Named) *store.Pod {
+	return &store.Pod{
+		PodID:  podID,
+		Phase:  v1.PodSucceeded,
+		Status: "Running",
+		Containers: []store.Container{
+			store.Container{
+				ID:       container.ID(podID + "-container"),
+				Name:     "c",
+				Ready:    true,
+				Running:  true,
+				ImageRef: ref,
+			},
+		},
+	}
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t  *testing.T
@@ -226,15 +297,23 @@ func newTestFixture(t *testing.T) testFixture {
 	}
 }
 
+func (f *testFixture) assertHold(m model.ManifestName, hold store.Hold) {
+	f.T().Helper()
+	_, hs := NextTargetToBuild(*f.st)
+	assert.Equal(f.t, hold, hs[m])
+}
+
 func (f *testFixture) assertNextTargetToBuild(expected model.ManifestName) {
-	next := NextTargetToBuild(*f.st)
+	f.T().Helper()
+	next, _ := NextTargetToBuild(*f.st)
 	require.NotNil(f.t, next, "expected next target %s but got: nil", expected)
 	actual := next.Manifest.Name
 	assert.Equal(f.t, expected, actual, "expected next target to be %s but got %s", expected, actual)
 }
 
 func (f *testFixture) assertNoTargetNextToBuild() {
-	next := NextTargetToBuild(*f.st)
+	f.T().Helper()
+	next, _ := NextTargetToBuild(*f.st)
 	if next != nil {
 		f.t.Fatalf("expected no next target to build, but got %s", next.Manifest.Name)
 	}

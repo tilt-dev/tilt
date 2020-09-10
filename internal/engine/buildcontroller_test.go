@@ -16,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -298,9 +299,12 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 
 	// If even one of the containers matching this image is !ready, we have to do a
 	// full rebuild, so don't return ANY RunningContainers.
-	call = f.nextCall()
-	runningContainers := call.oneImageState().RunningContainers
-	assert.Empty(t, runningContainers)
+	f.assertNoCall()
+
+	f.withState(func(st store.EngineState) {
+		_, holds := buildcontrol.NextTargetToBuild(st)
+		assert.Equal(t, store.HoldWaitingForDeploy, holds[manifest.Name])
+	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -584,6 +588,8 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 	f.Start(manifests)
 
 	f.nextCallComplete()
+
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	f.b.nextBuildError = errors.New("build failure!")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -1057,6 +1063,8 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest})
 	f.completeAndCheckBuildsForManifests(manifest)
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+
 	f.waitUntilNumBuildSlots(3)
 
 	// file change starts a build
@@ -1069,9 +1077,11 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 
 	// complete the first build
 	f.completeBuildForManifest(manifest)
+
 	call := f.nextCall("expect build from first pending file change (A.txt)")
 	f.assertCallIsForManifestAndFiles(call, manifest, "A.txt")
 	f.waitForCompletedBuildCount(2)
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	// we freed up a build slot; expect the second build to start
 	f.waitUntilManifestBuilding("fe")
