@@ -3,6 +3,7 @@ package buildcontrol
 import (
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -12,23 +13,27 @@ import (
 // so they can be used from elsewhere.
 
 // Algorithm to choose a manifest to build next.
-func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
+func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet) {
+	holds := HoldSet{}
+	targets := state.Targets()
+
 	// Don't build anything if there are pending config file changes.
 	// We want the Tiltfile to re-run first.
 	if len(state.PendingConfigFileChanges) > 0 {
-		return nil
+		holds.Fill(targets, store.HoldTiltfileReload)
+		return nil, holds
 	}
 
 	// If we're already building an unparallelizable local target, bail immediately.
 	if IsBuildingUnparallelizableLocalTarget(state) {
-		return nil
+		holds.Fill(targets, store.HoldWaitingForUnparallelizableTarget)
+		return nil, holds
 	}
 
-	targets := state.Targets()
 	if IsBuildingAnything(state) {
 		// If we're building a target already, remove anything that's not parallelizable
 		// with what's currently building.
-		targets = RemoveUnparallelizableLocalTargets(targets)
+		HoldUnparallelizableLocalTargets(targets, holds)
 	}
 
 	// Uncategorized YAML might contain namespaces or volumes that
@@ -37,24 +42,24 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 	// TODO(nick): Long-term, we should try to infer dependencies between Kuberentes
 	// resources. A general library might make sense.
 	if IsBuildingUncategorizedYAML(state) {
-		targets = RemoveK8sTargets(targets)
+		HoldK8sTargets(targets, holds)
 	}
 
-	targets = RemoveTargetsWithBuildingComponents(targets)
-	targets = RemoveTargetsWaitingOnDependencies(state, targets)
+	HoldTargetsWithBuildingComponents(targets, holds)
+	HoldTargetsWaitingOnDependencies(state, targets, holds)
 
 	// If any of the manifest targets haven't been built yet, build them now.
+	targets = holds.RemoveIneligibleTargets(targets)
 	unbuilt := FindTargetsNeedingInitialBuild(targets)
 
 	if len(unbuilt) > 0 {
-		ret := NextUnbuiltTargetToBuild(unbuilt)
-		return ret
+		return NextUnbuiltTargetToBuild(unbuilt), holds
 	}
 
 	// Next prioritize builds that crashed and need a rebuilt to have up-to-date code.
 	for _, mt := range targets {
 		if mt.State.NeedsRebuildFromCrash {
-			return mt
+			return mt, holds
 		}
 	}
 
@@ -63,15 +68,28 @@ func NextTargetToBuild(state store.EngineState) *store.ManifestTarget {
 		mn := state.TriggerQueue[0]
 		mt, ok := state.ManifestTargets[mn]
 		if ok {
-			return mt
+			return mt, holds
 		}
 	}
 
-	return EarliestPendingAutoTriggerTarget(targets)
+	// Check to see if any targets
+	//
+	// 1) Have live updates
+	// 2) All the pending file changes are completely captured by the live updates
+	// 3) The runtime is in a pending state
+	//
+	// This will ensure that a file change doesn't accidentally overwrite
+	// a pending pod.
+	//
+	// https://github.com/tilt-dev/tilt/issues/3759
+	HoldLiveUpdateTargetsWaitingOnDeploy(state, targets, holds)
+	targets = holds.RemoveIneligibleTargets(targets)
+
+	return EarliestPendingAutoTriggerTarget(targets), holds
 }
 
 func NextManifestNameToBuild(state store.EngineState) model.ManifestName {
-	mt := NextTargetToBuild(state)
+	mt, _ := NextTargetToBuild(state)
 	if mt == nil {
 		return ""
 	}
@@ -131,7 +149,7 @@ func canReuseImageTargetHeuristic(spec model.TargetSpec, status store.BuildStatu
 	return false
 }
 
-func RemoveTargetsWithBuildingComponents(mts []*store.ManifestTarget) []*store.ManifestTarget {
+func HoldTargetsWithBuildingComponents(mts []*store.ManifestTarget, holds HoldSet) {
 	building := make(map[model.TargetID]bool)
 
 	for _, mt := range mts {
@@ -166,25 +184,19 @@ func RemoveTargetsWithBuildingComponents(mts []*store.ManifestTarget) []*store.M
 		return false
 	}
 
-	var ret []*store.ManifestTarget
 	for _, mt := range mts {
-		if !hasBuildingComponent(mt) {
-			ret = append(ret, mt)
+		if hasBuildingComponent(mt) {
+			holds.AddHold(mt, store.HoldBuildingComponent)
 		}
 	}
-
-	return ret
 }
 
-func RemoveTargetsWaitingOnDependencies(state store.EngineState, mts []*store.ManifestTarget) []*store.ManifestTarget {
-	var ret []*store.ManifestTarget
+func HoldTargetsWaitingOnDependencies(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
 	for _, mt := range mts {
-		if !isWaitingOnDependencies(state, mt) {
-			ret = append(ret, mt)
+		if isWaitingOnDependencies(state, mt) {
+			holds.AddHold(mt, store.HoldWaitingForDep)
 		}
 	}
-
-	return ret
 }
 
 // Helper function for ordering targets that have never been built before.
@@ -243,26 +255,20 @@ func FindLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
 	return result
 }
 
-func RemoveUnparallelizableLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
-	result := []*store.ManifestTarget{}
+func HoldUnparallelizableLocalTargets(targets []*store.ManifestTarget, holds map[model.ManifestName]store.Hold) {
 	for _, target := range targets {
 		if target.Manifest.IsLocal() && !target.Manifest.LocalTarget().AllowParallel {
-			continue
+			holds[target.Manifest.Name] = store.HoldIsUnparallelizableTarget
 		}
-
-		result = append(result, target)
 	}
-	return result
 }
 
-func RemoveK8sTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
-	result := []*store.ManifestTarget{}
+func HoldK8sTargets(targets []*store.ManifestTarget, holds HoldSet) {
 	for _, target := range targets {
-		if !target.Manifest.IsK8s() {
-			result = append(result, target)
+		if target.Manifest.IsK8s() {
+			holds.AddHold(target, store.HoldWaitingForUncategorized)
 		}
 	}
-	return result
 }
 
 func IsBuildingAnything(state store.EngineState) bool {
@@ -335,4 +341,83 @@ func FindTargetsNeedingInitialBuild(targets []*store.ManifestTarget) []*store.Ma
 		}
 	}
 	return result
+}
+
+func HoldLiveUpdateTargetsWaitingOnDeploy(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
+	for _, mt := range mts {
+		if IsLiveUpdateTargetWaitingOnDeploy(state, mt) {
+			holds.AddHold(mt, store.HoldWaitingForDeploy)
+		}
+	}
+}
+
+func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.ManifestTarget) bool {
+	// We only care about targets where file changes are the ONLY build reason.
+	if mt.NextBuildReason() != model.BuildReasonFlagChangedFiles {
+		return false
+	}
+
+	// Make sure the last build succeeded.
+	if mt.State.LastBuild().Empty() || mt.State.LastBuild().Error != nil {
+		return false
+	}
+
+	// Never hold back a deploy in an error state.
+	if mt.State.RuntimeState.RuntimeStatus() == model.RuntimeStatusError {
+		return false
+	}
+
+	// Go through all the files, and make sure they're live-update-able.
+	for id, status := range mt.State.BuildStatuses {
+		if len(status.PendingFileChanges) == 0 {
+			continue
+		}
+
+		// We have an image target with changes!
+		// First, make sure that all the changes match a sync.
+		files := make([]string, 0, len(status.PendingFileChanges))
+		for f := range status.PendingFileChanges {
+			files = append(files, f)
+		}
+
+		iTarget := mt.Manifest.ImageTargetWithID(id)
+		luInfo := iTarget.LiveUpdateInfo()
+		_, pathsMatchingNoSync, err := build.FilesToPathMappings(files, luInfo.SyncSteps())
+		if err != nil || len(pathsMatchingNoSync) > 0 {
+			return false
+		}
+
+		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
+		anyMatch, _, err := luInfo.FallBackOnFiles().AnyMatch(files)
+		if err != nil || anyMatch {
+			return false
+		}
+
+		// All changes match a sync!
+		//
+		// We only care about targets where there are 0 running containers for the current build.
+		// This is the mechanism that live update uses to determine if the container to live-update
+		// is still pending.
+		if mt.Manifest.IsK8s() {
+			cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, mt.State.K8sRuntimeState())
+			if err != nil {
+				return false
+			}
+
+			if len(cInfos) != 0 {
+				return false
+			}
+		} else if mt.Manifest.IsDC() {
+			cInfos := store.RunningContainersForDC(mt.State.DCRuntimeState())
+			if len(cInfos) != 0 {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+
+	// If we've gotten this far, that means we should wait until this deploy
+	// finishes before processing these file changes.
+	return true
 }

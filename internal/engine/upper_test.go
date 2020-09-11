@@ -506,6 +506,8 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+
 	fileRelPath := "fdas"
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
 
@@ -535,6 +537,8 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
+
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	f.timerMaker.RestTimerLock.Lock()
 	fileRelPaths := []string{"fdas", "giueheh"}
@@ -568,6 +572,8 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
+
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	f.timerMaker.MaxTimerLock.Lock()
 	f.timerMaker.RestTimerLock.Lock()
@@ -671,6 +677,7 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneImageState().IsEmpty())
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	// Simulate a change to a.go that makes the build fail.
 	f.SetNextBuildError(errors.New("build failed"))
@@ -703,17 +710,20 @@ func TestThreeBuilds(t *testing.T) {
 
 	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneImageState().IsEmpty())
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
 
 	call = f.nextCallComplete("second build")
 	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneImageState().FilesChanged())
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	// Simulate a change to b.go
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
 
 	call = f.nextCallComplete("third build")
 	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneImageState().FilesChanged())
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, 2, len(ms.BuildHistory))
@@ -733,6 +743,7 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 	call := f.nextCall()
 	assert.True(t, call.oneImageState().IsEmpty())
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	// Simulate a change to .#a.go that's a broken symlink.
 	realPath := filepath.Join(f.Path(), "a.go")
@@ -780,6 +791,12 @@ k8s_yaml('snack.yaml')
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	// (i.e. check that we called BuildAndDeploy with no pre-existing state)
 	assert.False(t, call.oneImageState().HasLastResult())
+
+	var manifest model.Manifest
+	f.withState(func(es store.EngineState) {
+		manifest = es.Manifests()[0]
+	})
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("random_file.go"))
 
@@ -2213,11 +2230,14 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 
 	// kick off another build
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main2.go"))
-	call = f.nextCall()
+
 	// at this point we have not received a pod event for pod that was started by the crash-rebuild,
-	// so any known pod info would have to be invalid to use for a build and this BuildState should
-	// not have any ContainerInfo
-	assert.True(t, call.oneImageState().OneContainerInfo().Empty())
+	// so we should be waiting on the pod deploy to rebuild.
+	f.assertNoCall()
+	f.withState(func(st store.EngineState) {
+		_, holds := buildcontrol.NextTargetToBuild(st)
+		assert.Equal(t, store.HoldWaitingForDeploy, holds[manifest.Name])
+	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
