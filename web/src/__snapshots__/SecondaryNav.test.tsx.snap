@@ -2,16 +2,16 @@
 
 exports[`shows a facets tab 1`] = `
 <nav
-  className="sc-AxjAm iPShpD secondaryNav"
+  className="sc-bdnylx jiVbiK secondaryNav"
 >
   <ul
-    className="sc-AxirZ bbptfx"
+    className="sc-gtssRu hcdlKW"
   >
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU"
+        className="sc-gKAblj kyKRjX"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -19,10 +19,10 @@ exports[`shows a facets tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU secondaryNavLink--alerts "
+        className="sc-gKAblj kyKRjX secondaryNavLink--alerts "
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -30,10 +30,10 @@ exports[`shows a facets tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU tabLink isSelected"
+        className="sc-gKAblj kyKRjX tabLink isSelected"
         href="/r/foo/facets"
         onClick={[Function]}
       >
@@ -46,16 +46,16 @@ exports[`shows a facets tab 1`] = `
 
 exports[`shows error pane 1`] = `
 <nav
-  className="sc-AxjAm iPShpD secondaryNav"
+  className="sc-bdnylx jiVbiK secondaryNav"
 >
   <ul
-    className="sc-AxirZ bbptfx"
+    className="sc-gtssRu hcdlKW"
   >
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU"
+        className="sc-gKAblj kyKRjX"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -63,10 +63,10 @@ exports[`shows error pane 1`] = `
       </a>
     </li>
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU secondaryNavLink--alerts isSelected"
+        className="sc-gKAblj kyKRjX secondaryNavLink--alerts isSelected"
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -79,16 +79,16 @@ exports[`shows error pane 1`] = `
 
 exports[`shows logs 1`] = `
 <nav
-  className="sc-AxjAm iPShpD secondaryNav"
+  className="sc-bdnylx jiVbiK secondaryNav"
 >
   <ul
-    className="sc-AxirZ bbptfx"
+    className="sc-gtssRu hcdlKW"
   >
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU isSelected"
+        className="sc-gKAblj kyKRjX isSelected"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -96,10 +96,10 @@ exports[`shows logs 1`] = `
       </a>
     </li>
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU secondaryNavLink--alerts "
+        className="sc-gKAblj kyKRjX secondaryNavLink--alerts "
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -112,16 +112,16 @@ exports[`shows logs 1`] = `
 
 exports[`shows the number of errors in the error tab 1`] = `
 <nav
-  className="sc-AxjAm iPShpD secondaryNav"
+  className="sc-bdnylx jiVbiK secondaryNav"
 >
   <ul
-    className="sc-AxirZ bbptfx"
+    className="sc-gtssRu hcdlKW"
   >
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU"
+        className="sc-gKAblj kyKRjX"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -129,16 +129,16 @@ exports[`shows the number of errors in the error tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-AxgMl YTBVD"
+      className="sc-jSFkmK khFzSJ"
     >
       <a
-        className="sc-AxheI biWnwU secondaryNavLink--alerts isSelected"
+        className="sc-gKAblj kyKRjX secondaryNavLink--alerts isSelected"
         href="/r/foo/alerts"
         onClick={[Function]}
       >
         Alerts
         <div
-          className="sc-Axmtr exxIYG"
+          className="sc-iCoHVE lobeSd"
         >
           27
         </div>
