@@ -11,9 +11,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -79,6 +81,30 @@ func TestWatchManager_Dockerignore(t *testing.T) {
 	actions := f.Stop(t)
 
 	f.AssertActionsNotContain(actions, filepath.Join("bar", "baz"))
+}
+
+func TestWatchManager_IgnoreOutputsImageRefs(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "sancho").
+			WithK8sYAML(testyaml.SanchoYAML).
+			WithImageTarget(
+				model.ImageTarget{}.WithBuildDetails(model.CustomBuild{
+					Deps:              []string{f.Path()},
+					OutputsImageRefTo: f.JoinPath("ref.txt"),
+				})).
+			Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+	})
+	f.wm.OnChange(f.ctx, f.store)
+
+	f.ChangeFile(t, "included.txt")
+	f.ChangeFile(t, "ref.txt")
+	actions := f.Stop(t)
+	f.AssertActionsNotContain(actions, "ref.txt")
+	f.AssertActionsContain(actions, "included.txt")
 }
 
 func TestWatchManager_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
