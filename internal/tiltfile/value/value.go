@@ -37,7 +37,7 @@ func ValueToAbsPath(thread *starlark.Thread, v starlark.Value) (string, error) {
 		return pathMaker.MakeLocalPath("."), nil
 	}
 
-	str, ok := v.(starlark.String)
+	str, ok := starlark.AsString(v)
 	if ok {
 		return starkit.AbsPath(thread, string(str)), nil
 	}

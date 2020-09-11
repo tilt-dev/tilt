@@ -55,9 +55,12 @@ type dockerImage struct {
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
 
-	dependencyIDs    []model.TargetID
-	disablePush      bool
-	skipsLocalDocker bool
+	dependencyIDs []model.TargetID
+
+	// Only applicable to custom_build
+	disablePush       bool
+	skipsLocalDocker  bool
+	outputsImageRefTo string
 
 	liveUpdate model.LiveUpdate
 }
@@ -271,6 +274,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var entrypoint starlark.Value
 	var containerArgsVal starlark.Sequence
 	var skipsLocalDocker bool
+	outputsImageRefTo := value.NewLocalPathUnpacker(thread)
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -285,6 +289,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"entrypoint?", &entrypoint,
 		"container_args?", &containerArgsVal,
 		"command_bat_val", &commandBatVal,
+		"outputs_image_ref_to", &outputsImageRefTo,
 	)
 	if err != nil {
 		return nil, err
@@ -342,19 +347,24 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, fmt.Errorf("Argument 2 (command) can't be empty")
 	}
 
+	if tag != "" && outputsImageRefTo.Value != "" {
+		return nil, fmt.Errorf("Cannot specify both tag= and outputs_image_ref_to=")
+	}
+
 	img := &dockerImage{
-		workDir:          starkit.AbsWorkingDir(thread),
-		configurationRef: container.NewRefSelector(ref),
-		customCommand:    command,
-		customDeps:       localDeps,
-		customTag:        tag,
-		disablePush:      disablePush,
-		skipsLocalDocker: skipsLocalDocker,
-		liveUpdate:       liveUpdate,
-		matchInEnvVars:   matchInEnvVars,
-		ignores:          ignores,
-		entrypoint:       entrypointCmd,
-		containerArgs:    containerArgs,
+		workDir:           starkit.AbsWorkingDir(thread),
+		configurationRef:  container.NewRefSelector(ref),
+		customCommand:     command,
+		customDeps:        localDeps,
+		customTag:         tag,
+		disablePush:       disablePush,
+		skipsLocalDocker:  skipsLocalDocker,
+		liveUpdate:        liveUpdate,
+		matchInEnvVars:    matchInEnvVars,
+		ignores:           ignores,
+		entrypoint:        entrypointCmd,
+		containerArgs:     containerArgs,
+		outputsImageRefTo: outputsImageRefTo.Value,
 	}
 
 	err = s.buildIndex.addImage(img)

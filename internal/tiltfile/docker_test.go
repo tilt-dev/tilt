@@ -102,3 +102,40 @@ custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', ['src'])
 
 	assert.Contains(t, localPathStrings, f.JoinPath("src"))
 }
+
+func TestCustomBuildOutputsImageRefsTo(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
+	f.file("Dockerfile", `
+FROM alpine
+ADD . .
+`)
+	f.file("Tiltfile", `
+k8s_yaml('fe.yaml')
+custom_build('gcr.io/fe', 'export MY_REF="gcr.io/fe:dev" && docker build -t $MY_REF . && echo $MY_REF > ref.txt',
+            ['src'],
+            outputs_image_ref_to='ref.txt')
+`)
+
+	f.load()
+
+	m := f.assertNextManifest("fe")
+	it := m.ImageTargets[0]
+	assert.Equal(t, f.JoinPath("ref.txt"), it.CustomBuildInfo().OutputsImageRefTo)
+}
+
+func TestCustomBuildOutputsImageRefsToIncompatibleWithTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+custom_build('gcr.io/fe', 'export MY_REF="gcr.io/fe:dev" && docker build -t $MY_REF . && echo $MY_REF > ref.txt',
+            ['src'],
+            tag='dev',
+            outputs_image_ref_to='ref.txt')
+`)
+
+	f.loadErrString("Cannot specify both tag= and outputs_image_ref_to=")
+}

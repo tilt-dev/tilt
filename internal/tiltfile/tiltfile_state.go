@@ -1398,13 +1398,14 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			})
 		case CustomBuild:
 			r := model.CustomBuild{
-				WorkDir:          image.workDir,
-				Command:          image.customCommand,
-				Deps:             image.customDeps,
-				Tag:              image.customTag,
-				DisablePush:      image.disablePush,
-				SkipsLocalDocker: image.skipsLocalDocker,
-				LiveUpdate:       lu,
+				WorkDir:           image.workDir,
+				Command:           image.customCommand,
+				Deps:              image.customDeps,
+				Tag:               image.customTag,
+				DisablePush:       image.disablePush,
+				SkipsLocalDocker:  image.skipsLocalDocker,
+				OutputsImageRefTo: image.outputsImageRefTo,
+				LiveUpdate:        lu,
 			}
 			iTarget = iTarget.WithBuildDetails(r).
 				MaybeIgnoreRegistry()
