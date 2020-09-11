@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -138,6 +139,74 @@ func TestCustomBuilderExecsRelativeToTiltfile(t *testing.T) {
 	}
 
 	assert.Equal(f.t, container.MustParseNamed("gcr.io/foo/bar:tilt-11cd0eb38bc3ceb9"), refs.LocalRef)
+}
+
+func TestCustomBuildOutputsToImageRefSuccess(t *testing.T) {
+	f := newFakeCustomBuildFixture(t)
+	defer f.teardown()
+
+	myTag := "gcr.io/foo/bar:dev"
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.dCli.Images[myTag] = types.ImageInspect{ID: string(sha)}
+	cb := model.CustomBuild{
+		WorkDir:           f.tdf.Path(),
+		Command:           model.ToHostCmd("echo gcr.io/foo/bar:dev > ref.txt"),
+		OutputsImageRefTo: f.tdf.JoinPath("ref.txt"),
+	}
+	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	require.NoError(t, err)
+
+	assert.Equal(f.t, container.MustParseNamed(myTag), refs.LocalRef)
+	assert.Equal(f.t, container.MustParseNamed(myTag), refs.ClusterRef)
+}
+
+func TestCustomBuildOutputsToImageRefMissingImage(t *testing.T) {
+	f := newFakeCustomBuildFixture(t)
+	defer f.teardown()
+
+	myTag := "gcr.io/foo/bar:dev"
+	cb := model.CustomBuild{
+		WorkDir:           f.tdf.Path(),
+		Command:           model.ToHostCmd(fmt.Sprintf("echo %s > ref.txt", myTag)),
+		OutputsImageRefTo: f.tdf.JoinPath("ref.txt"),
+	}
+	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(),
+		fmt.Sprintf("fake docker client error: object not found (fakeClient.Images key: %s)", myTag))
+}
+
+func TestCustomBuildOutputsToImageRefMalformedImage(t *testing.T) {
+	f := newFakeCustomBuildFixture(t)
+	defer f.teardown()
+
+	cb := model.CustomBuild{
+		WorkDir:           f.tdf.Path(),
+		Command:           model.ToHostCmd("echo 999 > ref.txt"),
+		OutputsImageRefTo: f.tdf.JoinPath("ref.txt"),
+	}
+	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(),
+		fmt.Sprintf("Output image ref in file %s was invalid: Expected reference \"999\" to contain a tag",
+			f.tdf.JoinPath("ref.txt")))
+}
+
+func TestCustomBuildOutputsToImageRefSkipsLocalDocker(t *testing.T) {
+	f := newFakeCustomBuildFixture(t)
+	defer f.teardown()
+
+	myTag := "gcr.io/foo/bar:dev"
+	cb := model.CustomBuild{
+		WorkDir:           f.tdf.Path(),
+		Command:           model.ToHostCmd(fmt.Sprintf("echo %s > ref.txt", myTag)),
+		OutputsImageRefTo: f.tdf.JoinPath("ref.txt"),
+		SkipsLocalDocker:  true,
+	}
+	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	require.NoError(t, err)
+	assert.Equal(f.t, container.MustParseNamed(myTag), refs.LocalRef)
+	assert.Equal(f.t, container.MustParseNamed(myTag), refs.ClusterRef)
 }
 
 type fakeCustomBuildFixture struct {

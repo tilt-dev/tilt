@@ -3,8 +3,10 @@ package build
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
@@ -37,10 +39,24 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 	command := cb.Command
 
 	skipsLocalDocker := cb.SkipsLocalDocker
+	outputsImageRefTo := cb.OutputsImageRefTo
 
 	var expectedBuildRefs container.TaggedRefs
+	var registryHost string
 	var err error
-	if expectedTag != "" {
+
+	// There are 3 modes for determining the output tag.
+	if outputsImageRefTo != "" {
+		// In outputs_image_ref_to mode, the user script MUST print the tag to a file,
+		// which we recover later. So no need to set expectedBuildRefs.
+
+		// Remove the output file, ignoring any errors.
+		_ = os.Remove(outputsImageRefTo)
+
+		// Inform the user script about the registry host
+		registryHost = refs.Registry().Host
+
+	} else if expectedTag != "" {
 		// If the tag is coming from the user script, we expect that the user script
 		// also doesn't know about the local registry. So we have to strip off
 		// the registry, and re-add it later.
@@ -62,15 +78,28 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 	cmd.Dir = workDir
 
 	l := logger.Get(ctx)
-	l.Infof("Custom Build: Injecting Environment Variables")
-	l.Infof("EXPECTED_REF=%s", container.FamiliarString(expectedBuildResult))
-	env := append(os.Environ(), fmt.Sprintf("EXPECTED_REF=%s", container.FamiliarString(expectedBuildResult)))
 
-	for _, e := range b.dCli.Env().AsEnviron() {
-		env = append(env, e)
-		l.Infof("%s", e)
+	extraEnvVars := []string{}
+	if expectedBuildResult != nil {
+		extraEnvVars = append(extraEnvVars,
+			fmt.Sprintf("EXPECTED_REF=%s", container.FamiliarString(expectedBuildResult)))
 	}
-	cmd.Env = env
+	if registryHost != "" {
+		extraEnvVars = append(extraEnvVars,
+			fmt.Sprintf("REGISTRY_HOST=%s", registryHost))
+	}
+
+	extraEnvVars = append(extraEnvVars, b.dCli.Env().AsEnviron()...)
+
+	if len(extraEnvVars) == 0 {
+		l.Infof("Custom Build:")
+	} else {
+		l.Infof("Custom Build: Injecting Environment Variables")
+		for _, v := range extraEnvVars {
+			l.Infof("  %s", v)
+		}
+	}
+	cmd.Env = append(os.Environ(), extraEnvVars...)
 
 	w := l.Writer(logger.InfoLvl)
 	cmd.Stdout = w
@@ -80,6 +109,14 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 	err = cmd.Run()
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "Custom build command failed")
+	}
+
+	if outputsImageRefTo != "" {
+		expectedBuildRefs, err = b.readImageRef(ctx, outputsImageRefTo)
+		if err != nil {
+			return container.TaggedRefs{}, err
+		}
+		expectedBuildResult = expectedBuildRefs.LocalRef
 	}
 
 	// If the command skips the local docker registry, then we don't expect the image
@@ -94,6 +131,11 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 			"Did your custom_build script properly tag the image?\n"+
 			"If your custom_build doesn't use Docker, you might need to use skips_local_docker=True, "+
 			"see https://docs.tilt.dev/custom_build.html\n")
+	}
+
+	if outputsImageRefTo != "" {
+		// If we're using a custom_build-determined build ref, we don't use content-based tags.
+		return expectedBuildRefs, nil
 	}
 
 	dig := digest.Digest(inspect.ID)
@@ -115,4 +157,24 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 	}
 
 	return taggedWithDigest, nil
+}
+
+func (b *ExecCustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo string) (container.TaggedRefs, error) {
+	contents, err := ioutil.ReadFile(outputsImageRefTo)
+	if err != nil {
+		return container.TaggedRefs{}, fmt.Errorf("Could not find image ref in output. Your custom_build script should have written to %s: %v", outputsImageRefTo, err)
+	}
+
+	refStr := strings.TrimSpace(string(contents))
+	ref, err := container.ParseNamedTagged(refStr)
+	if err != nil {
+		return container.TaggedRefs{}, fmt.Errorf("Output image ref in file %s was invalid: %v",
+			outputsImageRefTo, err)
+	}
+
+	// TODO(nick): Add support for separate local and cluster refs.
+	return container.TaggedRefs{
+		LocalRef:   ref,
+		ClusterRef: ref,
+	}, nil
 }

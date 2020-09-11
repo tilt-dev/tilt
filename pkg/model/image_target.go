@@ -293,6 +293,10 @@ type CustomBuild struct {
 	LiveUpdate       LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	DisablePush      bool
 	SkipsLocalDocker bool
+
+	// We expect the custom build script to print the image ref to this file,
+	// so that Tilt can read it out when we're done.
+	OutputsImageRefTo string
 }
 
 func (CustomBuild) buildDetails() {}

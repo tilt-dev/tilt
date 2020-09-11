@@ -49,12 +49,12 @@ func ParseNamedMulti(strs []string) ([]reference.Named, error) {
 func ParseNamedTagged(s string) (reference.NamedTagged, error) {
 	ref, err := reference.ParseNormalizedNamed(s)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing %s", s)
+		return nil, errors.Wrapf(err, "parsing %q", s)
 	}
 
 	nt, ok := ref.(reference.NamedTagged)
 	if !ok {
-		return nil, fmt.Errorf("could not parse ref %s as NamedTagged", ref)
+		return nil, fmt.Errorf("Expected reference %q to contain a tag", s)
 	}
 	return nt, nil
 }
