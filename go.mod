@@ -72,6 +72,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/theupdateframework/notary v0.6.1 // indirect
+	github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277
 	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 	github.com/tilt-dev/fsnotify v1.4.8-0.20200727200623-991e307aab7f
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7

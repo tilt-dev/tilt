@@ -7,14 +7,14 @@ import (
 	"strings"
 
 	"github.com/docker/docker/builder/dockerignore"
-	"github.com/docker/docker/pkg/fileutils"
+	tiltDockerignore "github.com/tilt-dev/dockerignore"
 
 	"github.com/tilt-dev/tilt/internal/ospath"
 )
 
 type dockerPathMatcher struct {
 	repoRoot string
-	matcher  *fileutils.PatternMatcher
+	matcher  *tiltDockerignore.PatternMatcher
 }
 
 func (i dockerPathMatcher) Matches(f string) (bool, error) {
@@ -96,7 +96,7 @@ func NewDockerPatternMatcher(repoRoot string, patterns []string) (*dockerPathMat
 		return nil, err
 	}
 
-	pm, err := fileutils.NewPatternMatcher(absPatterns(absRoot, patterns))
+	pm, err := tiltDockerignore.NewPatternMatcher(absPatterns(absRoot, patterns))
 	if err != nil {
 		return nil, err
 	}

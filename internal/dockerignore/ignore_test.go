@@ -15,6 +15,7 @@ func TestMatches(t *testing.T) {
 	tf := newTestFixture(t, "node_modules")
 	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("node_modules", "foo"), true)
+	tf.AssertResult(tf.JoinPath("node_modules", "foo", "bar", "baz"), true)
 	tf.AssertResultEntireDir(tf.JoinPath("node_modules"), true)
 	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
 	tf.AssertResultEntireDir(tf.JoinPath("foo"), false)
@@ -66,6 +67,17 @@ func TestUplevelDoubleGlob(t *testing.T) {
 	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("..", "a", "b.txt"), true)
 	tf.AssertResult(tf.JoinPath("a", "b.txt"), true)
+}
+
+func TestUplevelMatchDirDoubleGlob(t *testing.T) {
+	tf := newTestFixture(t, "../**/b")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), false)
+	tf.AssertResult(tf.JoinPath("a", "b"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "c", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "c", "d", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b2", "c", "d", "temporary.txt"), false)
 }
 
 func TestOneCharacterExtension(t *testing.T) {
