@@ -5,6 +5,8 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
+
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 )
 
 // A selector matches an entity if all non-empty selector fields match the corresponding entity fields
@@ -19,6 +21,34 @@ type ObjectSelector struct {
 	nameString      string
 	namespace       *regexp.Regexp
 	namespaceString string
+}
+
+var splitOptions = sliceutils.NewEscapeSplitOptions()
+
+func SelectorStringFromParts(parts []string) string {
+	return sliceutils.EscapeAndJoin(parts, splitOptions)
+}
+
+// format is <name:required>:<kind:optional>:<namespace:optional>
+func SelectorFromString(s string) (ObjectSelector, error) {
+	parts, err := sliceutils.UnescapeAndSplit(s, splitOptions)
+	if err != nil {
+		return ObjectSelector{}, err
+	}
+	if len(s) == 0 {
+		return ObjectSelector{}, fmt.Errorf("selector can't be empty")
+	}
+	if len(parts) == 1 {
+		return NewFullmatchCaseInsensitiveObjectSelector("", "", parts[0], "")
+	}
+	if len(parts) == 2 {
+		return NewFullmatchCaseInsensitiveObjectSelector("", parts[1], parts[0], "")
+	}
+	if len(parts) == 3 {
+		return NewFullmatchCaseInsensitiveObjectSelector("", parts[1], parts[0], parts[2])
+	}
+
+	return ObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
 }
 
 // TODO(dmiller): this function and newPartialMatchK8sObjectSelector

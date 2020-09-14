@@ -88,7 +88,7 @@ func potentialNames(e K8sEntity, minComponents int) []string {
 	}
 	var ret []string
 	for i := minComponents - 1; i < len(components); i++ {
-		ret = append(ret, strings.ToLower(strings.Join(components[:i+1], ":")))
+		ret = append(ret, strings.ToLower(SelectorStringFromParts(components[:i+1])))
 	}
 	return ret
 }
