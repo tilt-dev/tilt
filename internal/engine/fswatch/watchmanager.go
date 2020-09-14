@@ -4,14 +4,17 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	builderDockerignore "github.com/docker/docker/builder/dockerignore"
 	"github.com/google/go-cmp/cmp"
 	"github.com/tilt-dev/fsnotify"
 
 	"github.com/tilt-dev/tilt/internal/dockerignore"
 	"github.com/tilt-dev/tilt/internal/ignore"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -99,13 +102,13 @@ type targetNotifyCancel struct {
 }
 
 type WatchManager struct {
-	targetWatches      map[model.TargetID]targetNotifyCancel
-	fsWatcherMaker     FsWatcherMaker
-	timerMaker         TimerMaker
-	tiltIgnoreContents string
-	tiltIgnore         model.PathMatcher
-	disabledForTesting bool
-	mu                 sync.Mutex
+	targetWatches        map[model.TargetID]targetNotifyCancel
+	fsWatcherMaker       FsWatcherMaker
+	timerMaker           TimerMaker
+	globalIgnorePatterns []string
+	globalIgnore         model.PathMatcher
+	disabledForTesting   bool
+	mu                   sync.Mutex
 }
 
 func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchManager {
@@ -113,7 +116,7 @@ func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchM
 		targetWatches:  make(map[model.TargetID]targetNotifyCancel),
 		fsWatcherMaker: watcherMaker,
 		timerMaker:     timerMaker,
-		tiltIgnore:     model.EmptyMatcher,
+		globalIgnore:   model.EmptyMatcher,
 	}
 }
 
@@ -142,7 +145,12 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		targetsToProcess[ConfigsTargetID] = &configsTarget{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
 
-	tiltIgnoreChanged := w.tiltIgnoreContents != state.TiltIgnoreContents
+	newGlobalIgnore, err := globalIgnorePatterns(state)
+	if err != nil {
+		st.Dispatch(store.NewErrorAction(err))
+	}
+
+	globalIgnoreChanged := !sliceutils.StringSliceEquals(w.globalIgnorePatterns, newGlobalIgnore)
 
 	for name, mnc := range w.targetWatches {
 		m, ok := targetsToProcess[name]
@@ -151,7 +159,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 			continue
 		}
 
-		if tiltIgnoreChanged || !watchRulesMatch(m, mnc.target) {
+		if globalIgnoreChanged || !watchRulesMatch(m, mnc.target) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
 		}
@@ -164,18 +172,42 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		delete(targetsToProcess, name)
 	}
 
-	if w.tiltIgnoreContents != state.TiltIgnoreContents {
-		w.tiltIgnoreContents = state.TiltIgnoreContents
+	if globalIgnoreChanged {
+		w.globalIgnorePatterns = newGlobalIgnore
 
 		tiltRoot := filepath.Dir(state.TiltfilePath)
-		tiltIgnoreFilter, err := dockerignore.DockerIgnoreTesterFromContents(tiltRoot, w.tiltIgnoreContents)
+		globalIgnoreFilter, err := dockerignore.NewDockerPatternMatcher(tiltRoot, newGlobalIgnore)
 		if err != nil {
 			st.Dispatch(store.NewErrorAction(err))
 		}
-		w.tiltIgnore = tiltIgnoreFilter
+		w.globalIgnore = globalIgnoreFilter
 	}
 
 	return setup, teardown
+}
+
+// Return a list of global ignore patterns.
+//
+// NOTE(nick): This is getting pretty messy, because we're mixing
+// absolute paths (from the custom_builds) with relative paths (from the .tiltignore).
+// In the medium term, it would be good if we had good data structures
+// for passing around ignore patterns that identified their source and context.
+func globalIgnorePatterns(es store.EngineState) ([]string, error) {
+	result, err := builderDockerignore.ReadAll(strings.NewReader(es.TiltIgnoreContents))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, manifest := range es.Manifests() {
+		for _, iTarget := range manifest.ImageTargets {
+			customBuild := iTarget.CustomBuildInfo()
+			if customBuild.OutputsImageRefTo != "" {
+				result = append(result, customBuild.OutputsImageRefTo)
+			}
+		}
+	}
+
+	return result, nil
 }
 
 func watchRulesMatch(w1, w2 WatchableTarget) bool {
@@ -248,7 +280,7 @@ func (w *WatchManager) createIgnoreMatcher(target WatchableTarget) (watch.PathMa
 	if err != nil {
 		return nil, err
 	}
-	return model.NewCompositeMatcher([]model.PathMatcher{filter, w.tiltIgnore}), nil
+	return model.NewCompositeMatcher([]model.PathMatcher{filter, w.globalIgnore}), nil
 }
 
 func (w *WatchManager) dispatchFileChangesLoop(
