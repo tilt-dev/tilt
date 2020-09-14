@@ -717,7 +717,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 
 			selectors := make([]k8s.ObjectSelector, len(opts.objects))
 			for i, o := range opts.objects {
-				s, err := selectorFromString(o)
+				s, err := k8s.SelectorFromString(o)
 				if err != nil {
 					return errors.Wrapf(err, "Error making selector from string %q", o)
 				}
@@ -780,26 +780,7 @@ func (s *tiltfileState) assembleK8sV2() error {
 // we decided to leave it off for now. When we encounter a concrete use case for specifying group it shouldn't be too
 // hard to add it here and in the docs.
 func fullNameFromK8sEntity(e k8s.K8sEntity) string {
-	return fmt.Sprintf("%s:%s:%s", e.Name(), e.GVK().Kind, e.Namespace())
-}
-
-// format is <name:required>:<kind:optional>:<namespace:optional>
-func selectorFromString(s string) (k8s.ObjectSelector, error) {
-	parts := strings.Split(s, ":")
-	if len(s) == 0 {
-		return k8s.ObjectSelector{}, fmt.Errorf("selector can't be empty")
-	}
-	if len(parts) == 1 {
-		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", "", parts[0], "")
-	}
-	if len(parts) == 2 {
-		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", parts[1], parts[0], "")
-	}
-	if len(parts) == 3 {
-		return k8s.NewFullmatchCaseInsensitiveObjectSelector("", parts[1], parts[0], parts[2])
-	}
-
-	return k8s.ObjectSelector{}, fmt.Errorf("Too many parts in selector. Selectors must contain between 1 and 3 parts (colon separated), found %d parts in %s", len(parts), s)
+	return k8s.SelectorStringFromParts([]string{e.Name(), e.GVK().Kind, e.Namespace().String()})
 }
 
 func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8s.ObjectSelector) []k8s.K8sEntity {

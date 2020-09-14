@@ -77,3 +77,73 @@ func AppendWithoutDupes(a []string, b ...string) []string {
 
 	return ret
 }
+
+type EscapeSplitOptions struct {
+	Delimiter  rune
+	EscapeChar rune
+}
+
+func NewEscapeSplitOptions() EscapeSplitOptions {
+	return EscapeSplitOptions{
+		Delimiter:  ':',
+		EscapeChar: '\\',
+	}
+}
+
+func UnescapeAndSplit(s string, opts EscapeSplitOptions) ([]string, error) {
+	var parts []string
+	escapeNextChar := false
+	cur := ""
+	for i, r := range s {
+		if escapeNextChar {
+			if r == opts.Delimiter || r == opts.EscapeChar {
+				cur += string(r)
+			} else {
+				// grab the 6 chars around the invalid char to make it easier to find the offending string from the error
+				snippetStart := i - 3
+				if snippetStart < 0 {
+					snippetStart = 0
+				}
+				snippetEnd := i + 3
+				if snippetEnd > len(s) {
+					snippetEnd = len(s)
+				}
+
+				return nil, fmt.Errorf("invalid escape sequence '%c%c' in '%s'", opts.EscapeChar, r, s[snippetStart:snippetEnd])
+			}
+			escapeNextChar = false
+		} else {
+			switch r {
+			case opts.Delimiter:
+				parts = append(parts, cur)
+				cur = ""
+			case opts.EscapeChar:
+				escapeNextChar = true
+			default:
+				cur += string(r)
+			}
+		}
+	}
+	parts = append(parts, cur)
+
+	return parts, nil
+}
+
+func quotePart(s string, opts EscapeSplitOptions) string {
+	for _, r := range []rune{opts.EscapeChar, opts.Delimiter} {
+		s = strings.ReplaceAll(s, string(r), fmt.Sprintf("%c%c", opts.EscapeChar, r))
+	}
+	return s
+}
+
+func EscapeAndJoin(parts []string, opts EscapeSplitOptions) string {
+	ret := strings.Builder{}
+	for i, part := range parts {
+		if i != 0 {
+			ret.WriteRune(opts.Delimiter)
+		}
+		_, _ = ret.WriteString(quotePart(part, opts))
+	}
+
+	return ret.String()
+}

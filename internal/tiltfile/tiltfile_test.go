@@ -5000,6 +5000,95 @@ k8s_resource('foo', objects=['baz:namespace:default:wot'])
 	f.loadErrString("Error making selector from string \"baz:namespace:default:wot\"")
 }
 
+func TestK8sResourceObjectSelectorWithEscapedColon(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("quu:bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['quu\\:bar', 'baz:namespace:default'])
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("quu:bar", "Secret"), k8sObject("baz", "Namespace"),
+		podReadiness(model.PodReadinessWait))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceObjectSelectorWithEscapedBackslash(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("quu\\bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['quu\\\\bar', 'baz:namespace:default'])
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo", deployment("foo"), k8sObject("quu\\bar", "Secret"), k8sObject("baz", "Namespace"),
+		podReadiness(model.PodReadinessWait))
+	f.assertNoMoreManifests()
+}
+
+func TestK8sResourceObjectSelectorSuggestedObjectsAreEscaped(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("quu:bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['quu:bar', 'baz:namespace:default'])
+`)
+
+	f.loadErrString(
+		`No object identified by the fragment "quu:bar" could be found`,
+		`Possible objects are: "foo:Deployment:default", "quu\\:bar:Secret:default", "baz:Namespace:default"`,
+	)
+}
+
+func TestK8sResourceObjectSelectorInvalidEscapeSequence(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.yaml("secret.yaml", secret("quu:bar"))
+	f.yaml("namespace.yaml", namespace("baz"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_yaml('secret.yaml')
+k8s_yaml('namespace.yaml')
+k8s_resource('foo', objects=['qu\\u:bar', 'baz:namespace:default'])
+`)
+
+	f.loadErrString(
+		`invalid escape sequence '\u' in 'qu\u:b'`,
+	)
+}
+
 func TestK8sResourceObjectIncludesSelectorThatDoesntExist(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
