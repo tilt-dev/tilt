@@ -122,7 +122,7 @@ type extensionFixture struct {
 func newExtensionFixture(t *testing.T) *extensionFixture {
 	tmp := tempdir.NewTempDirFixture(t)
 	ext := NewExtension(
-		&fakeFetcher{},
+		&fakeFetcher{t: t},
 		NewLocalStore(tmp.JoinPath("project")),
 	)
 	skf := starkit.NewFixture(t, ext, include.IncludeFn{})
@@ -186,14 +186,21 @@ def printFoo():
 	printBar()
 `
 
-type fakeFetcher struct{}
+type fakeFetcher struct {
+	t *testing.T
+}
 
 func (f *fakeFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
 	if moduleName != "fetchable" {
 		return ModuleContents{}, fmt.Errorf("module %s can't be fetched because... reasons", moduleName)
 	}
+
 	return ModuleContents{
-		Name:             "fetchable",
-		TiltfileContents: libText,
+		Name: "fetchable",
+		Dir:  dirWithTiltfile(f.t, libText),
 	}, nil
+}
+
+func (f *fakeFetcher) CleanUp() error {
+	return nil
 }
