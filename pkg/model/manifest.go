@@ -289,7 +289,12 @@ type Sync struct {
 type Dockerignore struct {
 	// The path to evaluate the dockerignore contents relative to
 	LocalPath string
-	Contents  string
+
+	// A human-readable string that identifies where the ignores come from.
+	Source string
+
+	// Patterns parsed out of the .dockerignore file.
+	Patterns []string
 }
 
 type LocalGitRepo struct {

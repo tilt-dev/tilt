@@ -1,12 +1,14 @@
 package tiltfile
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/docker/builder/dockerignore"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -527,11 +529,10 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 	return starlark.None, nil
 }
 
-func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, ignores []string, onlys []string, dbDockerfilePath string) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(source string, paths []string, ignorePatterns []string, onlys []string, dbDockerfilePath string) ([]model.Dockerignore, error) {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
-	ignoreContents := ignoresToDockerignoreContents(ignores)
-	onlyContents := onlysToDockerignoreContents(onlys)
+	onlyPatterns := onlysToDockerignorePatterns(onlys)
 
 	for _, path := range paths {
 		if path == "" || dupeSet[path] {
@@ -543,17 +544,19 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, 
 			continue
 		}
 
-		if ignoreContents != "" {
+		if len(ignorePatterns) != 0 {
 			result = append(result, model.Dockerignore{
 				LocalPath: path,
-				Contents:  ignoreContents,
+				Source:    source + " ignores=",
+				Patterns:  ignorePatterns,
 			})
 		}
 
-		if onlyContents != "" {
+		if len(onlyPatterns) != 0 {
 			result = append(result, model.Dockerignore{
 				LocalPath: path,
-				Contents:  onlyContents,
+				Source:    source + " only=",
+				Patterns:  onlyPatterns,
 			})
 		}
 
@@ -568,52 +571,54 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, 
 
 		contents, err := ioutil.ReadFile(diFile)
 		if err != nil {
-			continue
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, err
+		}
+
+		patterns, err := dockerignore.ReadAll(bytes.NewBuffer(contents))
+		if err != nil {
+			return nil, err
 		}
 
 		result = append(result, model.Dockerignore{
 			LocalPath: path,
-			Contents:  string(contents),
+			Source:    diFile,
+			Patterns:  patterns,
 		})
+	}
+
+	return result, nil
+}
+
+func onlysToDockerignorePatterns(onlys []string) []string {
+	if len(onlys) == 0 {
+		return nil
+	}
+
+	result := []string{"**"}
+
+	for _, only := range onlys {
+		result = append(result, fmt.Sprintf("!%s", only))
 	}
 
 	return result
 }
 
-func ignoresToDockerignoreContents(ignores []string) string {
-	var output strings.Builder
-
-	for _, ignore := range ignores {
-		output.WriteString(ignore)
-		output.WriteString("\n")
-	}
-
-	return output.String()
-}
-
-func onlysToDockerignoreContents(onlys []string) string {
-	if len(onlys) == 0 {
-		return ""
-	}
-	var output strings.Builder
-	output.WriteString("**\n")
-
-	for _, ignore := range onlys {
-		output.WriteString("!")
-		output.WriteString(ignore)
-		output.WriteString("\n")
-	}
-
-	return output.String()
-}
-
-func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresForImage(image *dockerImage) ([]model.Dockerignore, error) {
 	var paths []string
+	var source string
+	ref := image.configurationRef.RefFamiliarString()
 	switch image.Type() {
 	case DockerBuild:
 		paths = append(paths, image.dbBuildPath)
+		source = fmt.Sprintf("docker_build(%q)", ref)
 	case CustomBuild:
 		paths = append(paths, image.customDeps...)
+		source = fmt.Sprintf("custom_build(%q)", ref)
 	}
-	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys, image.dbDockerfilePath)
+	return s.dockerignoresFromPathsAndContextFilters(
+		source,
+		paths, image.ignores, image.onlys, image.dbDockerfilePath)
 }

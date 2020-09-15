@@ -141,14 +141,14 @@ var equalitytests = []struct {
 	},
 	{
 		"ImageTarget.DockerIgnores unequal",
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"b", "a"}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{LocalPath: "a", Patterns: []string{"b"}}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{LocalPath: "b", Patterns: []string{"a"}}}}),
 		true,
 	},
 	{
 		"ImageTarget.DockerIgnores equal",
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{"a", "b"}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{LocalPath: "a", Patterns: []string{"b"}}}}),
+		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{LocalPath: "a", Patterns: []string{"b"}}}}),
 		false,
 	},
 	{

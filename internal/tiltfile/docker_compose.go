@@ -318,7 +318,14 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 	paths = append(paths, dcInfo.LocalPaths()...)
 	paths = append(paths, filepath.Dir(dcSet.tiltfilePath))
 
-	dcInfo = dcInfo.WithDockerignores(s.dockerignoresFromPathsAndContextFilters(paths, []string{}, []string{}, service.DfPath))
+	dIgnores, err := s.dockerignoresFromPathsAndContextFilters(
+		fmt.Sprintf("docker-compose %s", service.Name),
+		paths, []string{}, []string{}, service.DfPath)
+	if err != nil {
+		return model.Manifest{}, fmt.Errorf("Reading dockerignore for %s: %v", service.Name, err)
+	}
+
+	dcInfo = dcInfo.WithDockerignores(dIgnores)
 
 	localPaths := []string{dcSet.tiltfilePath}
 	for _, p := range paths {

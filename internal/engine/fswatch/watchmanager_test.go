@@ -72,7 +72,7 @@ func TestWatchManager_Dockerignore(t *testing.T) {
 	defer f.TearDown()
 
 	target := model.DockerComposeTarget{Name: "foo"}.
-		WithDockerignores([]model.Dockerignore{{LocalPath: ".", Contents: "bar"}}).
+		WithDockerignores([]model.Dockerignore{{LocalPath: ".", Patterns: []string{"bar"}}}).
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
@@ -131,7 +131,7 @@ func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
 
 	target := model.DockerComposeTarget{Name: "foo"}.
 		WithBuildPath(".")
-	f.SetManifestTarget(target.WithDockerignores([]model.Dockerignore{{LocalPath: ".", Contents: "bar"}}))
+	f.SetManifestTarget(target.WithDockerignores([]model.Dockerignore{{LocalPath: ".", Patterns: []string{"bar"}}}))
 	f.SetManifestTarget(target)
 
 	f.ChangeFile(t, "bar")
