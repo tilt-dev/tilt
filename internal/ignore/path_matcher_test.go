@@ -12,8 +12,8 @@ import (
 )
 
 type FakeTarget struct {
-	path         string
-	dockerignore string
+	path                 string
+	dockerignorePatterns []string
 }
 
 func (t FakeTarget) LocalRepos() []model.LocalGitRepo {
@@ -26,7 +26,7 @@ func (t FakeTarget) Dockerignores() []model.Dockerignore {
 	return []model.Dockerignore{
 		model.Dockerignore{
 			LocalPath: t.path,
-			Contents:  t.dockerignore,
+			Patterns:  t.dockerignorePatterns,
 		},
 	}
 }
@@ -54,8 +54,8 @@ func TestIgnores(t *testing.T) {
 		path: f.Path(),
 	}
 	targetWithIgnores := FakeTarget{
-		path:         f.Path(),
-		dockerignore: "**/ignored.txt",
+		path:                 f.Path(),
+		dockerignorePatterns: []string{"**/ignored.txt"},
 	}
 
 	cases := []ignoreTestCase{

@@ -2051,7 +2051,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 		WithDockerignores([]model.Dockerignore{
 			{
 				LocalPath: f.Path(),
-				Contents:  "dignore.txt",
+				Patterns:  []string{"dignore.txt"},
 			},
 		}))
 

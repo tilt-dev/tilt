@@ -1399,12 +1399,17 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 
 			// TODO(dbentley): validate that syncs is a subset of deps
 		case UnknownBuild:
-			return nil, fmt.Errorf("no build info for image %s", image.configurationRef)
+			return nil, fmt.Errorf("no build info for image %s", image.configurationRef.RefFamiliarString())
+		}
+
+		dIgnores, err := s.dockerignoresForImage(image)
+		if err != nil {
+			return nil, fmt.Errorf("Reading dockerignore for %s: %v", image.configurationRef.RefFamiliarString(), err)
 		}
 
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
-			WithDockerignores(s.dockerignoresForImage(image)). // used even for custom build
+			WithDockerignores(dIgnores). // used even for custom build
 			WithTiltFilename(image.workDir).
 			WithDependencyIDs(image.dependencyIDs)
 
@@ -1511,9 +1516,12 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		paths := append(r.deps, r.workdir)
 
 		var ignores []model.Dockerignore
-		ignoreContents := ignoresToDockerignoreContents(r.ignores)
-		if ignoreContents != "" {
-			ignores = append(ignores, model.Dockerignore{Contents: ignoreContents, LocalPath: r.workdir})
+		if len(r.ignores) != 0 {
+			ignores = append(ignores, model.Dockerignore{
+				Patterns:  r.ignores,
+				Source:    fmt.Sprintf("local_resource(%q)", r.name),
+				LocalPath: r.workdir,
+			})
 		}
 
 		lt := model.NewLocalTarget(model.TargetName(r.name), r.updateCmd, r.serveCmd, r.deps, r.workdir).

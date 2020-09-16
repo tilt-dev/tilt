@@ -35,7 +35,8 @@ docker_build('gcr.io/fe', '.', live_update=[
 		[]model.Dockerignore{
 			model.Dockerignore{
 				LocalPath: f.Path(),
-				Contents:  "build",
+				Source:    f.JoinPath(".dockerignore"),
+				Patterns:  []string{"build"},
 			},
 		},
 		m.ImageTargetAt(0).Dockerignores())
@@ -67,7 +68,8 @@ docker_build('gcr.io/fe', '.', dockerfile="Dockerfile.custom", live_update=[
 		[]model.Dockerignore{
 			model.Dockerignore{
 				LocalPath: f.Path(),
-				Contents:  "build",
+				Source:    f.JoinPath("Dockerfile.custom.dockerignore"),
+				Patterns:  []string{"build"},
 			},
 		},
 		m.ImageTargetAt(0).Dockerignores())
