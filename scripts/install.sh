@@ -27,9 +27,19 @@ function copy_binary() {
 
 function install_tilt() {
   if [[ "$OSTYPE" == "linux-gnu" ]]; then
-      set -x
-      curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.linux.x86_64.tar.gz | tar -xzv tilt
-      copy_binary
+      if [[ "$BREW" != "" ]]; then
+          set -x
+          brew tap tilt-dev/tap
+          brew install tilt-dev/tap/tilt
+
+          # linux-homebrew is relatively recent. Make sure that tilt
+          # under $HOME/.local/bin isn't overriding the homebrew one.
+          rm -f "$HOME/.local/bin/tilt" || true
+      else
+          set -x
+          curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.linux.x86_64.tar.gz | tar -xzv tilt
+          copy_binary
+      fi
   elif [[ "$OSTYPE" == "darwin"* ]]; then
       if [[ "$BREW" != "" ]]; then
           set -x
