@@ -28,6 +28,7 @@ func NewExtension(fetcher Fetcher, store Store) *Extension {
 
 type Fetcher interface {
 	Fetch(ctx context.Context, moduleName string) (ModuleContents, error)
+	CleanUp() error
 }
 
 func (e *Extension) OnStart(env *starkit.Environment) error {
@@ -60,6 +61,10 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	defer func() {
+		_ = e.fetcher.CleanUp()
+	}()
 
 	return e.store.Write(ctx, contents)
 }

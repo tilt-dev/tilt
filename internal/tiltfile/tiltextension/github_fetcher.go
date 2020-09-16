@@ -4,63 +4,60 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net/http"
+	"os"
+	"path"
 	"time"
 
-	"github.com/google/go-github/v29/github"
-
-	pkgtiltextension "github.com/tilt-dev/tilt/pkg/tiltextension"
+	"github.com/tilt-dev/go-get"
 )
 
+type Downloader interface {
+	RootDir() string
+	Download(pkg string) (string, error)
+}
+
+type TempDirDownloader struct {
+	rootDir string
+}
+
+func NewTempDirDownloader() (*TempDirDownloader, error) {
+	dir, err := ioutil.TempDir("", "tilt-extensions")
+	if err != nil {
+		return nil, err
+	}
+	return &TempDirDownloader{rootDir: dir}, nil
+}
+
+func (d *TempDirDownloader) RootDir() string {
+	return d.rootDir
+}
+
+func (d *TempDirDownloader) Download(pkg string) (string, error) {
+	dlr := get.NewDownloader(d.rootDir)
+	return dlr.Download(pkg)
+}
+
 type GithubFetcher struct {
+	dlr Downloader
 }
 
-// TODO(dmiller): DI github
-// TODO(dmiller): DI HTTP client
-func NewGithubFetcher() *GithubFetcher {
-	return &GithubFetcher{}
+func NewGithubFetcher(dlr Downloader) *GithubFetcher {
+	return &GithubFetcher{dlr: dlr}
 }
 
-const githubTemplate = "https://raw.githubusercontent.com/tilt-dev/tilt-extensions/%s/%s/Tiltfile"
+func (f *GithubFetcher) CleanUp() error {
+	return os.RemoveAll(f.dlr.RootDir())
+}
 
 func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
-	client := github.NewClient(nil)
-	masterBranch, _, err := client.Repositories.GetBranch(ctx, "tilt-dev", "tilt-extensions", "master")
+	dir, err := f.dlr.Download(path.Join("github.com/tilt-dev/tilt-extensions", moduleName))
 	if err != nil {
-		return ModuleContents{}, err
-	}
-	headOfMaster := masterBranch.GetCommit()
-	masterSHA := headOfMaster.GetSHA()
-
-	err = pkgtiltextension.ValidateName(moduleName)
-	if err != nil {
-		return ModuleContents{}, err
-	}
-	c := &http.Client{
-		Timeout: 20 * time.Second,
-	}
-
-	urlText := fmt.Sprintf(githubTemplate, masterSHA, moduleName)
-	resp, err := c.Get(urlText)
-	if err != nil {
-		return ModuleContents{}, err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return ModuleContents{}, fmt.Errorf("error fetching Tiltfile %q: %v", urlText, resp.Status)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return ModuleContents{}, err
+		return ModuleContents{}, fmt.Errorf("Fetching tilt-extensions: %v", err)
 	}
 
 	return ModuleContents{
 		Name:              moduleName,
-		TiltfileContents:  string(body),
-		GitCommitHash:     masterSHA,
+		Dir:               dir,
 		ExtensionRegistry: "https://github.com/tilt-dev/tilt-extensions",
 		TimeFetched:       time.Now(),
 	}, nil

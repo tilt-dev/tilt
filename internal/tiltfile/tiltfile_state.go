@@ -186,6 +186,12 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 
 	s.configExt.UserConfigState = userConfigState
 
+	dlr, err := tiltextension.NewTempDirDownloader()
+	if err != nil {
+		return nil, starkit.Model{}, err
+	}
+	fetcher := tiltextension.NewGithubFetcher(dlr)
+
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
@@ -204,7 +210,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		secretsettings.NewExtension(),
 		encoding.NewExtension(),
 		shlex.NewExtension(),
-		tiltextension.NewExtension(tiltextension.NewGithubFetcher(), tiltextension.NewLocalStore(filepath.Dir(absFilename))),
+		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
