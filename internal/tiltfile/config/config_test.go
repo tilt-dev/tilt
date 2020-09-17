@@ -459,6 +459,44 @@ print(config.tilt_subcommand)
 	require.Equal(t, "foo\n", f.PrintOutput())
 }
 
+func TestTiltfilePath(t *testing.T) {
+	f := NewFixture(t, model.UserConfigState{}, "foo")
+	defer f.TearDown()
+
+	f.File("foo/Tiltfile", `
+print(config.main_path)
+`)
+	f.File("Tiltfile", `
+include('./foo/Tiltfile')
+print(config.main_path)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	val := f.JoinPath("Tiltfile")
+	require.Equal(t, fmt.Sprintf("%s\n%s\n", val, val), f.PrintOutput())
+}
+
+func TestTiltfileDir(t *testing.T) {
+	f := NewFixture(t, model.UserConfigState{}, "foo")
+	defer f.TearDown()
+
+	f.File("foo/Tiltfile", `
+print(config.main_dir)
+`)
+	f.File("Tiltfile", `
+include('./foo/Tiltfile')
+print(config.main_dir)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	val := f.Path()
+	require.Equal(t, fmt.Sprintf("%s\n%s\n", val, val), f.PrintOutput())
+}
+
 func NewFixture(tb testing.TB, userConfigState model.UserConfigState, tiltSubcommand model.TiltSubcommand) *starkit.Fixture {
 	ext := NewExtension(tiltSubcommand)
 	ext.UserConfigState = userConfigState

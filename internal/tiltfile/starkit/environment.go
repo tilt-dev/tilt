@@ -47,6 +47,7 @@ type Environment struct {
 	extensions       []Extension
 	fakeFileSystem   map[string]string
 	loadInterceptors []LoadInterceptor
+	startPath        string
 
 	builtinCalls []BuiltinCall
 }
@@ -68,6 +69,11 @@ func (e *Environment) AddLoadInterceptor(i LoadInterceptor) {
 
 func (e *Environment) SetArgUnpacker(unpackArgs ArgUnpacker) {
 	e.unpackArgs = unpackArgs
+}
+
+// The absolute path to the entrypoint of the environment.
+func (e *Environment) StartPath() string {
+	return e.startPath
 }
 
 // Add a builtin to the environment.
@@ -151,6 +157,8 @@ func (e *Environment) start(path string) (Model, error) {
 	if err != nil {
 		return Model{}, errors.Wrap(err, "environment#start")
 	}
+
+	e.startPath = path
 
 	model := NewModel()
 	for _, ext := range e.extensions {
