@@ -81,6 +81,19 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 	}
 
 	err := env.AddValue("config.tilt_subcommand", starlark.String(e.TiltSubcommand))
+	if err != nil {
+		return err
+	}
+
+	err = env.AddValue("config.main_path", starlark.String(env.StartPath()))
+	if err != nil {
+		return err
+	}
+
+	err = env.AddValue("config.main_dir", starlark.String(filepath.Dir(env.StartPath())))
+	if err != nil {
+		return err
+	}
 
 	return err
 }
