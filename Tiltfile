@@ -1,3 +1,6 @@
+username = str(local('whoami')).rstrip('\n')
+experimental_analytics_report({'user.name': username})
+
 def remove_all_empty_and_whitespace(my_list):
   ret = []
   for x in my_list:
