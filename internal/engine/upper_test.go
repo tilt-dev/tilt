@@ -3531,14 +3531,14 @@ fail('x')`)
 	})
 
 	f.WaitUntil(".tiltignore processed", func(es store.EngineState) bool {
-		return strings.Contains(es.TiltIgnoreContents, "a.txt")
+		return strings.Contains(strings.Join(es.Tiltignore.Patterns, "\n"), "a.txt")
 	})
 
 	f.WriteFile(".tiltignore", "a.txt\nb.txt\n")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
 
 	f.WaitUntil(".tiltignore processed", func(es store.EngineState) bool {
-		return strings.Contains(es.TiltIgnoreContents, "b.txt")
+		return strings.Contains(strings.Join(es.Tiltignore.Patterns, "\n"), "b.txt")
 	})
 
 	err := f.Stop()
