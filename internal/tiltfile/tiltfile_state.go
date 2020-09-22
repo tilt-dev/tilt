@@ -37,6 +37,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
+	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -210,6 +211,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		secretsettings.NewExtension(),
 		encoding.NewExtension(),
 		shlex.NewExtension(),
+		watch.NewExtension(),
 		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
 	if err != nil {
@@ -407,7 +409,7 @@ func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 }
 
 func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string) error {
-	return io.RecordReadPath(t, io.WatchFileOnly, tiltIgnorePath(tiltfilePath))
+	return nil
 }
 
 // wrap a builtin such that it's only allowed to run when we have a known safe k8s context

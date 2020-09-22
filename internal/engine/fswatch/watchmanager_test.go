@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/docker/docker/builder/dockerignore"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -151,6 +153,29 @@ func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
+
+	f.ChangeFile(t, filepath.Join("bar", "foo"))
+
+	actions := f.Stop(t)
+
+	f.AssertActionsNotContain(actions, filepath.Join("bar", "foo"))
+}
+
+func TestWatchManager_IgnoreWatchSettings(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
+	f.SetManifestTarget(target)
+
+	f.store.WithState(func(es *store.EngineState) {
+		es.WatchSettings.Ignores = append(es.WatchSettings.Ignores, model.Dockerignore{
+			LocalPath: f.Path(),
+			Patterns:  []string{"**/foo"},
+		})
+	})
+	f.wm.OnChange(f.ctx, f.store)
 
 	f.ChangeFile(t, filepath.Join("bar", "foo"))
 
@@ -304,7 +329,13 @@ func (f *wmFixture) SetManifestTarget(target model.DockerComposeTarget) {
 
 func (f *wmFixture) SetTiltIgnoreContents(s string) {
 	state := f.store.LockMutableStateForTesting()
-	state.TiltIgnoreContents = s
+
+	patterns, err := dockerignore.ReadAll(strings.NewReader(s))
+	assert.NoError(f.T(), err)
+	state.Tiltignore = model.Dockerignore{
+		LocalPath: f.Path(),
+		Patterns:  patterns,
+	}
 	f.store.UnlockMutableState()
 	f.wm.OnChange(f.ctx, f.store)
 }

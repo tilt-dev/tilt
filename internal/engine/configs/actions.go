@@ -20,9 +20,9 @@ func (ConfigsReloadStartedAction) Action() {}
 
 type ConfigsReloadedAction struct {
 	// TODO(nick): Embed TiltfileLoadResult instead of copying fields.
-	Manifests          []model.Manifest
-	TiltIgnoreContents string
-	ConfigFiles        []string
+	Manifests   []model.Manifest
+	Tiltignore  model.Dockerignore
+	ConfigFiles []string
 
 	FinishTime           time.Time
 	Err                  error
@@ -36,6 +36,7 @@ type ConfigsReloadedAction struct {
 	AnalyticsTiltfileOpt analytics.Opt
 	VersionSettings      model.VersionSettings
 	UpdateSettings       model.UpdateSettings
+	WatchSettings        model.WatchSettings
 
 	// A checkpoint into the logstore when Tiltfile execution started.
 	// Useful for knowing how far back in time we have to scrub secrets.

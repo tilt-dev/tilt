@@ -564,8 +564,12 @@ func handleConfigsReloaded(
 	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
 
 	// Add tiltignore if it exists, even if execution failed.
-	if event.TiltIgnoreContents != "" || event.Err == nil {
-		state.TiltIgnoreContents = event.TiltIgnoreContents
+	if !event.Tiltignore.Empty() || event.Err == nil {
+		state.Tiltignore = event.Tiltignore
+	}
+
+	if !event.WatchSettings.Empty() || event.Err == nil {
+		state.WatchSettings = event.WatchSettings
 	}
 
 	// Add team id if it exists, even if execution failed.

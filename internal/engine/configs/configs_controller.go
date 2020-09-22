@@ -159,8 +159,8 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 
 	st.Dispatch(ConfigsReloadedAction{
 		Manifests:             tlr.Manifests,
+		Tiltignore:            tlr.Tiltignore,
 		ConfigFiles:           tlr.ConfigFiles,
-		TiltIgnoreContents:    tlr.TiltIgnoreContents,
 		FinishTime:            cc.clock(),
 		Err:                   tlr.Error,
 		Features:              tlr.FeatureFlags,
@@ -173,6 +173,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 		CheckpointAtExecStart: entry.checkpointAtExecStart,
 		VersionSettings:       tlr.VersionSettings,
 		UpdateSettings:        tlr.UpdateSettings,
+		WatchSettings:         tlr.WatchSettings,
 	})
 }
 

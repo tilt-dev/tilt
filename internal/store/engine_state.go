@@ -78,7 +78,9 @@ type EngineState struct {
 	// because this could refer to directories that are watched recursively.
 	ConfigFiles []string
 
-	TiltIgnoreContents       string
+	Tiltignore    model.Dockerignore
+	WatchSettings model.WatchSettings
+
 	PendingConfigFileChanges map[string]time.Time
 
 	TriggerQueue []model.ManifestName

@@ -3,15 +3,10 @@ package tiltfile
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
-
-	"github.com/tilt-dev/tilt/internal/tiltfile/config"
-	"github.com/tilt-dev/tilt/internal/tiltfile/metrics"
-	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 
 	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/resolve"
@@ -24,19 +19,22 @@ import (
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	tiltfileanalytics "github.com/tilt-dev/tilt/internal/tiltfile/analytics"
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/metrics"
 	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
+	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const FileName = "Tiltfile"
-const TiltIgnoreFileName = ".tiltignore"
 
 func init() {
 	resolve.AllowLambda = true
@@ -47,8 +45,8 @@ func init() {
 
 type TiltfileLoadResult struct {
 	Manifests           []model.Manifest
+	Tiltignore          model.Dockerignore
 	ConfigFiles         []string
-	TiltIgnoreContents  string
 	FeatureFlags        map[string]bool
 	TeamID              string
 	TelemetrySettings   model.TelemetrySettings
@@ -59,6 +57,7 @@ type TiltfileLoadResult struct {
 	AnalyticsOpt        wmanalytics.Opt
 	VersionSettings     model.VersionSettings
 	UpdateSettings      model.UpdateSettings
+	WatchSettings       model.WatchSettings
 
 	// For diagnostic purposes only
 	BuiltinCalls []starkit.BuiltinCall `json:"-"`
@@ -162,20 +161,20 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 		}
 	}
 
-	tiltIgnorePath := tiltIgnorePath(absFilename)
+	tiltignorePath := watch.TiltignorePath(absFilename)
 	tlr := TiltfileLoadResult{
-		ConfigFiles: []string{absFilename, tiltIgnorePath},
+		ConfigFiles: []string{absFilename, tiltignorePath},
 	}
 
-	tiltIgnoreContents, err := ioutil.ReadFile(tiltIgnorePath)
+	tiltignore, err := watch.ReadTiltignore(tiltignorePath)
 
 	// missing tiltignore is fine, but a filesystem error is not
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		tlr.Error = err
 		return tlr
 	}
 
-	tlr.TiltIgnoreContents = string(tiltIgnoreContents)
+	tlr.Tiltignore = tiltignore
 
 	localRegistry := tfl.kCli.LocalRegistry(ctx)
 
@@ -185,12 +184,18 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	tlr.BuiltinCalls = result.BuiltinCalls
 
+	ws, _ := watch.GetState(result)
+	tlr.WatchSettings = ws
+
 	// NOTE(maia): if/when add secret settings that affect the engine, add them to tlr here
 	ss, _ := secretsettings.GetState(result)
 	s.secretSettings = ss
 
 	ioState, _ := io.GetState(result)
-	tlr.ConfigFiles = sliceutils.AppendWithoutDupes(ioState.Paths, s.postExecReadFiles...)
+
+	tlr.ConfigFiles = append(tlr.ConfigFiles, ioState.Paths...)
+	tlr.ConfigFiles = append(tlr.ConfigFiles, s.postExecReadFiles...)
+	tlr.ConfigFiles = sliceutils.DedupedAndSorted(tlr.ConfigFiles)
 
 	dps, _ := dockerprune.GetState(result)
 	tlr.DockerPruneSettings = dps
@@ -225,11 +230,6 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	}
 
 	return tlr
-}
-
-// .tiltignore sits next to Tiltfile
-func tiltIgnorePath(tiltfilePath string) string {
-	return filepath.Join(filepath.Dir(tiltfilePath), TiltIgnoreFileName)
 }
 
 func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
