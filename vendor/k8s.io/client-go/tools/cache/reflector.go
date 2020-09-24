@@ -39,7 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/pager"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/trace"
 )
 
@@ -82,9 +82,9 @@ type Reflector struct {
 	// observed when doing a sync with the underlying store
 	// it is thread safe, but not synchronized with the underlying store
 	lastSyncResourceVersion string
-	// isLastSyncResourceVersionGone is true if the previous list or watch request with lastSyncResourceVersion
-	// failed with an HTTP 410 (Gone) status code.
-	isLastSyncResourceVersionGone bool
+	// isLastSyncResourceVersionUnavailable is true if the previous list or watch request with
+	// lastSyncResourceVersion failed with an "expired" or "too large resource version" error.
+	isLastSyncResourceVersionUnavailable bool
 	// lastSyncResourceVersionMutex guards read/write access to lastSyncResourceVersion
 	lastSyncResourceVersionMutex sync.RWMutex
 	// WatchListPageSize is the requested chunk size of initial and resync watch lists.
@@ -95,27 +95,43 @@ type Reflector struct {
 	// etcd, which is significantly less efficient and may lead to serious performance and
 	// scalability problems.
 	WatchListPageSize int64
-
-	// Called whenever the ListAndWatch drops a connection, whether or not
-	// the connection had an error. So that clients can handle errors
-	// and implement backoff.
-	dropWatchHandler DropWatchHandler
+	// Called whenever the ListAndWatch drops the connection with an error.
+	watchErrorHandler WatchErrorHandler
 }
 
-type DropWatchHandler func(err error, doneCh <-chan struct{})
+// The WatchErrorHandler is called whenever ListAndWatch drops the
+// connection with an error. After calling this handler, the informer
+// will backoff and retry.
+//
+// The default implementation looks at the error type and tries to log
+// the error message at an appropriate level.
+//
+// Implementations of this handler may display the error message in other
+// ways. Implementations should return quickly - any expensive processing
+// should be offloaded.
+type WatchErrorHandler func(r *Reflector, err error)
 
-func createDefaultDropWatchHandler(name string) DropWatchHandler {
-	return func(err error, doneCh <-chan struct{}) {
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("%s: %v", name, err))
-		}
+// DefaultWatchErrorHandler is the default implementation of WatchErrorHandler
+func DefaultWatchErrorHandler(r *Reflector, err error) {
+	switch {
+	case isExpiredError(err):
+		// Don't set LastSyncResourceVersionUnavailable - LIST call with ResourceVersion=RV already
+		// has a semantic that it returns data at least as fresh as provided RV.
+		// So first try to LIST with setting RV to resource version of last observed object.
+		klog.V(4).Infof("%s: watch of %v closed with: %v", r.name, r.expectedTypeName, err)
+	case err == io.EOF:
+		// watch closed normally
+	case err == io.ErrUnexpectedEOF:
+		klog.V(1).Infof("%s: Watch for %v closed with unexpected EOF: %v", r.name, r.expectedTypeName, err)
+	default:
+		utilruntime.HandleError(fmt.Errorf("%s: Failed to watch %v: %v", r.name, r.expectedTypeName, err))
 	}
 }
 
 var (
 	// We try to spread the load on apiserver by setting timeouts for
 	// watch requests - it is random in [minWatchTimeout, 2*minWatchTimeout].
-	minWatchTimeout = time.Minute
+	minWatchTimeout = 5 * time.Minute
 )
 
 // NewNamespaceKeyedIndexerAndReflector creates an Indexer and a Reflector
@@ -150,10 +166,10 @@ func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, 
 		// We used to make the call every 1sec (1 QPS), the goal here is to achieve ~98% traffic reduction when
 		// API server is not healthy. With these parameters, backoff will stop at [30,60) sec interval which is
 		// 0.22 QPS. If we don't backoff for 2min, assume API server is healthy and we reset the backoff.
-		backoffManager:   wait.NewExponentialBackoffManager(800*time.Millisecond, 30*time.Second, 2*time.Minute, 2.0, 1.0, realClock),
-		resyncPeriod:     resyncPeriod,
-		clock:            realClock,
-		dropWatchHandler: createDefaultDropWatchHandler(name),
+		backoffManager:    wait.NewExponentialBackoffManager(800*time.Millisecond, 30*time.Second, 2*time.Minute, 2.0, 1.0, realClock),
+		resyncPeriod:      resyncPeriod,
+		clock:             realClock,
+		watchErrorHandler: WatchErrorHandler(DefaultWatchErrorHandler),
 	}
 	r.setExpectedType(expectedType)
 	return r
@@ -190,8 +206,9 @@ var internalPackages = []string{"client-go/tools/cache/"}
 func (r *Reflector) Run(stopCh <-chan struct{}) {
 	klog.V(2).Infof("Starting reflector %s (%s) from %s", r.expectedTypeName, r.resyncPeriod, r.name)
 	wait.BackoffUntil(func() {
-		err := r.ListAndWatch(stopCh)
-		r.dropWatchHandler(err, stopCh)
+		if err := r.ListAndWatch(stopCh); err != nil {
+			r.watchErrorHandler(r, err)
+		}
 	}, r.backoffManager, true, stopCh)
 	klog.V(2).Infof("Stopping reflector %s (%s) from %s", r.expectedTypeName, r.resyncPeriod, r.name)
 }
@@ -271,13 +288,14 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			}
 
 			list, paginatedResult, err = pager.List(context.Background(), options)
-			if isExpiredError(err) {
-				r.setIsLastSyncResourceVersionExpired(true)
-				// Retry immediately if the resource version used to list is expired.
+			if isExpiredError(err) || isTooLargeResourceVersionError(err) {
+				r.setIsLastSyncResourceVersionUnavailable(true)
+				// Retry immediately if the resource version used to list is unavailable.
 				// The pager already falls back to full list if paginated list calls fail due to an "Expired" error on
-				// continuation pages, but the pager might not be enabled, or the full list might fail because the
-				// resource version it is listing at is expired, so we need to fallback to resourceVersion="" in all
-				// to recover and ensure the reflector makes forward progress.
+				// continuation pages, but the pager might not be enabled, the full list might fail because the
+				// resource version it is listing at is expired or the cache may not yet be synced to the provided
+				// resource version. So we need to fallback to resourceVersion="" in all to recover and ensure
+				// the reflector makes forward progress.
 				list, paginatedResult, err = pager.List(context.Background(), metav1.ListOptions{ResourceVersion: r.relistResourceVersion()})
 			}
 			close(listCh)
@@ -290,7 +308,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		case <-listCh:
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to list %v: %v", r.expectedTypeName, err)
+			return fmt.Errorf("failed to list %v: %v", r.expectedTypeName, err)
 		}
 
 		// We check if the list was paginated and if so set the paginatedResult based on that.
@@ -307,21 +325,21 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			r.paginatedResult = true
 		}
 
-		r.setIsLastSyncResourceVersionExpired(false) // list was successful
+		r.setIsLastSyncResourceVersionUnavailable(false) // list was successful
 		initTrace.Step("Objects listed")
 		listMetaInterface, err := meta.ListAccessor(list)
 		if err != nil {
-			return fmt.Errorf("Unable to understand list result %#v: %v", list, err)
+			return fmt.Errorf("unable to understand list result %#v: %v", list, err)
 		}
 		resourceVersion = listMetaInterface.GetResourceVersion()
 		initTrace.Step("Resource version extracted")
 		items, err := meta.ExtractList(list)
 		if err != nil {
-			return fmt.Errorf("Unable to understand list result %#v (%v)", list, err)
+			return fmt.Errorf("unable to understand list result %#v (%v)", list, err)
 		}
 		initTrace.Step("Objects extracted")
 		if err := r.syncWith(items, resourceVersion); err != nil {
-			return fmt.Errorf("Unable to sync list result: %v", err)
+			return fmt.Errorf("unable to sync list result: %v", err)
 		}
 		initTrace.Step("SyncWith done")
 		r.setLastSyncResourceVersion(resourceVersion)
@@ -379,6 +397,8 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			AllowWatchBookmarks: true,
 		}
 
+		// start the clock before sending the request, since some proxies won't flush headers until after the first watch event is sent
+		start := r.clock.Now()
 		w, err := r.listerWatcher.Watch(options)
 		if err != nil {
 			// If this is "connection refused" error, it means that most likely apiserver is not responsive.
@@ -389,22 +409,14 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 				time.Sleep(time.Second)
 				continue
 			}
-
-			if err == io.EOF {
-				// watch closed normally
-				return nil
-			} else if err == io.ErrUnexpectedEOF {
-				klog.V(1).Infof("%s: Watch for %v closed with unexpected EOF: %v", r.name, r.expectedTypeName, err)
-			}
-
 			return err
 		}
 
-		if err := r.watchHandler(w, &resourceVersion, resyncerrc, stopCh); err != nil {
+		if err := r.watchHandler(start, w, &resourceVersion, resyncerrc, stopCh); err != nil {
 			if err != errorStopRequested {
 				switch {
 				case isExpiredError(err):
-					// Don't set LastSyncResourceVersionExpired - LIST call with ResourceVersion=RV already
+					// Don't set LastSyncResourceVersionUnavailable - LIST call with ResourceVersion=RV already
 					// has a semantic that it returns data at least as fresh as provided RV.
 					// So first try to LIST with setting RV to resource version of last observed object.
 					klog.V(4).Infof("%s: watch of %v closed with: %v", r.name, r.expectedTypeName, err)
@@ -427,8 +439,7 @@ func (r *Reflector) syncWith(items []runtime.Object, resourceVersion string) err
 }
 
 // watchHandler watches w and keeps *resourceVersion up to date.
-func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
-	start := r.clock.Now()
+func (r *Reflector) watchHandler(start time.Time, w watch.Interface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
 	eventCount := 0
 
 	// Stopping the watcher should be idempotent and if we return from this function there's no way
@@ -528,9 +539,9 @@ func (r *Reflector) relistResourceVersion() string {
 	r.lastSyncResourceVersionMutex.RLock()
 	defer r.lastSyncResourceVersionMutex.RUnlock()
 
-	if r.isLastSyncResourceVersionGone {
+	if r.isLastSyncResourceVersionUnavailable {
 		// Since this reflector makes paginated list requests, and all paginated list requests skip the watch cache
-		// if the lastSyncResourceVersion is expired, we set ResourceVersion="" and list again to re-establish reflector
+		// if the lastSyncResourceVersion is unavailable, we set ResourceVersion="" and list again to re-establish reflector
 		// to the latest available ResourceVersion, using a consistent read from etcd.
 		return ""
 	}
@@ -542,12 +553,12 @@ func (r *Reflector) relistResourceVersion() string {
 	return r.lastSyncResourceVersion
 }
 
-// setIsLastSyncResourceVersionExpired sets if the last list or watch request with lastSyncResourceVersion returned a
-// expired error: HTTP 410 (Gone) Status Code.
-func (r *Reflector) setIsLastSyncResourceVersionExpired(isExpired bool) {
+// setIsLastSyncResourceVersionUnavailable sets if the last list or watch request with lastSyncResourceVersion returned
+// "expired" or "too large resource version" error.
+func (r *Reflector) setIsLastSyncResourceVersionUnavailable(isUnavailable bool) {
 	r.lastSyncResourceVersionMutex.Lock()
 	defer r.lastSyncResourceVersionMutex.Unlock()
-	r.isLastSyncResourceVersionGone = isExpired
+	r.isLastSyncResourceVersionUnavailable = isUnavailable
 }
 
 func isExpiredError(err error) bool {
@@ -556,4 +567,8 @@ func isExpiredError(err error) bool {
 	// and always returns apierrors.StatusReasonExpired. For backward compatibility we can only remove the apierrors.IsGone
 	// check when we fully drop support for Kubernetes 1.17 servers from reflectors.
 	return apierrors.IsResourceExpired(err) || apierrors.IsGone(err)
+}
+
+func isTooLargeResourceVersionError(err error) bool {
+	return apierrors.HasStatusCause(err, metav1.CauseTypeResourceVersionTooLarge)
 }

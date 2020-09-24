@@ -49,7 +49,7 @@ require (
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/jinzhu/gorm v1.9.12 // indirect
 	github.com/jonboulle/clockwork v0.1.0
-	github.com/json-iterator/go v1.1.8
+	github.com/json-iterator/go v1.1.10
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
@@ -70,7 +70,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/schollz/closestmatch v2.1.0+incompatible
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/theupdateframework/notary v0.6.1 // indirect
@@ -85,7 +85,6 @@ require (
 	go.opencensus.io v0.22.4
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20200615180055-61b64bc45990
-	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073 // indirect
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	google.golang.org/genproto v0.0.0-20200527145253-8367513e4ece
 	google.golang.org/grpc v1.29.1
@@ -95,13 +94,13 @@ require (
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.18.3
-	k8s.io/apimachinery v0.18.3
-	k8s.io/cli-runtime v0.18.3
-	k8s.io/client-go v0.18.3
-	k8s.io/component-base v0.18.3
+	k8s.io/api v0.19.0
+	k8s.io/apimachinery v0.19.0
+	k8s.io/cli-runtime v0.19.0
+	k8s.io/client-go v0.19.0
+	k8s.io/component-base v0.19.0
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.18.3
+	k8s.io/kubectl v0.19.0
 	sigs.k8s.io/kustomize v2.0.3+incompatible
 	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
@@ -118,6 +117,4 @@ replace (
 	github.com/moby/buildkit => github.com/zachbadgett/buildkit v0.6.2-0.20191220071605-814e2794095f
 	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
-
-	k8s.io/client-go => github.com/tilt-dev/client-go v0.0.0-20200326150806-41017343d309
 )

@@ -258,9 +258,10 @@ func runInformer(ctx context.Context, name string, informer cache.SharedInformer
 		Cap:      time.Hour,
 	}
 	backoff := originalBackoff
-	_ = informer.SetDropWatchHandler(func(err error, doneCh <-chan struct{}) {
+	lastErrorHandlerFinish := time.Time{}
+	_ = informer.SetWatchErrorHandler(func(r *cache.Reflector, err error) {
 		sleepTime := originalDuration
-		if err != nil {
+		if time.Since(lastErrorHandlerFinish) < time.Second {
 			sleepTime = backoff.Step()
 			logger.Get(ctx).Warnf("Pausing k8s %s watcher for %s: %v",
 				name,
@@ -271,9 +272,10 @@ func runInformer(ctx context.Context, name string, informer cache.SharedInformer
 		}
 
 		select {
-		case <-doneCh:
+		case <-ctx.Done():
 		case <-time.After(sleepTime):
 		}
+		lastErrorHandlerFinish = time.Now()
 	})
 	informer.Run(ctx.Done())
 }
