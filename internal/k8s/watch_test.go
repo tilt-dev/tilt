@@ -23,14 +23,9 @@ import (
 	kfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	ktesting "k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/cache"
 
 	"github.com/tilt-dev/tilt/internal/testutils"
 )
-
-func TestTiltPatch(t *testing.T) {
-	assert.True(t, cache.IsTiltPatchApplied())
-}
 
 func TestK8sClient_WatchPods(t *testing.T) {
 	tf := newWatchTestFixture(t)
@@ -404,7 +399,8 @@ func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-cha
 		}
 	}
 
-	assert.Equal(tf.t, expectedOutput, observedPods)
+	// Our k8s simulation library does not guarantee event order.
+	assert.ElementsMatch(tf.t, expectedOutput, observedPods)
 }
 
 func (tf *watchTestFixture) runServices(input []runtime.Object, expected []runtime.Object) {
@@ -431,7 +427,8 @@ func (tf *watchTestFixture) assertServices(expectedOutput []runtime.Object, ch <
 		}
 	}
 
-	assert.Equal(tf.t, expectedOutput, observedServices)
+	// Our k8s simulation library does not guarantee event order.
+	assert.ElementsMatch(tf.t, expectedOutput, observedServices)
 }
 
 func (tf *watchTestFixture) runEvents(input []runtime.Object, expectedOutput []runtime.Object) {
@@ -459,8 +456,7 @@ func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-c
 		}
 	}
 
-	// TODO(matt) - using ElementsMatch instead of Equal because, for some reason, events do not always come out in the
-	// same order we feed them in. I'm punting on figuring out why for now.
+	// Our k8s simulation library does not guarantee event order.
 	assert.ElementsMatch(tf.t, expectedOutput, observedEvents)
 }
 
