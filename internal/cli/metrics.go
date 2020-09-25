@@ -7,6 +7,7 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
+	"github.com/tilt-dev/tilt/internal/engine"
 	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -44,7 +45,10 @@ func initMetrics(ctx context.Context, cmdName model.TiltSubcommand) (context.Con
 		return exporter.Stop()
 	}
 
-	err := view.Register(CommandCount)
+	err := view.Register(
+		CommandCount,
+		engine.ImageBuildDurationView,
+		engine.ImageBuildCount)
 	if err != nil {
 		return nil, cleanup, err
 	}
