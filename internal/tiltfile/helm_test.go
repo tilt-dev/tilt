@@ -109,39 +109,41 @@ const exampleHelmV3_0VersionOutput = `v3.0.0`
 const exampleHelmV3_1VersionOutput = `v3.1.0`
 const exampleHelmV3_2VersionOutput = `v3.2.4`
 
+// see https://github.com/tilt-dev/tilt/issues/3788
+const exampleHelmV3_3VersionOutput = `WARNING: Kubernetes configuration file is group-readable. This is insecure. Location: /Users/someone/.kube/config
+WARNING: Kubernetes configuration file is world-readable. This is insecure. Location: /Users/someone/.kube/config
+v3.3.3+g55e3ca0
+`
+
 func TestParseHelmV2Version(t *testing.T) {
 	expected := helmV2
-	actual := parseVersion(exampleHelmV2VersionOutput)
-
-	assert.Equal(t, expected, actual)
+	assertHelmVersion(t, exampleHelmV2VersionOutput, expected)
 }
 
 func TestParseHelmV3Version(t *testing.T) {
 	expected := helmV3_0
-	actual := parseVersion(exampleHelmV3_0VersionOutput)
-
-	assert.Equal(t, expected, actual)
+	assertHelmVersion(t, exampleHelmV3_0VersionOutput, expected)
 }
 
 func TestParseHelmV3_1Version(t *testing.T) {
 	expected := helmV3_1andAbove
-	actual := parseVersion(exampleHelmV3_1VersionOutput)
-
-	assert.Equal(t, expected, actual)
+	assertHelmVersion(t, exampleHelmV3_1VersionOutput, expected)
 }
 
 func TestParseHelmV3_2Version(t *testing.T) {
 	expected := helmV3_1andAbove
-	actual := parseVersion(exampleHelmV3_2VersionOutput)
-
-	assert.Equal(t, expected, actual)
+	assertHelmVersion(t, exampleHelmV3_2VersionOutput, expected)
 }
 
-func TestHelmUnknownVersion(t *testing.T) {
-	expected := unknownHelmVersion
-	actual := parseVersion("v4.1.2")
+func TestParseHelmV3_3Version(t *testing.T) {
+	expected := helmV3_1andAbove
+	assertHelmVersion(t, exampleHelmV3_3VersionOutput, expected)
+}
 
-	assert.Equal(t, expected, actual)
+func TestHelmUnknownVersionError(t *testing.T) {
+	_, err := parseVersion("v4.1.2")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not parse Helm version from string")
 }
 
 const fileRequirementsYAML = `dependencies:
@@ -247,4 +249,10 @@ k8s_yaml(helm('./helm'))
 	} else {
 		assert.NotContains(t, yaml, "kind: UselessMachine")
 	}
+}
+
+func assertHelmVersion(t *testing.T, versionOutput string, expectedV helmVersion) {
+	actualV, err := parseVersion(versionOutput)
+	require.NoError(t, err, "parsing helm version")
+	require.Equal(t, expectedV, actualV)
 }
