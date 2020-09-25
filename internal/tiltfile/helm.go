@@ -53,16 +53,25 @@ const (
 	helmV3_1andAbove
 )
 
-func parseVersion(version string) helmVersion {
-	if strings.HasPrefix(version, "v3.0.") {
-		return helmV3_0
-	} else if strings.HasPrefix(version, "v3.") {
-		return helmV3_1andAbove
-	} else if strings.HasPrefix(version, "Client: v2") {
-		return helmV2
+func parseVersion(versionOutput string) (helmVersion, error) {
+	// helm v3.3.3 throws warnings on stdout, which messes up version parsing;
+	// if we have multiple lines of version output, assume version info is in
+	// the last line (see https://github.com/tilt-dev/tilt/issues/3788)
+	version := versionOutput
+	lines := strings.Split(strings.TrimSpace(versionOutput), "\n")
+	if len(lines) > 1 {
+		version = lines[(len(lines) - 1)]
 	}
 
-	return unknownHelmVersion
+	if strings.HasPrefix(version, "v3.0.") {
+		return helmV3_0, nil
+	} else if strings.HasPrefix(version, "v3.") {
+		return helmV3_1andAbove, nil
+	} else if strings.HasPrefix(version, "Client: v2") {
+		return helmV2, nil
+	}
+
+	return unknownHelmVersion, fmt.Errorf("could not parse Helm version from string: %q", versionOutput)
 }
 
 func isHelmInstalled() bool {
@@ -100,7 +109,7 @@ func getHelmVersion() (helmVersion, error) {
 		return unknownHelmVersion, err
 	}
 
-	return parseVersion(string(out)), nil
+	return parseVersion(string(out))
 }
 
 func unableToFindHelmErrorMessage() error {
