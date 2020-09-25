@@ -19,7 +19,7 @@ up-to-date. Think `docker build && kubectl apply` or `docker-compose up`.
 
 ## Watch: Tilt in Two Minutes
 
-[![screencast](assets/demothumb.png)](https://www.youtube.com/watch?v=oSljj0zHd7U)
+[![screencast](assets/tilt-video.png)](https://www.youtube.com/watch?v=FSMc3kQgd5Y)
 
 ## Install Tilt
 
