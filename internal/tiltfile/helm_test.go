@@ -112,7 +112,8 @@ const exampleHelmV3_2VersionOutput = `v3.2.4`
 // see https://github.com/tilt-dev/tilt/issues/3788
 const exampleHelmV3_3VersionOutput = `WARNING: Kubernetes configuration file is group-readable. This is insecure. Location: /Users/someone/.kube/config
 WARNING: Kubernetes configuration file is world-readable. This is insecure. Location: /Users/someone/.kube/config
-v3.3.3+g55e3ca0`
+v3.3.3+g55e3ca0
+`
 
 func TestParseHelmV2Version(t *testing.T) {
 	expected := helmV2
