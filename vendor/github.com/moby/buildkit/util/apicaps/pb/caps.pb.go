@@ -9,6 +9,7 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
 	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -20,7 +21,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // APICap defines a capability supported by the service
 type APICap struct {
@@ -49,7 +50,7 @@ func (m *APICap) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_APICap.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +139,7 @@ var fileDescriptor_e19c39d9fcb89b83 = []byte{
 func (m *APICap) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -146,68 +147,80 @@ func (m *APICap) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *APICap) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *APICap) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.ID) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintCaps(dAtA, i, uint64(len(m.ID)))
-		i += copy(dAtA[i:], m.ID)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if m.Enabled {
-		dAtA[i] = 0x10
-		i++
-		if m.Enabled {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i++
+	if len(m.DisabledAlternative) > 0 {
+		i -= len(m.DisabledAlternative)
+		copy(dAtA[i:], m.DisabledAlternative)
+		i = encodeVarintCaps(dAtA, i, uint64(len(m.DisabledAlternative)))
+		i--
+		dAtA[i] = 0x32
+	}
+	if len(m.DisabledReasonMsg) > 0 {
+		i -= len(m.DisabledReasonMsg)
+		copy(dAtA[i:], m.DisabledReasonMsg)
+		i = encodeVarintCaps(dAtA, i, uint64(len(m.DisabledReasonMsg)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.DisabledReason) > 0 {
+		i -= len(m.DisabledReason)
+		copy(dAtA[i:], m.DisabledReason)
+		i = encodeVarintCaps(dAtA, i, uint64(len(m.DisabledReason)))
+		i--
+		dAtA[i] = 0x22
 	}
 	if m.Deprecated {
-		dAtA[i] = 0x18
-		i++
+		i--
 		if m.Deprecated {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
 		}
-		i++
+		i--
+		dAtA[i] = 0x18
 	}
-	if len(m.DisabledReason) > 0 {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintCaps(dAtA, i, uint64(len(m.DisabledReason)))
-		i += copy(dAtA[i:], m.DisabledReason)
+	if m.Enabled {
+		i--
+		if m.Enabled {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x10
 	}
-	if len(m.DisabledReasonMsg) > 0 {
-		dAtA[i] = 0x2a
-		i++
-		i = encodeVarintCaps(dAtA, i, uint64(len(m.DisabledReasonMsg)))
-		i += copy(dAtA[i:], m.DisabledReasonMsg)
+	if len(m.ID) > 0 {
+		i -= len(m.ID)
+		copy(dAtA[i:], m.ID)
+		i = encodeVarintCaps(dAtA, i, uint64(len(m.ID)))
+		i--
+		dAtA[i] = 0xa
 	}
-	if len(m.DisabledAlternative) > 0 {
-		dAtA[i] = 0x32
-		i++
-		i = encodeVarintCaps(dAtA, i, uint64(len(m.DisabledAlternative)))
-		i += copy(dAtA[i:], m.DisabledAlternative)
-	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
-	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func encodeVarintCaps(dAtA []byte, offset int, v uint64) int {
+	offset -= sovCaps(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *APICap) Size() (n int) {
 	if m == nil {
@@ -244,14 +257,7 @@ func (m *APICap) Size() (n int) {
 }
 
 func sovCaps(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
+	return (math_bits.Len64(x|1) + 6) / 7
 }
 func sozCaps(x uint64) (n int) {
 	return sovCaps(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -481,6 +487,7 @@ func (m *APICap) Unmarshal(dAtA []byte) error {
 func skipCaps(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
+	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -512,10 +519,8 @@ func skipCaps(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
-			return iNdEx, nil
 		case 1:
 			iNdEx += 8
-			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -536,55 +541,30 @@ func skipCaps(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthCaps
 			}
 			iNdEx += length
-			if iNdEx < 0 {
-				return 0, ErrInvalidLengthCaps
-			}
-			return iNdEx, nil
 		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return 0, ErrIntOverflowCaps
-					}
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipCaps(dAtA[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-				if iNdEx < 0 {
-					return 0, ErrInvalidLengthCaps
-				}
-			}
-			return iNdEx, nil
+			depth++
 		case 4:
-			return iNdEx, nil
+			if depth == 0 {
+				return 0, ErrUnexpectedEndOfGroupCaps
+			}
+			depth--
 		case 5:
 			iNdEx += 4
-			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
+		if iNdEx < 0 {
+			return 0, ErrInvalidLengthCaps
+		}
+		if depth == 0 {
+			return iNdEx, nil
+		}
 	}
-	panic("unreachable")
+	return 0, io.ErrUnexpectedEOF
 }
 
 var (
-	ErrInvalidLengthCaps = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowCaps   = fmt.Errorf("proto: integer overflow")
+	ErrInvalidLengthCaps        = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowCaps          = fmt.Errorf("proto: integer overflow")
+	ErrUnexpectedEndOfGroupCaps = fmt.Errorf("proto: unexpected end of group")
 )

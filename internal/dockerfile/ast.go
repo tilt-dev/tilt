@@ -19,7 +19,7 @@ import (
 )
 
 type AST struct {
-	directives map[string]string
+	directives map[string]dockerfile2llb.Directive
 	result     *parser.Result
 }
 
@@ -169,7 +169,7 @@ func (a AST) Print() (Dockerfile, error) {
 		// order of directives in a docker makes no semantic difference; we
 		// rehydrate directives in sorted order so output is deterministic
 		v := a.directives[k]
-		_, err := fmt.Fprintf(buf, directiveFmt, k, v)
+		_, err := fmt.Fprintf(buf, directiveFmt, v.Name, v.Value)
 		if err != nil {
 			return "", err
 		}
@@ -291,7 +291,7 @@ func newReader(df Dockerfile) io.Reader {
 	return bytes.NewBufferString(string(df))
 }
 
-func sortedKeys(m map[string]string) []string {
+func sortedKeys(m map[string]dockerfile2llb.Directive) []string {
 	var keys []string
 	for k := range m {
 		keys = append(keys, k)
@@ -304,12 +304,14 @@ func sortedKeys(m map[string]string) []string {
 // Iterate through them and do substitutions in order.
 func fakeArgsMap(shlex *shell.Lex, args []instructions.ArgCommand) map[string]string {
 	m := make(map[string]string)
-	for _, a := range args {
+	for _, argCmd := range args {
 		val := ""
-		if a.Value != nil {
-			val, _ = shlex.ProcessWordWithMap(*(a.Value), m)
+		for _, a := range argCmd.Args {
+			if a.Value != nil {
+				val, _ = shlex.ProcessWordWithMap(*(a.Value), m)
+			}
+			m[a.Key] = val
 		}
-		m[a.Key] = val
 	}
 	return m
 }

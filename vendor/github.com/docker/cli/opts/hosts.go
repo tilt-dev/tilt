@@ -24,6 +24,12 @@ var (
 	DefaultTLSHost = fmt.Sprintf("tcp://%s:%d", DefaultHTTPHost, DefaultTLSHTTPPort)
 	// DefaultNamedPipe defines the default named pipe used by docker on Windows
 	DefaultNamedPipe = `//./pipe/docker_engine`
+	// hostGatewayName defines a special string which users can append to --add-host
+	// to add an extra entry in /etc/hosts that maps host.docker.internal to the host IP
+	// TODO Consider moving the HostGatewayName constant defined in docker at
+	// github.com/docker/docker/daemon/network/constants.go outside of the "daemon"
+	// package, so that the CLI can consume it.
+	hostGatewayName = "host-gateway"
 )
 
 // ValidateHost validates that the specified string is a valid host and returns it.
@@ -160,8 +166,11 @@ func ValidateExtraHost(val string) (string, error) {
 	if len(arr) != 2 || len(arr[0]) == 0 {
 		return "", fmt.Errorf("bad format for add-host: %q", val)
 	}
-	if _, err := ValidateIPAddress(arr[1]); err != nil {
-		return "", fmt.Errorf("invalid IP address in add-host: %q", arr[1])
+	// Skip IPaddr validation for "host-gateway" string
+	if arr[1] != hostGatewayName {
+		if _, err := ValidateIPAddress(arr[1]); err != nil {
+			return "", fmt.Errorf("invalid IP address in add-host: %q", arr[1])
+		}
 	}
 	return val, nil
 }

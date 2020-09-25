@@ -217,7 +217,7 @@ func (f *dockerBuildFixture) assertFilesInContainer(
 
 // startContainer starts a container from the given config
 func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) wmcontainer.ID {
-	resp, err := f.dCli.ContainerCreate(ctx, config, nil, nil, "")
+	resp, err := f.dCli.ContainerCreate(ctx, config, nil, nil, nil, "")
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}

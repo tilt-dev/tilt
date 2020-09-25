@@ -32,7 +32,7 @@ func (o *SecretOpt) Set(value string) error {
 	}
 
 	// support a simple syntax of --secret foo
-	if len(fields) == 1 {
+	if len(fields) == 1 && !strings.Contains(fields[0], "=") {
 		options.File.Name = fields[0]
 		options.SecretName = fields[0]
 		o.values = append(o.values, options)
@@ -71,6 +71,9 @@ func (o *SecretOpt) Set(value string) error {
 
 	if options.SecretName == "" {
 		return fmt.Errorf("source is required")
+	}
+	if options.File.Name == "" {
+		options.File.Name = options.SecretName
 	}
 
 	o.values = append(o.values, options)
