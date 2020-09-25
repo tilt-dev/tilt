@@ -100,9 +100,9 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v11
+            - homebrew_cache_v12
       # Bump cache version when changing this.
-      - run: echo 'export HOMEBREW_PACKAGES="go@1.12"' >> $BASH_ENV
+      - run: echo 'export HOMEBREW_PACKAGES="go@1.14"' >> $BASH_ENV
       # Only update when brew doesn't know about some of the packages because:
       # 1) not worth the cost, and
       # 2) hits github in a way that leads to flakyness
@@ -111,12 +111,14 @@ jobs:
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v11
-      - run: echo 'export PATH="/usr/local/opt/go@1.12/bin:$PATH"' >> $BASH_ENV
+          key: homebrew_cache_v12
+      - run: echo 'export PATH="/usr/local/opt/go@1.14/bin:$PATH"' >> $BASH_ENV
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: mkdir -p test-results
+      # Check to make sure binaries compile
+      - run: go install -mod vendor ./cmd/tilt
       # Only run watch tests, because these are currently the only tests that are OS-specific.
       # In other Tilt tests, we mock out OS-specific components.
       - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -mod vendor ./internal/watch/...
