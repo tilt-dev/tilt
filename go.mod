@@ -106,4 +106,8 @@ replace (
 	github.com/evanphx/json-patch => github.com/tilt-dev/json-patch/v4 v4.8.1 // indirect
 	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+
+	// Workaround for:
+	// https://github.com/moby/term/issues/15
+	golang.org/x/sys => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
 )
