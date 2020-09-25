@@ -19,9 +19,10 @@ const (
 	CapSourceLocalExcludePatterns apicaps.CapID = "source.local.excludepatterns"
 	CapSourceLocalSharedKeyHint   apicaps.CapID = "source.local.sharedkeyhint"
 
-	CapSourceGit        apicaps.CapID = "source.git"
-	CapSourceGitKeepDir apicaps.CapID = "source.git.keepgitdir"
-	CapSourceGitFullURL apicaps.CapID = "source.git.fullurl"
+	CapSourceGit         apicaps.CapID = "source.git"
+	CapSourceGitKeepDir  apicaps.CapID = "source.git.keepgitdir"
+	CapSourceGitFullURL  apicaps.CapID = "source.git.fullurl"
+	CapSourceGitHTTPAuth apicaps.CapID = "source.git.httpauth"
 
 	CapSourceHTTP         apicaps.CapID = "source.http"
 	CapSourceHTTPChecksum apicaps.CapID = "source.http.checksum"
@@ -44,6 +45,8 @@ const (
 	CapExecMountSecret               apicaps.CapID = "exec.mount.secret"
 	CapExecMountSSH                  apicaps.CapID = "exec.mount.ssh"
 	CapExecCgroupsMounted            apicaps.CapID = "exec.cgroup"
+
+	CapExecMetaSecurityDeviceWhitelistV1 apicaps.CapID = "exec.meta.security.devices.v1"
 
 	CapFileBase       apicaps.CapID = "file.base"
 	CapFileRmWildcard apicaps.CapID = "file.rm.wildcard"
@@ -130,6 +133,12 @@ func init() {
 	})
 
 	Caps.Init(apicaps.Cap{
+		ID:      CapSourceGitHTTPAuth,
+		Enabled: true,
+		Status:  apicaps.CapStatusExperimental,
+	})
+
+	Caps.Init(apicaps.Cap{
 		ID:      CapSourceHTTP,
 		Enabled: true,
 		Status:  apicaps.CapStatusExperimental,
@@ -185,6 +194,12 @@ func init() {
 
 	Caps.Init(apicaps.Cap{
 		ID:      CapExecMetaSecurity,
+		Enabled: true,
+		Status:  apicaps.CapStatusExperimental,
+	})
+
+	Caps.Init(apicaps.Cap{
+		ID:      CapExecMetaSecurityDeviceWhitelistV1,
 		Enabled: true,
 		Status:  apicaps.CapStatusExperimental,
 	})
@@ -288,5 +303,4 @@ func init() {
 		Enabled: true,
 		Status:  apicaps.CapStatusExperimental,
 	})
-
 }

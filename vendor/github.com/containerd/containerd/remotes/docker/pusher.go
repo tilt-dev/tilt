@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
+	remoteserrors "github.com/containerd/containerd/remotes/errors"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -86,7 +87,7 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 
 	resp, err := req.doWithRetries(ctx, nil)
 	if err != nil {
-		if errors.Cause(err) != ErrInvalidAuthorization {
+		if !errors.Is(err, ErrInvalidAuthorization) {
 			return nil, err
 		}
 		log.G(ctx).WithError(err).Debugf("Unable to check existence, continuing with push")
@@ -112,8 +113,9 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 				return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "content %v on remote", desc.Digest)
 			}
 		} else if resp.StatusCode != http.StatusNotFound {
-			// TODO: log error
-			return nil, errors.Errorf("unexpected response: %s", resp.Status)
+			err := remoteserrors.NewUnexpectedStatusErr(resp)
+			log.G(ctx).WithField("resp", resp).WithField("body", string(err.(remoteserrors.ErrUnexpectedStatus).Body)).Debug("unexpected response")
+			return nil, err
 		}
 	}
 
@@ -166,8 +168,9 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 			})
 			return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "content %v on remote", desc.Digest)
 		default:
-			// TODO: log error
-			return nil, errors.Errorf("unexpected response: %s", resp.Status)
+			err := remoteserrors.NewUnexpectedStatusErr(resp)
+			log.G(ctx).WithField("resp", resp).WithField("body", string(err.(remoteserrors.ErrUnexpectedStatus).Body)).Debug("unexpected response")
+			return nil, err
 		}
 
 		var (
@@ -204,6 +207,7 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 		q.Add("digest", desc.Digest.String())
 
 		req = p.request(lhost, http.MethodPut)
+		req.header.Set("Content-Type", "application/octet-stream")
 		req.path = lurl.Path + "?" + q.Encode()
 	}
 	p.tracker.SetStatus(ref, Status{
@@ -234,7 +238,7 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 
 	go func() {
 		defer close(respC)
-		resp, err = req.do(ctx)
+		resp, err := req.do(ctx)
 		if err != nil {
 			pr.CloseWithError(err)
 			return
@@ -243,8 +247,9 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 		switch resp.StatusCode {
 		case http.StatusOK, http.StatusCreated, http.StatusNoContent:
 		default:
-			// TODO: log error
-			pr.CloseWithError(errors.Errorf("unexpected response: %s", resp.Status))
+			err := remoteserrors.NewUnexpectedStatusErr(resp)
+			log.G(ctx).WithField("resp", resp).WithField("body", string(err.(remoteserrors.ErrUnexpectedStatus).Body)).Debug("unexpected response")
+			pr.CloseWithError(err)
 		}
 		respC <- resp
 	}()
