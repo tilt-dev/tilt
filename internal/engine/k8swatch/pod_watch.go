@@ -33,7 +33,7 @@ type PodWatcher struct {
 
 	mu                sync.RWMutex
 	watches           []PodWatch
-	knownDeployedUIDs map[types.UID]model.ManifestName
+	watcherKnownState watcherKnownState
 
 	// An index that maps the UID of Kubernetes resources to the UIDs of
 	// all pods that they own (transitively).
@@ -49,9 +49,9 @@ func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *PodWatcher {
 	return &PodWatcher{
 		kCli:                   kCli,
 		ownerFetcher:           ownerFetcher,
-		knownDeployedUIDs:      make(map[types.UID]model.ManifestName),
 		knownDescendentPodUIDs: make(map[types.UID]store.UIDSet),
 		knownPods:              make(map[types.UID]*v1.Pod),
+		watcherKnownState:      newWatcherKnownState(),
 	}
 }
 
@@ -97,7 +97,7 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	taskList := createWatcherTaskList(state, w.knownDeployedUIDs)
+	taskList := w.watcherKnownState.createTaskList(state)
 	var neededWatches []PodWatch
 	for _, mt := range state.Targets() {
 		for _, ls := range mt.Manifest.K8sTarget().ExtraPodSelectors {
@@ -141,6 +141,10 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if len(taskList.newUIDs) > 0 {
 		w.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
+
+	w.mu.Lock()
+	w.watcherKnownState.finishTaskList(taskList.watcherTaskList)
+	w.mu.Unlock()
 }
 
 func (w *PodWatcher) addWatch(pw PodWatch) {
@@ -170,8 +174,6 @@ func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs 
 	defer w.mu.Unlock()
 
 	for uid, mn := range newUIDs {
-		w.knownDeployedUIDs[uid] = mn
-
 		pod, ok := w.knownPods[uid]
 		if ok {
 			st.Dispatch(NewPodChangeAction(pod, mn, uid))
@@ -226,7 +228,7 @@ func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) (mode
 
 	// Find the manifest name
 	for _, ownerUID := range objTree.UIDs() {
-		mn, ok := w.knownDeployedUIDs[ownerUID]
+		mn, ok := w.watcherKnownState.knownDeployedUIDs[ownerUID]
 		if ok {
 			return mn, ownerUID
 		}

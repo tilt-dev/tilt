@@ -29,7 +29,7 @@ type EventWatchManager struct {
 	watching     bool
 
 	mu                sync.RWMutex
-	knownDeployedUIDs map[types.UID]model.ManifestName
+	watcherKnownState watcherKnownState
 
 	// An index that maps the UID of Kubernetes resources to the UIDs of
 	// all events that they own (transitively).
@@ -45,7 +45,7 @@ func NewEventWatchManager(kClient k8s.Client, ownerFetcher k8s.OwnerFetcher) *Ev
 	return &EventWatchManager{
 		kClient:                  kClient,
 		ownerFetcher:             ownerFetcher,
-		knownDeployedUIDs:        make(map[types.UID]model.ManifestName),
+		watcherKnownState:        newWatcherKnownState(),
 		knownDescendentEventUIDs: make(map[types.UID]store.UIDSet),
 		knownEvents:              make(map[types.UID]*v1.Event),
 	}
@@ -63,7 +63,7 @@ func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	watcherTaskList := createWatcherTaskList(state, m.knownDeployedUIDs)
+	watcherTaskList := m.watcherKnownState.createTaskList(state)
 	if m.watching {
 		watcherTaskList.needsWatch = false
 	}
@@ -82,6 +82,10 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 	if len(taskList.newUIDs) > 0 {
 		m.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
+
+	m.mu.Lock()
+	m.watcherKnownState.finishTaskList(taskList.watcherTaskList)
+	m.mu.Unlock()
 }
 
 func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, tiltStartTime time.Time) {
@@ -105,8 +109,6 @@ func (m *EventWatchManager) setupNewUIDs(ctx context.Context, st store.RStore, n
 	defer m.mu.Unlock()
 
 	for uid, mn := range newUIDs {
-		m.knownDeployedUIDs[uid] = mn
-
 		descendants := m.knownDescendentEventUIDs[uid]
 		for uid := range descendants {
 			event, ok := m.knownEvents[uid]
@@ -144,7 +146,7 @@ func (m *EventWatchManager) triageEventUpdate(event *v1.Event, objTree k8s.Objec
 
 	// Find the manifest name
 	for _, ownerUID := range objTree.UIDs() {
-		mn, ok := m.knownDeployedUIDs[ownerUID]
+		mn, ok := m.watcherKnownState.knownDeployedUIDs[ownerUID]
 		if ok {
 			return mn
 		}
