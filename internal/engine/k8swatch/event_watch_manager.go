@@ -26,7 +26,6 @@ import (
 type EventWatchManager struct {
 	kClient      k8s.Client
 	ownerFetcher k8s.OwnerFetcher
-	watching     bool
 
 	mu                sync.RWMutex
 	watcherKnownState watcherKnownState
@@ -41,11 +40,11 @@ type EventWatchManager struct {
 	knownEvents map[types.UID]*v1.Event
 }
 
-func NewEventWatchManager(kClient k8s.Client, ownerFetcher k8s.OwnerFetcher) *EventWatchManager {
+func NewEventWatchManager(kClient k8s.Client, ownerFetcher k8s.OwnerFetcher, cfgNS k8s.Namespace) *EventWatchManager {
 	return &EventWatchManager{
 		kClient:                  kClient,
 		ownerFetcher:             ownerFetcher,
-		watcherKnownState:        newWatcherKnownState(),
+		watcherKnownState:        newWatcherKnownState(cfgNS),
 		knownDescendentEventUIDs: make(map[types.UID]store.UIDSet),
 		knownEvents:              make(map[types.UID]*v1.Event),
 	}
@@ -64,9 +63,6 @@ func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 	defer m.mu.RUnlock()
 
 	watcherTaskList := m.watcherKnownState.createTaskList(state)
-	if m.watching {
-		watcherTaskList.needsWatch = false
-	}
 	return eventWatchTaskList{
 		watcherTaskList: watcherTaskList,
 		tiltStartTime:   state.TiltStartTime,
@@ -75,28 +71,38 @@ func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 
 func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 	taskList := m.diff(st)
-	if taskList.needsWatch {
-		m.setupWatch(ctx, st, taskList.tiltStartTime)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, teardown := range taskList.teardownNamespaces {
+		watcher, ok := m.watcherKnownState.namespaceWatches[teardown]
+		if ok {
+			watcher.cancel()
+		}
+		delete(m.watcherKnownState.namespaceWatches, teardown)
+	}
+
+	for _, setup := range taskList.setupNamespaces {
+		m.setupWatch(ctx, st, setup, taskList.tiltStartTime)
 	}
 
 	if len(taskList.newUIDs) > 0 {
 		m.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
-
-	m.mu.Lock()
-	m.watcherKnownState.finishTaskList(taskList.watcherTaskList)
-	m.mu.Unlock()
 }
 
-func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, tiltStartTime time.Time) {
-	m.watching = true
-
-	ch, err := m.kClient.WatchEvents(ctx, "")
+func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace, tiltStartTime time.Time) {
+	ch, err := m.kClient.WatchEvents(ctx, ns)
 	if err != nil {
 		err = errors.Wrap(err, "Error watching k8s events\n")
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	m.watcherKnownState.namespaceWatches[ns] = namespaceWatch{cancel: cancel}
+
 	go m.dispatchEventsLoop(ctx, ch, st, tiltStartTime)
 }
 
@@ -105,10 +111,9 @@ func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, til
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
 func (m *EventWatchManager) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	for uid, mn := range newUIDs {
+		m.watcherKnownState.knownDeployedUIDs[uid] = mn
+
 		descendants := m.knownDescendentEventUIDs[uid]
 		for uid := range descendants {
 			event, ok := m.knownEvents[uid]

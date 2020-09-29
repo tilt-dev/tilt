@@ -2429,7 +2429,10 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 		InvolvedObject: objRef,
 		Message:        "something has happened zomg",
 		Type:           v1.EventTypeWarning,
-		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.Now()}},
+		ObjectMeta: metav1.ObjectMeta{
+			CreationTimestamp: metav1.Time{Time: f.Now()},
+			Namespace:         k8s.DefaultNamespace.String(),
+		},
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
@@ -2459,7 +2462,10 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 		InvolvedObject: v1.ObjectReference{UID: types.UID("someRandomUID")},
 		Message:        "something has happened zomg",
 		Type:           v1.EventTypeWarning,
-		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.Now()}},
+		ObjectMeta: metav1.ObjectMeta{
+			CreationTimestamp: metav1.Time{Time: f.Now()},
+			Namespace:         k8s.DefaultNamespace.String(),
+		},
 	}
 	f.kClient.EmitEvent(f.ctx, warnEvt)
 
@@ -3591,10 +3597,11 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	dockerClient := docker.NewFakeClient()
 
+	ns := k8s.Namespace("default")
 	kCli := k8s.NewFakeK8sClient()
 	of := k8s.ProvideOwnerFetcher(kCli)
-	pw := k8swatch.NewPodWatcher(kCli, of)
-	sw := k8swatch.NewServiceWatcher(kCli, of)
+	pw := k8swatch.NewPodWatcher(kCli, of, ns)
+	sw := k8swatch.NewServiceWatcher(kCli, of, ns)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
@@ -3629,7 +3636,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	assert.NoError(t, err)
 	sm := containerupdate.NewSyncletManagerForTests(kCli, sGRPCCli, sCli)
 	hudsc := server.ProvideHeadsUpServerController("localhost", 0, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
-	ewm := k8swatch.NewEventWatchManager(kCli, of)
+	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := local.NewFakeExecer()
 	lc := local.NewController(fe)
