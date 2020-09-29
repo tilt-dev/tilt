@@ -13,7 +13,7 @@ fi
 DIR=$(dirname "$0")
 cd "$DIR/.."
 
-./scripts/upload-assets.py latest
+./scripts/upload-assets.py latest --force
 ./scripts/goreleaser.sh
 
 VERSION=$(git describe --abbrev=0 --tags)
