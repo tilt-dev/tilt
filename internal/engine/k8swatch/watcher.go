@@ -13,11 +13,21 @@ type watcherTaskList struct {
 	newUIDs    map[types.UID]model.ManifestName
 }
 
+type watcherKnownState struct {
+	knownDeployedUIDs map[types.UID]model.ManifestName
+}
+
+func newWatcherKnownState() watcherKnownState {
+	return watcherKnownState{
+		knownDeployedUIDs: make(map[types.UID]model.ManifestName),
+	}
+}
+
 // Diff the contents of the engine state against the deployed UIDs that the
 // watcher already knows about, and create a task list of things to do.
 //
 // Assumes we're holding an RLock on both states.
-func createWatcherTaskList(state store.EngineState, knownDeployedUIDs map[types.UID]model.ManifestName) watcherTaskList {
+func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTaskList {
 	newUIDs := make(map[types.UID]model.ManifestName)
 	atLeastOneK8s := false
 	for _, mt := range state.Targets() {
@@ -30,7 +40,7 @@ func createWatcherTaskList(state store.EngineState, knownDeployedUIDs map[types.
 
 		// Collect all the new UIDs
 		for id := range mt.State.K8sRuntimeState().DeployedUIDSet {
-			oldName := knownDeployedUIDs[id]
+			oldName := ks.knownDeployedUIDs[id]
 			if name != oldName {
 				newUIDs[id] = name
 			}
@@ -41,5 +51,14 @@ func createWatcherTaskList(state store.EngineState, knownDeployedUIDs map[types.
 	return watcherTaskList{
 		needsWatch: needsWatch,
 		newUIDs:    newUIDs,
+	}
+}
+
+// Updates the known state when we've completed the task list.
+//
+// Assumes we're holding a lock on this state.
+func (ks *watcherKnownState) finishTaskList(l watcherTaskList) {
+	for uid, mn := range l.newUIDs {
+		ks.knownDeployedUIDs[uid] = mn
 	}
 }

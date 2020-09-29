@@ -20,7 +20,7 @@ type ServiceWatcher struct {
 	watching     bool
 
 	mu                sync.RWMutex
-	knownDeployedUIDs map[types.UID]model.ManifestName
+	watcherKnownState watcherKnownState
 	knownServices     map[types.UID]*v1.Service
 }
 
@@ -28,7 +28,7 @@ func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *ServiceW
 	return &ServiceWatcher{
 		kCli:              kCli,
 		ownerFetcher:      ownerFetcher,
-		knownDeployedUIDs: make(map[types.UID]model.ManifestName),
+		watcherKnownState: newWatcherKnownState(),
 		knownServices:     make(map[types.UID]*v1.Service),
 	}
 }
@@ -40,7 +40,7 @@ func (w *ServiceWatcher) diff(st store.RStore) watcherTaskList {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	taskList := createWatcherTaskList(state, w.knownDeployedUIDs)
+	taskList := w.watcherKnownState.createTaskList(state)
 	if w.watching {
 		taskList.needsWatch = false
 	}
@@ -56,6 +56,10 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if len(taskList.newUIDs) > 0 {
 		w.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
+
+	w.mu.Lock()
+	w.watcherKnownState.finishTaskList(taskList)
+	w.mu.Unlock()
 }
 
 func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore) {
@@ -80,8 +84,6 @@ func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newU
 	defer w.mu.Unlock()
 
 	for uid, mn := range newUIDs {
-		w.knownDeployedUIDs[uid] = mn
-
 		service, ok := w.knownServices[uid]
 		if !ok {
 			continue
@@ -105,7 +107,7 @@ func (w *ServiceWatcher) triageServiceUpdate(service *v1.Service) model.Manifest
 	uid := service.UID
 	w.knownServices[uid] = service
 
-	manifestName, ok := w.knownDeployedUIDs[uid]
+	manifestName, ok := w.watcherKnownState.knownDeployedUIDs[uid]
 	if !ok {
 		return ""
 	}
