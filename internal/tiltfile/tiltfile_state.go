@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -13,30 +12,41 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/feature"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/tiltfile/analytics"
-	"github.com/windmilleng/tilt/internal/tiltfile/config"
-	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
-	"github.com/windmilleng/tilt/internal/tiltfile/encoding"
-	"github.com/windmilleng/tilt/internal/tiltfile/git"
-	"github.com/windmilleng/tilt/internal/tiltfile/include"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
-	"github.com/windmilleng/tilt/internal/tiltfile/os"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/starlarkstruct"
-	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
-	"github.com/windmilleng/tilt/internal/tiltfile/tiltextension"
-	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
-	"github.com/windmilleng/tilt/internal/tiltfile/version"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/feature"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/tiltfile/analytics"
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
+	"github.com/tilt-dev/tilt/internal/tiltfile/encoding"
+	"github.com/tilt-dev/tilt/internal/tiltfile/git"
+	"github.com/tilt-dev/tilt/internal/tiltfile/include"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
+	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/metrics"
+	"github.com/tilt-dev/tilt/internal/tiltfile/os"
+	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
+	"github.com/tilt-dev/tilt/internal/tiltfile/shlex"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starlarkstruct"
+	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
+	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
+	"github.com/tilt-dev/tilt/internal/tiltfile/version"
+	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+var unmatchedImageNoConfigsWarning = "No Kubernetes or Docker Compose configs found.\n" +
+	"Skipping all image builds until we have a place to deploy them"
+var unmatchedImageAllUnresourcedWarning = "No Kubernetes configs with images found.\n" +
+	"If you are using CRDs, add k8s_kind() to tell Tilt how to find images.\n" +
+	"https://docs.tilt.dev/api.html#api.k8s_kind"
 
 type resourceSet struct {
 	dc  dcResourceSet // currently only support one d-c.yml
@@ -50,14 +60,25 @@ type tiltfileState struct {
 	webHost       model.WebHost
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
+	configExt     *config.Extension
 	localRegistry container.Registry
 	features      feature.FeatureSet
 
 	// added to during execution
-	buildIndex         *buildIndex
-	k8s                []*k8sResource
-	k8sByName          map[string]*k8sResource
-	k8sUnresourced     []k8s.K8sEntity
+	buildIndex     *buildIndex
+	k8sObjectIndex *tiltfile_k8s.State
+
+	// The mutation semantics of these 3 things are a bit fuzzy
+	// Objects are moved back and forth between them in different
+	// phases of tiltfile execution and post-execution assembly.
+	//
+	// TODO(nick): Move these into a unified k8sObjectIndex that
+	// maintains consistent internal state. Right now the state
+	// is duplicated.
+	k8s            []*k8sResource
+	k8sByName      map[string]*k8sResource
+	k8sUnresourced []k8s.K8sEntity
+
 	dc                 dcResourceSet // currently only support one d-c.yml
 	k8sResourceOptions map[string]k8sResourceOptions
 	localResources     []localResource
@@ -65,10 +86,7 @@ type tiltfileState struct {
 	// ensure that any images are pushed to/pulled from this registry, rewriting names if needed
 	defaultReg container.Registry
 
-	// JSON paths to images in k8s YAML (other than Container specs)
-	k8sImageJSONPaths map[k8sObjectSelector][]k8s.JSONPath
-	// objects of these types are considered workloads, whether or not they have an image
-	workloadTypes []k8sObjectSelector
+	k8sKinds map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo
 
 	k8sResourceAssemblyVersion       int
 	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
@@ -98,9 +116,14 @@ type tiltfileState struct {
 
 	teamID string
 
+	secretSettings model.SecretSettings
+
 	logger                           logger.Logger
 	warnedDeprecatedResourceAssembly bool
-	postExecReadFiles                []string
+
+	// postExecReadFiles is generally a mistake -- it means that if tiltfile execution fails,
+	// these will never be read. Remove these when you can!!!
+	postExecReadFiles []string
 }
 
 type k8sResourceAssemblyVersionReason int
@@ -118,6 +141,7 @@ func newTiltfileState(
 	webHost model.WebHost,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
+	configExt *config.Extension,
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
@@ -126,10 +150,11 @@ func newTiltfileState(
 		webHost:                    webHost,
 		k8sContextExt:              k8sContextExt,
 		versionExt:                 versionExt,
+		configExt:                  configExt,
 		localRegistry:              localRegistry,
 		buildIndex:                 newBuildIndex(),
+		k8sObjectIndex:             tiltfile_k8s.NewState(),
 		k8sByName:                  make(map[string]*k8sResource),
-		k8sImageJSONPaths:          make(map[k8sObjectSelector][]k8s.JSONPath),
 		usedImages:                 make(map[string]bool),
 		logger:                     logger.Get(ctx),
 		builtinCallCounts:          make(map[string]int),
@@ -140,6 +165,8 @@ func newTiltfileState(
 		localResources:             []localResource{},
 		triggerMode:                TriggerModeAuto,
 		features:                   features,
+		secretSettings:             model.DefaultSecretSettings(),
+		k8sKinds:                   make(map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo),
 	}
 }
 
@@ -157,6 +184,15 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 // all the mutable state collected by execution.
 func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.UserConfigState) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Beginning Tiltfile execution")
+
+	s.configExt.UserConfigState = userConfigState
+
+	dlr, err := tiltextension.NewTempDirDownloader()
+	if err != nil {
+		return nil, starkit.Model{}, err
+	}
+	fetcher := tiltextension.NewGithubFetcher(dlr)
+
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
@@ -167,12 +203,16 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		dockerprune.NewExtension(),
 		analytics.NewExtension(),
 		s.versionExt,
-		config.NewExtension(userConfigState),
+		s.configExt,
 		starlarkstruct.NewExtension(),
 		telemetry.NewExtension(),
+		metrics.NewExtension(),
 		updatesettings.NewExtension(),
+		secretsettings.NewExtension(),
 		encoding.NewExtension(),
-		tiltextension.NewExtension(tiltextension.NewGithubFetcher(), tiltextension.NewLocalStore(filepath.Dir(absFilename))),
+		shlex.NewExtension(),
+		watch.NewExtension(),
+		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -210,6 +250,11 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		}
 	}
 
+	err = s.validateLiveUpdatesForManifests(manifests)
+	if err != nil {
+		return nil, result, err
+	}
+
 	err = s.checkForUnconsumedLiveUpdateSteps()
 	if err != nil {
 		return nil, result, err
@@ -228,10 +273,11 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 
 	if len(unresourced) > 0 {
-		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced)
+		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced, s.k8sImageLocatorsList())
 		if err != nil {
 			return nil, starkit.Model{}, err
 		}
+
 		manifests = append(manifests, yamlManifest)
 	}
 
@@ -363,7 +409,7 @@ func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 }
 
 func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string) error {
-	return io.RecordReadFile(t, tiltIgnorePath(tiltfilePath))
+	return nil
 }
 
 // wrap a builtin such that it's only allowed to run when we have a known safe k8s context
@@ -518,7 +564,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 			"resources/entities and docker-compose resources")
 	}
 
-	err = s.buildIndex.assertAllMatched()
+	err = s.assertAllImagesMatched()
 	if err != nil {
 		s.logger.Warnf("%s", err.Error())
 	}
@@ -527,6 +573,42 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		dc:  s.dc,
 		k8s: s.k8s,
 	}, s.k8sUnresourced, nil
+}
+
+// Emit an error if there are unmatches images.
+//
+// There are 4 mistakes people commonly make if they
+// have unmatched images:
+// 1) They didn't include any Kubernetes or Docker Compose configs at all.
+// 2) They included Kubernetes configs, but they're custom resources
+//    and Tilt can't infer the image.
+// 3) They typo'd the image name, and need help finding the right name.
+// 4) The tooling they're using to generating the k8s resources
+//    isn't generating what they expect.
+//
+// This function intends to help with cases (1)-(3).
+// Long-term, we want to have better tooling to help with (4),
+// like being able to see k8s resources as they move thru
+// the build system.
+func (s *tiltfileState) assertAllImagesMatched() error {
+	unmatchedImages := s.buildIndex.unmatchedImages()
+	if len(unmatchedImages) == 0 {
+		return nil
+	}
+
+	if len(s.dc.services) == 0 && len(s.k8s) == 0 && len(s.k8sUnresourced) == 0 {
+		return fmt.Errorf(unmatchedImageNoConfigsWarning)
+	}
+
+	if len(s.k8s) == 0 && len(s.k8sUnresourced) != 0 {
+		return fmt.Errorf(unmatchedImageAllUnresourcedWarning)
+	}
+
+	configType := "Kubernetes"
+	if len(s.dc.services) > 0 {
+		configType = "Docker Compose"
+	}
+	return s.buildIndex.unmatchedImageWarning(unmatchedImages[0], configType)
 }
 
 func (s *tiltfileState) assembleImages() error {
@@ -602,26 +684,89 @@ func (s *tiltfileState) assembleK8sV2() error {
 		return err
 	}
 
+	resourcedEntities := []k8s.K8sEntity{}
+	for _, r := range s.k8sByName {
+		resourcedEntities = append(resourcedEntities, r.entities...)
+	}
+
+	allEntities := append(resourcedEntities, s.k8sUnresourced...)
+
+	fragmentsToEntities := k8s.FragmentsToEntities(allEntities)
+
+	fullNames := make([]string, len(allEntities))
+	for i, e := range allEntities {
+		fullNames[i] = fullNameFromK8sEntity(e)
+	}
+
 	for workload, opts := range s.k8sResourceOptions {
+		if opts.manuallyGrouped {
+			r, err := s.makeK8sResource(opts.newName)
+			if err != nil {
+				return err
+			}
+			r.manuallyGrouped = true
+			s.k8sByName[opts.newName] = r
+		}
 		if r, ok := s.k8sByName[workload]; ok {
 			r.extraPodSelectors = opts.extraPodSelectors
+			r.podReadinessMode = opts.podReadinessMode
 			r.portForwards = opts.portForwards
 			r.triggerMode = opts.triggerMode
+			r.autoInit = opts.autoInit
 			r.resourceDeps = opts.resourceDeps
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
-					return fmt.Errorf("k8s_resource at %s specified to rename '%s' to '%s', but there is already a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
+					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q, but there already exists a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
 				}
 				delete(s.k8sByName, r.name)
 				r.name = opts.newName
 				s.k8sByName[r.name] = r
 			}
+
+			selectors := make([]k8s.ObjectSelector, len(opts.objects))
+			for i, o := range opts.objects {
+				s, err := k8s.SelectorFromString(o)
+				if err != nil {
+					return errors.Wrapf(err, "Error making selector from string %q", o)
+				}
+				selectors[i] = s
+			}
+
+			for i, o := range opts.objects {
+				entities, ok := fragmentsToEntities[strings.ToLower(o)]
+				if !ok || len(entities) == 0 {
+					return fmt.Errorf("No object identified by the fragment %q could be found. Possible objects are: %s", o, sliceutils.QuotedStringList(fullNames))
+				}
+				if len(entities) > 1 {
+					matchingObjects := make([]string, len(entities))
+					for i, e := range entities {
+						matchingObjects[i] = fullNameFromK8sEntity(e)
+					}
+					return fmt.Errorf("%q is not a unique fragment. Objects that match %q are %s", o, o, sliceutils.QuotedStringList(matchingObjects))
+				}
+
+				entitiesToRemove := filterEntitiesBySelector(s.k8sUnresourced, selectors[i])
+				if len(entitiesToRemove) == 0 {
+					// we've already taken these entities out of unresourced
+					remainingUnresourced := make([]string, len(s.k8sUnresourced))
+					for i, entity := range s.k8sUnresourced {
+						remainingUnresourced[i] = fullNameFromK8sEntity(entity)
+					}
+					return fmt.Errorf("No object identified by the fragment %q could be found in remaining YAML. Valid remaining fragments are: %s", o, sliceutils.QuotedStringList(remainingUnresourced))
+				}
+				if len(entitiesToRemove) > 1 {
+					panic(fmt.Sprintf("Fragment %q matches %d resources. Each object fragment must match exactly 1 resource. This should NOT be possible at this point in the code, we should have already checked that this fragment was unique", o, len(entitiesToRemove)))
+				}
+
+				s.addEntityToResourceAndRemoveFromUnresourced(entitiesToRemove[0], r)
+			}
+
 		} else {
 			var knownResources []string
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource '%s'. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info.", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource at %s specified unknown resource %q. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
 		}
 	}
 
@@ -633,10 +778,50 @@ func (s *tiltfileState) assembleK8sV2() error {
 	return nil
 }
 
+// NOTE(dmiller): This isn't _technically_ a fullname since it is missing "group" (core, apps, data, etc)
+// A true full name would look like "foo:secret:mynamespace:core"
+// However because we
+// a) couldn't think of a concrete case where you would need to specify group
+// b) being able to do so would make things more complicated, like in the case where you want to specify the group of
+//    a cluster scoped object but are unable to specify the namespace (e.g. foo:clusterrole::rbac.authorization.k8s.io)
+//
+// we decided to leave it off for now. When we encounter a concrete use case for specifying group it shouldn't be too
+// hard to add it here and in the docs.
+func fullNameFromK8sEntity(e k8s.K8sEntity) string {
+	return k8s.SelectorStringFromParts([]string{e.Name(), e.GVK().Kind, e.Namespace().String()})
+}
+
+func filterEntitiesBySelector(entities []k8s.K8sEntity, sel k8s.ObjectSelector) []k8s.K8sEntity {
+	ret := []k8s.K8sEntity{}
+
+	for _, e := range entities {
+		if sel.Matches(e) {
+			ret = append(ret, e)
+		}
+	}
+
+	return ret
+}
+
+func (s *tiltfileState) addEntityToResourceAndRemoveFromUnresourced(e k8s.K8sEntity, r *k8sResource) {
+	r.entities = append(r.entities, e)
+	for i, ur := range s.k8sUnresourced {
+		if ur == e {
+			// delete from unresourced
+			s.k8sUnresourced = append(s.k8sUnresourced[:i], s.k8sUnresourced[i+1:]...)
+			return
+		}
+	}
+
+	panic("Unable to find entity in unresourced YAML after checking that it was there. This should never happen")
+}
+
 func (s *tiltfileState) assembleK8sByWorkload() error {
+	locators := s.k8sImageLocatorsList()
+
 	var workloads, rest []k8s.K8sEntity
 	for _, e := range s.k8sUnresourced {
-		isWorkload, err := s.isWorkload(e)
+		isWorkload, err := s.isWorkload(e, locators)
 		if err != nil {
 			return err
 		}
@@ -652,13 +837,14 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 	if err != nil {
 		return err
 	}
+
 	for i, resourceName := range resourceNames {
 		workload := workloads[i]
 		res, err := s.makeK8sResource(resourceName)
 		if err != nil {
 			return errors.Wrapf(err, "error making resource for workload %s", newK8sObjectID(workload))
 		}
-		err = res.addEntities([]k8s.K8sEntity{workload}, s.imageJSONPaths, s.envVarImages())
+		err = res.addEntities([]k8s.K8sEntity{workload}, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -670,7 +856,7 @@ func (s *tiltfileState) assembleK8sByWorkload() error {
 			return err
 		}
 
-		err = res.addEntities(match, s.imageJSONPaths, s.envVarImages())
+		err = res.addEntities(match, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -693,14 +879,14 @@ func (s *tiltfileState) envVarImages() []container.RefSelector {
 	return r
 }
 
-func (s *tiltfileState) isWorkload(e k8s.K8sEntity) (bool, error) {
-	for _, sel := range s.workloadTypes {
-		if sel.matches(e) {
+func (s *tiltfileState) isWorkload(e k8s.K8sEntity, locators []k8s.ImageLocator) (bool, error) {
+	for sel := range s.k8sKinds {
+		if sel.Matches(e) {
 			return true, nil
 		}
 	}
 
-	images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
+	images, err := e.FindImages(locators, s.envVarImages())
 	if err != nil {
 		return false, errors.Wrapf(err, "finding images in %s", e.Name())
 	} else {
@@ -836,8 +1022,9 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 	var result []reference.Named
 	seen := make(map[string]bool)
 
+	locators := s.k8sImageLocatorsList()
 	for _, e := range s.k8sUnresourced {
-		images, err := e.FindImages(s.imageJSONPaths(e), s.envVarImages())
+		images, err := e.FindImages(locators, s.envVarImages())
 		if err != nil {
 			return nil, err
 		}
@@ -853,12 +1040,13 @@ func (s *tiltfileState) findUnresourcedImages() ([]reference.Named, error) {
 
 // extractEntities extracts k8s entities matching the image ref and stores them on the dest k8sResource
 func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.RefSelector) error {
-	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, s.imageJSONPaths, false)
+	locators := s.k8sImageLocatorsList()
+	extracted, remaining, err := k8s.FilterByImage(s.k8sUnresourced, imageRef, locators, false)
 	if err != nil {
 		return err
 	}
 
-	err = dest.addEntities(extracted, s.imageJSONPaths, s.envVarImages())
+	err = dest.addEntities(extracted, locators, s.envVarImages())
 	if err != nil {
 		return err
 	}
@@ -871,7 +1059,7 @@ func (s *tiltfileState) extractEntities(dest *k8sResource, imageRef container.Re
 			return err
 		}
 
-		err = dest.addEntities(match, s.imageJSONPaths, s.envVarImages())
+		err = dest.addEntities(match, locators, s.envVarImages())
 		if err != nil {
 			return err
 		}
@@ -895,14 +1083,74 @@ func (s *tiltfileState) decideRegistry() container.Registry {
 	return s.defaultReg
 }
 
+// Auto-infer the readiness mode
+//
+// CONVO:
+// jazzdan: This still feels overloaded to me
+// nicks: i think whenever we define a new CRD, we need to know:
+
+// how to find the images in it
+// how to find any pods it deploys (if they can't be found by owner references)
+// if it should not expect pods at all (e.g., PostgresVersion)
+// if it should wait for the pods to be ready before building the next resource (e.g., servers)
+// if it should wait for the pods to be complete before building the next resource (e.g., jobs)
+// and it's complicated a bit by the fact that there are both normal CRDs where the image shows up in the same place each time, and more meta CRDs (like HelmRelease) where it might appear in different places
+//
+// feels like wer're still doing this very ad-hoc rather than holistically
+func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadinessMode {
+	// The mode set directly on the resource has highest priority.
+	if r.podReadinessMode != model.PodReadinessNone {
+		return r.podReadinessMode
+	}
+
+	// Next, check if any of the k8s kinds have a mode.
+	hasWaitMode := false
+	hasIgnoreMode := false
+	for _, e := range r.entities {
+		for sel, info := range s.k8sKinds {
+			if sel.Matches(e) {
+				if info.PodReadinessMode == model.PodReadinessWait {
+					hasWaitMode = true
+				}
+
+				if info.PodReadinessMode == model.PodReadinessIgnore {
+					hasIgnoreMode = true
+				}
+			}
+		}
+	}
+
+	if hasWaitMode {
+		return model.PodReadinessWait
+	}
+
+	if hasIgnoreMode {
+		return model.PodReadinessIgnore
+	}
+
+	// Auto-infer based on context
+	//
+	// If the resource was
+	// 1) manually grouped (i.e., we didn't find any images in it)
+	// 2) doesn't have pod selectors, and
+	// 3) doesn't depend on images
+	// assume that it will never create pods.
+	if r.manuallyGrouped && len(r.extraPodSelectors) == 0 && len(r.dependencyIDs) == 0 {
+		return model.PodReadinessIgnore
+	}
+
+	return model.PodReadinessWait
+}
+
 func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
 	var result []model.Manifest
+	locators := s.k8sImageLocatorsList()
 	registry := s.decideRegistry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
-		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), true)
+		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), r.autoInit)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error in resource %s options", mn)
 		}
 
 		var mds []model.ManifestName
@@ -916,7 +1164,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		}
 
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities, s.defaultedPortForwards(r.portForwards),
-			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap)
+			r.extraPodSelectors, r.dependencyIDs, r.imageRefMap, s.inferPodReadinessMode(r), locators)
 		if err != nil {
 			return nil, err
 		}
@@ -930,14 +1178,12 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 
 		m = m.WithImageTargets(iTargets)
 
-		if !s.features.Get(feature.MultipleContainersPerPod) {
-			err = s.checkForImpossibleLiveUpdates(m)
-			if err != nil {
-				return nil, err
-			}
-		}
-
 		result = append(result, m)
+	}
+
+	err := maybeRestartContainerDeprecationError(result)
+	if err != nil {
+		return nil, err
 	}
 
 	return result, nil
@@ -966,14 +1212,19 @@ func (s *tiltfileState) defaultedPortForwards(pfs []model.PortForward) []model.P
 	return result
 }
 
-// checkForImpossibleLiveUpdates logs a warning if the group of image targets contains
-// any impossible LiveUpdates (or FastBuilds).
-//
-// Currently, we only collect container information for the first Tilt-built container
-// on the pod (b/c of how we assemble resources, this corresponds to the first image target).
-// We won't collect container info on any subsequent containers (i.e. subsequent image
-// targets), so will never be able to LiveUpdate them.
-func (s *tiltfileState) checkForImpossibleLiveUpdates(m model.Manifest) error {
+func (s *tiltfileState) validateLiveUpdatesForManifests(manifests []model.Manifest) error {
+	for _, m := range manifests {
+		err := s.validateLiveUpdatesForManifest(m)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateLiveUpdatesForManifest checks any image targets on the
+// given manifest the contain any illegal LiveUpdates
+func (s *tiltfileState) validateLiveUpdatesForManifest(m model.Manifest) error {
 	g, err := model.NewTargetGraph(m.TargetSpecs())
 	if err != nil {
 		return err
@@ -1032,16 +1283,45 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 
 	for _, path := range lu.FallBackOnFiles().Paths {
 		if !filepath.IsAbs(path) {
-			return fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/windmilleng/tilt/issues : %s", path)
+			return fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/tilt-dev/tilt/issues : %s", path)
 		}
 		if !ospath.IsChildOfOne(watchedPaths, path) {
 			return fmt.Errorf("fall_back_on paths '%s' is not a child of any watched filepaths (%v)",
 				path, watchedPaths)
 		}
-
 	}
 
 	return nil
+}
+
+func maybeRestartContainerDeprecationError(manifests []model.Manifest) error {
+	var needsError []model.ManifestName
+	for _, m := range manifests {
+		if needsRestartContainerDeprecationError(m) {
+			needsError = append(needsError, m.Name)
+		}
+	}
+
+	if len(needsError) > 0 {
+		return fmt.Errorf("%s", restartContainerDeprecationError(needsError))
+	}
+	return nil
+}
+func needsRestartContainerDeprecationError(m model.Manifest) bool {
+	// 7/2/20: we've deprecated restart_container() in favor of the restart_process extension.
+	// If this is a k8s resource with a restart_container step, throw a deprecation error.
+	// (restart_container is still allowed for Docker Compose resources)
+	if !m.IsK8s() {
+		return false
+	}
+
+	for _, iTarg := range m.ImageTargets {
+		if iTarg.LiveUpdateInfo().ShouldRestart() {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Grabs all image targets for the given references,
@@ -1101,27 +1381,37 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				SSHSpecs:    image.sshSpecs,
 				SecretSpecs: image.secretSpecs,
 				Network:     image.network,
+				CacheFrom:   image.cacheFrom,
+				PullParent:  image.pullParent,
 				ExtraTags:   image.extraTags,
 			})
 		case CustomBuild:
 			r := model.CustomBuild{
-				WorkDir:          image.workDir,
-				Command:          image.customCommand,
-				Deps:             image.customDeps,
-				Tag:              image.customTag,
-				DisablePush:      image.disablePush,
-				SkipsLocalDocker: image.skipsLocalDocker,
-				LiveUpdate:       lu,
+				WorkDir:           image.workDir,
+				Command:           image.customCommand,
+				Deps:              image.customDeps,
+				Tag:               image.customTag,
+				DisablePush:       image.disablePush,
+				SkipsLocalDocker:  image.skipsLocalDocker,
+				OutputsImageRefTo: image.outputsImageRefTo,
+				LiveUpdate:        lu,
 			}
-			iTarget = iTarget.WithBuildDetails(r)
+			iTarget = iTarget.WithBuildDetails(r).
+				MaybeIgnoreRegistry()
+
 			// TODO(dbentley): validate that syncs is a subset of deps
 		case UnknownBuild:
-			return nil, fmt.Errorf("no build info for image %s", image.configurationRef)
+			return nil, fmt.Errorf("no build info for image %s", image.configurationRef.RefFamiliarString())
+		}
+
+		dIgnores, err := s.dockerignoresForImage(image)
+		if err != nil {
+			return nil, fmt.Errorf("Reading dockerignore for %s: %v", image.configurationRef.RefFamiliarString(), err)
 		}
 
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
-			WithDockerignores(s.dockerignoresForImage(image)). // used even for custom build
+			WithDockerignores(dIgnores). // used even for custom build
 			WithTiltFilename(image.workDir).
 			WithDependencyIDs(image.dependencyIDs)
 
@@ -1142,7 +1432,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 	var result []model.Manifest
 
 	for _, svc := range dc.services {
-		m, configFiles, err := s.dcServiceToManifest(svc, dc)
+		m, err := s.dcServiceToManifest(svc, dc)
 		if err != nil {
 			return nil, err
 		}
@@ -1160,19 +1450,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 
 		m = m.WithImageTargets(iTargets)
 
-		err = s.checkForImpossibleLiveUpdates(m)
-		if err != nil {
-			return nil, err
-		}
-
 		result = append(result, m)
-
-		// TODO(maia): might get config files from dc.yml that are overridden by imageTarget :-/
-		// e.g. dc.yml specifies one Dockerfile but the imageTarget specifies another
-		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, configFiles...)
-	}
-	if len(dc.configPaths) != 0 {
-		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, dc.configPaths...)
 	}
 
 	return result, nil
@@ -1189,60 +1467,6 @@ const (
 	claimPending
 	claimFinished
 )
-
-// A selector matches an entity if all non-empty selector fields match the corresponding entity fields
-type k8sObjectSelector struct {
-	apiVersion *regexp.Regexp
-	kind       *regexp.Regexp
-
-	name      *regexp.Regexp
-	namespace *regexp.Regexp
-}
-
-// Creates a new k8sObjectSelector
-// If an arg is an empty string, it will become an empty regex that matches all input
-func newK8sObjectSelector(apiVersion string, kind string, name string, namespace string) (k8sObjectSelector, error) {
-	ret := k8sObjectSelector{}
-	var err error
-
-	makeCaseInsensitive := func(s string) string {
-		if s == "" {
-			return s
-		} else {
-			return "(?i)" + s
-		}
-	}
-
-	ret.apiVersion, err = regexp.Compile(makeCaseInsensitive(apiVersion))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
-	}
-
-	ret.kind, err = regexp.Compile(makeCaseInsensitive(kind))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
-	}
-
-	ret.name, err = regexp.Compile(makeCaseInsensitive(name))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
-	}
-
-	ret.namespace, err = regexp.Compile(makeCaseInsensitive(namespace))
-	if err != nil {
-		return k8sObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
-	}
-
-	return ret, nil
-}
-
-func (k k8sObjectSelector) matches(e k8s.K8sEntity) bool {
-	gvk := e.GVK()
-	return k.apiVersion.MatchString(gvk.GroupVersion().String()) &&
-		k.kind.MatchString(gvk.Kind) &&
-		k.name.MatchString(e.Name()) &&
-		k.namespace.MatchString(e.Namespace().String())
-}
 
 func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var triggerMode triggerMode
@@ -1288,20 +1512,24 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		mn := model.ManifestName(r.name)
 		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), r.autoInit)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error in resource %s options", mn)
 		}
 
 		paths := append(r.deps, r.workdir)
 
 		var ignores []model.Dockerignore
-		ignoreContents := ignoresToDockerignoreContents(r.ignores)
-		if ignoreContents != "" {
-			ignores = append(ignores, model.Dockerignore{Contents: ignoreContents, LocalPath: r.workdir})
+		if len(r.ignores) != 0 {
+			ignores = append(ignores, model.Dockerignore{
+				Patterns:  r.ignores,
+				Source:    fmt.Sprintf("local_resource(%q)", r.name),
+				LocalPath: r.workdir,
+			})
 		}
 
 		lt := model.NewLocalTarget(model.TargetName(r.name), r.updateCmd, r.serveCmd, r.deps, r.workdir).
 			WithRepos(reposForPaths(paths)).
-			WithIgnores(ignores)
+			WithIgnores(ignores).
+			WithAllowParallel(r.allowParallel)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
 			mds = append(mds, model.ManifestName(md))

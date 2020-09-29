@@ -8,12 +8,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/assets"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/assets"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // The amount of time to wait for a reconnection before restarting the browser
@@ -26,19 +25,16 @@ type HeadsUpServerController struct {
 	hudServer   *HeadsUpServer
 	assetServer assets.Server
 	webURL      model.WebURL
-	webLoadDone bool
 	initDone    bool
-	noBrowser   model.NoBrowser
 }
 
-func ProvideHeadsUpServerController(host model.WebHost, port model.WebPort, hudServer *HeadsUpServer, assetServer assets.Server, webURL model.WebURL, noBrowser model.NoBrowser) *HeadsUpServerController {
+func ProvideHeadsUpServerController(host model.WebHost, port model.WebPort, hudServer *HeadsUpServer, assetServer assets.Server, webURL model.WebURL) *HeadsUpServerController {
 	return &HeadsUpServerController{
 		host:        host,
 		port:        port,
 		hudServer:   hudServer,
 		assetServer: assetServer,
 		webURL:      webURL,
-		noBrowser:   noBrowser,
 	}
 }
 
@@ -51,50 +47,7 @@ func (s *HeadsUpServerController) isWebsocketConnected() bool {
 	return connCount > 0
 }
 
-func (s *HeadsUpServerController) maybeOpenBrowser(st store.RStore) {
-	if s.webURL.Empty() || s.webLoadDone || (bool)(s.noBrowser) {
-		return
-	}
-
-	if s.isWebsocketConnected() {
-		// Don't auto-open the web view. It's already opened.
-		s.webLoadDone = true
-		return
-	}
-
-	state := st.RLockState()
-	tiltfileCompleted := !state.TiltfileState.LastBuild().Empty()
-	startTime := state.TiltStartTime
-	st.RUnlockState()
-
-	// Only open the webview if the Tiltfile has completed.
-	if tiltfileCompleted {
-		s.webLoadDone = true
-
-		// Make sure we wait at least `reconnectDur` before opening the browser, to
-		// give any open pages time to reconnect. Do this on a goroutine so we don't
-		// hold the lock.
-		go func() {
-			runDur := time.Since(startTime)
-			if runDur < reconnectDur {
-				time.Sleep(reconnectDur - runDur)
-			}
-
-			if s.isWebsocketConnected() {
-				return
-			}
-
-			// We should probably dependency-inject a browser opener.
-			//
-			// It might also make sense to wait until the asset server is ready?
-			_ = browser.OpenURL(s.webURL.String())
-		}()
-	}
-}
-
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore) {
-	s.maybeOpenBrowser(st)
-
 	defer func() {
 		s.initDone = true
 	}()

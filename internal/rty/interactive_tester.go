@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/gdamore/tcell"
@@ -110,6 +111,15 @@ func (i *InteractiveTester) runCaptureError(name string, width int, height int, 
 	return nil
 }
 
+// Default windows terminal fonts typically don't include
+// these characters, so we make substitutions.
+var equivalentChars = [][]rune{
+	{'▼', '↓'},
+	{'▶', '→'},
+	{'✖', '×'},
+	{tview.BoxDrawingsLightDownAndRight, '⠋'},
+}
+
 func canvasesEqual(actual, expected Canvas) bool {
 	actualWidth, actualHeight := actual.Size()
 	expectedWidth, expectedHeight := expected.Size()
@@ -121,7 +131,21 @@ func canvasesEqual(actual, expected Canvas) bool {
 		for y := 0; y < actualHeight; y++ {
 			actualCh, _, actualStyle, _ := actual.GetContent(x, y)
 			expectedCh, _, expectedStyle, _ := expected.GetContent(x, y)
-			if actualCh != expectedCh || actualStyle != expectedStyle {
+			isEqualCh := actualCh == expectedCh
+			if !isEqualCh {
+				for _, pair := range equivalentChars {
+					if expectedCh == pair[0] {
+						expectedCh = pair[1]
+					}
+					if actualCh == pair[0] {
+						actualCh = pair[1]
+
+					}
+
+				}
+				isEqualCh = actualCh == expectedCh
+			}
+			if !isEqualCh || actualStyle != expectedStyle {
 				return false
 			}
 		}

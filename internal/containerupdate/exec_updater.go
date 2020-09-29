@@ -8,11 +8,11 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ExecUpdater struct {
@@ -33,12 +33,13 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.Containe
 	if !hotReload {
 		return fmt.Errorf("ExecUpdater does not support `restart_container()` step. If you ran Tilt " +
 			"with `--updateMode=exec`, omit this flag. If you are using a non-Docker container runtime, " +
-			"see https://github.com/windmilleng/rerun-process-wrapper for a workaround")
+			"see https://github.com/tilt-dev/rerun-process-wrapper for a workaround")
 	}
 
 	l := logger.Get(ctx)
 	w := logger.Get(ctx).Writer(logger.InfoLvl)
 
+	// delete files (if any)
 	if len(filesToDelete) > 0 {
 		err := cu.kCli.Exec(ctx,
 			cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
@@ -48,12 +49,14 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.Containe
 		}
 	}
 
+	// copy files to container
 	err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
 		[]string{"tar", "-C", "/", "-x", "-f", "-"}, archiveToCopy, w, w)
 	if err != nil {
 		return err
 	}
 
+	// run commands
 	for i, c := range cmds {
 		l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
 		err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,

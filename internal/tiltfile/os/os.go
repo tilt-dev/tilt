@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 )
 
 // The starlark OS module.
@@ -56,11 +56,19 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 		return err
 	}
 
-	environValue, err := environ()
+	err = env.AddValue("os.environ", Environ{})
 	if err != nil {
 		return err
 	}
-	err = env.AddValue("os.environ", environValue)
+	err = env.AddBuiltin("os.getenv", getenv)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("os.putenv", putenv)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("os.unsetenv", unsetenv)
 	if err != nil {
 		return err
 	}
@@ -77,18 +85,50 @@ func osName() string {
 	return "posix"
 }
 
-func environ() (starlark.Value, error) {
-	env := os.Environ()
-	result := starlark.NewDict(len(env))
-	for _, e := range os.Environ() {
-		pair := strings.SplitN(e, "=", 2)
-		err := result.SetKey(starlark.String(pair[0]), starlark.String(pair[1]))
-		if err != nil {
-			return nil, err
-		}
+func getenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var key value.Stringable
+	var defaultVal starlark.Value = starlark.None
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"key", &key,
+		"default?", &defaultVal,
+	)
+	if err != nil {
+		return nil, err
 	}
-	result.Freeze()
-	return result, nil
+
+	envVal, found := os.LookupEnv(key.Value)
+	if !found {
+		return defaultVal, nil
+	}
+
+	return starlark.String(envVal), nil
+}
+
+func putenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var key, v value.Stringable
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"key", &key,
+		"value", &v,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	os.Setenv(key.Value, v.Value)
+	return starlark.None, nil
+}
+
+func unsetenv(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var key value.Stringable
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"key", &key,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	os.Unsetenv(key.Value)
+	return starlark.None, nil
 }
 
 // Fetch the working directory of current Tiltfile execution.
@@ -138,7 +178,7 @@ func exists(t *starlark.Thread, path string) (starlark.Value, error) {
 
 	_, err := os.Stat(absPath)
 	if os.IsNotExist(err) {
-		err := io.RecordReadFile(t, absPath)
+		err := io.RecordReadPath(t, io.WatchFileOnly, absPath)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +190,7 @@ func exists(t *starlark.Thread, path string) (starlark.Value, error) {
 		return starlark.Bool(false), nil
 	}
 
-	err = io.RecordReadFile(t, absPath)
+	err = io.RecordReadPath(t, io.WatchFileOnly, absPath)
 	if err != nil {
 		return nil, err
 	}

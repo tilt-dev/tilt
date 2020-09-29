@@ -7,8 +7,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/schollz/closestmatch"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // An index of all the images that we know how to build.
@@ -89,27 +89,33 @@ func (idx *buildIndex) findBuilderForConsumedImage(ref reference.Named) *dockerI
 	return nil
 }
 
-func (idx *buildIndex) assertAllMatched() error {
+func (idx *buildIndex) unmatchedImages() []*dockerImage {
+	unmatchedImages := make([]*dockerImage, 0)
 	for _, image := range idx.images {
 		if !image.matched {
-			bagSizes := []int{2, 3, 4}
-			cm := closestmatch.New(idx.consumedImageNames, bagSizes)
-			matchLines := []string{}
-			for i, match := range cm.ClosestN(image.configurationRef.RefFamiliarName(), 3) {
-				// If there are no matches, the closestmatch library sometimes returns
-				// an empty string
-				if match == "" {
-					break
-				}
-				if i == 0 {
-					matchLines = append(matchLines, "Did you mean…\n")
-				}
-				matchLines = append(matchLines, fmt.Sprintf("    - %s\n", match))
-			}
-
-			return fmt.Errorf("Image not used in any deploy config:\n    ✕ %v\n%sSkipping this image build",
-				container.FamiliarString(image.configurationRef), strings.Join(matchLines, ""))
+			unmatchedImages = append(unmatchedImages, image)
 		}
 	}
-	return nil
+	return unmatchedImages
+}
+
+func (idx *buildIndex) unmatchedImageWarning(image *dockerImage, configType string) error {
+
+	bagSizes := []int{2, 3, 4}
+	cm := closestmatch.New(idx.consumedImageNames, bagSizes)
+	matchLines := []string{}
+	for i, match := range cm.ClosestN(image.configurationRef.RefFamiliarName(), 3) {
+		// If there are no matches, the closestmatch library sometimes returns
+		// an empty string
+		if match == "" {
+			break
+		}
+		if i == 0 {
+			matchLines = append(matchLines, "Did you mean…\n")
+		}
+		matchLines = append(matchLines, fmt.Sprintf("    - %s\n", match))
+	}
+
+	return fmt.Errorf("Image not used in any %s config:\n    ✕ %v\n%sSkipping this image build",
+		configType, container.FamiliarString(image.configurationRef), strings.Join(matchLines, ""))
 }

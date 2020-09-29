@@ -1,8 +1,8 @@
 package hud
 
 import (
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/rty"
 )
 
 const resourcesScollerName = "resources"

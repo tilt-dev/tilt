@@ -13,15 +13,16 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
-	"github.com/windmilleng/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
+	"github.com/tilt-dev/tilt/internal/watch"
 )
 
 func TestBuildControllerOnePod(t *testing.T) {
@@ -33,14 +34,14 @@ func TestBuildControllerOnePod(t *testing.T) {
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	pod := podbuilder.New(f.T(), manifest).Build()
 	f.podEvent(pod, manifest.Name)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, pod.Name, call.oneState().OneContainerInfo().PodID.String())
+	assert.Equal(t, pod.Name, call.oneImageState().OneContainerInfo().PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -57,7 +58,7 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	// initial build
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	p1 := podbuilder.New(t, manifest).WithPodID("pod1").Build()
 	p2 := podbuilder.New(t, manifest).WithPodID("pod2").Build()
@@ -68,13 +69,13 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 
 	call = f.nextCall()
 	// Should not have sent container info b/c too many pods
-	assert.Equal(t, store.ContainerInfo{}, call.oneState().OneContainerInfo())
+	assert.Equal(t, store.ContainerInfo{}, call.oneImageState().OneContainerInfo())
 
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 
-	err = call.oneState().RunningContainerError
+	err = call.oneImageState().RunningContainerError
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "can only get container info for a single pod",
 			"should print error message when trying to get Running Containers for manifest with more than one pod")
@@ -91,7 +92,7 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	// initial build
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	p1 := podbuilder.New(t, manifest).WithPodID("pod1").Build()
 	p2 := podbuilder.New(t, manifest).WithPodID("pod2").Build()
@@ -102,7 +103,7 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 
 	call = f.nextCall()
 	// Should not have sent container info b/c too many pods
-	assert.Equal(t, store.ContainerInfo{}, call.oneState().OneContainerInfo())
+	assert.Equal(t, store.ContainerInfo{}, call.oneImageState().OneContainerInfo())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -123,7 +124,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	pod := podbuilder.New(t, manifest).
 		WithPodID("pod-id").
@@ -133,7 +134,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, "pod-id", call.oneState().OneContainerInfo().PodID.String())
+	assert.Equal(t, "pod-id", call.oneImageState().OneContainerInfo().PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -194,7 +195,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	// Associate the pods with the manifest state
 	podA := podbuilder.New(f.T(), manifest).WithPodID("pod-a").Build()
@@ -208,7 +209,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	// if there are multiple pods, so make sure we're not sending deploy info (i.e. that
 	// we're doing an image build)
 	call = f.nextCall()
-	assert.Equal(t, "", call.oneState().OneContainerInfo().PodID.String())
+	assert.Equal(t, "", call.oneImageState().OneContainerInfo().PodID.String())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -224,7 +225,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
 	pod := podbuilder.New(f.T(), manifest).Build()
@@ -251,7 +252,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	runningContainers := call.oneState().RunningContainers
+	runningContainers := call.oneImageState().RunningContainers
 
 	require.Len(t, runningContainers, 2, "expect info for two containers (those "+
 		"matching the image built by this manifest")
@@ -282,7 +283,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
 	pod := podbuilder.New(f.T(), manifest).Build()
@@ -298,9 +299,12 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 
 	// If even one of the containers matching this image is !ready, we have to do a
 	// full rebuild, so don't return ANY RunningContainers.
-	call = f.nextCall()
-	runningContainers := call.oneState().RunningContainers
-	assert.Empty(t, runningContainers)
+	f.assertNoCall()
+
+	f.withState(func(st store.EngineState) {
+		_, holds := buildcontrol.NextTargetToBuild(st)
+		assert.Equal(t, store.HoldWaitingForDeploy, holds[manifest.Name])
+	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -316,7 +320,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextLiveUpdateContainerIDs = []container.ID{podbuilder.FakeContainerID()}
@@ -326,7 +330,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, pod.Name, call.oneState().OneContainerInfo().PodID.String())
+	assert.Equal(t, pod.Name, call.oneImageState().OneContainerInfo().PodID.String())
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
@@ -336,8 +340,8 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	// Restart the pod with a new container id, to simulate a container restart.
 	f.podEvent(pb.WithContainerID("funnyContainerID").Build(), manifest.Name)
 	call = f.nextCall()
-	assert.True(t, call.oneState().OneContainerInfo().Empty())
-	assert.False(t, call.oneState().ImageBuildTriggered)
+	assert.True(t, call.oneImageState().OneContainerInfo().Empty())
+	assert.False(t, call.oneImageState().FullBuildTriggered)
 	f.waitForCompletedBuildCount(3)
 
 	f.withManifestState("fe", func(ms store.ManifestState) {
@@ -461,8 +465,7 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	expectedErr := fmt.Errorf("i can't let you do that dave")
-	f.b.nextBuildFailure = expectedErr
-	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
+	f.SetNextLiveUpdateCompileError(expectedErr, []container.ID{"c1", "c2"})
 
 	f.podEvent(podbuilder.New(t, manifest).
 		WithContainerIDAtIndex("c1", 0).
@@ -554,9 +557,9 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 
 			f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 			call := f.nextCallComplete()
-			state := call.oneState()
+			state := call.oneImageState()
 			assert.Equal(t, expectedFiles, state.FilesChanged())
-			assert.Equal(t, tc.expectedImageBuild, state.ImageBuildTriggered)
+			assert.Equal(t, tc.expectedImageBuild, state.FullBuildTriggered)
 
 			f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
 				for _, mn := range st.TriggerQueue {
@@ -586,15 +589,18 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 
 	f.nextCallComplete()
 
-	f.b.nextBuildFailure = errors.New("build failure!")
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+
+	f.b.nextBuildError = errors.New("build failure!")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 	f.nextCallComplete()
 
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	call := f.nextCallComplete()
-	state := call.oneState()
+	state := call.oneImageState()
 	assert.Equal(t, []string{}, state.FilesChanged())
-	assert.True(t, state.ImageBuildTriggered)
+	assert.True(t, state.FullBuildTriggered)
+	assert.True(t, call.k8sState().FullBuildTriggered)
 
 	f.WaitUntil("manifest removed from queue", func(st store.EngineState) bool {
 		for _, mn := range st.TriggerQueue {
@@ -605,7 +611,6 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 		return true
 	})
 }
-
 func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -654,7 +659,7 @@ func TestBuildQueueOrdering(t *testing.T) {
 		imgID := call.firstImgTarg().ID().String()
 		if assert.True(t, strings.HasSuffix(imgID, expName),
 			"expected to get manifest '%s' but instead got: '%s' (checking suffix for manifest name)", expName, imgID) {
-			assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneState().FilesChanged(),
+			assert.Equal(t, []string{f.JoinPath("main.go")}, call.oneImageState().FilesChanged(),
 				"for manifest '%s", expName)
 		}
 	}
@@ -712,10 +717,10 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 		assert.True(t, strings.HasSuffix(call.firstImgTarg().ID().String(), fmt.Sprintf("manifest%d", i+1)))
 
 		if i < 4 {
-			assert.Equal(t, []string{f.JoinPath("dirManual/main.go")}, call.oneState().FilesChanged(), "for manifest %d", i+1)
+			assert.Equal(t, []string{f.JoinPath("dirManual/main.go")}, call.oneImageState().FilesChanged(), "for manifest %d", i+1)
 		} else {
 			// the automatic manifest
-			assert.Equal(t, []string{f.JoinPath("dirAuto/main.go")}, call.oneState().FilesChanged(), "for manifest %d", i+1)
+			assert.Equal(t, []string{f.JoinPath("dirAuto/main.go")}, call.oneImageState().FilesChanged(), "for manifest %d", i+1)
 		}
 	}
 	f.waitForCompletedBuildCount(len(manifests) + expectedInitialBuildCount)
@@ -962,14 +967,14 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 		WithResourceDeps("foo").
 		Build()
 	manifests := []model.Manifest{foo, bar}
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.Start(manifests)
 
 	call := f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	call = f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
@@ -996,7 +1001,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 		Build()
 
 	manifests := []model.Manifest{bar, foo}
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.Start(manifests)
 
 	// trigger a change for bar so that it would try to build if not for its resource dep
@@ -1005,7 +1010,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 	call := f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
-	f.b.nextBuildFailure = errors.New("failure")
+	f.b.nextBuildError = errors.New("failure")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
 	call = f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
@@ -1030,7 +1035,7 @@ func TestLogsLongResourceName(t *testing.T) {
 
 	call := f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneState().FilesChanged())
+	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	// this might be an annoying test since it depends on log formatting
 	// its goal is to ensure we don't have dumb math that causes integer underflow or panics when it gets a long manifest name
@@ -1058,6 +1063,8 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	manifest := f.newManifest("fe")
 	f.Start([]model.Manifest{manifest})
 	f.completeAndCheckBuildsForManifests(manifest)
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+
 	f.waitUntilNumBuildSlots(3)
 
 	// file change starts a build
@@ -1070,9 +1077,11 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 
 	// complete the first build
 	f.completeBuildForManifest(manifest)
+
 	call := f.nextCall("expect build from first pending file change (A.txt)")
 	f.assertCallIsForManifestAndFiles(call, manifest, "A.txt")
 	f.waitForCompletedBuildCount(2)
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
 
 	// we freed up a build slot; expect the second build to start
 	f.waitUntilManifestBuilding("fe")
@@ -1120,9 +1129,9 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-// It should be legal for a user to change MaxParallelUpdates while builds
+// It should be legal for a user to change maxParallelUpdates while builds
 // are in progress (e.g. if there are 5 builds in progress and user sets
-// MaxParallelUpdates=3, nothing should explode.)
+// maxParallelUpdates=3, nothing should explode.)
 func TestCurrentlyBuildingMayExceedMaxParallelUpdates(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1235,9 +1244,9 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f.completeAndCheckBuildsForManifests(manA, manB, manC)
 
 	// start builds for all manifests (we only have 2 build slots)
-	f.SetNextBuildFailure(errA)
+	f.SetNextBuildError(errA)
 	f.editFileAndWaitForManifestBuilding("manA", "a/main.go")
-	f.SetNextBuildFailure(errB)
+	f.SetNextBuildError(errB)
 	f.editFileAndWaitForManifestBuilding("manB", "b/main.go")
 	f.editFileAndAssertManifestNotBuilding("manC", "c/main.go")
 
@@ -1260,6 +1269,163 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 	f.WaitUntilManifestState("last manC build recorded and has no error", "manC", func(ms store.ManifestState) bool {
 		return len(ms.BuildHistory) == 2 && ms.LastBuild().Error == nil
 	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestManifestsWithSameTwoImages(t *testing.T) {
+	f := newTestFixture(t)
+	m1, m2 := NewManifestsWithSameTwoImages(f)
+	f.Start([]model.Manifest{m1, m2})
+
+	f.waitForCompletedBuildCount(2)
+
+	call := f.nextCall("m1 build1")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("m2 build1")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	aPath := f.JoinPath("common", "a.txt")
+	f.fsWatcher.Events <- watch.NewFileEvent(aPath)
+
+	f.waitForCompletedBuildCount(4)
+
+	// Make sure that both builds are triggered, and that they
+	// are triggered in a particular order.
+	call = f.nextCall("m1 build2")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	state := call.state[m1.ImageTargets[0].ID()]
+	assert.Equal(t, map[string]bool{aPath: true}, state.FilesChangedSet)
+
+	// Make sure that when the second build is triggered, we did the bookkeeping
+	// correctly around marking the first and second image built and only deploying
+	// the k8s resources.
+	call = f.nextCall("m2 build2")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	id := m2.ImageTargets[0].ID()
+	result := f.b.resultsByID[id]
+	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
+
+	id = m2.ImageTargets[1].ID()
+	result = f.b.resultsByID[id]
+	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestManifestsWithTwoCommonAncestors(t *testing.T) {
+	f := newTestFixture(t)
+	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
+	f.Start([]model.Manifest{m1, m2})
+
+	f.waitForCompletedBuildCount(2)
+
+	call := f.nextCall("m1 build1")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("m2 build1")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	aPath := f.JoinPath("base", "a.txt")
+	f.fsWatcher.Events <- watch.NewFileEvent(aPath)
+
+	f.waitForCompletedBuildCount(4)
+
+	// Make sure that both builds are triggered, and that they
+	// are triggered in a particular order.
+	call = f.nextCall("m1 build2")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	state := call.state[m1.ImageTargets[0].ID()]
+	assert.Equal(t, map[string]bool{aPath: true}, state.FilesChangedSet)
+
+	// Make sure that when the second build is triggered, we did the bookkeeping
+	// correctly around marking the first and second image built, and only
+	// rebuilding the third image and k8s deploy.
+	call = f.nextCall("m2 build2")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	id := m2.ImageTargets[0].ID()
+	result := f.b.resultsByID[id]
+	assert.Equal(t,
+		store.NewBuildState(result, nil, nil),
+		call.state[id])
+
+	id = m2.ImageTargets[1].ID()
+	result = f.b.resultsByID[id]
+	assert.Equal(t,
+		store.NewBuildState(result, nil, nil),
+		call.state[id])
+
+	id = m2.ImageTargets[2].ID()
+	result = f.b.resultsByID[id]
+
+	// Assert the 3rd image was not reused from the previous build.
+	assert.NotEqual(t, result, call.state[id].LastResult)
+	assert.Equal(t,
+		map[model.TargetID]bool{m2.ImageTargets[1].ID(): true},
+		call.state[id].DepsChangedSet)
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	local1 := manifestbuilder.New(f, "local").
+		WithLocalResource("exec-local", nil).
+		WithResourceDeps("k8s1").
+		Build()
+	k8s1 := manifestbuilder.New(f, "k8s1").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithK8sPodReadiness(model.PodReadinessIgnore).
+		Build()
+	f.Start([]model.Manifest{local1, k8s1})
+
+	f.waitForCompletedBuildCount(2)
+
+	call := f.nextCall("k8s1 build")
+	assert.Equal(t, k8s1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("local build")
+	assert.Equal(t, local1.LocalTarget(), call.local())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
+}
+
+func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
+	f := newTestFixture(t)
+	m1, m2 := NewManifestsWithCommonAncestor(f)
+	f.Start([]model.Manifest{m1, m2})
+
+	f.waitForCompletedBuildCount(2)
+
+	call := f.nextCall("m1 build1")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	call = f.nextCall("m2 build1")
+	assert.Equal(t, m2.K8sTarget(), call.k8s())
+
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: m1.Name})
+	f.waitForCompletedBuildCount(3)
+
+	// Make sure that only one build was triggered.
+	call = f.nextCall("m1 build2")
+	assert.Equal(t, m1.K8sTarget(), call.k8s())
+
+	f.assertNoCall("m2 should not be rebuilt")
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -1309,7 +1475,7 @@ func (f *testFixture) editFileAndAssertManifestNotBuilding(name model.ManifestNa
 
 func (f *testFixture) assertCallIsForManifestAndFiles(call buildAndDeployCall, m model.Manifest, files ...string) {
 	assert.Equal(f.t, m.ImageTargetAt(0).ID(), call.firstImgTarg().ID())
-	assert.Equal(f.t, f.JoinPaths(files), call.oneState().FilesChanged())
+	assert.Equal(f.t, f.JoinPaths(files), call.oneImageState().FilesChanged())
 }
 
 func (f *testFixture) completeAndCheckBuildsForManifests(manifests ...model.Manifest) {

@@ -9,9 +9,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type RuntimeState interface {
@@ -72,29 +72,30 @@ type K8sRuntimeState struct {
 	DeployedUIDSet                 UIDSet                 // for the most recent successful deploy
 	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet // for the most recent successful deploy
 
-	LastReadyOrSucceededTime time.Time
+	LastReadyOrSucceededTime    time.Time
+	HasEverDeployedSuccessfully bool
 
-	// NOTE(nick): This is a dumb hack to handle the UnresourcedYAML
-	// case. Long-term, a better way to handle this would be to watch
-	// all K8s resources we deploy and have some notion of health for
-	// each type.
-	IsUnresourced bool
+	PodReadinessMode model.PodReadinessMode
 }
 
 func (K8sRuntimeState) RuntimeState() {}
 
 var _ RuntimeState = K8sRuntimeState{}
 
-func NewK8sRuntimeState(mn model.ManifestName, pods ...Pod) K8sRuntimeState {
-
-	podMap := make(map[k8s.PodID]*Pod, len(pods))
+func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...Pod) K8sRuntimeState {
+	state := NewK8sRuntimeState(m)
 	for _, pod := range pods {
 		p := pod
-		podMap[p.PodID] = &p
+		state.Pods[p.PodID] = &p
 	}
+	state.HasEverDeployedSuccessfully = len(pods) > 0
+	return state
+}
+
+func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 	return K8sRuntimeState{
-		IsUnresourced:                  mn == model.UnresourcedYAMLManifestName,
-		Pods:                           podMap,
+		PodReadinessMode:               m.PodReadinessMode(),
+		Pods:                           make(map[k8s.PodID]*Pod),
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedUIDSet:                 NewUIDSet(),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
@@ -111,7 +112,11 @@ func (s K8sRuntimeState) RuntimeStatusError() error {
 }
 
 func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
-	if s.IsUnresourced {
+	if !s.HasEverDeployedSuccessfully {
+		return model.RuntimeStatusPending
+	}
+
+	if s.PodReadinessMode == model.PodReadinessIgnore {
 		return model.RuntimeStatusOK
 	}
 
@@ -141,7 +146,10 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 }
 
 func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
-	if s.IsUnresourced {
+	if !s.HasEverDeployedSuccessfully {
+		return false
+	}
+	if s.PodReadinessMode == model.PodReadinessIgnore {
 		return true
 	}
 	return !s.LastReadyOrSucceededTime.IsZero()
@@ -231,14 +239,15 @@ func (p Pod) AllContainers() []Container {
 }
 
 type Container struct {
-	Name     container.Name
-	ID       container.ID
-	Ports    []int32
-	Ready    bool
-	Running  bool
-	ImageRef reference.Named
-	Restarts int
-	Status   model.RuntimeStatus
+	Name       container.Name
+	ID         container.ID
+	Ports      []int32
+	Ready      bool
+	Running    bool
+	Terminated bool
+	ImageRef   reference.Named
+	Restarts   int
+	Status     model.RuntimeStatus
 }
 
 func (c Container) Empty() bool {

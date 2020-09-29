@@ -11,7 +11,7 @@ import (
 // This is a bad policy for development. If the pod goes into a crash loop,
 // the StatefulSet operator will get wedged and require manual intervention.
 // See:
-// https://github.com/windmilleng/tilt/issues/1962
+// https://github.com/tilt-dev/tilt/issues/1962
 //
 // Tilt should change all statefulsets to use a parallel policy.
 func InjectParallelPodManagementPolicy(entity K8sEntity) K8sEntity {

@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 func TestEnviron(t *testing.T) {
@@ -21,11 +21,96 @@ func TestEnviron(t *testing.T) {
 
 	f.File("Tiltfile", `
 print(os.environ['FAKE_ENV_VARIABLE'])
+print(os.environ.get('FAKE_ENV_VARIABLE'))
 `)
 
 	_, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
-	assert.Equal(t, "fakeValue\n", f.PrintOutput())
+	assert.Equal(t, "fakeValue\nfakeValue\n", f.PrintOutput())
+}
+
+func TestGetenv(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+print(os.getenv('FAKE_ENV_VARIABLE'))
+print(os.getenv('FAKE_ENV_VARIABLE', 'foo'))
+print(os.getenv('FAKE_ENV_VARIABLE_UNSET', 'bar'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "fakeValue\nfakeValue\nbar\n", f.PrintOutput())
+}
+
+func TestPutenv(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+os.putenv('FAKE_ENV_VARIABLE', 'fakeValue2')
+print(os.getenv('FAKE_ENV_VARIABLE'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "fakeValue2\n", f.PrintOutput())
+	assert.Equal(t, "fakeValue2", os.Getenv("FAKE_ENV_VARIABLE"))
+}
+
+func TestPutenvByDict(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+os.environ['FAKE_ENV_VARIABLE'] = 'fakeValueByDict'
+print(os.getenv('FAKE_ENV_VARIABLE'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "fakeValueByDict\n", f.PrintOutput())
+	assert.Equal(t, "fakeValueByDict", os.Getenv("FAKE_ENV_VARIABLE"))
+}
+
+func TestUnsetenv(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+os.unsetenv('FAKE_ENV_VARIABLE')
+print(os.getenv('FAKE_ENV_VARIABLE', 'unused'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "unused\n", f.PrintOutput())
+
+	_, found := os.LookupEnv("FAKE_ENV_VARIABLE")
+	assert.False(t, found)
+}
+
+func TestUnsetenvAsDict(t *testing.T) {
+	f := NewFixture(t)
+	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
+	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+
+	f.File("Tiltfile", `
+os.environ.pop('FAKE_ENV_VARIABLE')
+print(os.getenv('FAKE_ENV_VARIABLE', 'unused'))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, "unused\n", f.PrintOutput())
+
+	_, found := os.LookupEnv("FAKE_ENV_VARIABLE")
+	assert.False(t, found)
 }
 
 func TestGetCwd(t *testing.T) {
@@ -170,9 +255,8 @@ print(result5)
 	require.NoError(t, err)
 	assert.Equal(t, "False\nTrue\nTrue\nTrue\nFalse\n", f.PrintOutput())
 
-	readState, err := io.GetState(model)
-	require.NoError(t, err)
-	assert.Equal(t, f.JoinPath("foo", "foo", "Tiltfile"), readState.Files[2])
+	readState := io.MustState(model)
+	assert.Equal(t, f.JoinPath("foo", "foo", "Tiltfile"), readState.Paths[2])
 }
 
 func TestPermissionDenied(t *testing.T) {
@@ -190,9 +274,29 @@ print(os.path.exists('/root/x'))
 	require.NoError(t, err)
 	assert.Equal(t, "False\n", f.PrintOutput())
 
-	readState, err := io.GetState(model)
+	readState := io.MustState(model)
+	assert.Equal(t, []string{f.JoinPath("Tiltfile")}, readState.Paths)
+}
+
+func TestPathExistsDir(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Test relies on Unix /root permissions")
+	}
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File(f.JoinPath("subdir", "inner", "a.txt"), "hello")
+	f.File("Tiltfile", `
+print(os.path.exists('subdir'))
+`)
+
+	model, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
-	assert.Equal(t, []string{f.JoinPath("Tiltfile")}, readState.Files)
+	assert.Equal(t, "True\n", f.PrintOutput())
+
+	// Verify that we're not watching the subdir recursively.
+	readState := io.MustState(model)
+	assert.Equal(t, []string{f.JoinPath("Tiltfile")}, readState.Paths)
 }
 
 func TestRealpath(t *testing.T) {

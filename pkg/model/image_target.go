@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 )
 
 type ImageTarget struct {
@@ -83,7 +83,7 @@ func (i ImageTarget) Validate() error {
 			return fmt.Errorf("[Validate] Image %q missing build path", confRef)
 		}
 	case CustomBuild:
-		if bd.Command == "" {
+		if bd.Command.Empty() {
 			return fmt.Errorf(
 				"[Validate] CustomBuild command must not be empty",
 			)
@@ -140,6 +140,35 @@ func (i ImageTarget) IsCustomBuild() bool {
 
 func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 	i.BuildDetails = details
+	return i
+}
+
+// I (Nick) am deeply unhappy with the parameters of CustomBuild.  They're not
+// well-specified, and often interact in weird and unpredictable ways.  This
+// function is a good example.
+//
+// custom_build(tag) means "My custom_build script already has a tag that it
+// wants to use". In practice, it becomes the "You can't tell me what to do"
+// flag.
+//
+// custom_build(skips_local_docker) means "My custom_build script doesn't use
+// Docker for storage, so you shouldn't expect to find the image there." In
+// practice, it becomes the "You can't touch my outputs" flag.
+//
+// When used together, you have a script that takes no inputs and doesn't let Tilt
+// fix the outputs. So people use custom_build(tag=x, skips_local_docker=True) to
+// enable all sorts of off-road experimental image-building flows that need better
+// primitives.
+//
+// For now, when we detect this case, we strip off registry information, since
+// the script isn't going to use it anyway.  This is tightly coupled with
+// CustomBuilder, which already has similar logic for handling these two cases
+// together.
+func (i ImageTarget) MaybeIgnoreRegistry() ImageTarget {
+	customBuild, ok := i.BuildDetails.(CustomBuild)
+	if ok && customBuild.SkipsLocalDocker && customBuild.Tag != "" {
+		i.Refs = i.Refs.WithoutRegistry()
+	}
 	return i
 }
 
@@ -230,6 +259,9 @@ type DockerBuild struct {
 
 	Network string
 
+	PullParent bool
+	CacheFrom  []string
+
 	// By default, Tilt creates a new temporary image reference for each build.
 	// The user can also specify their own reference, to integrate with other tooling
 	// (like build IDs for Jenkins build pipelines)
@@ -248,7 +280,7 @@ func (s DockerBuildTarget) String() string { return string(s) }
 
 type CustomBuild struct {
 	WorkDir string
-	Command string
+	Command Cmd
 	// Deps is a list of file paths that are dependencies of this command.
 	Deps []string
 
@@ -261,6 +293,10 @@ type CustomBuild struct {
 	LiveUpdate       LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	DisablePush      bool
 	SkipsLocalDocker bool
+
+	// We expect the custom build script to print the image ref to this file,
+	// so that Tilt can read it out when we're done.
+	OutputsImageRefTo string
 }
 
 func (CustomBuild) buildDetails() {}

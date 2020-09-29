@@ -4,29 +4,32 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/internal/yaml"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/yaml"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestDeployTwinImages(t *testing.T) {
@@ -48,6 +51,23 @@ func TestDeployTwinImages(t *testing.T) {
 	assert.Equal(t, expectedImage, image.String())
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
+}
+
+func TestForceUpdate(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m := NewSanchoDockerBuildManifest(f)
+
+	iTargetID1 := m.ImageTargets[0].ID()
+	stateSet := store.BuildStateSet{
+		iTargetID1: store.BuildState{FullBuildTriggered: true},
+	}
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m), stateSet)
+	require.NoError(t, err)
+
+	// A force rebuild should delete the old resources.
+	assert.Equal(t, 1, strings.Count(f.k8s.DeletedYaml, "Deployment"))
 }
 
 func TestDeployPodWithMultipleImages(t *testing.T) {
@@ -150,10 +170,8 @@ func TestImageIsClean(t *testing.T) {
 	iTargetID1 := manifest.ImageTargets[0].ID()
 	result1 := store.NewImageBuildResultSingleRef(iTargetID1, container.MustParseNamedTagged("sancho-base:tilt-prebuilt1"))
 
-	f.docker.ImageListCount = 1
-
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, []string{}),
+		iTargetID1: store.NewBuildState(result1, []string{}, nil),
 	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -177,7 +195,7 @@ func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 		[]container.ID{container.ID("12345")})
 
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, []string{}),
+		iTargetID1: store.NewBuildState(result1, []string{}, nil),
 	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -209,11 +227,11 @@ func TestMultiStageDockerBuild(t *testing.T) {
 		Contents: `
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
@@ -230,7 +248,7 @@ func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
 
 FROM sancho-base
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 		BuildPath: f.JoinPath("sancho"),
@@ -256,11 +274,11 @@ ENTRYPOINT /go/bin/sancho
 
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
@@ -276,8 +294,8 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	newFile := f.WriteFile("sancho-base/message.txt", "message")
 
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, []string{newFile}),
-		iTargetID2: store.NewBuildState(result2, nil),
+		iTargetID1: store.NewBuildState(result1, []string{newFile}, nil),
+		iTargetID2: store.NewBuildState(result2, nil, nil),
 	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -292,11 +310,11 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 		Contents: `
 FROM sancho-base:tilt-11cd0b38bc3ceb95
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
 func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
@@ -311,11 +329,9 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 
 	newFile := f.WriteFile("sancho/message.txt", "message")
 
-	f.docker.ImageListCount = 1
-
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, nil),
-		iTargetID2: store.NewBuildState(result2, []string{newFile}),
+		iTargetID1: store.NewBuildState(result1, nil, nil),
+		iTargetID2: store.NewBuildState(result2, []string{newFile}, nil),
 	}
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
@@ -329,11 +345,31 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 		Contents: `
 FROM sancho-base:tilt-prebuilt1
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
+}
+
+func TestK8sUpsertTimeout(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	timeout := 123 * time.Second
+
+	state := f.st.LockMutableStateForTesting()
+	state.UpdateSettings = state.UpdateSettings.WithK8sUpsertTimeout(123 * time.Second)
+	f.st.UnlockMutableState()
+
+	manifest := NewSanchoDockerBuildManifest(f)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, f.k8s.UpsertTimeout, timeout)
 }
 
 func TestKINDLoad(t *testing.T) {
@@ -399,7 +435,7 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
 
 	cb := model.CustomBuild{
-		Command:          "exit 0",
+		Command:          model.ToHostCmd("exit 0"),
 		Deps:             []string{f.JoinPath("app")},
 		SkipsLocalDocker: true,
 		Tag:              "tilt-build",
@@ -686,9 +722,12 @@ func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {
 	crdYamlWithSanchoImage := strings.ReplaceAll(testyaml.CRDYAML, testyaml.CRDImage, testyaml.SanchoImage)
 
 	cmd := model.ToUnixCmd("./foo.sh bar")
-	manifest := NewSanchoDockerBuildManifestWithYaml(f, crdYamlWithSanchoImage)
-	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
-	manifest = manifest.WithImageTarget(iTarg)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(crdYamlWithSanchoImage).
+		WithNamedJSONPathImageLocator("projects.example.martin-helmich.de",
+			"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}").
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd)).
+		Build()
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
 	if assert.Error(t, err) {
@@ -774,8 +813,101 @@ func TestDockerBuildTargetStage(t *testing.T) {
 	assert.Equal(t, "stage", f.docker.BuildOptions.Target)
 }
 
+func TestTwoManifestsWithCommonImage(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m1, m2 := NewManifestsWithCommonAncestor(f)
+	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m1), store.BuildStateSet{})
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"image:gcr.io/common", "image:gcr.io/image-1", "k8s:image-1"},
+		resultKeys(results1))
+
+	stateSet := f.resultsToNextState(results1)
+
+	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m2), stateSet)
+	require.NoError(t, err)
+	assert.Equal(t,
+		// We did not return image-common because it didn't need a rebuild.
+		[]string{"image:gcr.io/image-2", "k8s:image-2"},
+		resultKeys(results2))
+}
+
+func TestTwoManifestsWithCommonImagePrebuilt(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m1, _ := NewManifestsWithCommonAncestor(f)
+	iTarget1 := m1.ImageTargets[0]
+	prebuilt1 := store.NewImageBuildResultSingleRef(iTarget1.ID(),
+		container.MustParseNamedTagged("gcr.io/common:tilt-prebuilt"))
+
+	stateSet := store.BuildStateSet{}
+	stateSet[iTarget1.ID()] = store.NewBuildState(prebuilt1, nil, nil)
+
+	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m1), stateSet)
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"image:gcr.io/image-1", "k8s:image-1"},
+		resultKeys(results1))
+	assert.Contains(t, f.out.String(),
+		"STEP 1/4 — Loading cached images\n     - gcr.io/common:tilt-prebuilt")
+}
+
+func TestTwoManifestsWithTwoCommonAncestors(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
+	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m1), store.BuildStateSet{})
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"image:gcr.io/base", "image:gcr.io/common", "image:gcr.io/image-1", "k8s:image-1"},
+		resultKeys(results1))
+
+	stateSet := f.resultsToNextState(results1)
+
+	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m2), stateSet)
+	require.NoError(t, err)
+	assert.Equal(t,
+		// We did not return image-common because it didn't need a rebuild.
+		[]string{"image:gcr.io/image-2", "k8s:image-2"},
+		resultKeys(results2))
+}
+
+func TestTwoManifestsWithSameTwoImages(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m1, m2 := NewManifestsWithSameTwoImages(f)
+	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m1), store.BuildStateSet{})
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"image:gcr.io/common", "image:gcr.io/image-1", "k8s:dep-1"},
+		resultKeys(results1))
+
+	stateSet := f.resultsToNextState(results1)
+
+	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m2), stateSet)
+	require.NoError(t, err)
+	assert.Equal(t,
+		[]string{"k8s:dep-2"},
+		resultKeys(results2))
+}
+
+func resultKeys(result store.BuildResultSet) []string {
+	keys := []string{}
+	for id := range result {
+		keys = append(keys, id.String())
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 type ibdFixture struct {
 	*tempdir.TempDirFixture
+	out    *bufsync.ThreadSafeBuffer
 	ctx    context.Context
 	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
@@ -787,8 +919,17 @@ type ibdFixture struct {
 func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewWindmillDirAt(f.Path())
+
 	docker := docker.NewFakeClient()
+
+	// Make the fake ImageExists always return true, which is the behavior we want
+	// when testing the ImageBuildAndDeployer.
+	docker.ImageAlwaysExists = true
+
+	out := bufsync.NewThreadSafeBuffer()
+	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
+	ctx = logger.WithLogger(ctx, l)
 	kClient := k8s.NewFakeK8sClient()
 	kl := &fakeKINDLoader{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
@@ -798,6 +939,7 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	}
 	return &ibdFixture{
 		TempDirFixture: f,
+		out:            out,
 		ctx:            ctx,
 		docker:         docker,
 		k8s:            kClient,
@@ -810,6 +952,14 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 func (f *ibdFixture) TearDown() {
 	f.k8s.TearDown()
 	f.TempDirFixture.TearDown()
+}
+
+func (f *ibdFixture) resultsToNextState(results store.BuildResultSet) store.BuildStateSet {
+	stateSet := store.BuildStateSet{}
+	for id, result := range results {
+		stateSet[id] = store.NewBuildState(result, nil, nil)
+	}
+	return stateSet
 }
 
 func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelector) reference.Named {

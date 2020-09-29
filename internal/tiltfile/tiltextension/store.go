@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/containerd/continuity/fs"
 	"github.com/pkg/errors"
 )
 
@@ -22,13 +23,19 @@ type Store interface {
 	Write(ctx context.Context, contents ModuleContents) (string, error)
 }
 
-// TODO(dmiller): should this include an integrity hash?
 type ModuleContents struct {
 	Name              string
-	TiltfileContents  string
-	GitCommitHash     string
+	Dir               string
 	ExtensionRegistry string
 	TimeFetched       time.Time
+
+	// NOTE(nick): Currently this is missing any kind of integrity hashing or versioning.
+	// This used to have a non-functional versioning stub, which we deleted in
+	// https://github.com/tilt-dev/tilt/pull/3779
+	//
+	// If we decide to add versioning semantics, we should try to adapt something from
+	// an existing implementation (e.g., go-get's versioning sematnics) rather
+	// than trying to implement versioning from scratch.
 }
 
 type LocalStore struct {
@@ -37,7 +44,6 @@ type LocalStore struct {
 
 type Metadata struct {
 	Name              string
-	GitCommitHash     string
 	ExtensionRegistry string
 	TimeFetched       time.Time
 }
@@ -74,14 +80,13 @@ func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string
 		return "", errors.Wrapf(err, "couldn't create module directory %s at path %s", contents.Name, moduleDir)
 	}
 
-	tiltfilePath := filepath.Join(moduleDir, extensionFileName)
-	if err := ioutil.WriteFile(tiltfilePath, []byte(contents.TiltfileContents), os.FileMode(0600)); err != nil {
-		return "", errors.Wrapf(err, "couldn't store module %s at path %s", contents.Name, tiltfilePath)
+	err := fs.CopyDir(moduleDir, contents.Dir)
+	if err != nil {
+		return "", errors.Wrapf(err, "couldn't store module %s at path %s", contents.Name, moduleDir)
 	}
 
 	metadata := Metadata{
 		Name:              contents.Name,
-		GitCommitHash:     contents.GitCommitHash,
 		ExtensionRegistry: contents.ExtensionRegistry,
 		TimeFetched:       contents.TimeFetched,
 	}
@@ -114,7 +119,7 @@ func (s *LocalStore) Write(ctx context.Context, contents ModuleContents) (string
 		return "", errors.Wrapf(err, "unable to write extension metadata file at path %s", extensionMetadataFilePath)
 	}
 
-	return tiltfilePath, nil
+	return filepath.Join(moduleDir, "Tiltfile"), nil
 }
 
 var _ Store = (*LocalStore)(nil)

@@ -12,8 +12,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 )
 
 func TestInjectDigestSanchoYAML(t *testing.T) {
@@ -29,7 +29,7 @@ func TestInjectDigestSanchoYAML(t *testing.T) {
 	entity := entities[0]
 	name := "gcr.io/some-project-162817/sancho"
 	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
-	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, v1.PullIfNotPresent)
+	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, nil, v1.PullIfNotPresent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestInjectDigestDoesNotMutateOriginal(t *testing.T) {
 	entity := entities[0]
 	name := "gcr.io/some-project-162817/sancho"
 	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
-	_, replaced, err := InjectImageDigestWithStrings(entity, name, digest, v1.PullIfNotPresent)
+	_, replaced, err := InjectImageDigestWithStrings(entity, name, digest, nil, v1.PullIfNotPresent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestErrorInjectDigestBlorgBackendYAML(t *testing.T) {
 	entity := entities[1]
 	name := "gcr.io/blorg-dev/blorg-backend"
 	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
-	_, _, err = InjectImageDigestWithStrings(entity, name, digest, v1.PullNever)
+	_, _, err = InjectImageDigestWithStrings(entity, name, digest, nil, v1.PullNever)
 	if err == nil || !strings.Contains(err.Error(), "INTERNAL TILT ERROR") {
 		t.Errorf("Expected internal tilt error, actual: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestInjectDigestBlorgBackendYAML(t *testing.T) {
 	entity := entities[1]
 	name := "gcr.io/blorg-dev/blorg-backend"
 	namedTagged, _ := reference.ParseNamed(fmt.Sprintf("%s:wm-tilt", name))
-	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, false, v1.PullNever)
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, nil, false, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,12 +189,12 @@ func TestInjectDigestBlorgBackendYAML(t *testing.T) {
 }
 
 // the same as InjectImageDigestInjectRefWithStrings, but with original == inject (the normal case with no default_registry)
-func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest string, policy v1.PullPolicy) (K8sEntity, bool, error) {
-	return InjectImageDigestInjectRefWithStrings(entity, original, original, newDigest, policy)
+func InjectImageDigestWithStrings(entity K8sEntity, original string, newDigest string, locators []ImageLocator, policy v1.PullPolicy) (K8sEntity, bool, error) {
+	return InjectImageDigestInjectRefWithStrings(entity, original, original, newDigest, locators, policy)
 }
 
 // Returns: the new entity, whether anything was replaced, and an error.
-func InjectImageDigestInjectRefWithStrings(entity K8sEntity, original string, inject string, newDigest string, policy v1.PullPolicy) (K8sEntity, bool, error) {
+func InjectImageDigestInjectRefWithStrings(entity K8sEntity, original string, inject string, newDigest string, locators []ImageLocator, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	originalRef, err := reference.ParseNamed(original)
 	if err != nil {
 		return K8sEntity{}, false, err
@@ -215,7 +215,7 @@ func InjectImageDigestInjectRefWithStrings(entity K8sEntity, original string, in
 		return K8sEntity{}, false, err
 	}
 
-	return InjectImageDigest(entity, container.NameSelector(originalRef), canonicalRef, false, policy)
+	return InjectImageDigest(entity, container.NameSelector(originalRef), canonicalRef, locators, false, policy)
 }
 
 func TestInjectSyncletImage(t *testing.T) {
@@ -228,7 +228,7 @@ func TestInjectSyncletImage(t *testing.T) {
 	entity := entities[0]
 	name := "gcr.io/windmill-public-containers/synclet"
 	namedTagged, _ := container.ParseNamedTagged(fmt.Sprintf("%s:tilt-deadbeef", name))
-	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, false, v1.PullNever)
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, nil, false, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
 	} else if !replaced {
@@ -271,32 +271,38 @@ func TestEntityHasImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.False(t, match, "deployment yaml should not match image %s", img.String())
+}
 
-	entities, err = ParseYAMLFromString(testyaml.CRDYAML)
+func TestCRDExtract(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.CRDYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	img = container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
+	img := container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
 	e := entities[0]
-	jp, err := NewJSONPath("{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
-	if err != nil {
-		t.Fatal(err)
-	}
-	imageJSONPaths := []JSONPath{jp}
-	match, err = e.HasImage(img, imageJSONPaths, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.True(t, match, "CRD yaml should match image %s", img.String())
+	selector, err := NewPartialMatchObjectSelector("", "", "projects.example.martin-helmich.de", "")
+	require.NoError(t, err)
 
-	entities, err = ParseYAMLFromString(testyaml.SanchoImageInEnvYAML)
+	jp, err := NewJSONPathImageLocator(
+		selector,
+		"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
+	require.NoError(t, err)
+
+	match, err := e.HasImage(img, []ImageLocator{jp}, false)
+	require.NoError(t, err)
+
+	assert.True(t, match, "CRD yaml should match image %s", img.String())
+}
+
+func TestEnvExtract(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.SanchoImageInEnvYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	img = container.MustParseSelector("gcr.io/some-project-162817/sancho")
-	e = entities[0]
-	match, err = e.HasImage(img, nil, false)
+	img := container.MustParseSelector("gcr.io/some-project-162817/sancho")
+	e := entities[0]
+	match, err := e.HasImage(img, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +317,7 @@ func TestEntityHasImage(t *testing.T) {
 
 }
 
-func testInjectDigestCRD(t *testing.T, yaml string, expectedDigestPrefix string) {
+func testInjectDigestCRD(t *testing.T, yaml string, locator ImageLocator, expectedDigestPrefix string) {
 	entities, err := ParseYAMLFromString(yaml)
 	if err != nil {
 		t.Fatal(err)
@@ -324,7 +330,8 @@ func testInjectDigestCRD(t *testing.T, yaml string, expectedDigestPrefix string)
 	entity := entities[0]
 	name := "gcr.io/foo"
 	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
-	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, v1.PullIfNotPresent)
+	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest,
+		[]ImageLocator{locator}, v1.PullIfNotPresent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,6 +359,8 @@ spec:
     image: gcr.io/foo:stable
 `
 
+	selector := MustKindSelector("Foo")
+	locator := MustJSONPathImageLocator(selector, "{.spec.image}")
 	entities, err := ParseYAMLFromString(yaml)
 	require.NoError(t, err)
 
@@ -363,7 +372,8 @@ spec:
 	originalName := "gcr.io/foo"
 	injectionName := "localhost:3000/gcr_io_foo"
 	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
-	newEntity, replaced, err := InjectImageDigestInjectRefWithStrings(entity, originalName, injectionName, digest, v1.PullIfNotPresent)
+	newEntity, replaced, err := InjectImageDigestInjectRefWithStrings(entity, originalName, injectionName, digest,
+		[]ImageLocator{locator}, v1.PullIfNotPresent)
 	require.NoError(t, err)
 
 	require.Truef(t, replaced, "expected replaced: true. actual: %v", replaced)
@@ -377,32 +387,35 @@ spec:
 }
 
 func TestInjectDigestCRDMapValue(t *testing.T) {
+	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.image}")
 	testInjectDigestCRD(t, `
 apiversion: foo/v1
 kind: Foo
 spec:
     image: gcr.io/foo:stable
-`, "image: ")
+`, locator, "image: ")
 }
 
 func TestInjectDigestCRDListElement(t *testing.T) {
+	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.images[0]}")
 	testInjectDigestCRD(t, `
 apiversion: foo/v1
 kind: Foo
 spec:
     images:
       - gcr.io/foo:stable
-`, "- ")
+`, locator, "- ")
 }
 
 func TestInjectDigestCRDListOfMaps(t *testing.T) {
+	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.args.image}")
 	testInjectDigestCRD(t, `
 apiversion: foo/v1
 kind: Foo
 spec:
     args:
         image: gcr.io/foo:stable
-`, "image: ")
+`, locator, "image: ")
 }
 
 func TestMatchInEnvVarsFalse(t *testing.T) {
@@ -413,7 +426,7 @@ func TestMatchInEnvVarsFalse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, false, v1.PullNever)
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, nil, false, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +449,7 @@ func TestMatchInEnvVarsTrue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, true, v1.PullNever)
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, nil, true, v1.PullNever)
 	if err != nil {
 		t.Fatal(err)
 	}

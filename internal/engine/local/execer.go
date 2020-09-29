@@ -12,17 +12,20 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/procutil"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/procutil"
 )
 
+var DefaultGracePeriod = 30 * time.Second
+
 type Execer interface {
-	Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{}
+	Start(ctx context.Context, cmd model.Cmd, workdir string, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{}
 }
 
 type fakeExecProcess struct {
-	exitCh chan int
+	exitCh  chan int
+	workdir string
 }
 
 type FakeExecer struct {
@@ -37,7 +40,7 @@ func NewFakeExecer() *FakeExecer {
 	}
 }
 
-func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
+func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, workdir string, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
 	e.mu.Lock()
 	_, ok := e.processes[cmd.String()]
 	e.mu.Unlock()
@@ -50,7 +53,8 @@ func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, stat
 
 	e.mu.Lock()
 	e.processes[cmd.String()] = &fakeExecProcess{
-		exitCh: exitCh,
+		exitCh:  exitCh,
+		workdir: workdir,
 	}
 	e.mu.Unlock()
 
@@ -115,22 +119,28 @@ func ProvideExecer() Execer {
 	return NewProcessExecer()
 }
 
-type processExecer struct{}
-
-func NewProcessExecer() *processExecer {
-	return &processExecer{}
+type processExecer struct {
+	gracePeriod time.Duration
 }
 
-func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
+func NewProcessExecer() *processExecer {
+	return &processExecer{
+		gracePeriod: DefaultGracePeriod,
+	}
+}
+
+func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, workdir string, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
 	doneCh := make(chan struct{})
 
-	go processRun(ctx, cmd, w, statusCh, doneCh, spanID)
+	go func() {
+		e.processRun(ctx, cmd, workdir, w, statusCh, spanID)
+		close(doneCh)
+	}()
 
 	return doneCh
 }
 
-func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, doneCh chan struct{}, spanID model.LogSpanID) {
-	defer close(doneCh)
+func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, workdir string, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) {
 	defer close(statusCh)
 
 	logger.Get(ctx).Infof("Running serve cmd: %s", cmd.String())
@@ -140,6 +150,7 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	procutil.SetOptNewProcessGroup(c.SysProcAttr)
 	c.Stderr = w
 	c.Stdout = w
+	c.Dir = workdir
 
 	err := c.Start()
 	if err != nil {
@@ -151,13 +162,14 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 	statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid, spanID: spanID}
 
 	// This is to prevent this goroutine from blocking, since we know there's only going to be one result
-	errCh := make(chan error, 1)
+	processExitCh := make(chan error, 1)
 	go func() {
-		errCh <- c.Wait()
+		processExitCh <- c.Wait()
+		close(processExitCh)
 	}()
 
 	select {
-	case err := <-errCh:
+	case err := <-processExitCh:
 		if err == nil {
 			logger.Get(ctx).Errorf("%s exited with exit code 0", cmd.String())
 		} else if ee, ok := err.(*exec.ExitError); ok {
@@ -167,19 +179,46 @@ func processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan s
 		}
 		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
 	case <-ctx.Done():
-		logger.Get(ctx).Debugf("About to gracefully shut down process %d", c.Process.Pid)
-		err := procutil.GracefullyShutdownProcess(c.Process)
-		if err != nil {
-			logger.Get(ctx).Debugf("Unable to gracefully kill process %d, sending SIGKILL to the process group", c.Process.Pid)
-			procutil.KillProcessGroup(c)
-		} else {
-			// wait and then send SIGKILL to the process group, unless the command finished
-			select {
-			case <-time.After(50 * time.Millisecond):
-				procutil.KillProcessGroup(c)
-			case <-doneCh:
-			}
-		}
+		e.killProcess(ctx, c, processExitCh)
 		statusCh <- statusAndMetadata{status: Done, spanID: spanID}
+	}
+}
+
+func (e *processExecer) killProcess(ctx context.Context, c *exec.Cmd, processExitCh chan error) {
+	logger.Get(ctx).Debugf("About to gracefully shut down process %d", c.Process.Pid)
+	err := procutil.GracefullyShutdownProcess(c.Process)
+	if err != nil {
+		logger.Get(ctx).Debugf("Unable to gracefully kill process %d, sending SIGKILL to the process group: %v", c.Process.Pid, err)
+		procutil.KillProcessGroup(c)
+		return
+	}
+
+	// we wait 30 seconds to give the process enough time to finish doing any cleanup.
+	// this is the same timeout that Kubernetes uses
+	// TODO(dmiller): make this configurable via the Tiltfile
+	infoCh := time.After(e.gracePeriod / 20)
+	moreInfoCh := time.After(e.gracePeriod / 3)
+	finalCh := time.After(e.gracePeriod)
+
+	select {
+	case <-infoCh:
+		logger.Get(ctx).Infof("Waiting %s for process to exit... (pid: %d)", e.gracePeriod, c.Process.Pid)
+	case <-processExitCh:
+		return
+	}
+
+	select {
+	case <-moreInfoCh:
+		logger.Get(ctx).Infof("Still waiting on exit... (pid: %d)", c.Process.Pid)
+	case <-processExitCh:
+		return
+	}
+
+	select {
+	case <-finalCh:
+		logger.Get(ctx).Infof("Time is up! Sending %d a kill signal", c.Process.Pid)
+		procutil.KillProcessGroup(c)
+	case <-processExitCh:
+		return
 	}
 }

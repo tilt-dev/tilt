@@ -1,0 +1,8 @@
+apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: bobo
+  namespace: tilt-integration
+spec:
+  image: bobo
+  nonImage: bobo

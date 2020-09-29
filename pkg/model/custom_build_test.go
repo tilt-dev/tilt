@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 func TestEmptyLiveUpdate(t *testing.T) {
@@ -14,7 +14,7 @@ func TestEmptyLiveUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 	cb := CustomBuild{
-		Command:    "true",
+		Command:    ToHostCmd("exit 0"),
 		Deps:       []string{"foo", "bar"},
 		LiveUpdate: lu,
 	}
@@ -27,7 +27,7 @@ func TestEmptyLiveUpdate(t *testing.T) {
 
 func TestValidate(t *testing.T) {
 	cb := CustomBuild{
-		Command: "true",
+		Command: ToHostCmd("exit 0"),
 		Deps:    []string{"foo", "bar"},
 	}
 	it := MustNewImageTarget(container.MustParseSelector("gcr.io/foo/bar")).
@@ -38,7 +38,7 @@ func TestValidate(t *testing.T) {
 
 func TestDoesNotValidate(t *testing.T) {
 	cb := CustomBuild{
-		Command: "",
+		Command: ToHostCmd(""),
 		Deps:    []string{"foo", "bar"},
 	}
 	it := MustNewImageTarget(container.MustParseSelector("gcr.io/foo/bar")).

@@ -10,13 +10,17 @@ import (
 	"strings"
 )
 
-func apiURL(webPort int, path string) string {
-	path = strings.TrimLeft(path, "/")
-	return fmt.Sprintf("http://localhost:%d/api/%s", webPort, path)
+func apiHost() string {
+	return fmt.Sprintf("%s:%d", webHost, webPort)
 }
 
-func apiGet(webPort int, path string) (body io.ReadCloser) {
-	url := apiURL(webPort, path)
+func apiURL(path string) string {
+	path = strings.TrimLeft(path, "/")
+	return fmt.Sprintf("http://%s:%d/api/%s", webHost, webPort, path)
+}
+
+func apiGet(path string) (body io.ReadCloser) {
+	url := apiURL(path)
 	res, err := http.Get(url)
 	if err != nil {
 		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))
@@ -28,8 +32,8 @@ func apiGet(webPort int, path string) (body io.ReadCloser) {
 	return res.Body
 }
 
-func apiPostJson(webPort int, path string, payload []byte) (body io.ReadCloser) {
-	url := apiURL(webPort, path)
+func apiPostJson(path string, payload []byte) (body io.ReadCloser) {
+	url := apiURL(path)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
 		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))

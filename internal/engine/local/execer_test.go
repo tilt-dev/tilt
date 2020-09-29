@@ -9,9 +9,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestTrue(t *testing.T) {
@@ -21,6 +22,24 @@ func TestTrue(t *testing.T) {
 	f.start("exit 0")
 
 	f.assertCmdSucceeds()
+}
+
+func TestWorkdir(t *testing.T) {
+	f := newProcessExecFixture(t)
+	defer f.tearDown()
+
+	d := tempdir.NewTempDirFixture(t)
+	defer d.TearDown()
+
+	cmd := "pwd"
+	if runtime.GOOS == "windows" {
+		cmd = "cd"
+	}
+
+	f.startWithWorkdir(cmd, d.Path())
+
+	f.assertCmdSucceeds()
+	f.assertLogContains(d.Path())
 }
 
 func TestSleep(t *testing.T) {
@@ -35,11 +54,36 @@ func TestSleep(t *testing.T) {
 	}
 	f.start(cmd)
 
-	f.waitForStatusAndNoError(Running)
+	f.waitForStatus(Running)
 
 	time.Sleep(time.Second)
 
 	f.assertCmdSucceeds()
+}
+
+func TestShutdownOnCancel(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no bash on windows")
+	}
+	f := newProcessExecFixture(t)
+	defer f.tearDown()
+
+	cmd := `
+function cleanup()
+{
+  echo "cleanup time!"
+  exit 1
+}
+
+trap cleanup EXIT
+sleep 100
+`
+	f.start(cmd)
+	f.cancel()
+
+	time.Sleep(time.Second)
+	f.waitForStatus(Done)
+	f.assertLogContains("cleanup time")
 }
 
 func TestPrintsLogs(t *testing.T) {
@@ -69,7 +113,7 @@ func TestStopsGrandchildren(t *testing.T) {
 	defer f.tearDown()
 
 	f.start("bash -c '(for i in $(seq 1 20); do echo loop$i; sleep 1; done)'")
-	f.waitForStatusAndNoError(Running)
+	f.waitForStatus(Running)
 
 	// wait until there's log output
 	timeout := time.After(time.Second)
@@ -86,7 +130,7 @@ func TestStopsGrandchildren(t *testing.T) {
 
 	// cancel the context
 	f.cancel()
-	f.waitForStatusAndNoError(Done)
+	f.waitForStatus(Done)
 }
 
 func TestHandlesProcessThatFailsToStart(t *testing.T) {
@@ -109,6 +153,7 @@ type processExecFixture struct {
 
 func newProcessExecFixture(t *testing.T) *processExecFixture {
 	execer := NewProcessExecer()
+	execer.gracePeriod = time.Second
 	testWriter := bufsync.NewThreadSafeBuffer()
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(testWriter)
 	ctx, cancel := context.WithCancel(ctx)
@@ -130,20 +175,25 @@ func (f *processExecFixture) tearDown() {
 
 func (f *processExecFixture) startMalformedCommand() {
 	c := model.Cmd{Argv: []string{"\""}}
-	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+	f.execer.Start(f.ctx, c, ".", f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+}
+
+func (f *processExecFixture) startWithWorkdir(cmd string, workdir string) {
+	c := model.ToHostCmd(cmd)
+	f.execer.Start(f.ctx, c, workdir, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
 }
 
 func (f *processExecFixture) start(cmd string) {
-	c := model.ToHostCmd(cmd)
-	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+	f.startWithWorkdir(cmd, ".")
 }
 
 func (f *processExecFixture) assertCmdSucceeds() {
-	f.waitForError()
+	f.waitForStatus(Error)
 	f.assertLogContains("exited with exit code 0")
 }
 
-func (f *processExecFixture) waitForStatusAndNoError(expectedStatus status) {
+func (f *processExecFixture) waitForStatus(expectedStatus status) {
+	deadlineCh := time.After(2 * time.Second)
 	for {
 		select {
 		case sm, ok := <-f.statusCh:
@@ -153,11 +203,15 @@ func (f *processExecFixture) waitForStatusAndNoError(expectedStatus status) {
 			if expectedStatus == sm.status {
 				return
 			}
-			if expectedStatus == Error {
-				f.t.Error("Unexpected Error sm")
+			if sm.status == Error {
+				f.t.Error("Unexpected Error")
 				return
 			}
-		case <-time.After(10 * time.Second):
+			if sm.status == Done {
+				f.t.Error("Unexpected Done")
+				return
+			}
+		case <-deadlineCh:
 			f.t.Fatal("Timed out waiting for cmd sm")
 		}
 	}
@@ -168,14 +222,5 @@ func (f *processExecFixture) assertLogContains(s string) {
 }
 
 func (f *processExecFixture) waitForError() {
-	for {
-		select {
-		case sm := <-f.statusCh:
-			if sm.status == Error {
-				return
-			}
-		case <-time.After(10 * time.Second):
-			f.t.Fatal("Timed out waiting for error")
-		}
-	}
+	f.waitForStatus(Error)
 }

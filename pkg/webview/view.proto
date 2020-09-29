@@ -6,7 +6,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 import "pkg/webview/log.proto";
 
-option go_package = "github.com/windmilleng/tilt/pkg/webview";
+option go_package = "github.com/tilt-dev/tilt/pkg/webview";
 
 // Correspond to BuildAndDeployers
 enum UpdateType {
@@ -66,6 +66,8 @@ message K8sResourceInfo {
 
   // The span id for this pod's logs in the main logstore
   string span_id = 9;
+
+  repeated string display_names = 10;
 }
 
 message DCResourceInfo {
@@ -102,8 +104,13 @@ message Facet {
 
 message Resource {
   string name = 1;
-  repeated string directories_watched = 2;
-  repeated string paths_watched = 3;
+
+  reserved "directories_watched";
+  reserved 2;
+
+  reserved "paths_watched";
+  reserved 3;
+  
   google.protobuf.Timestamp last_deploy_time = 4;
   int32 trigger_mode = 5;
   repeated BuildRecord build_history = 6;

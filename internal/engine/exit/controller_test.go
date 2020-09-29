@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestExitControlAllSuccess(t *testing.T) {
@@ -105,7 +105,8 @@ func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", store.Pod{
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
 			PodID:  "pod-a",
 			Status: "ErrImagePull",
 			Containers: []store.Container{
@@ -141,14 +142,15 @@ func TestExitControlCISuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", readyPod("pod-a"))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, readyPod("pod-a"))
 	})
 
 	f.c.OnChange(f.ctx, f.store)
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe2"].State.RuntimeState = store.NewK8sRuntimeState("fe2", readyPod("pod-b"))
+		mt := state.ManifestTargets["fe2"]
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, readyPod("pod-b"))
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
@@ -169,14 +171,49 @@ func TestExitControlCIJobSuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", readyPod("pod-a"))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, readyPod("pod-a"))
 	})
 
 	f.c.OnChange(f.ctx, f.store)
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState("fe", successPod("pod-a"))
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
+	})
+
+	// Verify that if one pod fails with an error, it fails immediately.
+	f.c.OnChange(f.ctx, f.store)
+	assert.True(t, f.store.exitSignal)
+	assert.Nil(t, f.store.exitError)
+}
+
+func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		manifestAutoInitTrue := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.JobYAML).Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitTrue))
+
+		mt := state.ManifestTargets["fe"]
+		mt.State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, readyPod("pod-a"))
+
+		manifestAutoInitFalse := manifestbuilder.New(f, "local").WithLocalResource("echo hi", nil).
+			WithTriggerMode(model.TriggerModeManualIncludingInitial).Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitFalse))
+	})
+
+	f.c.OnChange(f.ctx, f.store)
+	assert.False(t, f.store.exitSignal)
+
+	f.store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.

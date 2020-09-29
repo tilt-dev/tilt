@@ -9,6 +9,26 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+type K8sImageLocator interface {
+	EqualsImageLocator(other interface{}) bool
+}
+
+// Whether or not to wait for pods to become ready before
+// marking the k8s resource healthy.
+//
+// TODO(nick): I strongly suspect we will at least want a separate mode
+// for jobs that waits until they become complete, as we do in `tilt ci`
+type PodReadinessMode string
+
+// Pod readiness isn't applicable to this resource
+const PodReadinessNone PodReadinessMode = ""
+
+// Always wait for pods to become ready.
+const PodReadinessWait PodReadinessMode = "wait"
+
+// Don't even wait for pods to appear.
+const PodReadinessIgnore PodReadinessMode = "ignore"
+
 type K8sTarget struct {
 	Name         TargetName
 	YAML         string
@@ -23,6 +43,15 @@ type K8sTarget struct {
 	// Store the name, namespace, and type in a structured form
 	// for easy access. This should duplicate what's specified in the YAML.
 	ObjectRefs []v1.ObjectReference
+
+	PodReadinessMode PodReadinessMode
+
+	// Implementations of k8s.ImageLocator
+	//
+	// NOTE(nick): Untangling the circular dependency between k8s and pkg/model is
+	// a longer project. The k8s package needs to be split up a bit between the
+	// API objects and the client objects.
+	ImageLocators []K8sImageLocator
 
 	dependencyIDs []TargetID
 

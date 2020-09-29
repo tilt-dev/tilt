@@ -8,14 +8,15 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/windmilleng/fsnotify"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tilt-dev/fsnotify"
 
-	"github.com/windmilleng/tilt/internal/dockerignore"
-	"github.com/windmilleng/tilt/internal/ignore"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/watch"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/dockerignore"
+	"github.com/tilt-dev/tilt/internal/ignore"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
@@ -102,8 +103,8 @@ type WatchManager struct {
 	targetWatches      map[model.TargetID]targetNotifyCancel
 	fsWatcherMaker     FsWatcherMaker
 	timerMaker         TimerMaker
-	tiltIgnoreContents string
-	tiltIgnore         model.PathMatcher
+	globalIgnores      []model.Dockerignore
+	globalIgnore       model.PathMatcher
 	disabledForTesting bool
 	mu                 sync.Mutex
 }
@@ -113,7 +114,7 @@ func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchM
 		targetWatches:  make(map[model.TargetID]targetNotifyCancel),
 		fsWatcherMaker: watcherMaker,
 		timerMaker:     timerMaker,
-		tiltIgnore:     model.EmptyMatcher,
+		globalIgnore:   model.EmptyMatcher,
 	}
 }
 
@@ -142,7 +143,8 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		targetsToProcess[ConfigsTargetID] = &configsTarget{dependencies: append([]string(nil), state.ConfigFiles...)}
 	}
 
-	tiltIgnoreChanged := w.tiltIgnoreContents != state.TiltIgnoreContents
+	newGlobalIgnores := globalIgnores(state)
+	globalIgnoreChanged := !cmp.Equal(newGlobalIgnores, w.globalIgnores, cmpopts.EquateEmpty())
 
 	for name, mnc := range w.targetWatches {
 		m, ok := targetsToProcess[name]
@@ -151,7 +153,7 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 			continue
 		}
 
-		if tiltIgnoreChanged || !watchRulesMatch(m, mnc.target) {
+		if globalIgnoreChanged || !watchRulesMatch(m, mnc.target) {
 			teardown = append(teardown, name)
 			setup = append(setup, m)
 		}
@@ -164,18 +166,58 @@ func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []Watch
 		delete(targetsToProcess, name)
 	}
 
-	if w.tiltIgnoreContents != state.TiltIgnoreContents {
-		w.tiltIgnoreContents = state.TiltIgnoreContents
+	if globalIgnoreChanged {
+		w.globalIgnores = newGlobalIgnores
 
-		tiltRoot := filepath.Dir(state.TiltfilePath)
-		tiltIgnoreFilter, err := dockerignore.DockerIgnoreTesterFromContents(tiltRoot, w.tiltIgnoreContents)
+		globalIgnoreFilter, err := dockerignoresToMatcher(newGlobalIgnores)
 		if err != nil {
 			st.Dispatch(store.NewErrorAction(err))
 		}
-		w.tiltIgnore = tiltIgnoreFilter
+		w.globalIgnore = globalIgnoreFilter
 	}
 
 	return setup, teardown
+}
+
+// Return a list of global ignore patterns.
+func globalIgnores(es store.EngineState) []model.Dockerignore {
+	ignores := []model.Dockerignore{}
+	if !es.Tiltignore.Empty() {
+		ignores = append(ignores, es.Tiltignore)
+	}
+	ignores = append(ignores, es.WatchSettings.Ignores...)
+
+	outputs := []string{}
+	for _, manifest := range es.Manifests() {
+		for _, iTarget := range manifest.ImageTargets {
+			customBuild := iTarget.CustomBuildInfo()
+			if customBuild.OutputsImageRefTo != "" {
+				outputs = append(outputs, customBuild.OutputsImageRefTo)
+			}
+		}
+	}
+
+	if len(outputs) > 0 {
+		ignores = append(ignores, model.Dockerignore{
+			LocalPath: filepath.Dir(es.TiltfilePath),
+			Source:    "outputs_image_ref_to",
+			Patterns:  outputs,
+		})
+	}
+
+	return ignores
+}
+
+func dockerignoresToMatcher(ignores []model.Dockerignore) (model.PathMatcher, error) {
+	matchers := make([]model.PathMatcher, 0, len(ignores))
+	for _, ignore := range ignores {
+		matcher, err := dockerignore.NewDockerPatternMatcher(ignore.LocalPath, ignore.Patterns)
+		if err != nil {
+			return nil, err
+		}
+		matchers = append(matchers, matcher)
+	}
+	return model.NewCompositeMatcher(matchers), nil
 }
 
 func watchRulesMatch(w1, w2 WatchableTarget) bool {
@@ -248,7 +290,7 @@ func (w *WatchManager) createIgnoreMatcher(target WatchableTarget) (watch.PathMa
 	if err != nil {
 		return nil, err
 	}
-	return model.NewCompositeMatcher([]model.PathMatcher{filter, w.tiltIgnore}), nil
+	return model.NewCompositeMatcher([]model.PathMatcher{filter, w.globalIgnore}), nil
 }
 
 func (w *WatchManager) dispatchFileChangesLoop(
@@ -265,7 +307,16 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			if !ok {
 				return
 			}
-			if err.Error() == fsnotify.ErrEventOverflow.Error() {
+			if watch.IsWindowsShortReadError(err) {
+				st.Dispatch(store.NewErrorAction(fmt.Errorf("Windows I/O overflow.\n"+
+					"You may be able to fix this by setting the env var %s.\n"+
+					"Current buffer size: %d\n"+
+					"More details: https://github.com/tilt-dev/tilt/issues/3556\n"+
+					"Caused by: %v",
+					watch.WindowsBufferSizeEnvVar,
+					watch.DesiredWindowsBufferSize(),
+					err)))
+			} else if err.Error() == fsnotify.ErrEventOverflow.Error() {
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err)))
 			} else {
 				st.Dispatch(store.NewErrorAction(err))
@@ -274,6 +325,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			return
 
 		case fsEvents, ok := <-eventsCh:
+
 			if !ok {
 				return
 			}

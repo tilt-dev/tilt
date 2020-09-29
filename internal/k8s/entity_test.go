@@ -11,8 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/kustomize"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/kustomize"
 )
 
 func TestTypedPodGVK(t *testing.T) {
@@ -266,6 +266,67 @@ func TestMutableAndImmutableEntities(t *testing.T) {
 			assertKindOrder(t, test.expectedImmutableKindOrder, immutable, "immutable entities")
 		})
 	}
+}
+
+func TestClean(t *testing.T) {
+	yaml := `apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{},"labels":{"app.kubernetes.io/managed-by":"tilt"},"name":"elastic-system"},"spec":{}}
+  creationTimestamp: "2020-07-07T14:50:17Z"
+  labels:
+    app.kubernetes.io/managed-by: tilt
+  managedFields:
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:annotations:
+          .: {}
+          f:kubectl.kubernetes.io/last-applied-configuration: {}
+        f:labels:
+          .: {}
+          f:app.kubernetes.io/managed-by: {}
+      f:status:
+        f:phase: {}
+    manager: tilt
+    operation: Update
+    time: "2020-07-07T14:50:17Z"
+  name: elastic-system
+  resourceVersion: "617"
+  selfLink: /api/v1/namespaces/elastic-system
+  uid: fa9710ff-7b19-499c-b0f9-faedd1c84969
+spec:
+  finalizers:
+  - kubernetes
+`
+	entities := mustParseYAML(t, yaml)
+	entities[0].Clean()
+
+	result, err := SerializeSpecYAML(entities)
+	require.NoError(t, err)
+
+	expected := `apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: "2020-07-07T14:50:17Z"
+  labels:
+    app.kubernetes.io/managed-by: tilt
+  name: elastic-system
+  resourceVersion: "617"
+  selfLink: /api/v1/namespaces/elastic-system
+  uid: fa9710ff-7b19-499c-b0f9-faedd1c84969
+spec:
+  finalizers:
+  - kubernetes
+`
+	assert.Equal(t, expected, result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }
 
 func entitiesWithKinds(kinds []string) []K8sEntity {

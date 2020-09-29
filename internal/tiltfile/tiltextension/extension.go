@@ -6,13 +6,12 @@ package tiltextension
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 type Extension struct {
@@ -29,6 +28,7 @@ func NewExtension(fetcher Fetcher, store Store) *Extension {
 
 type Fetcher interface {
 	Fetch(ctx context.Context, moduleName string) (ModuleContents, error)
+	CleanUp() error
 }
 
 func (e *Extension) OnStart(env *starkit.Environment) error {
@@ -47,12 +47,6 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 		return "", nil
 	}
 
-	loadIsHappeningInTopLevel := t.CallStackDepth() == 1
-
-	if !loadIsHappeningInTopLevel {
-		return "", fmt.Errorf("extensions cannot be loaded from `load`ed Tiltfiles")
-	}
-
 	moduleName := strings.TrimPrefix(arg, extensionPrefix)
 	// If the module can't be found we fetch it below
 	localPath, err := e.store.ModulePath(ctx, moduleName)
@@ -67,6 +61,10 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	defer func() {
+		_ = e.fetcher.CleanUp()
+	}()
 
 	return e.store.Write(ctx, contents)
 }

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 )
 
 func MustParseYAMLFromString(t *testing.T, s string) []K8sEntity {
@@ -97,7 +97,7 @@ func TestCRDYAML(t *testing.T) {
 func TestPodDisruptionBudgetYAML(t *testing.T) {
 	// Old versions of Tilt would print the PodDisruptionBudgetStatus, which
 	// is not correct and leads to errors. See:
-	// https://github.com/windmilleng/tilt/issues/1667
+	// https://github.com/tilt-dev/tilt/issues/1667
 	entities := assertRoundTripYAML(t, testyaml.PodDisruptionBudgetYAML)
 	assert.Equal(t, 1, len(entities))
 }

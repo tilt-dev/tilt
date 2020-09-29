@@ -8,21 +8,25 @@ import (
 	"go.opentelemetry.io/otel/api/core"
 	"go.opentelemetry.io/otel/api/trace"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type BuildAndDeployer interface {
 	// BuildAndDeploy builds and deployed the specified target specs.
-	//
-	// Returns a BuildResult that expresses the outputs(s) of the build.
+
+	// Returns a BuildResultSet containing output (build result and associated
+	// file changes) for each target built in this call. The BuildResultSet only
+	// contains results for newly built targets--if a target was clean and didn't
+	// need to be built, it doesn't appear in the result set.
 	//
 	// BuildResult can be used to construct a set of BuildStates, which contain
-	// the last successful builds of each target and the files changed since that build.
+	// the last successful builds of each target and the files changed since that
+	// build.
 	BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error)
 }
 
@@ -119,17 +123,13 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 
 func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDeployer, dcbad *DockerComposeBuildAndDeployer,
 	ltbad *LocalTargetBuildAndDeployer, updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
-	if updMode == buildcontrol.UpdateModeImage || updMode == buildcontrol.UpdateModeNaive {
+	if updMode == buildcontrol.UpdateModeImage {
 		return BuildOrder{dcbad, ibad, ltbad}
 	}
 
-	if updMode == buildcontrol.UpdateModeSynclet || shouldUseSynclet(updMode, env, runtime) {
+	if updMode == buildcontrol.UpdateModeSynclet {
 		ibad.SetInjectSynclet(true)
 	}
 
 	return BuildOrder{lubad, dcbad, ibad, ltbad}
-}
-
-func shouldUseSynclet(updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) bool {
-	return updMode == buildcontrol.UpdateModeAuto && !env.UsesLocalDockerRegistry() && runtime == container.RuntimeDocker
 }

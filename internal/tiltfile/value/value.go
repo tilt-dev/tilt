@@ -2,12 +2,13 @@ package value
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // If `v` is a `starlark.Sequence`, return a slice of its elements
@@ -30,54 +31,13 @@ func ValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	}
 }
 
-func ValueToStringMap(v starlark.Value) (map[string]string, error) {
-	var result map[string]string
-	if v != nil && v != starlark.None {
-		d, ok := v.(*starlark.Dict)
-		if !ok {
-			return nil, fmt.Errorf("expected dict, got %T", v)
-		}
-
-		var err error
-		result, err = skylarkStringDictToGoMap(d)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return result, nil
-}
-
-func skylarkStringDictToGoMap(d *starlark.Dict) (map[string]string, error) {
-	r := map[string]string{}
-
-	for _, tuple := range d.Items() {
-		kV, ok := AsString(tuple[0])
-		if !ok {
-			return nil, fmt.Errorf("key is not a string: %T (%v)", tuple[0], tuple[0])
-		}
-
-		k := string(kV)
-
-		vV, ok := AsString(tuple[1])
-		if !ok {
-			return nil, fmt.Errorf("value is not a string: %T (%v)", tuple[1], tuple[1])
-		}
-
-		v := string(vV)
-
-		r[k] = v
-	}
-
-	return r, nil
-}
-
 func ValueToAbsPath(thread *starlark.Thread, v starlark.Value) (string, error) {
 	pathMaker, ok := v.(PathMaker)
 	if ok {
 		return pathMaker.MakeLocalPath("."), nil
 	}
 
-	str, ok := v.(starlark.String)
+	str, ok := starlark.AsString(v)
 	if ok {
 		return starkit.AbsPath(thread, string(str)), nil
 	}
@@ -115,11 +75,26 @@ func StringSliceToList(slice []string) *starlark.List {
 	return starlark.NewList(v)
 }
 
+// In other similar build systems (Buck and Bazel),
+// there's a "main" command, and then various per-platform overrides.
+// https://docs.bazel.build/versions/master/be/general.html#genrule.cmd_bat
+// This helper function abstracts out the precedence rules.
+func ValueGroupToCmdHelper(cmdVal, cmdBatVal starlark.Value) (model.Cmd, error) {
+	if cmdBatVal != nil && runtime.GOOS == "windows" {
+		return ValueToBatCmd(cmdBatVal)
+	}
+	return ValueToHostCmd(cmdVal)
+}
+
 // provides dockerfile-style behavior of:
 // a string gets interpreted as a shell command (like, sh -c 'foo bar $X')
 // an array of strings gets interpreted as a raw argv to exec
 func ValueToHostCmd(v starlark.Value) (model.Cmd, error) {
 	return valueToCmdHelper(v, model.ToHostCmd)
+}
+
+func ValueToBatCmd(v starlark.Value) (model.Cmd, error) {
+	return valueToCmdHelper(v, model.ToBatCmd)
 }
 
 func ValueToUnixCmd(v starlark.Value) (model.Cmd, error) {

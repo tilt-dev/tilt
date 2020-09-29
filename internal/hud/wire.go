@@ -1,17 +1,17 @@
 package hud
 
 import (
-	"os"
-
 	"github.com/google/wire"
+	"github.com/mattn/go-colorable"
 )
 
 var WireSet = wire.NewSet(
 	NewRenderer,
-	ProvideHud,
+	NewHud,
+	NewTerminalStream,
 	ProvideStdout,
 	NewIncrementalPrinter)
 
 func ProvideStdout() Stdout {
-	return Stdout(os.Stdout)
+	return Stdout(colorable.NewColorableStdout())
 }

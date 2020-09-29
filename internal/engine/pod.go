@@ -8,14 +8,15 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/engine/k8swatch"
-	"github.com/windmilleng/tilt/internal/engine/runtimelog"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func handlePodDeleteAction(ctx context.Context, state *store.EngineState, action k8swatch.PodDeleteAction) {
@@ -80,7 +81,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		ms.RuntimeState = runtime
 	}
 
-	fwdsValid := portForwardsAreValid(manifest, *podInfo)
+	fwdsValid := portforward.PortForwardsAreValid(manifest, *podInfo)
 	if !fwdsValid {
 		logger.Get(ctx).Warnf(
 			"Resource %s is using port forwards, but no container ports on pod %s",
@@ -110,7 +111,7 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 	}
 
 	ms := mt.State
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 
 	// If the event has an ancestor UID attached, but that ancestor isn't in the
 	// deployed UID set anymore, we can ignore it.
@@ -128,7 +129,7 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.Pod, bool) {
 	pod := action.Pod
 	podID := k8s.PodIDFromPod(pod)
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	isCurrentDeploy := runtime.HasOKPodTemplateSpecHash(pod) // is pod from the most recent Tilt deploy?
 
 	// Only attach a new pod to the runtime state if it's from the current deploy;
@@ -175,7 +176,7 @@ func podContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.Cont
 	for _, cStatus := range containerStatuses {
 		c, err := containerForStatus(ctx, pod, cStatus)
 		if err != nil {
-			logger.Get(ctx).Debugf(err.Error())
+			logger.Get(ctx).Debugf("%s", err.Error())
 			continue
 		}
 
@@ -217,15 +218,21 @@ func containerForStatus(ctx context.Context, pod *v1.Pod, cStatus v1.ContainerSt
 		isRunning = true
 	}
 
+	isTerminated := false
+	if cStatus.State.Terminated != nil && !cStatus.State.Terminated.StartedAt.IsZero() {
+		isTerminated = true
+	}
+
 	return store.Container{
-		Name:     cName,
-		ID:       cID,
-		Ports:    ports,
-		Ready:    cStatus.Ready,
-		Running:  isRunning,
-		ImageRef: cRef,
-		Restarts: int(cStatus.RestartCount),
-		Status:   k8swatch.ContainerStatusToRuntimeState(cStatus),
+		Name:       cName,
+		ID:         cID,
+		Ports:      ports,
+		Ready:      cStatus.Ready,
+		Running:    isRunning,
+		Terminated: isTerminated,
+		ImageRef:   cRef,
+		Restarts:   int(cStatus.RestartCount),
+		Status:     k8swatch.ContainerStatusToRuntimeState(cStatus),
 	}, nil
 }
 
@@ -271,7 +278,7 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 // that they don't clutter the output.
 func prunePods(ms *store.ManifestState) {
 	// Always remove pods that were manually deleted.
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	for key, pod := range runtime.Pods {
 		if pod.Deleting {
 			delete(runtime.Pods, key)

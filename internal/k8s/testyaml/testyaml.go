@@ -57,6 +57,59 @@ spec:
         - containerPort: 8080
 `
 
+const BlorgBackendAmbiguousYAML = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: blorg
+  labels:
+    app: blorg
+    owner: nick
+    environment: devel
+    tier: backend
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: blorg
+    owner: nick
+    environment: devel
+    tier: backend
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: blorg
+spec:
+  selector:
+    matchLabels:
+      app: blorg
+      owner: nick
+      environment: devel
+      tier: backend
+  template:
+    metadata:
+      name: blorg
+      labels:
+        app: blorg
+        owner: nick
+        environment: devel
+        tier: backend
+    spec:
+      containers:
+      - name: backend
+        imagePullPolicy: Always
+        image: gcr.io/blorg-dev/blorg
+        command: [
+          "/app/server",
+          "--dbAddr", "hissing-cockroach-cockroachdb:26257"
+        ]
+        ports:
+        - containerPort: 8080
+`
+
 const BlorgJobYAML = `apiVersion: batch/v1
 kind: Job
 metadata:
@@ -856,6 +909,23 @@ spec:
   selector:
     app: doggos
 `
+const CatsServiceYaml = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: cats
+  labels:
+    app: cats
+    whosAGoodCat: meow
+spec:
+  ports:
+    - port: 60
+      targetPort: 6083
+      protocol: TCP
+  selector:
+    app: cats
+`
+
 const (
 	DoggosName      = "doggos"
 	DoggosNamespace = "the-dog-zone"
@@ -1371,11 +1441,21 @@ spec:
 
 const CRDImage = "docker.io/bitnami/minideb:latest"
 
+const CRDImageObjectYAML = `apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: um
+spec:
+  imageObject:
+    repo: frontend
+`
+
 const MyNamespaceYAML = `apiVersion: v1
 kind: Namespace
 metadata:
   name: mynamespace
 `
+const MyNamespaceName = "mynamespace"
 
 const RedisStatefulSetYAML = `
 # Modified from: redis/templates/redis-master-statefulset.yaml
@@ -1569,4 +1649,34 @@ items:
         - name: doggos
           image: gcr.io/windmill-public-containers/servantes/doggos
           command: ["/go/bin/doggos"]
+`
+
+const KnativeServingCore = `
+---
+# Copyright 2018 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: caching.internal.knative.dev/v1alpha1
+kind: Image
+metadata:
+  name: queue-proxy
+  namespace: knative-serving
+  labels:
+    serving.knative.dev/release: "v0.15.0"
+spec:
+  # This is the Go import path for the binary that is containerized
+  # and substituted here.
+  image: gcr.io/knative-releases/knative.dev/serving/cmd/queue@sha256:713bd548700bf7fe5452969611d1cc987051bd607d67a4e7623e140f06c209b2
+
 `

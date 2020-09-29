@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // Some K8s environments expose a single IP for the whole cluster.
@@ -30,7 +30,7 @@ func (a *nodeIPAsync) detectNodeIP(ctx context.Context) NodeIP {
 	}
 	nodeIP, err := a.mkClient.NodeIP(ctx)
 	if err != nil {
-		logger.Get(ctx).Warnf(err.Error())
+		logger.Get(ctx).Warnf("%s", err.Error())
 	}
 	return nodeIP
 }

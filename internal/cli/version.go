@@ -5,10 +5,14 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type versionCmd struct {
 }
+
+func (c *versionCmd) name() model.TiltSubcommand { return "version" }
 
 func (c *versionCmd) register() *cobra.Command {
 	cmd := &cobra.Command{

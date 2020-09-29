@@ -12,11 +12,12 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // dcResourceSet represents a single docker-compose config file and all its associated services
@@ -45,20 +46,45 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 			return nil, fmt.Errorf("docker_compose files must be a string or a sequence of strings; found a %T", v)
 		}
 		configPaths = append(configPaths, path)
+
+		err = io.RecordReadPath(thread, io.WatchFileOnly, path)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	var services []*dcService
-	tempServices, err := parseDCConfig(s.ctx, s.dcCli, configPaths)
-	services = append(services, tempServices...)
+	dc := s.dc
+	currentTiltfilePath := starkit.CurrentExecPath(thread)
+	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
+		return starlark.None, fmt.Errorf("Cannot load docker-compose files from two different Tiltfiles.\n"+
+			"docker-compose must have a single working directory:\n"+
+			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
+	}
+
+	// To make sure all the docker-compose files are compatible together,
+	// parse them all together.
+	allConfigPaths := append([]string{}, dc.configPaths...)
+	allConfigPaths = append(allConfigPaths, configPaths...)
+
+	services, err := parseDCConfig(s.ctx, s.dcCli, allConfigPaths)
 	if err != nil {
 		return nil, err
 	}
-	if !s.dc.Empty() {
-		return starlark.None, fmt.Errorf("already have a docker-compose resource declared (%v), cannot declare another", s.dc.configPaths)
+
+	for _, s := range services {
+		dfPath := s.DfPath
+		if dfPath == "" {
+			continue
+		}
+
+		err = io.RecordReadPath(thread, io.WatchFileOnly, s.DfPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	s.dc = dcResourceSet{
-		configPaths:  configPaths,
+		configPaths:  allConfigPaths,
 		services:     services,
 		tiltfilePath: starkit.CurrentExecPath(thread),
 	}
@@ -253,8 +279,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 	return services, nil
 }
 
-func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (manifest model.Manifest,
-	configFiles []string, err error) {
+func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (model.Manifest, error) {
 	dcInfo := model.DockerComposeTarget{
 		ConfigPaths: dcSet.configPaths,
 		YAMLRaw:     service.ServiceConfig,
@@ -265,7 +290,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 
 	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode), true)
 	if err != nil {
-		return model.Manifest{}, nil, err
+		return model.Manifest{}, err
 	}
 
 	var mds []model.ManifestName
@@ -281,7 +306,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 
 	if service.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
-		return m, nil, nil
+		return m, nil
 	}
 
 	dcInfo = dcInfo.WithBuildPath(service.BuildContext)
@@ -293,12 +318,19 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 	paths = append(paths, dcInfo.LocalPaths()...)
 	paths = append(paths, filepath.Dir(dcSet.tiltfilePath))
 
-	dcInfo = dcInfo.WithDockerignores(s.dockerignoresFromPathsAndContextFilters(paths, []string{}, []string{}))
+	dIgnores, err := s.dockerignoresFromPathsAndContextFilters(
+		fmt.Sprintf("docker-compose %s", service.Name),
+		paths, []string{}, []string{}, service.DfPath)
+	if err != nil {
+		return model.Manifest{}, fmt.Errorf("Reading dockerignore for %s: %v", service.Name, err)
+	}
+
+	dcInfo = dcInfo.WithDockerignores(dIgnores)
 
 	localPaths := []string{dcSet.tiltfilePath}
 	for _, p := range paths {
 		if !filepath.IsAbs(p) {
-			return model.Manifest{}, nil, fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/windmilleng/tilt/issues : %s", p)
+			return model.Manifest{}, fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/tilt-dev/tilt/issues : %s", p)
 		}
 		localPaths = append(localPaths, p)
 	}
@@ -307,5 +339,5 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 
 	m = m.WithDeployTarget(dcInfo)
 
-	return m, []string{service.DfPath}, nil
+	return m, nil
 }

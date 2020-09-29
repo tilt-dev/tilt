@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Middleware that attaches a server at a subpath.

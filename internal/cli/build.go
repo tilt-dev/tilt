@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"fmt"
 	"os"
-	"strings"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Version for Go-compiled builds that didn't go through goreleaser.
@@ -19,7 +17,7 @@ import (
 // For distributed binaries, version is automatically baked
 // into the binary with goreleaser. If this doesn't get updated
 // on every release, it's often not that big a deal.
-const devVersion = "0.13.4"
+const devVersion = "0.17.6"
 
 var commitSHA string
 var globalTiltInfo model.TiltBuild
@@ -37,18 +35,7 @@ func tiltInfo() model.TiltBuild {
 }
 
 func buildStamp() string {
-	info := tiltInfo()
-	version := info.Version
-	date := info.Date
-	timeIndex := strings.Index(date, "T")
-	if timeIndex != -1 {
-		date = date[0:timeIndex]
-	}
-	devSuffix := ""
-	if info.Dev {
-		devSuffix = "-dev"
-	}
-	return fmt.Sprintf("v%s%s, built %s", version, devSuffix, date)
+	return tiltInfo().HumanBuildStamp()
 }
 
 // Returns a build datestamp in the format 2018-08-30

@@ -8,19 +8,24 @@ import (
 
 	"github.com/spf13/cobra"
 
-	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
+	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 
-	"github.com/windmilleng/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type doctorCmd struct {
 }
+
+func (c *doctorCmd) name() model.TiltSubcommand { return "doctor" }
 
 func (c *doctorCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Print diagnostic information about the Tilt environment, for filing bug reports",
 	}
+	addKubeContextFlag(cmd)
 	return cmd
 }
 
@@ -118,6 +123,9 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	kVersion, err := wireK8sVersion(ctx)
 	printField("Version", kVersion, err)
 
+	registryDisplay, err := clusterLocalRegistryDisplay(ctx)
+	printField("Cluster Local Registry", registryDisplay, err)
+
 	fmt.Println("---")
 	fmt.Println("Thanks for seeing the Tilt Doctor!")
 	fmt.Println("Please send the info above when filing bug reports. 💗")
@@ -128,6 +136,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Println("---")
 	fmt.Println("Analytics Settings")
+	fmt.Println("--> (These results reflect your personal opt in/out status and may be overridden by an `analytics_settings` call in your Tiltfile)")
 
 	a := analytics.Get(ctx)
 	opt := a.UserOpt()
@@ -144,6 +153,21 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	fmt.Printf("- Repo: %s\n", gitRepoHash)
 
 	return nil
+}
+
+func clusterLocalRegistryDisplay(ctx context.Context) (string, error) {
+	kClient, err := wireK8sClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// blackhole any warnings
+	newCtx := logger.WithLogger(ctx, logger.NewDeferredLogger(ctx))
+	registry := kClient.LocalRegistry(newCtx)
+	if registry.Empty() {
+		return "none", nil
+	}
+	return fmt.Sprintf("%+v", registry), nil
 }
 
 func printField(name string, v interface{}, err error) {

@@ -156,3 +156,27 @@ FROM gcr.io/image-a:${TAG}
 		assert.Equal(t, "gcr.io/image-a:latest", images[0].String())
 	}
 }
+
+func TestFindImagesWithMount(t *testing.T) {
+	// Example from:
+	// https://github.com/tilt-dev/tilt/issues/3331
+	//
+	// The buildkit experimental parser will parse commands
+	// like `RUN --mount` that the normal parser won't. So
+	// we want to make sure a partial parse succeeds:
+	// an bad parse later in the Dockerfile shouldn't interfere
+	// with commands further up.
+	df := Dockerfile(`
+# syntax=docker/dockerfile:experimental
+
+ARG PYTHON2_BASE="python2-base"
+FROM ${PYTHON2_BASE}
+
+RUN --mount=type=cache,id=pip,target=/root/.cache/pip pip install python-dateutil
+`)
+	images, err := df.FindImages()
+	assert.NoError(t, err)
+	if assert.Equal(t, 1, len(images)) {
+		assert.Equal(t, "docker.io/library/python2-base", images[0].String())
+	}
+}

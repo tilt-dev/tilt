@@ -23,14 +23,9 @@ import (
 	kfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	ktesting "k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/cache"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
-
-func TestTiltPatch(t *testing.T) {
-	assert.True(t, cache.IsTiltPatchApplied())
-}
 
 func TestK8sClient_WatchPods(t *testing.T) {
 	tf := newWatchTestFixture(t)
@@ -398,13 +393,14 @@ func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-cha
 			if ok {
 				observedPods = append(observedPods, pod)
 			}
-		case <-time.After(10 * time.Millisecond):
-			// if we haven't seen any events for 10ms, assume we're done
+		case <-time.After(200 * time.Millisecond):
+			// if we haven't seen any events for 200ms, assume we're done
 			done = true
 		}
 	}
 
-	assert.Equal(tf.t, expectedOutput, observedPods)
+	// Our k8s simulation library does not guarantee event order.
+	assert.ElementsMatch(tf.t, expectedOutput, observedPods)
 }
 
 func (tf *watchTestFixture) runServices(input []runtime.Object, expected []runtime.Object) {
@@ -425,13 +421,14 @@ func (tf *watchTestFixture) assertServices(expectedOutput []runtime.Object, ch <
 			} else {
 				observedServices = append(observedServices, pod)
 			}
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			// if we haven't seen any events for 10ms, assume we're done
 			done = true
 		}
 	}
 
-	assert.Equal(tf.t, expectedOutput, observedServices)
+	// Our k8s simulation library does not guarantee event order.
+	assert.ElementsMatch(tf.t, expectedOutput, observedServices)
 }
 
 func (tf *watchTestFixture) runEvents(input []runtime.Object, expectedOutput []runtime.Object) {
@@ -452,15 +449,14 @@ func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-c
 			} else {
 				observedEvents = append(observedEvents, event)
 			}
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			// if we haven't seen any events for 10ms, assume we're done
 			// ideally we'd always be exiting from ch closing, but it's not currently clear how to do that via informer
 			done = true
 		}
 	}
 
-	// TODO(matt) - using ElementsMatch instead of Equal because, for some reason, events do not always come out in the
-	// same order we feed them in. I'm punting on figuring out why for now.
+	// Our k8s simulation library does not guarantee event order.
 	assert.ElementsMatch(tf.t, expectedOutput, observedEvents)
 }
 

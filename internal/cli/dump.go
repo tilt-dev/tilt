@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func newDumpCmd(rootCmd *cobra.Command) *cobra.Command {
@@ -30,6 +34,7 @@ and may change frequently.
 	result.AddCommand(newDumpEngineCmd())
 	result.AddCommand(newDumpLogStoreCmd())
 	result.AddCommand(newDumpCliDocsCmd(rootCmd))
+	result.AddCommand(newDumpImageDeployRefCmd())
 
 	return result
 }
@@ -48,7 +53,7 @@ and may change frequently.
 		Run:  dumpWebview,
 		Args: cobra.NoArgs,
 	}
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
+	addConnectServerFlags(cmd)
 	return cmd
 }
 
@@ -69,7 +74,7 @@ Excludes logs.
 		Run:  dumpEngine,
 		Args: cobra.NoArgs,
 	}
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
+	addConnectServerFlags(cmd)
 	return cmd
 }
 
@@ -88,7 +93,7 @@ and may change frequently.
 		Run:  dumpLogStore,
 		Args: cobra.NoArgs,
 	}
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server")
+	addConnectServerFlags(cmd)
 	return cmd
 }
 
@@ -134,8 +139,56 @@ func (c *dumpCliDocsCmd) run(cmd *cobra.Command, args []string) {
 	}
 }
 
+func newDumpImageDeployRefCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "image-deploy-ref REF",
+		Short: "Determine the name and tag with which Tilt will deploy the given image",
+		Long: `Determine the name and tag with which Tilt will deploy the given image.
+
+This command is intended to be used with custom_build scripts.
+
+Once the custom_build script has built the image at $EXPECTED_REF, it can
+invoke:
+
+echo $(tilt dump image-deploy-ref $EXPECTED_REF)
+
+to print the deploy ref of the image. Tilt will read the image contents,
+determine its hash, and create a content-based tag.
+
+More info on custom build scripts: https://docs.tilt.dev/custom_build.html
+`,
+		Example: "tilt dump image-deploy-ref $EXPECTED_REF",
+		Run:     dumpImageDeployRef,
+		Args:    cobra.ExactArgs(1),
+	}
+}
+
+func dumpImageDeployRef(cmd *cobra.Command, args []string) {
+	ctx, cleanup := preCommand(context.Background(), "dump")
+	defer func() {
+		_ = cleanup()
+	}()
+
+	deps, err := wireDumpImageDeployRefDeps(ctx)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Initialization error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Assume that people with complex custom_build commands are using
+	// the kubernetes orchestrator.
+	deps.DockerClient.SetOrchestrator(model.OrchestratorK8s)
+	ref, err := deps.DockerBuilder.DumpImageDeployRef(ctx, args[0])
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("%s", container.FamiliarString(ref))
+}
+
 func dumpWebview(cmd *cobra.Command, args []string) {
-	body := apiGet(webPort, "view")
+	body := apiGet("view")
 
 	err := dumpJSON(body)
 	if err != nil {
@@ -144,7 +197,7 @@ func dumpWebview(cmd *cobra.Command, args []string) {
 }
 
 func dumpEngine(cmd *cobra.Command, args []string) {
-	body := apiGet(webPort, "dump/engine")
+	body := apiGet("dump/engine")
 	defer func() {
 		_ = body.Close()
 	}()
@@ -166,7 +219,7 @@ func dumpEngine(cmd *cobra.Command, args []string) {
 }
 
 func dumpLogStore(cmd *cobra.Command, args []string) {
-	body := apiGet(webPort, "dump/engine")
+	body := apiGet("dump/engine")
 	defer func() {
 		_ = body.Close()
 	}()

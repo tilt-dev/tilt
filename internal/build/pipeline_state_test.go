@@ -10,11 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // NOTE(dmiller): set at runtime with:
-// go test -ldflags="-X 'github.com/windmilleng/tilt/internal/build.PipelineStateWriteGoldenMaster=1'" ./internal/build -run ^TestPipeline
+// go test -ldflags="-X 'github.com/tilt-dev/tilt/internal/build.PipelineStateWriteGoldenMaster=1'" ./internal/build -run ^TestPipeline
 var PipelineStateWriteGoldenMaster = "0"
 
 func TestPipeline(t *testing.T) {

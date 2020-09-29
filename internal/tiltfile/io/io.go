@@ -9,9 +9,19 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+)
+
+type WatchType int
+
+const (
+	// If it's a file, only watch the file. If it's a directory, don't watch at all.
+	WatchFileOnly WatchType = iota
+
+	// If it's a file, only watch the file. If it's a directory, watch it recursively.
+	WatchRecursive
 )
 
 type Extension struct{}
@@ -49,7 +59,7 @@ func (Extension) OnStart(e *starkit.Environment) error {
 }
 
 func (Extension) OnExec(t *starlark.Thread, tiltfilePath string) error {
-	return RecordReadFile(t, tiltfilePath)
+	return RecordReadPath(t, WatchFileOnly, tiltfilePath)
 }
 
 func readFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -98,7 +108,7 @@ func watchFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 		return nil, fmt.Errorf("invalid type for paths: %v", err)
 	}
 
-	err = RecordReadFile(thread, p)
+	err = RecordReadPath(thread, WatchRecursive, p)
 	if err != nil {
 		return nil, err
 	}
@@ -119,9 +129,13 @@ func listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	err = RecordReadFile(thread, localPath)
-	if err != nil {
-		return nil, err
+	// We currently don't watch the directory only, because Tilt doesn't have any
+	// way to watch a directory without watching it recursively.
+	if recursive {
+		err = RecordReadPath(thread, WatchRecursive, localPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var files []string
@@ -158,22 +172,56 @@ func blob(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 	return NewBlob(input.GoString(), "Tiltfile blob() call"), nil
 }
 
-// Track all the files read while loading
+// Track all the paths read while loading
 type ReadState struct {
-	Files []string
+	Paths []string
 }
 
 func ReadFile(thread *starlark.Thread, p string) ([]byte, error) {
-	err := RecordReadFile(thread, p)
+	err := RecordReadPath(thread, WatchFileOnly, p)
 	if err != nil {
 		return nil, err
 	}
 	return ioutil.ReadFile(p)
 }
 
-func RecordReadFile(t *starlark.Thread, files ...string) error {
+func RecordReadPath(t *starlark.Thread, wt WatchType, files ...string) error {
+	toWatch := make([]string, 0, len(files))
+	for _, f := range files {
+		switch wt {
+		case WatchRecursive:
+			toWatch = append(toWatch, f)
+
+		case WatchFileOnly:
+			info, err := os.Lstat(f)
+			shouldWatch := false
+			if os.IsNotExist(err) {
+				// If a file does not exist, we should watch the space
+				// to see if the file does appear.
+				shouldWatch = true
+			} else if err != nil {
+				// If we got a permission denied error, we should stop.
+				return err
+			} else if !info.IsDir() {
+				// Tilt only knows how to do recursive watches. If we read a directory
+				// during Tiltfile execution, we'd rather not watch the directory at all
+				// rather than overwatch and over-trigger Tiltfile reloads.
+				//
+				// https://github.com/tilt-dev/tilt/issues/3387
+				shouldWatch = true
+			}
+
+			if shouldWatch {
+				toWatch = append(toWatch, f)
+			}
+
+		default:
+			return fmt.Errorf("Unknown watch type: %v", t)
+		}
+	}
+
 	err := starkit.SetState(t, func(s ReadState) ReadState {
-		s.Files = sliceutils.AppendWithoutDupes(s.Files, files...)
+		s.Paths = sliceutils.AppendWithoutDupes(s.Paths, toWatch...)
 		return s
 	})
 	return errors.Wrap(err, "error recording read file")

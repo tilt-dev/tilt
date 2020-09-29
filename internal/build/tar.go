@@ -10,13 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/build/moby"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/build/moby"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ArchiveBuilder struct {
@@ -48,13 +47,11 @@ func clearUIDAndGID(h *tar.Header) {
 }
 
 func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-archiveDf")
-	_ = ctx
-	defer span.Finish()
 	tarHeader := &tar.Header{
 		Name:       "Dockerfile",
 		Typeflag:   tar.TypeReg,
 		Size:       int64(len(df)),
+		Mode:       0644,
 		ModTime:    time.Now(),
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
@@ -74,9 +71,6 @@ func (a *ArchiveBuilder) archiveDf(ctx context.Context, df dockerfile.Dockerfile
 
 // ArchivePathsIfExist creates a tar archive of all local files in `paths`. It quietly skips any paths that don't exist.
 func (a *ArchiveBuilder) ArchivePathsIfExist(ctx context.Context, paths []PathMapping) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ArchivePathsIfExist")
-	defer span.Finish()
-
 	// In order to handle overlapping syncs, we
 	// 1) collect all the entries,
 	// 2) de-dupe them, with last-one-wins semantics
@@ -248,9 +242,6 @@ func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 }
 
 func tarContextAndUpdateDf(ctx context.Context, writer io.Writer, df dockerfile.Dockerfile, paths []PathMapping, filter model.PathMatcher) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-tarContextAndUpdateDf")
-	defer span.Finish()
-
 	ab := NewArchiveBuilder(writer, filter)
 	err := ab.ArchivePathsIfExist(ctx, paths)
 	if err != nil {

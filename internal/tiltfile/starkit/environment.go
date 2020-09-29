@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -30,6 +31,12 @@ func UnpackArgs(t *starlark.Thread, fnName string, args starlark.Tuple, kwargs [
 	return unpacker(fnName, args, kwargs, pairs...)
 }
 
+type BuiltinCall struct {
+	Name string
+	Args starlark.Tuple
+	Dur  time.Duration
+}
+
 // A starlark execution environment.
 type Environment struct {
 	ctx              context.Context
@@ -40,6 +47,9 @@ type Environment struct {
 	extensions       []Extension
 	fakeFileSystem   map[string]string
 	loadInterceptors []LoadInterceptor
+	startPath        string
+
+	builtinCalls []BuiltinCall
 }
 
 func newEnvironment(extensions ...Extension) *Environment {
@@ -49,6 +59,7 @@ func newEnvironment(extensions ...Extension) *Environment {
 		extensions:     append([]Extension{}, extensions...),
 		predeclared:    starlark.StringDict{},
 		fakeFileSystem: nil,
+		builtinCalls:   []BuiltinCall{},
 	}
 }
 
@@ -58,6 +69,11 @@ func (e *Environment) AddLoadInterceptor(i LoadInterceptor) {
 
 func (e *Environment) SetArgUnpacker(unpackArgs ArgUnpacker) {
 	e.unpackArgs = unpackArgs
+}
+
+// The absolute path to the entrypoint of the environment.
+func (e *Environment) StartPath() string {
+	return e.startPath
 }
 
 // Add a builtin to the environment.
@@ -74,6 +90,14 @@ func (e *Environment) AddBuiltin(name string, f Function) error {
 			}
 		}
 
+		start := time.Now()
+		defer func() {
+			e.builtinCalls = append(e.builtinCalls, BuiltinCall{
+				Name: name,
+				Args: args,
+				Dur:  time.Since(start),
+			})
+		}()
 		return f(thread, fn, args, kwargs)
 	})
 
@@ -134,6 +158,8 @@ func (e *Environment) start(path string) (Model, error) {
 		return Model{}, errors.Wrap(err, "environment#start")
 	}
 
+	e.startPath = path
+
 	model := NewModel()
 	for _, ext := range e.extensions {
 		sExt, isStateful := ext.(StatefulExtension)
@@ -161,6 +187,7 @@ func (e *Environment) start(path string) (Model, error) {
 	t.SetLocal(ctxKey, e.ctx)
 
 	_, err = e.exec(t, path)
+	model.BuiltinCalls = e.builtinCalls
 	return model, err
 }
 
@@ -241,7 +268,14 @@ func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.Str
 		contentBytes = []byte(contents)
 	}
 
-	return starlark.ExecFile(t, localPath, contentBytes, e.predeclared)
+	// Create a copy of predeclared variables so we can specify Tiltfile-specific values.
+	predeclared := starlark.StringDict{}
+	for k, v := range e.predeclared {
+		predeclared[k] = v
+	}
+	predeclared["__file__"] = starlark.String(localPath)
+
+	return starlark.ExecFile(t, localPath, contentBytes, predeclared)
 }
 
 type ArgUnpacker func(fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error

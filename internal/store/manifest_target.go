@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ManifestTarget struct {
@@ -16,7 +16,7 @@ type ManifestTarget struct {
 func NewManifestTarget(m model.Manifest) *ManifestTarget {
 	return &ManifestTarget{
 		Manifest: m,
-		State:    newManifestState(m.Name),
+		State:    newManifestState(m),
 	}
 }
 

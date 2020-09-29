@@ -215,6 +215,12 @@
         "span_id": {
           "type": "string",
           "title": "The span id for this pod's logs in the main logstore"
+        },
+        "display_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -310,18 +316,6 @@
       "properties": {
         "name": {
           "type": "string"
-        },
-        "directories_watched": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "paths_watched": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         },
         "last_deploy_time": {
           "type": "string",

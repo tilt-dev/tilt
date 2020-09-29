@@ -8,16 +8,18 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/webview"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/webview"
 )
 
-// All parts of Tilt should display logs incrementally,
-// so there's no longer a CPU usage reason why logs can't grow unbounded.
+// All parts of Tilt should display logs incrementally.
 //
-// We currently cap logs just to prevent heap usage from blowing up unbounded.
-const defaultMaxLogLengthInBytes = 20 * 1000 * 1000
+// But the initial page load loads all the existing logs.
+// https://github.com/tilt-dev/tilt/issues/3359
+//
+// Until that issue is fixed, we cap the logs at about 1MB.
+const defaultMaxLogLengthInBytes = 1000 * 1000
 
 const newlineByte = byte('\n')
 
@@ -187,6 +189,48 @@ func (s *LogStore) checkpointToIndex(c Checkpoint) int {
 		return len(s.segments)
 	}
 	return index
+}
+
+// Find the greatest index < index corresponding to a log matching one of the manifests in mns.
+// (If mns is empty, all logs match.)
+// If no valid i found, return -1
+func (s *LogStore) prevIndexMatchingManifests(index int, mns model.ManifestNameSet) int {
+	if len(mns) == 0 || index == 0 {
+		return index - 1
+	}
+
+	for i := index - 1; index >= 0; i-- {
+		span, ok := s.spans[s.segments[i].SpanID]
+		if !ok {
+			continue
+		}
+		mn := span.ManifestName
+		if mns[mn] {
+			return i
+		}
+	}
+	return -1
+}
+
+// Find the greatest index >= index corresponding to a log matching one of the manifests in mns.
+// (If mns is empty, all logs match.)
+// If no valid i found, return -1
+func (s *LogStore) nextIndexMatchingManifests(index int, mns model.ManifestNameSet) int {
+	if len(mns) == 0 {
+		return index
+	}
+
+	for i := index; i < len(s.segments); i++ {
+		span, ok := s.spans[s.segments[i].SpanID]
+		if !ok {
+			continue
+		}
+		mn := span.ManifestName
+		if mns[mn] {
+			return i
+		}
+	}
+	return -1
 }
 
 func (s *LogStore) ScrubSecretsStartingAt(secrets model.SecretSet, checkpoint Checkpoint) {
@@ -376,7 +420,11 @@ func (s *LogStore) recomputeDerivedValues() {
 // Print(store.ContinuingString(state.LastCheckpoint))
 // state.LastCheckpoint = store.Checkpoint()
 func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
-	lines := s.ContinuingLines(checkpoint)
+	return s.ContinuingStringWithOptions(checkpoint, LineOptions{})
+}
+
+func (s *LogStore) ContinuingStringWithOptions(checkpoint Checkpoint, opts LineOptions) string {
+	lines := s.ContinuingLinesWithOptions(checkpoint, opts)
 	sb := strings.Builder{}
 	for _, line := range lines {
 		sb.WriteString(line.Text)
@@ -384,26 +432,46 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 	return sb.String()
 }
 
+func (s *LogStore) IsLastSegmentUncompleted() bool {
+	if len(s.segments) == 0 {
+		return false
+	}
+	lastSegment := s.segments[len(s.segments)-1]
+	return !lastSegment.IsComplete()
+}
+
 func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
+	return s.ContinuingLinesWithOptions(checkpoint, LineOptions{})
+}
+
+func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts LineOptions) []LogLine {
 	isSameSpanContinuation := false
-	isChangingSpanContinuation := false
+	isDifferentSpan := false
 	checkpointIndex := s.checkpointToIndex(checkpoint)
-	precedingIndex := checkpointIndex - 1
+	precedingIndexToPrint := s.prevIndexMatchingManifests(checkpointIndex, opts.ManifestNames)
+	nextIndexToPrint := s.nextIndexMatchingManifests(checkpointIndex, opts.ManifestNames)
 	var precedingSegment = LogSegment{}
-	if precedingIndex >= 0 && checkpointIndex < len(s.segments) {
-		// Check the last thing we printed. If it was wasn't complete,
+
+	if precedingIndexToPrint >= 0 && nextIndexToPrint < len(s.segments) && nextIndexToPrint > 0 {
+		// Check the last thing we printed. If it wasn't complete,
 		// we have to do some extra work to properly continue the previous print.
-		precedingSegment = s.segments[precedingIndex]
-		currentSegment := s.segments[checkpointIndex]
+		precedingSegment = s.segments[precedingIndexToPrint]
+		nextSegment := s.segments[nextIndexToPrint]
 		if !precedingSegment.IsComplete() {
 			// If this is the same span id, remove the prefix from this line.
-			if precedingSegment.CanContinueLine(currentSegment) {
+			if precedingSegment.CanContinueLine(nextSegment) {
 				isSameSpanContinuation = true
 			} else {
-				isChangingSpanContinuation = true
+				// Otherwise, it's from a different span, which means we want a
+				// newline after the segment we just printed (even if that segment
+				// isn't technically "complete")
+				isDifferentSpan = true
 			}
 		}
 	}
+
+	// --> if checkpointIndex == len(s.segments)
+	// nothing new to print, return!
 
 	tempSegments := s.segments[checkpointIndex:]
 	tempLogStore := &LogStore{
@@ -412,16 +480,20 @@ func (s *LogStore) ContinuingLines(checkpoint Checkpoint) []LogLine {
 	}
 	tempLogStore.recomputeDerivedValues()
 
+	spans := tempLogStore.spans
+	if len(opts.ManifestNames) != 0 {
+		spans = tempLogStore.spansForManifests(opts.ManifestNames)
+	}
 	result := tempLogStore.toLogLines(logOptions{
-		spans:                       tempLogStore.spans,
-		showManifestPrefix:          true,
+		spans:                       spans,
+		showManifestPrefix:          !opts.SuppressPrefix,
 		skipFirstLineManifestPrefix: isSameSpanContinuation,
 	})
 
 	if isSameSpanContinuation {
 		return result
 	}
-	if isChangingSpanContinuation {
+	if isDifferentSpan {
 		return append([]LogLine{
 			LogLine{
 				Text:              "\n",
@@ -491,6 +563,17 @@ func (s *LogStore) spansForManifest(mn model.ManifestName) map[SpanID]*Span {
 			result[spanID] = span
 		}
 	}
+	return result
+}
+
+func (s *LogStore) spansForManifests(mnSet model.ManifestNameSet) map[SpanID]*Span {
+	result := make(map[SpanID]*Span)
+	for spanID, span := range s.spans {
+		if mnSet[span.ManifestName] {
+			result[spanID] = span
+		}
+	}
+
 	return result
 }
 
@@ -572,9 +655,14 @@ func (s *LogStore) startAndLastIndices(spans map[SpanID]*Span) (startIndex, last
 }
 
 type logOptions struct {
-	spans                       map[SpanID]*Span
+	spans                       map[SpanID]*Span // only print logs for these spans
 	showManifestPrefix          bool
 	skipFirstLineManifestPrefix bool
+}
+
+type LineOptions struct {
+	ManifestNames  model.ManifestNameSet // only print logs for these manifests
+	SuppressPrefix bool
 }
 
 func (s *LogStore) toLogString(options logOptions) string {
@@ -673,7 +761,7 @@ func (s *LogStore) computeLen() int {
 // After a log hits its limit, we need to truncate it to keep it small
 // we do this by cutting a big chunk at a time, so that we have rarer, larger changes, instead of
 // a small change every time new data is written to the log
-// https://github.com/windmilleng/tilt/issues/1935#issuecomment-531390353
+// https://github.com/tilt-dev/tilt/issues/1935#issuecomment-531390353
 func (s *LogStore) logTruncationTarget() int {
 	return s.maxLogLengthInBytes / 2
 }

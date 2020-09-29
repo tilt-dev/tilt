@@ -4,39 +4,49 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	tiltfile_io "github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/kustomize"
+	"github.com/tilt-dev/tilt/internal/kustomize"
 )
 
 const localLogPrefix = " → "
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var commandValue starlark.Value
+	var commandValue, commandBatValue starlark.Value
 	quiet := false
+	echoOff := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"command", &commandValue,
 		"quiet?", &quiet,
+		"command_bat", &commandBatValue,
+		"echo_off", &echoOff,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	cmd, err := value.ValueToHostCmd(commandValue)
+	cmd, err := value.ValueGroupToCmdHelper(commandValue, commandBatValue)
 	if err != nil {
 		return nil, err
 	}
-	s.logger.Infof("local: %s", cmd)
+
+	if !echoOff {
+		s.logger.Infof("local: %s", cmd)
+	}
+
 	out, err := s.execLocalCmd(thread, exec.Command(cmd.Argv[0], cmd.Argv[1:]...), !quiet)
 	if err != nil {
 		return nil, err
@@ -85,49 +95,57 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	kustomizePath, err := value.ValueToAbsPath(thread, path)
+	absKustomizePath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
 	}
 
-	cmd := []string{"kustomize", "build", kustomizePath}
+	// NOTE(nick): There's a bug in kustomize where it doesn't properly
+	// handle absolute paths. Convert to relative paths instead:
+	// https://github.com/kubernetes-sigs/kustomize/issues/2789
+	relKustomizePath, err := filepath.Rel(starkit.AbsWorkingDir(thread), absKustomizePath)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := []string{"kustomize", "build", relKustomizePath}
 
 	_, err = exec.LookPath(cmd[0])
 	if err != nil {
 		s.logger.Infof("Falling back to `kubectl kustomize` since `%s` was not found in PATH", cmd[0])
-		cmd = []string{"kubectl", "kustomize", kustomizePath}
+		cmd = []string{"kubectl", "kustomize", relKustomizePath}
 	}
 
 	yaml, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
 	if err != nil {
 		return nil, err
 	}
-	deps, err := kustomize.Deps(kustomizePath)
+	deps, err := kustomize.Deps(absKustomizePath)
 	if err != nil {
-		return nil, fmt.Errorf("internal error: %v", err)
+		return nil, fmt.Errorf("resolving deps: %v", err)
 	}
 	for _, d := range deps {
-		err := tiltfile_io.RecordReadFile(thread, d)
+		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, d)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("kustomize: %s", kustomizePath)), nil
+	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("kustomize: %s", absKustomizePath)), nil
 }
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
 	var name string
 	var namespace string
-	var valueFilesV starlark.Value
-	var setV starlark.Value
+	var valueFiles value.StringOrStringList
+	var set value.StringOrStringList
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"paths", &path,
 		"name?", &name,
 		"namespace?", &namespace,
-		"values?", &valueFilesV,
-		"set?", &setV)
+		"values?", &valueFiles,
+		"set?", &set)
 	if err != nil {
 		return nil, err
 	}
@@ -135,17 +153,6 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	localPath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
-	}
-
-	valueFiles, ok := value.AsStringOrStringList(valueFilesV)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'values' must be string or list of strings. Actual: %T",
-			valueFilesV)
-	}
-
-	set, ok := value.AsStringOrStringList(setV)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'set' must be string or list of strings. Actual: %T", setV)
 	}
 
 	info, err := os.Stat(localPath)
@@ -158,12 +165,17 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, fmt.Errorf("helm() may only be called on directories with Chart.yaml: %q", localPath)
 	}
 
+	err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, localPath)
+	if err != nil {
+		return nil, err
+	}
+
 	deps, err := localSubchartDependenciesFromPath(localPath)
 	if err != nil {
 		return nil, err
 	}
 	for _, d := range deps {
-		err = tiltfile_io.RecordReadFile(thread, starkit.AbsPath(thread, d))
+		err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, starkit.AbsPath(thread, d))
 		if err != nil {
 			return nil, err
 		}
@@ -176,30 +188,33 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	var cmd []string
 
-	if version == helmV3 {
-		if name != "" {
-			cmd = []string{"helm", "template", name, localPath}
-		} else {
-			cmd = []string{"helm", "template", localPath, "--generate-name"}
-		}
+	if name == "" {
+		// Use 'chart' as the release name, so that the release name is stable
+		// across Tiltfile loads.
+		// This looks like what helm does.
+		// https://github.com/helm/helm/blob/e672a42efae30d45ddd642a26557dcdbf5a9f5f0/pkg/action/install.go#L562
+		name = "chart"
+	}
+
+	if version == helmV3_1andAbove {
+		cmd = []string{"helm", "template", name, localPath, "--include-crds"}
+	} else if version == helmV3_0 {
+		cmd = []string{"helm", "template", name, localPath}
 	} else {
-		cmd = []string{"helm", "template", localPath}
-		if name != "" {
-			cmd = append(cmd, "--name", name)
-		}
+		cmd = []string{"helm", "template", localPath, "--name", name}
 	}
 
 	if namespace != "" {
 		cmd = append(cmd, "--namespace", namespace)
 	}
-	for _, valueFile := range valueFiles {
+	for _, valueFile := range valueFiles.Values {
 		cmd = append(cmd, "--values", valueFile)
-		err := tiltfile_io.RecordReadFile(thread, starkit.AbsPath(thread, valueFile))
+		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchFileOnly, starkit.AbsPath(thread, valueFile))
 		if err != nil {
 			return nil, err
 		}
 	}
-	for _, setArg := range set {
+	for _, setArg := range set.Values {
 		cmd = append(cmd, "--set", setArg)
 	}
 
@@ -210,12 +225,17 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	err = tiltfile_io.RecordReadFile(thread, localPath)
-	if err != nil {
-		return nil, err
-	}
-
 	yaml := filterHelmTestYAML(string(stdout))
+
+	if version == helmV3_0 {
+		// Helm v3.0 has a bug where it doesn't include CRDs in the template output
+		// https://github.com/tilt-dev/tilt/issues/3605
+		crds, err := getHelmCRDs(localPath)
+		if err != nil {
+			return nil, err
+		}
+		yaml = strings.Join(append([]string{yaml}, crds...), "\n---\n")
+	}
 
 	if namespace != "" {
 		// helm template --namespace doesn't inject the namespace, nor provide
@@ -226,30 +246,50 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 			return nil, err
 		}
 
-		var haveYAMLForNamespace bool
 		for i, e := range parsed {
-			if e.GVK().Kind == "Namespace" && e.Name() == namespace {
-				// Chart already has YAML for the --namespace passed, we don't need to insert it
-				haveYAMLForNamespace = true
-				continue
-			}
-			parsed[i] = e.WithNamespace(namespace)
+			parsed[i] = e.WithNamespace(e.NamespaceOrDefault(namespace))
 		}
 
-		var entities []k8s.K8sEntity
-		if !haveYAMLForNamespace {
-			// User is relying on Helm to create the namespace, which it does independent
-			// of the YAML it generates, so we need to make sure the new namespace is included
-			// in the YAML.
-			entities = []k8s.K8sEntity{k8s.NewNamespaceEntity(namespace)}
-		}
-		entities = append(entities, parsed...)
-
-		yaml, err = k8s.SerializeSpecYAML(entities)
+		yaml, err = k8s.SerializeSpecYAML(parsed)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return tiltfile_io.NewBlob(yaml, fmt.Sprintf("helm: %s", localPath)), nil
+}
+
+// NOTE(nick): This isn't perfect. For example, it doesn't handle chart deps
+// properly. When possible, prefer Helm 3.1's --include-crds
+func getHelmCRDs(path string) ([]string, error) {
+	crdPath := filepath.Join(path, "crds")
+	result := []string{}
+	err := filepath.Walk(crdPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		isYAML := info != nil && info.Mode().IsRegular() && hasYAMLExtension(path)
+		if !isYAML {
+			return nil
+		}
+		contents, err := ioutil.ReadFile(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		result = append(result, string(contents))
+		return nil
+	})
+
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	return result, nil
+}
+
+func hasYAMLExtension(fname string) bool {
+	ext := filepath.Ext(fname)
+	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml")
 }

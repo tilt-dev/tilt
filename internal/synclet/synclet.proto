@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package synclet;
 
-option go_package = "github.com/windmilleng/tilt/internal/synclet/proto;proto";
+option go_package = "github.com/tilt-dev/tilt/internal/synclet/proto;proto";
 
 service Synclet {
     // NOTE(maia): deleted method

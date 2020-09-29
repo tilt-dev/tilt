@@ -3,36 +3,38 @@ package tiltfile
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	wmanalytics "github.com/windmilleng/wmclient/pkg/analytics"
+	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/updatesettings"
-
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/feature"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	tiltfileanalytics "github.com/windmilleng/tilt/internal/tiltfile/analytics"
-	"github.com/windmilleng/tilt/internal/tiltfile/dockerprune"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/k8scontext"
-	"github.com/windmilleng/tilt/internal/tiltfile/telemetry"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/internal/tiltfile/version"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/feature"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	tiltfileanalytics "github.com/tilt-dev/tilt/internal/tiltfile/analytics"
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/metrics"
+	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
+	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/internal/tiltfile/version"
+	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const FileName = "Tiltfile"
-const TiltIgnoreFileName = ".tiltignore"
 
 func init() {
 	resolve.AllowLambda = true
@@ -43,17 +45,22 @@ func init() {
 
 type TiltfileLoadResult struct {
 	Manifests           []model.Manifest
+	Tiltignore          model.Dockerignore
 	ConfigFiles         []string
-	TiltIgnoreContents  string
 	FeatureFlags        map[string]bool
 	TeamID              string
 	TelemetrySettings   model.TelemetrySettings
+	MetricsSettings     model.MetricsSettings
 	Secrets             model.SecretSet
 	Error               error
 	DockerPruneSettings model.DockerPruneSettings
 	AnalyticsOpt        wmanalytics.Opt
 	VersionSettings     model.VersionSettings
 	UpdateSettings      model.UpdateSettings
+	WatchSettings       model.WatchSettings
+
+	// For diagnostic purposes only
+	BuiltinCalls []starkit.BuiltinCall `json:"-"`
 }
 
 func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
@@ -103,6 +110,7 @@ func ProvideTiltfileLoader(
 	kCli k8s.Client,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
+	configExt *config.Extension,
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	fDefaults feature.Defaults,
@@ -112,6 +120,7 @@ func ProvideTiltfileLoader(
 		kCli:          kCli,
 		k8sContextExt: k8sContextExt,
 		versionExt:    versionExt,
+		configExt:     configExt,
 		dcCli:         dcCli,
 		webHost:       webHost,
 		fDefaults:     fDefaults,
@@ -127,6 +136,7 @@ type tiltfileLoader struct {
 
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
+	configExt     *config.Extension
 	fDefaults     feature.Defaults
 	env           k8s.Env
 }
@@ -151,29 +161,41 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 		}
 	}
 
-	tiltIgnorePath := tiltIgnorePath(absFilename)
+	tiltignorePath := watch.TiltignorePath(absFilename)
 	tlr := TiltfileLoadResult{
-		ConfigFiles: []string{absFilename, tiltIgnorePath},
+		ConfigFiles: []string{absFilename, tiltignorePath},
 	}
 
-	tiltIgnoreContents, err := ioutil.ReadFile(tiltIgnorePath)
+	tiltignore, err := watch.ReadTiltignore(tiltignorePath)
 
 	// missing tiltignore is fine, but a filesystem error is not
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		tlr.Error = err
 		return tlr
 	}
 
-	tlr.TiltIgnoreContents = string(tiltIgnoreContents)
+	tlr.Tiltignore = tiltignore
 
 	localRegistry := tfl.kCli.LocalRegistry(ctx)
 
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, tfl.versionExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, tfl.versionExt, tfl.configExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)
 
+	tlr.BuiltinCalls = result.BuiltinCalls
+
+	ws, _ := watch.GetState(result)
+	tlr.WatchSettings = ws
+
+	// NOTE(maia): if/when add secret settings that affect the engine, add them to tlr here
+	ss, _ := secretsettings.GetState(result)
+	s.secretSettings = ss
+
 	ioState, _ := io.GetState(result)
-	tlr.ConfigFiles = sliceutils.AppendWithoutDupes(ioState.Files, s.postExecReadFiles...)
+
+	tlr.ConfigFiles = append(tlr.ConfigFiles, ioState.Paths...)
+	tlr.ConfigFiles = append(tlr.ConfigFiles, s.postExecReadFiles...)
+	tlr.ConfigFiles = sliceutils.DedupedAndSorted(tlr.ConfigFiles)
 
 	dps, _ := dockerprune.GetState(result)
 	tlr.DockerPruneSettings = dps
@@ -193,6 +215,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	telemetrySettings, _ := telemetry.GetState(result)
 	tlr.TelemetrySettings = telemetrySettings
 
+	metricsSettings, _ := metrics.GetState(result)
+	tlr.MetricsSettings = metricsSettings
+
 	us, _ := updatesettings.GetState(result)
 	tlr.UpdateSettings = us
 
@@ -200,16 +225,19 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
 	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration)
 
-	return tlr
-}
+	if len(aSettings.CustomTagsToReport) > 0 {
+		reportCustomTags(tfl.analytics, aSettings.CustomTagsToReport)
+	}
 
-// .tiltignore sits next to Tiltfile
-func tiltIgnorePath(tiltfilePath string) string {
-	return filepath.Join(filepath.Dir(tiltfilePath), TiltIgnoreFileName)
+	return tlr
 }
 
 func starlarkValueOrSequenceToSlice(v starlark.Value) []starlark.Value {
 	return value.ValueOrSequenceToSlice(v)
+}
+
+func reportCustomTags(a *analytics.TiltAnalytics, tags map[string]string) {
+	a.Incr("tiltfile.custom.report", tags)
 }
 
 func (tfl *tiltfileLoader) reportTiltfileLoaded(callCounts map[string]int,

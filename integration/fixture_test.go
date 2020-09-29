@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 )
 
 var packageDir string
@@ -80,7 +80,7 @@ func (f *fixture) testDirPath(s string) string {
 }
 
 func (f *fixture) installTilt() {
-	cmd := exec.CommandContext(f.ctx, "go", "install", "-mod", "vendor", "github.com/windmilleng/tilt/cmd/tilt")
+	cmd := exec.CommandContext(f.ctx, "go", "install", "-mod", "vendor", "github.com/tilt-dev/tilt/cmd/tilt")
 	f.runOrFail(cmd, "Building tilt")
 }
 

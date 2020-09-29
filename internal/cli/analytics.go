@@ -2,16 +2,14 @@ package cli
 
 import (
 	"os"
-	"os/exec"
 	"runtime"
-	"strings"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/pkg/logger"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/git"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	giturls "github.com/whilp/git-urls"
-
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 const tiltAppName = "tilt"
@@ -43,14 +41,15 @@ func (al analyticsLogger) Printf(fmt string, v ...interface{}) {
 	al.logger.Debugf(fmt, v...)
 }
 
-func newAnalytics(l logger.Logger) (*tiltanalytics.TiltAnalytics, error) {
+func newAnalytics(l logger.Logger, cmdName model.TiltSubcommand, tiltBuild model.TiltBuild,
+	gitRemote git.GitRemote) (*tiltanalytics.TiltAnalytics, error) {
 	var err error
 
 	options := []analytics.Option{}
 	// enabled: true because TiltAnalytics wraps the RemoteAnalytics and has its own guards for whether analytics
 	//   is enabled. When TiltAnalytics decides to pass a call through to RemoteAnalytics, it should always work.
 	options = append(options,
-		analytics.WithGlobalTags(globalTags()),
+		analytics.WithGlobalTags(globalTags(cmdName, tiltBuild, gitRemote)),
 		analytics.WithEnabled(true),
 		analytics.WithLogger(analyticsLogger{logger: l}))
 	analyticsURL := os.Getenv(analyticsURLEnvVar)
@@ -62,54 +61,21 @@ func newAnalytics(l logger.Logger) (*tiltanalytics.TiltAnalytics, error) {
 		return nil, err
 	}
 
-	return tiltanalytics.NewTiltAnalytics(analyticsOpter{}, backingAnalytics, provideTiltInfo().AnalyticsVersion())
+	return tiltanalytics.NewTiltAnalytics(analyticsOpter{}, backingAnalytics, tiltBuild.AnalyticsVersion())
 }
 
-func globalTags() map[string]string {
+func globalTags(cmdName model.TiltSubcommand, tiltBuild model.TiltBuild, gr git.GitRemote) map[string]string {
 	ret := map[string]string{
-		tiltanalytics.TagVersion: provideTiltInfo().AnalyticsVersion(),
-		tiltanalytics.TagOS:      runtime.GOOS,
+		tiltanalytics.TagVersion:    tiltBuild.AnalyticsVersion(),
+		tiltanalytics.TagOS:         runtime.GOOS,
+		tiltanalytics.TagSubcommand: cmdName.String(),
 	}
 
 	// store a hash of the git remote to help us guess how many users are running it on the same repository
-	origin := normalizeGitRemote(gitOrigin("."))
+	origin := gr.String()
 	if origin != "" {
 		ret[tiltanalytics.TagGitRepoHash] = tiltanalytics.HashMD5(origin)
 	}
 
 	return ret
-}
-
-func gitOrigin(fromDir string) string {
-	cmd := exec.Command("git", "-C", fromDir, "remote", "get-url", "origin")
-	b, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-
-	return strings.TrimRight(string(b), "\n")
-}
-
-func normalizeGitRemote(s string) string {
-	u, err := giturls.Parse(string(s))
-	if err != nil {
-		return s
-	}
-
-	// treat "http://", "https://", "git://", "ssh://", etc as equiv
-	u.Scheme = ""
-
-	u.User = nil
-
-	// github.com/windmilleng/tilt is the same as github.com/windmilleng/tilt/
-	if strings.HasSuffix(u.Path, "/") {
-		u.Path = u.Path[:len(u.Path)-1]
-	}
-
-	// github.com/windmilleng/tilt is the same as github.com/windmilleng/tilt.git
-	if strings.HasSuffix(u.Path, ".git") {
-		u.Path = u.Path[:len(u.Path)-4]
-	}
-
-	return u.String()
 }

@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/servicebuilder"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/servicebuilder"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestServiceWatch(t *testing.T) {
@@ -96,7 +96,7 @@ func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 	if !ok {
 		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
-	runtimeState := mState.GetOrCreateK8sRuntimeState()
+	runtimeState := mState.K8sRuntimeState()
 	runtimeState.DeployedUIDSet[uid] = true
 }
 

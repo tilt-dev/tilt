@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/watch"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type FakeMultiWatcher struct {

@@ -10,13 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestStateToViewRelativeEditPaths(t *testing.T) {
@@ -72,7 +73,7 @@ func TestStateToViewPortForwards(t *testing.T) {
 		res.Endpoints)
 }
 
-func TestRuntimeStateUnresourced(t *testing.T) {
+func TestRuntimeStateNonWorkload(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
 
@@ -80,8 +81,12 @@ func TestRuntimeStateUnresourced(t *testing.T) {
 		WithK8sYAML(testyaml.SecretYaml).
 		Build()
 	state := newState([]model.Manifest{m})
-	assert.Equal(t, model.RuntimeStatusOK,
-		state.ManifestTargets[m.Name].State.GetOrCreateK8sRuntimeState().RuntimeStatus())
+	runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()
+	assert.Equal(t, model.RuntimeStatusPending, runtimeState.RuntimeStatus())
+
+	runtimeState.HasEverDeployedSuccessfully = true
+
+	assert.Equal(t, model.RuntimeStatusOK, runtimeState.RuntimeStatus())
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
@@ -96,7 +101,26 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	assert.Equal(t, nil, r.LastBuild().Error)
 
 	expectedInfo := view.YAMLResourceInfo{
-		K8sResources: []string{"sancho:deployment"},
+		K8sDisplayNames: []string{"sancho:deployment"},
+	}
+	assert.Equal(t, expectedInfo, r.ResourceInfo)
+}
+
+func TestStateToViewNonWorkloadYAMLManifest(t *testing.T) {
+	es, err := k8s.ParseYAMLFromString(testyaml.SecretYaml)
+	require.NoError(t, err)
+	m, err := k8s.NewK8sOnlyManifest(model.ManifestName("foo"), es, nil)
+	require.NoError(t, err)
+	state := newState([]model.Manifest{m})
+	v := StateToView(*state, &sync.RWMutex{})
+
+	assert.Equal(t, 2, len(v.Resources))
+
+	r, _ := v.Resource(m.Name)
+	assert.Equal(t, nil, r.LastBuild().Error)
+
+	expectedInfo := view.YAMLResourceInfo{
+		K8sDisplayNames: []string{"mysecret:secret"},
 	}
 	assert.Equal(t, expectedInfo, r.ResourceInfo)
 }
@@ -105,7 +129,8 @@ func TestMostRecentPod(t *testing.T) {
 	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
 	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
 	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
-	podSet := NewK8sRuntimeState("fe", podA, podB, podC)
+	m := model.Manifest{Name: "fe"}
+	podSet := NewK8sRuntimeStateWithPods(m, podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
 }
 
@@ -122,4 +147,29 @@ func TestRelativeTiltfilePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "Tiltfile", actual)
+}
+
+func TestNextBuildReason(t *testing.T) {
+	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
+	assert.NoError(t, err)
+
+	kTarget := m.K8sTarget()
+	mt := NewManifestTarget(m)
+
+	iTargetID := model.ImageID(container.MustParseSelector("sancho"))
+	status := mt.State.MutableBuildStatus(kTarget.ID())
+	assert.Equal(t, "Initial Build",
+		mt.NextBuildReason().String())
+
+	status.PendingDependencyChanges[iTargetID] = time.Now()
+	assert.Equal(t, "Initial Build",
+		mt.NextBuildReason().String())
+
+	mt.State.AddCompletedBuild(model.BuildRecord{StartTime: time.Now(), FinishTime: time.Now()})
+	assert.Equal(t, "Dependency Updated",
+		mt.NextBuildReason().String())
+
+	status.PendingFileChanges["a.txt"] = time.Now()
+	assert.Equal(t, "Changed Files | Dependency Updated",
+		mt.NextBuildReason().String())
 }

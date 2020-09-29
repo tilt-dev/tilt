@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const simpleConfig = `version: '3'
@@ -38,6 +38,16 @@ services:
 volumes:
   bar: {}
   baz: {}`
+
+const barServiceConfig = `version: '3'
+services:
+  bar:
+    image: bar-image
+    expose:
+      - "3000"
+    depends_on:
+      - foo
+`
 
 const twoServiceConfig = `version: '3'
 services:
@@ -147,19 +157,73 @@ services:
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
-func TestMultipleDockerComposeNotSupported(t *testing.T) {
+func TestDockerComposeManifestAlternateDockerfileAndDockerIgnore(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	dcYAML := fmt.Sprintf(`build:
+  context: %s
+  dockerfile: alternate-Dockerfile`,
+		f.JoinPath("baz"))
+	f.dockerfile("baz/alternate-Dockerfile")
+	f.dockerignore("baz/alternate-Dockerfile.dockerignore")
+	f.file("docker-compose.yml", fmt.Sprintf(`
+version: '3'
+services:
+  baz:
+    build:
+      context: %s
+      dockerfile: alternate-Dockerfile`, f.JoinPath("baz")))
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+	f.load("baz")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	f.assertDcManifest("baz",
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(dcYAML),
+		dcDfRaw(simpleDockerfile),
+		// TODO(maia): assert m.tiltFilename
+	)
+
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "baz/alternate-Dockerfile", "baz/alternate-Dockerfile.dockerignore"}
+	f.assertConfigFiles(expectedConfFiles...)
+}
+
+func TestMultipleDockerComposeDifferentDirsNotSupported(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose1.yml", simpleConfig)
-	f.file("docker-compose2.yml", simpleConfig)
 
-	tf := `docker_compose('docker-compose1.yml')
+	f.dockerfile(filepath.Join("subdir", "foo", "Dockerfile"))
+	f.file(filepath.Join("subdir", "Tiltfile"), `docker_compose('docker-compose2.yml')`)
+	f.file(filepath.Join("subdir", "docker-compose2.yml"), simpleConfig)
+
+	tf := `
+include('./subdir/Tiltfile')
+docker_compose('docker-compose1.yml')`
+	f.file("Tiltfile", tf)
+
+	f.loadErrString("Cannot load docker-compose files from two different Tiltfiles")
+}
+
+func TestMultipleDockerComposeSameDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose1.yml", simpleConfig)
+	f.file("docker-compose2.yml", barServiceConfig)
+
+	tf := `
+docker_compose('docker-compose1.yml')
 docker_compose('docker-compose2.yml')`
 	f.file("Tiltfile", tf)
 
-	f.loadErrString("already have a docker-compose resource declared")
+	f.load()
+
+	assert.Equal(t, 2, len(f.loadResult.Manifests))
 }
 
 func TestDockerComposeAndK8sNotSupported(t *testing.T) {
@@ -475,7 +539,7 @@ services:
 docker_build('gcr.typo.io/foo', 'foo')
 docker_compose('docker-compose.yml')
 `)
-	f.loadAssertWarnings(`Image not used in any deploy config:
+	f.loadAssertWarnings(`Image not used in any Docker Compose config:
     ✕ gcr.typo.io/foo
 Did you mean…
     - gcr.io/foo
@@ -518,6 +582,23 @@ docker_compose('docker-compose.yml')
 dc_resource('no-svc-with-this-name-eek', 'gcr.io/foo')
 `)
 	f.loadErrString("no Docker Compose service found with name")
+}
+
+func TestDockerComposeLoadConfigFilesOnFailure(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `docker_build('gcr.io/foo', './foo')
+docker_compose('docker-compose.yml')
+fail("deliberate exit")
+`)
+	f.loadErrString("deliberate exit")
+
+	// Make sure that even though tiltfile execution failed, we still
+	// loaded config files correctly.
+	f.assertConfigFiles(".tiltignore", "Tiltfile", "docker-compose.yml", "foo/Dockerfile")
 }
 
 func TestDockerComposeDoesntSupportEntrypointOverride(t *testing.T) {

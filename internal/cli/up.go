@@ -6,27 +6,24 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
-	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 	"k8s.io/klog"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/cloud"
-	engineanalytics "github.com/windmilleng/tilt/internal/engine/analytics"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tracer"
-	"github.com/windmilleng/tilt/pkg/assets"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/web"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/cloud"
+	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/assets"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/web"
 )
 
 const DefaultWebHost = "localhost"
@@ -38,20 +35,24 @@ var webModeFlag model.WebMode = model.DefaultWebMode
 var webPort = 0
 var webHost = DefaultWebHost
 var webDevPort = 0
-var noBrowser bool = false
 var logActionsFlag bool = false
 
 type upCmd struct {
 	watch                bool
-	traceTags            string
 	fileName             string
 	outputSnapshotOnExit string
 
-	defaultTUI bool
-	hud        bool
-	// whether hud was explicitly set or just got the default value
+	hud    bool
+	legacy bool
+	stream bool
+	// whether hud/legacy/stream flags were explicitly set or just got the default value
 	hudFlagExplicitlySet bool
+
+	//whether watch was explicitly set in the cmdline
+	watchFlagExplicitlySet bool
 }
+
+func (c *upCmd) name() model.TiltSubcommand { return "up" }
 
 func (c *upCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
@@ -81,73 +82,91 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(buildcontrol.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
-	cmd.Flags().StringVar(&c.traceTags, "traceTags", "", "tags to add to spans for easy querying, of the form: key1=val1,key2=val2")
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
+	cmd.Flags().BoolVar(&c.legacy, "legacy", false, "If true, tilt will open in legacy terminal mode.")
+	cmd.Flags().BoolVar(&c.stream, "stream", false, "If true, tilt will stream logs in the terminal.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
-	addWebServerFlags(cmd)
+	addStartServerFlags(cmd)
+	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
+	addKubeContextFlag(cmd)
 	cmd.Flags().Lookup("logactions").Hidden = true
-	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "If true, web UI will not open on startup.")
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
-
-	// this is to test the new behavior before enabling it in Tilt 1.0
-	// https://app.clubhouse.io/windmill/epic/5549/make-tui-hard-to-find-in-tilt-1-0
-	cmd.Flags().BoolVar(&c.defaultTUI, "default-hud", true, "If false, we'll hide the TUI by default")
-	cmd.Flags().Lookup("default-hud").Hidden = true
 
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
+		c.watchFlagExplicitlySet = cmd.Flag("watch").Changed
 	}
 
 	return cmd
 }
 
-func (c *upCmd) isHudEnabledByConfig() bool {
-	ret := c.hud
-	// in non-default-TUI mode, we only show the hud if the user explicitly specified --hud
-	if !c.defaultTUI && !c.hudFlagExplicitlySet {
-		ret = false
+func (c *upCmd) initialTermMode(isTerminal bool) store.TerminalMode {
+	if !isTerminal {
+		return store.TerminalModeStream
 	}
 
-	return ret
+	if c.hudFlagExplicitlySet {
+		if c.hud {
+			return store.TerminalModeHUD
+		}
+	}
+
+	if c.legacy {
+		return store.TerminalModeHUD
+	}
+
+	if c.stream {
+		return store.TerminalModeStream
+	}
+
+	return store.TerminalModePrompt
 }
 
 func (c *upCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
+
+	termMode := c.initialTermMode(isatty.IsTerminal(os.Stdout.Fd()))
+
 	cmdUpTags := engineanalytics.CmdTags(map[string]string{
-		"watch": fmt.Sprintf("%v", c.watch),
-		"mode":  string(updateModeFlag),
+		"update_mode": updateModeFlag, // before 7/8/20 this was just called "mode"
+		"term_mode":   strconv.Itoa(int(termMode)),
 	})
 	a.Incr("cmd.up", cmdUpTags.AsMap())
 	defer a.Flush(time.Second)
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Up")
-	defer span.Finish()
-
-	tags := tracer.TagStrToMap(c.traceTags)
-
-	for k, v := range tags {
-		span.SetTag(k, v)
-	}
-
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
 
-	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
+	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+
+	webHost := provideWebHost()
+	webURL, _ := provideWebURL(webHost, provideWebPort())
+	startLine := prompt.StartStatusLine(webURL, webHost)
+	log.Print(startLine)
+	log.Print(buildStamp())
+
+	//if --watch was set, warn user about deprecation
+	if c.watchFlagExplicitlySet {
+		logger.Get(ctx).Warnf("Flag --watch has been deprecated, it will be removed in future releases.")
+	}
 
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	hudEnabled := c.isHudEnabledByConfig() && isatty.IsTerminal(os.Stdout.Fd())
-	cmdUpDeps, err := wireCmdUp(ctx, hud.HudEnabled(hudEnabled), a, cmdUpTags)
+	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags, "up")
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
 	}
 
 	upper := cmdUpDeps.Upper
-	h := cmdUpDeps.Hud
+	if termMode == store.TerminalModePrompt {
+		// Any logs that showed up during initialization, make sure they're
+		// in the prompt.
+		cmdUpDeps.Prompt.SetInitOutput(deferred.CopyBuffered(logger.InfoLvl))
+	}
 
 	l := store.NewLogActionLogger(ctx, upper.Dispatch)
 	deferred.SetOutput(l)
@@ -156,37 +175,16 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		defer cloud.WriteSnapshot(ctx, cmdUpDeps.Store, c.outputSnapshotOnExit)
 	}
 
-	if trace {
-		traceID, err := tracer.TraceID(ctx)
-		if err != nil {
-			return err
-		}
-		logger.Get(ctx).Infof("TraceID: %s", traceID)
-	}
-
-	g, ctx := errgroup.WithContext(ctx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	if hudEnabled {
-		g.Go(func() error {
-			err := h.Run(ctx, upper.Dispatch, hud.DefaultRefreshInterval)
-			return err
-		})
-	}
 
 	engineMode := store.EngineModeUp
 	if !c.watch {
 		engineMode = store.EngineModeApply
 	}
 
-	g.Go(func() error {
-		defer cancel()
-		return upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
-			c.fileName, hudEnabled, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
-	})
-
-	err = g.Wait()
+	err = upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
+		c.fileName, termMode, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
 	if err != context.Canceled {
 		return err
 	} else {
@@ -199,11 +197,6 @@ func redirectLogs(ctx context.Context, l logger.Logger) context.Context {
 	log.SetOutput(l.Writer(logger.InfoLvl))
 	klog.SetOutput(l.Writer(logger.InfoLvl))
 	return ctx
-}
-
-func logOutput(s string) {
-	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
-	log.Print(color.GreenString(s))
 }
 
 func provideUpdateModeFlag() buildcontrol.UpdateModeFlag {
@@ -240,13 +233,15 @@ func provideWebPort() model.WebPort {
 	return model.WebPort(webPort)
 }
 
-func provideNoBrowserFlag() model.NoBrowser {
-	return model.NoBrowser(noBrowser)
-}
-
 func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, error) {
 	if webPort == 0 {
 		return model.WebURL{}, nil
+	}
+
+	if webHost == "0.0.0.0" {
+		// 0.0.0.0 means "listen on all hosts"
+		// For UI displays, we use 127.0.0.01 (loopback)
+		webHost = "127.0.0.1"
 	}
 
 	u, err := url.Parse(fmt.Sprintf("http://%s:%d/", webHost, webPort))

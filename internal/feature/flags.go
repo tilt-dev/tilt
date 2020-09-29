@@ -38,11 +38,11 @@ type Defaults map[string]Value
 var MainDefaults = Defaults{
 	MultipleContainersPerPod: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	Events: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	Snapshots: Value{
 		Enabled: true,
@@ -54,7 +54,7 @@ var MainDefaults = Defaults{
 	},
 	Facets: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 }
 

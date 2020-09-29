@@ -5,10 +5,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/dockerignore"
-	"github.com/windmilleng/tilt/internal/git"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/dockerignore"
+	"github.com/tilt-dev/tilt/internal/git"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type repoTarget interface {
@@ -30,7 +30,7 @@ func CreateBuildContextFilter(m repoTarget) model.PathMatcher {
 		matchers = append(matchers, git.NewRepoIgnoreTester(r.LocalPath))
 	}
 	for _, r := range m.Dockerignores() {
-		dim, err := dockerignore.DockerIgnoreTesterFromContents(r.LocalPath, r.Contents)
+		dim, err := dockerignore.NewDockerPatternMatcher(r.LocalPath, r.Patterns)
 		if err == nil {
 			matchers = append(matchers, dim)
 		}
@@ -54,7 +54,7 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 		matchers = append(matchers, git.NewRepoIgnoreTester(r.LocalPath))
 	}
 	for _, di := range m.Dockerignores() {
-		dim, err := dockerignore.DockerIgnoreTesterFromContents(di.LocalPath, di.Contents)
+		dim, err := dockerignore.NewDockerPatternMatcher(di.LocalPath, di.Patterns)
 		if err == nil {
 			matchers = append(matchers, dim)
 		}

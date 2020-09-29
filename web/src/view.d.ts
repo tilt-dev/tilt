@@ -59,8 +59,6 @@ declare namespace Proto {
   }
   export interface webviewResource {
     name?: string;
-    directoriesWatched?: string[];
-    pathsWatched?: string[];
     lastDeployTime?: string;
     triggerMode?: number;
     buildHistory?: webviewBuildRecord[];
@@ -141,6 +139,7 @@ declare namespace Proto {
     allContainersReady?: boolean;
     podRestarts?: number;
     spanId?: string;
+    displayNames?: string[];
   }
   export interface webviewFacet {
     name?: string;

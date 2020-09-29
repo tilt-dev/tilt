@@ -11,8 +11,8 @@ import (
 	"go.opentelemetry.io/otel/api/trace"
 	"google.golang.org/grpc/codes"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestStart(t *testing.T) {

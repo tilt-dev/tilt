@@ -24,6 +24,10 @@ func (s *boolSetting) IsSet() bool {
 	return s.isSet
 }
 
+func (s *boolSetting) Type() string {
+	return "bool"
+}
+
 func (s *boolSetting) setFromInterface(i interface{}) error {
 	if i == nil {
 		return nil
@@ -54,8 +58,4 @@ func (s *boolSetting) Set(v string) error {
 
 func (s *boolSetting) String() string {
 	return strconv.FormatBool(s.value)
-}
-
-func (s *boolSetting) IsBoolFlag() bool {
-	return true
 }

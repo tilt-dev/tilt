@@ -1,31 +1,37 @@
 package engine
 
 import (
-	"github.com/windmilleng/tilt/internal/cloud"
-	"github.com/windmilleng/tilt/internal/containerupdate"
-	"github.com/windmilleng/tilt/internal/engine/analytics"
-	"github.com/windmilleng/tilt/internal/engine/configs"
-	"github.com/windmilleng/tilt/internal/engine/dcwatch"
-	"github.com/windmilleng/tilt/internal/engine/dockerprune"
-	"github.com/windmilleng/tilt/internal/engine/exit"
-	"github.com/windmilleng/tilt/internal/engine/fswatch"
-	"github.com/windmilleng/tilt/internal/engine/k8srollout"
-	"github.com/windmilleng/tilt/internal/engine/k8swatch"
-	"github.com/windmilleng/tilt/internal/engine/local"
-	"github.com/windmilleng/tilt/internal/engine/runtimelog"
-	"github.com/windmilleng/tilt/internal/engine/telemetry"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/cloud"
+	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/configs"
+	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
+	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
+	"github.com/tilt-dev/tilt/internal/engine/exit"
+	"github.com/tilt-dev/tilt/internal/engine/fswatch"
+	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/metrics"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/engine/telemetry"
+	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
+	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/store"
 )
 
 func ProvideSubscribers(
 	hud hud.HeadsUpDisplay,
+	ts *hud.TerminalStream,
+	tp *prompt.TerminalPrompt,
 	pw *k8swatch.PodWatcher,
 	sw *k8swatch.ServiceWatcher,
 	plm *runtimelog.PodLogManager,
-	pfc *PortForwardController,
+	pfc *portforward.Controller,
 	fwm *fswatch.WatchManager,
+	gm *fswatch.GitManager,
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	dcw *dcwatch.EventWatcher,
@@ -37,20 +43,23 @@ func ProvideSubscribers(
 	au *analytics.AnalyticsUpdater,
 	ewm *k8swatch.EventWatchManager,
 	tcum *cloud.CloudStatusManager,
-	cuu *cloud.UpdateUploader,
 	dp *dockerprune.DockerPruner,
 	tc *telemetry.Controller,
 	lc *local.Controller,
 	podm *k8srollout.PodMonitor,
 	ec *exit.Controller,
+	mc *metrics.Controller,
 ) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
+		ts,
+		tp,
 		pw,
 		sw,
 		plm,
 		pfc,
 		fwm,
+		gm,
 		bc,
 		cc,
 		dcw,
@@ -62,11 +71,11 @@ func ProvideSubscribers(
 		au,
 		ewm,
 		tcum,
-		cuu,
 		dp,
 		tc,
 		lc,
 		podm,
 		ec,
+		mc,
 	}
 }

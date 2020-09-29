@@ -62,7 +62,6 @@ function oneResource(): Resource {
   const tsPast = new Date(Date.now() - 12300).toISOString()
   const resource: Resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -94,7 +93,6 @@ function oneResource(): Resource {
     endpoints: [],
     podID: "",
     isTiltfile: false,
-    pathsWatched: [],
     facets: [],
     queued: false,
   }
@@ -105,7 +103,6 @@ function oneResourceNoAlerts(): any {
   const ts = Date.now().valueOf()
   const resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -134,7 +131,6 @@ function oneResourceImagePullBackOff(): any {
   const ts = Date.now().valueOf()
   const resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -163,7 +159,6 @@ function oneResourceErrImgPull(): any {
   const ts = Date.now().valueOf()
   const resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -192,7 +187,6 @@ function oneResourceUnrecognizedError(): any {
   const ts = Date.now().valueOf()
   const resource = {
     name: "vigoda",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -227,7 +221,6 @@ function twoResourceView(): view {
 
   const snack: Resource = {
     name: "snack",
-    directoriesWatched: ["foo", "bar"],
     lastDeployTime: new Date(time - 10000).toISOString(),
     buildHistory: [
       {
@@ -249,7 +242,6 @@ function twoResourceView(): view {
     crashLog: "",
     isTiltfile: false,
     podID: "",
-    pathsWatched: [],
     pendingBuildReason: 0,
     k8sResourceInfo: {
       podStatus: "Running",
@@ -270,14 +262,10 @@ function allResourcesOK(): any {
   return [
     {
       name: "(Tiltfile)",
-      directoriesWatched: null,
-      pathsWatched: null,
       lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
       buildHistory: [
         {
-          edits: [
-            "/Users/dan/go/src/github.com/windmilleng/servantes/Tiltfile",
-          ],
+          edits: ["/Users/dan/go/src/github.com/tilt-dev/servantes/Tiltfile"],
           error: null,
           warnings: null,
           startTime: "2019-04-22T10:59:53.574652-04:00",
@@ -301,8 +289,6 @@ function allResourcesOK(): any {
     },
     {
       name: "fe",
-      directoriesWatched: ["fe"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
       buildHistory: [
         {
@@ -337,8 +323,6 @@ function allResourcesOK(): any {
     },
     {
       name: "vigoda",
-      directoriesWatched: ["vigoda"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
       buildHistory: [
         {
@@ -373,8 +357,6 @@ function allResourcesOK(): any {
     },
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
       buildHistory: [
         {
@@ -409,8 +391,6 @@ function allResourcesOK(): any {
     },
     {
       name: "doggos",
-      directoriesWatched: ["doggos", "sidecar"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:07.804953-04:00",
       buildHistory: [
         {
@@ -445,8 +425,6 @@ function allResourcesOK(): any {
     },
     {
       name: "fortune",
-      directoriesWatched: ["fortune"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:09.205571-04:00",
       buildHistory: [
         {
@@ -481,8 +459,6 @@ function allResourcesOK(): any {
     },
     {
       name: "hypothesizer",
-      directoriesWatched: ["hypothesizer"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:11.203884-04:00",
       buildHistory: [
         {
@@ -517,8 +493,6 @@ function allResourcesOK(): any {
     },
     {
       name: "spoonerisms",
-      directoriesWatched: ["spoonerisms"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:12.42127-04:00",
       buildHistory: [
         {
@@ -553,8 +527,6 @@ function allResourcesOK(): any {
     },
     {
       name: "emoji",
-      directoriesWatched: ["emoji"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:13.940312-04:00",
       buildHistory: [
         {
@@ -589,8 +561,6 @@ function allResourcesOK(): any {
     },
     {
       name: "words",
-      directoriesWatched: ["words"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:15.745111-04:00",
       buildHistory: [
         {
@@ -625,8 +595,6 @@ function allResourcesOK(): any {
     },
     {
       name: "secrets",
-      directoriesWatched: ["secrets"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:17.035014-04:00",
       buildHistory: [
         {
@@ -661,8 +629,6 @@ function allResourcesOK(): any {
     },
     {
       name: "echo-hi",
-      directoriesWatched: [],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T10:59:56.010299-04:00",
       buildHistory: [
         {
@@ -697,8 +663,6 @@ function allResourcesOK(): any {
     },
     {
       name: "sleep",
-      directoriesWatched: ["sleeper"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:18.621166-04:00",
       buildHistory: [
         {
@@ -733,8 +697,6 @@ function allResourcesOK(): any {
     },
     {
       name: "hello-world",
-      directoriesWatched: [],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T10:59:56.300083-04:00",
       buildHistory: [
         {
@@ -769,8 +731,6 @@ function allResourcesOK(): any {
     },
     {
       name: "tick",
-      directoriesWatched: [],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T10:59:56.48933-04:00",
       buildHistory: [
         {
@@ -805,38 +765,6 @@ function allResourcesOK(): any {
     },
     {
       name: "k8s_yaml",
-      directoriesWatched: [
-        "Tiltfile",
-        ".tiltignore",
-        "tilt_option.json",
-        "deploy/fe.yaml",
-        "deploy/vigoda.yaml",
-        "deploy/snack.yaml",
-        "deploy/doggos.yaml",
-        "deploy/fortune.yaml",
-        "deploy/hypothesizer.yaml",
-        "deploy/spoonerisms.yaml",
-        "deploy/emoji.yaml",
-        "deploy/words.yaml",
-        "deploy/secrets.yaml",
-        "deploy/job.yaml",
-        "deploy/sleeper.yaml",
-        "deploy/hello_world.yaml",
-        "deploy/tick.yaml",
-        "vigoda/Dockerfile",
-        "snack/Dockerfile",
-        "doggos/Dockerfile",
-        "emoji/Dockerfile",
-        "words/Dockerfile",
-        "secrets/Dockerfile",
-        "sleeper/Dockerfile",
-        "sidecar/Dockerfile",
-        "fe/Dockerfile",
-        "hypothesizer/Dockerfile",
-        "fortune/Dockerfile",
-        "spoonerisms/Dockerfile",
-      ],
-      pathsWatched: null,
       lastDeployTime: "2019-04-22T10:59:56.007895-04:00",
       buildHistory: [
         {
@@ -876,8 +804,6 @@ function oneResourceFailedToBuild(): any {
   return [
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
       buildHistory: [
         {
@@ -924,14 +850,10 @@ function oneResourceBuilding() {
   return [
     {
       name: "(Tiltfile)",
-      directoriesWatched: null,
-      pathsWatched: null,
       lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
       buildHistory: [
         {
-          edits: [
-            "/Users/dan/go/src/github.com/windmilleng/servantes/Tiltfile",
-          ],
+          edits: ["/Users/dan/go/src/github.com/tilt-dev/servantes/Tiltfile"],
           error: null,
           warnings: null,
           startTime: "2019-04-22T10:59:53.574652-04:00",
@@ -955,8 +877,6 @@ function oneResourceBuilding() {
     },
     {
       name: "fe",
-      directoriesWatched: ["fe"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
       buildHistory: [
         {
@@ -991,8 +911,6 @@ function oneResourceBuilding() {
     },
     {
       name: "vigoda",
-      directoriesWatched: ["vigoda"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
       buildHistory: [
         {
@@ -1027,8 +945,6 @@ function oneResourceBuilding() {
     },
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T11:05:58.928369-04:00",
       buildHistory: [
         {
@@ -1075,8 +991,6 @@ function oneResourceCrashedOnStart(): any {
   return [
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-04-22T13:34:59.442147-04:00",
       buildHistory: [
         {
@@ -1123,8 +1037,6 @@ function oneResourceManualTriggerDirty(): any {
   return [
     {
       name: "(Tiltfile)",
-      directoriesWatched: null,
-      pathsWatched: null,
       lastDeployTime: "2019-06-12T12:33:27.831613-04:00",
       triggerMode: 0,
       buildHistory: [
@@ -1167,8 +1079,6 @@ function oneResourceManualTriggerDirty(): any {
     },
     {
       name: "snack",
-      directoriesWatched: ["snack"],
-      pathsWatched: ["Tiltfile"],
       lastDeployTime: "2019-06-12T12:33:48.331048-04:00",
       triggerMode: 1,
       buildHistory: [
@@ -1270,7 +1180,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="29" class="logLine "><code><span> →         - name: TEMPLATE_DIR</span></code>
 <br>
-</span><span data-lineid="30" class="logLine "><code><span> →           value: "/go/src/github.com/windmilleng/servantes/fe/web/templates"</span></code>
+</span><span data-lineid="30" class="logLine "><code><span> →           value: "/go/src/github.com/tilt-dev/servantes/fe/web/templates"</span></code>
 <br>
 </span><span data-lineid="31" class="logLine "><code><span> →         ports:</span></code>
 <br>
@@ -1410,7 +1320,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="99" class="logLine "><code><span> →         - name: TEMPLATE_DIR</span></code>
 <br>
-</span><span data-lineid="100" class="logLine "><code><span> →           value: "/go/src/github.com/windmilleng/servantes/vigoda/web/templates"</span></code>
+</span><span data-lineid="100" class="logLine "><code><span> →           value: "/go/src/github.com/tilt-dev/servantes/vigoda/web/templates"</span></code>
 <br>
 </span><span data-lineid="101" class="logLine "><code><span> →         ports:</span></code>
 <br>
@@ -1472,7 +1382,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="130" class="logLine "><code><span> →         - name: TEMPLATE_DIR</span></code>
 <br>
-</span><span data-lineid="131" class="logLine "><code><span> →           value: "/go/src/github.com/windmilleng/servantes/snack/web/templates"</span></code>
+</span><span data-lineid="131" class="logLine "><code><span> →           value: "/go/src/github.com/tilt-dev/servantes/snack/web/templates"</span></code>
 <br>
 </span><span data-lineid="132" class="logLine "><code><span> →         - name: OWNER</span></code>
 <br>
@@ -1540,7 +1450,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="164" class="logLine "><code><span> →         - name: TEMPLATE_DIR</span></code>
 <br>
-</span><span data-lineid="165" class="logLine "><code><span> →           value: "/go/src/github.com/windmilleng/servantes/doggos/web/templates"</span></code>
+</span><span data-lineid="165" class="logLine "><code><span> →           value: "/go/src/github.com/tilt-dev/servantes/doggos/web/templates"</span></code>
 <br>
 </span><span data-lineid="166" class="logLine "><code><span> →         ports:</span></code>
 <br>
@@ -1614,7 +1524,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="201" class="logLine "><code><span> →         - name: TEMPLATE_DIR</span></code>
 <br>
-</span><span data-lineid="202" class="logLine "><code><span> →           value: "/go/src/github.com/windmilleng/servantes/fortune/web/templates"</span></code>
+</span><span data-lineid="202" class="logLine "><code><span> →           value: "/go/src/github.com/tilt-dev/servantes/fortune/web/templates"</span></code>
 <br>
 </span><span data-lineid="203" class="logLine "><code><span> →         - name: THE_SECRET</span></code>
 <br>
@@ -1836,7 +1746,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="312" class="logLine "><code><span> →         - name: TEMPLATE_DIR</span></code>
 <br>
-</span><span data-lineid="313" class="logLine "><code><span> →           value: "/go/src/github.com/windmilleng/servantes/emoji/web/templates"</span></code>
+</span><span data-lineid="313" class="logLine "><code><span> →           value: "/go/src/github.com/tilt-dev/servantes/emoji/web/templates"</span></code>
 <br>
 </span><span data-lineid="314" class="logLine "><code><span> →         ports:</span></code>
 <br>
@@ -2044,7 +1954,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="416" class="logLine "><code><span> →         - name: TEMPLATE_DIR</span></code>
 <br>
-</span><span data-lineid="417" class="logLine "><code><span> →           value: "/go/src/github.com/windmilleng/servantes/secrets/web/templates"</span></code>
+</span><span data-lineid="417" class="logLine "><code><span> →           value: "/go/src/github.com/tilt-dev/servantes/secrets/web/templates"</span></code>
 <br>
 </span><span data-lineid="418" class="logLine "><code><span> →         - name: THE_SECRET</span></code>
 <br>
@@ -2386,9 +2296,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="587" class="logLine "><code><span>fe          ┊   </span></code>
 <br>
-</span><span data-lineid="588" class="logLine "><code><span>fe          ┊   ADD . /go/src/github.com/windmilleng/servantes/fe</span></code>
+</span><span data-lineid="588" class="logLine "><code><span>fe          ┊   ADD . /go/src/github.com/tilt-dev/servantes/fe</span></code>
 <br>
-</span><span data-lineid="589" class="logLine "><code><span>fe          ┊   RUN go install github.com/windmilleng/servantes/fe</span></code>
+</span><span data-lineid="589" class="logLine "><code><span>fe          ┊   RUN go install github.com/tilt-dev/servantes/fe</span></code>
 <br>
 </span><span data-lineid="590" class="logLine "><code><span>fe          ┊   ENTRYPOINT /go/bin/fe</span></code>
 <br>
@@ -2412,9 +2322,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="600" class="logLine "><code><span>fe          ┊     ╎ [cached] [4/6] RUN go get github.com/golang/protobuf/protoc-gen-go</span></code>
 <br>
-</span><span data-lineid="601" class="logLine "><code><span>fe          ┊     ╎ [cached] [5/6] ADD . /go/src/github.com/windmilleng/servantes/fe</span></code>
+</span><span data-lineid="601" class="logLine "><code><span>fe          ┊     ╎ [cached] [5/6] ADD . /go/src/github.com/tilt-dev/servantes/fe</span></code>
 <br>
-</span><span data-lineid="602" class="logLine "><code><span>fe          ┊     ╎ [cached] [6/6] RUN go install github.com/windmilleng/servantes/fe</span></code>
+</span><span data-lineid="602" class="logLine "><code><span>fe          ┊     ╎ [cached] [6/6] RUN go install github.com/tilt-dev/servantes/fe</span></code>
 <br>
 </span><span data-lineid="603" class="logLine "><code><span>fe          ┊     ╎ exporting to image</span></code>
 <br>
@@ -2460,9 +2370,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="624" class="logLine "><code><span>vigoda      ┊   </span></code>
 <br>
-</span><span data-lineid="625" class="logLine "><code><span>vigoda      ┊   ADD . /go/src/github.com/windmilleng/servantes/vigoda</span></code>
+</span><span data-lineid="625" class="logLine "><code><span>vigoda      ┊   ADD . /go/src/github.com/tilt-dev/servantes/vigoda</span></code>
 <br>
-</span><span data-lineid="626" class="logLine "><code><span>vigoda      ┊   RUN go install github.com/windmilleng/servantes/vigoda</span></code>
+</span><span data-lineid="626" class="logLine "><code><span>vigoda      ┊   RUN go install github.com/tilt-dev/servantes/vigoda</span></code>
 <br>
 </span><span data-lineid="627" class="logLine "><code><span>vigoda      ┊   </span></code>
 <br>
@@ -2480,9 +2390,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="634" class="logLine "><code><span>vigoda      ┊     ╎ [1/3] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46</span></code>
 <br>
-</span><span data-lineid="635" class="logLine "><code><span>vigoda      ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/windmilleng/servantes/vigoda</span></code>
+</span><span data-lineid="635" class="logLine "><code><span>vigoda      ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/tilt-dev/servantes/vigoda</span></code>
 <br>
-</span><span data-lineid="636" class="logLine "><code><span>vigoda      ┊     ╎ [cached] [3/3] RUN go install github.com/windmilleng/servantes/vigoda</span></code>
+</span><span data-lineid="636" class="logLine "><code><span>vigoda      ┊     ╎ [cached] [3/3] RUN go install github.com/tilt-dev/servantes/vigoda</span></code>
 <br>
 </span><span data-lineid="637" class="logLine "><code><span>vigoda      ┊     ╎ exporting to image</span></code>
 <br>
@@ -2528,15 +2438,15 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="658" class="logLine "><code><span>snack       ┊   # TODO(dbentley): this is only relevant in devel; factor this out to a separate image</span></code>
 <br>
-</span><span data-lineid="659" class="logLine "><code><span>snack       ┊   RUN git clone https://github.com/windmilleng/rerun-process-wrapper</span></code>
+</span><span data-lineid="659" class="logLine "><code><span>snack       ┊   RUN git clone https://github.com/tilt-dev/rerun-process-wrapper</span></code>
 <br>
 </span><span data-lineid="660" class="logLine "><code><span>snack       ┊   RUN cp rerun-process-wrapper/*.sh /bin</span></code>
 <br>
 </span><span data-lineid="661" class="logLine "><code><span>snack       ┊   </span></code>
 <br>
-</span><span data-lineid="662" class="logLine "><code><span>snack       ┊   ADD . /go/src/github.com/windmilleng/servantes/snack</span></code>
+</span><span data-lineid="662" class="logLine "><code><span>snack       ┊   ADD . /go/src/github.com/tilt-dev/servantes/snack</span></code>
 <br>
-</span><span data-lineid="663" class="logLine "><code><span>snack       ┊   RUN go install github.com/windmilleng/servantes/snack</span></code>
+</span><span data-lineid="663" class="logLine "><code><span>snack       ┊   RUN go install github.com/tilt-dev/servantes/snack</span></code>
 <br>
 </span><span data-lineid="664" class="logLine "><code><span>snack       ┊   </span></code>
 <br>
@@ -2554,13 +2464,13 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="671" class="logLine "><code><span>snack       ┊     ╎ [1/5] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46</span></code>
 <br>
-</span><span data-lineid="672" class="logLine "><code><span>snack       ┊     ╎ [cached] [2/5] RUN git clone https://github.com/windmilleng/rerun-process-wrapper</span></code>
+</span><span data-lineid="672" class="logLine "><code><span>snack       ┊     ╎ [cached] [2/5] RUN git clone https://github.com/tilt-dev/rerun-process-wrapper</span></code>
 <br>
 </span><span data-lineid="673" class="logLine "><code><span>snack       ┊     ╎ [cached] [3/5] RUN cp rerun-process-wrapper/*.sh /bin</span></code>
 <br>
-</span><span data-lineid="674" class="logLine "><code><span>snack       ┊     ╎ [cached] [4/5] ADD . /go/src/github.com/windmilleng/servantes/snack</span></code>
+</span><span data-lineid="674" class="logLine "><code><span>snack       ┊     ╎ [cached] [4/5] ADD . /go/src/github.com/tilt-dev/servantes/snack</span></code>
 <br>
-</span><span data-lineid="675" class="logLine "><code><span>snack       ┊     ╎ [cached] [5/5] RUN go install github.com/windmilleng/servantes/snack</span></code>
+</span><span data-lineid="675" class="logLine "><code><span>snack       ┊     ╎ [cached] [5/5] RUN go install github.com/tilt-dev/servantes/snack</span></code>
 <br>
 </span><span data-lineid="676" class="logLine "><code><span>snack       ┊     ╎ exporting to image</span></code>
 <br>
@@ -2610,9 +2520,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="699" class="logLine "><code><span>doggos      ┊   </span></code>
 <br>
-</span><span data-lineid="700" class="logLine "><code><span>doggos      ┊   ADD . /go/src/github.com/windmilleng/servantes/doggos</span></code>
+</span><span data-lineid="700" class="logLine "><code><span>doggos      ┊   ADD . /go/src/github.com/tilt-dev/servantes/doggos</span></code>
 <br>
-</span><span data-lineid="701" class="logLine "><code><span>doggos      ┊   RUN go install github.com/windmilleng/servantes/doggos</span></code>
+</span><span data-lineid="701" class="logLine "><code><span>doggos      ┊   RUN go install github.com/tilt-dev/servantes/doggos</span></code>
 <br>
 </span><span data-lineid="702" class="logLine "><code><span>doggos      ┊   </span></code>
 <br>
@@ -2632,9 +2542,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="710" class="logLine "><code><span>vigoda      ┊ 2019/11/13 22:33:53 Server status: All good</span></code>
 <br>
-</span><span data-lineid="711" class="logLine "><code><span>doggos      ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/windmilleng/servantes/doggos</span></code>
+</span><span data-lineid="711" class="logLine "><code><span>doggos      ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/tilt-dev/servantes/doggos</span></code>
 <br>
-</span><span data-lineid="712" class="logLine "><code><span>doggos      ┊     ╎ [cached] [3/3] RUN go install github.com/windmilleng/servantes/doggos</span></code>
+</span><span data-lineid="712" class="logLine "><code><span>doggos      ┊     ╎ [cached] [3/3] RUN go install github.com/tilt-dev/servantes/doggos</span></code>
 <br>
 </span><span data-lineid="713" class="logLine "><code><span>doggos      ┊     ╎ exporting to image</span></code>
 <br>
@@ -2746,11 +2656,11 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="767" class="logLine "><code><span>fortune     ┊   </span></code>
 <br>
-</span><span data-lineid="768" class="logLine "><code><span>fortune     ┊   ADD . /go/src/github.com/windmilleng/servantes/fortune</span></code>
+</span><span data-lineid="768" class="logLine "><code><span>fortune     ┊   ADD . /go/src/github.com/tilt-dev/servantes/fortune</span></code>
 <br>
-</span><span data-lineid="769" class="logLine "><code><span>fortune     ┊   RUN cd /go/src/github.com/windmilleng/servantes/fortune &amp;&amp; make proto</span></code>
+</span><span data-lineid="769" class="logLine "><code><span>fortune     ┊   RUN cd /go/src/github.com/tilt-dev/servantes/fortune &amp;&amp; make proto</span></code>
 <br>
-</span><span data-lineid="770" class="logLine "><code><span>fortune     ┊   RUN go install github.com/windmilleng/servantes/fortune</span></code>
+</span><span data-lineid="770" class="logLine "><code><span>fortune     ┊   RUN go install github.com/tilt-dev/servantes/fortune</span></code>
 <br>
 </span><span data-lineid="771" class="logLine "><code><span>fortune     ┊   </span></code>
 <br>
@@ -2790,11 +2700,11 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="789" class="logLine "><code><span>fortune     ┊     ╎ [cached] [4/7] RUN go get github.com/golang/protobuf/protoc-gen-go</span></code>
 <br>
-</span><span data-lineid="790" class="logLine "><code><span>fortune     ┊     ╎ [cached] [5/7] ADD . /go/src/github.com/windmilleng/servantes/fortune</span></code>
+</span><span data-lineid="790" class="logLine "><code><span>fortune     ┊     ╎ [cached] [5/7] ADD . /go/src/github.com/tilt-dev/servantes/fortune</span></code>
 <br>
-</span><span data-lineid="791" class="logLine "><code><span>fortune     ┊     ╎ [cached] [6/7] RUN cd /go/src/github.com/windmilleng/servantes/fortune &amp;&amp; make proto</span></code>
+</span><span data-lineid="791" class="logLine "><code><span>fortune     ┊     ╎ [cached] [6/7] RUN cd /go/src/github.com/tilt-dev/servantes/fortune &amp;&amp; make proto</span></code>
 <br>
-</span><span data-lineid="792" class="logLine "><code><span>fortune     ┊     ╎ [cached] [7/7] RUN go install github.com/windmilleng/servantes/fortune</span></code>
+</span><span data-lineid="792" class="logLine "><code><span>fortune     ┊     ╎ [cached] [7/7] RUN go install github.com/tilt-dev/servantes/fortune</span></code>
 <br>
 </span><span data-lineid="793" class="logLine "><code><span>fortune     ┊     ╎ exporting to image</span></code>
 <br>
@@ -2988,9 +2898,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="888" class="logLine "><code><span>emoji       ┊   </span></code>
 <br>
-</span><span data-lineid="889" class="logLine "><code><span>emoji       ┊   ADD . /go/src/github.com/windmilleng/servantes/emoji</span></code>
+</span><span data-lineid="889" class="logLine "><code><span>emoji       ┊   ADD . /go/src/github.com/tilt-dev/servantes/emoji</span></code>
 <br>
-</span><span data-lineid="890" class="logLine "><code><span>emoji       ┊   RUN go install github.com/windmilleng/servantes/emoji</span></code>
+</span><span data-lineid="890" class="logLine "><code><span>emoji       ┊   RUN go install github.com/tilt-dev/servantes/emoji</span></code>
 <br>
 </span><span data-lineid="891" class="logLine "><code><span>emoji       ┊   </span></code>
 <br>
@@ -3008,9 +2918,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="898" class="logLine "><code><span>emoji       ┊     ╎ [1/3] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46</span></code>
 <br>
-</span><span data-lineid="899" class="logLine "><code><span>emoji       ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/windmilleng/servantes/emoji</span></code>
+</span><span data-lineid="899" class="logLine "><code><span>emoji       ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/tilt-dev/servantes/emoji</span></code>
 <br>
-</span><span data-lineid="900" class="logLine "><code><span>emoji       ┊     ╎ [cached] [3/3] RUN go install github.com/windmilleng/servantes/emoji</span></code>
+</span><span data-lineid="900" class="logLine "><code><span>emoji       ┊     ╎ [cached] [3/3] RUN go install github.com/tilt-dev/servantes/emoji</span></code>
 <br>
 </span><span data-lineid="901" class="logLine "><code><span>emoji       ┊     ╎ exporting to image</span></code>
 <br>
@@ -3118,9 +3028,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="953" class="logLine "><code><span>random      ┊   </span></code>
 <br>
-</span><span data-lineid="954" class="logLine "><code><span>random      ┊   ADD . /go/src/github.com/windmilleng/servantes/random</span></code>
+</span><span data-lineid="954" class="logLine "><code><span>random      ┊   ADD . /go/src/github.com/tilt-dev/servantes/random</span></code>
 <br>
-</span><span data-lineid="955" class="logLine "><code><span>random      ┊   RUN go install github.com/windmilleng/servantes/random</span></code>
+</span><span data-lineid="955" class="logLine "><code><span>random      ┊   RUN go install github.com/tilt-dev/servantes/random</span></code>
 <br>
 </span><span data-lineid="956" class="logLine "><code><span>random      ┊   </span></code>
 <br>
@@ -3138,9 +3048,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="963" class="logLine "><code><span>random      ┊     ╎ [1/3] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46</span></code>
 <br>
-</span><span data-lineid="964" class="logLine "><code><span>random      ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/windmilleng/servantes/random</span></code>
+</span><span data-lineid="964" class="logLine "><code><span>random      ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/tilt-dev/servantes/random</span></code>
 <br>
-</span><span data-lineid="965" class="logLine "><code><span>random      ┊     ╎ [cached] [3/3] RUN go install github.com/windmilleng/servantes/random</span></code>
+</span><span data-lineid="965" class="logLine "><code><span>random      ┊     ╎ [cached] [3/3] RUN go install github.com/tilt-dev/servantes/random</span></code>
 <br>
 </span><span data-lineid="966" class="logLine "><code><span>random      ┊     ╎ exporting to image</span></code>
 <br>
@@ -3186,9 +3096,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="987" class="logLine "><code><span>secrets     ┊   </span></code>
 <br>
-</span><span data-lineid="988" class="logLine "><code><span>secrets     ┊   ADD . /go/src/github.com/windmilleng/servantes/secrets</span></code>
+</span><span data-lineid="988" class="logLine "><code><span>secrets     ┊   ADD . /go/src/github.com/tilt-dev/servantes/secrets</span></code>
 <br>
-</span><span data-lineid="989" class="logLine "><code><span>secrets     ┊   RUN go install github.com/windmilleng/servantes/secrets</span></code>
+</span><span data-lineid="989" class="logLine "><code><span>secrets     ┊   RUN go install github.com/tilt-dev/servantes/secrets</span></code>
 <br>
 </span><span data-lineid="990" class="logLine "><code><span>secrets     ┊   </span></code>
 <br>
@@ -3206,9 +3116,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="997" class="logLine "><code><span>secrets     ┊     ╎ [1/3] FROM docker.io/library/golang:1.10@sha256:6d5e79878a3e4f1b30b7aa4d24fb6ee6184e905a9b172fc72593935633be4c46</span></code>
 <br>
-</span><span data-lineid="998" class="logLine "><code><span>secrets     ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/windmilleng/servantes/secrets</span></code>
+</span><span data-lineid="998" class="logLine "><code><span>secrets     ┊     ╎ [cached] [2/3] ADD . /go/src/github.com/tilt-dev/servantes/secrets</span></code>
 <br>
-</span><span data-lineid="999" class="logLine "><code><span>secrets     ┊     ╎ [cached] [3/3] RUN go install github.com/windmilleng/servantes/secrets</span></code>
+</span><span data-lineid="999" class="logLine "><code><span>secrets     ┊     ╎ [cached] [3/3] RUN go install github.com/tilt-dev/servantes/secrets</span></code>
 <br>
 </span><span data-lineid="1000" class="logLine "><code><span>secrets     ┊     ╎ exporting to image</span></code>
 <br>

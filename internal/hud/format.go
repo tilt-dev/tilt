@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Duplicated in web/src/format.ts
 func formatBuildDuration(d time.Duration) string {
 	hours := int(d.Hours())
 	if hours > 0 {

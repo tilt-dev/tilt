@@ -1,19 +1,27 @@
 package hud
 
 import (
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/gdamore/tcell"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/rty"
 )
 
 // The most lines we can reasonably put in the log pane. If the log pane sticks
 // around in the long term, we might want to compute this dynamically based on
 // the window size.
 const logLineCount = view.LogLineCount
+
+func xMark() string {
+	if runtime.GOOS == "windows" {
+		return "×"
+	}
+	return "✖"
+}
 
 func deployTimeText(t time.Time) rty.Component {
 	sb := rty.NewStringBuilder()

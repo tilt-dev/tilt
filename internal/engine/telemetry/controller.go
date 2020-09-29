@@ -7,12 +7,12 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/tracer"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 type Controller struct {
@@ -30,13 +30,16 @@ func NewController(clock build.Clock, spans tracer.SpanSource) *Controller {
 	}
 }
 
-var period = 60 * time.Second
-
 func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 	state := st.RLockState()
 	ts := state.TelemetrySettings
 	tc := ts.Cmd
 	st.RUnlockState()
+
+	period := ts.Period
+	if period == 0 {
+		period = model.DefaultTelemetryPeriod
+	}
 
 	if tc.Empty() || !t.lastRunAt.Add(period).Before(t.clock.Now()) {
 		return
@@ -71,6 +74,6 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
 }
 
 func (t *Controller) logError(st store.RStore, err error) {
-	spanID := logstore.SpanID(fmt.Sprintf("telemetry:%s", string(t.runCounter)))
+	spanID := logstore.SpanID(fmt.Sprintf("telemetry:%d", t.runCounter))
 	st.Dispatch(store.NewLogAction(model.TiltfileManifestName, spanID, logger.InfoLvl, nil, []byte(err.Error())))
 }

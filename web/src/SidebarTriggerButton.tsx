@@ -23,7 +23,7 @@ export const TriggerButtonTooltip = {
     "This manual resource has pending file changes; click to trigger an update.",
   UpdateInProgOrPending:
     "Cannot trigger an update while resource is updating or update is pending.",
-  ClickToForce: "Force a rebuild/update for this resource.",
+  ClickToForce: "Force an update for this resource.",
   CannotTriggerTiltfile: "Cannot trigger an update to the Tiltfile.",
 }
 

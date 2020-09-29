@@ -9,22 +9,24 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/engine"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/engine"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type downCmd struct {
 	fileName         string
 	deleteNamespaces bool
-	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics) (DownDeps, error)
+	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error)
 }
 
 func newDownCmd() *downCmd {
 	return &downCmd{downDepsProvider: wireDownDeps}
 }
+
+func (c *downCmd) name() model.TiltSubcommand { return "down" }
 
 func (c *downCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
@@ -50,6 +52,7 @@ In that case, see https://tilt.dev/user_config.html and/or comments in your Tilt
 	}
 
 	addTiltfileFlag(cmd, &c.fileName)
+	addKubeContextFlag(cmd)
 	cmd.Flags().BoolVar(&c.deleteNamespaces, "delete-namespaces", false, "delete namespaces defined in the Tiltfile (by default, don't)")
 
 	return cmd
@@ -60,7 +63,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.down", map[string]string{})
 	defer a.Flush(time.Second)
 
-	downDeps, err := c.downDepsProvider(ctx, a)
+	downDeps, err := c.downDepsProvider(ctx, a, "down")
 	if err != nil {
 		return err
 	}

@@ -11,14 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/engine/configs"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	proto_webview "github.com/windmilleng/tilt/pkg/webview"
+	"github.com/tilt-dev/tilt/internal/engine/configs"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
 var fooManifest = model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
@@ -102,6 +102,19 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 
 	expectedInfo := &proto_webview.YAMLResourceInfo{K8SResources: []string{"sancho:deployment"}}
 	assert.Equal(t, expectedInfo, r.YamlResourceInfo)
+}
+
+func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
+	displayNames := []string{"foo:namespace", "foo:secret"}
+	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
+	state := newState([]model.Manifest{m})
+	v := stateToProtoView(t, *state)
+
+	assert.Equal(t, 2, len(v.Resources))
+
+	r, _ := findResource(m.Name, v)
+
+	assert.Equal(t, r.K8SResourceInfo.DisplayNames, displayNames)
 }
 
 func TestStateToViewTiltfileLog(t *testing.T) {

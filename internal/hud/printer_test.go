@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 func TestPrinterProgressBackoff(t *testing.T) {

@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 )
 
 type LocalTarget struct {
@@ -11,10 +11,14 @@ type LocalTarget struct {
 	UpdateCmd Cmd      // e.g. `make proto`
 	ServeCmd  Cmd      // e.g. `python main.py`
 	Workdir   string   // directory from which the commands should be run
-	deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
+	Deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
 	ignores   []Dockerignore
 
 	repos []LocalGitRepo
+
+	// Indicates that we should allow this to run in parallel with other
+	// resources  (by default, this is presumed unsafe and is not allowed).
+	AllowParallel bool
 }
 
 var _ TargetSpec = LocalTarget{}
@@ -24,13 +28,18 @@ func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string,
 		Name:      name,
 		UpdateCmd: updateCmd,
 		Workdir:   workdir,
-		deps:      deps,
+		Deps:      deps,
 		ServeCmd:  serveCmd,
 	}
 }
 
 func (lt LocalTarget) Empty() bool {
 	return lt.UpdateCmd.Empty() && lt.ServeCmd.Empty()
+}
+
+func (lt LocalTarget) WithAllowParallel(val bool) LocalTarget {
+	lt.AllowParallel = val
+	return lt
 }
 
 func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
@@ -65,7 +74,7 @@ func (lt LocalTarget) Validate() error {
 
 // Implements: engine.WatchableManifest
 func (lt LocalTarget) Dependencies() []string {
-	return sliceutils.DedupedAndSorted(lt.deps)
+	return sliceutils.DedupedAndSorted(lt.Deps)
 }
 
 func (lt LocalTarget) LocalRepos() []LocalGitRepo {

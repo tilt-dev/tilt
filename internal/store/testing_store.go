@@ -89,13 +89,17 @@ func (s *TestingStore) AssertNoErrorActions(t testing.TB) {
 	}
 }
 
+func (s *TestingStore) WaitForAction(t testing.TB, typ reflect.Type) Action {
+	return WaitForAction(t, typ, s.Actions)
+}
+
 // for use by tests (with a real channel-based store, NOT a TestingStore), to wait until
 // an action of the specified type comes out of the given chan at some point we might want
 // it to return the index it was found at, and then take an index, so that we can start
 // searching from the next index
 func WaitForAction(t testing.TB, typ reflect.Type, getActions func() []Action) Action {
 	start := time.Now()
-	timeout := 300 * time.Millisecond
+	timeout := 500 * time.Millisecond
 
 	for time.Since(start) < timeout {
 		actions := getActions()
@@ -117,7 +121,7 @@ func WaitForAction(t testing.TB, typ reflect.Type, getActions func() []Action) A
 // we don't see an action of the given type
 func AssertNoActionOfType(t testing.TB, typ reflect.Type, getActions func() []Action) Action {
 	start := time.Now()
-	timeout := 150 * time.Millisecond
+	timeout := 300 * time.Millisecond
 
 	for time.Since(start) < timeout {
 		actions := getActions()

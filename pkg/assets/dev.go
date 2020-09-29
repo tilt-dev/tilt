@@ -17,9 +17,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/procutil"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/procutil"
 )
 
 const errorBodyStyle = `
@@ -118,6 +118,10 @@ func (s *devServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.
 	procutil.SetOptNewProcessGroup(attrs)
 
 	cmd.SysProcAttr = attrs
+
+	// The webpack devserver expects an stdin that never closes.
+	pipeReader, _ := io.Pipe()
+	cmd.Stdin = pipeReader
 
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr

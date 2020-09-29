@@ -9,14 +9,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var (
@@ -77,6 +77,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"tiltfile.error":                                      "false",
 		"up.starttime":                                        state.TiltStartTime.Format(time.RFC3339),
 		"env":                                                 string(k8s.EnvDockerDesktop),
+		"term_mode":                                           "0",
 		"k8s.runtime":                                         "docker",
 		"k8s.registry.host":                                   "1",
 		"k8s.registry.hostFromCluster":                        "1",
@@ -159,6 +160,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 		"tiltfile.error":         "true",
 		"up.starttime":           state.TiltStartTime.Format(time.RFC3339),
 		"env":                    string(k8s.EnvDockerDesktop),
+		"term_mode":              "0",
 		"k8s.runtime":            "docker",
 	}
 

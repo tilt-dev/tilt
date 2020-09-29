@@ -7,18 +7,23 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-colorable"
 	"github.com/spf13/cobra"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/cloud"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/cloud"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ciCmd struct {
 	fileName             string
 	outputSnapshotOnExit string
 }
+
+func (c *ciCmd) name() model.TiltSubcommand { return "ci" }
 
 func (c *ciCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
@@ -38,8 +43,10 @@ While Tilt is running, you can view the UI at %s:%d
 `, DefaultWebHost, DefaultWebPort),
 	}
 
-	addWebServerFlags(cmd)
+	addStartServerFlags(cmd)
+	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
+	addKubeContextFlag(cmd)
 
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().Lookup("logactions").Hidden = true
@@ -57,16 +64,19 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
 
-	logOutput(fmt.Sprintf("Starting Tilt (%s)…", buildStamp()))
+	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+
+	webHost := provideWebHost()
+	webURL, _ := provideWebURL(webHost, provideWebPort())
+	startLine := prompt.StartStatusLine(webURL, webHost)
+	log.Print(startLine)
+	log.Print(buildStamp())
 
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	// TODO(nick): Make this better than a global variable.
-	noBrowser = true
-
-	cmdCIDeps, err := wireCmdCI(ctx, a)
+	cmdCIDeps, err := wireCmdCI(ctx, a, "ci")
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
@@ -84,10 +94,11 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	engineMode := store.EngineModeCI
 
 	err = upper.Start(ctx, args, cmdCIDeps.TiltBuild, engineMode,
-		c.fileName, false, a.UserOpt(), cmdCIDeps.Token,
+		c.fileName, store.TerminalModeStream, a.UserOpt(), cmdCIDeps.Token,
 		string(cmdCIDeps.CloudAddress))
 	if err == nil {
-		fmt.Println(color.GreenString("SUCCESS. All workloads are healthy."))
+		_, _ = fmt.Fprintln(colorable.NewColorableStdout(),
+			color.GreenString("SUCCESS. All workloads are healthy."))
 	}
 	return err
 }

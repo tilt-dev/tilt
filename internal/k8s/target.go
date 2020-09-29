@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
@@ -17,7 +17,7 @@ func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
-	target, err := NewTarget(name, entities, nil, nil, nil, nil)
+	target, err := NewTarget(name, entities, nil, nil, nil, nil, model.PodReadinessIgnore, nil)
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
@@ -30,7 +30,9 @@ func NewTarget(
 	portForwards []model.PortForward,
 	extraPodSelectors []labels.Selector,
 	dependencyIDs []model.TargetID,
-	refInjectCounts map[string]int) (model.K8sTarget, error) {
+	refInjectCounts map[string]int,
+	podReadinessMode model.PodReadinessMode,
+	allLocators []ImageLocator) (model.K8sTarget, error) {
 	sorted := SortedEntities(entities)
 	yaml, err := SerializeSpecYAML(sorted)
 	if err != nil {
@@ -45,6 +47,12 @@ func NewTarget(
 	// Use a min component count of 2 for computing names,
 	// so that the resource type appears
 	displayNames := UniqueNames(sorted, 2)
+	myLocators := []model.K8sImageLocator{}
+	for _, locator := range allLocators {
+		if LocatorMatchesOne(locator, entities) {
+			myLocators = append(myLocators, locator)
+		}
+	}
 
 	return model.K8sTarget{
 		Name:              name,
@@ -53,11 +61,13 @@ func NewTarget(
 		ExtraPodSelectors: extraPodSelectors,
 		DisplayNames:      displayNames,
 		ObjectRefs:        objectRefs,
+		PodReadinessMode:  podReadinessMode,
+		ImageLocators:     myLocators,
 	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 
-func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil)
+func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity, allLocators []ImageLocator) (model.Manifest, error) {
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, model.PodReadinessIgnore, allLocators)
 	if err != nil {
 		return model.Manifest{}, err
 	}
@@ -70,9 +80,17 @@ func NewK8sOnlyManifestFromYAML(yaml string) (model.Manifest, error) {
 		return model.Manifest{}, errors.Wrap(err, "NewK8sOnlyManifestFromYAML")
 	}
 
-	manifest, err := NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, entities)
+	manifest, err := NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, entities, nil)
 	if err != nil {
 		return model.Manifest{}, errors.Wrap(err, "NewK8sOnlyManifestFromYAML")
 	}
 	return manifest, nil
+}
+
+func ToImageLocators(locators []model.K8sImageLocator) []ImageLocator {
+	result := []ImageLocator{}
+	for _, locator := range locators {
+		result = append(result, locator.(ImageLocator))
+	}
+	return result
 }

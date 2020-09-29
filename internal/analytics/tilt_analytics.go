@@ -3,12 +3,13 @@ package analytics
 import (
 	"time"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 const TagVersion = "version"
 const TagOS = "os"
 const TagGitRepoHash = "git.origin"
+const TagSubcommand = "subcommand"
 
 // An Analytics that allows opting in/out at runtime.
 type TiltAnalytics struct {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/ospath"
 )
 
 type PathMatcher interface {

@@ -3,36 +3,39 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/analytics"
+
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type DockerComposeBuildAndDeployer struct {
 	dcc   dockercompose.DockerComposeClient
 	dc    docker.Client
-	icb   *imageAndCacheBuilder
+	ib    *imageBuilder
 	clock build.Clock
 }
 
 var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
 func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
-	icb *imageAndCacheBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
+	ib *imageBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
 		dcc:   dcc,
 		dc:    dc,
-		icb:   icb,
+		ib:    ib,
 		clock: c,
 	}
 }
@@ -56,7 +59,7 @@ func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) ([]mo
 	return iTargets, dcTargets
 }
 
-func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (store.BuildResultSet, error) {
+func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (res store.BuildResultSet, err error) {
 	iTargets, dcTargets := bd.extract(specs)
 	if len(dcTargets) != 1 {
 		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf(
@@ -68,19 +71,42 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	span.SetTag("target", dcTargets[0].Name)
 	defer span.Finish()
 
-	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, currentState, bd.icb.ib.ImageExists)
+	startTime := time.Now()
+	defer func() {
+		analytics.Get(ctx).Timer("build.docker-compose", time.Since(startTime), map[string]string{
+			"hasError": fmt.Sprintf("%t", err != nil),
+		})
+	}()
+
+	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, currentState, bd.ib.CanReuseRef)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
-	numStages := q.CountDirty()
+	numStages := q.CountBuilds()
+
+	reused := q.ReusedResults()
+	hasReusedStep := len(reused) > 0
+	if hasReusedStep {
+		numStages++
+	}
+
 	haveImage := len(iTargets) > 0
 
 	ps := build.NewPipelineState(ctx, numStages, bd.clock)
 	defer func() { ps.End(ctx, err) }()
 
+	if hasReusedStep {
+		ps.StartPipelineStep(ctx, "Loading cached images")
+		for _, result := range reused {
+			ref := store.LocalImageRefFromBuildResult(result)
+			ps.Printf(ctx, "- %s", container.FamiliarString(ref))
+		}
+		ps.EndPipelineStep(ctx)
+	}
+
 	iTargetMap := model.ImageTargetsByID(iTargets)
-	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
+	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
 			return nil, fmt.Errorf("Not an image target: %T", target)
@@ -96,7 +122,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one
 		// service at once, we'll have to match up image build results to DC target by ref.
-		refs, err := bd.icb.Build(ctx, iTarget, currentState[iTarget.ID()], ps)
+		refs, err := bd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
 			return nil, err
 		}
@@ -109,22 +135,23 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.NewImageBuildResultSingleRef(iTarget.ID(), ref), nil
 	})
 
+	newResults := q.NewResults()
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return newResults, err
 	}
 
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
 	err = bd.dcc.Up(ctx, dcTarget.ConfigPaths, dcTarget.Name, !haveImage, stdout, stderr)
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return newResults, err
 	}
 
 	// NOTE(dmiller): right now we only need this the first time. In the future
 	// it might be worth it to move this somewhere else
 	cid, err := bd.dcc.ContainerID(ctx, dcTarget.ConfigPaths, dcTarget.Name)
 	if err != nil {
-		return store.BuildResultSet{}, err
+		return newResults, err
 	}
 
 	// grab the initial container state
@@ -138,9 +165,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		containerState = containerJSON.ContainerJSONBase.State
 	}
 
-	results := q.Results()
-	results[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid, containerState)
-	return results, nil
+	newResults[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid, containerState)
+	return newResults, nil
 }
 
 // tagWithExpected tags the given ref as whatever Docker Compose expects, i.e. as

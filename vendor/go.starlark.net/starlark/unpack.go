@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+// An Unpacker defines custom argument unpacking behavior.
+// See UnpackArgs.
+type Unpacker interface {
+	Unpack(v Value) error
+}
+
 // UnpackArgs unpacks the positional and keyword arguments into the
 // supplied parameter variables.  pairs is an alternating list of names
 // and pointers to variables.
@@ -20,6 +26,10 @@ import (
 // An int uses the AsInt32 check.
 // If the parameter name ends with "?",
 // it and all following parameters are optional.
+//
+// If the variable implements Unpacker, its Unpack argument
+// is called with the argument value, allowing an application
+// to define its own argument validation and conversion.
 //
 // If the variable implements Value, UnpackArgs may call
 // its Type() method while constructing the error message.
@@ -127,6 +137,8 @@ func UnpackPositionalArgs(fnname string, args Tuple, kwargs []Tuple, min int, va
 func unpackOneArg(v Value, ptr interface{}) error {
 	// On failure, don't clobber *ptr.
 	switch ptr := ptr.(type) {
+	case Unpacker:
+		return ptr.Unpack(v)
 	case *Value:
 		*ptr = v
 	case *string:

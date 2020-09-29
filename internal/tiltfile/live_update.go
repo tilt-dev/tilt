@@ -10,10 +10,20 @@ import (
 
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+const fmtRestartContainerDeprecationError = "Found `restart_container()` LiveUpdate step in resource(s): [%s]. `restart_container()`  has been deprecated for k8s resources. We recommend the restart_process extension: https://github.com/windmilleng/tilt-extensions/tree/master/restart_process. For more information, see https://docs.tilt.dev/live_update_reference.html#restarting-your-process"
+
+func restartContainerDeprecationError(names []model.ManifestName) string {
+	strs := make([]string, len(names))
+	for i, n := range names {
+		strs[i] = n.String()
+	}
+	return fmt.Sprintf(fmtRestartContainerDeprecationError, strings.Join(strs, ", "))
+}
 
 // when adding a new type of `liveUpdateStep`, make sure that any tiltfile functions that create them also call
 // `s.recordLiveUpdateStep`

@@ -11,9 +11,9 @@ import (
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 
-	tiltfile_io "github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
+	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 )
 
 // takes a list of objects that came from deserializing a potential starlark stream
@@ -80,17 +80,12 @@ func readYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 }
 
 func decodeYAMLStreamAsStarlarkList(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (*starlark.List, error) {
-	var contents starlark.Value
+	var contents value.Stringable
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "yaml", &contents); err != nil {
 		return nil, err
 	}
 
-	s, ok := value.AsString(contents)
-	if !ok {
-		return nil, fmt.Errorf("%s arg must be a string or blob. got %s", fn.Name(), contents.Type())
-	}
-
-	return yamlStreamToStarlark(s, "")
+	return yamlStreamToStarlark(contents.Value, "")
 }
 
 func decodeYAMLStream(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -108,9 +103,9 @@ func decodeYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 
 func yamlStreamToStarlark(s string, source string) (*starlark.List, error) {
 	var ret []starlark.Value
-	var decodedYAML interface{}
 	d := k8syaml.NewYAMLToJSONDecoder(strings.NewReader(s))
 	for {
+		var decodedYAML interface{}
 		err := d.Decode(&decodedYAML)
 		if err == io.EOF {
 			break
@@ -131,6 +126,9 @@ func yamlStreamToStarlark(s string, source string) (*starlark.List, error) {
 				errmsg += fmt.Sprintf(" from %s", source)
 			}
 			return nil, errors.Wrap(err, errmsg)
+		}
+		if v == starlark.None {
+			continue // ignore empty entries
 		}
 
 		ret = append(ret, v)

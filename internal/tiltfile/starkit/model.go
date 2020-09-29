@@ -10,6 +10,8 @@ import (
 
 type Model struct {
 	state map[reflect.Type]interface{}
+
+	BuiltinCalls []BuiltinCall
 }
 
 func NewModel() Model {

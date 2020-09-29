@@ -1,22 +1,25 @@
 package tiltfile
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/docker/builder/dockerignore"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
@@ -35,26 +38,31 @@ type dockerImage struct {
 	targetStage      string    // optional: if specified, we build a particular target in the dockerfile
 	network          string
 	extraTags        []string // Extra tags added at build-time.
+	cacheFrom        []string
+	pullParent       bool
 
 	// Overrides the container args. Used as an escape hatch in case people want the old entrypoint behavior.
 	// See discussion here:
-	// https://github.com/windmilleng/tilt/pull/2933
+	// https://github.com/tilt-dev/tilt/pull/2933
 	containerArgs model.OverrideArgs
 
 	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
 	dbBuildPath      string
 	dbBuildArgs      model.DockerBuildArgs
-	customCommand    string
+	customCommand    model.Cmd
 	customDeps       []string
 	customTag        string
 
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
 
-	dependencyIDs    []model.TargetID
-	disablePush      bool
-	skipsLocalDocker bool
+	dependencyIDs []model.TargetID
+
+	// Only applicable to custom_build
+	disablePush       bool
+	skipsLocalDocker  bool
+	outputsImageRefTo string
 
 	liveUpdate model.LiveUpdate
 }
@@ -76,7 +84,7 @@ func (d *dockerImage) Type() dockerImageBuildType {
 		return DockerBuild
 	}
 
-	if d.customCommand != "" {
+	if !d.customCommand.Empty() {
 		return CustomBuild
 	}
 
@@ -87,18 +95,16 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	var dockerRef, targetStage string
 	var contextVal,
 		dockerfilePathVal,
-		buildArgs,
 		dockerfileContentsVal,
 		cacheVal,
 		liveUpdateVal,
 		ignoreVal,
 		onlyVal,
-		sshVal,
-		secretVal,
-		networkVal,
-		entrypoint,
-		extraTagsVal starlark.Value
-	var matchInEnvVars bool
+		entrypoint starlark.Value
+	var buildArgs value.StringStringMap
+	var network value.Stringable
+	var ssh, secret, extraTags, cacheFrom value.StringOrStringList
+	var matchInEnvVars, pullParent bool
 	var containerArgsVal starlark.Sequence
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -114,10 +120,12 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"entrypoint?", &entrypoint,
 		"container_args?", &containerArgsVal,
 		"target?", &targetStage,
-		"ssh?", &sshVal,
-		"secret?", &secretVal,
-		"network?", &networkVal,
-		"extra_tag?", &extraTagsVal,
+		"ssh?", &ssh,
+		"secret?", &secret,
+		"network?", &network,
+		"extra_tag?", &extraTags,
+		"cache_from?", &cacheFrom,
+		"pull?", &pullParent,
 	); err != nil {
 		return nil, err
 	}
@@ -133,11 +141,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	context, err := value.ValueToAbsPath(thread, contextVal)
 	if err != nil {
 		return nil, err
-	}
-
-	sba, err := value.ValueToStringMap(buildArgs)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 3 (build_args): %v", err)
 	}
 
 	dockerfilePath := filepath.Join(context, "Dockerfile")
@@ -192,24 +195,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	ssh, ok := value.AsStringOrStringList(sshVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'ssh' must be string or list of strings. Actual: %T", sshVal)
-	}
-
-	secret, ok := value.AsStringOrStringList(secretVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'secret' must be string or list of strings. Actual: %T", secretVal)
-	}
-
-	network := ""
-	if networkVal != nil {
-		network, ok = value.AsString(networkVal)
-		if !ok {
-			return nil, fmt.Errorf("Argument 'network' must be string. Actual: %T", networkVal)
-		}
-	}
-
 	entrypointCmd, err := value.ValueToUnixCmd(entrypoint)
 	if err != nil {
 		return nil, err
@@ -224,12 +209,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
 	}
 
-	extraTags, ok := value.AsStringOrStringList(extraTagsVal)
-	if !ok {
-		return nil, fmt.Errorf("Argument 'extra_tag' must be string or list of strings. Actual: %T", extraTagsVal)
-	}
-
-	for _, extraTag := range extraTags {
+	for _, extraTag := range extraTags.Values {
 		_, err := container.ParseNamed(extraTag)
 		if err != nil {
 			return nil, fmt.Errorf("Argument extra_tag=%q not a valid image reference: %v", extraTag, err)
@@ -242,18 +222,20 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
 		configurationRef: container.NewRefSelector(ref),
-		dbBuildArgs:      sba,
+		dbBuildArgs:      buildArgs.AsMap(),
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
-		sshSpecs:         ssh,
-		secretSpecs:      secret,
+		sshSpecs:         ssh.Values,
+		secretSpecs:      secret.Values,
 		ignores:          ignores,
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
 		containerArgs:    containerArgs,
 		targetStage:      targetStage,
-		network:          network,
-		extraTags:        extraTags,
+		network:          network.Value,
+		extraTags:        extraTags.Values,
+		cacheFrom:        cacheFrom.Values,
+		pullParent:       pullParent,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -274,7 +256,7 @@ func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
 
 	for _, p := range paths {
 		// We want to forbid file globs due to these issues:
-		// https://github.com/windmilleng/tilt/issues/1982
+		// https://github.com/tilt-dev/tilt/issues/1982
 		// https://github.com/moby/moby/issues/30018
 		if strings.Contains(p, "*") {
 			return nil, fmt.Errorf("'only' does not support '*' file globs. Must be a real path: %s", p)
@@ -285,7 +267,7 @@ func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
 
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var command string
+	var commandVal, commandBatVal starlark.Value
 	var deps *starlark.List
 	var tag string
 	var disablePush bool
@@ -294,10 +276,11 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var entrypoint starlark.Value
 	var containerArgsVal starlark.Sequence
 	var skipsLocalDocker bool
+	outputsImageRefTo := value.NewLocalPathUnpacker(thread)
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
-		"command", &command,
+		"command", &commandVal,
 		"deps", &deps,
 		"tag?", &tag,
 		"disable_push?", &disablePush,
@@ -307,6 +290,8 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"ignore?", &ignoreVal,
 		"entrypoint?", &entrypoint,
 		"container_args?", &containerArgsVal,
+		"command_bat_val", &commandBatVal,
+		"outputs_image_ref_to", &outputsImageRefTo,
 	)
 	if err != nil {
 		return nil, err
@@ -315,10 +300,6 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	ref, err := container.ParseNamed(dockerRef)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 1 (ref): can't parse %q: %v", dockerRef, err)
-	}
-
-	if command == "" {
-		return nil, fmt.Errorf("Argument 2 (command) can't be empty")
 	}
 
 	if deps == nil || deps.Len() == 0 {
@@ -361,19 +342,31 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
 	}
 
+	command, err := value.ValueGroupToCmdHelper(commandVal, commandBatVal)
+	if err != nil {
+		return nil, fmt.Errorf("Argument 2 (command): %v", err)
+	} else if command.Empty() {
+		return nil, fmt.Errorf("Argument 2 (command) can't be empty")
+	}
+
+	if tag != "" && outputsImageRefTo.Value != "" {
+		return nil, fmt.Errorf("Cannot specify both tag= and outputs_image_ref_to=")
+	}
+
 	img := &dockerImage{
-		workDir:          starkit.AbsWorkingDir(thread),
-		configurationRef: container.NewRefSelector(ref),
-		customCommand:    command,
-		customDeps:       localDeps,
-		customTag:        tag,
-		disablePush:      disablePush,
-		skipsLocalDocker: skipsLocalDocker,
-		liveUpdate:       liveUpdate,
-		matchInEnvVars:   matchInEnvVars,
-		ignores:          ignores,
-		entrypoint:       entrypointCmd,
-		containerArgs:    containerArgs,
+		workDir:           starkit.AbsWorkingDir(thread),
+		configurationRef:  container.NewRefSelector(ref),
+		customCommand:     command,
+		customDeps:        localDeps,
+		customTag:         tag,
+		disablePush:       disablePush,
+		skipsLocalDocker:  skipsLocalDocker,
+		liveUpdate:        liveUpdate,
+		matchInEnvVars:    matchInEnvVars,
+		ignores:           ignores,
+		entrypoint:        entrypointCmd,
+		containerArgs:     containerArgs,
+		outputsImageRefTo: outputsImageRefTo.Value,
 	}
 
 	err = s.buildIndex.addImage(img)
@@ -516,10 +509,11 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return starlark.None, errors.New("default registry already defined")
 	}
 
-	var host, hostFromCluster string
+	var host, hostFromCluster, singleName string
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"host", &host,
-		"host_from_cluster?", &hostFromCluster); err != nil {
+		"host_from_cluster?", &hostFromCluster,
+		"single_name?", &singleName); err != nil {
 		return nil, err
 	}
 
@@ -528,16 +522,17 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return starlark.None, errors.Wrapf(err, "validating defaultRegistry")
 	}
 
+	reg.SingleName = singleName
+
 	s.defaultReg = reg
 
 	return starlark.None, nil
 }
 
-func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, ignores []string, onlys []string) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(source string, paths []string, ignorePatterns []string, onlys []string, dbDockerfilePath string) ([]model.Dockerignore, error) {
 	var result []model.Dockerignore
 	dupeSet := map[string]bool{}
-	ignoreContents := ignoresToDockerignoreContents(ignores)
-	onlyContents := onlysToDockerignoreContents(onlys)
+	onlyPatterns := onlysToDockerignorePatterns(onlys)
 
 	for _, path := range paths {
 		if path == "" || dupeSet[path] {
@@ -549,71 +544,81 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(paths []string, 
 			continue
 		}
 
-		if ignoreContents != "" {
+		if len(ignorePatterns) != 0 {
 			result = append(result, model.Dockerignore{
 				LocalPath: path,
-				Contents:  ignoreContents,
+				Source:    source + " ignores=",
+				Patterns:  ignorePatterns,
 			})
 		}
 
-		if onlyContents != "" {
+		if len(onlyPatterns) != 0 {
 			result = append(result, model.Dockerignore{
 				LocalPath: path,
-				Contents:  onlyContents,
+				Source:    source + " only=",
+				Patterns:  onlyPatterns,
 			})
 		}
 
 		diFile := filepath.Join(path, ".dockerignore")
+		customDiFile := dbDockerfilePath + ".dockerignore"
+		_, err := os.Stat(customDiFile)
+		if !os.IsNotExist(err) {
+			diFile = customDiFile
+		}
+
 		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, diFile)
 
 		contents, err := ioutil.ReadFile(diFile)
 		if err != nil {
-			continue
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, err
+		}
+
+		patterns, err := dockerignore.ReadAll(bytes.NewBuffer(contents))
+		if err != nil {
+			return nil, err
 		}
 
 		result = append(result, model.Dockerignore{
 			LocalPath: path,
-			Contents:  string(contents),
+			Source:    diFile,
+			Patterns:  patterns,
 		})
+	}
+
+	return result, nil
+}
+
+func onlysToDockerignorePatterns(onlys []string) []string {
+	if len(onlys) == 0 {
+		return nil
+	}
+
+	result := []string{"**"}
+
+	for _, only := range onlys {
+		result = append(result, fmt.Sprintf("!%s", only))
 	}
 
 	return result
 }
 
-func ignoresToDockerignoreContents(ignores []string) string {
-	var output strings.Builder
-
-	for _, ignore := range ignores {
-		output.WriteString(ignore)
-		output.WriteString("\n")
-	}
-
-	return output.String()
-}
-
-func onlysToDockerignoreContents(onlys []string) string {
-	if len(onlys) == 0 {
-		return ""
-	}
-	var output strings.Builder
-	output.WriteString("**\n")
-
-	for _, ignore := range onlys {
-		output.WriteString("!")
-		output.WriteString(ignore)
-		output.WriteString("\n")
-	}
-
-	return output.String()
-}
-
-func (s *tiltfileState) dockerignoresForImage(image *dockerImage) []model.Dockerignore {
+func (s *tiltfileState) dockerignoresForImage(image *dockerImage) ([]model.Dockerignore, error) {
 	var paths []string
+	var source string
+	ref := image.configurationRef.RefFamiliarString()
 	switch image.Type() {
 	case DockerBuild:
 		paths = append(paths, image.dbBuildPath)
+		source = fmt.Sprintf("docker_build(%q)", ref)
 	case CustomBuild:
 		paths = append(paths, image.customDeps...)
+		source = fmt.Sprintf("custom_build(%q)", ref)
 	}
-	return s.dockerignoresFromPathsAndContextFilters(paths, image.ignores, image.onlys)
+	return s.dockerignoresFromPathsAndContextFilters(
+		source,
+		paths, image.ignores, image.onlys, image.dbDockerfilePath)
 }

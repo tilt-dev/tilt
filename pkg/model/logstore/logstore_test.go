@@ -9,12 +9,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // NOTE(dmiller): set at runtime with:
-// go test -ldflags="-X 'github.com/windmilleng/tilt/pkg/model/logstore.LogstoreWriteGoldenMaster=1'" ./pkg/model/logstore
+// go test -ldflags="-X 'github.com/tilt-dev/tilt/pkg/model/logstore.LogstoreWriteGoldenMaster=1'" ./pkg/model/logstore
 var LogstoreWriteGoldenMaster = "0"
 
 func TestLog_AppendUnderLimit(t *testing.T) {
@@ -198,6 +198,52 @@ func TestContinuingStringTwoSources(t *testing.T) {
 	assert.Equal(t, "           fe │ z\n", l.ContinuingString(c4))
 }
 
+func TestContinuingStringNextSpanFiltered(t *testing.T) {
+	l := NewLogStore()
+	opts := lineOptionsWithManifests("foo")
+
+	c1 := l.Checkpoint()
+	l.Append(newTestLogEvent("foo", time.Now(), "hello "), nil)
+	assert.Equal(t, "          foo │ hello ", l.ContinuingStringWithOptions(c1, opts))
+
+	c2 := l.Checkpoint()
+	l.Append(newTestLogEvent("bar", time.Now(), "INTERRUPTING COW!\n"), nil)
+	l.Append(newTestLogEvent("foo", time.Now(), "world\n"), nil)
+	assert.Equal(t, "          foo │ hello world\n", l.ContinuingStringWithOptions(c1, opts))
+	assert.Equal(t, "world\n", l.ContinuingStringWithOptions(c2, opts))
+}
+
+func TestContinuingStringProceedingSpanFiltered(t *testing.T) {
+	l := NewLogStore()
+	opts := lineOptionsWithManifests("foo")
+
+	c1 := l.Checkpoint()
+	l.Append(newTestLogEvent("foo", time.Now(), "hello "), nil)
+	l.Append(newTestLogEvent("bar", time.Now(), "INTERRUPTING COW!\n"), nil)
+	assert.Equal(t, "          foo │ hello ", l.ContinuingStringWithOptions(c1, opts))
+
+	c2 := l.Checkpoint()
+	l.Append(newTestLogEvent("foo", time.Now(), "world\n"), nil)
+	assert.Equal(t, "          foo │ hello world\n", l.ContinuingStringWithOptions(c1, opts))
+	assert.Equal(t, "world\n", l.ContinuingStringWithOptions(c2, opts))
+}
+
+func TestContinuingStringProceedingAndNextSpanFiltered(t *testing.T) {
+	l := NewLogStore()
+	opts := lineOptionsWithManifests("foo")
+
+	c1 := l.Checkpoint()
+	l.Append(newTestLogEvent("foo", time.Now(), "hello "), nil)
+	l.Append(newTestLogEvent("bar", time.Now(), "INTERRUPTING COW!\n"), nil)
+	assert.Equal(t, "          foo │ hello ", l.ContinuingStringWithOptions(c1, opts))
+
+	c2 := l.Checkpoint()
+	l.Append(newTestLogEvent("bar", time.Now(), "INTERRUPTING COW!\n"), nil)
+	l.Append(newTestLogEvent("foo", time.Now(), "world\n"), nil)
+	assert.Equal(t, "          foo │ hello world\n", l.ContinuingStringWithOptions(c1, opts))
+	assert.Equal(t, "world\n", l.ContinuingStringWithOptions(c2, opts))
+}
+
 func TestContinuingStringAfterLimit(t *testing.T) {
 	l := NewLogStore()
 	l.maxLogLengthInBytes = 20
@@ -355,14 +401,23 @@ func TestContinuingLines(t *testing.T) {
 		ts:      now,
 		fields:  map[string]string{logger.FieldNameProgressID: "layer 2"},
 	}, nil)
+	l.Append(testLogEvent{
+		name:    "be",
+		message: "layer 1: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+	}, nil)
 
-	assert.Equal(t, "           fe │ layer 1: pending\n           fe │ layer 2: pending\n",
-		l.ContinuingString(c1))
+	assert.Equal(t, `           fe │ layer 1: pending
+           fe │ layer 2: pending
+           be │ layer 1: pending
+`, l.ContinuingString(c1))
 
 	c2 := l.Checkpoint()
 	assert.Equal(t, []LogLine{
 		LogLine{Text: "           fe │ layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
 		LogLine{Text: "           fe │ layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
+		LogLine{Text: "           be │ layer 1: pending\n", SpanID: "be", ProgressID: "layer 1", Time: now},
 	}, l.ContinuingLines(c1))
 
 	l.Append(testLogEvent{
@@ -384,6 +439,60 @@ func TestContinuingLines(t *testing.T) {
 			Time:              now,
 		},
 	}, l.ContinuingLines(c2))
+}
+
+func TestContinuingLinesWithOptionsSuppressPrefix(t *testing.T) {
+	l := NewLogStore()
+	c1 := l.Checkpoint()
+
+	now := time.Now()
+	l.Append(testLogEvent{
+		name:    "fe",
+		message: "layer 1: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "fe",
+		message: "layer 2: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 2"},
+	}, nil)
+
+	assert.Equal(t, []LogLine{
+		LogLine{Text: "layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
+		LogLine{Text: "layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
+	}, l.ContinuingLinesWithOptions(c1, LineOptions{SuppressPrefix: true}))
+}
+
+func TestContinuingLinesWithOptionsSpans(t *testing.T) {
+	l := NewLogStore()
+	c1 := l.Checkpoint()
+
+	now := time.Now()
+	l.Append(testLogEvent{
+		name:    "foo",
+		message: "layer 1: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "foo",
+		message: "layer 2: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 2"},
+	}, nil)
+	l.Append(testLogEvent{
+		name:    "bar",
+		message: "layer 1: pending\n",
+		ts:      now,
+		fields:  map[string]string{logger.FieldNameProgressID: "layer 1"},
+	}, nil)
+
+	assert.Equal(t, []LogLine{
+		LogLine{Text: "          foo │ layer 1: pending\n", SpanID: "foo", ProgressID: "layer 1", Time: now},
+		LogLine{Text: "          foo │ layer 2: pending\n", SpanID: "foo", ProgressID: "layer 2", Time: now},
+	}, l.ContinuingLinesWithOptions(c1, lineOptionsWithManifests("foo")))
 }
 
 func TestBuildEventInit(t *testing.T) {
@@ -428,4 +537,12 @@ func assertSnapshot(t *testing.T, output string) {
 	}
 
 	assert.Equal(t, string(expected), output)
+}
+
+func lineOptionsWithManifests(mns ...model.ManifestName) LineOptions {
+	mnSet := make(model.ManifestNameSet)
+	for _, mn := range mns {
+		mnSet[mn] = true
+	}
+	return LineOptions{ManifestNames: mnSet}
 }

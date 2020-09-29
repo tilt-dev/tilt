@@ -51,6 +51,7 @@ export enum FontSize {
 }
 
 let unit = 32
+let heightUnit = unit // For cases when `Height.unit` shadows `unit`
 
 export function SizeUnit(multiplier: number) {
   return `${unit * multiplier}px`
@@ -58,7 +59,7 @@ export function SizeUnit(multiplier: number) {
 
 // Set sizes expressed in pixels:
 export enum Height {
-  unit = unit,
+  unit = heightUnit,
   statusHeader = unit * 1.8, // The bar at the top with Pod ID and status
   secondaryNav = unit * 1.2,
   secondaryNavLower = unit * 0.8,

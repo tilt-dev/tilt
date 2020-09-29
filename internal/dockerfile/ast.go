@@ -15,11 +15,11 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/shell"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 type AST struct {
-	directives map[string]string
+	directives map[string]dockerfile2llb.Directive
 	result     *parser.Result
 }
 
@@ -65,12 +65,24 @@ func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, m
 // Find all images referenced in this dockerfile and call the visitor function.
 // If the visitor function returns a new image, subsitute that image into the dockerfile.
 func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Named) reference.Named) error {
-	// Parse the instructions for ARG expansions. It's not a big deal if it doesn't parse.
-	_, metaArgs, _ := instructions.Parse(a.result.AST)
+	metaArgs := []instructions.ArgCommand{}
 	shlex := shell.NewLex(a.result.EscapeToken)
 
 	return a.Traverse(func(node *parser.Node) error {
 		switch node.Value {
+		case command.Arg:
+			inst, err := instructions.ParseInstruction(node)
+			if err != nil {
+				return nil // ignore parsing error
+			}
+
+			argCmd, ok := inst.(*instructions.ArgCommand)
+			if !ok {
+				return nil
+			}
+
+			metaArgs = append(metaArgs, *argCmd)
+
 		case command.From:
 			baseName := a.extractBaseNameInFromCommand(node, shlex, metaArgs)
 			if baseName == "" {
@@ -157,7 +169,7 @@ func (a AST) Print() (Dockerfile, error) {
 		// order of directives in a docker makes no semantic difference; we
 		// rehydrate directives in sorted order so output is deterministic
 		v := a.directives[k]
-		_, err := fmt.Fprintf(buf, directiveFmt, k, v)
+		_, err := fmt.Fprintf(buf, directiveFmt, v.Name, v.Value)
 		if err != nil {
 			return "", err
 		}
@@ -279,7 +291,7 @@ func newReader(df Dockerfile) io.Reader {
 	return bytes.NewBufferString(string(df))
 }
 
-func sortedKeys(m map[string]string) []string {
+func sortedKeys(m map[string]dockerfile2llb.Directive) []string {
 	var keys []string
 	for k := range m {
 		keys = append(keys, k)
@@ -292,12 +304,14 @@ func sortedKeys(m map[string]string) []string {
 // Iterate through them and do substitutions in order.
 func fakeArgsMap(shlex *shell.Lex, args []instructions.ArgCommand) map[string]string {
 	m := make(map[string]string)
-	for _, a := range args {
+	for _, argCmd := range args {
 		val := ""
-		if a.Value != nil {
-			val, _ = shlex.ProcessWordWithMap(*(a.Value), m)
+		for _, a := range argCmd.Args {
+			if a.Value != nil {
+				val, _ = shlex.ProcessWordWithMap(*(a.Value), m)
+			}
+			m[a.Key] = val
 		}
-		m[a.Key] = val
 	}
 	return m
 }

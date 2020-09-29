@@ -9,17 +9,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/k8s"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/containerupdate"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var rsf = build.RunStepFailure{
@@ -35,9 +35,9 @@ var TestContainerInfo = store.ContainerInfo{
 }
 
 var TestBuildState = store.BuildState{
-	LastSuccessfulResult: alreadyBuilt,
-	FilesChangedSet:      map[string]bool{"foo.py": true},
-	RunningContainers:    []store.ContainerInfo{TestContainerInfo},
+	LastResult:        alreadyBuilt,
+	FilesChangedSet:   map[string]bool{"foo.py": true},
+	RunningContainers: []store.ContainerInfo{TestContainerInfo},
 }
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {
@@ -155,9 +155,9 @@ func TestUpdateMultipleRunningContainers(t *testing.T) {
 
 	cInfos := []store.ContainerInfo{cInfo1, cInfo2}
 	state := store.BuildState{
-		LastSuccessfulResult: alreadyBuilt,
-		FilesChangedSet:      map[string]bool{"foo.py": true},
-		RunningContainers:    cInfos,
+		LastResult:        alreadyBuilt,
+		FilesChangedSet:   map[string]bool{"foo.py": true},
+		RunningContainers: cInfos,
 	}
 
 	paths := []build.PathMapping{
@@ -206,9 +206,9 @@ func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 
 	cInfos := []store.ContainerInfo{cInfo1, cInfo2}
 	state := store.BuildState{
-		LastSuccessfulResult: alreadyBuilt,
-		FilesChangedSet:      map[string]bool{"foo.py": true},
-		RunningContainers:    cInfos,
+		LastResult:        alreadyBuilt,
+		FilesChangedSet:   map[string]bool{"foo.py": true},
+		RunningContainers: cInfos,
 	}
 
 	f.cu.SetUpdateErr(fmt.Errorf("👀"))
@@ -237,9 +237,9 @@ func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 
 	cInfos := []store.ContainerInfo{cInfo1, cInfo2}
 	state := store.BuildState{
-		LastSuccessfulResult: alreadyBuilt,
-		FilesChangedSet:      map[string]bool{"foo.py": true},
-		RunningContainers:    cInfos,
+		LastResult:        alreadyBuilt,
+		FilesChangedSet:   map[string]bool{"foo.py": true},
+		RunningContainers: cInfos,
 	}
 
 	// Write files so we know whether to cp to or rm from container
@@ -287,9 +287,9 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 
 	cInfos := []store.ContainerInfo{cInfo1, cInfo2}
 	state := store.BuildState{
-		LastSuccessfulResult: alreadyBuilt,
-		FilesChangedSet:      map[string]bool{"foo.py": true},
-		RunningContainers:    cInfos,
+		LastResult:        alreadyBuilt,
+		FilesChangedSet:   map[string]bool{"foo.py": true},
+		RunningContainers: cInfos,
 	}
 
 	// Write files so we know whether to cp to or rm from container
@@ -332,9 +332,9 @@ func TestSkipLiveUpdateIfForceUpdate(t *testing.T) {
 	}
 
 	state := store.BuildState{
-		LastSuccessfulResult: alreadyBuilt,
-		RunningContainers:    []store.ContainerInfo{cInfo},
-		ImageBuildTriggered:  true, // should make us skip LiveUpdate
+		LastResult:         alreadyBuilt,
+		RunningContainers:  []store.ContainerInfo{cInfo},
+		FullBuildTriggered: true, // should make us skip LiveUpdate
 	}
 
 	stateSet := store.BuildStateSet{m.ImageTargetAt(0).ID(): state}

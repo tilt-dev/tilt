@@ -8,13 +8,25 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-// The results of a successful build.
+// The results of a build.
+//
+// If a build is successful, the builder should always return a BuildResult to
+// indicate the output artifacts of the build (e.g., any new images).
+//
+// If a build is not successful, things get messier. Certain types of failure
+// may still return a result (e.g., a failed live update might return
+// the container IDs where the error happened).
+//
+// Long-term, we want this interface to be more like Bazel's SpawnResult
+// https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/build/lib/actions/SpawnResult.java#L36
+// where a builder always returns a Result, but with a code for each
+// of the different failure types.
 type BuildResult interface {
 	TargetID() model.TargetID
 	BuildType() model.BuildType
@@ -143,6 +155,11 @@ func (r K8sBuildResult) Facets() []model.Facet {
 
 // For kubernetes deploy targets.
 func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
+	// Remove verbose fields from the YAML.
+	for _, e := range appliedEntities {
+		e.Clean()
+	}
+
 	appliedEntitiesText, err := k8s.SerializeSpecYAML(appliedEntities)
 	if err != nil {
 		appliedEntitiesText = fmt.Sprintf("unable to serialize entities to yaml: %s", err.Error())
@@ -268,12 +285,15 @@ func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
 // This data structure should be considered immutable.
 // All methods that return a new BuildState should first clone the existing build state.
 type BuildState struct {
-	// The last successful build.
-	LastSuccessfulResult BuildResult
+	// The last result.
+	LastResult BuildResult
 
 	// Files changed since the last result was build.
 	// This must be liberal: it's ok if this has too many files, but not ok if it has too few.
 	FilesChangedSet map[string]bool
+
+	// Dependencies changed since the last result was built
+	DepsChangedSet map[model.TargetID]bool
 
 	// There are three kinds of triggers:
 	//
@@ -289,7 +309,7 @@ type BuildState struct {
 	//
 	// This field indicates case 1 || case 2 -- i.e. that we should skip
 	// live_update, and force an image build (even if there are no changed files)
-	ImageBuildTriggered bool
+	FullBuildTriggered bool
 
 	RunningContainers []ContainerInfo
 
@@ -297,14 +317,19 @@ type BuildState struct {
 	RunningContainerError error
 }
 
-func NewBuildState(result BuildResult, files []string) BuildState {
+func NewBuildState(result BuildResult, files []string, pendingDeps []model.TargetID) BuildState {
 	set := make(map[string]bool, len(files))
 	for _, f := range files {
 		set[f] = true
 	}
+	depsSet := make(map[model.TargetID]bool, len(pendingDeps))
+	for _, d := range pendingDeps {
+		depsSet[d] = true
+	}
 	return BuildState{
-		LastSuccessfulResult: result,
-		FilesChangedSet:      set,
+		LastResult:      result,
+		FilesChangedSet: set,
+		DepsChangedSet:  depsSet,
 	}
 }
 
@@ -318,8 +343,8 @@ func (b BuildState) WithRunningContainerError(err error) BuildState {
 	return b
 }
 
-func (b BuildState) WithImageBuildTriggered(isImageBuildTrigger bool) BuildState {
-	b.ImageBuildTriggered = isImageBuildTrigger
+func (b BuildState) WithFullBuildTriggered(isImageBuildTrigger bool) BuildState {
+	b.FullBuildTriggered = isImageBuildTrigger
 	return b
 }
 
@@ -332,7 +357,7 @@ func (b BuildState) OneContainerInfo() ContainerInfo {
 	return b.RunningContainers[0]
 }
 func (b BuildState) LastLocalImageAsString() string {
-	img := LocalImageRefFromBuildResult(b.LastSuccessfulResult)
+	img := LocalImageRefFromBuildResult(b.LastResult)
 	if img == nil {
 		return ""
 	}
@@ -353,23 +378,35 @@ func (b BuildState) FilesChanged() []string {
 
 // A build state is empty if there are no previous results.
 func (b BuildState) IsEmpty() bool {
-	return b.LastSuccessfulResult == nil
+	return b.LastResult == nil
 }
 
-func (b BuildState) HasLastSuccessfulResult() bool {
-	return b.LastSuccessfulResult != nil
+func (b BuildState) HasLastResult() bool {
+	return b.LastResult != nil
 }
 
 // Whether the image represented by this state needs to be built.
 // If the image has already been built, and no files have been
 // changed since then, then we can re-use the previous result.
 func (b BuildState) NeedsImageBuild() bool {
-	lastBuildWasImgBuild := b.LastSuccessfulResult != nil &&
-		b.LastSuccessfulResult.BuildType() == model.BuildTypeImage
-	return !lastBuildWasImgBuild || len(b.FilesChangedSet) > 0 || b.ImageBuildTriggered
+	lastBuildWasImgBuild := b.LastResult != nil &&
+		b.LastResult.BuildType() == model.BuildTypeImage
+	return !lastBuildWasImgBuild ||
+		len(b.FilesChangedSet) > 0 ||
+		len(b.DepsChangedSet) > 0 ||
+		b.FullBuildTriggered
 }
 
 type BuildStateSet map[model.TargetID]BuildState
+
+func (set BuildStateSet) FullBuildTriggered() bool {
+	for _, state := range set {
+		if state.FullBuildTriggered {
+			return true
+		}
+	}
+	return false
+}
 
 func (set BuildStateSet) Empty() bool {
 	return len(set) == 0

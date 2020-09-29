@@ -61,7 +61,7 @@ func convertStarlarkToStructuredData(v starlark.Value) (interface{}, error) {
 	case starlark.Float:
 		return float64(v), nil
 	case *starlark.List:
-		var ret []interface{}
+		ret := []interface{}{}
 
 		it := v.Iterate()
 		defer it.Done()

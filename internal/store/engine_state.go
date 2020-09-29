@@ -8,18 +8,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 type EngineState struct {
@@ -34,6 +34,7 @@ type EngineState struct {
 
 	CurrentlyBuilding map[model.ManifestName]bool
 	EngineMode        EngineMode
+	TerminalMode      TerminalMode
 
 	// For synchronizing BuildController -- wait until engine records all builds started
 	// so far before starting another build
@@ -42,11 +43,13 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	MaxParallelUpdates int
+	// For synchronizing ConfigsController -- wait until engine records all builds started
+	// so far before starting another build
+	StartedTiltfileLoadCount int
+
+	UpdateSettings model.UpdateSettings
 
 	FatalError error
-
-	HUDEnabled bool
 
 	// The user has indicated they want to exit
 	UserExited bool
@@ -69,9 +72,15 @@ type EngineState struct {
 	// All logs in Tilt, stored in a structured format.
 	LogStore *logstore.LogStore `testdiff:"ignore"`
 
-	TiltfilePath             string
-	ConfigFiles              []string
-	TiltIgnoreContents       string
+	TiltfilePath string
+
+	// TODO(nick): This should be called "ConfigPaths", not "ConfigFiles",
+	// because this could refer to directories that are watched recursively.
+	ConfigFiles []string
+
+	Tiltignore    model.Dockerignore
+	WatchSettings model.WatchSettings
+
 	PendingConfigFileChanges map[string]time.Time
 
 	TriggerQueue []model.ManifestName
@@ -102,6 +111,8 @@ type EngineState struct {
 	DockerPruneSettings model.DockerPruneSettings
 
 	TelemetrySettings model.TelemetrySettings
+
+	MetricsSettings model.MetricsSettings
 
 	UserConfigState model.UserConfigState
 }
@@ -151,6 +162,7 @@ func (e *EngineState) IsCurrentlyBuilding(name model.ManifestName) bool {
 	return e.CurrentlyBuilding[name]
 }
 
+// Find the first build status. Only suitable for testing.
 func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 	mns := e.ManifestNamesForTargetID(id)
 	for _, mn := range mns {
@@ -165,12 +177,12 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 
 func (e *EngineState) AvailableBuildSlots() int {
 	currentlyBuilding := len(e.CurrentlyBuilding)
-	if currentlyBuilding >= e.MaxParallelUpdates {
+	if currentlyBuilding >= e.UpdateSettings.MaxParallelUpdates() {
 		// this could happen if user decreases max build slots while
 		// multiple builds are in progress, no big deal
 		return 0
 	}
-	return e.MaxParallelUpdates - currentlyBuilding
+	return e.UpdateSettings.MaxParallelUpdates() - currentlyBuilding
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -232,6 +244,19 @@ func (e EngineState) Targets() []*ManifestTarget {
 		if !ok {
 			continue
 		}
+		result = append(result, mt)
+	}
+	return result
+}
+
+func (e EngineState) TargetsBesides(mn model.ManifestName) []*ManifestTarget {
+	targets := e.Targets()
+	result := make([]*ManifestTarget, 0, len(targets))
+	for _, mt := range targets {
+		if mt.Manifest.Name == mn {
+			continue
+		}
+
 		result = append(result, mt)
 	}
 	return result
@@ -299,18 +324,49 @@ type BuildStatus struct {
 	// This map is mutable.
 	PendingFileChanges map[string]time.Time
 
-	LastSuccessfulResult BuildResult
-	LastResult           BuildResult
+	LastResult BuildResult
+
+	// Stores the times that dependencies were marked dirty, so we can prioritize
+	// the oldest one first.
+	//
+	// Long-term, we want to process all dependencies as a build graph rather than
+	// a list of manifests. Specifically, we'll build one Target at a time.  Once
+	// the build completes, we'll look at all the targets that depend on it, and
+	// mark PendingDependencyChanges to indicate that they need a rebuild.
+	//
+	// Short-term, we only use this for cases where two manifests share a common
+	// image. This only handles cross-manifest dependencies.
+	//
+	// This approach allows us to start working on the bookkeeping and
+	// dependency-tracking in the short-term, without having to switch over to a
+	// full dependency graph in one swoop.
+	PendingDependencyChanges map[model.TargetID]time.Time
 }
 
 func newBuildStatus() *BuildStatus {
 	return &BuildStatus{
-		PendingFileChanges: make(map[string]time.Time),
+		PendingFileChanges:       make(map[string]time.Time),
+		PendingDependencyChanges: make(map[model.TargetID]time.Time),
 	}
 }
 
 func (s BuildStatus) IsEmpty() bool {
-	return len(s.PendingFileChanges) == 0 && s.LastSuccessfulResult == nil
+	return len(s.PendingFileChanges) == 0 &&
+		len(s.PendingDependencyChanges) == 0 &&
+		s.LastResult == nil
+}
+
+func (s *BuildStatus) ClearPendingChangesBefore(startTime time.Time) {
+	for file, modTime := range s.PendingFileChanges {
+		if BeforeOrEqual(modTime, startTime) {
+			delete(s.PendingFileChanges, file)
+		}
+	}
+	for file, modTime := range s.PendingDependencyChanges {
+		if BeforeOrEqual(modTime, startTime) {
+			delete(s.PendingDependencyChanges, file)
+		}
+	}
 }
 
 type ManifestState struct {
@@ -358,7 +414,7 @@ func NewState() *EngineState {
 	ret.VersionSettings = model.VersionSettings{
 		CheckUpdates: true,
 	}
-	ret.MaxParallelUpdates = 1
+	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
@@ -368,12 +424,23 @@ func NewState() *EngineState {
 	return ret
 }
 
-func newManifestState(mn model.ManifestName) *ManifestState {
-	return &ManifestState{
+func newManifestState(m model.Manifest) *ManifestState {
+	mn := m.Name
+	ms := &ManifestState{
 		Name:                    mn,
 		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
 	}
+
+	if m.IsK8s() {
+		ms.RuntimeState = NewK8sRuntimeState(m)
+	} else if m.IsLocal() {
+		ms.RuntimeState = LocalRuntimeState{}
+	}
+
+	// For historical reasons, DC state is initialized differently.
+
+	return ms
 }
 
 func (ms *ManifestState) TargetID() model.TargetID {
@@ -411,19 +478,7 @@ func (ms *ManifestState) IsDC() bool {
 }
 
 func (ms *ManifestState) K8sRuntimeState() K8sRuntimeState {
-	ret, ok := ms.RuntimeState.(K8sRuntimeState)
-	if !ok {
-		return NewK8sRuntimeState(ms.Name)
-	}
-	return ret
-}
-
-func (ms *ManifestState) GetOrCreateK8sRuntimeState() K8sRuntimeState {
-	ret, ok := ms.RuntimeState.(K8sRuntimeState)
-	if !ok {
-		ret = NewK8sRuntimeState(ms.Name)
-		ms.RuntimeState = ret
-	}
+	ret, _ := ms.RuntimeState.(K8sRuntimeState)
 	return ret
 }
 
@@ -434,15 +489,6 @@ func (ms *ManifestState) IsK8s() bool {
 
 func (ms *ManifestState) LocalRuntimeState() LocalRuntimeState {
 	ret, _ := ms.RuntimeState.(LocalRuntimeState)
-	return ret
-}
-
-func (ms *ManifestState) GetOrCreateLocalRuntimeState() LocalRuntimeState {
-	ret, ok := ms.RuntimeState.(LocalRuntimeState)
-	if !ok {
-		ret = LocalRuntimeState{}
-		ms.RuntimeState = ret
-	}
 	return ret
 }
 
@@ -494,11 +540,23 @@ func (ms *ManifestState) HasPendingFileChanges() bool {
 	return false
 }
 
+func (ms *ManifestState) HasPendingDependencyChanges() bool {
+	for _, status := range ms.BuildStatuses {
+		if len(status.PendingDependencyChanges) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
 	state := mt.State
 	reason := state.TriggerReason
 	if mt.State.HasPendingFileChanges() {
 		reason = reason.With(model.BuildReasonFlagChangedFiles)
+	}
+	if mt.State.HasPendingDependencyChanges() {
+		reason = reason.With(model.BuildReasonFlagChangedDeps)
 	}
 	if !mt.State.PendingManifestChange.IsZero() {
 		reason = reason.With(model.BuildReasonFlagConfig)
@@ -539,6 +597,13 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 				earliest = t
 			}
 		}
+
+		for _, t := range status.PendingDependencyChanges {
+			if !t.IsZero() && BeforeOrEqual(t, earliest) {
+				ok = true
+				earliest = t
+			}
+		}
 	}
 	if !ok {
 		return ok, time.Time{}
@@ -547,43 +612,6 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 }
 
 var _ model.TargetStatus = &ManifestState{}
-
-type YAMLManifestState struct {
-	HasBeenDeployed bool
-
-	CurrentApplyStartTime   time.Time
-	LastError               error
-	LastApplyFinishTime     time.Time
-	LastSuccessfulApplyTime time.Time
-	LastApplyStartTime      time.Time
-}
-
-func NewYAMLManifestState() *YAMLManifestState {
-	return &YAMLManifestState{}
-}
-
-func (s *YAMLManifestState) TargetID() model.TargetID {
-	return model.TargetID{
-		Type: model.TargetTypeManifest,
-		Name: model.UnresourcedYAMLManifestName.TargetName(),
-	}
-}
-
-func (s *YAMLManifestState) ActiveBuild() model.BuildRecord {
-	return model.BuildRecord{
-		StartTime: s.CurrentApplyStartTime,
-	}
-}
-
-func (s *YAMLManifestState) LastBuild() model.BuildRecord {
-	return model.BuildRecord{
-		StartTime:  s.LastApplyStartTime,
-		FinishTime: s.LastApplyFinishTime,
-		Error:      s.LastError,
-	}
-}
-
-var _ model.TargetStatus = &YAMLManifestState{}
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	defer func() {
@@ -636,18 +664,18 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 		ms := mt.State
 
 		var absWatchDirs []string
-		var absWatchPaths []string
-		for _, p := range mt.Manifest.LocalPaths() {
+		for i, p := range mt.Manifest.LocalPaths() {
+			if i > 50 {
+				// Bail out after 50 to avoid pathological performance issues.
+				break
+			}
 			fi, err := os.Stat(p)
-			if err == nil && !fi.IsDir() {
-				absWatchPaths = append(absWatchPaths, p)
-			} else {
+
+			// Treat this as a directory when there's an error.
+			if err != nil || fi.IsDir() {
 				absWatchDirs = append(absWatchDirs, p)
 			}
 		}
-		absWatchPaths = append(absWatchPaths, s.TiltfilePath)
-		relWatchDirs := ospath.TryAsCwdChildren(absWatchDirs)
-		relWatchPaths := ospath.TryAsCwdChildren(absWatchPaths)
 
 		var pendingBuildEdits []string
 		for _, status := range ms.BuildStatuses {
@@ -679,8 +707,6 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 		_, pendingBuildSince := ms.HasPendingChanges()
 		r := view.Resource{
 			Name:               name,
-			DirectoriesWatched: relWatchDirs,
-			PathsWatched:       relWatchPaths,
 			LastDeployTime:     ms.LastSuccessfulDeployTime,
 			TriggerMode:        mt.Manifest.TriggerMode,
 			BuildHistory:       buildHistory,
@@ -732,9 +758,9 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		runStatus = mt.State.RuntimeState.RuntimeStatus()
 	}
 
-	if mt.Manifest.IsUnresourcedYAMLManifest() {
+	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
 		return view.YAMLResourceInfo{
-			K8sResources: mt.Manifest.K8sTarget().DisplayNames,
+			K8sDisplayNames: mt.Manifest.K8sTarget().DisplayNames,
 		}
 	}
 
@@ -752,6 +778,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodRestarts:        pod.VisibleContainerRestarts(),
 			SpanID:             pod.SpanID,
 			RunStatus:          runStatus,
+			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 	case LocalRuntimeState:
 		return view.NewLocalResourceInfo(runStatus, state.PID, state.SpanID)

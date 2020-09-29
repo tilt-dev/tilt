@@ -9,29 +9,29 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/opentracing/opentracing-go"
-	"github.com/windmilleng/wmclient/pkg/analytics"
-	v1 "k8s.io/api/core/v1"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/engine/configs"
-	"github.com/windmilleng/tilt/internal/engine/dcwatch"
-	"github.com/windmilleng/tilt/internal/engine/exit"
-	"github.com/windmilleng/tilt/internal/engine/fswatch"
-	"github.com/windmilleng/tilt/internal/engine/k8swatch"
-	"github.com/windmilleng/tilt/internal/engine/local"
-	"github.com/windmilleng/tilt/internal/engine/runtimelog"
-	"github.com/windmilleng/tilt/internal/hud"
-	"github.com/windmilleng/tilt/internal/hud/server"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/sliceutils"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/token"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/engine/configs"
+	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
+	"github.com/tilt-dev/tilt/internal/engine/exit"
+	"github.com/tilt-dev/tilt/internal/engine/fswatch"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/hud/prompt"
+	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // TODO(nick): maybe this should be called 'BuildEngine' or something?
@@ -65,7 +65,7 @@ func (u Upper) Start(
 	b model.TiltBuild,
 	engineMode store.EngineMode,
 	fileName string,
-	hudEnabled bool,
+	initTerminalMode store.TerminalMode,
 	analyticsUserOpt analytics.Opt,
 	token token.Token,
 	cloudAddress string,
@@ -93,7 +93,7 @@ func (u Upper) Start(
 		AnalyticsUserOpt: analyticsUserOpt,
 		Token:            token,
 		CloudAddress:     cloudAddress,
-		HUDEnabled:       hudEnabled,
+		TerminalMode:     initTerminalMode,
 	})
 }
 
@@ -126,6 +126,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleHudExitAction(state, action)
 	case fswatch.TargetFilesChangedAction:
 		handleFSEvent(ctx, state, action)
+	case fswatch.GitBranchStatusAction:
+		handleGitBranchStatus(state, action)
 	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
 	case k8swatch.PodDeleteAction:
@@ -172,6 +174,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleLogAction(state, action)
 	case exit.Action:
 		handleExitAction(state, action)
+	case prompt.SwitchTerminalModeAction:
+		handleSwitchTerminalModeAction(state, action)
 
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
@@ -224,6 +228,100 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 	removeFromTriggerQueue(state, mn)
 }
 
+// When a Manifest build finishes, update the BuildStatus for all applicable
+// targets in the engine state.
+func handleBuildResults(engineState *store.EngineState,
+	mt *store.ManifestTarget, br model.BuildRecord, results store.BuildResultSet) {
+	isBuildSuccess := br.Error == nil
+
+	ms := mt.State
+	mn := mt.Manifest.Name
+	for id, result := range results {
+		ms.MutableBuildStatus(id).LastResult = result
+	}
+
+	// Remove pending file changes that were consumed by this build.
+	for _, status := range ms.BuildStatuses {
+		status.ClearPendingChangesBefore(br.StartTime)
+	}
+
+	if isBuildSuccess {
+		ms.LastSuccessfulDeployTime = br.FinishTime
+	}
+
+	// Update build statuses for duplicated image targets in other manifests.
+	// This ensures that those images targets aren't redundantly rebuilt.
+	for _, currentMT := range engineState.TargetsBesides(mn) {
+		// We only want to update image targets for Manifests that are already queued
+		// for rebuild and not currently building. This has two benefits:
+		//
+		// 1) If there's a bug in Tilt's image caching (e.g.,
+		//    https://github.com/tilt-dev/tilt/pull/3542), this prevents infinite
+		//    builds.
+		//
+		// 2) If the current manifest build was kicked off by a trigger, we don't
+		//    want to queue manifests with the same image.
+		if currentMT.NextBuildReason() == model.BuildReasonNone ||
+			engineState.IsCurrentlyBuilding(currentMT.Manifest.Name) {
+			continue
+		}
+
+		currentMS := currentMT.State
+		idSet := currentMT.Manifest.TargetIDSet()
+		updatedIDSet := make(map[model.TargetID]bool)
+
+		for id, result := range results {
+			_, ok := idSet[id]
+			if !ok {
+				continue
+			}
+
+			// We can only reuse image update, not live-updates or other kinds of
+			// deploys.
+			_, isImageResult := result.(store.ImageBuildResult)
+			if !isImageResult {
+				continue
+			}
+
+			currentStatus := currentMS.MutableBuildStatus(id)
+			currentStatus.LastResult = result
+			currentStatus.ClearPendingChangesBefore(br.StartTime)
+			updatedIDSet[id] = true
+		}
+
+		if len(updatedIDSet) == 0 {
+			continue
+		}
+
+		// Suppose we built manifestA, which contains imageA depending on imageCommon.
+		//
+		// We also have manifestB, which contains imageB depending on imageCommon.
+		//
+		// We need to mark imageB as dirty, because it was not built in the manifestA
+		// build but its dependency was built.
+		//
+		// Note that this logic also applies to deploy targets depending on image
+		// targets. If we built manifestA, which contains imageX and deploy target
+		// k8sA, and manifestB contains imageX and deploy target k8sB, we need to mark
+		// target k8sB as dirty so that Tilt actually deploys the changes to imageX.
+		rDepsMap := currentMT.Manifest.ReverseDependencyIDs()
+		for updatedID := range updatedIDSet {
+
+			// Go through each target depending on an image we just built.
+			for _, rDepID := range rDepsMap[updatedID] {
+
+				// If that target was also built, it's up-to-date.
+				if updatedIDSet[rDepID] {
+					continue
+				}
+
+				// Otherwise, we need to mark it for rebuild to pick up the new image.
+				currentMS.MutableBuildStatus(rDepID).PendingDependencyChanges[updatedID] = br.StartTime
+			}
+		}
+	}
+}
+
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) {
 	defer func() {
 		delete(engineState.CurrentlyBuilding, cb.ManifestName)
@@ -256,18 +354,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	ms.CurrentBuild = model.BuildRecord{}
 	ms.NeedsRebuildFromCrash = false
 
-	for id, result := range cb.Result {
-		ms.MutableBuildStatus(id).LastResult = result
-	}
-
-	// Remove pending file changes that were consumed by this build.
-	for _, status := range ms.BuildStatuses {
-		for file, modTime := range status.PendingFileChanges {
-			if store.BeforeOrEqual(modTime, bs.StartTime) {
-				delete(status.PendingFileChanges, file)
-			}
-		}
-	}
+	handleBuildResults(engineState, mt, bs, cb.Result)
 
 	if !ms.PendingManifestChange.IsZero() &&
 		store.BeforeOrEqual(ms.PendingManifestChange, bs.StartTime) {
@@ -280,12 +367,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			return
 		}
 	} else {
-		ms.LastSuccessfulDeployTime = cb.FinishTime
-
-		for id, result := range cb.Result {
-			ms.MutableBuildStatus(id).LastSuccessfulResult = result
-		}
-
 		for _, pod := range ms.K8sRuntimeState().Pods {
 			// Reset the baseline, so that we don't show restarts
 			// from before any live-updates
@@ -313,19 +394,22 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	manifest := mt.Manifest
 	if manifest.IsK8s() {
+		state := ms.K8sRuntimeState()
 		deployedUIDSet := cb.Result.DeployedUIDSet()
 		if len(deployedUIDSet) > 0 {
-			state := ms.GetOrCreateK8sRuntimeState()
 			state.DeployedUIDSet = deployedUIDSet
-			ms.RuntimeState = state
 		}
 
 		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
 		if len(deployedPodTemplateSpecHashSet) > 0 {
-			state := ms.GetOrCreateK8sRuntimeState()
 			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
-			ms.RuntimeState = state
 		}
+
+		if err == nil {
+			state.HasEverDeployedSuccessfully = true
+		}
+
+		ms.RuntimeState = state
 	}
 
 	if mt.Manifest.IsDC() {
@@ -357,10 +441,12 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	if mt.Manifest.IsLocal() {
-		ms.RuntimeState = store.LocalRuntimeState{
-			Status:                  model.RuntimeStatusNotApplicable,
-			HasSucceededAtLeastOnce: err == nil,
+		lrs := ms.LocalRuntimeState()
+		lrs.Status = model.RuntimeStatusNotApplicable
+		if err == nil {
+			lrs.HasSucceededAtLeastOnce = true
 		}
+		ms.RuntimeState = lrs
 	}
 }
 
@@ -432,23 +518,24 @@ func handleFSEvent(
 	}
 }
 
+func handleGitBranchStatus(state *store.EngineState, bsa fswatch.GitBranchStatusAction) {
+	// TODO(nick): Do something with this data.
+}
+
 func handleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
 	event configs.ConfigsReloadStartedAction,
 ) {
-	filesChanged := []string{}
-	for f := range event.FilesChanged {
-		filesChanged = append(filesChanged, f)
-	}
 	status := model.BuildRecord{
 		StartTime: event.StartTime,
-		Reason:    model.BuildReasonFlagConfig,
-		Edits:     filesChanged,
+		Reason:    event.Reason,
+		Edits:     event.FilesChanged,
 		SpanID:    event.SpanID,
 	}
 
 	state.TiltfileState.CurrentBuild = status
+	state.StartedTiltfileLoadCount++
 }
 
 func handleConfigsReloaded(
@@ -456,6 +543,7 @@ func handleConfigsReloaded(
 	state *store.EngineState,
 	event configs.ConfigsReloadedAction,
 ) {
+
 	manifests := event.Manifests
 
 	b := state.TiltfileState.CurrentBuild
@@ -474,6 +562,25 @@ func handleConfigsReloaded(
 
 	// Retroactively scrub secrets
 	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
+
+	// Add tiltignore if it exists, even if execution failed.
+	if !event.Tiltignore.Empty() || event.Err == nil {
+		state.Tiltignore = event.Tiltignore
+	}
+
+	if !event.WatchSettings.Empty() || event.Err == nil {
+		state.WatchSettings = event.WatchSettings
+	}
+
+	// Add team id if it exists, even if execution failed.
+	if event.TeamID != "" || event.Err == nil {
+		state.TeamID = event.TeamID
+	}
+
+	// Add metrics if it exists, even if execution failed.
+	if event.MetricsSettings.Enabled || event.Err == nil {
+		state.MetricsSettings = event.MetricsSettings
+	}
 
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
 	if !b.Empty() {
@@ -543,15 +650,13 @@ func handleConfigsReloaded(
 	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
 	state.ManifestDefinitionOrder = newDefOrder
 	state.ConfigFiles = event.ConfigFiles
-	state.TiltIgnoreContents = event.TiltIgnoreContents
 
 	state.Features = event.Features
-	state.TeamID = event.TeamID
 	state.TelemetrySettings = event.TelemetrySettings
 	state.VersionSettings = event.VersionSettings
 	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
 
-	state.MaxParallelUpdates = event.UpdateSettings.MaxParallelUpdatesMinOne()
+	state.UpdateSettings = event.UpdateSettings
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
@@ -572,6 +677,10 @@ func handleExitAction(state *store.EngineState, action exit.Action) {
 	}
 }
 
+func handleSwitchTerminalModeAction(state *store.EngineState, action prompt.SwitchTerminalModeAction) {
+	state.TerminalMode = action.Mode
+}
+
 func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8swatch.ServiceChangeAction) {
 	service := action.Service
 	ms, ok := state.ManifestState(action.ManifestName)
@@ -579,16 +688,19 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8
 		return
 	}
 
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	runtime.LBs[k8s.ServiceName(service.Name)] = action.URL
 }
 
 func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.K8sEventAction) {
-	evt := action.Event
-
-	if evt.Type != v1.EventTypeNormal {
-		handleLogAction(state, action.ToLogAction(action.ManifestName))
-	}
+	// TODO(nick): I think we whould so something more intelligent here, where we
+	// have special treatment for different types of events, e.g.:
+	//
+	// - Attach Image Pulling/Pulled events to the pod state, and display how much
+	//   time elapsed between them.
+	// - Display Node unready events as part of a health indicator, and display how
+	//   long it takes them to resolve.
+	handleLogAction(state, action.ToLogAction(action.ManifestName))
 }
 
 func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {
@@ -618,10 +730,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.EngineMode = action.EngineMode
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
-	engineState.HUDEnabled = action.HUDEnabled
-
-	// NOTE(dmiller): this kicks off a Tiltfile build
-	engineState.PendingConfigFileChanges[action.TiltfilePath] = action.StartTime
+	engineState.TerminalMode = action.TerminalMode
 }
 
 func handleHudExitAction(state *store.EngineState, action hud.ExitAction) {
@@ -646,7 +755,7 @@ func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState,
 		logger.Get(ctx).Infof("got runtime status information for unknown local resource %s", action.ManifestName)
 	}
 
-	lrs := ms.GetOrCreateLocalRuntimeState()
+	lrs := ms.LocalRuntimeState()
 	lrs.Status = action.Status
 	lrs.PID = action.PID
 	lrs.SpanID = action.SpanID

@@ -6,9 +6,9 @@ import (
 
 	"github.com/docker/docker/api/types"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 func (evt Event) IsStartupEvent() bool {

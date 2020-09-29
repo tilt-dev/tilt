@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
-	"github.com/windmilleng/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 type Controller struct {
@@ -51,6 +51,7 @@ func (c *Controller) determineServeSpecs(ctx context.Context, st store.RStore) [
 		r = append(r, ServeSpec{
 			mt.Manifest.Name,
 			lt.ServeCmd,
+			lt.Workdir,
 			mt.State.LastSuccessfulDeployTime,
 		})
 	}
@@ -140,10 +141,9 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	w := LocalServeLogActionWriter{
-		store:               st,
-		manifestName:        spec.ManifestName,
-		procNum:             proc.procNum,
-		stillHasSameProcNum: proc.stillHasSameProcNum(),
+		store:        st,
+		manifestName: spec.ManifestName,
+		procNum:      proc.procNum,
 	}
 	ctx = logger.CtxWithLogHandler(ctx, w)
 
@@ -152,7 +152,7 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	go processStatuses(statusCh, st, spec.ManifestName, proc.stillHasSameProcNum())
 
 	spanID := SpanIDForServeLog(proc.procNum)
-	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
+	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, spec.WorkDir, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
 }
 
 func processStatuses(
@@ -212,17 +212,12 @@ func (p *currentProcess) currentProcNum() int {
 }
 
 type LocalServeLogActionWriter struct {
-	store               store.RStore
-	manifestName        model.ManifestName
-	stillHasSameProcNum func() bool
-	procNum             int
+	store        store.RStore
+	manifestName model.ManifestName
+	procNum      int
 }
 
 func (w LocalServeLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	if !w.stillHasSameProcNum() {
-		return nil
-	}
-
 	w.store.Dispatch(store.NewLogAction(w.manifestName, SpanIDForServeLog(w.procNum), level, fields, p))
 	return nil
 }
@@ -235,6 +230,7 @@ func SpanIDForServeLog(procNum int) logstore.SpanID {
 type ServeSpec struct {
 	ManifestName model.ManifestName
 	ServeCmd     model.Cmd
+	WorkDir      string
 	TriggerTime  time.Time // TriggerTime is how Runner knows to restart; if it's newer than the TriggerTime of the currently running command, then Runner should restart it
 }
 

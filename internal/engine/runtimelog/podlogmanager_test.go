@@ -7,20 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/testutils/manifestutils"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestutils"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils/bufsync"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var podID = k8s.PodID("pod-id")
@@ -38,10 +37,9 @@ func TestLogs(t *testing.T) {
 	state.TiltStartTime = start
 
 	p := store.Pod{
-		PodID: podID,
-		Phase: v1.PodRunning,
+		PodID:      podID,
+		Containers: []store.Container{NewRunningContainer(cName, cID)},
 	}
-	p = PodWithContainer(p, cName, cID)
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
@@ -60,10 +58,9 @@ func TestLogActions(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 
 	p := store.Pod{
-		PodID: podID,
-		Phase: v1.PodRunning,
+		PodID:      podID,
+		Containers: []store.Container{NewRunningContainer(cName, cID)},
 	}
-	p = PodWithContainer(p, cName, cID)
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
@@ -81,10 +78,9 @@ func TestLogsFailed(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 
 	p := store.Pod{
-		PodID: podID,
-		Phase: v1.PodRunning,
+		PodID:      podID,
+		Containers: []store.Container{NewRunningContainer(cName, cID)},
 	}
-	p = PodWithContainer(p, cName, cID)
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
@@ -103,10 +99,9 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 
 	p := store.Pod{
-		PodID: podID,
-		Phase: v1.PodRunning,
+		PodID:      podID,
+		Containers: []store.Container{NewRunningContainer(cName, cID)},
 	}
-	p = PodWithContainer(p, cName, cID)
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
@@ -132,10 +127,9 @@ func TestMultiContainerLogs(t *testing.T) {
 
 	p := store.Pod{
 		PodID: podID,
-		Phase: v1.PodRunning,
 		Containers: []store.Container{
-			store.Container{Name: "cont1", ID: "cid1"},
-			store.Container{Name: "cont2", ID: "cid2"},
+			NewRunningContainer("cont1", "cid1"),
+			NewRunningContainer("cont2", "cid2"),
 		},
 	}
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
@@ -165,11 +159,10 @@ func TestContainerPrefixes(t *testing.T) {
 
 	podMultiC := store.Pod{
 		PodID: pID1,
-		Phase: v1.PodRunning,
 		Containers: []store.Container{
 			// Pod with multiple containers -- logs should be prefixed with container name
-			store.Container{Name: cNamePrefix1, ID: "cid1"},
-			store.Container{Name: cNamePrefix2, ID: "cid2"},
+			NewRunningContainer(cNamePrefix1, "cid1"),
+			NewRunningContainer(cNamePrefix2, "cid2"),
 		},
 	}
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
@@ -177,10 +170,9 @@ func TestContainerPrefixes(t *testing.T) {
 
 	podSingleC := store.Pod{
 		PodID: pID2,
-		Phase: v1.PodRunning,
 		Containers: []store.Container{
 			// Pod with just one container -- logs should NOT be prefixed with container name
-			store.Container{Name: cNameNoPrefix, ID: "cid3"},
+			NewRunningContainer(cNameNoPrefix, "cid3"),
 		},
 	}
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
@@ -201,42 +193,73 @@ func TestContainerPrefixes(t *testing.T) {
 	f.AssertOutputDoesNotContain(cNameNoPrefix.String())
 }
 
-func TestLogsByPodPhase(t *testing.T) {
-	for _, test := range []struct {
-		phase      v1.PodPhase
-		expectLogs bool
-	}{
-		{v1.PodPending, false},
-		{v1.PodRunning, true},
-		{v1.PodSucceeded, true},
-		{v1.PodFailed, true},
-		{v1.PodUnknown, false},
-	} {
-		t.Run(string(test.phase), func(t *testing.T) {
-			f := newPLMFixture(t)
-			defer f.TearDown()
+func TestTerminatedContainerLogs(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
 
-			f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+	state := f.store.LockMutableStateForTesting()
 
-			state := f.store.LockMutableStateForTesting()
-
-			p := store.Pod{
-				PodID: podID,
-				Phase: test.phase,
-			}
-			p = PodWithContainer(p, cName, cID)
-			state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-				model.Manifest{Name: "server"}, p))
-			f.store.UnlockMutableState()
-
-			f.plm.OnChange(f.ctx, f.store)
-			if test.expectLogs {
-				f.AssertOutputContains("hello world!")
-			} else {
-				f.AssertOutputDoesNotContain("hello world!")
-			}
-		})
+	cName := container.Name("cName")
+	p := store.Pod{
+		PodID: podID,
+		Containers: []store.Container{
+			NewTerminatedContainer(cName, "cID"),
+		},
 	}
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "server"}, p))
+	f.store.UnlockMutableState()
+
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+
+	// Fire OnChange twice, because we used to have a bug where
+	// we'd immediately teardown the log watch on the terminated container.
+	f.plm.OnChange(f.ctx, f.store)
+	f.plm.OnChange(f.ctx, f.store)
+
+	f.AssertOutputContains("hello world!")
+
+	// Make sure that we don't try to re-stream after the terminated container
+	// closes the log stream.
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
+
+	f.plm.OnChange(f.ctx, f.store)
+	f.AssertOutputContains("hello world!")
+	f.AssertOutputDoesNotContain("goodbye world!")
+}
+
+func TestInitContainerLogs(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	f.kClient.SetLogsForPodContainer(podID, "cont1", "hello world!")
+
+	state := f.store.LockMutableStateForTesting()
+
+	cNameInit := container.Name("cNameInit")
+	cNameNormal := container.Name("cNameNormal")
+	p := store.Pod{
+		PodID: podID,
+		InitContainers: []store.Container{
+			NewTerminatedContainer(cNameInit, "cID-init"),
+		},
+		Containers: []store.Container{
+			NewRunningContainer(cNameNormal, "cID-normal"),
+		},
+	}
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "server"}, p))
+	f.store.UnlockMutableState()
+
+	f.kClient.SetLogsForPodContainer(podID, cNameInit, "init world!")
+	f.kClient.SetLogsForPodContainer(podID, cNameNormal, "hello world!")
+
+	f.plm.OnChange(f.ctx, f.store)
+
+	f.AssertOutputContains(cNameInit.String())
+	f.AssertOutputContains("init world!")
+	f.AssertOutputDoesNotContain(cNameNormal.String())
+	f.AssertOutputContains("hello world!")
 }
 
 type plmFixture struct {
@@ -322,8 +345,9 @@ func (f *plmFixture) AssertOutputDoesNotContain(s string) {
 	assert.NotContains(f.T(), f.out.String(), s)
 }
 
-func PodWithContainer(pod store.Pod, name container.Name, id container.ID) store.Pod {
-	c := store.Container{Name: name, ID: id}
-	pod.Containers = []store.Container{c}
-	return pod
+func NewRunningContainer(name container.Name, id container.ID) store.Container {
+	return store.Container{Name: name, ID: id, Running: true}
+}
+func NewTerminatedContainer(name container.Name, id container.ID) store.Container {
+	return store.Container{Name: name, ID: id, Terminated: true}
 }

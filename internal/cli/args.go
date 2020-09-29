@@ -7,22 +7,24 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type argsCmd struct {
-	webPort int
-	clear   bool
-	post    httpPoster
+	clear bool
+	post  httpPoster
 }
 
 func newArgsCmd() *argsCmd {
 	return &argsCmd{post: http.Post}
 }
+
+func (c *argsCmd) name() model.TiltSubcommand { return "args" }
 
 func (c *argsCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
@@ -40,7 +42,7 @@ tilt args -- --foo=bar frontend backend
 `,
 	}
 
-	cmd.Flags().IntVar(&c.webPort, "port", DefaultWebPort, "Web port for the Tilt whose args should change")
+	addConnectServerFlags(cmd)
 	cmd.Flags().BoolVar(&c.clear, "clear", false, "Clear the Tiltfile args, as if you'd run tilt with no args")
 
 	return cmd
@@ -59,21 +61,17 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 			return errors.New("--clear cannot be specified with other values. either use --clear to clear the args or specify args to replace the args with a new (non-empty) value")
 		}
 	}
-	schemeHostPort := fmt.Sprintf("http://localhost:%d", c.webPort)
-	u, err := url.Parse(schemeHostPort)
-	if err != nil {
-		return errors.Wrap(err, "internal error forming URL")
-	}
-	u.Path = "/api/set_tiltfile_args"
+	url := apiURL("set_tiltfile_args")
 	body := &bytes.Buffer{}
-	err = json.NewEncoder(body).Encode(args)
+	err := json.NewEncoder(body).Encode(args)
 	if err != nil {
 		return errors.Wrap(err, "failed to encode args as json")
 	}
-	res, err := c.post(u.String(), "application/json", body)
+
+	res, err := c.post(url, "application/json", body)
 	if err != nil {
 		fmt.Println("tilt args requires a running Tilt instance")
-		return errors.Wrapf(err, "error making http request to Tilt at %s", u.String())
+		return errors.Wrapf(err, "error making http request to Tilt at %s", url)
 	}
 	defer func() {
 		_ = res.Body.Close()
@@ -90,7 +88,7 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 		return fmt.Errorf("http request to Tilt failed: %s", res.Status)
 	}
 
-	fmt.Printf("changed config args for Tilt running at %s to %v\n", schemeHostPort, args)
+	fmt.Printf("changed config args for Tilt running at %s to %v\n", apiHost(), args)
 
 	return nil
 }

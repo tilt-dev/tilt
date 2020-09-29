@@ -13,8 +13,8 @@ import (
 	"k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/windmilleng/tilt/internal/k8s/testyaml"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type field struct {

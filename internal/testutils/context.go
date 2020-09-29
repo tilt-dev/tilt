@@ -7,10 +7,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/windmilleng/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 
-	tiltanalytics "github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/pkg/logger"
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // CtxAndAnalyticsForTest returns a context.Context suitable for use in tests (i.e. with

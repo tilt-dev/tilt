@@ -1,27 +1,27 @@
 package dockerignore
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/docker/docker/builder/dockerignore"
-	"github.com/docker/docker/pkg/fileutils"
+	tiltDockerignore "github.com/tilt-dev/dockerignore"
 
-	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/ospath"
 )
 
 type dockerPathMatcher struct {
 	repoRoot string
-	matcher  *fileutils.PatternMatcher
+	matcher  *tiltDockerignore.PatternMatcher
 }
 
 func (i dockerPathMatcher) Matches(f string) (bool, error) {
-	rp, err := filepath.Rel(i.repoRoot, f)
-	if err != nil {
-		return false, err
+	if !filepath.IsAbs(f) {
+		f = filepath.Join(i.repoRoot, f)
 	}
-	return i.matcher.Matches(rp)
+	return i.matcher.Matches(f)
 }
 
 func (i dockerPathMatcher) MatchesEntireDir(f string) (bool, error) {
@@ -36,8 +36,7 @@ func (i dockerPathMatcher) MatchesEntireDir(f string) (bool, error) {
 			if !pattern.Exclusion() {
 				continue
 			}
-			absPattern := filepath.Join(i.repoRoot, pattern.String())
-			if ospath.IsChild(f, absPattern) {
+			if ospath.IsChild(f, pattern.String()) {
 				// Found an exclusion match -- we don't match this whole dir
 				return false, nil
 			}
@@ -61,13 +60,43 @@ func NewDockerIgnoreTester(repoRoot string) (*dockerPathMatcher, error) {
 	return NewDockerPatternMatcher(absRoot, patterns)
 }
 
+// Make all the patterns use absolute paths.
+func absPatterns(absRoot string, patterns []string) []string {
+	absPatterns := make([]string, 0, len(patterns))
+	for _, p := range patterns {
+		// The pattern parsing here is loosely adapted from fileutils' NewPatternMatcher
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		p = filepath.Clean(p)
+
+		pPath := p
+		isExclusion := false
+		if p[0] == '!' {
+			pPath = p[1:]
+			isExclusion = true
+		}
+
+		if !filepath.IsAbs(pPath) {
+			pPath = filepath.Join(absRoot, pPath)
+		}
+		absPattern := pPath
+		if isExclusion {
+			absPattern = fmt.Sprintf("!%s", pPath)
+		}
+		absPatterns = append(absPatterns, absPattern)
+	}
+	return absPatterns
+}
+
 func NewDockerPatternMatcher(repoRoot string, patterns []string) (*dockerPathMatcher, error) {
 	absRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	pm, err := fileutils.NewPatternMatcher(patterns)
+	pm, err := tiltDockerignore.NewPatternMatcher(absPatterns(absRoot, patterns))
 	if err != nil {
 		return nil, err
 	}

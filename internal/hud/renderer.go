@@ -8,9 +8,9 @@ import (
 
 	"github.com/gdamore/tcell"
 
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/rty"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const defaultLogPaneHeight = 8
@@ -157,7 +157,7 @@ func (r *Renderer) renderStatusMessage(v view.View) rty.Component {
 			errorCountMessage = fmt.Sprintf(" %d %s", errorCount, s)
 		}
 
-		sb.Fg(cBad).Text("✖").
+		sb.Fg(cBad).Text(xMark()).
 			Fg(cText).Textf("%s", errorCountMessage)
 	}
 	return sb.Build()

@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 )
 
 func TestWrite(t *testing.T) {
@@ -19,8 +20,7 @@ func TestWrite(t *testing.T) {
 
 	path := f.writeModule(ModuleContents{
 		Name:              "test",
-		TiltfileContents:  "print('hi')",
-		GitCommitHash:     "aaaaaa",
+		Dir:               f.dirWithTiltfile("print('hi')"),
 		ExtensionRegistry: "https://github.com/windmill/tilt-extensions",
 	})
 
@@ -34,8 +34,7 @@ func TestWriteAndStat(t *testing.T) {
 
 	f.writeModule(ModuleContents{
 		Name:              "test",
-		TiltfileContents:  "print('hi')",
-		GitCommitHash:     "aaaaaa",
+		Dir:               f.dirWithTiltfile("print('hi')"),
 		ExtensionRegistry: "https://github.com/windmill/tilt-extensions",
 	})
 
@@ -58,8 +57,7 @@ func TestTwoExtensions(t *testing.T) {
 
 	f.writeModule(ModuleContents{
 		Name:              "test1",
-		TiltfileContents:  "print('hi')",
-		GitCommitHash:     "aaaaaa",
+		Dir:               f.dirWithTiltfile("print('hi')"),
 		ExtensionRegistry: "https://github.com/windmill/tilt-extensions",
 	})
 
@@ -67,8 +65,7 @@ func TestTwoExtensions(t *testing.T) {
 
 	f.writeModule(ModuleContents{
 		Name:              "test2",
-		TiltfileContents:  "print('hi')",
-		GitCommitHash:     "aaaaaa",
+		Dir:               f.dirWithTiltfile("print('hi')"),
 		ExtensionRegistry: "https://github.com/windmill/tilt-extensions",
 	})
 
@@ -134,7 +131,6 @@ func (f *fixture) assertExtension(moduleName, contents, hash, source string) {
 				f.t.Fatalf("Two modules named %s found in %+v", moduleName, mf)
 			}
 			foundModule = true
-			assert.Equal(f.t, hash, e.GitCommitHash)
 			assert.Equal(f.t, source, e.ExtensionRegistry)
 		}
 	}
@@ -150,4 +146,18 @@ func (f *fixture) assertPath(path string) {
 
 func (f *fixture) tearDown() {
 	f.tempdir.TearDown()
+}
+
+func (f *fixture) dirWithTiltfile(contents string) string {
+	return dirWithTiltfile(f.t, contents)
+}
+
+func dirWithTiltfile(t *testing.T, contents string) string {
+	dir, err := ioutil.TempDir("", "fakeFetcher")
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(filepath.Join(dir, "Tiltfile"), []byte(contents), os.FileMode(0644))
+	require.NoError(t, err)
+
+	return dir
 }

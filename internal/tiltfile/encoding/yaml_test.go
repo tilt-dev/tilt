@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 )
 
 func TestReadYAML(t *testing.T) {
@@ -46,7 +46,7 @@ assert.equals(expected, observed)
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("options.yaml"))
+	require.Contains(t, rs.Paths, f.JoinPath("options.yaml"))
 }
 
 func TestReadYAMLDefaultValue(t *testing.T) {
@@ -97,7 +97,7 @@ func TestYAMLDoesNotExist(t *testing.T) {
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("dne.yaml"))
+	require.Contains(t, rs.Paths, f.JoinPath("dne.yaml"))
 }
 
 func TestMalformedYAML(t *testing.T) {
@@ -122,7 +122,7 @@ key5: 3
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
-	require.Contains(t, rs.Files, f.JoinPath("options.yaml"))
+	require.Contains(t, rs.Paths, f.JoinPath("options.yaml"))
 
 }
 
@@ -277,6 +277,33 @@ assert.equals(expected, observed)
 	require.NoError(t, err)
 }
 
+func TestDecodeYAMLStreamEmptyEntries(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	yaml := `name: hello
+---
+
+---
+name: goodbye
+---
+
+---`
+	d := fmt.Sprintf("observed = decode_yaml_stream('''%s''')\n", yaml)
+	tf := d + `
+load('assert.tilt', 'assert')
+assert.equals(['hello', 'goodbye'], [r['name'] for r in observed])
+
+`
+	f.File("Tiltfile", tf)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
+}
+
 func TestDecodeYAMLUnexpectedStream(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -305,6 +332,7 @@ key5: 3
 key6:
 - foo
 - 7
+key7: []
 '''
 observed = encode_yaml({
   'key1': 'foo',
@@ -316,7 +344,8 @@ observed = encode_yaml({
   'key6': [
     'foo',
     7,
-  ]
+  ],
+  'key7': []
 })
 
 load('assert.tilt', 'assert')

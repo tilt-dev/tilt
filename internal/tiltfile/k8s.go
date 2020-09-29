@@ -14,11 +14,12 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/value"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type referenceList []reference.Named
@@ -47,15 +48,22 @@ type k8sResource struct {
 	// labels for pods that we should watch and associate with this resource
 	extraPodSelectors []labels.Selector
 
+	podReadinessMode model.PodReadinessMode
+
 	dependencyIDs []model.TargetID
 
 	triggerMode triggerMode
+	autoInit    bool
 
 	resourceDeps []string
+
+	manuallyGrouped bool
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
 	"deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
+
+const deprecatedResourceAssemblyVersionWarning = "This Tiltfile is calling k8s_resource_assembly_version, which has been deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
 
 // holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
@@ -64,10 +72,12 @@ type k8sResourceOptions struct {
 	portForwards      []model.PortForward
 	extraPodSelectors []labels.Selector
 	triggerMode       triggerMode
+	autoInit          bool
 	tiltfilePosition  syntax.Position
 	resourceDeps      []string
-	// TODO(dmiller): this should be a different type once it has been parsed as a valid identifier
-	objects []string
+	objects           []string
+	manuallyGrouped   bool
+	podReadinessMode  model.PodReadinessMode
 }
 
 func (r *k8sResource) addRefSelector(selector container.RefSelector) {
@@ -75,11 +85,11 @@ func (r *k8sResource) addRefSelector(selector container.RefSelector) {
 }
 
 func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
-	imageJSONPaths func(e k8s.K8sEntity) []k8s.JSONPath, envVarImages []container.RefSelector) error {
+	locators []k8s.ImageLocator, envVarImages []container.RefSelector) error {
 	r.entities = append(r.entities, entities...)
 
 	for _, entity := range entities {
-		images, err := entity.FindImages(imageJSONPaths(entity), envVarImages)
+		images, err := entity.FindImages(locators, envVarImages)
 		if err != nil {
 			return err
 		}
@@ -107,17 +117,41 @@ func (r k8sResource) refSelectorList() []string {
 
 func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var yamlValue starlark.Value
+	var allowDuplicates bool
+
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
+		"allow_duplicates?", &allowDuplicates,
 	); err != nil {
 		return nil, err
 	}
+	//normalize the starlark value into a slice
+	value := starlarkValueOrSequenceToSlice(yamlValue)
 
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
-	if err != nil {
-		return nil, err
+	//if `None` was passed into k8s_yaml, len(val) = 0
+	if len(value) > 0 {
+
+		val, _ := starlark.AsString(value[0])
+		entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
+
+		if err != nil {
+			return nil, err
+		}
+
+		//the parameter blob('') results in an empty string
+		if len(entities) == 0 && val == "" {
+			return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
+		}
+		err = s.k8sObjectIndex.Append(thread, entities, allowDuplicates)
+		if err != nil {
+			return nil, err
+		}
+
+		s.k8sUnresourced = append(s.k8sUnresourced, entities...)
+
+	} else {
+		return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
 	}
-	s.k8sUnresourced = append(s.k8sUnresourced, entities...)
 
 	return starlark.None, nil
 }
@@ -139,6 +173,11 @@ func (s *tiltfileState) extractSecrets() model.SecretSet {
 }
 
 func (s *tiltfileState) maybeExtractSecrets(e k8s.K8sEntity) model.SecretSet {
+	if !s.secretSettings.ScrubSecrets {
+		// Secret scrubbing disabled, don't extract any secrets
+		return nil
+	}
+
 	secret, ok := e.Obj.(*v1.Secret)
 	if !ok {
 		return nil
@@ -156,11 +195,12 @@ func (s *tiltfileState) maybeExtractSecrets(e k8s.K8sEntity) model.SecretSet {
 }
 
 func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var yamlValue, labelsValue starlark.Value
+	var yamlValue starlark.Value
+	var metaLabels value.StringStringMap
 	var name, namespace, kind, apiVersion string
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"yaml", &yamlValue,
-		"labels?", &labelsValue,
+		"labels?", &metaLabels,
 		"name?", &name,
 		"namespace?", &namespace,
 		"kind?", &kind,
@@ -170,24 +210,19 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	metaLabels, err := value.ValueToStringMap(labelsValue)
-	if err != nil {
-		return nil, fmt.Errorf("kwarg `labels`: %v", err)
-	}
-
 	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
 	if err != nil {
 		return nil, err
 	}
 
-	k, err := newK8sObjectSelector(apiVersion, kind, name, namespace)
+	k, err := k8s.NewPartialMatchObjectSelector(apiVersion, kind, name, namespace)
 	if err != nil {
 		return nil, err
 	}
 
 	var match, rest []k8s.K8sEntity
 	for _, e := range entities {
-		if k.matches(e) {
+		if k.Matches(e) {
 			match = append(match, e)
 		} else {
 			rest = append(rest, e)
@@ -275,7 +310,7 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s %q", fn.Name(), name)
 	}
 
-	err = r.addEntities(entities, s.imageJSONPaths, nil)
+	err = r.addEntities(entities, s.k8sImageLocatorsList(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -295,6 +330,14 @@ func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	return starlark.None, nil
+}
+
+func (s *tiltfileState) k8sImageLocatorsList() []k8s.ImageLocator {
+	locators := []k8s.ImageLocator{}
+	for _, info := range s.k8sKinds {
+		locators = append(locators, info.ImageLocators...)
+	}
+	return locators
 }
 
 func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -364,26 +407,34 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
 	var objectsVal starlark.Sequence
+	var podReadinessMode tiltfile_k8s.PodReadinessMode
+	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"workload", &workload,
+		"workload?", &workload,
 		"new_name?", &newName,
 		"port_forwards?", &portForwardsVal,
 		"extra_pod_selectors?", &extraPodSelectorsVal,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"objects?", &objectsVal,
+		"auto_init?", &autoInit,
+		"pod_readiness?", &podReadinessMode,
 	); err != nil {
 		return nil, err
 	}
 
+	resourceName := workload
+	manuallyGrouped := false
 	if workload == "" {
-		return nil, fmt.Errorf("%s: workload must not be empty", fn.Name())
+		resourceName = newName
+		// If a resource doesn't specify an existing workload then it needs to have objects to be valid
+		manuallyGrouped = true
 	}
 
 	portForwards, err := convertPortForwards(portForwardsVal)
 	if err != nil {
-		return nil, errors.Wrapf(err, "%s %q", fn.Name(), workload)
+		return nil, errors.Wrapf(err, "%s %q", fn.Name(), resourceName)
 	}
 
 	extraPodSelectors, err := podLabelsFromStarlarkValue(extraPodSelectorsVal)
@@ -391,8 +442,8 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	if opts, ok := s.k8sResourceOptions[workload]; ok {
-		return nil, fmt.Errorf("%s already called for %s, at %s", fn.Name(), workload, opts.tiltfilePosition.String())
+	if opts, ok := s.k8sResourceOptions[resourceName]; ok {
+		return nil, fmt.Errorf("%s already called for %s, at %s", fn.Name(), resourceName, opts.tiltfilePosition.String())
 	}
 
 	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
@@ -400,20 +451,32 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	// TODO(dmiller): this should be parsed as a valid identifier, and stored its own type
 	objects, err := value.SequenceToStringSlice(objectsVal)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	s.k8sResourceOptions[workload] = k8sResourceOptions{
+	if manuallyGrouped && len(objects) == 0 {
+		return nil, fmt.Errorf("k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
+	}
+
+	if manuallyGrouped && len(objects) > 0 && newName == "" {
+		return nil, fmt.Errorf("k8s_resource has only non-workload objects but doesn't provide a new_name")
+	}
+
+	// NOTE(nick): right now this overwrites all previously set options on this
+	// resource. Is it worthwhile to make this additive?
+	s.k8sResourceOptions[resourceName] = k8sResourceOptions{
 		newName:           newName,
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
 		tiltfilePosition:  thread.CallFrame(1).Pos,
 		triggerMode:       triggerMode,
+		autoInit:          autoInit,
 		resourceDeps:      resourceDeps,
 		objects:           objects,
+		manuallyGrouped:   manuallyGrouped,
+		podReadinessMode:  podReadinessMode.Value,
 	}
 
 	return starlark.None, nil
@@ -482,30 +545,11 @@ func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
 	}
 }
 
-func starlarkValuesToJSONPaths(values []starlark.Value) ([]k8s.JSONPath, error) {
-	var paths []k8s.JSONPath
-	for _, v := range values {
-		s, ok := v.(starlark.String)
-		if !ok {
-			return nil, fmt.Errorf("paths must be a string or list of strings, found a list containing value '%+v' of type '%T'", v, v)
-		}
-
-		jp, err := k8s.NewJSONPath(s.String())
-		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing json paths '%s'", s.String())
-		}
-
-		paths = append(paths, jp)
-	}
-
-	return paths, nil
-}
-
 func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var apiVersion, kind, name, namespace string
-	var imageJSONPath starlark.Value
+	var locatorList tiltfile_k8s.JSONPathImageLocatorListSpec
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"paths", &imageJSONPath,
+		"paths", &locatorList,
 		"api_version?", &apiVersion,
 		"kind?", &kind,
 		"name?", &name,
@@ -518,19 +562,22 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, errors.New("at least one of kind, name, or namespace must be specified")
 	}
 
-	values := starlarkValueOrSequenceToSlice(imageJSONPath)
-
-	paths, err := starlarkValuesToJSONPaths(values)
+	k, err := k8s.NewPartialMatchObjectSelector(apiVersion, kind, name, namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	k, err := newK8sObjectSelector(apiVersion, kind, name, namespace)
+	paths, err := locatorList.ToImageLocators(k)
 	if err != nil {
 		return nil, err
 	}
 
-	s.k8sImageJSONPaths[k] = paths
+	kindInfo, ok := s.k8sKinds[k]
+	if !ok {
+		kindInfo = &tiltfile_k8s.KindInfo{}
+		s.k8sKinds[k] = kindInfo
+	}
+	kindInfo.ImageLocators = paths
 
 	return starlark.None, nil
 }
@@ -542,30 +589,51 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	var apiVersion, kind string
-	var imageJSONPath starlark.Value
+	var jpLocators tiltfile_k8s.JSONPathImageLocatorListSpec
+	var jpObjectLocator tiltfile_k8s.JSONPathImageObjectLocatorSpec
+	var podReadiness tiltfile_k8s.PodReadinessMode
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"kind", &kind,
-		"image_json_path?", &imageJSONPath,
+		"image_json_path?", &jpLocators,
 		"api_version?", &apiVersion,
+		"image_object?", &jpObjectLocator,
+		"pod_readiness?", &podReadiness,
 	); err != nil {
 		return nil, err
 	}
 
-	k, err := newK8sObjectSelector(apiVersion, kind, "", "")
+	k, err := k8s.NewPartialMatchObjectSelector(apiVersion, kind, "", "")
 	if err != nil {
 		return nil, err
 	}
 
-	if imageJSONPath == nil {
-		s.workloadTypes = append(s.workloadTypes, k)
-	} else {
-		values := starlarkValueOrSequenceToSlice(imageJSONPath)
-		paths, err := starlarkValuesToJSONPaths(values)
+	if !jpLocators.IsEmpty() && !jpObjectLocator.IsEmpty() {
+		return nil, fmt.Errorf("Cannot specify both image_json_path and image_object")
+	}
+
+	kindInfo, ok := s.k8sKinds[k]
+	if !ok {
+		kindInfo = &tiltfile_k8s.KindInfo{}
+		s.k8sKinds[k] = kindInfo
+	}
+
+	if !jpLocators.IsEmpty() {
+		locators, err := jpLocators.ToImageLocators(k)
 		if err != nil {
 			return nil, err
 		}
 
-		s.k8sImageJSONPaths[k] = paths
+		kindInfo.ImageLocators = locators
+	} else if !jpObjectLocator.IsEmpty() {
+		locator, err := jpObjectLocator.ToImageLocator(k)
+		if err != nil {
+			return nil, err
+		}
+		kindInfo.ImageLocators = []k8s.ImageLocator{locator}
+	}
+
+	if podReadiness.Value != "" {
+		kindInfo.PodReadinessMode = podReadiness.Value
 	}
 
 	return starlark.None, nil
@@ -669,6 +737,7 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 	r := &k8sResource{
 		name:        name,
 		imageRefMap: make(map[string]int),
+		autoInit:    true,
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r
@@ -678,7 +747,9 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 
 func (s *tiltfileState) yamlEntitiesFromSkylarkValueOrList(thread *starlark.Thread, v starlark.Value) ([]k8s.K8sEntity, error) {
 	values := starlarkValueOrSequenceToSlice(v)
+
 	var ret []k8s.K8sEntity
+
 	for _, value := range values {
 		entities, err := s.yamlEntitiesFromSkylarkValue(thread, value)
 		if err != nil {
@@ -713,6 +784,7 @@ func (s *tiltfileState) yamlEntitiesFromSkylarkValue(thread *starlark.Thread, v 
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading yaml file")
 		}
+
 		entities, err := k8s.ParseYAMLFromString(string(bs))
 		if err != nil {
 			if strings.Contains(err.Error(), "json parse error: ") {
@@ -863,20 +935,6 @@ func stringToPortForward(s starlark.String) (model.PortForward, error) {
 	return model.PortForward{LocalPort: local, ContainerPort: container, Host: host}, nil
 }
 
-// returns any defined image JSON paths that apply to the given entity
-func (s *tiltfileState) imageJSONPaths(e k8s.K8sEntity) []k8s.JSONPath {
-	var ret []k8s.JSONPath
-
-	for k, v := range s.k8sImageJSONPaths {
-		if !k.matches(e) {
-			continue
-		}
-		ret = append(ret, v...)
-	}
-
-	return ret
-}
-
 func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var version int
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -893,8 +951,8 @@ func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn
 		return starlark.None, fmt.Errorf("invalid %s %d. Must be 1 or 2.", fn.Name(), version)
 	}
 
-	if version == 1 && !s.warnedDeprecatedResourceAssembly {
-		s.logger.Warnf("%s", deprecatedResourceAssemblyV1Warning)
+	if !s.warnedDeprecatedResourceAssembly {
+		s.logger.Warnf(deprecatedResourceAssemblyVersionWarning)
 		s.warnedDeprecatedResourceAssembly = true
 	}
 

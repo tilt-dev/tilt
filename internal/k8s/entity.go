@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/windmilleng/tilt/internal/kustomize"
+	"github.com/tilt-dev/tilt/internal/kustomize"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 type K8sEntity struct {
@@ -37,17 +37,21 @@ type k8sMeta interface {
 	GetUID() types.UID
 	GetLabels() map[string]string
 	GetOwnerReferences() []metav1.OwnerReference
+	GetAnnotations() map[string]string
 	SetNamespace(ns string)
+	SetManagedFields(managedFields []metav1.ManagedFieldsEntry)
 }
 
 type emptyMeta struct{}
 
-func (emptyMeta) GetName() string                             { return "" }
-func (emptyMeta) GetNamespace() string                        { return "" }
-func (emptyMeta) GetUID() types.UID                           { return "" }
-func (emptyMeta) GetLabels() map[string]string                { return make(map[string]string) }
-func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference { return nil }
-func (emptyMeta) SetNamespace(ns string)                      {}
+func (emptyMeta) GetName() string                                 { return "" }
+func (emptyMeta) GetNamespace() string                            { return "" }
+func (emptyMeta) GetUID() types.UID                               { return "" }
+func (emptyMeta) GetAnnotations() map[string]string               { return make(map[string]string) }
+func (emptyMeta) GetLabels() map[string]string                    { return make(map[string]string) }
+func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference     { return nil }
+func (emptyMeta) SetNamespace(ns string)                          {}
+func (emptyMeta) SetManagedFields(mf []metav1.ManagedFieldsEntry) {}
 
 var _ k8sMeta = emptyMeta{}
 var _ k8sMeta = &metav1.ObjectMeta{}
@@ -103,6 +107,18 @@ func (e K8sEntity) GVK() schema.GroupVersionKind {
 		}
 	}
 	return gvk
+}
+
+// Clean up internal bookkeeping fields. See
+// https://github.com/kubernetes/kubernetes/issues/90066
+func (e K8sEntity) Clean() {
+	m := e.meta()
+	m.SetManagedFields(nil)
+
+	annotations := m.GetAnnotations()
+	if len(annotations) != 0 {
+		delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
+	}
 }
 
 func (e K8sEntity) meta() k8sMeta {
@@ -203,6 +219,14 @@ func (e K8sEntity) Namespace() Namespace {
 		return DefaultNamespace
 	}
 	return Namespace(n)
+}
+
+func (e K8sEntity) NamespaceOrDefault(defaultVal string) string {
+	n := e.meta().GetNamespace()
+	if n == "" {
+		return defaultVal
+	}
+	return n
 }
 
 func (e K8sEntity) UID() types.UID {
@@ -334,8 +358,8 @@ func Filter(entities []K8sEntity, test func(e K8sEntity) (bool, error)) (passing
 	return passing, rest, nil
 }
 
-func FilterByImage(entities []K8sEntity, img container.RefSelector, imageJSONPaths func(K8sEntity) []JSONPath, inEnvVars bool) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img, imageJSONPaths(e), inEnvVars) })
+func FilterByImage(entities []K8sEntity, img container.RefSelector, locators []ImageLocator, inEnvVars bool) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img, locators, inEnvVars) })
 }
 
 func FilterBySelectorMatchesLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {

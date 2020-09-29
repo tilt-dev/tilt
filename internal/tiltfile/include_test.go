@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
 func TestIncludeThreeTiltfiles(t *testing.T) {
@@ -34,6 +34,10 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 	f.assertNextManifest("bar",
 		db(image("gcr.io/bar")),
 		deployment("bar"))
+
+	f.assertConfigFiles(".tiltignore", "Tiltfile",
+		"bar.yaml", "bar/.dockerignore", "bar/Dockerfile", "bar/Tiltfile",
+		"foo.yaml", "foo/.dockerignore", "foo/Dockerfile", "foo/Tiltfile")
 }
 
 func TestIncludeCircular(t *testing.T) {

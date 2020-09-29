@@ -9,17 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windmilleng/tilt/internal/output"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/output"
+	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/gdamore/tcell"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/hud/view"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // The main loop ensures the HUD updates at least this often
@@ -28,8 +28,6 @@ const DefaultRefreshInterval = 100 * time.Millisecond
 // number of arrows a pgup/dn is equivalent to
 // (we don't currently worry about trying to know how big a page is, and instead just support pgup/dn as "faster arrows"
 const pgUpDownCount = 20
-
-type HudEnabled bool
 
 type HeadsUpDisplay interface {
 	store.Subscriber
@@ -44,25 +42,19 @@ type Hud struct {
 	currentView      view.View
 	currentViewState view.ViewState
 	mu               sync.RWMutex
+	isStarted        bool
 	isRunning        bool
 	a                *analytics.TiltAnalytics
 }
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func ProvideHud(hudEnabled HudEnabled, renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics, printer *IncrementalPrinter) (HeadsUpDisplay, error) {
-	if !hudEnabled {
-		return NewDisabledHud(printer), nil
-	}
-	return NewDefaultHeadsUpDisplay(renderer, webURL, analytics)
-}
-
-func NewDefaultHeadsUpDisplay(renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) (HeadsUpDisplay, error) {
+func NewHud(renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) HeadsUpDisplay {
 	return &Hud{
 		r:      renderer,
 		webURL: webURL,
 		a:      analytics,
-	}, nil
+	}
 }
 
 func (h *Hud) SetNarrationMessage(ctx context.Context, msg string) {
@@ -263,12 +255,31 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 	return false
 }
 
+func (h *Hud) isEnabled(st store.RStore) bool {
+	state := st.RLockState()
+	defer st.RUnlockState()
+	return state.TerminalMode == store.TerminalModeHUD
+}
+
 func (h *Hud) OnChange(ctx context.Context, st store.RStore) {
+	if !h.isEnabled(st) {
+		return
+	}
+
+	if !h.isStarted {
+		h.isStarted = true
+		go func() {
+			err := h.Run(ctx, st.Dispatch, DefaultRefreshInterval)
+			if err != nil && err != context.Canceled {
+				st.Dispatch(store.PanicAction{Err: err})
+			}
+		}()
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	toPrint := ""
-
 	state := st.RLockState()
 	view := store.StateToView(state, st.StateMutex())
 

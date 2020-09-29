@@ -6,15 +6,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/dockerignore"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/dockerignore"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestMatches(t *testing.T) {
 	tf := newTestFixture(t, "node_modules")
 	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("node_modules", "foo"), true)
+	tf.AssertResult(tf.JoinPath("node_modules", "foo", "bar", "baz"), true)
 	tf.AssertResultEntireDir(tf.JoinPath("node_modules"), true)
 	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
 	tf.AssertResultEntireDir(tf.JoinPath("foo"), false)
@@ -32,6 +33,51 @@ func TestGlob(t *testing.T) {
 	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("somedir", "temporary.txt"), true)
 	tf.AssertResult(tf.JoinPath("somedir", "temp"), true)
+}
+
+func TestCurrentDirDoubleGlob(t *testing.T) {
+	tf := newTestFixture(t, "**/temp*")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "c", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("b", "c", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("..", "a", "b", "temporary.txt"), false)
+}
+
+func TestInnerDirDoubleGlob(t *testing.T) {
+	tf := newTestFixture(t, "a/**/temp*")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "c", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("b", "c", "temporary.txt"), false)
+	tf.AssertResult(tf.JoinPath("..", "a", "b", "temporary.txt"), false)
+}
+
+func TestUplevel(t *testing.T) {
+	tf := newTestFixture(t, "../a/b.txt")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("..", "a", "b.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b.txt"), false)
+}
+
+func TestUplevelDoubleGlob(t *testing.T) {
+	tf := newTestFixture(t, "../**/b.txt")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("..", "a", "b.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b.txt"), true)
+}
+
+func TestUplevelMatchDirDoubleGlob(t *testing.T) {
+	tf := newTestFixture(t, "../**/b")
+	defer tf.TearDown()
+	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), false)
+	tf.AssertResult(tf.JoinPath("a", "b"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "c", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b", "c", "d", "temporary.txt"), true)
+	tf.AssertResult(tf.JoinPath("a", "b2", "c", "d", "temporary.txt"), false)
 }
 
 func TestOneCharacterExtension(t *testing.T) {
@@ -106,6 +152,7 @@ func (tf *testFixture) JoinPath(path ...string) string {
 }
 
 func (tf *testFixture) AssertResult(path string, expectedMatches bool) {
+	tf.t.Helper()
 	isIgnored, err := tf.tester.Matches(path)
 	if err != nil {
 		tf.t.Fatal(err)

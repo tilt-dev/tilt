@@ -10,8 +10,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/windmilleng/tilt/internal/ospath"
-	"github.com/windmilleng/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type ClusterName string
@@ -24,6 +24,7 @@ const (
 	EnvDockerDesktop Env = "docker-for-desktop"
 	EnvMicroK8s      Env = "microk8s"
 	EnvCRC           Env = "crc"
+	EnvKrucible      Env = "krucible"
 
 	// Kind v0.6 substantially changed the protocol for detecting and pulling,
 	// so we represent them as two separate envs.
@@ -37,22 +38,34 @@ func (e Env) UsesLocalDockerRegistry() bool {
 	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s
 }
 
-func (e Env) IsLocalCluster() bool {
-	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvCRC || e == EnvKIND5 || e == EnvKIND6 || e == EnvK3D
+func (e Env) IsDevCluster() bool {
+	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvCRC || e == EnvKIND5 || e == EnvKIND6 || e == EnvK3D || e == EnvKrucible
 }
 
 func ProvideKubeContext(config *api.Config) (KubeContext, error) {
 	return KubeContext(config.CurrentContext), nil
 }
 
-func ProvideKubeConfig(clientLoader clientcmd.ClientConfig) (*api.Config, error) {
-	access := clientLoader.ConfigAccess()
-	config, err := access.GetStartingConfig()
+func ProvideKubeConfig(clientLoader clientcmd.ClientConfig, contextOverride KubeContextOverride) (*api.Config, error) {
+	config, err := clientLoader.RawConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "Loading Kubernetes current-context")
 	}
 
-	return config, nil
+	// NOTE(nick): The RawConfig() accessor doesn't handle overrides.
+	// The other accessors do. So we do what ClientConfig does internally, and
+	// apply the overrides ourselves.
+	if contextOverride != "" {
+		config.CurrentContext = string(contextOverride)
+
+		// If the user explicitly passed an override, validate it.
+		err := clientcmd.ConfirmUsable(config, string(contextOverride))
+		if err != nil {
+			return nil, errors.Wrap(err, "Overriding Kubernetes context")
+		}
+	}
+
+	return &config, nil
 }
 
 func ProvideClusterName(ctx context.Context, config *api.Config) ClusterName {
@@ -94,6 +107,8 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 		return EnvMicroK8s
 	} else if strings.HasPrefix(cn, "api-crc-testing") {
 		return EnvCRC
+	} else if strings.HasPrefix(cn, "krucible-") {
+		return EnvKrucible
 	}
 
 	loc := c.LocationOfOrigin

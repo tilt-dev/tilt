@@ -13,16 +13,16 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/dockerfile"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/synclet/sidecar"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
@@ -60,8 +60,8 @@ func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
 }
 
 type ImageBuildAndDeployer struct {
-	ib               build.ImageBuilder
-	icb              *imageAndCacheBuilder
+	db               build.DockerBuilder
+	ib               *imageBuilder
 	k8sClient        k8s.Client
 	env              k8s.Env
 	runtime          container.Runtime
@@ -73,7 +73,7 @@ type ImageBuildAndDeployer struct {
 }
 
 func NewImageBuildAndDeployer(
-	b build.ImageBuilder,
+	db build.DockerBuilder,
 	customBuilder build.CustomBuilder,
 	k8sClient k8s.Client,
 	env k8s.Env,
@@ -85,8 +85,8 @@ func NewImageBuildAndDeployer(
 	syncletContainer sidecar.SyncletContainer,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		ib:               b,
-		icb:              NewImageAndCacheBuilder(b, customBuilder, updMode),
+		db:               db,
+		ib:               NewImageBuilder(db, customBuilder, updMode),
 		k8sClient:        k8sClient,
 		env:              env,
 		analytics:        analytics,
@@ -115,24 +115,55 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	startTime := time.Now()
 	defer func() {
-		ibd.analytics.Timer("build.image", time.Since(startTime), nil)
+		ibd.analytics.Timer("build.image", time.Since(startTime), map[string]string{
+			"hasError": fmt.Sprintf("%t", err != nil),
+		})
 	}()
 
-	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.ImageExists)
+	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.CanReuseRef)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
 	// each image target has two stages: one for build, and one for push
-	numStages := q.CountDirty()*2 + 1
+	numStages := q.CountBuilds()*2 + 1
+
+	reused := q.ReusedResults()
+	hasReusedStep := len(reused) > 0
+	if hasReusedStep {
+		numStages++
+	}
+
+	hasDeleteStep := stateSet.FullBuildTriggered()
+	if hasDeleteStep {
+		numStages++
+	}
 
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
+	if hasDeleteStep {
+		ps.StartPipelineStep(ctx, "Force update")
+		err = ibd.delete(ps.AttachLogger(ctx), kTarget)
+		if err != nil {
+			return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
+		}
+		ps.EndPipelineStep(ctx)
+	}
+
+	if hasReusedStep {
+		ps.StartPipelineStep(ctx, "Loading cached images")
+		for _, result := range reused {
+			ref := store.LocalImageRefFromBuildResult(result)
+			ps.Printf(ctx, "- %s", container.FamiliarString(ref))
+		}
+		ps.EndPipelineStep(ctx)
+	}
+
 	var anyLiveUpdate bool
 
 	iTargetMap := model.ImageTargetsByID(iTargets)
-	err = q.RunBuilds(func(target model.TargetSpec, state store.BuildState, depResults []store.BuildResult) (store.BuildResult, error) {
+	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
 			return nil, fmt.Errorf("Not an image target: %T", target)
@@ -143,7 +174,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return nil, err
 		}
 
-		refs, err := ibd.icb.Build(ctx, iTarget, state, ps)
+		refs, err := ibd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
 			return nil, err
 		}
@@ -156,14 +187,20 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		anyLiveUpdate = anyLiveUpdate || !iTarget.LiveUpdateInfo().Empty()
 		return store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef), nil
 	})
+
+	newResults := q.NewResults()
 	if err != nil {
-		return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
+		return newResults, buildcontrol.WrapDontFallBackError(err)
 	}
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	brs, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.Results(), anyLiveUpdate)
-	return brs, buildcontrol.WrapDontFallBackError(err)
+	k8sResult, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.AllResults(), anyLiveUpdate)
+	if err != nil {
+		return newResults, buildcontrol.WrapDontFallBackError(err)
+	}
+	newResults[kTarget.ID()] = k8sResult
+	return newResults, nil
 }
 
 func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) error {
@@ -191,7 +228,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 		}
 	} else {
 		ps.Printf(ctx, "Pushing with Docker client")
-		err = ibd.ib.PushImage(ps.AttachLogger(ctx), ref)
+		err = ibd.db.PushImage(ps.AttachLogger(ctx), ref)
 		if err != nil {
 			return err
 		}
@@ -223,7 +260,7 @@ func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg m
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
 func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState,
-	iTargetMap map[model.TargetID]model.ImageTarget, kTarget model.K8sTarget, results store.BuildResultSet, needsSynclet bool) (store.BuildResultSet, error) {
+	iTargetMap map[model.TargetID]model.ImageTarget, kTarget model.K8sTarget, results store.BuildResultSet, needsSynclet bool) (store.BuildResult, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -242,7 +279,11 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		l.Infof("→ %s", displayName)
 	}
 
-	deployed, err := ibd.k8sClient.Upsert(ctx, newK8sEntities)
+	state := st.RLockState()
+	us := state.UpdateSettings
+	st.RUnlockState()
+
+	deployed, err := ibd.k8sClient.Upsert(ctx, newK8sEntities, us.K8sUpsertTimeout())
 	if err != nil {
 		return nil, err
 	}
@@ -262,15 +303,23 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		}
 		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
 	}
-	results[kTarget.ID()] = store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes, deployed)
 
-	return results, nil
+	return store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes, deployed), nil
 }
 
 func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) context.Context {
 	l := logger.Get(ctx)
 	newL := logger.NewPrefixedLogger(logger.Blue(l).Sprint("     "), l)
 	return logger.WithLogger(ctx, newL)
+}
+
+func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8sTarget) error {
+	entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
+	if err != nil {
+		return err
+	}
+
+	return ibd.k8sClient.Delete(ctx, entities)
 }
 
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
@@ -285,6 +334,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		return nil, err
 	}
 
+	locators := k8s.ToImageLocators(k8sTarget.ImageLocators)
 	depIDs := k8sTarget.DependencyIDs()
 	injectedDepIDs := map[model.TargetID]bool{}
 	for _, e := range entities {
@@ -300,7 +350,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		// changes, we make sure image pull policy isn't set to "Always".
 		// Frequent applies don't work well with this setting, and makes things
 		// slower. See discussion:
-		// https://github.com/windmilleng/tilt/issues/3209
+		// https://github.com/tilt-dev/tilt/issues/3209
 		if len(iTargetMap) > 0 {
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
@@ -309,7 +359,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		}
 
 		// StatefulSet pods should be managed in parallel. See discussion:
-		// https://github.com/windmilleng/tilt/issues/1962
+		// https://github.com/tilt-dev/tilt/issues/1962
 		e = k8s.InjectParallelPodManagementPolicy(e)
 
 		// When working with a local k8s cluster, we set the pull policy to Never,
@@ -330,7 +380,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			matchInEnvVars := iTarget.MatchInEnvVars
 
 			var replaced bool
-			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, matchInEnvVars, policy)
+			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, locators, matchInEnvVars, policy)
 			if err != nil {
 				return nil, err
 			}

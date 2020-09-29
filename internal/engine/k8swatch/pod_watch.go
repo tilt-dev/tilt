@@ -11,11 +11,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s"
 )
 
 var errorWaitingReasons = map[string]bool{
@@ -126,7 +126,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 		w.addWatch(pw)
 		ch, err := w.kCli.WatchPods(ctx, pw.labels)
 		if err != nil {
-			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\n")
+			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods`")
 			st.Dispatch(store.NewErrorAction(err))
 			return
 		}

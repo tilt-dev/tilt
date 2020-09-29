@@ -6,14 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/engine/k8swatch"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/podbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestPodDeleteAction(t *testing.T) {
@@ -24,7 +24,7 @@ func TestPodDeleteAction(t *testing.T) {
 	m, _ := f.state.Manifest("sancho")
 	hash := k8s.PodTemplateSpecHash("ptsh")
 	pod := podbuilder.New(f.T(), m).WithTemplateSpecHash(hash).Build()
-	runtime := ms.GetOrCreateK8sRuntimeState()
+	runtime := ms.K8sRuntimeState()
 	runtime.DeployedPodTemplateSpecHashSet.Add(hash)
 
 	assert.Equal(t, 0, len(ms.K8sRuntimeState().Pods))

@@ -8,16 +8,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/wmclient/pkg/dirs"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/internal/dockercompose"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/internal/testutils"
-	"github.com/windmilleng/tilt/internal/testutils/manifestbuilder"
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestDockerComposeTargetBuilt(t *testing.T) {
@@ -128,11 +128,11 @@ func TestMultiStageDockerCompose(t *testing.T) {
 		Contents: `
 FROM sancho-base:latest
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
 }
 
 func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
@@ -144,9 +144,8 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 
 	iTargetID := manifest.ImageTargets[0].ID()
 	result := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
-	state := store.NewBuildState(result, nil)
+	state := store.NewBuildState(result, nil, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
-	f.dCli.ImageListCount = 1
 	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
@@ -160,11 +159,11 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 		Contents: `
 FROM sancho-base:tilt-prebuilt
 ADD . .
-RUN go install github.com/windmilleng/sancho
+RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 	}
-	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildOptions.Context), expected)
+	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
 }
 
 type dcbdFixture struct {
@@ -184,6 +183,11 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	dir := dirs.NewWindmillDirAt(f.Path())
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dCli := docker.NewFakeClient()
+
+	// Make the fake ImageExists always return true, which is the behavior we want
+	// when testing the BuildAndDeployers.
+	dCli.ImageAlwaysExists = true
+
 	dcbad, err := provideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, dir)
 	if err != nil {
 		t.Fatal(err)

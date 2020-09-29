@@ -8,8 +8,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"gopkg.in/d4l3k/messagediff.v1"
 
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Allow actions to batch together a bit.
@@ -191,7 +191,7 @@ func (s *Store) maybeFinished() (bool, error) {
 		return true, state.PanicExited
 	}
 
-	if state.FatalError != nil && !state.HUDEnabled {
+	if state.FatalError != nil && state.TerminalMode != TerminalModeHUD {
 		return true, state.FatalError
 	}
 

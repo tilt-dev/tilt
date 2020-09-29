@@ -8,9 +8,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/windmilleng/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/container"
 )
 
 // Iterate through the fields of a k8s entity and
@@ -36,7 +36,7 @@ func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, e
 //   to ensure that k8s fails hard if the image is missing from docker.
 //
 // Returns: the new entity, whether the image was replaced, and an error.
-func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, matchInEnvVars bool, policy v1.PullPolicy) (K8sEntity, bool, error) {
+func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, locators []ImageLocator, matchInEnvVars bool, policy v1.PullPolicy) (K8sEntity, bool, error) {
 	entity = entity.DeepCopy()
 
 	// NOTE(nick): For some reason, if you have a reference with a digest,
@@ -74,12 +74,14 @@ func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectR
 		}
 	}
 
-	entity, r, err = injectImageDigestInUnstructured(entity, selector, injectRef)
-	if err != nil {
-		return K8sEntity{}, false, err
-	}
-	if r {
-		replaced = true
+	for _, locator := range locators {
+		entity, r, err = locator.Inject(entity, selector, injectRef)
+		if err != nil {
+			return K8sEntity{}, false, err
+		}
+		if r {
+			replaced = true
+		}
 	}
 
 	return entity, replaced, nil
@@ -130,54 +132,6 @@ func injectImageDigestInEnvVars(entity K8sEntity, selector container.RefSelector
 	return entity, replaced, nil
 }
 
-func injectImageInUnstructuredInterface(ui interface{}, selector container.RefSelector, injectRef reference.Named) (interface{}, bool) {
-	switch x := ui.(type) {
-	case map[string]interface{}:
-		replaced := false
-		for k, v := range x {
-			newV, r := injectImageInUnstructuredInterface(v, selector, injectRef)
-			x[k] = newV
-			if r {
-				replaced = true
-			}
-		}
-		return x, replaced
-	case []interface{}:
-		replaced := false
-		for i, v := range x {
-			newV, r := injectImageInUnstructuredInterface(v, selector, injectRef)
-			x[i] = newV
-			if r {
-				replaced = true
-			}
-		}
-		return x, replaced
-	case string:
-		ref, err := container.ParseNamed(x)
-		if err == nil && selector.Matches(ref) {
-			return container.FamiliarString(injectRef), true
-		} else {
-			return x, false
-		}
-	default:
-		return ui, false
-	}
-}
-
-func injectImageDigestInUnstructured(entity K8sEntity, selector container.RefSelector, injectRef reference.Named) (K8sEntity, bool, error) {
-	u, ok := entity.Obj.(runtime.Unstructured)
-	if !ok {
-		return entity, false, nil
-	}
-
-	n, replaced := injectImageInUnstructuredInterface(u.UnstructuredContent(), selector, injectRef)
-
-	u.SetUnstructuredContent(n.(map[string]interface{}))
-
-	entity.Obj = u
-	return entity, replaced, nil
-}
-
 func InjectCommandAndArgs(entity K8sEntity, ref reference.Named, cmd model.Cmd, args model.OverrideArgs) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 
@@ -213,7 +167,7 @@ func injectCommandInContainers(entity K8sEntity, selector container.RefSelector,
 		if selector.Matches(existingRef) {
 			// The override rules of entrypoint and Command and Args are surprisingly complex!
 			// See this github thread:
-			// https://github.com/windmilleng/tilt/issues/2918
+			// https://github.com/tilt-dev/tilt/issues/2918
 			if !cmd.Empty() {
 				c.Command = cmd.Argv
 			}
@@ -229,12 +183,12 @@ func injectCommandInContainers(entity K8sEntity, selector container.RefSelector,
 }
 
 // HasImage indicates whether the given entity is tagged with the given image.
-func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPath, inEnvVars bool) (bool, error) {
+func (e K8sEntity) HasImage(image container.RefSelector, locators []ImageLocator, inEnvVars bool) (bool, error) {
 	var envVarImages []container.RefSelector
 	if inEnvVars {
 		envVarImages = []container.RefSelector{image}
 	}
-	images, err := e.FindImages(imageJSONPaths, envVarImages)
+	images, err := e.FindImages(locators, envVarImages)
 	if err != nil {
 		return false, errors.Wrap(err, "HasImage")
 	}
@@ -248,7 +202,7 @@ func (e K8sEntity) HasImage(image container.RefSelector, imageJSONPaths []JSONPa
 	return false, nil
 }
 
-func (e K8sEntity) FindImages(imageJSONPaths []JSONPath, envVarImages []container.RefSelector) ([]reference.Named, error) {
+func (e K8sEntity) FindImages(locators []ImageLocator, envVarImages []container.RefSelector) ([]reference.Named, error) {
 	var result []reference.Named
 
 	// Look for images in instances of Container
@@ -272,17 +226,13 @@ func (e K8sEntity) FindImages(imageJSONPaths []JSONPath, envVarImages []containe
 		obj = e.Obj
 	}
 
-	// also look for images in any json paths that were specified for this entity
-	for _, path := range imageJSONPaths {
-		image, err := path.Execute(obj)
+	for _, locator := range locators {
+		refs, err := locator.Extract(e)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error applying json path '%s'", path)
+			return nil, err
 		}
-		ref, err := container.ParseNamed(image)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing image '%s' at json path '%s'", image, path)
-		}
-		result = append(result, ref)
+
+		result = append(result, refs...)
 	}
 
 	envVars, err := extractEnvVars(&obj)

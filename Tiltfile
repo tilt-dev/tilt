@@ -1,3 +1,6 @@
+username = str(local('whoami')).rstrip('\n')
+experimental_analytics_report({'user.name': username})
+
 def remove_all_empty_and_whitespace(my_list):
   ret = []
   for x in my_list:
@@ -46,7 +49,7 @@ def go_vendor():
 
 all_go_files = get_all_go_files(".")
 
-go("Tilt", "cmd/tilt/main.go", all_go_files, srv="cd /tmp/ && ./tilt up --hud=false --no-browser --web-mode=prod --port=9765")
+go("Tilt", "cmd/tilt/main.go", all_go_files, srv="cd /tmp/ && ./tilt up --hud=false --web-mode=prod --port=9765")
 go_lint(all_go_files)
 go_vendor()
 

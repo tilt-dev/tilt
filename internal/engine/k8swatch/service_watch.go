@@ -8,10 +8,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ServiceWatcher struct {
@@ -63,7 +63,7 @@ func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore) {
 
 	ch, err := w.kCli.WatchServices(ctx, k8s.ManagedByTiltSelector())
 	if err != nil {
-		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\n")
+		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\nTry running `kubectl get services`")
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}

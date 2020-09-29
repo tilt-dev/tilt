@@ -69,7 +69,7 @@ func TestFilteredWriter(t *testing.T) {
 			name: "actual warning we want to suppress",
 			input: []string{
 				"hello\n",
-				"W1021 14:53:11.799222 68992 reflector.go:299] github.com/windmilleng/tilt/internal/k8s/watch.go:172: " +
+				"W1021 14:53:11.799222 68992 reflector.go:299] github.com/tilt-dev/tilt/internal/k8s/watch.go:172: " +
 					"watch of *v1.Pod ended with: too old resource version: 191906663 (191912819)\n",
 				"goodbye\n"},
 			expectedOutput: "hello\ngoodbye\n",

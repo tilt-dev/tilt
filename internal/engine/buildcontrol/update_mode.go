@@ -3,8 +3,8 @@ package buildcontrol
 import (
 	"fmt"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
 )
 
 type UpdateMode string
@@ -18,9 +18,6 @@ var (
 
 	// Only do image builds
 	UpdateModeImage UpdateMode = "image"
-
-	// Only do image builds from scratch
-	UpdateModeNaive UpdateMode = "naive"
 
 	// Deploy a synclet to make container updates faster
 	UpdateModeSynclet UpdateMode = "synclet"
@@ -36,7 +33,6 @@ var (
 var AllUpdateModes = []UpdateMode{
 	UpdateModeAuto,
 	UpdateModeImage,
-	UpdateModeNaive,
 	UpdateModeSynclet,
 	UpdateModeContainer,
 	UpdateModeKubectlExec,
@@ -62,11 +58,8 @@ func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runti
 	}
 
 	if mode == UpdateModeSynclet {
-		if runtime != container.RuntimeDocker {
-			return "", fmt.Errorf("update mode %q is only valid with Docker container runtime (and will NOT work with"+
-				"containerd, cri-o, etc.)", flag)
-
-		}
+		return "", fmt.Errorf("update mode %q has been removed; please use update mode %q instead. "+
+			"If this breaks your workflow, contact us: https://tilt.dev/contact", flag, UpdateModeKubectlExec)
 	}
 
 	return mode, nil

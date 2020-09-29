@@ -20,11 +20,15 @@
   }
   &.is-buildEvent-fallback {
     background-color: $color-gray-darker;
-
-    // A lil' trick so bottom margin only appears after the last element
-    margin-top: -$spacing-unit * 0.5;
-    margin-bottom: $spacing-unit * 0.5;
   }
+}
+
+.LogPaneLine.is-buildEvent-init + .LogPaneLine.is-buildEvent-fallback,
+.LogPaneLine.is-buildEvent-fallback + .LogPaneLine.is-buildEvent-fallback {
+
+  // A lil' trick so bottom margin only appears after the last element
+  margin-top: -$spacing-unit * 0.5;
+  margin-bottom: $spacing-unit * 0.5;
 }
 
 .logLinePrefix {
@@ -35,10 +39,9 @@
   color: $color-gray-lightest;
   padding-left: $spacing-unit * 0.5;
   padding-right: $spacing-unit * 0.5;
-  display: flex;
-  align-items: center;
-  justify-content: right;
+  text-align: right;
   flex-shrink: 0;
+  
   // Truncate long text:
   text-overflow: ellipsis;
   overflow: hidden;
@@ -49,6 +52,9 @@
     margin-top: -$logLine-separator-height;
     border-top: $logLine-separator-height solid $color-gray;
   }
+  .LogPaneLine.is-buildEvent-init > & {
+    visibility: hidden;
+  }
 }
 
 
@@ -57,6 +63,7 @@
   padding-left: $spacing-unit * 0.6;
   flex: 1;
   border-left: $logLine-separator-height solid $color-gray;
+  overflow-wrap: anywhere;
 
   // Make spacing around "header" text more generous for legibility
   // We avoid padding on the parent .LogPaneLine, lest we squish .logLinePrefix

@@ -6,29 +6,30 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
-	"github.com/windmilleng/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/ospath"
 
-	"github.com/windmilleng/tilt/internal/analytics"
-	"github.com/windmilleng/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 
-	"github.com/windmilleng/tilt/internal/container"
-	"github.com/windmilleng/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/containerupdate"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/ignore"
-	"github.com/windmilleng/tilt/internal/k8s"
-	"github.com/windmilleng/tilt/internal/store"
-	"github.com/windmilleng/tilt/pkg/logger"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/ignore"
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
-	dcu     *containerupdate.DockerContainerUpdater
+	dcu     *containerupdate.DockerUpdater
 	scu     *containerupdate.SyncletUpdater
 	ecu     *containerupdate.ExecUpdater
 	updMode buildcontrol.UpdateMode
@@ -37,7 +38,7 @@ type LiveUpdateBuildAndDeployer struct {
 	clock   build.Clock
 }
 
-func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerContainerUpdater,
+func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
 	scu *containerupdate.SyncletUpdater, ecu *containerupdate.ExecUpdater,
 	updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime, c build.Clock) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
@@ -94,7 +95,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	var dontFallBackErr error
 	for _, info := range liveUpdInfos {
-		ps.StartPipelineStep(ctx, "updating image %s", info.iTarget.Refs.ClusterRef().Name())
+		ps.StartPipelineStep(ctx, "updating image %s", reference.FamiliarName(info.iTarget.Refs.ClusterRef()))
 		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
 		if err != nil {
 			if !buildcontrol.IsDontFallBackError(err) {
@@ -115,14 +116,16 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	return createResultSet(liveUpdateStateSet, liveUpdInfos), err
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) error {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "LiveUpdateBuildAndDeployer-buildAndDeploy")
 	span.SetTag("target", iTarget.Refs.ConfigurationRef.String())
 	defer span.Finish()
 
 	startTime := time.Now()
 	defer func() {
-		analytics.Get(ctx).Timer("build.container", time.Since(startTime), nil)
+		analytics.Get(ctx).Timer("build.container", time.Since(startTime), map[string]string{
+			"hasError": fmt.Sprintf("%t", err != nil),
+		})
 	}()
 
 	l := logger.Get(ctx)
@@ -214,11 +217,11 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		if len(pathsMatchingNoSync) > 0 {
 			prettyPaths := ospath.FileListDisplayNames(iTarget.LocalPaths(), pathsMatchingNoSync)
 			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
-				"Found file(s) not matching any sync (files: %s)", strings.Join(prettyPaths, ", "))
+				"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(), strings.Join(prettyPaths, ", "))
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(build.PathMappingsToLocalPaths(fileMappings))
+		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(filesChanged)
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
@@ -262,10 +265,6 @@ func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.
 
 	if lubad.updMode == buildcontrol.UpdateModeKubectlExec {
 		return lubad.ecu
-	}
-
-	if shouldUseSynclet(lubad.updMode, lubad.env, lubad.runtime) {
-		return lubad.scu
 	}
 
 	if lubad.runtime == container.RuntimeDocker && lubad.env.UsesLocalDockerRegistry() {

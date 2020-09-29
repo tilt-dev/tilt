@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/windmilleng/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 )
 
 func TestChild(t *testing.T) {

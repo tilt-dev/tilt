@@ -160,7 +160,7 @@ func ConvertPortToPortConfig(
 
 		for i := startHostPort; i <= endHostPort; i++ {
 			ports = append(ports, swarm.PortConfig{
-				//TODO Name: ?
+				// TODO Name: ?
 				Protocol:      swarm.PortConfigProtocol(strings.ToLower(port.Proto())),
 				TargetPort:    uint32(port.Int()),
 				PublishedPort: uint32(i),

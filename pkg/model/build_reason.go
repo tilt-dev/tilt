@@ -18,6 +18,17 @@ const (
 	BuildReasonFlagTriggerWeb
 	BuildReasonFlagTriggerCLI
 	BuildReasonFlagTriggerUnknown
+
+	// An external process called `tilt args`
+	BuildReasonFlagTiltfileArgs
+
+	// Suppose you have
+	// manifestA with imageA depending on imageCommon
+	// manifestB with imageB depending on imageCommon
+	//
+	// Building manifestA will mark imageB
+	// with changed dependencies.
+	BuildReasonFlagChangedDeps
 )
 
 func (r BuildReason) With(flag BuildReason) BuildReason {
@@ -49,6 +60,8 @@ var translations = map[BuildReason]string{
 	BuildReasonFlagTriggerWeb:     "Web Trigger",
 	BuildReasonFlagTriggerCLI:     "CLI Trigger",
 	BuildReasonFlagTriggerUnknown: "Unknown Trigger",
+	BuildReasonFlagTiltfileArgs:   "Tilt Args",
+	BuildReasonFlagChangedDeps:    "Dependency Updated",
 }
 
 var triggerBuildReasons = []BuildReason{
@@ -64,7 +77,9 @@ var allBuildReasons = []BuildReason{
 	BuildReasonFlagCrash,
 	BuildReasonFlagTriggerWeb,
 	BuildReasonFlagTriggerCLI,
+	BuildReasonFlagChangedDeps,
 	BuildReasonFlagTriggerUnknown,
+	BuildReasonFlagTiltfileArgs,
 }
 
 func (r BuildReason) String() string {
@@ -76,6 +91,11 @@ func (r BuildReason) String() string {
 		if r.Has(v) {
 			return translations[v]
 		}
+	}
+
+	// The Init build reason should be listed alone too.
+	if r.Has(BuildReasonFlagInit) {
+		return translations[BuildReasonFlagInit]
 	}
 
 	// Use an array to iterate over the translations to ensure the iteration order

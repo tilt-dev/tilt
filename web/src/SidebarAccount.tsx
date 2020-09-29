@@ -13,6 +13,7 @@ import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as TiltCloudLogoSvg } from "./assets/svg/logo-Tilt-Cloud.svg"
 import ButtonLink from "./ButtonLink"
 import ButtonInput from "./ButtonInput"
+import ReactOutlineManager from "react-outline-manager"
 
 export const SidebarAccountRoot = styled.div`
   position: relative; // Anchor SidebarAccountMenu
@@ -156,9 +157,6 @@ let MenuContentTeamInTiltfile = styled.small`
     opacity: 1;
   }
 `
-let MenuContentSignInLink = styled.p`
-  text-align: center;
-`
 export const MenuContentButtonTiltCloud = styled(ButtonLink)`
   margin-top: ${SizeUnit(0.3)};
 `
@@ -247,21 +245,11 @@ function SidebarAccount(props: SidebarAccountProps) {
         onSubmit={notifyTiltOfRegistration}
       >
         <input name="token" type="hidden" value={cookies.get("Tilt-Token")} />
-        <MenuContentButtonSignUp type="submit" value="Sign Up via GitHub" />
+        <MenuContentButtonSignUp
+          type="submit"
+          value="Link Tilt to Tilt Cloud"
+        />
       </form>
-      <MenuContentSignInLink>
-        Or{" "}
-        <strong>
-          <a
-            href={props.tiltCloudSchemeHost}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-          >
-            Sign In
-          </a>
-        </strong>{" "}
-        to your account.
-      </MenuContentSignInLink>
     </SidebarAccountMenuContent>
   )
 
@@ -272,12 +260,14 @@ function SidebarAccount(props: SidebarAccountProps) {
   return (
     <SidebarAccountRoot>
       <SidebarAccountHeader>
-        <SidebarAccountButton
-          onClick={() => toggleAccountMenu(!accountMenuIsVisible)}
-        >
-          <SidebarAccountLabel>Your Tilt Cloud status</SidebarAccountLabel>
-          <SidebarAccountIcon />
-        </SidebarAccountButton>
+        <ReactOutlineManager>
+          <SidebarAccountButton
+            onClick={() => toggleAccountMenu(!accountMenuIsVisible)}
+          >
+            <SidebarAccountLabel>Your Tilt Cloud status</SidebarAccountLabel>
+            <SidebarAccountIcon />
+          </SidebarAccountButton>
+        </ReactOutlineManager>
       </SidebarAccountHeader>
       <SidebarAccountMenu className={accountMenuIsVisible ? "is-visible" : ""}>
         <SidebarAccountMenuHeader>

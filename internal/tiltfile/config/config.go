@@ -7,9 +7,9 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
-	"github.com/windmilleng/tilt/internal/tiltfile/io"
-	"github.com/windmilleng/tilt/internal/tiltfile/starkit"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const UserConfigFileName = "tilt_config.json"
@@ -27,10 +27,11 @@ type Settings struct {
 
 type Extension struct {
 	UserConfigState model.UserConfigState
+	TiltSubcommand  model.TiltSubcommand
 }
 
-func NewExtension(userConfigState model.UserConfigState) *Extension {
-	return &Extension{UserConfigState: userConfigState}
+func NewExtension(tiltSubcommand model.TiltSubcommand) *Extension {
+	return &Extension{TiltSubcommand: tiltSubcommand}
 }
 
 func (e *Extension) NewState() interface{} {
@@ -79,7 +80,22 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 		}
 	}
 
-	return nil
+	err := env.AddValue("config.tilt_subcommand", starlark.String(e.TiltSubcommand))
+	if err != nil {
+		return err
+	}
+
+	err = env.AddValue("config.main_path", starlark.String(env.StartPath()))
+	if err != nil {
+		return err
+	}
+
+	err = env.AddValue("config.main_dir", starlark.String(filepath.Dir(env.StartPath())))
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
 func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -117,7 +133,7 @@ func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args st
 
 	userConfigPath := filepath.Join(wd, UserConfigFileName)
 
-	err = io.RecordReadFile(thread, userConfigPath)
+	err = io.RecordReadPath(thread, io.WatchFileOnly, userConfigPath)
 	if err != nil {
 		return starlark.None, err
 	}

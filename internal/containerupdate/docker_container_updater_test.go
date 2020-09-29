@@ -8,13 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/windmilleng/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils"
 
-	"github.com/windmilleng/tilt/internal/build"
-	"github.com/windmilleng/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/store"
 
-	"github.com/windmilleng/tilt/internal/docker"
-	"github.com/windmilleng/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var TestContainerInfo = store.ContainerInfo{
@@ -110,12 +110,12 @@ type dockerContainerUpdaterFixture struct {
 	t    testing.TB
 	ctx  context.Context
 	dCli *docker.FakeClient
-	dcu  *DockerContainerUpdater
+	dcu  *DockerUpdater
 }
 
 func newDCUFixture(t testing.TB) *dockerContainerUpdaterFixture {
 	fakeCli := docker.NewFakeClient()
-	cu := &DockerContainerUpdater{dCli: fakeCli}
+	cu := &DockerUpdater{dCli: fakeCli}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	return &dockerContainerUpdaterFixture{

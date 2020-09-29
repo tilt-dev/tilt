@@ -10,6 +10,7 @@ import (
 	pb "github.com/moby/buildkit/solver/pb"
 	io "io"
 	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -21,7 +22,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type WorkerRecord struct {
 	ID                   string            `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
@@ -47,7 +48,7 @@ func (m *WorkerRecord) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return xxx_messageInfo_WorkerRecord.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +119,7 @@ func (m *GCPolicy) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_GCPolicy.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +204,7 @@ var fileDescriptor_e4ff6184b07e587a = []byte{
 func (m *WorkerRecord) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -211,67 +212,80 @@ func (m *WorkerRecord) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *WorkerRecord) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WorkerRecord) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.ID) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintWorker(dAtA, i, uint64(len(m.ID)))
-		i += copy(dAtA[i:], m.ID)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if len(m.Labels) > 0 {
-		for k, _ := range m.Labels {
-			dAtA[i] = 0x12
-			i++
-			v := m.Labels[k]
-			mapSize := 1 + len(k) + sovWorker(uint64(len(k))) + 1 + len(v) + sovWorker(uint64(len(v)))
-			i = encodeVarintWorker(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintWorker(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintWorker(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
+	if len(m.GCPolicy) > 0 {
+		for iNdEx := len(m.GCPolicy) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.GCPolicy[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintWorker(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.Platforms) > 0 {
-		for _, msg := range m.Platforms {
+		for iNdEx := len(m.Platforms) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Platforms[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintWorker(dAtA, i, uint64(size))
+			}
+			i--
 			dAtA[i] = 0x1a
-			i++
-			i = encodeVarintWorker(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
 		}
 	}
-	if len(m.GCPolicy) > 0 {
-		for _, msg := range m.GCPolicy {
-			dAtA[i] = 0x22
-			i++
-			i = encodeVarintWorker(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
+	if len(m.Labels) > 0 {
+		for k := range m.Labels {
+			v := m.Labels[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintWorker(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintWorker(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintWorker(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x12
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.ID) > 0 {
+		i -= len(m.ID)
+		copy(dAtA[i:], m.ID)
+		i = encodeVarintWorker(dAtA, i, uint64(len(m.ID)))
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *GCPolicy) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -279,59 +293,61 @@ func (m *GCPolicy) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *GCPolicy) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GCPolicy) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if len(m.Filters) > 0 {
+		for iNdEx := len(m.Filters) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Filters[iNdEx])
+			copy(dAtA[i:], m.Filters[iNdEx])
+			i = encodeVarintWorker(dAtA, i, uint64(len(m.Filters[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if m.KeepBytes != 0 {
+		i = encodeVarintWorker(dAtA, i, uint64(m.KeepBytes))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.KeepDuration != 0 {
+		i = encodeVarintWorker(dAtA, i, uint64(m.KeepDuration))
+		i--
+		dAtA[i] = 0x10
+	}
 	if m.All {
-		dAtA[i] = 0x8
-		i++
+		i--
 		if m.All {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
 		}
-		i++
+		i--
+		dAtA[i] = 0x8
 	}
-	if m.KeepDuration != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintWorker(dAtA, i, uint64(m.KeepDuration))
-	}
-	if m.KeepBytes != 0 {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintWorker(dAtA, i, uint64(m.KeepBytes))
-	}
-	if len(m.Filters) > 0 {
-		for _, s := range m.Filters {
-			dAtA[i] = 0x22
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
-	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func encodeVarintWorker(dAtA []byte, offset int, v uint64) int {
+	offset -= sovWorker(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *WorkerRecord) Size() (n int) {
 	if m == nil {
@@ -397,14 +413,7 @@ func (m *GCPolicy) Size() (n int) {
 }
 
 func sovWorker(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
+	return (math_bits.Len64(x|1) + 6) / 7
 }
 func sozWorker(x uint64) (n int) {
 	return sovWorker(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -837,6 +846,7 @@ func (m *GCPolicy) Unmarshal(dAtA []byte) error {
 func skipWorker(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
+	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -868,10 +878,8 @@ func skipWorker(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
-			return iNdEx, nil
 		case 1:
 			iNdEx += 8
-			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -892,55 +900,30 @@ func skipWorker(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthWorker
 			}
 			iNdEx += length
-			if iNdEx < 0 {
-				return 0, ErrInvalidLengthWorker
-			}
-			return iNdEx, nil
 		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return 0, ErrIntOverflowWorker
-					}
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipWorker(dAtA[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-				if iNdEx < 0 {
-					return 0, ErrInvalidLengthWorker
-				}
-			}
-			return iNdEx, nil
+			depth++
 		case 4:
-			return iNdEx, nil
+			if depth == 0 {
+				return 0, ErrUnexpectedEndOfGroupWorker
+			}
+			depth--
 		case 5:
 			iNdEx += 4
-			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
+		if iNdEx < 0 {
+			return 0, ErrInvalidLengthWorker
+		}
+		if depth == 0 {
+			return iNdEx, nil
+		}
 	}
-	panic("unreachable")
+	return 0, io.ErrUnexpectedEOF
 }
 
 var (
-	ErrInvalidLengthWorker = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowWorker   = fmt.Errorf("proto: integer overflow")
+	ErrInvalidLengthWorker        = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowWorker          = fmt.Errorf("proto: integer overflow")
+	ErrUnexpectedEndOfGroupWorker = fmt.Errorf("proto: unexpected end of group")
 )
