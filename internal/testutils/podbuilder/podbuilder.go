@@ -63,6 +63,7 @@ type PodBuilder struct {
 	extraPodLabels  map[string]string
 	deploymentUID   types.UID
 	resourceVersion string
+	unknownOwner    bool
 
 	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
 	// If there's no entry at index i, we'll use a dummy value.
@@ -84,6 +85,13 @@ func New(t testing.TB, manifest model.Manifest) PodBuilder {
 		extraPodLabels:         make(map[string]string),
 		setPodTemplateSpecHash: true,
 	}
+}
+
+// Remove the owner reference. Useful for testing pod watching when
+// the owner chain is broken (as in some CRDs).
+func (b PodBuilder) WithUnknownOwner() PodBuilder {
+	b.unknownOwner = true
+	return b
 }
 
 func (b PodBuilder) WithPodLabel(key, val string) PodBuilder {
@@ -392,6 +400,13 @@ func (b PodBuilder) Build() *v1.Pod {
 		spec.Containers[i] = container
 	}
 
+	ownerRefs := []metav1.OwnerReference{
+		k8s.RuntimeObjToOwnerRef(b.buildReplicaSet()),
+	}
+	if b.unknownOwner {
+		ownerRefs = nil
+	}
+
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              string(b.PodID()),
@@ -400,10 +415,8 @@ func (b PodBuilder) Build() *v1.Pod {
 			DeletionTimestamp: b.buildDeletionTime(),
 			Labels:            labels,
 			UID:               b.buildPodUID(),
-			OwnerReferences: []metav1.OwnerReference{
-				k8s.RuntimeObjToOwnerRef(b.buildReplicaSet()),
-			},
-			ResourceVersion: b.resourceVersion,
+			OwnerReferences:   ownerRefs,
+			ResourceVersion:   b.resourceVersion,
 		},
 		Spec: spec,
 		Status: v1.PodStatus{
