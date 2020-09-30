@@ -224,6 +224,17 @@
         }
       }
     },
+    "webviewLink": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "link_text": {
+          "type": "string"
+        }
+      }
+    },
     "webviewLocalResourceInfo": {
       "type": "object",
       "properties": {
@@ -355,7 +366,7 @@
         "endpoints": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/webviewLink"
           }
         },
         "podID": {

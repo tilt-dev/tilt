@@ -102,6 +102,11 @@ message Facet {
   string span_id = 3;
 }
 
+message Link {
+  string url = 1;
+  string link_text = 2;
+}
+
 message Resource {
   string name = 1;
 
@@ -110,7 +115,7 @@ message Resource {
 
   reserved "paths_watched";
   reserved 3;
-  
+
   google.protobuf.Timestamp last_deploy_time = 4;
   int32 trigger_mode = 5;
   repeated BuildRecord build_history = 6;
@@ -119,7 +124,7 @@ message Resource {
   repeated string pending_build_edits = 9;
   google.protobuf.Timestamp pending_build_since = 10;
   bool has_pending_changes = 11;
-  repeated string endpoints = 12;
+  repeated Link endpoints = 12;
   string podID = 13;
   K8sResourceInfo k8s_resource_info = 14;
   DCResourceInfo dc_resource_info = 15;
