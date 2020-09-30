@@ -4,6 +4,9 @@ import { TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
 
+const unnamedPortForwardLink = { url: "1.2.3.4:8080" }
+const namedPortForwardLink = { url: "1.2.3.4:9090", linkText: "debugger" }
+
 type view = {
   resources: Array<Resource>
   logList?: Proto.webviewLogList
@@ -121,7 +124,7 @@ function oneResourceNoAlerts(): any {
       podStatus: "Running",
       podRestarts: 0,
     },
-    endpoints: ["1.2.3.4:8080"],
+    endpoints: [unnamedPortForwardLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -149,7 +152,7 @@ function oneResourceImagePullBackOff(): any {
       podStatus: "ImagePullBackOff",
       podRestarts: 0,
     },
-    endpoints: ["1.2.3.4:8080"],
+    endpoints: [unnamedPortForwardLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -177,7 +180,7 @@ function oneResourceErrImgPull(): any {
       podStatus: "ErrImagePull",
       podRestarts: 0,
     },
-    endpoints: ["1.2.3.4:8080"],
+    endpoints: [unnamedPortForwardLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -236,7 +239,7 @@ function twoResourceView(): view {
       edits: ["main.go"],
       startTime: ts,
     },
-    endpoints: ["1.2.3.4:8080"],
+    endpoints: [unnamedPortForwardLink],
     runtimeStatus: "ok",
     triggerMode: TriggerMode.TriggerModeAuto,
     crashLog: "",

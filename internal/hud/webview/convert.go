@@ -1,7 +1,6 @@
 package webview
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -268,14 +267,13 @@ func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_we
 	return store.NewLogAction(model.ManifestName(span.ManifestName), logstore.SpanID(seg.SpanId), spoofedLevel, seg.Fields, []byte(seg.Text))
 }
 
+// NOTE(maia): for backwards compatibility, will remove once port forward link_text etc.
+// configurable from Tiltfile
 func temporaryConvertEndpoints(endpoints []string) []*proto_webview.Link {
 	res := make([]*proto_webview.Link, len(endpoints))
 	for i, e := range endpoints {
 		res[i] = &proto_webview.Link{
 			Url: e,
-
-			// todo: should be empty string when not testing
-			LinkText: fmt.Sprintf("Endpt#%d", i+1),
 		}
 	}
 	return res

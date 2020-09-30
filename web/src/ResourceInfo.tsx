@@ -4,9 +4,11 @@ import * as s from "./style-helpers"
 import { SnapshotHighlight } from "./types"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 
+type Link = Proto.webviewLink
+
 type HUDHeaderProps = {
   podID?: string
-  endpoints?: string[]
+  endpoints?: Link[]
   podStatus?: string
   showSnapshotButton: boolean
   highlight: SnapshotHighlight | null
@@ -42,14 +44,14 @@ let PortForward = styled.span`
   }
 `
 
-let PortForwardLabel = styled.span`
+let ResourceLinkLabel = styled.span`
   color: ${s.Color.grayLight};
   margin-right: ${s.SizeUnit(0.25)};
 
   ${s.mixinHideOnSmallScreen}
 `
 
-let PortForwardLink = styled.a`
+let ResourceLink = styled.a`
   & + & {
     padding-left: ${s.SizeUnit(0.25)};
     border-left: 1px dotted ${s.Color.grayLight};
@@ -115,18 +117,19 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
     let endpoints = this.props.endpoints ?? []
     let endpointsEl = endpoints?.length > 0 && (
       <PortForward>
-        <PortForwardLabel>
+        <ResourceLinkLabel>
           Port-Forward{endpoints?.length > 1 ? "s" : ""}:
-        </PortForwardLabel>
+        </ResourceLinkLabel>
+
         {endpoints?.map(ep => (
-          <PortForwardLink
-            href={ep}
+          <ResourceLink
+            href={ep.url}
             target="_blank"
             rel="noopener noreferrer"
-            key={ep}
+            key={ep.url}
           >
-            {ep}
-          </PortForwardLink>
+            {ep.linkText ? ep.linkText : ep.url}
+          </ResourceLink>
         ))}
       </PortForward>
     )
