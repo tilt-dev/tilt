@@ -4,8 +4,8 @@ import { TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
 
-const unnamedPortForwardLink = { url: "1.2.3.4:8080" }
-const namedPortForwardLink = { url: "1.2.3.4:9090", linkText: "debugger" }
+const unnamedEndpointLink = { url: "1.2.3.4:8080" }
+const namedEndpointLink = { url: "1.2.3.4:9090", linkText: "debugger" }
 
 type view = {
   resources: Array<Resource>
@@ -124,7 +124,7 @@ function oneResourceNoAlerts(): any {
       podStatus: "Running",
       podRestarts: 0,
     },
-    endpoints: [unnamedPortForwardLink],
+    endpoints: [unnamedEndpointLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -152,7 +152,7 @@ function oneResourceImagePullBackOff(): any {
       podStatus: "ImagePullBackOff",
       podRestarts: 0,
     },
-    endpoints: [unnamedPortForwardLink],
+    endpoints: [unnamedEndpointLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -180,7 +180,7 @@ function oneResourceErrImgPull(): any {
       podStatus: "ErrImagePull",
       podRestarts: 0,
     },
-    endpoints: [unnamedPortForwardLink],
+    endpoints: [unnamedEndpointLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -239,7 +239,7 @@ function twoResourceView(): view {
       edits: ["main.go"],
       startTime: ts,
     },
-    endpoints: [unnamedPortForwardLink],
+    endpoints: [unnamedEndpointLink],
     runtimeStatus: "ok",
     triggerMode: TriggerMode.TriggerModeAuto,
     crashLog: "",
@@ -4990,4 +4990,6 @@ export {
   oneResourceManualTriggerDirty,
   oneResourceUnrecognizedError,
   logPaneDOM,
+  unnamedEndpointLink,
+  namedEndpointLink,
 }

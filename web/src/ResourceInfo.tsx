@@ -116,7 +116,7 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
 
     let endpoints = this.props.endpoints ?? []
     let endpointsEl = endpoints?.length > 0 && (
-      <PortForward>
+      <PortForward id="endpoints">
         <ResourceLinkLabel>
           Port-Forward{endpoints?.length > 1 ? "s" : ""}:
         </ResourceLinkLabel>

@@ -426,7 +426,7 @@ function dcResource(): Resource {
     pendingBuildEdits: [],
     pendingBuildSince: "0001-01-01T00:00:00Z",
     hasPendingChanges: false,
-    endpoints: ["http://localhost:9007/"],
+    endpoints: [{ url: "http://localhost:9007/" }],
     podID: "",
     dcResourceInfo: {
       configPaths: [""],
