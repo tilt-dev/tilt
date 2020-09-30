@@ -91,11 +91,20 @@ type Client interface {
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
 	CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error)
 
-	WatchPods(ctx context.Context, lps labels.Selector) (<-chan ObjectUpdate, error)
+	// Currently, WatchPods, WatchServices, and WatchEvents all take a namespace.
+	//
+	// If the namespace is "", they will try to watch all namespaces. If that fails, they will watch
+	// the config namespace only.
+	//
+	// Otherwise, they will only try to watch the specified namespace.
+	//
+	// Over time, we want to remove the ability to watch all namespaces
+	// https://github.com/tilt-dev/tilt/issues/3792
+	WatchPods(ctx context.Context, ns Namespace, lps labels.Selector) (<-chan ObjectUpdate, error)
 
-	WatchServices(ctx context.Context, lps labels.Selector) (<-chan *v1.Service, error)
+	WatchServices(ctx context.Context, ns Namespace, lps labels.Selector) (<-chan *v1.Service, error)
 
-	WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
+	WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error)
 
 	ConnectedToCluster(ctx context.Context) error
 

@@ -38,6 +38,20 @@ func TestK8sClient_WatchPods(t *testing.T) {
 	tf.runPods(pods, pods)
 }
 
+func TestK8sClient_WatchPodsNamespaces(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	pod1 := fakePod(PodID("pod1"), "pod1")
+	pod2 := fakePod(PodID("pod2-system"), "pod2-system")
+	pod2.Namespace = "kube-system"
+	pod3 := fakePod(PodID("pod3"), "pod3")
+
+	ch := tf.watchPodsNS("default")
+	tf.addObjects(pod1, pod2, pod3)
+	tf.assertPods([]runtime.Object{pod1, pod3}, ch)
+}
+
 func TestK8sClient_WatchPodDeletion(t *testing.T) {
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
@@ -127,7 +141,7 @@ func TestK8sClient_WatchPodsError(t *testing.T) {
 	defer tf.TearDown()
 
 	tf.watchErr = newForbiddenError()
-	_, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
+	_, err := tf.kCli.WatchPods(tf.ctx, "", labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Forbidden")
 	}
@@ -155,7 +169,7 @@ func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
-	_, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
+	_, err := tf.kCli.WatchPods(tf.ctx, "", labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Code: 403")
 	}
@@ -183,7 +197,7 @@ func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
-	_, err := tf.kCli.WatchServices(tf.ctx, labels.Everything())
+	_, err := tf.kCli.WatchServices(tf.ctx, "", labels.Everything())
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Code: 403")
 	}
@@ -229,13 +243,13 @@ func TestK8sClient_WatchEventsUpdate(t *testing.T) {
 	tf.addObjects(event1, event2)
 	tf.assertEvents([]runtime.Object{event1, event2}, ch)
 
-	err := tf.tracker.Update(gvr, event1b, "")
+	err := tf.tracker.Update(gvr, event1b, "default")
 	require.NoError(t, err)
 	tf.assertEvents([]runtime.Object{}, ch)
 
 	err = tf.tracker.Add(event3)
 	require.NoError(t, err)
-	err = tf.tracker.Update(gvr, event2b, "")
+	err = tf.tracker.Update(gvr, event2b, "default")
 	require.NoError(t, err)
 	tf.assertEvents([]runtime.Object{event3, event2b}, ch)
 }
@@ -339,7 +353,15 @@ func (tf *watchTestFixture) TearDown() {
 }
 
 func (tf *watchTestFixture) watchPods() <-chan ObjectUpdate {
-	ch, err := tf.kCli.WatchPods(tf.ctx, labels.Everything())
+	ch, err := tf.kCli.WatchPods(tf.ctx, "", labels.Everything())
+	if err != nil {
+		tf.t.Fatalf("watchPods: %v", err)
+	}
+	return ch
+}
+
+func (tf *watchTestFixture) watchPodsNS(ns Namespace) <-chan ObjectUpdate {
+	ch, err := tf.kCli.WatchPods(tf.ctx, ns, labels.Everything())
 	if err != nil {
 		tf.t.Fatalf("watchPods: %v", err)
 	}
@@ -347,7 +369,7 @@ func (tf *watchTestFixture) watchPods() <-chan ObjectUpdate {
 }
 
 func (tf *watchTestFixture) watchServices() <-chan *v1.Service {
-	ch, err := tf.kCli.WatchServices(tf.ctx, labels.Everything())
+	ch, err := tf.kCli.WatchServices(tf.ctx, "", labels.Everything())
 	if err != nil {
 		tf.t.Fatalf("watchServices: %v", err)
 	}
@@ -355,7 +377,7 @@ func (tf *watchTestFixture) watchServices() <-chan *v1.Service {
 }
 
 func (tf *watchTestFixture) watchEvents() <-chan *v1.Event {
-	ch, err := tf.kCli.WatchEvents(tf.ctx)
+	ch, err := tf.kCli.WatchEvents(tf.ctx, "")
 	if err != nil {
 		tf.t.Fatalf("watchEvents: %v", err)
 	}
@@ -461,7 +483,7 @@ func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-c
 }
 
 func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels labels.Set) {
-	_, err := tf.kCli.WatchPods(tf.ctx, input.AsSelector())
+	_, err := tf.kCli.WatchPods(tf.ctx, "", input.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}
@@ -470,7 +492,7 @@ func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels label
 }
 
 func (tf *watchTestFixture) testServiceLabels(input labels.Set, expectedLabels labels.Set) {
-	_, err := tf.kCli.WatchServices(tf.ctx, input.AsSelector())
+	_, err := tf.kCli.WatchServices(tf.ctx, "", input.AsSelector())
 	if !assert.NoError(tf.t, err) {
 		return
 	}

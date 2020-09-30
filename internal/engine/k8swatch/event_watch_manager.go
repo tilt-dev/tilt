@@ -91,7 +91,7 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, tiltStartTime time.Time) {
 	m.watching = true
 
-	ch, err := m.kClient.WatchEvents(ctx)
+	ch, err := m.kClient.WatchEvents(ctx, "")
 	if err != nil {
 		err = errors.Wrap(err, "Error watching k8s events\n")
 		st.Dispatch(store.NewErrorAction(err))
