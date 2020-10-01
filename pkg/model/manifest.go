@@ -456,12 +456,31 @@ type Link struct {
 	Name string
 }
 
-func (pf PortForward) ToLink() string {
+// ByURL implements sort.Interface based on the URL field.
+type ByURL []Link
+
+func (lns ByURL) Len() int           { return len(lns) }
+func (lns ByURL) Less(i, j int) bool { return lns[i].URL < lns[j].URL }
+func (lns ByURL) Swap(i, j int)      { lns[i], lns[j] = lns[j], lns[i] }
+
+func (pf PortForward) ToLink() Link {
 	host := pf.Host
 	if host == "" {
 		host = "localhost"
 	}
-	return fmt.Sprintf("http://%s:%d/", host, pf.LocalPort)
+	url := fmt.Sprintf("http://%s:%d/", host, pf.LocalPort)
+	return Link{
+		URL:  url,
+		Name: pf.Name,
+	}
+}
+
+func LinksToURLs(lns []Link) []string {
+	res := make([]string, len(lns))
+	for i, ln := range lns {
+		res[i] = ln.URL
+	}
+	return res
 }
 
 var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
