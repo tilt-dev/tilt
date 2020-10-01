@@ -44,6 +44,31 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 	f.assertActions(expected)
 }
 
+func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
+	f := newEWMFixture(t)
+	defer f.TearDown()
+
+	mn := model.ManifestName("someK8sManifest")
+
+	// Seed the k8s client with a pod and its owner tree
+	manifest := f.addManifest(mn)
+	pb := podbuilder.New(t, manifest)
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+
+	evt1 := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
+	evt1.ObjectMeta.Namespace = "kube-system"
+
+	evt2 := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
+
+	f.ewm.OnChange(f.ctx, f.store)
+	f.kClient.EmitEvent(f.ctx, evt1)
+	f.kClient.EmitEvent(f.ctx, evt2)
+
+	expected := store.K8sEventAction{Event: evt2, ManifestName: mn}
+	f.assertActions(expected)
+}
+
 type eventTestCase struct {
 	Reason   string
 	Type     string
@@ -172,7 +197,10 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 
 func (f *ewmFixture) makeEvent(obj k8s.K8sEntity) *v1.Event {
 	return &v1.Event{
-		ObjectMeta:     metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: f.clock.Now()}},
+		ObjectMeta: metav1.ObjectMeta{
+			CreationTimestamp: metav1.Time{Time: f.clock.Now()},
+			Namespace:         k8s.DefaultNamespace.String(),
+		},
 		Reason:         "test event reason",
 		Message:        "test event message",
 		InvolvedObject: v1.ObjectReference{UID: obj.UID(), Name: obj.Name()},
@@ -205,7 +233,7 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	ret := &ewmFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		kClient:        kClient,
-		ewm:            NewEventWatchManager(kClient, of),
+		ewm:            NewEventWatchManager(kClient, of, k8s.DefaultNamespace),
 		ctx:            ctx,
 		cancel:         cancel,
 		t:              t,

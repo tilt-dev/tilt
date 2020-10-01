@@ -10,8 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/servicebuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -78,11 +81,13 @@ func TestServiceWatchUIDDelayed(t *testing.T) {
 	f.assertObservedServiceChangeActions(expectedSCA)
 }
 
-func (f *swFixture) addManifest(manifestName string) model.Manifest {
+func (f *swFixture) addManifest(manifestName model.ManifestName) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
 	defer f.store.UnlockMutableState()
-	dt := model.K8sTarget{Name: model.TargetName(manifestName)}
-	m := model.Manifest{Name: model.ManifestName(manifestName)}.WithDeployTarget(dt)
+
+	m := manifestbuilder.New(f, manifestName).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	return m
 }
@@ -101,6 +106,7 @@ func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 }
 
 type swFixture struct {
+	*tempdir.TempDirFixture
 	t       *testing.T
 	kClient *k8s.FakeK8sClient
 	nip     k8s.NodeIP
@@ -120,17 +126,18 @@ func newSWFixture(t *testing.T) *swFixture {
 	ctx, cancel := context.WithCancel(ctx)
 
 	of := k8s.ProvideOwnerFetcher(kClient)
-	sw := NewServiceWatcher(kClient, of)
+	sw := NewServiceWatcher(kClient, of, k8s.DefaultNamespace)
 	st := store.NewTestingStore()
 
 	return &swFixture{
-		kClient: kClient,
-		sw:      sw,
-		nip:     nip,
-		ctx:     ctx,
-		cancel:  cancel,
-		t:       t,
-		store:   st,
+		TempDirFixture: tempdir.NewTempDirFixture(t),
+		kClient:        kClient,
+		sw:             sw,
+		nip:            nip,
+		ctx:            ctx,
+		cancel:         cancel,
+		t:              t,
+		store:          st,
 	}
 }
 

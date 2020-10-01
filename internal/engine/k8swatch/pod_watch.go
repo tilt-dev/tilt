@@ -45,13 +45,13 @@ type PodWatcher struct {
 	knownPods map[types.UID]*v1.Pod
 }
 
-func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *PodWatcher {
+func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, cfgNS k8s.Namespace) *PodWatcher {
 	return &PodWatcher{
 		kCli:                   kCli,
 		ownerFetcher:           ownerFetcher,
 		knownDescendentPodUIDs: make(map[types.UID]store.UIDSet),
 		knownPods:              make(map[types.UID]*v1.Pod),
-		watcherKnownState:      newWatcherKnownState(),
+		watcherKnownState:      newWatcherKnownState(cfgNS),
 	}
 }
 
@@ -98,15 +98,18 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 	defer w.mu.RUnlock()
 
 	taskList := w.watcherKnownState.createTaskList(state)
+
+	// TODO(nick): Fix PodWatcher to only watch in namespaces we've deployed to.
 	var neededWatches []PodWatch
-	for _, mt := range state.Targets() {
-		for _, ls := range mt.Manifest.K8sTarget().ExtraPodSelectors {
-			if !ls.Empty() {
-				neededWatches = append(neededWatches, PodWatch{name: mt.Manifest.Name, labels: ls})
+	if len(taskList.watchableNamespaces) > 0 {
+		for _, mt := range state.Targets() {
+			for _, ls := range mt.Manifest.K8sTarget().ExtraPodSelectors {
+				if !ls.Empty() {
+					neededWatches = append(neededWatches, PodWatch{name: mt.Manifest.Name, labels: ls})
+				}
 			}
 		}
-	}
-	if taskList.needsWatch {
+
 		neededWatches = append(neededWatches, PodWatch{labels: k8s.ManagedByTiltSelector()})
 	}
 
@@ -120,10 +123,13 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	taskList := w.diff(ctx, st)
 
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	for _, pw := range taskList.setup {
 		ctx, cancel := context.WithCancel(ctx)
 		pw.cancel = cancel
-		w.addWatch(pw)
+		w.watches = append(w.watches, pw)
 		ch, err := w.kCli.WatchPods(ctx, "", pw.labels)
 		if err != nil {
 			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods`")
@@ -141,21 +147,9 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	if len(taskList.newUIDs) > 0 {
 		w.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
-
-	w.mu.Lock()
-	w.watcherKnownState.finishTaskList(taskList.watcherTaskList)
-	w.mu.Unlock()
-}
-
-func (w *PodWatcher) addWatch(pw PodWatch) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.watches = append(w.watches, pw)
 }
 
 func (w *PodWatcher) removeWatch(toRemove PodWatch) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	oldWatches := append([]PodWatch{}, w.watches...)
 	w.watches = nil
 	for _, e := range oldWatches {
@@ -170,10 +164,9 @@ func (w *PodWatcher) removeWatch(toRemove PodWatch) {
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
 func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
 	for uid, mn := range newUIDs {
+		w.watcherKnownState.knownDeployedUIDs[uid] = mn
+
 		pod, ok := w.knownPods[uid]
 		if ok {
 			st.Dispatch(NewPodChangeAction(pod, mn, uid))

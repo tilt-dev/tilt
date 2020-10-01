@@ -72,9 +72,10 @@ func (sb ServiceBuilder) Build() *v1.Service {
 
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   sb.name(),
-			Labels: k8s.NewTiltLabelMap(),
-			UID:    sb.getUid(),
+			Name:      sb.name(),
+			Namespace: k8s.DefaultNamespace.String(),
+			Labels:    k8s.NewTiltLabelMap(),
+			UID:       sb.getUid(),
 		},
 		Spec: v1.ServiceSpec{Ports: ports},
 		Status: v1.ServiceStatus{

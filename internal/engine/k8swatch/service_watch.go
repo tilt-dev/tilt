@@ -17,18 +17,17 @@ import (
 type ServiceWatcher struct {
 	kCli         k8s.Client
 	ownerFetcher k8s.OwnerFetcher
-	watching     bool
 
 	mu                sync.RWMutex
 	watcherKnownState watcherKnownState
 	knownServices     map[types.UID]*v1.Service
 }
 
-func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *ServiceWatcher {
+func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, cfgNS k8s.Namespace) *ServiceWatcher {
 	return &ServiceWatcher{
 		kCli:              kCli,
 		ownerFetcher:      ownerFetcher,
-		watcherKnownState: newWatcherKnownState(),
+		watcherKnownState: newWatcherKnownState(cfgNS),
 		knownServices:     make(map[types.UID]*v1.Service),
 	}
 }
@@ -40,37 +39,42 @@ func (w *ServiceWatcher) diff(st store.RStore) watcherTaskList {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	taskList := w.watcherKnownState.createTaskList(state)
-	if w.watching {
-		taskList.needsWatch = false
-	}
-	return taskList
+	return w.watcherKnownState.createTaskList(state)
 }
 
 func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
 	taskList := w.diff(st)
-	if taskList.needsWatch {
-		w.setupWatch(ctx, st)
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	for _, teardown := range taskList.teardownNamespaces {
+		watcher, ok := w.watcherKnownState.namespaceWatches[teardown]
+		if ok {
+			watcher.cancel()
+		}
+		delete(w.watcherKnownState.namespaceWatches, teardown)
+	}
+
+	for _, setup := range taskList.setupNamespaces {
+		w.setupWatch(ctx, st, setup)
 	}
 
 	if len(taskList.newUIDs) > 0 {
 		w.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
-
-	w.mu.Lock()
-	w.watcherKnownState.finishTaskList(taskList)
-	w.mu.Unlock()
 }
 
-func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore) {
-	w.watching = true
-
-	ch, err := w.kCli.WatchServices(ctx, "", k8s.ManagedByTiltSelector())
+func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace) {
+	ch, err := w.kCli.WatchServices(ctx, ns, k8s.ManagedByTiltSelector())
 	if err != nil {
 		err = errors.Wrap(err, "Error watching services. Are you connected to kubernetes?\nTry running `kubectl get services`")
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	w.watcherKnownState.namespaceWatches[ns] = namespaceWatch{cancel: cancel}
 
 	go w.dispatchServiceChangesLoop(ctx, ch, st)
 }
@@ -80,10 +84,9 @@ func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore) {
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
 func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
 	for uid, mn := range newUIDs {
+		w.watcherKnownState.knownDeployedUIDs[uid] = mn
+
 		service, ok := w.knownServices[uid]
 		if !ok {
 			continue
