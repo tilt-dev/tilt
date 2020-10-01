@@ -439,6 +439,29 @@ type PortForward struct {
 
 	// Optional host to bind to on the current machine (localhost by default)
 	Host string
+
+	// Optional name of the port forward; if given, used as text of the URL
+	// displayed in the web UI (e.g. <a href="localhost:8888">Debugger</a>)
+	Name string
+}
+
+// A link associated with resource; may represent a port forward, an endpoint
+// derived from a Service/Ingress/etc., or a URL manually associated with a
+// resource via the Tiltfile (TK)
+type Link struct {
+	URL string
+
+	// Optional name of the link; if given, used as text of the URL
+	// displayed in the web UI (e.g. <a href="localhost:8888">Debugger</a>)
+	Name string
+}
+
+func (pf PortForward) ToLink() string {
+	host := pf.Host
+	if host == "" {
+		host = "localhost"
+	}
+	return fmt.Sprintf("http://%s:%d/", host, pf.LocalPort)
 }
 
 var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
