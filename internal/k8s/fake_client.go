@@ -33,6 +33,8 @@ type PodAndCName struct {
 }
 
 type FakeK8sClient struct {
+	mu sync.Mutex
+
 	FakePortForwardClient
 
 	Yaml string
@@ -48,13 +50,10 @@ type FakeK8sClient struct {
 	LastPodLogStartTime      time.Time
 	ContainerLogsError       error
 
-	podWatcherMu sync.Mutex
-	podWatches   []fakePodWatch
+	podWatches     []fakePodWatch
+	serviceWatches []fakeServiceWatch
+	eventWatches   []fakeEventWatch
 
-	serviceWatcherMu sync.Mutex
-	serviceWatches   []fakeServiceWatch
-
-	eventsCh       chan *v1.Event
 	EventsWatchErr error
 
 	UpsertError      error
@@ -81,64 +80,103 @@ type ExecCall struct {
 }
 
 type fakeServiceWatch struct {
+	ns Namespace
 	ls labels.Selector
 	ch chan *v1.Service
 }
 
 type fakePodWatch struct {
+	ns Namespace
 	ls labels.Selector
 	ch chan ObjectUpdate
 }
 
+type fakeEventWatch struct {
+	ns Namespace
+	ch chan *v1.Event
+}
+
 func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
-	c.podWatcherMu.Lock()
-	defer c.podWatcherMu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for _, w := range c.serviceWatches {
-		if SelectorEqual(ls, w.ls) {
-			w.ch <- s
+		if !SelectorEqual(ls, w.ls) {
+			continue
 		}
+
+		if w.ns != "" && w.ns != Namespace(s.Namespace) {
+			continue
+		}
+
+		w.ch <- s
 	}
 }
 
-func (c *FakeK8sClient) WatchServices(ctx context.Context, ls labels.Selector) (<-chan *v1.Service, error) {
-	c.serviceWatcherMu.Lock()
+func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan *v1.Service, error) {
+	c.mu.Lock()
 	ch := make(chan *v1.Service, 20)
-	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ls, ch})
-	c.serviceWatcherMu.Unlock()
+	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ns, ls, ch})
+	c.mu.Unlock()
 
 	go func() {
 		// when ctx is canceled, remove the label selector from the list of watched label selectors
 		<-ctx.Done()
-		c.serviceWatcherMu.Lock()
+		c.mu.Lock()
 		var newWatches []fakeServiceWatch
 		for _, e := range c.serviceWatches {
-			if !SelectorEqual(e.ls, ls) {
+			if e.ns != ns || !SelectorEqual(e.ls, ls) {
 				newWatches = append(newWatches, e)
 			}
 		}
 		c.serviceWatches = newWatches
-		c.serviceWatcherMu.Unlock()
+		c.mu.Unlock()
 	}()
 	return ch, nil
 }
 
-func (c *FakeK8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
+func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error) {
 	if c.EventsWatchErr != nil {
 		err := c.EventsWatchErr
 		c.EventsWatchErr = nil
 		return nil, err
 	}
 
-	return c.eventsCh, nil
+	c.mu.Lock()
+	ch := make(chan *v1.Event, 20)
+	c.eventWatches = append(c.eventWatches, fakeEventWatch{ns, ch})
+	c.mu.Unlock()
+
+	go func() {
+		<-ctx.Done()
+		c.mu.Lock()
+		var newWatches []fakeEventWatch
+		for _, e := range c.eventWatches {
+			if e.ns != ns {
+				newWatches = append(newWatches, e)
+			}
+		}
+		c.eventWatches = newWatches
+		c.mu.Unlock()
+	}()
+	return ch, nil
 }
 
 func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
-	c.eventsCh <- evt
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, w := range c.eventWatches {
+		if w.ns != "" && w.ns != Namespace(evt.Namespace) {
+			continue
+		}
+
+		w.ch <- evt
+	}
 }
 
 func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
-	c.podWatcherMu.Lock()
-	defer c.podWatcherMu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	var ret []labels.Selector
 	for _, w := range c.podWatches {
 		ret = append(ret, w.ls)
@@ -147,8 +185,8 @@ func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
 }
 
 func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
-	c.podWatcherMu.Lock()
-	defer c.podWatcherMu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for _, w := range c.podWatches {
 		if SelectorEqual(ls, w.ls) {
 			w.ch <- ObjectUpdate{obj: p}
@@ -157,8 +195,8 @@ func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
 }
 
 func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
-	c.podWatcherMu.Lock()
-	defer c.podWatcherMu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for _, w := range c.podWatches {
 		if SelectorEqual(ls, w.ls) {
 			w.ch <- ObjectUpdate{obj: p, isDelete: true}
@@ -166,24 +204,24 @@ func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
 	}
 }
 
-func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan ObjectUpdate, error) {
-	c.podWatcherMu.Lock()
+func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan ObjectUpdate, error) {
+	c.mu.Lock()
 	ch := make(chan ObjectUpdate, 20)
-	c.podWatches = append(c.podWatches, fakePodWatch{ls, ch})
-	c.podWatcherMu.Unlock()
+	c.podWatches = append(c.podWatches, fakePodWatch{ns, ls, ch})
+	c.mu.Unlock()
 
 	go func() {
 		// when ctx is canceled, remove the label selector from the list of watched label selectors
 		<-ctx.Done()
-		c.podWatcherMu.Lock()
+		c.mu.Lock()
 		var newWatches []fakePodWatch
 		for _, e := range c.podWatches {
-			if !SelectorEqual(e.ls, ls) {
+			if e.ns != ns || !SelectorEqual(e.ls, ls) {
 				newWatches = append(newWatches, e)
 			}
 		}
 		c.podWatches = newWatches
-		c.podWatcherMu.Unlock()
+		c.mu.Unlock()
 	}()
 	return ch, nil
 }
@@ -191,13 +229,21 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-ch
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
 		PodLogsByPodAndContainer: make(map[PodAndCName]BufferCloser),
-		eventsCh:                 make(chan *v1.Event, 10),
 	}
 }
 
 func (c *FakeK8sClient) TearDown() {
-	if c.eventsCh != nil {
-		close(c.eventsCh)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, watch := range c.podWatches {
+		close(watch.ch)
+	}
+	for _, watch := range c.serviceWatches {
+		close(watch.ch)
+	}
+	for _, watch := range c.eventWatches {
+		close(watch.ch)
 	}
 }
 

@@ -35,7 +35,8 @@ func fakePod(podID PodID, imageID string) *v1.Pod {
 func fakeService(name string) *v1.Service {
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:      name,
+			Namespace: "default",
 		},
 	}
 }
@@ -43,7 +44,8 @@ func fakeService(name string) *v1.Service {
 func fakeEvent(name string, message string, count int) *v1.Event {
 	return &v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:      name,
+			Namespace: "default",
 		},
 		Message: message,
 		Count:   int32(count),

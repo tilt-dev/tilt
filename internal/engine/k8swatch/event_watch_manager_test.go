@@ -123,6 +123,8 @@ func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 
 	// Seed the k8s client with a pod and its owner tree
 	manifest := f.addManifest(mn)
+	f.ewm.OnChange(f.ctx, f.store)
+
 	pb := podbuilder.New(t, manifest)
 	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
 

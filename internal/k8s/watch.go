@@ -106,20 +106,41 @@ func (kCli K8sClient) makeWatcher(ctx context.Context, f watcherFactory, ls labe
 	return nil, "", fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
 }
 
+func maybeUnpackStatusError(err error) error {
+	statusErr, isStatusErr := err.(*apiErrors.StatusError)
+	if !isStatusErr {
+		return err
+	}
+	status := statusErr.ErrStatus
+	return fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
+}
+
 func (kCli K8sClient) makeInformer(
 	ctx context.Context,
+	ns Namespace,
 	gvr schema.GroupVersionResource,
 	ls labels.Selector) (cache.SharedInformer, error) {
+
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
 	// throw it away.
-	watcher, ns, err := kCli.makeWatcher(ctx, func(ns string) watcher {
-		return kCli.dynamic.Resource(gvr).Namespace(ns)
-	}, ls)
-	if err != nil {
-		return nil, errors.Wrap(err, "makeInformer")
+	if ns == "" {
+		watcher, narrowNS, err := kCli.makeWatcher(ctx, func(ns string) watcher {
+			return kCli.dynamic.Resource(gvr).Namespace(ns)
+		}, ls)
+		if err != nil {
+			return nil, errors.Wrap(err, "makeInformer")
+		}
+		watcher.Stop()
+		ns = narrowNS
+	} else {
+		watcher, err := kCli.dynamic.Resource(gvr).Namespace(ns.String()).
+			Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
+		if err != nil {
+			return nil, errors.Wrap(maybeUnpackStatusError(err), "makeInformer")
+		}
+		watcher.Stop()
 	}
-	watcher.Stop()
 
 	options := []informers.SharedInformerOption{}
 	if !ls.Empty() {
@@ -140,9 +161,9 @@ func (kCli K8sClient) makeInformer(
 	return resFactory.Informer(), nil
 }
 
-func (kCli K8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error) {
+func (kCli K8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error) {
 	gvr := EventGVR
-	informer, err := kCli.makeInformer(ctx, gvr, labels.Everything())
+	informer, err := kCli.makeInformer(ctx, ns, gvr, labels.Everything())
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchEvents")
 	}
@@ -176,9 +197,9 @@ func (kCli K8sClient) WatchEvents(ctx context.Context) (<-chan *v1.Event, error)
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan ObjectUpdate, error) {
+func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan ObjectUpdate, error) {
 	gvr := PodGVR
-	informer, err := kCli.makeInformer(ctx, gvr, ls)
+	informer, err := kCli.makeInformer(ctx, ns, gvr, ls)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchPods")
 	}
@@ -220,9 +241,9 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ls labels.Selector) (<-chan
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchServices(ctx context.Context, ls labels.Selector) (<-chan *v1.Service, error) {
+func (kCli K8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan *v1.Service, error) {
 	gvr := ServiceGVR
-	informer, err := kCli.makeInformer(ctx, gvr, ls)
+	informer, err := kCli.makeInformer(ctx, ns, gvr, ls)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchServices")
 	}
