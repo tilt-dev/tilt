@@ -83,10 +83,13 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 	})
 	state := newState([]model.Manifest{m})
 	v := stateToProtoView(t, *state)
+
+	expected := []*proto_webview.Link{
+		&proto_webview.Link{Url: "http://localhost:7000/"},
+		&proto_webview.Link{Url: "http://localhost:8000/"},
+	}
 	res, _ := findResource(m.Name, v)
-	assert.Equal(t,
-		[]string{"http://localhost:7000/", "http://localhost:8000/"},
-		res.Endpoints)
+	assert.Equal(t, expected, res.EndpointLinks)
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {

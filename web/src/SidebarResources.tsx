@@ -157,7 +157,7 @@ class SidebarItem {
     this.name = res.name ?? ""
     this.isTiltfile = !!res.isTiltfile
     this.status = combinedStatus(res)
-    this.hasEndpoints = (res.endpoints || []).length > 0
+    this.hasEndpoints = (res.endpointLinks || []).length > 0
     this.lastBuildDur =
       lastBuild && lastBuild.startTime && lastBuild.finishTime
         ? timeDiff(lastBuild.startTime, lastBuild.finishTime)

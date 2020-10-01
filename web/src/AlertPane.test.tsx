@@ -245,7 +245,7 @@ function fillResourceFields(): Resource {
     name: "foo",
     buildHistory: [],
     crashLog: "",
-    endpoints: [],
+    endpointLinks: [],
     podID: "",
     isTiltfile: false,
     lastDeployTime: "",

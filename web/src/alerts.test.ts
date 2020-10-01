@@ -382,7 +382,7 @@ function k8sResource(): Resource {
     name: "snack",
     buildHistory: [],
     crashLog: "",
-    endpoints: [],
+    endpointLinks: [],
     podID: "podID",
     isTiltfile: false,
     lastDeployTime: "",
@@ -426,7 +426,7 @@ function dcResource(): Resource {
     pendingBuildEdits: [],
     pendingBuildSince: "0001-01-01T00:00:00Z",
     hasPendingChanges: false,
-    endpoints: ["http://localhost:9007/"],
+    endpointLinks: [{ url: "http://localhost:9007/" }],
     podID: "",
     dcResourceInfo: {
       configPaths: [""],

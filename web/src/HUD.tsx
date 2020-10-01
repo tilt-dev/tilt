@@ -317,7 +317,7 @@ class HUD extends Component<HudProps, HudState> {
     let resources = view?.resources ?? []
     let selectedResource = resources?.find(r => r.name === name)
 
-    let endpoints = selectedResource?.endpoints ?? []
+    let endpoints = selectedResource?.endpointLinks ?? []
     let podID = selectedResource?.podID ?? ""
     let podStatus =
       (selectedResource?.k8sResourceInfo &&
