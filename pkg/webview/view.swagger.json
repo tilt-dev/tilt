@@ -363,13 +363,7 @@
           "type": "boolean",
           "format": "boolean"
         },
-        "DEPRECATED_endpoints": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "endpointLinks": {
+        "endpoint_links": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/webviewLink"
