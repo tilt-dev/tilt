@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // filepath.Abs for testing
@@ -31,7 +32,38 @@ func Child(dir string, file string) (string, bool) {
 	current := filepath.Clean(file)
 	child := "."
 	for {
-		if dir == current {
+		if strings.EqualFold(dir, current) {
+			// If the two paths are exactly equal, then they must be the same.
+			if dir == current {
+				return child, true
+			}
+
+			// If the two paths are equal under case-folding, but not exactly equal,
+			// then the only way to check if they're truly "equal" is to check
+			// to see if we're on a case-insensitive file system.
+			//
+			// This is a notoriously tricky problem. See how dep solves it here:
+			// https://github.com/golang/dep/blob/v0.5.4/internal/fs/fs.go#L33
+			//
+			// because you can mount case-sensitive filesystems onto case-insensitive
+			// file-systems, and vice versa :scream:
+			//
+			// We want to do as much of this check as possible with strings-only
+			// (to avoid a file system read and error handling), so we only
+			// do this check if we have no other choice.
+			dirInfo, err := os.Stat(dir)
+			if err != nil {
+				return "", false
+			}
+
+			currentInfo, err := os.Stat(current)
+			if err != nil {
+				return "", false
+			}
+
+			if !os.SameFile(dirInfo, currentInfo) {
+				return "", false
+			}
 			return child, true
 		}
 
