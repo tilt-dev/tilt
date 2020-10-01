@@ -46,8 +46,8 @@ func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusOK, rr.Body.String())
 	}
 }
 
@@ -67,8 +67,8 @@ func TestHandleAnalyticsRecordsIncr(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusOK, rr.Body.String())
 	}
 
 	f.assertIncrement("foo", 1)
@@ -89,8 +89,8 @@ func TestHandleAnalyticsNonPost(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 }
 
@@ -110,8 +110,8 @@ func TestHandleAnalyticsMalformedPayload(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 }
 
@@ -131,8 +131,8 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 }
 
@@ -157,8 +157,8 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusOK, rr.Body.String())
 	}
 
 	action := store.WaitForAction(t, reflect.TypeOf(store.AnalyticsUserOptAction{}), f.getActions)
@@ -187,8 +187,8 @@ func TestHandleAnalyticsOptNonPost(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 }
 
@@ -208,8 +208,8 @@ func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 }
 
@@ -231,8 +231,8 @@ func TestHandleTriggerReturnsError(t *testing.T) {
 	// Expect SendToTriggerQueue to fail: make sure we reply to the HTTP request
 	// with an error when this happens
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 	assert.Contains(t, rr.Body.String(), "no manifest found with name")
 }
@@ -253,8 +253,8 @@ func TestHandleTriggerTooManyManifestNames(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 	assert.Contains(t, rr.Body.String(), "currently supports exactly one manifest name, got 2")
 }
@@ -274,8 +274,8 @@ func TestHandleTriggerNonPost(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 	assert.Contains(t, rr.Body.String(), "must be POST request")
 }
@@ -296,8 +296,8 @@ func TestHandleTriggerMalformedPayload(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+		t.Errorf("handler returned wrong status code: got %v want %v. Response body: %s",
+			status, http.StatusBadRequest, rr.Body.String())
 	}
 	assert.Contains(t, rr.Body.String(), "error parsing JSON")
 }
@@ -386,7 +386,8 @@ func TestHandleNewSnapshot(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	require.Equal(t, http.StatusOK, rr.Code,
-		"handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		"handler returned wrong status code: got %v want %v. Response body: %s",
+		rr.Code, http.StatusOK, rr.Body.String())
 	require.Contains(t, rr.Body.String(), "https://nonexistent.example.com/snapshot/aaaaa")
 
 	lastReq := f.snapshotHTTP.lastReq
