@@ -128,7 +128,7 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
             rel="noopener noreferrer"
             key={ep.url}
           >
-            {ep.name ? ep.name : ep.url}
+            {ep.name || ep.url}
           </ResourceLink>
         ))}
       </PortForward>
