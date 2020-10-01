@@ -726,15 +726,15 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dcConfigPathHelper:
-			assert.Equal(f.t, opt.paths, dcInfo.ConfigPaths)
+			assert.Equal(f.t, opt.paths, dcInfo.ConfigPaths, "docker compose config path")
 		case dcLocalPathsHelper:
-			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths())
+			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths(), "docker compose local paths")
 		case dcYAMLRawHelper:
-			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)))
+			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)), "docker compose YAML raw")
 		case dcDfRawHelper:
-			assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)))
+			assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)), "docker compose Dockerfile raw")
 		case dcPublishedPortsHelper:
-			assert.Equal(f.t, opt.ports, dcInfo.PublishedPorts())
+			assert.Equal(f.t, opt.ports, dcInfo.PublishedPorts(), "docker compose published ports")
 		default:
 			f.t.Fatalf("unexpected arg to assertDcManifest: %T %v", opt, opt)
 		}
