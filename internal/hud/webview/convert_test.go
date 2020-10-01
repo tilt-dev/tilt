@@ -89,7 +89,7 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 		&proto_webview.Link{Url: "http://localhost:8000/"},
 	}
 	res, _ := findResource(m.Name, v)
-	assert.Equal(t, expected, res.Endpoints)
+	assert.Equal(t, expected, res.EndpointLinks)
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {

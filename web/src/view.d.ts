@@ -67,7 +67,8 @@ declare namespace Proto {
     pendingBuildEdits?: string[];
     pendingBuildSince?: string;
     hasPendingChanges?: boolean;
-    endpoints?: webviewLink[];
+    DEPRECATEDEndpoints?: string[];
+    endpointLinks?: webviewLink[];
     podID?: string;
     k8sResourceInfo?: webviewK8sResourceInfo;
     dcResourceInfo?: webviewDCResourceInfo;
@@ -132,7 +133,7 @@ declare namespace Proto {
   }
   export interface webviewLink {
     url?: string;
-    linkText?: string;
+    name?: string;
   }
   export interface webviewK8sResourceInfo {
     podName?: string;

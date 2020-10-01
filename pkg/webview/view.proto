@@ -104,7 +104,7 @@ message Facet {
 
 message Link {
   string url = 1;
-  string link_text = 2;
+  string name = 2;
 }
 
 message Resource {
@@ -124,7 +124,8 @@ message Resource {
   repeated string pending_build_edits = 9;
   google.protobuf.Timestamp pending_build_since = 10;
   bool has_pending_changes = 11;
-  repeated Link endpoints = 12;
+  repeated string DEPRECATED_endpoints = 12;
+  repeated Link endpointLinks = 28;
   string podID = 13;
   K8sResourceInfo k8s_resource_info = 14;
   DCResourceInfo dc_resource_info = 15;

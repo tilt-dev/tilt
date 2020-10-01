@@ -42,7 +42,7 @@ it("doesn't render snapshot button if it's a snapshot", () => {
   expect(tree).toMatchSnapshot()
 })
 
-it("uses linkText as endpoint text, if given", () => {
+it("uses endpoint name as endpoint text, if given", () => {
   const root = mount(
     <ResourceInfo
       showSnapshotButton={false}
@@ -55,10 +55,10 @@ it("uses linkText as endpoint text, if given", () => {
   let links = root.find("span#endpoints a")
   expect(links).toHaveLength(1)
   expect(links.at(0).prop("href")).toEqual(namedEndpointLink.url)
-  expect(links.at(0).text()).toEqual(namedEndpointLink.linkText)
+  expect(links.at(0).text()).toEqual(namedEndpointLink.name)
 })
 
-it("uses url as endpoint text if linkText not given", () => {
+it("uses url as endpoint text if name not given", () => {
   const root = mount(
     <ResourceInfo
       showSnapshotButton={false}
@@ -91,5 +91,5 @@ it("displays mixed named/unnamed endpoints", () => {
   expect(links.at(0).text()).toEqual(unnamedEndpointLink.url)
 
   expect(links.at(1).prop("href")).toEqual(namedEndpointLink.url)
-  expect(links.at(1).text()).toEqual(namedEndpointLink.linkText)
+  expect(links.at(1).text()).toEqual(namedEndpointLink.name)
 })

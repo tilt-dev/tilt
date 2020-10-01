@@ -110,7 +110,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			PendingBuildSince:  pbs,
 			PendingBuildReason: int32(mt.NextBuildReason()),
 			CurrentBuild:       cb,
-			Endpoints:          temporaryConvertEndpoints(endpoints),
+			EndpointLinks:      temporaryConvertEndpoints(endpoints),
 			PodID:              podID.String(),
 			Specs:              specs,
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
@@ -267,7 +267,7 @@ func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_we
 	return store.NewLogAction(model.ManifestName(span.ManifestName), logstore.SpanID(seg.SpanId), spoofedLevel, seg.Fields, []byte(seg.Text))
 }
 
-// NOTE(maia): for backwards compatibility, will remove once port forward link_text etc.
+// NOTE(maia): for backwards compatibility, will remove once port forward names etc.
 // configurable from Tiltfile
 func temporaryConvertEndpoints(endpoints []string) []*proto_webview.Link {
 	res := make([]*proto_webview.Link, len(endpoints))

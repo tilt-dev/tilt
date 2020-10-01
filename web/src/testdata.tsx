@@ -3,9 +3,10 @@ import { UnregisterCallback, Href } from "history"
 import { TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
+type Link = Proto.webviewLink
 
-const unnamedEndpointLink = { url: "1.2.3.4:8080" }
-const namedEndpointLink = { url: "1.2.3.4:9090", linkText: "debugger" }
+const unnamedEndpointLink: Link = { url: "1.2.3.4:8080" }
+const namedEndpointLink: Link = { url: "1.2.3.4:9090", name: "debugger" }
 
 type view = {
   resources: Array<Resource>
@@ -93,7 +94,7 @@ function oneResource(): Resource {
     crashLog: "",
     triggerMode: TriggerMode.TriggerModeAuto,
     hasPendingChanges: false,
-    endpoints: [],
+    endpointLinks: [],
     podID: "",
     isTiltfile: false,
     facets: [],
@@ -124,7 +125,7 @@ function oneResourceNoAlerts(): any {
       podStatus: "Running",
       podRestarts: 0,
     },
-    endpoints: [unnamedEndpointLink],
+    endpointLinks: [unnamedEndpointLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -152,7 +153,7 @@ function oneResourceImagePullBackOff(): any {
       podStatus: "ImagePullBackOff",
       podRestarts: 0,
     },
-    endpoints: [unnamedEndpointLink],
+    endpointLinks: [unnamedEndpointLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -180,7 +181,7 @@ function oneResourceErrImgPull(): any {
       podStatus: "ErrImagePull",
       podRestarts: 0,
     },
-    endpoints: [unnamedEndpointLink],
+    endpointLinks: [unnamedEndpointLink],
     runtimeStatus: "ok",
   }
   return resource
@@ -239,7 +240,7 @@ function twoResourceView(): view {
       edits: ["main.go"],
       startTime: ts,
     },
-    endpoints: [unnamedEndpointLink],
+    endpointLinks: [unnamedEndpointLink],
     runtimeStatus: "ok",
     triggerMode: TriggerMode.TriggerModeAuto,
     crashLog: "",
@@ -285,7 +286,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: null,
+      endpointLinks: null,
       runtimeStatus: "ok",
       isTiltfile: true,
       showBuildStatus: false,
@@ -346,7 +347,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9001/"],
+      endpointLinks: ["http://localhost:9001/"],
       k8sResourceInfo: {
         podName: "dan-vigoda-67d79bd8d5-w77q4",
         podCreationTime: "2019-04-22T11:00:02-04:00",
@@ -380,7 +381,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9002/"],
+      endpointLinks: ["http://localhost:9002/"],
       k8sResourceInfo: {
         podName: "dan-snack-f885fb46f-d5z2t",
         podCreationTime: "2019-04-22T11:00:04-04:00",
@@ -414,7 +415,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9003/"],
+      endpointLinks: ["http://localhost:9003/"],
       k8sResourceInfo: {
         podName: "dan-doggos-596cc68bd9-w87f8",
         podCreationTime: "2019-04-22T11:00:07-04:00",
@@ -448,7 +449,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9004/"],
+      endpointLinks: ["http://localhost:9004/"],
       k8sResourceInfo: {
         podName: "dan-fortune-76bcccc6bb-lzzx4",
         podCreationTime: "2019-04-22T11:00:09-04:00",
@@ -482,7 +483,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9005/"],
+      endpointLinks: ["http://localhost:9005/"],
       k8sResourceInfo: {
         podName: "dan-hypothesizer-84b486bbfd-qrqd6",
         podCreationTime: "2019-04-22T11:00:11-04:00",
@@ -516,7 +517,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9006/"],
+      endpointLinks: ["http://localhost:9006/"],
       k8sResourceInfo: {
         podName: "dan-spoonerisms-bb9577494-lq5w9",
         podCreationTime: "2019-04-22T11:00:12-04:00",
@@ -550,7 +551,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9007/"],
+      endpointLinks: ["http://localhost:9007/"],
       k8sResourceInfo: {
         podName: "dan-emoji-6765c9676c-7d655",
         podCreationTime: "2019-04-22T11:00:13-04:00",
@@ -584,7 +585,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9008/"],
+      endpointLinks: ["http://localhost:9008/"],
       k8sResourceInfo: {
         podName: "dan-words-5bfdf8db84-vdqz4",
         podCreationTime: "2019-04-22T11:00:15-04:00",
@@ -618,7 +619,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9009/"],
+      endpointLinks: ["http://localhost:9009/"],
       k8sResourceInfo: {
         podName: "dan-secrets-79c8bb5c79-7hwp6",
         podCreationTime: "2019-04-22T11:00:17-04:00",
@@ -652,7 +653,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: null,
+      endpointLinks: null,
       k8sResourceInfo: {
         podName: "echo-hi-92tww",
         podCreationTime: "2019-04-22T10:59:56-04:00",
@@ -686,7 +687,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: null,
+      endpointLinks: null,
       k8sResourceInfo: {
         podName: "sleep",
         podCreationTime: "2019-04-22T11:00:18-04:00",
@@ -720,7 +721,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9999/"],
+      endpointLinks: ["http://localhost:9999/"],
       k8sResourceInfo: {
         podName: "hello-world-9f4c9b98b-cvxqn",
         podCreationTime: "2019-04-22T10:59:56-04:00",
@@ -754,7 +755,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: null,
+      endpointLinks: null,
       k8sResourceInfo: {
         podName: "",
         podCreationTime: "0001-01-01T00:00:00Z",
@@ -788,7 +789,7 @@ function allResourcesOK(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: null,
+      endpointLinks: null,
       yamlResourceInfo: {
         k8sResources: [
           "k8sRole-pod-reader",
@@ -834,7 +835,7 @@ function oneResourceFailedToBuild(): any {
       pendingBuildReason: 1,
       pendingBuildEdits: ["main.go"],
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9002/"],
+      endpointLinks: ["http://localhost:9002/"],
       k8sResourceInfo: {
         podName: "dan-snack-f885fb46f-d5z2t",
         podCreationTime: "2019-04-22T11:00:04-04:00",
@@ -873,7 +874,7 @@ function oneResourceBuilding() {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: null,
+      endpointLinks: null,
       runtimeStatus: "ok",
       isTiltfile: true,
       showBuildStatus: false,
@@ -900,7 +901,7 @@ function oneResourceBuilding() {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9000/"],
+      endpointLinks: ["http://localhost:9000/"],
       k8sResourceInfo: {
         podName: "dan-fe-7cdc8f978f-vp94d",
         podCreationTime: "2019-04-22T11:00:01-04:00",
@@ -934,7 +935,7 @@ function oneResourceBuilding() {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9001/"],
+      endpointLinks: ["http://localhost:9001/"],
       k8sResourceInfo: {
         podName: "dan-vigoda-67d79bd8d5-w77q4",
         podCreationTime: "2019-04-22T11:00:02-04:00",
@@ -975,7 +976,7 @@ function oneResourceBuilding() {
       pendingBuildReason: 1,
       pendingBuildEdits: ["main.go"],
       pendingBuildSince: "2019-04-22T11:20:44.672903-04:00",
-      endpoints: ["http://localhost:9002/"],
+      endpointLinks: ["http://localhost:9002/"],
       k8sResourceInfo: {
         podName: "dan-snack-65f9775f49-gcc8d",
         podCreationTime: "2019-04-22T11:05:58-04:00",
@@ -1021,7 +1022,7 @@ function oneResourceCrashedOnStart(): any {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9002/"],
+      endpointLinks: ["http://localhost:9002/"],
       k8sResourceInfo: {
         podName: "dan-snack-cd4d74d7b-lg8sh",
         podCreationTime: "2019-04-22T13:34:59-04:00",
@@ -1064,7 +1065,7 @@ function oneResourceManualTriggerDirty(): any {
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
       hasPendingChanges: false,
-      endpoints: null,
+      endpointLinks: null,
       podID: "",
       k8sResourceInfo: {
         podName: "",
@@ -1073,7 +1074,7 @@ function oneResourceManualTriggerDirty(): any {
         podStatus: "",
         podStatusMessage: "",
         podRestarts: 0,
-        endpoints: [],
+        endpointLinks: [],
       },
       runtimeStatus: "ok",
       isTiltfile: true,
@@ -1106,7 +1107,7 @@ function oneResourceManualTriggerDirty(): any {
       pendingBuildEdits: ["hi"],
       pendingBuildSince: "2019-06-12T12:36:05.292424-04:00",
       hasPendingChanges: true,
-      endpoints: null,
+      endpointLinks: null,
       podID: "dan-snack-85c688bffb-txf7z",
       k8sResourceInfo: {
         podName: "dan-snack-85c688bffb-txf7z",

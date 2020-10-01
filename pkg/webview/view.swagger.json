@@ -230,7 +230,7 @@
         "url": {
           "type": "string"
         },
-        "link_text": {
+        "name": {
           "type": "string"
         }
       }
@@ -363,7 +363,13 @@
           "type": "boolean",
           "format": "boolean"
         },
-        "endpoints": {
+        "DEPRECATED_endpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "endpointLinks": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/webviewLink"
