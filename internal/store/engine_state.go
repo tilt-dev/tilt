@@ -613,9 +613,9 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 
 var _ model.TargetStatus = &ManifestState{}
 
-func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
+func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 	defer func() {
-		sort.Strings(endpoints)
+		sort.Sort(model.ByURL(endpoints))
 	}()
 
 	// If the user specified port-forwards in the Tiltfile, we
@@ -623,11 +623,7 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	portForwards := mt.Manifest.K8sTarget().PortForwards
 	if len(portForwards) > 0 {
 		for _, pf := range portForwards {
-			host := pf.Host
-			if host == "" {
-				host = "localhost"
-			}
-			endpoints = append(endpoints, fmt.Sprintf("http://%s:%d/", host, pf.LocalPort))
+			endpoints = append(endpoints, pf.ToLink())
 		}
 		return endpoints
 	}
@@ -635,14 +631,14 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []string) {
 	publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
 	if len(publishedPorts) > 0 {
 		for _, p := range publishedPorts {
-			endpoints = append(endpoints, fmt.Sprintf("http://localhost:%d/", p))
+			endpoints = append(endpoints, model.Link{URL: fmt.Sprintf("http://localhost:%d/", p)})
 		}
 		return endpoints
 	}
 
 	for _, u := range mt.State.K8sRuntimeState().LBs {
 		if u != nil {
-			endpoints = append(endpoints, u.String())
+			endpoints = append(endpoints, model.Link{URL: u.String()})
 		}
 	}
 	return endpoints
@@ -715,7 +711,7 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 			PendingBuildReason: mt.NextBuildReason(),
 			CurrentBuild:       currentBuild,
 			CrashLog:           ms.CrashLog,
-			Endpoints:          endpoints,
+			Endpoints:          model.LinksToURLs(endpoints), // hud can't handle link names, just send URLs
 			ResourceInfo:       resourceInfoView(mt),
 		}
 

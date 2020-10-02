@@ -79,12 +79,16 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 		PortForwards: []model.PortForward{
 			{LocalPort: 8000, ContainerPort: 5000},
 			{LocalPort: 7000, ContainerPort: 5001},
+			{LocalPort: 6000, ContainerPort: 5003, Name: "debugger"},
+			{LocalPort: 5000, ContainerPort: 5002, Host: "127.0.0.2", Name: "dashboard"},
 		},
 	})
 	state := newState([]model.Manifest{m})
 	v := stateToProtoView(t, *state)
 
 	expected := []*proto_webview.Link{
+		&proto_webview.Link{Url: "http://127.0.0.2:5000/", Name: "dashboard"},
+		&proto_webview.Link{Url: "http://localhost:6000/", Name: "debugger"},
 		&proto_webview.Link{Url: "http://localhost:7000/"},
 		&proto_webview.Link{Url: "http://localhost:8000/"},
 	}

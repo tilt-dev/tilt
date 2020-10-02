@@ -439,6 +439,48 @@ type PortForward struct {
 
 	// Optional host to bind to on the current machine (localhost by default)
 	Host string
+
+	// Optional name of the port forward; if given, used as text of the URL
+	// displayed in the web UI (e.g. <a href="localhost:8888">Debugger</a>)
+	Name string
+}
+
+// A link associated with resource; may represent a port forward, an endpoint
+// derived from a Service/Ingress/etc., or a URL manually associated with a
+// resource via the Tiltfile (TK)
+type Link struct {
+	URL string
+
+	// Optional name of the link; if given, used as text of the URL
+	// displayed in the web UI (e.g. <a href="localhost:8888">Debugger</a>)
+	Name string
+}
+
+// ByURL implements sort.Interface based on the URL field.
+type ByURL []Link
+
+func (lns ByURL) Len() int           { return len(lns) }
+func (lns ByURL) Less(i, j int) bool { return lns[i].URL < lns[j].URL }
+func (lns ByURL) Swap(i, j int)      { lns[i], lns[j] = lns[j], lns[i] }
+
+func (pf PortForward) ToLink() Link {
+	host := pf.Host
+	if host == "" {
+		host = "localhost"
+	}
+	url := fmt.Sprintf("http://%s:%d/", host, pf.LocalPort)
+	return Link{
+		URL:  url,
+		Name: pf.Name,
+	}
+}
+
+func LinksToURLs(lns []Link) []string {
+	res := make([]string, len(lns))
+	for i, ln := range lns {
+		res[i] = ln.URL
+	}
+	return res
 }
 
 var imageTargetAllowUnexported = cmp.AllowUnexported(ImageTarget{})
