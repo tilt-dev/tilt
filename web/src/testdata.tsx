@@ -835,7 +835,7 @@ function oneResourceFailedToBuild(): any {
       pendingBuildReason: 1,
       pendingBuildEdits: ["main.go"],
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9002/"],
+      endpointLinks: [{ url: "http://localhost:9002/" }],
       k8sResourceInfo: {
         podName: "dan-snack-f885fb46f-d5z2t",
         podCreationTime: "2019-04-22T11:00:04-04:00",
@@ -901,7 +901,7 @@ function oneResourceBuilding() {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9000/"],
+      endpointLinks: [{ url: "http://localhost:9000/" }],
       k8sResourceInfo: {
         podName: "dan-fe-7cdc8f978f-vp94d",
         podCreationTime: "2019-04-22T11:00:01-04:00",
@@ -935,7 +935,7 @@ function oneResourceBuilding() {
       pendingBuildReason: 0,
       pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9001/"],
+      endpointLinks: [{ url: "http://localhost:9001/" }],
       k8sResourceInfo: {
         podName: "dan-vigoda-67d79bd8d5-w77q4",
         podCreationTime: "2019-04-22T11:00:02-04:00",
