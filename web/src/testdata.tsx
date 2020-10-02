@@ -991,7 +991,7 @@ function oneResourceBuilding() {
   ]
 }
 
-function oneResourceCrashedOnStart(): any {
+function oneResourceCrashedOnStart(): Resource[] {
   return [
     {
       name: "snack",
@@ -999,30 +999,21 @@ function oneResourceCrashedOnStart(): any {
       buildHistory: [
         {
           edits: ["main.go"],
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T13:34:57.084919-04:00",
           finishTime: "2019-04-22T13:34:59.442139-04:00",
         },
         {
-          edits: null,
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T13:34:05.844691-04:00",
           finishTime: "2019-04-22T13:34:07.352812-04:00",
         },
       ],
       currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
       pendingBuildReason: 0,
-      pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9002/"],
+      endpointLinks: [{url:"http://localhost:9002/"}],
       k8sResourceInfo: {
         podName: "dan-snack-cd4d74d7b-lg8sh",
         podCreationTime: "2019-04-22T13:34:59-04:00",
