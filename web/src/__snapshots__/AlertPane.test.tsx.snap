@@ -227,7 +227,7 @@ exports[`renders one container unrecognized error 1`] = `
           </p>
           <time
             dateTime="2016-12-21T23:36:07.071Z"
-            title="2016-12-21 23:36"
+            title="2016-12-21T23:36:07.071Z"
           >
             &lt;5s ago
           </time>
