@@ -1,6 +1,8 @@
 package store
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -172,4 +174,103 @@ func TestNextBuildReason(t *testing.T) {
 	status.PendingFileChanges["a.txt"] = time.Now()
 	assert.Equal(t, "Changed Files | Dependency Updated",
 		mt.NextBuildReason().String())
+}
+
+func TestManifestTargetEndpoints(t *testing.T) {
+	cases := []struct {
+		name             string
+		expected         []model.Link
+		portFwds         []model.PortForward
+		dcPublishedPorts []int
+		lbURLs           []string
+	}{
+		{
+			name: "port forward",
+			expected: []model.Link{
+				model.Link{URL: "http://localhost:7000/"},
+				model.Link{URL: "http://localhost:8000/", Name: "foobar"},
+			},
+			portFwds: []model.PortForward{
+				{LocalPort: 8000, ContainerPort: 5000, Name: "foobar"},
+				{LocalPort: 7000, ContainerPort: 5001},
+			},
+		},
+		{
+			name: "port forward with host",
+			expected: []model.Link{
+				model.Link{URL: "http://host1:8000/", Name: "foobar"},
+				model.Link{URL: "http://host2:7000/"},
+			},
+			portFwds: []model.PortForward{
+				{LocalPort: 8000, ContainerPort: 5000, Host: "host1", Name: "foobar"},
+				{LocalPort: 7000, ContainerPort: 5001, Host: "host2"},
+			},
+		},
+		{
+			name: "docker compose ports",
+			expected: []model.Link{
+				model.Link{URL: "http://localhost:7000/"},
+				model.Link{URL: "http://localhost:8000/"},
+			},
+			dcPublishedPorts: []int{8000, 7000},
+		},
+		{
+			name: "load balancers",
+			expected: []model.Link{
+				model.Link{URL: "www.apple.edu"},
+				model.Link{URL: "www.zombo.com"},
+			},
+			lbURLs: []string{"www.zombo.com", "www.apple.edu"},
+		},
+		{
+			name: "port forwards supercede LBs",
+			expected: []model.Link{
+				model.Link{URL: "http://localhost:7000/"},
+			},
+			portFwds: []model.PortForward{
+				{LocalPort: 7000, ContainerPort: 5001},
+			},
+			lbURLs: []string{"www.zombo.com"},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := model.Manifest{Name: "foo"}
+
+			if len(c.dcPublishedPorts) > 0 {
+				if len(c.portFwds) > 0 || len(c.lbURLs) > 0 {
+					// portForwards and LoadBalancerURLs are exclusively the province
+					// of k8s resources, so you should never see them paired with
+					// a Docker Compose resource; this is bad setup.
+					panic("illegal test setup; dcPublishedPorts not compatible with portFwds / lbURLs")
+				}
+				m = m.WithDeployTarget(model.DockerComposeTarget{}.WithPublishedPorts(c.dcPublishedPorts))
+			} else if len(c.portFwds) > 0 {
+				m = m.WithDeployTarget(model.K8sTarget{PortForwards: c.portFwds})
+			}
+
+			mt := newManifestTargetWithLoadBalancerURLs(t, m, c.lbURLs)
+			actual := ManifestTargetEndpoints(mt)
+			assert.Equal(t, c.expected, actual)
+		})
+	}
+}
+
+func newManifestTargetWithLoadBalancerURLs(t *testing.T, m model.Manifest, urls []string) *ManifestTarget {
+	lbs := make(map[k8s.ServiceName]*url.URL)
+	for i, s := range urls {
+		u, err := url.Parse(s)
+		if err != nil {
+			panic(fmt.Sprintf("error parsing url %q for dummy load balancers: %v",
+				s, err))
+		}
+		name := k8s.ServiceName(fmt.Sprintf("svc#%d", i))
+		lbs[name] = u
+	}
+	mt := NewManifestTarget(m)
+	k8sState := NewK8sRuntimeState(m)
+	k8sState.LBs = lbs
+	mt.State.RuntimeState = k8sState
+	return mt
 }
