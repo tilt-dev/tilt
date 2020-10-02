@@ -11,6 +11,7 @@ type LocalTarget struct {
 	UpdateCmd Cmd      // e.g. `make proto`
 	ServeCmd  Cmd      // e.g. `python main.py`
 	Workdir   string   // directory from which the commands should be run
+	Links     []Link   // (optional) one+ links assoc'd with this resource (to be displayed in UIs)
 	Deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
 	ignores   []Dockerignore
 

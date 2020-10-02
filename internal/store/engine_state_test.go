@@ -22,6 +22,30 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+type endpointsCase struct {
+	name     string
+	expected []model.Link
+
+	// k8s resource fields
+	portFwds []model.PortForward
+	lbURLs   []string
+
+	dcPublishedPorts []int
+
+	localResLinks []model.Link
+}
+
+func (c endpointsCase) validate() {
+	if len(c.portFwds) > 0 || len(c.lbURLs) > 0 {
+		if len(c.dcPublishedPorts) > 0 || len(c.localResLinks) > 0 {
+			// portForwards and LoadBalancerURLs are exclusively the province
+			// of k8s resources, so you should never see them paired with
+			// test settings that imply a. a DC resource or b. a local resource
+			panic("test case implies impossible resource")
+		}
+	}
+}
+
 func TestStateToViewRelativeEditPaths(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
@@ -177,13 +201,7 @@ func TestNextBuildReason(t *testing.T) {
 }
 
 func TestManifestTargetEndpoints(t *testing.T) {
-	cases := []struct {
-		name             string
-		expected         []model.Link
-		portFwds         []model.PortForward
-		dcPublishedPorts []int
-		lbURLs           []string
-	}{
+	cases := []endpointsCase{
 		{
 			name: "port forward",
 			expected: []model.Link{
@@ -204,6 +222,17 @@ func TestManifestTargetEndpoints(t *testing.T) {
 			portFwds: []model.PortForward{
 				{LocalPort: 8000, ContainerPort: 5000, Host: "host1", Name: "foobar"},
 				{LocalPort: 7000, ContainerPort: 5001, Host: "host2"},
+			},
+		},
+		{
+			name: "local resource links",
+			expected: []model.Link{
+				model.Link{URL: "www.apple.edu", Name: "apple"},
+				model.Link{URL: "www.zombo.com", Name: "zombo"},
+			},
+			localResLinks: []model.Link{
+				model.Link{URL: "www.apple.edu", Name: "apple"},
+				model.Link{URL: "www.zombo.com", Name: "zombo"},
 			},
 		},
 		{
@@ -236,18 +265,15 @@ func TestManifestTargetEndpoints(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			c.validate()
 			m := model.Manifest{Name: "foo"}
 
-			if len(c.dcPublishedPorts) > 0 {
-				if len(c.portFwds) > 0 || len(c.lbURLs) > 0 {
-					// portForwards and LoadBalancerURLs are exclusively the province
-					// of k8s resources, so you should never see them paired with
-					// a Docker Compose resource; this is bad setup.
-					panic("illegal test setup; dcPublishedPorts not compatible with portFwds / lbURLs")
-				}
-				m = m.WithDeployTarget(model.DockerComposeTarget{}.WithPublishedPorts(c.dcPublishedPorts))
-			} else if len(c.portFwds) > 0 {
+			if len(c.portFwds) > 0 {
 				m = m.WithDeployTarget(model.K8sTarget{PortForwards: c.portFwds})
+			} else if len(c.localResLinks) > 0 {
+				m = m.WithDeployTarget(model.LocalTarget{Links: c.localResLinks})
+			} else if len(c.dcPublishedPorts) > 0 {
+				m = m.WithDeployTarget(model.DockerComposeTarget{}.WithPublishedPorts(c.dcPublishedPorts))
 			}
 
 			mt := newManifestTargetWithLoadBalancerURLs(t, m, c.lbURLs)
