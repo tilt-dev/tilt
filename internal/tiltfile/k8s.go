@@ -875,10 +875,8 @@ type portForward struct {
 var _ starlark.Value = portForward{}
 
 func (f portForward) String() string {
-	if f.Name != "" {
-		return fmt.Sprintf("port_forward[%s](%d, %d)", f.Name, f.LocalPort, f.ContainerPort)
-	}
-	return fmt.Sprintf("port_forward(%d, %d)", f.LocalPort, f.ContainerPort)
+	return fmt.Sprintf("port_forward(local_port=%d, container_port=%d, name=%q)",
+		f.LocalPort, f.ContainerPort, f.Name)
 }
 
 func (f portForward) Type() string {
