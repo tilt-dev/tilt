@@ -99,6 +99,23 @@ func TestStateToViewPortForwards(t *testing.T) {
 		res.Endpoints)
 }
 
+func TestStateToViewLocalResourceLinks(t *testing.T) {
+	m := model.Manifest{
+		Name: "foo",
+	}.WithDeployTarget(model.LocalTarget{
+		Links: []model.Link{
+			{URL: "www.zombo.com", Name: "zombo"},
+			{URL: "www.apple.edu", Name: "apple"},
+		},
+	})
+	state := newState([]model.Manifest{m})
+	v := StateToView(*state, &sync.RWMutex{})
+	res, _ := v.Resource(m.Name)
+	assert.Equal(t,
+		[]string{"www.apple.edu", "www.zombo.com"},
+		res.Endpoints)
+}
+
 func TestRuntimeStateNonWorkload(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 	defer f.TearDown()
