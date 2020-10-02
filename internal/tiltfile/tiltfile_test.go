@@ -643,6 +643,21 @@ func newPortForwardErrorCase(name, expr, errorMsg string) portForwardCase {
 	return portForwardCase{name: name, expr: expr, errorMsg: errorMsg}
 }
 
+type resourceLinkCase struct {
+	name     string
+	expr     string
+	expected []model.Link
+	errorMsg string
+}
+
+func newResourceLinkSuccessCase(name, expr string, expected []model.Link) resourceLinkCase {
+	return resourceLinkCase{name: name, expr: expr, expected: expected}
+}
+
+func newResourceLinkErrorCase(name, expr, errorMsg string) resourceLinkCase {
+	return resourceLinkCase{name: name, expr: expr, errorMsg: errorMsg}
+}
+
 func TestPortForward(t *testing.T) {
 	portForwardCases := []portForwardCase{
 		// int values
@@ -704,6 +719,35 @@ k8s_resource('foo', port_forwards=EXPR)
 				c.expected,
 				db(image("gcr.io/foo")),
 				deployment("foo"))
+		})
+	}
+}
+
+func TestLocalResourceLinks(t *testing.T) {
+	cases := []resourceLinkCase{
+		newResourceLinkSuccessCase("value_string", "'www.zombo.com'", []model.Link{{URL: "www.zombo.com"}}),
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			tiltfile := fmt.Sprintf(`
+local_resource('foo', 'echo hello', links=%s)
+`, c.expr)
+			f.file("Tiltfile", tiltfile)
+
+			if c.errorMsg != "" {
+				f.loadErrString(c.errorMsg)
+				return
+			}
+
+			f.load()
+			f.assertNextManifest("foo",
+				c.expected,
+				localTarget(updateCmd("echo hi")),
+			)
 		})
 	}
 }
@@ -5979,6 +6023,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
+		case []model.Link:
+			// assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
+			panic("not implemented")
 		case model.TriggerMode:
 			assert.Equal(f.t, opt, m.TriggerMode)
 		case resourceDependenciesHelper:
