@@ -103,15 +103,14 @@ function oneResource(): Resource {
   return resource
 }
 
-function oneResourceNoAlerts(): any {
-  const ts = Date.now().valueOf()
+function oneResourceNoAlerts(): Resource {
+  const ts = new Date(Date.now()).toISOString()
   const resource = {
     name: "vigoda",
     lastDeployTime: ts,
     buildHistory: [
       {
         edits: ["main.go", "cli.go"],
-        error: null,
         finishTime: ts,
         startTime: ts,
       },
@@ -131,15 +130,14 @@ function oneResourceNoAlerts(): any {
   return resource
 }
 
-function oneResourceImagePullBackOff(): any {
-  const ts = Date.now().valueOf()
+function oneResourceImagePullBackOff(): Resource {
+  const ts = new Date(Date.now()).toISOString()
   const resource = {
     name: "vigoda",
     lastDeployTime: ts,
     buildHistory: [
       {
         edits: ["main.go", "cli.go"],
-        error: null,
         finishTime: ts,
         startTime: ts,
       },
@@ -159,15 +157,14 @@ function oneResourceImagePullBackOff(): any {
   return resource
 }
 
-function oneResourceErrImgPull(): any {
-  const ts = Date.now().valueOf()
+function oneResourceErrImgPull(): Resource {
+  const ts = new Date(Date.now()).toISOString()
   const resource = {
     name: "vigoda",
     lastDeployTime: ts,
     buildHistory: [
       {
         edits: ["main.go", "cli.go"],
-        error: null,
         finishTime: ts,
         startTime: ts,
       },
@@ -187,15 +184,14 @@ function oneResourceErrImgPull(): any {
   return resource
 }
 
-function oneResourceUnrecognizedError(): any {
-  const ts = Date.now().valueOf()
+function oneResourceUnrecognizedError(): Resource {
+  const ts = new Date(Date.now()).toISOString()
   const resource = {
     name: "vigoda",
     lastDeployTime: ts,
     buildHistory: [
       {
         edits: ["main.go", "cli.go"],
-        error: null,
         finishTime: ts,
         startTime: ts,
       },
@@ -262,549 +258,7 @@ function twoResourceView(): view {
   return { resources: [vigoda, snack] }
 }
 
-function allResourcesOK(): any {
-  return [
-    {
-      name: "(Tiltfile)",
-      lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
-      buildHistory: [
-        {
-          edits: ["/Users/dan/go/src/github.com/tilt-dev/servantes/Tiltfile"],
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T10:59:53.574652-04:00",
-          finishTime: "2019-04-22T10:59:53.903047-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: null,
-      runtimeStatus: "ok",
-      isTiltfile: true,
-      showBuildStatus: false,
-    },
-    {
-      name: "fe",
-      lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T10:59:56.489417-04:00",
-          finishTime: "2019-04-22T11:00:01.337284-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpoints: ["http://localhost:9000/"],
-      k8sResourceInfo: {
-        podName: "dan-fe-7cdc8f978f-vp94d",
-        podCreationTime: "2019-04-22T11:00:01-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "vigoda",
-      lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:01.337359-04:00",
-          finishTime: "2019-04-22T11:00:02.810112-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9001/"],
-      k8sResourceInfo: {
-        podName: "dan-vigoda-67d79bd8d5-w77q4",
-        podCreationTime: "2019-04-22T11:00:02-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "snack",
-      lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:02.810268-04:00",
-          finishTime: "2019-04-22T11:00:04.242583-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9002/"],
-      k8sResourceInfo: {
-        podName: "dan-snack-f885fb46f-d5z2t",
-        podCreationTime: "2019-04-22T11:00:04-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "doggos",
-      lastDeployTime: "2019-04-22T11:00:07.804953-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:04.242664-04:00",
-          finishTime: "2019-04-22T11:00:07.804952-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9003/"],
-      k8sResourceInfo: {
-        podName: "dan-doggos-596cc68bd9-w87f8",
-        podCreationTime: "2019-04-22T11:00:07-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "fortune",
-      lastDeployTime: "2019-04-22T11:00:09.205571-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:07.805076-04:00",
-          finishTime: "2019-04-22T11:00:09.205568-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9004/"],
-      k8sResourceInfo: {
-        podName: "dan-fortune-76bcccc6bb-lzzx4",
-        podCreationTime: "2019-04-22T11:00:09-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "hypothesizer",
-      lastDeployTime: "2019-04-22T11:00:11.203884-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:09.205679-04:00",
-          finishTime: "2019-04-22T11:00:11.203881-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9005/"],
-      k8sResourceInfo: {
-        podName: "dan-hypothesizer-84b486bbfd-qrqd6",
-        podCreationTime: "2019-04-22T11:00:11-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "spoonerisms",
-      lastDeployTime: "2019-04-22T11:00:12.42127-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:11.20396-04:00",
-          finishTime: "2019-04-22T11:00:12.421269-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9006/"],
-      k8sResourceInfo: {
-        podName: "dan-spoonerisms-bb9577494-lq5w9",
-        podCreationTime: "2019-04-22T11:00:12-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "emoji",
-      lastDeployTime: "2019-04-22T11:00:13.940312-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:12.421344-04:00",
-          finishTime: "2019-04-22T11:00:13.94031-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9007/"],
-      k8sResourceInfo: {
-        podName: "dan-emoji-6765c9676c-7d655",
-        podCreationTime: "2019-04-22T11:00:13-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "words",
-      lastDeployTime: "2019-04-22T11:00:15.745111-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:13.940432-04:00",
-          finishTime: "2019-04-22T11:00:15.745108-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9008/"],
-      k8sResourceInfo: {
-        podName: "dan-words-5bfdf8db84-vdqz4",
-        podCreationTime: "2019-04-22T11:00:15-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "secrets",
-      lastDeployTime: "2019-04-22T11:00:17.035014-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:15.745238-04:00",
-          finishTime: "2019-04-22T11:00:17.035013-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9009/"],
-      k8sResourceInfo: {
-        podName: "dan-secrets-79c8bb5c79-7hwp6",
-        podCreationTime: "2019-04-22T11:00:17-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "echo-hi",
-      lastDeployTime: "2019-04-22T10:59:56.010299-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T10:59:53.906775-04:00",
-          finishTime: "2019-04-22T10:59:56.010298-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: null,
-      k8sResourceInfo: {
-        podName: "echo-hi-92tww",
-        podCreationTime: "2019-04-22T10:59:56-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Completed",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: false,
-    },
-    {
-      name: "sleep",
-      lastDeployTime: "2019-04-22T11:00:18.621166-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T11:00:17.035107-04:00",
-          finishTime: "2019-04-22T11:00:18.621163-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: null,
-      k8sResourceInfo: {
-        podName: "sleep",
-        podCreationTime: "2019-04-22T11:00:18-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Completed",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-    },
-    {
-      name: "hello-world",
-      lastDeployTime: "2019-04-22T10:59:56.300083-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T10:59:56.010435-04:00",
-          finishTime: "2019-04-22T10:59:56.300082-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9999/"],
-      k8sResourceInfo: {
-        podName: "hello-world-9f4c9b98b-cvxqn",
-        podCreationTime: "2019-04-22T10:59:56-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: false,
-    },
-    {
-      name: "tick",
-      lastDeployTime: "2019-04-22T10:59:56.48933-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T10:59:56.300168-04:00",
-          finishTime: "2019-04-22T10:59:56.489329-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: null,
-      k8sResourceInfo: {
-        podName: "",
-        podCreationTime: "0001-01-01T00:00:00Z",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "",
-        podRestarts: 0,
-      },
-      runtimeStatus: "pending",
-      isTiltfile: false,
-      showBuildStatus: false,
-    },
-    {
-      name: "k8s_yaml",
-      lastDeployTime: "2019-04-22T10:59:56.007895-04:00",
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-04-22T10:59:53.913447-04:00",
-          finishTime: "2019-04-22T10:59:56.007894-04:00",
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: null,
-      yamlResourceInfo: {
-        k8sResources: [
-          "k8sRole-pod-reader",
-          "k8sRoleBinding-read-pods",
-          "k8sSecret-dan-servantes-stuff",
-        ],
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: false,
-    },
-  ]
-}
-
-function oneResourceFailedToBuild(): any {
+function oneResourceFailedToBuild(): Resource[] {
   return [
     {
       name: "snack",
@@ -812,23 +266,16 @@ function oneResourceFailedToBuild(): any {
       buildHistory: [
         {
           edits: ["main.go"],
-          error: {},
-          warnings: null,
+          error: "oh no",
           startTime: "2019-04-22T11:05:07.250689-04:00",
           finishTime: "2019-04-22T11:05:17.689819-04:00",
         },
         {
-          edits: null,
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T11:00:02.810268-04:00",
           finishTime: "2019-04-22T11:00:04.242583-04:00",
         },
       ],
       currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
@@ -850,7 +297,7 @@ function oneResourceFailedToBuild(): any {
   ]
 }
 
-function oneResourceBuilding() {
+function oneResourceBuilding(): Resource[] {
   return [
     {
       name: "(Tiltfile)",
@@ -858,23 +305,16 @@ function oneResourceBuilding() {
       buildHistory: [
         {
           edits: ["/Users/dan/go/src/github.com/tilt-dev/servantes/Tiltfile"],
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T10:59:53.574652-04:00",
           finishTime: "2019-04-22T10:59:53.903047-04:00",
         },
       ],
       currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
       pendingBuildReason: 0,
-      pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: null,
       runtimeStatus: "ok",
       isTiltfile: true,
       showBuildStatus: false,
@@ -884,22 +324,15 @@ function oneResourceBuilding() {
       lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
       buildHistory: [
         {
-          edits: null,
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T10:59:56.489417-04:00",
           finishTime: "2019-04-22T11:00:01.337284-04:00",
         },
       ],
       currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
       pendingBuildReason: 0,
-      pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
       endpointLinks: [{ url: "http://localhost:9000/" }],
       k8sResourceInfo: {
@@ -918,22 +351,15 @@ function oneResourceBuilding() {
       lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
       buildHistory: [
         {
-          edits: null,
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T11:00:01.337359-04:00",
           finishTime: "2019-04-22T11:00:02.810112-04:00",
         },
       ],
       currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
       pendingBuildReason: 0,
-      pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
       endpointLinks: [{ url: "http://localhost:9001/" }],
       k8sResourceInfo: {
@@ -953,30 +379,25 @@ function oneResourceBuilding() {
       buildHistory: [
         {
           edits: ["main.go"],
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T11:05:53.676776-04:00",
           finishTime: "2019-04-22T11:05:58.928367-04:00",
         },
         {
           edits: ["main.go"],
-          error: {},
-          warnings: null,
+          error: "eek",
           startTime: "2019-04-22T11:05:07.250689-04:00",
           finishTime: "2019-04-22T11:05:17.689819-04:00",
         },
       ],
       currentBuild: {
         edits: ["main.go"],
-        error: null,
-        warnings: null,
         startTime: "2019-04-22T11:20:44.674248-04:00",
         finishTime: "0001-01-01T00:00:00Z",
       },
       pendingBuildReason: 1,
       pendingBuildEdits: ["main.go"],
       pendingBuildSince: "2019-04-22T11:20:44.672903-04:00",
-      endpointLinks: ["http://localhost:9002/"],
+      endpointLinks: [{ url: "http://localhost:9002/" }],
       k8sResourceInfo: {
         podName: "dan-snack-65f9775f49-gcc8d",
         podCreationTime: "2019-04-22T11:05:58-04:00",
@@ -991,7 +412,7 @@ function oneResourceBuilding() {
   ]
 }
 
-function oneResourceCrashedOnStart(): any {
+function oneResourceCrashedOnStart(): Resource[] {
   return [
     {
       name: "snack",
@@ -999,30 +420,21 @@ function oneResourceCrashedOnStart(): any {
       buildHistory: [
         {
           edits: ["main.go"],
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T13:34:57.084919-04:00",
           finishTime: "2019-04-22T13:34:59.442139-04:00",
         },
         {
-          edits: null,
-          error: null,
-          warnings: null,
           startTime: "2019-04-22T13:34:05.844691-04:00",
           finishTime: "2019-04-22T13:34:07.352812-04:00",
         },
       ],
       currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
       pendingBuildReason: 0,
-      pendingBuildEdits: null,
       pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: ["http://localhost:9002/"],
+      endpointLinks: [{ url: "http://localhost:9002/" }],
       k8sResourceInfo: {
         podName: "dan-snack-cd4d74d7b-lg8sh",
         podCreationTime: "2019-04-22T13:34:59-04:00",
@@ -1033,93 +445,6 @@ function oneResourceCrashedOnStart(): any {
       runtimeStatus: "error",
       isTiltfile: false,
       showBuildStatus: true,
-    },
-  ]
-}
-
-function oneResourceManualTriggerDirty(): any {
-  return [
-    {
-      name: "(Tiltfile)",
-      lastDeployTime: "2019-06-12T12:33:27.831613-04:00",
-      triggerMode: 0,
-      buildHistory: [
-        {
-          edits: ["Tiltfile"],
-          error: null,
-          warnings: null,
-          startTime: "2019-06-12T12:33:27.439018-04:00",
-          finishTime: "2019-06-12T12:33:27.831613-04:00",
-          isCrashRebuild: false,
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-        isCrashRebuild: false,
-      },
-      pendingBuildReason: 0,
-      pendingBuildEdits: null,
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      hasPendingChanges: false,
-      endpointLinks: null,
-      podID: "",
-      k8sResourceInfo: {
-        podName: "",
-        podCreationTime: "",
-        podUpdateStartTime: "",
-        podStatus: "",
-        podStatusMessage: "",
-        podRestarts: 0,
-        endpointLinks: [],
-      },
-      runtimeStatus: "ok",
-      isTiltfile: true,
-      showBuildStatus: false,
-      crashLog: "",
-    },
-    {
-      name: "snack",
-      lastDeployTime: "2019-06-12T12:33:48.331048-04:00",
-      triggerMode: 1,
-      buildHistory: [
-        {
-          edits: null,
-          error: null,
-          warnings: null,
-          startTime: "2019-06-12T12:33:42.848866-04:00",
-          finishTime: "2019-06-12T12:33:48.331046-04:00",
-          isCrashRebuild: false,
-        },
-      ],
-      currentBuild: {
-        edits: null,
-        error: null,
-        warnings: null,
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
-        isCrashRebuild: false,
-      },
-      pendingBuildReason: 1,
-      pendingBuildEdits: ["hi"],
-      pendingBuildSince: "2019-06-12T12:36:05.292424-04:00",
-      hasPendingChanges: true,
-      endpointLinks: null,
-      podID: "dan-snack-85c688bffb-txf7z",
-      k8sResourceInfo: {
-        podName: "dan-snack-85c688bffb-txf7z",
-        podCreationTime: "2019-06-12T12:33:48-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      runtimeStatus: "ok",
-      isTiltfile: false,
-      showBuildStatus: true,
-      crashLog: "",
     },
   ]
 }
@@ -4981,14 +4306,12 @@ export {
   oneResourceView,
   twoResourceView,
   getMockRouterProps,
-  allResourcesOK,
   oneResourceFailedToBuild,
   oneResourceCrashedOnStart,
   oneResourceBuilding,
   oneResourceNoAlerts,
   oneResourceImagePullBackOff,
   oneResourceErrImgPull,
-  oneResourceManualTriggerDirty,
   oneResourceUnrecognizedError,
   logPaneDOM,
   unnamedEndpointLink,
