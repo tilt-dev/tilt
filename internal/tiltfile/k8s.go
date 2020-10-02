@@ -852,15 +852,19 @@ func convertPortForwards(val starlark.Value) ([]model.PortForward, error) {
 }
 
 func (s *tiltfileState) portForward(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var local int
-	var container int
+	var local, container int
+	var name string
 
-	if err := s.unpackArgs(fn.Name(), args, kwargs, "local", &local, "container?", &container); err != nil {
+	// TODO: can specify host (see `stringToPortForward` for host validation logic)
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
+		"local_port", &local,
+		"container_port?", &container,
+		"name?", &name); err != nil {
 		return nil, err
 	}
 
 	return portForward{
-		model.PortForward{LocalPort: local, ContainerPort: container},
+		model.PortForward{LocalPort: local, ContainerPort: container, Name: name},
 	}, nil
 }
 
@@ -871,6 +875,9 @@ type portForward struct {
 var _ starlark.Value = portForward{}
 
 func (f portForward) String() string {
+	if f.Name != "" {
+		return fmt.Sprintf("port_forward[%s](%d, %d)", f.Name, f.LocalPort, f.ContainerPort)
+	}
 	return fmt.Sprintf("port_forward(%d, %d)", f.LocalPort, f.ContainerPort)
 }
 
