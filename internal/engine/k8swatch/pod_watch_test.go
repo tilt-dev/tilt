@@ -73,7 +73,6 @@ func TestPodWatch(t *testing.T) {
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	ls := k8s.ManagedByTiltSelector()
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
 
@@ -81,9 +80,7 @@ func TestPodWatch(t *testing.T) {
 	f.addDeployedUID(manifest, pb.DeploymentUID())
 	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
 
-	f.kClient.EmitPod(ls, p)
-
-	f.assertWatchedSelectors(ls)
+	f.kClient.EmitPod(labels.Everything(), p)
 
 	f.assertObservedPods(p)
 }
@@ -96,12 +93,11 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	ls := k8s.ManagedByTiltSelector()
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
 
 	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
-	f.kClient.EmitPod(ls, p)
+	f.kClient.EmitPod(labels.Everything(), p)
 	f.assertObservedPods()
 
 	// Simulate the Deployment UID in the engine state after
@@ -122,7 +118,6 @@ func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	ls := k8s.ManagedByTiltSelector()
 	pb := podbuilder.New(t, manifest).WithResourceVersion("9")
 
 	// Simulate the Deployment UID in the engine state
@@ -130,13 +125,12 @@ func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
 
 	p1 := pb.Build()
-	f.kClient.EmitPod(ls, p1)
+	f.kClient.EmitPod(labels.Everything(), p1)
 
 	f.assertObservedPods(p1)
-	f.assertWatchedSelectors(ls)
 
 	p2 := pb.WithResourceVersion("10").Build()
-	f.kClient.EmitPod(ls, p2)
+	f.kClient.EmitPod(labels.Everything(), p2)
 
 	f.assertObservedPods(p1, p2)
 }
@@ -145,19 +139,17 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls := k8s.ManagedByTiltSelector()
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
 	ls2 := labels.Set{"baz": "quu"}.AsSelector()
 	manifest := f.addManifestWithSelectors("server", ls1, ls2)
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	f.assertWatchedSelectors(ls, ls1, ls2)
-
 	p := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
+		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(ls1, p)
+	f.kClient.EmitPod(labels.Everything(), p)
 
 	f.assertObservedPods(p)
 	f.assertObservedManifests(manifest.Name)
@@ -167,18 +159,16 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls := k8s.ManagedByTiltSelector()
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
 	manifest := f.addManifestWithSelectors("server1", ls1)
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	f.assertWatchedSelectors(ls, ls1)
-
 	p := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
+		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(ls1, p)
+	f.kClient.EmitPod(labels.Everything(), p)
 
 	f.assertObservedPods(p)
 	f.clearPods()
@@ -189,32 +179,32 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	f.assertWatchedSelectors(ls, ls2)
-
 	pb2 := podbuilder.New(t, manifest2).WithPodID("pod2")
 	p2 := pb2.Build()
 	f.addDeployedUID(manifest2, pb2.DeploymentUID())
 	f.kClient.InjectEntityByName(pb2.ObjectTreeEntities()...)
-	f.kClient.EmitPod(ls, p2)
+	f.kClient.EmitPod(labels.Everything(), p2)
 	f.assertObservedPods(p2)
 	f.clearPods()
 
 	p3 := podbuilder.New(t, manifest2).
 		WithPodID("pod3").
 		WithPodLabel("foo", "bar").
+		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(ls1, p3)
+	f.kClient.EmitPod(labels.Everything(), p3)
 
 	p4 := podbuilder.New(t, manifest2).
 		WithPodID("pod4").
 		WithPodLabel("baz", "quu").
+		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(ls2, p4)
+	f.kClient.EmitPod(labels.Everything(), p4)
 
 	p5 := podbuilder.New(t, manifest2).
 		WithPodID("pod5").
 		Build()
-	f.kClient.EmitPod(ls, p5)
+	f.kClient.EmitPod(labels.Everything(), p5)
 
 	f.assertObservedPods(p4, p5)
 	assert.Equal(t, []model.ManifestName{manifest2.Name, manifest2.Name}, f.manifestNames)
@@ -227,7 +217,6 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 
 	f.pw.OnChange(f.ctx, f.store)
 
-	ls := k8s.ManagedByTiltSelector()
 	pb := podbuilder.New(t, manifest)
 
 	f.addDeployedUID(manifest, pb.DeploymentUID())
@@ -241,7 +230,7 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 	}
 
 	for _, pod := range pods {
-		f.kClient.EmitPod(ls, pod)
+		f.kClient.EmitPod(labels.Everything(), pod)
 	}
 
 	f.waitForPodActionCount(count)
@@ -436,19 +425,6 @@ func (f *pwFixture) assertObservedManifests(manifests ...model.ManifestName) {
 	}
 
 	require.ElementsMatch(f.t, manifests, f.manifestNames)
-}
-
-func (f *pwFixture) assertWatchedSelectors(ls ...labels.Selector) {
-	start := time.Now()
-	for time.Since(start) < time.Second {
-		if len(ls) == len(f.kClient.WatchedSelectors()) {
-			break
-		}
-	}
-
-	if !assert.ElementsMatch(f.t, ls, f.kClient.WatchedSelectors()) {
-		f.t.FailNow()
-	}
 }
 
 func (f *pwFixture) clearPods() {

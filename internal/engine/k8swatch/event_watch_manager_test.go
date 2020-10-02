@@ -134,7 +134,7 @@ func TestEventWatchManager_watchError(t *testing.T) {
 
 	f.ewm.OnChange(f.ctx, f.store)
 
-	expectedErr := errors.Wrap(err, "Error watching k8s events\n")
+	expectedErr := errors.Wrap(err, "Error watching events. Are you connected to kubernetes?\nTry running `kubectl get events -n \"default\"`")
 	expected := store.ErrorAction{Error: expectedErr}
 	f.assertActions(expected)
 	f.store.ClearActions()

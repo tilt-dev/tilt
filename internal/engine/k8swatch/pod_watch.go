@@ -32,7 +32,7 @@ type PodWatcher struct {
 	ownerFetcher k8s.OwnerFetcher
 
 	mu                sync.RWMutex
-	watches           []PodWatch
+	extraSelectors    []ExtraSelector
 	watcherKnownState watcherKnownState
 
 	// An index that maps the UID of Kubernetes resources to the UIDs of
@@ -55,39 +55,14 @@ func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, cfgNS k8s.Nam
 	}
 }
 
-type PodWatch struct {
+type ExtraSelector struct {
 	name   model.ManifestName
 	labels labels.Selector
-	cancel context.CancelFunc
-}
-
-func (pw PodWatch) Equal(other PodWatch) bool {
-	return pw.name == other.name && k8s.SelectorEqual(pw.labels, other.labels)
-}
-
-// returns all elements of `a` that are not in `b`
-func subtract(a, b []PodWatch) []PodWatch {
-	var ret []PodWatch
-	// silly O(n^3) diff here on assumption that lists will be trivially small
-	for _, pwa := range a {
-		inB := false
-		for _, pwb := range b {
-			if pwa.Equal(pwb) {
-				inB = true
-				break
-			}
-		}
-		if !inB {
-			ret = append(ret, pwa)
-		}
-	}
-	return ret
 }
 
 type podWatchTaskList struct {
 	watcherTaskList
-	setup    []PodWatch
-	teardown []PodWatch
+	extraSelectors []ExtraSelector
 }
 
 func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList {
@@ -100,23 +75,20 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 	taskList := w.watcherKnownState.createTaskList(state)
 
 	// TODO(nick): Fix PodWatcher to only watch in namespaces we've deployed to.
-	var neededWatches []PodWatch
+	var extraSelectors []ExtraSelector
 	if len(taskList.watchableNamespaces) > 0 {
 		for _, mt := range state.Targets() {
 			for _, ls := range mt.Manifest.K8sTarget().ExtraPodSelectors {
 				if !ls.Empty() {
-					neededWatches = append(neededWatches, PodWatch{name: mt.Manifest.Name, labels: ls})
+					extraSelectors = append(extraSelectors, ExtraSelector{name: mt.Manifest.Name, labels: ls})
 				}
 			}
 		}
-
-		neededWatches = append(neededWatches, PodWatch{labels: k8s.ManagedByTiltSelector()})
 	}
 
 	return podWatchTaskList{
 		watcherTaskList: taskList,
-		setup:           subtract(neededWatches, w.watches),
-		teardown:        subtract(w.watches, neededWatches),
+		extraSelectors:  extraSelectors,
 	}
 }
 
@@ -126,22 +98,18 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	for _, pw := range taskList.setup {
-		ctx, cancel := context.WithCancel(ctx)
-		pw.cancel = cancel
-		w.watches = append(w.watches, pw)
-		ch, err := w.kCli.WatchPods(ctx, "", pw.labels)
-		if err != nil {
-			err = errors.Wrap(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods`")
-			st.Dispatch(store.NewErrorAction(err))
-			return
+	w.extraSelectors = taskList.extraSelectors
+
+	for _, teardown := range taskList.teardownNamespaces {
+		watcher, ok := w.watcherKnownState.namespaceWatches[teardown]
+		if ok {
+			watcher.cancel()
 		}
-		go w.dispatchPodChangesLoop(ctx, ch, st)
+		delete(w.watcherKnownState.namespaceWatches, teardown)
 	}
 
-	for _, pw := range taskList.teardown {
-		pw.cancel()
-		w.removeWatch(pw)
+	for _, setup := range taskList.setupNamespaces {
+		w.setupWatch(ctx, st, setup)
 	}
 
 	if len(taskList.newUIDs) > 0 {
@@ -149,14 +117,18 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
 	}
 }
 
-func (w *PodWatcher) removeWatch(toRemove PodWatch) {
-	oldWatches := append([]PodWatch{}, w.watches...)
-	w.watches = nil
-	for _, e := range oldWatches {
-		if !e.Equal(toRemove) {
-			w.watches = append(w.watches, e)
-		}
+func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace) {
+	ch, err := w.kCli.WatchPods(ctx, ns, labels.Everything())
+	if err != nil {
+		err = errors.Wrapf(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods -n %q`", ns)
+		st.Dispatch(store.NewErrorAction(err))
+		return
 	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	w.watcherKnownState.namespaceWatches[ns] = namespaceWatch{cancel: cancel}
+
+	go w.dispatchPodChangesLoop(ctx, ch, st)
 }
 
 // When new UIDs are deployed, go through all our known pods and dispatch
@@ -234,13 +206,9 @@ func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) (mode
 	// pods by owner UID. It's meant to handle CRDs, but most CRDs should
 	// set owner reference appropriately.
 	podLabels := labels.Set(pod.ObjectMeta.GetLabels())
-	for _, watch := range w.watches {
-		if watch.name == "" {
-			continue
-		}
-
-		if watch.labels.Matches(podLabels) {
-			return watch.name, ""
+	for _, selector := range w.extraSelectors {
+		if selector.labels.Matches(podLabels) {
+			return selector.name, ""
 		}
 	}
 	return "", ""

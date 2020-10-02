@@ -188,9 +188,15 @@ func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, w := range c.podWatches {
-		if SelectorEqual(ls, w.ls) {
-			w.ch <- ObjectUpdate{obj: p}
+		if w.ns != "" && w.ns != Namespace(p.Namespace) {
+			continue
 		}
+
+		if !SelectorEqual(w.ls, ls) {
+			continue
+		}
+
+		w.ch <- ObjectUpdate{obj: p}
 	}
 }
 
@@ -198,9 +204,15 @@ func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, w := range c.podWatches {
-		if SelectorEqual(ls, w.ls) {
-			w.ch <- ObjectUpdate{obj: p, isDelete: true}
+		if w.ns != "" && w.ns != Namespace(p.Namespace) {
+			continue
 		}
+
+		if !SelectorEqual(w.ls, ls) {
+			continue
+		}
+
+		w.ch <- ObjectUpdate{obj: p, isDelete: true}
 	}
 }
 

@@ -95,7 +95,7 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
 func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace, tiltStartTime time.Time) {
 	ch, err := m.kClient.WatchEvents(ctx, ns)
 	if err != nil {
-		err = errors.Wrap(err, "Error watching k8s events\n")
+		err = errors.Wrapf(err, "Error watching events. Are you connected to kubernetes?\nTry running `kubectl get events -n %q`", ns)
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
