@@ -32,6 +32,23 @@ func TestChild(t *testing.T) {
 	f.assertChild("parent", "parent", ".")
 }
 
+func TestCaseInsensitiveFileSystem(t *testing.T) {
+	f := NewOspathFixture(t)
+	defer f.TearDown()
+
+	fileA := filepath.Join("parent", "fileA")
+	f.TouchFiles([]string{fileA})
+
+	// Assume that macOS and Windows are case-insensitive, and other operating
+	// systems are not. This isn't strictly accurate, but is good enough for
+	// testing.
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		f.assertChild("Parent", fileA, "fileA")
+	} else {
+		f.assertChild("Parent", fileA, "")
+	}
+}
+
 func TestIsBrokenSymlink(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("windows does not support user-land symlinks")
@@ -61,7 +78,10 @@ func TestInvalidDir(t *testing.T) {
 	defer f.TearDown()
 
 	// Passing "" as dir used to make Child hang forever. Let's make sure it doesn't do that.
-	f.assertChild("", "random", "")
+	_, isChild := Child("", "random")
+	if isChild {
+		f.t.Fatalf("Expected file 'random' to NOT be a child of empty dir")
+	}
 }
 
 func TestDirTrailingSlash(t *testing.T) {
@@ -109,6 +129,8 @@ func NewOspathFixture(t *testing.T) *OspathFixture {
 
 // pass `expectedRelative` = "" to indicate that `file` is NOT a child of `dir`
 func (f *OspathFixture) assertChild(dir, file, expectedRel string) {
+	dir = f.JoinPath(dir)
+	file = f.JoinPath(file)
 	rel, isChild := Child(dir, file)
 	if expectedRel == "" {
 		if isChild {
