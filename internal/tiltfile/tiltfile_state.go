@@ -278,7 +278,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 			return nil, starkit.Model{}, err
 		}
 
-		manifests = append(manifests, yamlManifest)
+		manifests = append([]model.Manifest{yamlManifest}, manifests...)
 	}
 
 	err = validateResourceDependencies(manifests)

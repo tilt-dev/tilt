@@ -60,6 +60,20 @@ func TestDownDeletesNamespacesIfSpecified(t *testing.T) {
 	}
 }
 
+func TestDownDeletesInReverseOrder(t *testing.T) {
+	f := newDownFixture(t)
+	defer f.TearDown()
+
+	manifests := append([]model.Manifest{}, newK8sNamespaceManifest("foo"))
+	manifests = append(manifests, newK8sManifest()...)
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.cmd.deleteNamespaces = true
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+	require.Regexp(t, "(?s)name: sancho.*name: foo", f.kCli.DeletedYaml) // foo comes after sancho
+}
+
 func TestDownK8sFails(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()

@@ -82,6 +82,11 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
 
+	// reverse order for tearing down
+	for i, j := 0, len(entities)-1; i < j; i, j = i+1, j-1 {
+		entities[i], entities[j] = entities[j], entities[i]
+	}
+
 	if !c.deleteNamespaces {
 		var namespaces []k8s.K8sEntity
 		entities, namespaces, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
