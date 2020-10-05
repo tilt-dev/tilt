@@ -20,6 +20,7 @@ tilt_option.json
 
 # Text editor stuff
 .idea/*
+.*.swp
 
 
 # Generated yaml (from synclet deploy)
