@@ -24,6 +24,7 @@ type localResource struct {
 	resourceDeps  []string
 	ignores       []string
 	allowParallel bool
+	links         []model.Link
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -34,6 +35,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var resourceDepsVal starlark.Sequence
 	var ignoresVal starlark.Value
 	var allowParallel bool
+	var linksVal starlark.Value
 	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -48,6 +50,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"cmd_bat?", &updateCmdBatVal,
 		"serve_cmd_bat?", &serveCmdBatVal,
 		"allow_parallel?", &allowParallel,
+		"links?", &linksVal,
 	); err != nil {
 		return nil, err
 	}
@@ -87,6 +90,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, fmt.Errorf("local_resource must have a cmd and/or a serve_cmd, but both were empty")
 	}
 
+	links, err := convertLinks(linksVal)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s %q", fn.Name(), name)
+	}
+
 	res := localResource{
 		name:          name,
 		updateCmd:     updateCmd,
@@ -99,6 +107,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		resourceDeps:  resourceDeps,
 		ignores:       ignores,
 		allowParallel: allowParallel,
+		links:         links,
 	}
 
 	//check for duplicate resources by name and throw error if found

@@ -725,7 +725,29 @@ k8s_resource('foo', port_forwards=EXPR)
 
 func TestLocalResourceLinks(t *testing.T) {
 	cases := []resourceLinkCase{
+		newResourceLinkErrorCase("invalid_type", "123", "`link` value must be an string, a link, or a sequence of those"),
+
 		newResourceLinkSuccessCase("value_string", "'www.zombo.com'", []model.Link{{URL: "www.zombo.com"}}),
+
+		newResourceLinkSuccessCase("value_link_named", "link('www.zombo.com', name='zombo')",
+			[]model.Link{{URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkSuccessCase("value_link_unnamed", "link('www.zombo.com')",
+			[]model.Link{{URL: "www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_link_positional_args", "link('www.zombo.com', 'zombo')",
+			[]model.Link{{URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkErrorCase("link_constructor_requires_URL", "link(name='zombo')",
+			"link: missing argument for url"),
+
+		newResourceLinkSuccessCase("value_list_strings", "['www.apple.edu', 'www.zombo.com']",
+			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_list_links",
+			"[link('www.apple.edu'), link('www.zombo.com', 'zombo')]",
+			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkSuccessCase("value_list_,mixed",
+			"['www.apple.edu', link('www.zombo.com', 'zombo')]",
+			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkErrorCase("link_bad_type", "['www.apple.edu', 123]",
+			"includes element 123 which must be a string or a link"),
 	}
 
 	for _, c := range cases {
@@ -734,7 +756,7 @@ func TestLocalResourceLinks(t *testing.T) {
 			defer f.TearDown()
 
 			tiltfile := fmt.Sprintf(`
-local_resource('foo', 'echo hello', links=%s)
+local_resource('foo', 'echo hi', links=%s)
 `, c.expr)
 			f.file("Tiltfile", tiltfile)
 
@@ -6024,8 +6046,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
 		case []model.Link:
-			// assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
-			panic("not implemented")
+			assert.Equal(f.t, opt, m.LocalTarget().Links)
 		case model.TriggerMode:
 			assert.Equal(f.t, opt, m.TriggerMode)
 		case resourceDependenciesHelper:

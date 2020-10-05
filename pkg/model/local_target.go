@@ -53,6 +53,11 @@ func (lt LocalTarget) WithIgnores(ignores []Dockerignore) LocalTarget {
 	return lt
 }
 
+func (lt LocalTarget) WithLinks(links []Link) LocalTarget {
+	lt.Links = links
+	return lt
+}
+
 func (lt LocalTarget) ID() TargetID {
 	return TargetID{
 		Name: lt.Name,
