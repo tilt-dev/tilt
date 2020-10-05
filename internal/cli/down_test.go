@@ -71,7 +71,7 @@ func TestDownDeletesInReverseOrder(t *testing.T) {
 	f.cmd.deleteNamespaces = true
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
-	require.Regexp(t, "(?s)name: sancho.*name: foo", f.kCli.DeletedYaml) // foo comes after sancho
+	require.Regexp(t, "(?s)name: sancho.*name: foo", f.kCli.DeletedYaml) // namespace comes after deployment
 }
 
 func TestDownK8sFails(t *testing.T) {
