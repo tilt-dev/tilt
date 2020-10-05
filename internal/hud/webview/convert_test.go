@@ -96,6 +96,26 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 	assert.Equal(t, expected, res.EndpointLinks)
 }
 
+func TestStateToWebViewLocalResourceLink(t *testing.T) {
+	m := model.Manifest{
+		Name: "foo",
+	}.WithDeployTarget(model.LocalTarget{
+		Links: []model.Link{
+			{URL: "www.zombo.com", Name: "zombo"},
+			{URL: "www.apple.edu", Name: "apple"},
+		},
+	})
+	state := newState([]model.Manifest{m})
+	v := stateToProtoView(t, *state)
+
+	expected := []*proto_webview.Link{
+		&proto_webview.Link{Url: "www.apple.edu", Name: "apple"},
+		&proto_webview.Link{Url: "www.zombo.com", Name: "zombo"},
+	}
+	res, _ := findResource(m.Name, v)
+	assert.Equal(t, expected, res.EndpointLinks)
+}
+
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
 	assert.NoError(t, err)

@@ -645,16 +645,31 @@ func newPortForwardErrorCase(name, expr, errorMsg string) portForwardCase {
 
 func TestPortForward(t *testing.T) {
 	portForwardCases := []portForwardCase{
-		newPortForwardSuccessCase("value_local", "8000", []model.PortForward{{LocalPort: 8000}}),
-		newPortForwardErrorCase("value_local_negative", "-1", "not in the valid range"),
-		newPortForwardErrorCase("value_local_large", "8000000", "not in the valid range"),
+		// int values
+		newPortForwardSuccessCase("value_int_local", "8000", []model.PortForward{{LocalPort: 8000}}),
+		newPortForwardErrorCase("value_int_local_negative", "-1", "not in the valid range"),
+		newPortForwardErrorCase("value_int_local_large", "8000000", "not in the valid range"),
+
+		// string values
 		newPortForwardSuccessCase("value_string_local", "'10000'", []model.PortForward{{LocalPort: 10000}}),
 		newPortForwardSuccessCase("value_string_both", "'10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000}}),
 		newPortForwardErrorCase("value_string_garbage", "'garbage'", "not in the valid range"),
 		newPortForwardErrorCase("value_string_empty", "''", "not in the valid range"),
-		newPortForwardSuccessCase("value_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}),
-		newPortForwardSuccessCase("list", "[8000, port_forward(8001, 443)]", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}),
-		newPortForwardSuccessCase("list_string", "['8000', '8001:443']", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}}),
+
+		// PortForward values (via constructor)
+		newPortForwardSuccessCase("value_constructor_local", "port_forward(8001)", []model.PortForward{{LocalPort: 8001}}),
+		newPortForwardSuccessCase("value_constructor_local_named", "port_forward(8001, name='foo')", []model.PortForward{{LocalPort: 8001, Name: "foo"}}),
+		newPortForwardSuccessCase("value_constructor_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}),
+		newPortForwardSuccessCase("value_constructor_both_named", "port_forward(8001, 443, name='foo')", []model.PortForward{{LocalPort: 8001, ContainerPort: 443, Name: "foo"}}),
+		newPortForwardSuccessCase("value_constructor_all_positional", "port_forward(8001, 443, 'foo')", []model.PortForward{{LocalPort: 8001, ContainerPort: 443, Name: "foo"}}),
+		newPortForwardErrorCase("value_constructor_no_local_port", "port_forward(container_port=443)", "missing argument for local_port"),
+		newPortForwardErrorCase("value_constructor_local_port_wrong_type", "port_forward('8001')", "for parameter local_port: got string, want int"),
+		newPortForwardErrorCase("value_constructor_name_wrong_type", "port_forward(8001, 443, 54321)", "for parameter name: got int, want string"),
+
+		// list values
+		newPortForwardSuccessCase("list_mixed", "[8000, port_forward(8001, 443), '8002', '8003:444'],", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}, {LocalPort: 8002}, {LocalPort: 8003, ContainerPort: 444}}),
+
+		// parsing host
 		newPortForwardErrorCase("value_host_bad", "'bad+host:10000:8000'", "not a valid hostname or IP address"),
 		newPortForwardSuccessCase("value_host_good_ip", "'0.0.0.0:10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: "0.0.0.0"}}),
 		newPortForwardSuccessCase("value_host_good_domain", "'tilt.dev:10000:8000'", []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: "tilt.dev"}}),

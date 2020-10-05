@@ -1,6 +1,7 @@
 import React from "react"
 import { storiesOf } from "@storybook/react"
-import SidebarResources, { SidebarItem } from "./SidebarResources"
+import SidebarResources from "./SidebarResources"
+import SidebarItem from "./SidebarItem"
 import {
   oneResourceView,
   oneResourceNoAlerts,

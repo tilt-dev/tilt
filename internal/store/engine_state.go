@@ -628,6 +628,11 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 		return endpoints
 	}
 
+	localResourceLinks := mt.Manifest.LocalTarget().Links
+	if len(localResourceLinks) > 0 {
+		return localResourceLinks
+	}
+
 	publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
 	if len(publishedPorts) > 0 {
 		for _, p := range publishedPorts {
