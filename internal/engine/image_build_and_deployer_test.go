@@ -70,6 +70,18 @@ func TestForceUpdate(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(f.k8s.DeletedYaml, "Deployment"))
 }
 
+func TestDeleteShouldHappenInReverseOrder(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m := newK8sMultiEntityManifest("sancho")
+
+	err := f.ibd.delete(f.ctx, m.K8sTarget())
+	require.NoError(t, err)
+
+	assert.Regexp(t, "(?s)name: sancho-deployment.*name: sancho-pvc", f.k8s.DeletedYaml) // pvc comes after deployment
+}
+
 func TestDeployPodWithMultipleImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
@@ -969,6 +981,26 @@ func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelecto
 		f.T().Fatal(err)
 	}
 	return named
+}
+
+func newK8sMultiEntityManifest(name string) model.Manifest {
+	yaml := fmt.Sprintf(`
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: %s-pvc
+spec: {}
+status: {}
+
+---
+
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: %s-deployment
+spec: {}
+status: {}`, name, name)
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
 }
 
 type fakeKINDLoader struct {

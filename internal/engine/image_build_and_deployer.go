@@ -319,6 +319,11 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 		return err
 	}
 
+	// reverse order for tearing down
+	for i, j := 0, len(entities)-1; i < j; i, j = i+1, j-1 {
+		entities[i], entities[j] = entities[j], entities[i]
+	}
+
 	return ibd.k8sClient.Delete(ctx, entities)
 }
 
