@@ -28,6 +28,19 @@ func TestDown(t *testing.T) {
 	assert.Contains(t, f.kCli.DeletedYaml, "sancho")
 }
 
+func TestDownPreservesEntitiesWithKeepLabel(t *testing.T) {
+	f := newDownFixture(t)
+	defer f.TearDown()
+
+	manifests := append([]model.Manifest{}, newK8sPVCManifest("foo", "keep"), newK8sPVCManifest("bar", "delete"))
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+	require.Contains(t, f.kCli.DeletedYaml, "bar")
+	require.NotContains(t, f.kCli.DeletedYaml, "foo")
+}
+
 func TestDownPreservesNamespacesByDefault(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
@@ -120,6 +133,19 @@ metadata:
   name: %s
 spec: {}
 status: {}`, name)
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
+}
+
+func newK8sPVCManifest(name string, downPolicy string) model.Manifest {
+	yaml := fmt.Sprintf(`
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: %s
+  annotations:
+    tilt.dev/down-policy: %s
+spec: {}
+status: {}`, name, downPolicy)
 	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
 }
 

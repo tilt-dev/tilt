@@ -233,6 +233,10 @@ func (e K8sEntity) UID() types.UID {
 	return e.meta().GetUID()
 }
 
+func (e K8sEntity) Annotations() map[string]string {
+	return e.meta().GetAnnotations()
+}
+
 func (e K8sEntity) Labels() map[string]string {
 	return e.meta().GetLabels()
 }
