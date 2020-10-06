@@ -727,25 +727,34 @@ func TestLocalResourceLinks(t *testing.T) {
 	cases := []resourceLinkCase{
 		newResourceLinkErrorCase("invalid_type", "123", "`link` value must be an string, a link, or a sequence of those"),
 
-		newResourceLinkSuccessCase("value_string", "'www.zombo.com'", []model.Link{{URL: "www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_string", "'http://www.zombo.com'", []model.Link{{URL: "http://www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_string_adds_scheme", "'www.zombo.com'", []model.Link{{URL: "http://www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_string_preserves_nonhttp_scheme", "'ws://www.zombo.com'", []model.Link{{URL: "ws://www.zombo.com"}}),
+		newResourceLinkErrorCase("value_string_empty_url", "''", "url empty"),
 
-		newResourceLinkSuccessCase("value_link_named", "link('www.zombo.com', name='zombo')",
-			[]model.Link{{URL: "www.zombo.com", Name: "zombo"}}),
-		newResourceLinkSuccessCase("value_link_unnamed", "link('www.zombo.com')",
-			[]model.Link{{URL: "www.zombo.com"}}),
-		newResourceLinkSuccessCase("value_link_positional_args", "link('www.zombo.com', 'zombo')",
-			[]model.Link{{URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkSuccessCase("value_link_named", "link('https://www.zombo.com', name='zombo')",
+			[]model.Link{{URL: "https://www.zombo.com", Name: "zombo"}}),
+		newResourceLinkSuccessCase("value_link_unnamed", "link('https://www.zombo.com')",
+			[]model.Link{{URL: "https://www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_link_positional_args", "link('https://www.zombo.com', 'zombo')",
+			[]model.Link{{URL: "https://www.zombo.com", Name: "zombo"}}),
+		newResourceLinkSuccessCase("vlink_constructor_adds_scheme", "link('www.zombo.com', 'zombo')",
+			[]model.Link{{URL: "http://www.zombo.com", Name: "zombo"}}),
 		newResourceLinkErrorCase("link_constructor_requires_URL", "link(name='zombo')",
 			"link: missing argument for url"),
+		newResourceLinkErrorCase("link_constructor_empty_URL", "link('')",
+			"url empty"),
 
-		newResourceLinkSuccessCase("value_list_strings", "['www.apple.edu', 'www.zombo.com']",
-			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_list_strings", "['https://www.apple.edu', 'https://www.zombo.com']",
+			[]model.Link{{URL: "https://www.apple.edu"}, {URL: "https://www.zombo.com"}}),
+		newResourceLinkSuccessCase("list_strings_add_scheme", "['www.apple.edu', 'www.zombo.com']",
+			[]model.Link{{URL: "http://www.apple.edu"}, {URL: "http://www.zombo.com"}}),
 		newResourceLinkSuccessCase("value_list_links",
 			"[link('www.apple.edu'), link('www.zombo.com', 'zombo')]",
-			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com", Name: "zombo"}}),
+			[]model.Link{{URL: "http://www.apple.edu"}, {URL: "http://www.zombo.com", Name: "zombo"}}),
 		newResourceLinkSuccessCase("value_list_,mixed",
 			"['www.apple.edu', link('www.zombo.com', 'zombo')]",
-			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com", Name: "zombo"}}),
+			[]model.Link{{URL: "http://www.apple.edu"}, {URL: "http://www.zombo.com", Name: "zombo"}}),
 		newResourceLinkErrorCase("link_bad_type", "['www.apple.edu', 123]",
 			"includes element 123 which must be a string or a link"),
 	}
@@ -774,6 +783,43 @@ local_resource('foo', 'echo hi', links=%s)
 	}
 }
 
+func TestMaybeAddScheme(t *testing.T) {
+	cases := []struct {
+		name              string
+		url               string
+		expectErrContains string
+		expectURL         string
+	}{
+		{
+			name:      "preserves_scheme",
+			url:       "ws://www.zombo.com",
+			expectURL: "ws://www.zombo.com",
+		},
+		{
+			name:      "adds_http_if_no_scheme",
+			url:       "www.zombo.com",
+			expectURL: "http://www.zombo.com",
+		},
+		{
+			name:              "empty",
+			url:               "",
+			expectErrContains: "url empty",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			actual, err := maybeAddScheme(c.url)
+			if c.expectErrContains != "" {
+				require.Error(t, err, "expected error but got none")
+				require.Contains(t, err.Error(), c.expectErrContains, "error did not contain expected message")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, c.expectURL, actual, "expected URL != actual URL")
+		})
+	}
+
+}
 func TestExpand(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

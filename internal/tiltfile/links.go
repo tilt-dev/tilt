@@ -2,7 +2,9 @@ package tiltfile
 
 import (
 	"fmt"
+	"net/url"
 
+	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -56,9 +58,14 @@ func (s *tiltfileState) link(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
+	withScheme, err := maybeAddScheme(url)
+	if err != nil {
+		return nil, errors.Wrapf(err, "validating URL %q", url)
+	}
+
 	return link{
 		model.Link{
-			URL:  url,
+			URL:  withScheme,
 			Name: name,
 		},
 	}, nil
@@ -89,5 +96,28 @@ func (l link) Hash() (uint32, error) {
 }
 
 func strToLink(s starlark.String) (model.Link, error) {
-	return model.Link{URL: string(s)}, nil
+	withScheme, err := maybeAddScheme(string(s))
+	if err != nil {
+		return model.Link{}, errors.Wrapf(err, "validating URL %q", string(s))
+	}
+	return model.Link{URL: withScheme}, nil
+}
+
+func maybeAddScheme(uStr string) (string, error) {
+	if uStr == "" {
+		return "", fmt.Errorf("url empty")
+	}
+	u, err := url.Parse(uStr)
+	if err != nil {
+		// NOTE(maia): this unfortunately isn't a very robust check, `url.Parse`
+		// returns an error in very few cases, but it's better than nothing.
+		return "", err
+	}
+
+	if u.Scheme == "" {
+		// If the given URL string doesn't have a scheme, assume it's http
+		u.Scheme = "http"
+	}
+
+	return u.String(), nil
 }
