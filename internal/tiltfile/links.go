@@ -15,7 +15,11 @@ func convertLinks(val starlark.Value) ([]model.Link, error) {
 	}
 	switch val := val.(type) {
 	case starlark.String:
-		return []model.Link{model.Link{URL: string(val)}}, nil
+		li, err := strToLink(val)
+		if err != nil {
+			return nil, err
+		}
+		return []model.Link{li}, nil
 	case link:
 		return []model.Link{val.Link}, nil
 	case starlark.Sequence:
@@ -26,7 +30,11 @@ func convertLinks(val starlark.Value) ([]model.Link, error) {
 		for it.Next(&v) {
 			switch v := v.(type) {
 			case starlark.String:
-				result = append(result, model.Link{URL: string(v)})
+				li, err := strToLink(v)
+				if err != nil {
+					return nil, err
+				}
+				result = append(result, li)
 			case link:
 				result = append(result, v.Link)
 			default:
@@ -80,13 +88,6 @@ func (l link) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: port_forward")
 }
 
-func strToLink(i starlark.Int) (model.PortForward, error) {
-	n, ok := i.Int64()
-	if !ok {
-		return model.PortForward{}, fmt.Errorf("portForward port value %v is not representable as an int64", i)
-	}
-	if n < 0 || n > 65535 {
-		return model.PortForward{}, fmt.Errorf("portForward port value %v is not in the valid range [0-65535]", n)
-	}
-	return model.PortForward{LocalPort: int(n)}, nil
+func strToLink(s starlark.String) (model.Link, error) {
+	return model.Link{URL: string(s)}, nil
 }
