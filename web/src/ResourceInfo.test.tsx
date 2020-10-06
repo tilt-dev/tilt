@@ -113,8 +113,8 @@ it("trims URLs for unnamed endpoints", () => {
   let links = root.find("span#endpoints a")
   expect(links).toHaveLength(4)
 
-  for (let i = 0; i < 4; i++) {
-    expect(links.at(i).prop("href")).toEqual(endpoints[i].url)
-    expect(links.at(i).text()).toEqual(endpoints[i].expectedText)
-  }
+  endpoints.forEach((ep, i) => {
+    expect(links.at(i).prop("href")).toEqual(ep.url)
+    expect(links.at(i).text()).toEqual(ep.expectedText)
+  })
 })
