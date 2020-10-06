@@ -430,7 +430,6 @@ class HUD extends Component<HudProps, HudState> {
       return (
         <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
           <SidebarKeyboardShortcuts
-            history={this.props.history}
             selected={name}
             items={sidebarItems}
             pathBuilder={this.pathBuilder}

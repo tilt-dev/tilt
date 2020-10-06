@@ -1,66 +1,55 @@
-import { MemoryRouter } from "react-router"
+import { MemoryRouter, useHistory } from "react-router"
 import React from "react"
 import PathBuilder from "./PathBuilder"
-import { createMemoryHistory } from "history"
 import { mount } from "enzyme"
 import { twoResourceView } from "./testdata"
 import SidebarItem from "./SidebarItem"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
+import { fireEvent } from "@testing-library/dom"
 
-const fakeHistory = createMemoryHistory()
+var fakeHistory: any
 const pathBuilder = new PathBuilder("localhost", "/")
 const shortcuts = (items: SidebarItem[], selected: string) => {
-  let root = mount(
-    <MemoryRouter initialEntries={["/"]}>
+  let CaptureHistory = () => {
+    fakeHistory = useHistory()
+    return <span />
+  }
+  mount(
+    <MemoryRouter initialEntries={["/init"]}>
+      <CaptureHistory />
       <SidebarKeyboardShortcuts
         items={items}
         selected={selected}
-        history={fakeHistory}
         pathBuilder={pathBuilder}
       />
     </MemoryRouter>
   )
-  return root
-    .find(SidebarKeyboardShortcuts)
-    .instance() as SidebarKeyboardShortcuts
 }
-
-beforeEach(() => {
-  fakeHistory.location.pathname = ""
-})
 
 it("navigates forwards", () => {
   let items = twoResourceView().resources.map(res => new SidebarItem(res))
-  let sks = shortcuts(items, "")
-
-  sks.onKeydown(fakeKeyEvent("j"))
+  shortcuts(items, "")
+  fireEvent.keyDown(document.body, { key: "j" })
   expect(fakeHistory.location.pathname).toEqual("/r/vigoda")
 })
 
 it("navigates forwards no wrap", () => {
   let items = twoResourceView().resources.map(res => new SidebarItem(res))
-  let sks = shortcuts(items, "snack")
-
-  sks.onKeydown(fakeKeyEvent("j"))
-  expect(fakeHistory.location.pathname).toEqual("")
+  shortcuts(items, "snack")
+  fireEvent.keyDown(document.body, { key: "j" })
+  expect(fakeHistory.location.pathname).toEqual("/init")
 })
 
 it("navigates backwards", () => {
   let items = twoResourceView().resources.map(res => new SidebarItem(res))
-  let sks = shortcuts(items, "snack")
-
-  sks.onKeydown(fakeKeyEvent("k"))
+  shortcuts(items, "snack")
+  fireEvent.keyDown(document.body, { key: "k" })
   expect(fakeHistory.location.pathname).toEqual("/r/vigoda")
 })
 
 it("navigates backwards no wrap", () => {
   let items = twoResourceView().resources.map(res => new SidebarItem(res))
   let sks = shortcuts(items, "")
-
-  sks.onKeydown(fakeKeyEvent("k"))
-  expect(fakeHistory.location.pathname).toEqual("")
+  fireEvent.keyDown(document.body, { key: "k" })
+  expect(fakeHistory.location.pathname).toEqual("/init")
 })
-
-function fakeKeyEvent(key: string): KeyboardEvent {
-  return { key, preventDefault: function() {} } as KeyboardEvent
-}
