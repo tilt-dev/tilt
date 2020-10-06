@@ -36,7 +36,7 @@ let PodStatus = styled.span`
 
 let PodId = styled.span``
 
-let PortForward = styled.span`
+let Endpoints = styled.span`
   ${PodId} + & {
     margin-left: ${s.SizeUnit(0.5)};
     border-left: 1px solid ${s.Color.gray};
@@ -44,14 +44,14 @@ let PortForward = styled.span`
   }
 `
 
-let ResourceLinkLabel = styled.span`
+let EndpointsLabel = styled.span`
   color: ${s.Color.grayLight};
   margin-right: ${s.SizeUnit(0.25)};
 
   ${s.mixinHideOnSmallScreen}
 `
 
-let ResourceLink = styled.a`
+let Endpoint = styled.a`
   & + & {
     padding-left: ${s.SizeUnit(0.25)};
     border-left: 1px dotted ${s.Color.grayLight};
@@ -116,22 +116,22 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
 
     let endpoints = this.props.endpoints ?? []
     let endpointsEl = endpoints?.length > 0 && (
-      <PortForward id="endpoints">
-        <ResourceLinkLabel>
-          Port-Forward{endpoints?.length > 1 ? "s" : ""}:
-        </ResourceLinkLabel>
+      <Endpoints id="endpoints">
+        <EndpointsLabel>
+          Endpoint{endpoints?.length > 1 ? "s" : ""}:
+        </EndpointsLabel>
 
         {endpoints?.map(ep => (
-          <ResourceLink
+          <Endpoint
             href={ep.url}
             target="_blank"
             rel="noopener noreferrer"
             key={ep.url}
           >
-            {ep.name || ep.url}
-          </ResourceLink>
+            {ep.name || displayURL(ep)}
+          </Endpoint>
         ))}
-      </PortForward>
+      </Endpoints>
     )
 
     return (
@@ -145,6 +145,13 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
       </Root>
     )
   }
+}
+
+function displayURL(li: Link): string {
+  let url = li.url?.replace(/^(http:\/\/)/, "")
+  url = url?.replace(/^(https:\/\/)/, "")
+  url = url?.replace(/^(www\.)/, "")
+  return url || ""
 }
 
 export default ResourceInfo
