@@ -9,12 +9,13 @@ import { fireEvent } from "@testing-library/dom"
 
 var fakeHistory: any
 const pathBuilder = new PathBuilder("localhost", "/")
+let component: any
 const shortcuts = (items: SidebarItem[], selected: string) => {
   let CaptureHistory = () => {
     fakeHistory = useHistory()
     return <span />
   }
-  mount(
+  component = mount(
     <MemoryRouter initialEntries={["/init"]}>
       <CaptureHistory />
       <SidebarKeyboardShortcuts
@@ -25,6 +26,13 @@ const shortcuts = (items: SidebarItem[], selected: string) => {
     </MemoryRouter>
   )
 }
+
+afterEach(() => {
+  if (component) {
+    component.unmount()
+    component = null
+  }
+})
 
 it("navigates forwards", () => {
   let items = twoResourceView().resources.map(res => new SidebarItem(res))

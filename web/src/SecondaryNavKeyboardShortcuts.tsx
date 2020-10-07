@@ -10,7 +10,7 @@ type Props = {
 }
 
 /**
- * Sets up keyboard shortcuts that depend on the state of the sidebar.
+ * Sets up keyboard shortcuts that depend on the state of the secondary nav.
  */
 class SecondaryNavKeyboardShortcuts extends Component<Props> {
   constructor(props: Props) {

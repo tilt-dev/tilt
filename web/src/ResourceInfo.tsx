@@ -3,6 +3,7 @@ import styled from "styled-components"
 import * as s from "./style-helpers"
 import { SnapshotHighlight } from "./types"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
+import ResourceInfoKeyboardShortcuts from "./ResourceInfoKeyboardShortcuts"
 
 type Link = Proto.webviewLink
 
@@ -12,6 +13,8 @@ type HUDHeaderProps = {
   podStatus?: string
   showSnapshotButton: boolean
   highlight: SnapshotHighlight | null
+
+  // TODO(nick): This needs a better name
   handleOpenModal: () => void
 }
 
@@ -91,6 +94,15 @@ let SnapshotButtonSvg = styled(SnapshotSvg)`
   margin-right: ${s.SizeUnit(0.25)};
 `
 
+// TODO(nick): Put this in a global React Context object with
+// other page-level stuffs
+function openEndpointUrl(url: string) {
+  // We deliberately don't use rel=noopener. These are trusted tabs, and we want
+  // to have a persistent link to them (so that clicking on the same link opens
+  // the same tab).
+  window.open(url, url)
+}
+
 class ResourceInfo extends PureComponent<HUDHeaderProps> {
   renderSnapshotButton() {
     let highlight = this.props.highlight
@@ -124,8 +136,8 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
         {endpoints?.map(ep => (
           <Endpoint
             href={ep.url}
-            target="_blank"
-            rel="noopener noreferrer"
+            // We use ep.url as the target, so that clicking the link re-uses the tab.
+            target={ep.url}
             key={ep.url}
           >
             {ep.name || displayURL(ep)}
@@ -136,6 +148,12 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
 
     return (
       <Root>
+        <ResourceInfoKeyboardShortcuts
+          openEndpointUrl={openEndpointUrl}
+          showSnapshotButton={this.props.showSnapshotButton}
+          openSnapshotModal={this.props.handleOpenModal}
+          endpoints={this.props.endpoints}
+        />
         <ResourceInfoStyle>
           <PodStatus>{podStatus}</PodStatus>
           {podID && <PodId>{podID}</PodId>}

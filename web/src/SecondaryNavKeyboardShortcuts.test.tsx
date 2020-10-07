@@ -6,13 +6,14 @@ import SecondaryNavKeyboardShortcuts from "./SecondaryNavKeyboardShortcuts"
 import { fireEvent } from "@testing-library/dom"
 
 var fakeHistory: any
+let component: any
 const shortcuts = (logUrl: string, alertsUrl: string, facetsUrl: string) => {
   let CaptureHistory = () => {
     fakeHistory = useHistory()
     return <span />
   }
 
-  mount(
+  component = mount(
     <MemoryRouter initialEntries={["/init"]}>
       <CaptureHistory />
       <SecondaryNavKeyboardShortcuts
@@ -23,6 +24,13 @@ const shortcuts = (logUrl: string, alertsUrl: string, facetsUrl: string) => {
     </MemoryRouter>
   )
 }
+
+afterEach(() => {
+  if (component) {
+    component.unmount()
+    component = null
+  }
+})
 
 it("navigates to logs", () => {
   shortcuts("/logs", "/alerts", "/facets")
