@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type kubectlRunner interface {
@@ -19,12 +21,13 @@ type realKubectlRunner struct {
 
 var _ kubectlRunner = realKubectlRunner{}
 
-func (k realKubectlRunner) tiltPath() string {
+func (k realKubectlRunner) tiltPath() (string, error) {
 	// TODO(nick): It might be better to dependency inject this. Right now, this
-	// only works if os.Args[0] is the Tilt binary.  It won't work right if this
+	// only works if the executable is the Tilt binary.  It won't work right if this
 	// is linked into separately compiled binaries that don't have a kubectl
 	// sub-command.
-	return os.Args[0]
+	path, err := os.Executable()
+	return path, errors.Wrap(err, "finding path of Tilt executable (for `tilt kubectl` call)")
 }
 
 func (k realKubectlRunner) prependGlobalArgs(args []string) []string {
@@ -33,7 +36,11 @@ func (k realKubectlRunner) prependGlobalArgs(args []string) []string {
 
 func (k realKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
 	args = k.prependGlobalArgs(args)
-	c := exec.CommandContext(ctx, k.tiltPath(), args...)
+	tiltPath, err := k.tiltPath()
+	if err != nil {
+		return "", "", err
+	}
+	c := exec.CommandContext(ctx, tiltPath, args...)
 
 	stdoutBuf := &bytes.Buffer{}
 	stderrBuf := &bytes.Buffer{}
@@ -46,7 +53,11 @@ func (k realKubectlRunner) exec(ctx context.Context, args []string) (stdout stri
 
 func (k realKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin string) (stdout string, stderr string, err error) {
 	args = k.prependGlobalArgs(args)
-	c := exec.CommandContext(ctx, k.tiltPath(), args...)
+	tiltPath, err := k.tiltPath()
+	if err != nil {
+		return "", "", err
+	}
+	c := exec.CommandContext(ctx, tiltPath, args...)
 	c.Stdin = strings.NewReader(stdin)
 
 	stdoutBuf := &bytes.Buffer{}
