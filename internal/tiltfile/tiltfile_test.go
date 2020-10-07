@@ -725,7 +725,8 @@ k8s_resource('foo', port_forwards=EXPR)
 
 func TestLocalResourceLinks(t *testing.T) {
 	cases := []resourceLinkCase{
-		newResourceLinkErrorCase("invalid_type", "123", "`link` value must be an string, a link, or a sequence of those"),
+		newResourceLinkErrorCase("invalid_type", "123",
+			"Want a string, a link, or a sequence of these; found 123"),
 
 		newResourceLinkSuccessCase("value_string", "'http://www.zombo.com'", []model.Link{{URL: "http://www.zombo.com"}}),
 		newResourceLinkSuccessCase("value_string_adds_scheme", "'www.zombo.com'", []model.Link{{URL: "http://www.zombo.com"}}),
@@ -756,7 +757,7 @@ func TestLocalResourceLinks(t *testing.T) {
 			"['www.apple.edu', link('www.zombo.com', 'zombo')]",
 			[]model.Link{{URL: "http://www.apple.edu"}, {URL: "http://www.zombo.com", Name: "zombo"}}),
 		newResourceLinkErrorCase("link_bad_type", "['www.apple.edu', 123]",
-			"includes element 123 which must be a string or a link"),
+			"Want a string, a link, or a sequence of these; found 123"),
 	}
 
 	for _, c := range cases {
@@ -783,43 +784,6 @@ local_resource('foo', 'echo hi', links=%s)
 	}
 }
 
-func TestMaybeAddScheme(t *testing.T) {
-	cases := []struct {
-		name              string
-		url               string
-		expectErrContains string
-		expectURL         string
-	}{
-		{
-			name:      "preserves_scheme",
-			url:       "ws://www.zombo.com",
-			expectURL: "ws://www.zombo.com",
-		},
-		{
-			name:      "adds_http_if_no_scheme",
-			url:       "www.zombo.com",
-			expectURL: "http://www.zombo.com",
-		},
-		{
-			name:              "empty",
-			url:               "",
-			expectErrContains: "url empty",
-		},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			actual, err := maybeAddScheme(c.url)
-			if c.expectErrContains != "" {
-				require.Error(t, err, "expected error but got none")
-				require.Contains(t, err.Error(), c.expectErrContains, "error did not contain expected message")
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, c.expectURL, actual, "expected URL != actual URL")
-		})
-	}
-
-}
 func TestExpand(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
