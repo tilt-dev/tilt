@@ -1,19 +1,17 @@
 import React from "react"
 import styled from "styled-components"
-import { Font } from "./style-helpers"
 import FloatDialog from "./FloatDialog"
 
 type props = {
   isOpen: boolean
   onRequestClose: () => void
+  style?: any
 }
 
 let ShortcutRoot = styled.div`
   display: flex;
   flex-direction: row;
-  font: ${Font.monospace};
-  font-size: 15px;
-  line-height: 24px;
+  font-size: 16px;
 `
 
 let ShortcutKey = styled.div`

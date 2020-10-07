@@ -1,14 +1,15 @@
 import React from "react"
 import Modal from "react-modal"
 import styled from "styled-components"
-import { Color, Font } from "./style-helpers"
+import { Color, Font, FontSize } from "./style-helpers"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 
 type props = {
-  title: string
+  title: string | React.ReactElement
   isOpen: boolean
   onRequestClose: () => void
   children: any
+  style?: any
 }
 
 let FloatDialogRoot = styled(Modal)`
@@ -48,7 +49,7 @@ let CloseButton = styled.button`
   background-color: white;
   transition: background-color 300ms ease;
   border-radius: 32px 32px;
-  margin: -8px 0;
+  padding: 0;
 
   &:hover,
   &:active {
@@ -56,19 +57,27 @@ let CloseButton = styled.button`
   }
 `
 
+let Content = styled.div`
+  font: ${Font.monospace};
+  font-size: ${FontSize.default};
+  line-height: 28px;
+`
+
 // A generic dialog that floats in a part of the screen.
 // Intended to be attached to a menu button.
 export default function FloatDialog(props: props) {
+  let title = props.title
+  let titleEl = typeof title == "string" ? <Title>{title}</Title> : title
   return (
     <FloatDialogRoot shouldCloseOnEsc={true} {...props}>
       <TitleBar>
-        <Title>{props.title}</Title>
+        {titleEl}
         <CloseButton onClick={props.onRequestClose}>
           <CloseSvg />
         </CloseButton>
       </TitleBar>
       <HR />
-      {props.children}
+      <Content>{props.children}</Content>
     </FloatDialogRoot>
   )
 }
