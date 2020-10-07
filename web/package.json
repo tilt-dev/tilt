@@ -58,6 +58,7 @@
     "@storybook/addon-actions": "^6.0.7",
     "@storybook/addon-links": "^6.0.7",
     "@storybook/addons": "^6.0.7",
+    "@storybook/preset-create-react-app": "^3.1.4",
     "@storybook/react": "^6.0.7",
     "@types/enzyme": "^3.9.1",
     "@types/enzyme-adapter-react-16": "^1.0.5",

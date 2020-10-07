@@ -319,6 +319,8 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 		return err
 	}
 
+	entities = k8s.ReverseSortedEntities(entities)
+
 	return ibd.k8sClient.Delete(ctx, entities)
 }
 

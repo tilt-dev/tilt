@@ -82,6 +82,8 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
 
+	entities = k8s.ReverseSortedEntities(entities)
+
 	entities, _, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
 		downPolicy, exists := e.Annotations()["tilt.dev/down-policy"]
 		return !exists || downPolicy != "keep", nil

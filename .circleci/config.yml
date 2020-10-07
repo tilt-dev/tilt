@@ -46,6 +46,7 @@ jobs:
           command: make test-js
           environment:
             JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
+      - run: make test-storybook
       - store_test_results:
           path: web/reports/junit
       - slack/notify-on-failure:

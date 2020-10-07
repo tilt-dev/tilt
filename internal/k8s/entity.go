@@ -76,6 +76,12 @@ func SortedEntities(entities []K8sEntity) []K8sEntity {
 	return []K8sEntity(entList)
 }
 
+func ReverseSortedEntities(entities []K8sEntity) []K8sEntity {
+	entList := entityList(CopyEntities(entities))
+	sort.Sort(sort.Reverse(entList))
+	return entList
+}
+
 func (e K8sEntity) ToObjectReference() v1.ObjectReference {
 	meta := e.meta()
 	apiVersion, kind := e.GVK().ToAPIVersionAndKind()
