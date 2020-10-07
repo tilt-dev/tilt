@@ -725,7 +725,8 @@ k8s_resource('foo', port_forwards=EXPR)
 
 func TestLocalResourceLinks(t *testing.T) {
 	cases := []resourceLinkCase{
-		newResourceLinkErrorCase("invalid_type", "123", "`link` value must be an string, a link, or a sequence of those"),
+		newResourceLinkErrorCase("invalid_type", "123",
+			"Want a string, a link, or a sequence of these; found 123"),
 
 		newResourceLinkSuccessCase("value_string", "'www.zombo.com'", []model.Link{{URL: "www.zombo.com"}}),
 
@@ -747,7 +748,7 @@ func TestLocalResourceLinks(t *testing.T) {
 			"['www.apple.edu', link('www.zombo.com', 'zombo')]",
 			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com", Name: "zombo"}}),
 		newResourceLinkErrorCase("link_bad_type", "['www.apple.edu', 123]",
-			"includes element 123 which must be a string or a link"),
+			"Want a string, a link, or a sequence of these; found 123"),
 	}
 
 	for _, c := range cases {
