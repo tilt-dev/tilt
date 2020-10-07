@@ -1,6 +1,6 @@
-.PHONY: all proto install lint test test-go check-js test-js integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor shellcheck release-container
+.PHONY: all proto install lint test test-go check-js test-js test-storybook integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor shellcheck release-container
 
-all: check-go check-js test-js
+all: check-go check-js test-js test-storybook
 
 # There are 2 Go bugs that cause problems on CI:
 # 1) Linker memory usage blew up in Go 1.11
@@ -118,6 +118,9 @@ ifneq ($(CIRCLECI),true)
 else
 	cd web && CI=true yarn ci
 endif
+
+test-storybook:
+	cd web && yarn start-storybook --ci --smoke-test
 
 goimports:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) internal
