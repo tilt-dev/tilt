@@ -12,6 +12,8 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
+	links "github.com/tilt-dev/tilt/internal/tiltfile/links"
+
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -213,6 +215,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		shlex.NewExtension(),
 		watch.NewExtension(),
 		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
+		links.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -307,11 +310,13 @@ const (
 	k8sYamlN                    = "k8s_yaml"
 	filterYamlN                 = "filter_yaml"
 	k8sResourceN                = "k8s_resource"
-	localResourceN              = "local_resource"
 	portForwardN                = "port_forward"
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
 	workloadToResourceFunctionN = "workload_to_resource_function"
+
+	// local resource functions
+	localResourceN = "local_resource"
 
 	// file functions
 	localN     = "local"
@@ -1529,7 +1534,8 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		lt := model.NewLocalTarget(model.TargetName(r.name), r.updateCmd, r.serveCmd, r.deps, r.workdir).
 			WithRepos(reposForPaths(paths)).
 			WithIgnores(ignores).
-			WithAllowParallel(r.allowParallel)
+			WithAllowParallel(r.allowParallel).
+			WithLinks(r.links)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
 			mds = append(mds, model.ManifestName(md))

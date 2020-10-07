@@ -7,6 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/tilt/internal/tiltfile/links"
+
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -24,6 +26,7 @@ type localResource struct {
 	resourceDeps  []string
 	ignores       []string
 	allowParallel bool
+	links         []model.Link
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -34,6 +37,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var resourceDepsVal starlark.Sequence
 	var ignoresVal starlark.Value
 	var allowParallel bool
+	var links links.LinkList
 	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -48,6 +52,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"cmd_bat?", &updateCmdBatVal,
 		"serve_cmd_bat?", &serveCmdBatVal,
 		"allow_parallel?", &allowParallel,
+		"links?", &links,
 	); err != nil {
 		return nil, err
 	}
@@ -99,6 +104,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		resourceDeps:  resourceDeps,
 		ignores:       ignores,
 		allowParallel: allowParallel,
+		links:         links.Links,
 	}
 
 	//check for duplicate resources by name and throw error if found

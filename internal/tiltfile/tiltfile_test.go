@@ -643,6 +643,21 @@ func newPortForwardErrorCase(name, expr, errorMsg string) portForwardCase {
 	return portForwardCase{name: name, expr: expr, errorMsg: errorMsg}
 }
 
+type resourceLinkCase struct {
+	name     string
+	expr     string
+	expected []model.Link
+	errorMsg string
+}
+
+func newResourceLinkSuccessCase(name, expr string, expected []model.Link) resourceLinkCase {
+	return resourceLinkCase{name: name, expr: expr, expected: expected}
+}
+
+func newResourceLinkErrorCase(name, expr, errorMsg string) resourceLinkCase {
+	return resourceLinkCase{name: name, expr: expr, errorMsg: errorMsg}
+}
+
 func TestPortForward(t *testing.T) {
 	portForwardCases := []portForwardCase{
 		// int values
@@ -704,6 +719,58 @@ k8s_resource('foo', port_forwards=EXPR)
 				c.expected,
 				db(image("gcr.io/foo")),
 				deployment("foo"))
+		})
+	}
+}
+
+func TestLocalResourceLinks(t *testing.T) {
+	cases := []resourceLinkCase{
+		newResourceLinkErrorCase("invalid_type", "123",
+			"Want a string, a link, or a sequence of these; found 123"),
+
+		newResourceLinkSuccessCase("value_string", "'www.zombo.com'", []model.Link{{URL: "www.zombo.com"}}),
+
+		newResourceLinkSuccessCase("value_link_named", "link('www.zombo.com', name='zombo')",
+			[]model.Link{{URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkSuccessCase("value_link_unnamed", "link('www.zombo.com')",
+			[]model.Link{{URL: "www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_link_positional_args", "link('www.zombo.com', 'zombo')",
+			[]model.Link{{URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkErrorCase("link_constructor_requires_URL", "link(name='zombo')",
+			"link: missing argument for url"),
+
+		newResourceLinkSuccessCase("value_list_strings", "['www.apple.edu', 'www.zombo.com']",
+			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com"}}),
+		newResourceLinkSuccessCase("value_list_links",
+			"[link('www.apple.edu'), link('www.zombo.com', 'zombo')]",
+			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkSuccessCase("value_list_,mixed",
+			"['www.apple.edu', link('www.zombo.com', 'zombo')]",
+			[]model.Link{{URL: "www.apple.edu"}, {URL: "www.zombo.com", Name: "zombo"}}),
+		newResourceLinkErrorCase("link_bad_type", "['www.apple.edu', 123]",
+			"Want a string, a link, or a sequence of these; found 123"),
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			tiltfile := fmt.Sprintf(`
+local_resource('foo', 'echo hi', links=%s)
+`, c.expr)
+			f.file("Tiltfile", tiltfile)
+
+			if c.errorMsg != "" {
+				f.loadErrString(c.errorMsg)
+				return
+			}
+
+			f.load()
+			f.assertNextManifest("foo",
+				c.expected,
+				localTarget(updateCmd("echo hi")),
+			)
 		})
 	}
 }
@@ -5979,6 +6046,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
+		case []model.Link:
+			assert.Equal(f.t, opt, m.LocalTarget().Links)
 		case model.TriggerMode:
 			assert.Equal(f.t, opt, m.TriggerMode)
 		case resourceDependenciesHelper:
