@@ -1,4 +1,4 @@
-package value
+package links
 
 import (
 	"fmt"
@@ -6,6 +6,9 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/pkg/model"
+
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 )
 
 type Link struct {
@@ -43,7 +46,7 @@ type LinkList struct {
 }
 
 func (ll *LinkList) Unpack(v starlark.Value) error {
-	seq := ValueOrSequenceToSlice(v)
+	seq := value.ValueOrSequenceToSlice(v)
 	for _, val := range seq {
 		switch val := val.(type) {
 		case starlark.String:
@@ -59,4 +62,34 @@ func (ll *LinkList) Unpack(v starlark.Value) error {
 		}
 	}
 	return nil
+}
+
+// Implements functions for dealing with k8s secret settings.
+type Extension struct{}
+
+var _ starkit.Extension = Extension{}
+
+func NewExtension() Extension {
+	return Extension{}
+}
+
+func (e Extension) OnStart(env *starkit.Environment) error {
+	return env.AddBuiltin("link", e.link)
+}
+
+func (e Extension) link(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var url, name string
+
+	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
+		"url", &url,
+		"name?", &name); err != nil {
+		return nil, err
+	}
+
+	return Link{
+		Link: model.Link{
+			URL:  url,
+			Name: name,
+		},
+	}, nil
 }

@@ -7,6 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/tilt/internal/tiltfile/links"
+
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -35,7 +37,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var resourceDepsVal starlark.Sequence
 	var ignoresVal starlark.Value
 	var allowParallel bool
-	var links value.LinkList
+	var links links.LinkList
 	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
