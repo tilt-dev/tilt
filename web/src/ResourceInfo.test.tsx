@@ -93,3 +93,28 @@ it("displays mixed named/unnamed endpoints", () => {
   expect(links.at(1).prop("href")).toEqual(namedEndpointLink.url)
   expect(links.at(1).text()).toEqual(namedEndpointLink.name)
 })
+
+it("trims URLs for unnamed endpoints", () => {
+  let ep1 = { url: "http://www.apple.com", expectedText: "apple.com" }
+  let ep2 = { url: "https://www.banana.com", expectedText: "banana.com" }
+  let ep3 = { url: "http://cherry.com", expectedText: "cherry.com" }
+  let ep4 = { url: "www.durian.com", expectedText: "durian.com" }
+  let endpoints = [ep1, ep2, ep3, ep4]
+
+  const root = mount(
+    <ResourceInfo
+      showSnapshotButton={false}
+      handleOpenModal={fakeHandleOpenModal}
+      highlight={null}
+      endpoints={endpoints}
+    />
+  )
+
+  let links = root.find("span#endpoints a")
+  expect(links).toHaveLength(4)
+
+  endpoints.forEach((ep, i) => {
+    expect(links.at(i).prop("href")).toEqual(ep.url)
+    expect(links.at(i).text()).toEqual(ep.expectedText)
+  })
+})
