@@ -1615,7 +1615,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="582" class="logLine "><code><span>fe          ┊   RUN wget https://github.com/google/protobuf/releases/download/v$</span></code>
 <br>
-</span><span data-lineid="583" class="logLine "><code><span>fe          ┊     unzip protoc--linux-x86_64.zip -d protoc &amp;&amp; \</span></code>
+</span><span data-lineid="583" class="logLine "><code><span>fe          ┊     unzip protoc--linux-x86_64.zip -d protoc &amp;&amp; </span></code>
 <br>
 </span><span data-lineid="584" class="logLine "><code><span>fe          ┊     mv protoc/bin/protoc /usr/bin/protoc</span></code>
 <br>
@@ -1973,9 +1973,9 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="761" class="logLine "><code><span>fortune     ┊   </span></code>
 <br>
-</span><span data-lineid="762" class="logLine "><code><span>fortune     ┊   RUN wget https://github.com/google/protobuf/releases/download/v$ \</span></code>
+</span><span data-lineid="762" class="logLine "><code><span>fortune     ┊   RUN wget https://github.com/google/protobuf/releases/download/v$ </span></code>
 <br>
-</span><span data-lineid="763" class="logLine "><code><span>fortune     ┊     unzip protoc-linux-x86_64.zip -d protoc &amp;&amp; \</span></code>
+</span><span data-lineid="763" class="logLine "><code><span>fortune     ┊     unzip protoc-linux-x86_64.zip -d protoc &amp;&amp; </span></code>
 <br>
 </span><span data-lineid="764" class="logLine "><code><span>fortune     ┊     mv protoc/bin/protoc /usr/bin/protoc</span></code>
 <br>
@@ -3235,7 +3235,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 <br>
 </span><span data-lineid="1392" class="logLine "><code><span>tick        ┊ tick</span></code>
 <br>
-</span><span data-lineid="1393" class="logLine "><code><span>tick        ┊ [K8s EVENT: Pod tick-1573684680-2d9r5 (ns: default)] Failed create pod sandbox: rpc error: code = Unknown desc = failed to start sandbox container for pod "tick-1573684680-2d9r5": Error response from daemon: OCI runtime create failed: container_linux.go:346: starting container process caused "process_linux.go:319: getting the final child's pid from pipe caused \"read init-p: connection reset by peer\"": unknown</span></code>
+</span><span data-lineid="1393" class="logLine "><code><span>tick        ┊ [K8s EVENT: Pod tick-1573684680-2d9r5 (ns: default)] Failed create pod sandbox: rpc error: code = Unknown desc = failed to start sandbox container for pod "tick-1573684680-2d9r5": Error response from daemon: OCI runtime create failed: container_linux.go:346: starting container process caused "process_linux.go:319: getting the final child's pid from pipe caused "read init-p: connection reset by peer"": unknown</span></code>
 <br>
 </span><span data-lineid="1394" class="logLine "><code><span>vigoda      ┊ 2019/11/13 22:38:13 Server status: All good</span></code>
 <br>
