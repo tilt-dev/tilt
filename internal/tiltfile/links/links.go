@@ -47,22 +47,22 @@ func (ll *LinkList) Unpack(v starlark.Value) error {
 }
 
 func strToLink(s starlark.String) (model.Link, error) {
-	withScheme, err := maybeAddScheme(string(s))
+	withScheme, err := parseAndMaybeAddScheme(string(s))
 	if err != nil {
 		return model.Link{}, errors.Wrapf(err, "validating URL %q", string(s))
 	}
 	return model.Link{URL: withScheme}, nil
 }
 
-func maybeAddScheme(uStr string) (string, error) {
+func parseAndMaybeAddScheme(uStr string) (*url.URL, error) {
 	if uStr == "" {
-		return "", fmt.Errorf("url empty")
+		return nil, fmt.Errorf("url empty")
 	}
 	u, err := url.Parse(uStr)
 	if err != nil {
 		// NOTE(maia): this unfortunately isn't a very robust check, `url.Parse`
 		// returns an error in very few cases, but it's better than nothing.
-		return "", err
+		return nil, err
 	}
 
 	if u.Scheme == "" {
@@ -70,7 +70,7 @@ func maybeAddScheme(uStr string) (string, error) {
 		u.Scheme = "http"
 	}
 
-	return u.String(), nil
+	return u, nil
 }
 
 // Implements functions for dealing with k8s secret settings.
@@ -95,14 +95,14 @@ func (e Extension) link(thread *starlark.Thread, fn *starlark.Builtin, args star
 		return nil, err
 	}
 
-	withScheme, err := maybeAddScheme(url)
+	withScheme, err := parseAndMaybeAddScheme(url)
 	if err != nil {
 		return nil, errors.Wrapf(err, "validating URL %q", url)
 	}
 
 	return Link{
 		Struct: starlarkstruct.FromStringDict(starlark.String("link"), starlark.StringDict{
-			"url":  starlark.String(withScheme),
+			"url":  starlark.String(withScheme.String()),
 			"name": starlark.String(name),
 		}),
 		Link: model.Link{
