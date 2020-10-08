@@ -146,7 +146,7 @@ jobs:
       - run:
           name: Setup Docker Credentials
           command: gcloud auth configure-docker
-      - run: ./charts/storybook/deploy.sh
+      - run: ./configs/storybook/deploy.sh
       - slack/status:
         mentions: "U4H55SA2H" # nicks
 
