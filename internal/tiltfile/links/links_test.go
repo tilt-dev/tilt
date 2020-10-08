@@ -3,7 +3,10 @@ package links
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 func TestMaybeAddScheme(t *testing.T) {
@@ -41,4 +44,32 @@ func TestMaybeAddScheme(t *testing.T) {
 			require.Equal(t, c.expectURL, actual, "expected URL != actual URL")
 		})
 	}
+}
+
+func TestLinkProps(t *testing.T) {
+	f := starkit.NewFixture(t, NewExtension())
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+l = link("localhost:4000", "web")
+print(l.url)
+print(l.name)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, "localhost:4000\nweb\n", f.PrintOutput())
+}
+func TestLinkPropsImmutable(t *testing.T) {
+	f := starkit.NewFixture(t, NewExtension())
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+l = link("localhost:4000", "web")
+l.url = "XXX"
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "can't assign to .url field of struct")
 }
