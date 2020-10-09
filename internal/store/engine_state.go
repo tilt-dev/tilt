@@ -636,14 +636,14 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 	publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
 	if len(publishedPorts) > 0 {
 		for _, p := range publishedPorts {
-			endpoints = append(endpoints, model.Link{URL: fmt.Sprintf("http://localhost:%d/", p)})
+			endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
 		}
 		return endpoints
 	}
 
 	for _, u := range mt.State.K8sRuntimeState().LBs {
 		if u != nil {
-			endpoints = append(endpoints, model.Link{URL: u.String()})
+			endpoints = append(endpoints, model.Link{URL: u})
 		}
 	}
 	return endpoints
@@ -716,7 +716,7 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 			PendingBuildReason: mt.NextBuildReason(),
 			CurrentBuild:       currentBuild,
 			CrashLog:           ms.CrashLog,
-			Endpoints:          model.LinksToURLs(endpoints), // hud can't handle link names, just send URLs
+			Endpoints:          model.LinksToURLStrings(endpoints), // hud can't handle link names, just send URLs
 			ResourceInfo:       resourceInfoView(mt),
 		}
 

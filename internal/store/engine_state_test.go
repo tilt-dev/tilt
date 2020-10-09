@@ -104,8 +104,8 @@ func TestStateToViewLocalResourceLinks(t *testing.T) {
 		Name: "foo",
 	}.WithDeployTarget(model.LocalTarget{
 		Links: []model.Link{
-			{URL: "www.zombo.com", Name: "zombo"},
-			{URL: "www.apple.edu", Name: "apple"},
+			model.MustNewLink("www.zombo.com", "zombo"),
+			model.MustNewLink("www.apple.edu", "apple"),
 		},
 	})
 	state := newState([]model.Manifest{m})
@@ -222,8 +222,8 @@ func TestManifestTargetEndpoints(t *testing.T) {
 		{
 			name: "port forward",
 			expected: []model.Link{
-				model.Link{URL: "http://localhost:7000/"},
-				model.Link{URL: "http://localhost:8000/", Name: "foobar"},
+				model.MustNewLink("http://localhost:7000/", ""),
+				model.MustNewLink("http://localhost:8000/", "foobar"),
 			},
 			portFwds: []model.PortForward{
 				{LocalPort: 8000, ContainerPort: 5000, Name: "foobar"},
@@ -233,8 +233,8 @@ func TestManifestTargetEndpoints(t *testing.T) {
 		{
 			name: "port forward with host",
 			expected: []model.Link{
-				model.Link{URL: "http://host1:8000/", Name: "foobar"},
-				model.Link{URL: "http://host2:7000/"},
+				model.MustNewLink("http://host1:8000/", "foobar"),
+				model.MustNewLink("http://host2:7000/", ""),
 			},
 			portFwds: []model.PortForward{
 				{LocalPort: 8000, ContainerPort: 5000, Host: "host1", Name: "foobar"},
@@ -244,34 +244,34 @@ func TestManifestTargetEndpoints(t *testing.T) {
 		{
 			name: "local resource links",
 			expected: []model.Link{
-				model.Link{URL: "www.apple.edu", Name: "apple"},
-				model.Link{URL: "www.zombo.com", Name: "zombo"},
+				model.MustNewLink("www.apple.edu", "apple"),
+				model.MustNewLink("www.zombo.com", "zombo"),
 			},
 			localResLinks: []model.Link{
-				model.Link{URL: "www.apple.edu", Name: "apple"},
-				model.Link{URL: "www.zombo.com", Name: "zombo"},
+				model.MustNewLink("www.apple.edu", "apple"),
+				model.MustNewLink("www.zombo.com", "zombo"),
 			},
 		},
 		{
 			name: "docker compose ports",
 			expected: []model.Link{
-				model.Link{URL: "http://localhost:7000/"},
-				model.Link{URL: "http://localhost:8000/"},
+				model.MustNewLink("http://localhost:7000/", ""),
+				model.MustNewLink("http://localhost:8000/", ""),
 			},
 			dcPublishedPorts: []int{8000, 7000},
 		},
 		{
 			name: "load balancers",
 			expected: []model.Link{
-				model.Link{URL: "www.apple.edu"},
-				model.Link{URL: "www.zombo.com"},
+				model.MustNewLink("www.apple.edu", ""),
+				model.MustNewLink("www.zombo.com", ""),
 			},
 			lbURLs: []string{"www.zombo.com", "www.apple.edu"},
 		},
 		{
 			name: "port forwards supercede LBs",
 			expected: []model.Link{
-				model.Link{URL: "http://localhost:7000/"},
+				model.MustNewLink("http://localhost:7000/", ""),
 			},
 			portFwds: []model.PortForward{
 				{LocalPort: 7000, ContainerPort: 5001},

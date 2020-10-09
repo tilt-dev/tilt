@@ -2,9 +2,11 @@ package model
 
 import (
 	"fmt"
+	"net/url"
 	"runtime"
 	"strings"
 
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/docker/distribution/reference"
@@ -447,20 +449,41 @@ type PortForward struct {
 
 // A link associated with resource; may represent a port forward, an endpoint
 // derived from a Service/Ingress/etc., or a URL manually associated with a
-// resource via the Tiltfile (TK)
+// resource via the Tiltfile
 type Link struct {
-	URL string
+	URL *url.URL
 
 	// Optional name of the link; if given, used as text of the URL
 	// displayed in the web UI (e.g. <a href="localhost:8888">Debugger</a>)
 	Name string
 }
 
+func (li Link) URLString() string { return li.URL.String() }
+
+func NewLink(urlStr string, name string) (Link, error) {
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return Link{}, errors.Wrapf(err, "parsing URL %q", urlStr)
+	}
+	return Link{
+		URL:  u,
+		Name: name,
+	}, nil
+}
+
+func MustNewLink(urlStr string, name string) Link {
+	li, err := NewLink(urlStr, name)
+	if err != nil {
+		panic(err)
+	}
+	return li
+}
+
 // ByURL implements sort.Interface based on the URL field.
 type ByURL []Link
 
 func (lns ByURL) Len() int           { return len(lns) }
-func (lns ByURL) Less(i, j int) bool { return lns[i].URL < lns[j].URL }
+func (lns ByURL) Less(i, j int) bool { return lns[i].URLString() < lns[j].URLString() }
 func (lns ByURL) Swap(i, j int)      { lns[i], lns[j] = lns[j], lns[i] }
 
 func (pf PortForward) ToLink() Link {
@@ -469,16 +492,16 @@ func (pf PortForward) ToLink() Link {
 		host = "localhost"
 	}
 	url := fmt.Sprintf("http://%s:%d/", host, pf.LocalPort)
-	return Link{
-		URL:  url,
-		Name: pf.Name,
-	}
+
+	// We panic on error here because we provide the URL format ourselves,
+	// so if it's bad, something is very wrong.
+	return MustNewLink(url, pf.Name)
 }
 
-func LinksToURLs(lns []Link) []string {
+func LinksToURLStrings(lns []Link) []string {
 	res := make([]string, len(lns))
 	for i, ln := range lns {
-		res[i] = ln.URL
+		res[i] = ln.URLString()
 	}
 	return res
 }

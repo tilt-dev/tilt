@@ -101,8 +101,8 @@ func TestStateToWebViewLocalResourceLink(t *testing.T) {
 		Name: "foo",
 	}.WithDeployTarget(model.LocalTarget{
 		Links: []model.Link{
-			{URL: "www.zombo.com", Name: "zombo"},
-			{URL: "www.apple.edu", Name: "apple"},
+			model.MustNewLink("www.zombo.com", "zombo"),
+			model.MustNewLink("www.apple.edu", "apple"),
 		},
 	})
 	state := newState([]model.Manifest{m})

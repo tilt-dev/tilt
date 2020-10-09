@@ -160,7 +160,7 @@ func ToProtoLinks(lns []model.Link) []*proto_webview.Link {
 	ret := make([]*proto_webview.Link, len(lns))
 	for i, ln := range lns {
 		ret[i] = &proto_webview.Link{
-			Url:  ln.URL,
+			Url:  ln.URLString(),
 			Name: ln.Name,
 		}
 	}

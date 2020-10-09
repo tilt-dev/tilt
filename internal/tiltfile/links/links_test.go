@@ -34,14 +34,14 @@ func TestMaybeAddScheme(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			actual, err := maybeAddScheme(c.url)
+			actual, err := parseAndMaybeAddScheme(c.url)
 			if c.expectErrContains != "" {
 				require.Error(t, err, "expected error but got none")
 				require.Contains(t, err.Error(), c.expectErrContains, "error did not contain expected message")
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, c.expectURL, actual, "expected URL != actual URL")
+			require.Equal(t, c.expectURL, actual.String(), "expected URL != actual URL")
 		})
 	}
 }
