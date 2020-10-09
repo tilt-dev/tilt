@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -14,28 +15,11 @@ import (
 )
 
 type Link struct {
+	*starlarkstruct.Struct
 	model.Link
 }
 
 var _ starlark.Value = Link{}
-
-func (l Link) String() string {
-	return fmt.Sprintf("Link(url=%q, name=%q)", l.URL, l.Name)
-}
-
-func (l Link) Type() string {
-	return "Link"
-}
-
-func (l Link) Freeze() {}
-
-func (l Link) Truth() starlark.Bool {
-	return l.Link != model.Link{}
-}
-
-func (l Link) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: port_forward")
-}
 
 // Parse resource links (string or `link`) into model.Link
 // Not to be confused with a LinkED List :P
@@ -117,6 +101,10 @@ func (e Extension) link(thread *starlark.Thread, fn *starlark.Builtin, args star
 	}
 
 	return Link{
+		Struct: starlarkstruct.FromStringDict(starlark.String("link"), starlark.StringDict{
+			"url":  starlark.String(withScheme),
+			"name": starlark.String(name),
+		}),
 		Link: model.Link{
 			URL:  withScheme,
 			Name: name,
