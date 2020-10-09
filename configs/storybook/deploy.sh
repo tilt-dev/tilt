@@ -8,7 +8,10 @@ set -ex
 TODAY=$(date +"%Y-%m-%d")
 SECONDS=$(date +"%s")
 TAG="$TODAY-$SECONDS"
-docker build -t gcr.io/windmill-prod/tilt-storybook:$TAG -f Dockerfile ../../
+DOCKER_BUILDKIT=1 docker build \
+    --cache-from gcr.io/windmill-prod/tilt-storybook \
+    --build-arg BUILDKIT_INLINE_CACHE=1 \
+    -t gcr.io/windmill-prod/tilt-storybook:$TAG -f Dockerfile ../../
 docker push gcr.io/windmill-prod/tilt-storybook:$TAG
 
 helm upgrade --install storybook \

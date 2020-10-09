@@ -134,7 +134,8 @@ jobs:
     docker:
       - image: cimg/base:2020.01
     steps:
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 19.03.12
       - checkout
       - run: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
       - gcp-cli/install
