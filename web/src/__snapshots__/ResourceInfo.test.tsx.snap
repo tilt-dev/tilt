@@ -4,6 +4,7 @@ exports[`doesn't render snapshot button if it's a snapshot 1`] = `
 <div
   className="sc-bdnylx jgLzcD"
 >
+  <span />
   <div
     className="sc-gtssRu kHxNPn"
   >
@@ -18,6 +19,7 @@ exports[`shows snapshot url 1`] = `
 <div
   className="sc-bdnylx jgLzcD"
 >
+  <span />
   <div
     className="sc-gtssRu kHxNPn"
   >
