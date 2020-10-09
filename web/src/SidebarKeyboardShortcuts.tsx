@@ -2,6 +2,7 @@ import React, { Component } from "react"
 import { History } from "history"
 import SidebarItem from "./SidebarItem"
 import PathBuilder from "./PathBuilder"
+import { useHistory } from "react-router"
 
 type Props = {
   items: SidebarItem[]
@@ -52,6 +53,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         let path = name ? pathBuilder.path(`/r/${name}`) : pathBuilder.path("/")
         history.push(path)
         e.preventDefault()
+        break
     }
   }
 
@@ -60,4 +62,13 @@ class SidebarKeyboardShortcuts extends Component<Props> {
   }
 }
 
-export default SidebarKeyboardShortcuts
+type PublicProps = {
+  items: SidebarItem[]
+  selected: string
+  pathBuilder: PathBuilder
+}
+
+export default function(props: PublicProps) {
+  let history = useHistory()
+  return <SidebarKeyboardShortcuts {...props} history={history} />
+}

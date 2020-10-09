@@ -3,6 +3,7 @@ import styled from "styled-components"
 import { Link } from "react-router-dom"
 import { LogTraceNav, ResourceView } from "./types"
 import * as s from "./style-helpers"
+import SecondaryNavKeyboardShortcuts from "./SecondaryNavKeyboardShortcuts"
 
 type NavProps = {
   logUrl: string
@@ -167,6 +168,9 @@ class SecondaryNav extends PureComponent<NavProps> {
   }
 
   render() {
+    let logUrl = this.props.logUrl
+    let alertsUrl = this.props.alertsUrl
+    let facetsUrl = this.props.facetsUrl || ""
     let traceIsSelected = this.props.resourceView === ResourceView.Trace
     let logIsSelected =
       this.props.resourceView === ResourceView.Log || traceIsSelected
@@ -176,12 +180,12 @@ class SecondaryNav extends PureComponent<NavProps> {
     let secondLevelNav = this.renderSecondLevelNav()
 
     let facetItem = null
-    if (this.props.facetsUrl) {
+    if (facetsUrl) {
       facetItem = (
         <NavListItem>
           <NavLink
             className={`tabLink ${facetsIsSelected ? "isSelected" : ""}`}
-            to={this.props.facetsUrl}
+            to={facetsUrl}
           >
             Facets
           </NavLink>
@@ -192,12 +196,14 @@ class SecondaryNav extends PureComponent<NavProps> {
     // The number of alerts should be for the selected resource
     return (
       <Root className="secondaryNav">
+        <SecondaryNavKeyboardShortcuts
+          logUrl={logUrl}
+          alertsUrl={alertsUrl}
+          facetsUrl={facetsUrl}
+        />
         <NavList>
           <NavListItem>
-            <NavLink
-              className={logIsSelected ? "isSelected" : ""}
-              to={this.props.logUrl}
-            >
+            <NavLink className={logIsSelected ? "isSelected" : ""} to={logUrl}>
               Logs
             </NavLink>
           </NavListItem>
@@ -206,7 +212,7 @@ class SecondaryNav extends PureComponent<NavProps> {
               className={`secondaryNavLink--alerts ${
                 alertsIsSelected ? "isSelected" : ""
               }`}
-              to={this.props.alertsUrl}
+              to={alertsUrl}
             >
               Alerts
               {this.props.numberOfAlerts > 0 && (

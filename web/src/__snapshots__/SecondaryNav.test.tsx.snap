@@ -4,6 +4,7 @@ exports[`shows a facets tab 1`] = `
 <nav
   className="sc-bdnylx jiVbiK secondaryNav"
 >
+  <span />
   <ul
     className="sc-gtssRu hcdlKW"
   >
@@ -48,6 +49,7 @@ exports[`shows error pane 1`] = `
 <nav
   className="sc-bdnylx jiVbiK secondaryNav"
 >
+  <span />
   <ul
     className="sc-gtssRu hcdlKW"
   >
@@ -81,6 +83,7 @@ exports[`shows logs 1`] = `
 <nav
   className="sc-bdnylx jiVbiK secondaryNav"
 >
+  <span />
   <ul
     className="sc-gtssRu hcdlKW"
   >
@@ -114,6 +117,7 @@ exports[`shows the number of errors in the error tab 1`] = `
 <nav
   className="sc-bdnylx jiVbiK secondaryNav"
 >
+  <span />
   <ul
     className="sc-gtssRu hcdlKW"
   >
