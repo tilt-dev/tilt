@@ -8,7 +8,7 @@ import (
 	"os"
 	"regexp"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-output-verbosity-and-debugging
