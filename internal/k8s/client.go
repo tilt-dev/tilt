@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
@@ -77,7 +78,7 @@ type Client interface {
 	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error)
+	GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error)
 
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 
@@ -128,6 +129,7 @@ type K8sClient struct {
 	configNamespace   Namespace
 	clientset         kubernetes.Interface
 	dynamic           dynamic.Interface
+	metadata          metadata.Interface
 	runtimeAsync      *runtimeAsync
 	registryAsync     *registryAsync
 	nodeIPAsync       *nodeIPAsync
@@ -171,6 +173,11 @@ func ProvideK8sClient(
 		return &explodingClient{err: err}
 	}
 
+	meta, err := metadata.NewForConfig(restConfig)
+	if err != nil {
+		return &explodingClient{err: err}
+	}
+
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
 	if err != nil {
 		return &explodingClient{fmt.Errorf("unable to create discovery client: %v", err)}
@@ -196,6 +203,7 @@ func ProvideK8sClient(
 		nodeIPAsync:       nodeIPAsync,
 		dynamic:           di,
 		drm:               drm,
+		metadata:          meta,
 	}
 }
 
@@ -404,7 +412,7 @@ func (k K8sClient) actOnEntity(ctx context.Context, cmdArgs []string, entity K8s
 	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
-func (k K8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error) {
+func (k K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
 	group := getGroup(ref)
 	kind := ref.Kind
 	namespace := ref.Namespace
@@ -426,20 +434,21 @@ func (k K8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (
 
 		rm, err = k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
 		if err != nil {
-			return K8sEntity{}, errors.Wrapf(err, "error mapping %s/%s", group, kind)
+			return nil, errors.Wrapf(err, "error mapping %s/%s", group, kind)
 		}
 	}
 
-	result, err := k.dynamic.Resource(rm.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{
+	typeAndMeta, err := k.metadata.Resource(rm.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{
 		ResourceVersion: resourceVersion,
 	})
 	if err != nil {
-		return K8sEntity{}, err
+		return nil, err
 	}
-	if uid != "" && result.GetUID() != uid {
-		return K8sEntity{}, apierrors.NewNotFound(v1.Resource(kind), name)
+	meta := typeAndMeta.ObjectMeta
+	if uid != "" && meta.UID != uid {
+		return nil, apierrors.NewNotFound(v1.Resource(kind), name)
 	}
-	return NewK8sEntity(result), nil
+	return &meta, nil
 }
 
 // Tests whether a string is a valid version for a k8s resource type.

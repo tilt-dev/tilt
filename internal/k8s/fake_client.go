@@ -313,14 +313,14 @@ func (c *FakeK8sClient) InjectEntityByName(entities ...K8sEntity) {
 	}
 }
 
-func (c *FakeK8sClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error) {
+func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
 	c.getByReferenceCallCount++
 	resp, ok := c.entityByName[ref.Name]
 	if !ok {
-		logger.Get(ctx).Infof("FakeK8sClient.GetByReference: resource not found: %s", ref.Name)
-		return K8sEntity{}, apierrors.NewNotFound(v1.Resource(ref.Kind), ref.Name)
+		logger.Get(ctx).Infof("FakeK8sClient.GetMetaByReference: resource not found: %s", ref.Name)
+		return nil, apierrors.NewNotFound(v1.Resource(ref.Kind), ref.Name)
 	}
-	return resp, nil
+	return resp.meta(), nil
 }
 
 func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {

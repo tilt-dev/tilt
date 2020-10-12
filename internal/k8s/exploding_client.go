@@ -29,8 +29,8 @@ func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) err
 	return errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) GetByReference(ctx context.Context, ref v1.ObjectReference) (K8sEntity, error) {
-	return K8sEntity{}, errors.Wrap(ec.err, "could not set up k8s client")
+func (ec *explodingClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
 func (ec *explodingClient) PodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, lp []model.LabelPair) ([]v1.Pod, error) {
