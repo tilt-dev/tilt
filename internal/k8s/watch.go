@@ -24,6 +24,10 @@ var PodGVR = v1.SchemeGroupVersion.WithResource("pods")
 var ServiceGVR = v1.SchemeGroupVersion.WithResource("services")
 var EventGVR = v1.SchemeGroupVersion.WithResource("events")
 
+// Inspired by:
+// https://groups.google.com/g/kubernetes-sig-api-machinery/c/PbSCXdLDno0/m/v9gH3HXVDAAJ
+const resyncPeriod = 15 * time.Minute
+
 // A wrapper object around SharedInformer objects, to make them
 // a bit easier to use correctly.
 type ObjectUpdate struct {
@@ -152,7 +156,7 @@ func (kCli K8sClient) makeInformer(
 		options = append(options, informers.WithNamespace(ns.String()))
 	}
 
-	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientset, 5*time.Second, options...)
+	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientset, resyncPeriod, options...)
 	resFactory, err := factory.ForResource(gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "makeInformer")
