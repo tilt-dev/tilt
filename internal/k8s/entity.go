@@ -31,7 +31,7 @@ func NewK8sEntity(obj runtime.Object) K8sEntity {
 	return K8sEntity{Obj: obj}
 }
 
-type k8sMeta interface {
+type ObjectMeta interface {
 	GetName() string
 	GetNamespace() string
 	GetUID() types.UID
@@ -53,8 +53,8 @@ func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference     { return nil }
 func (emptyMeta) SetNamespace(ns string)                          {}
 func (emptyMeta) SetManagedFields(mf []metav1.ManagedFieldsEntry) {}
 
-var _ k8sMeta = emptyMeta{}
-var _ k8sMeta = &metav1.ObjectMeta{}
+var _ ObjectMeta = emptyMeta{}
+var _ ObjectMeta = &metav1.ObjectMeta{}
 
 type entityList []K8sEntity
 
@@ -127,7 +127,7 @@ func (e K8sEntity) Clean() {
 	}
 }
 
-func (e K8sEntity) meta() k8sMeta {
+func (e K8sEntity) meta() ObjectMeta {
 	if unstruct := e.maybeUnstructuredMeta(); unstruct != nil {
 		return unstruct
 	}

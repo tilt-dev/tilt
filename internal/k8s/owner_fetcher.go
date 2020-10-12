@@ -91,14 +91,14 @@ func (v OwnerFetcher) OwnerTreeOfRef(ctx context.Context, ref v1.ObjectReference
 		}
 	}()
 
-	entity, err := v.kCli.GetByReference(ctx, ref)
+	meta, err := v.kCli.GetMetaByReference(ctx, ref)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ObjectRefTree{Ref: ref}, nil
 		}
 		return ObjectRefTree{}, err
 	}
-	return v.ownerTreeOfHelper(ctx, ref, entity.meta())
+	return v.ownerTreeOfHelper(ctx, ref, meta)
 }
 
 func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result ObjectRefTree, err error) {
@@ -125,38 +125,18 @@ func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result
 	return v.ownerTreeOfHelper(ctx, ref, meta)
 }
 
-func (v OwnerFetcher) ownerTreeOfHelper(ctx context.Context, ref v1.ObjectReference, meta k8sMeta) (ObjectRefTree, error) {
+func (v OwnerFetcher) ownerTreeOfHelper(ctx context.Context, ref v1.ObjectReference, meta ObjectMeta) (ObjectRefTree, error) {
 	tree := ObjectRefTree{Ref: ref}
-	owners, err := v.ownersOfMeta(ctx, meta)
-	if err != nil {
-		return ObjectRefTree{}, err
-	}
+	owners := meta.GetOwnerReferences()
 	for _, owner := range owners {
-		ownerTree, err := v.OwnerTreeOf(ctx, owner)
+		ownerRef := OwnerRefToObjectRef(owner, meta.GetNamespace())
+		ownerTree, err := v.OwnerTreeOfRef(ctx, ownerRef)
 		if err != nil {
 			return ObjectRefTree{}, err
 		}
 		tree.Owners = append(tree.Owners, ownerTree)
 	}
 	return tree, nil
-}
-
-func (v OwnerFetcher) ownersOfMeta(ctx context.Context, meta k8sMeta) ([]K8sEntity, error) {
-	owners := meta.GetOwnerReferences()
-	result := make([]K8sEntity, 0, len(owners))
-	for _, owner := range owners {
-		ref := OwnerRefToObjectRef(owner, meta.GetNamespace())
-		owner, err := v.kCli.GetByReference(ctx, ref)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				continue
-			}
-			return nil, err
-		}
-		result = append(result, owner)
-	}
-
-	return result, nil
 }
 
 func OwnerRefToObjectRef(owner metav1.OwnerReference, namespace string) v1.ObjectReference {
