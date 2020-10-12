@@ -148,8 +148,8 @@ jobs:
           name: Setup Docker Credentials
           command: gcloud auth configure-docker
       - run: ./configs/storybook/deploy.sh
-      - slack/status:
-        mentions: "U4H55SA2H" # nicks
+      - slack/notify-on-failure:
+          only_for_branches: master
 
 workflows:
   version: 2
