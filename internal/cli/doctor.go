@@ -142,15 +142,8 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	opt := a.UserOpt()
 	fmt.Printf("- User Mode: %s\n", opt)
 
-	machineHash := "[redacted]"
-	gitRepoHash := "[redacted]"
-	if opt == wmanalytics.OptIn {
-		machineHash = a.MachineHash()
-		gitRepoHash = a.GitRepoHash()
-	}
-
-	fmt.Printf("- Machine: %s\n", machineHash)
-	fmt.Printf("- Repo: %s\n", gitRepoHash)
+	fmt.Printf("- Machine: %s\n", a.MachineHash())
+	fmt.Printf("- Repo: %s\n", a.GitRepoHash())
 
 	return nil
 }
