@@ -166,6 +166,13 @@ func (f *fixture) TiltUp(name string) {
 	}
 }
 
+func (f *fixture) TiltCI(args ...string) {
+	err := f.tilt.CI(f.LogWriter(), args...)
+	if err != nil {
+		f.t.Fatalf("TiltCI: %v", err)
+	}
+}
+
 func (f *fixture) TiltWatch() {
 	response, err := f.tilt.Up(f.tiltArgs, f.LogWriter())
 	if err != nil {

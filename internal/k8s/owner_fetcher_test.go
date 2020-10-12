@@ -13,7 +13,7 @@ import (
 
 func TestVisitOneParent(t *testing.T) {
 	kCli := &FakeK8sClient{}
-	ov := ProvideOwnerFetcher(kCli)
+	ov := ProvideOwnerFetcher(context.Background(), kCli)
 
 	pod, rs := fakeOneParentChain()
 	kCli.InjectEntityByName(NewK8sEntity(rs))
@@ -24,9 +24,9 @@ func TestVisitOneParent(t *testing.T) {
   ReplicaSet:rs-a`, tree.String())
 }
 
-func TestVisitTwoParents(t *testing.T) {
+func TestVisitTwoParentsEnsureListCaching(t *testing.T) {
 	kCli := &FakeK8sClient{}
-	ov := ProvideOwnerFetcher(kCli)
+	ov := ProvideOwnerFetcher(context.Background(), kCli)
 
 	pod, rs, dep := fakeTwoParentChain()
 	kCli.InjectEntityByName(NewK8sEntity(rs), NewK8sEntity(dep))
@@ -36,11 +36,29 @@ func TestVisitTwoParents(t *testing.T) {
 	assert.Equal(t, `Pod:pod-a
   ReplicaSet:rs-a
     Deployment:dep-a`, tree.String())
+	assert.Equal(t, 2, kCli.listCallCount)
+	assert.Equal(t, 0, kCli.getByReferenceCallCount)
+}
+
+func TestVisitTwoParentsNoList(t *testing.T) {
+	kCli := &FakeK8sClient{listReturnsEmpty: true}
+	ov := ProvideOwnerFetcher(context.Background(), kCli)
+
+	pod, rs, dep := fakeTwoParentChain()
+	kCli.InjectEntityByName(NewK8sEntity(rs), NewK8sEntity(dep))
+
+	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
+	assert.NoError(t, err)
+	assert.Equal(t, `Pod:pod-a
+  ReplicaSet:rs-a
+    Deployment:dep-a`, tree.String())
+	assert.Equal(t, 2, kCli.listCallCount)
+	assert.Equal(t, 2, kCli.getByReferenceCallCount)
 }
 
 func TestOwnerFetcherParallelism(t *testing.T) {
-	kCli := &FakeK8sClient{}
-	ov := ProvideOwnerFetcher(kCli)
+	kCli := &FakeK8sClient{listReturnsEmpty: true}
+	ov := ProvideOwnerFetcher(context.Background(), kCli)
 
 	pod, rs := fakeOneParentChain()
 	kCli.InjectEntityByName(NewK8sEntity(rs))
@@ -62,8 +80,9 @@ func TestOwnerFetcherParallelism(t *testing.T) {
 func fakeOneParentChain() (*v1.Pod, *appsv1.ReplicaSet) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "pod-a",
-			UID:  "pod-a-uid",
+			Name:      "pod-a",
+			UID:       "pod-a-uid",
+			Namespace: "default",
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion: "apps/v1",
@@ -76,8 +95,9 @@ func fakeOneParentChain() (*v1.Pod, *appsv1.ReplicaSet) {
 	}
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "rs-a",
-			UID:  "rs-a-uid",
+			Name:      "rs-a",
+			UID:       "rs-a-uid",
+			Namespace: "default",
 		},
 	}
 	return pod, rs
@@ -86,8 +106,9 @@ func fakeOneParentChain() (*v1.Pod, *appsv1.ReplicaSet) {
 func fakeTwoParentChain() (*v1.Pod, *appsv1.ReplicaSet, *appsv1.Deployment) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "pod-a",
-			UID:  "pod-a-uid",
+			Name:      "pod-a",
+			UID:       "pod-a-uid",
+			Namespace: "default",
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion: "apps/v1",
@@ -100,8 +121,9 @@ func fakeTwoParentChain() (*v1.Pod, *appsv1.ReplicaSet, *appsv1.Deployment) {
 	}
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "rs-a",
-			UID:  "rs-a-uid",
+			Name:      "rs-a",
+			UID:       "rs-a-uid",
+			Namespace: "default",
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion: "apps/v1",
@@ -114,8 +136,9 @@ func fakeTwoParentChain() (*v1.Pod, *appsv1.ReplicaSet, *appsv1.Deployment) {
 	}
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "dep-a",
-			UID:  "dep-a-uid",
+			Name:      "dep-a",
+			UID:       "dep-a-uid",
+			Namespace: "default",
 		},
 	}
 	return pod, rs, dep

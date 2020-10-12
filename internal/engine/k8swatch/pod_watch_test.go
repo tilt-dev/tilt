@@ -353,7 +353,7 @@ func newPWFixture(t *testing.T) *pwFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	of := k8s.ProvideOwnerFetcher(kClient)
+	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	pw := NewPodWatcher(kClient, of, k8s.DefaultNamespace)
 	ret := &pwFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),

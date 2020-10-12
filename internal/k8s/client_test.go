@@ -168,7 +168,7 @@ func TestGetGroup(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			obj := v1.ObjectReference{APIVersion: test.apiVersion}
-			assert.Equal(t, test.expectedGroup, getGroup(obj))
+			assert.Equal(t, test.expectedGroup, ReferenceGVK(obj).Group)
 		})
 	}
 }
