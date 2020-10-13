@@ -243,6 +243,35 @@ func TestManifestTargetEndpoints(t *testing.T) {
 			},
 		},
 		{
+			name: "port forward with path",
+			expected: []model.Link{
+				model.MustNewLink("http://localhost:8000/stuff", "foobar"),
+			},
+			portFwds: []model.PortForward{
+				{LocalPort: 8000, ContainerPort: 5000, Name: "foobar", Path: "stuff"},
+			},
+		},
+		{
+			name: "port forward with path trims leading slash",
+			expected: []model.Link{
+				model.MustNewLink("http://localhost:8000/v1/ui", "UI"),
+			},
+			portFwds: []model.PortForward{
+				{LocalPort: 8000, Name: "UI", Path: "/v1/ui"},
+			},
+		},
+		{
+			name: "port forward with path and host",
+			expected: []model.Link{
+				model.MustNewLink("http://host1:8000/apple", "foobar"),
+				model.MustNewLink("http://host2:7000/banana", ""),
+			},
+			portFwds: []model.PortForward{
+				{LocalPort: 8000, ContainerPort: 5000, Host: "host1", Name: "foobar", Path: "apple"},
+				{LocalPort: 7000, ContainerPort: 5001, Host: "host2", Path: "/banana"},
+			},
+		},
+		{
 			name: "port forward and links",
 			expected: []model.Link{
 				// NOTE(maia): this is current sorting behavior (i.e. whole list of

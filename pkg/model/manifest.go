@@ -496,7 +496,11 @@ func (pf PortForward) ToLink() Link {
 	if host == "" {
 		host = "localhost"
 	}
-	url := fmt.Sprintf("http://%s:%d/", host, pf.LocalPort)
+	path := pf.Path
+	if strings.HasPrefix(path, "/") {
+		path = pf.Path[1:]
+	}
+	url := fmt.Sprintf("http://%s:%d/%s", host, pf.LocalPort, path)
 
 	// We panic on error here because we provide the URL format ourselves,
 	// so if it's bad, something is very wrong.
