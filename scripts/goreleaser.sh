@@ -15,10 +15,13 @@ cd "$DIR/.."
 
 docker login
 docker pull gcr.io/windmill-public-containers/tilt-releaser
+mkdir -p ~/.cache/tilt/release/go-build
+
 docker run --rm --privileged \
        -e GITHUB_TOKEN="$GITHUB_TOKEN" \
        -w /src/tilt \
        -v ~/.docker:/root/.docker \
+       -v ~/.cache/tilt/release/go-build:/root/.cache/go-build \
        -v "$PWD:/src/tilt:delegated" \
        -v /var/run/docker.sock:/var/run/docker.sock \
        gcr.io/windmill-public-containers/tilt-releaser \
