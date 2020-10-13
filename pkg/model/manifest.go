@@ -445,6 +445,11 @@ type PortForward struct {
 	// Optional name of the port forward; if given, used as text of the URL
 	// displayed in the web UI (e.g. <a href="localhost:8888">Debugger</a>)
 	Name string
+
+	// Optional path at the port forward that we link to in UIs
+	// (useful if e.g. nothing lives at "/" and devs will always
+	// want "localhost:xxxx/v1/app")
+	Path string
 }
 
 // A link associated with resource; may represent a port forward, an endpoint
