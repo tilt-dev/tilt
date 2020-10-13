@@ -8,8 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
-
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
