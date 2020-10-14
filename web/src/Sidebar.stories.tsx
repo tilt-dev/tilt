@@ -12,7 +12,7 @@ import { MemoryRouter } from "react-router"
 import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
-let pathBuilder = new PathBuilder("localhost", "/")
+let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 function twoItemSidebar() {
   let items = twoResourceView().resources.map(

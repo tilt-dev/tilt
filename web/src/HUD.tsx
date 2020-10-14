@@ -61,10 +61,7 @@ class HUD extends Component<HudProps, HudState> {
 
     incr("ui.web.init", { ua: window.navigator.userAgent })
 
-    this.pathBuilder = new PathBuilder(
-      window.location.host,
-      window.location.pathname
-    )
+    this.pathBuilder = new PathBuilder(window.location)
     this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
     this.unlisten = this.history.listen((location, _) => {

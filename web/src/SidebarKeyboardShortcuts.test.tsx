@@ -8,7 +8,7 @@ import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { fireEvent } from "@testing-library/dom"
 
 var fakeHistory: any
-const pathBuilder = new PathBuilder("localhost", "/")
+const pathBuilder = PathBuilder.forTesting("localhost", "/")
 let component: any
 const shortcuts = (items: SidebarItem[], selected: string) => {
   let CaptureHistory = () => {
