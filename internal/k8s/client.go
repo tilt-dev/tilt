@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -108,6 +109,8 @@ type Client interface {
 
 	WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error)
 
+	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan *metav1.ObjectMeta, error)
+
 	ConnectedToCluster(ctx context.Context) error
 
 	ContainerRuntime(ctx context.Context) container.Runtime
@@ -119,6 +122,11 @@ type Client interface {
 	NodeIP(ctx context.Context) NodeIP
 
 	Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error
+}
+
+type RESTMapper interface {
+	RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error)
+	Reset()
 }
 
 type K8sClient struct {
@@ -134,7 +142,7 @@ type K8sClient struct {
 	runtimeAsync      *runtimeAsync
 	registryAsync     *registryAsync
 	nodeIPAsync       *nodeIPAsync
-	drm               *restmapper.DeferredDiscoveryRESTMapper
+	drm               RESTMapper
 }
 
 var _ Client = K8sClient{}
