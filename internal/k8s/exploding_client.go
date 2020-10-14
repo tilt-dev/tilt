@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
@@ -71,6 +72,10 @@ func (ec *explodingClient) WatchServices(ctx context.Context, ns Namespace, lps 
 }
 
 func (ec *explodingClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
+func (ec *explodingClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan *metav1.ObjectMeta, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

@@ -87,10 +87,7 @@ func (v OwnerFetcher) getOrCreateResourceFetch(gvk schema.GroupVersionKind, ns N
 }
 
 // As an optimization, we batch fetch all the ObjectMetas of a resource type
-// the first time we need that resource.
-//
-// TODO(nick): It would probably be better to use an informer here, but
-// we'd have to do more bookkeeping to maintain the informer life-cycle.
+// the first time we need that resource, then watch updates.
 func (v OwnerFetcher) ensureResourceFetched(gvk schema.GroupVersionKind, ns Namespace) {
 	fetch := v.getOrCreateResourceFetch(gvk, ns)
 	fetch.Do(func() {
@@ -101,10 +98,24 @@ func (v OwnerFetcher) ensureResourceFetched(gvk schema.GroupVersionKind, ns Name
 		}
 
 		v.mu.Lock()
-		defer v.mu.Unlock()
 		for _, meta := range metas {
 			v.metaCache[meta.GetUID()] = meta
 		}
+		v.mu.Unlock()
+
+		ch, err := v.kCli.WatchMeta(v.globalCtx, gvk, ns)
+		if err != nil {
+			logger.Get(v.globalCtx).Debugf("Error watching metadata: %v", err)
+			return
+		}
+
+		go func() {
+			for meta := range ch {
+				v.mu.Lock()
+				v.metaCache[meta.GetUID()] = meta
+				v.mu.Unlock()
+			}
+		}()
 	})
 }
 

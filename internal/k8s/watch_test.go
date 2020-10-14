@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -22,6 +23,7 @@ import (
 	dfake "k8s.io/client-go/dynamic/fake"
 	kfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
+	mfake "k8s.io/client-go/metadata/fake"
 	ktesting "k8s.io/client-go/testing"
 
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -284,12 +286,32 @@ func TestWatchEventsAfterAdding(t *testing.T) {
 	tf.assertEvents([]runtime.Object{event}, ch)
 }
 
+func TestK8sClient_WatchMeta(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	pod1 := fakePod(PodID("abcd"), "efgh")
+	pod2 := fakePod(PodID("1234"), "hieruyge")
+	ch := tf.watchMeta(schema.GroupVersionKind{Version: "v1", Kind: "Pod"})
+
+	_, _ = tf.metadata.Resource(PodGVR).Namespace("default").(mfake.MetadataClient).CreateFake(
+		&metav1.PartialObjectMetadata{TypeMeta: pod1.TypeMeta, ObjectMeta: pod1.ObjectMeta},
+		metav1.CreateOptions{})
+	_, _ = tf.metadata.Resource(PodGVR).Namespace("default").(mfake.MetadataClient).CreateFake(
+		&metav1.PartialObjectMetadata{TypeMeta: pod2.TypeMeta, ObjectMeta: pod2.ObjectMeta},
+		metav1.CreateOptions{})
+
+	expected := []*metav1.ObjectMeta{&pod1.ObjectMeta, &pod2.ObjectMeta}
+	tf.assertMeta(expected, ch)
+}
+
 type watchTestFixture struct {
 	t    *testing.T
 	kCli K8sClient
 
 	tracker           ktesting.ObjectTracker
 	watchRestrictions ktesting.WatchRestrictions
+	metadata          *mfake.FakeMetadataClient
 	ctx               context.Context
 	watchErr          error
 	nsRestriction     Namespace
@@ -338,10 +360,17 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	dcs.PrependReactor("*", "*", ktesting.ObjectReaction(tracker))
 	dcs.PrependWatchReactor("*", wr)
 
+	mcs := mfake.NewSimpleMetadataClient(scheme.Scheme)
+	mcs.PrependReactor("*", "*", ktesting.ObjectReaction(tracker))
+	mcs.PrependWatchReactor("*", wr)
+	ret.metadata = mcs
+
 	ret.kCli = K8sClient{
 		env:       EnvUnknown,
+		drm:       fakeRESTMapper{},
 		dynamic:   dcs,
 		clientset: cs,
+		metadata:  mcs,
 		core:      cs.CoreV1(),
 	}
 
@@ -380,6 +409,14 @@ func (tf *watchTestFixture) watchEvents() <-chan *v1.Event {
 	ch, err := tf.kCli.WatchEvents(tf.ctx, "")
 	if err != nil {
 		tf.t.Fatalf("watchEvents: %v", err)
+	}
+	return ch
+}
+
+func (tf *watchTestFixture) watchMeta(gvr schema.GroupVersionKind) <-chan *metav1.ObjectMeta {
+	ch, err := tf.kCli.WatchMeta(tf.ctx, gvr, "default")
+	if err != nil {
+		tf.t.Fatalf("watchMeta: %v", err)
 	}
 	return ch
 }
@@ -482,6 +519,29 @@ func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-c
 	assert.ElementsMatch(tf.t, expectedOutput, observedEvents)
 }
 
+func (tf *watchTestFixture) assertMeta(expected []*metav1.ObjectMeta, ch <-chan *metav1.ObjectMeta) {
+	var observed []*metav1.ObjectMeta
+
+	done := false
+	for !done {
+		select {
+		case m, ok := <-ch:
+			if !ok {
+				done = true
+			} else {
+				observed = append(observed, m)
+			}
+		case <-time.After(200 * time.Millisecond):
+			// if we haven't seen any events for 10ms, assume we're done
+			// ideally we'd always be exiting from ch closing, but it's not currently clear how to do that via informer
+			done = true
+		}
+	}
+
+	// Our k8s simulation library does not guarantee event order.
+	assert.ElementsMatch(tf.t, expected, observed)
+}
+
 func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels labels.Set) {
 	_, err := tf.kCli.WatchPods(tf.ctx, "", input.AsSelector())
 	if !assert.NoError(tf.t, err) {
@@ -501,4 +561,16 @@ func (tf *watchTestFixture) testServiceLabels(input labels.Set, expectedLabels l
 
 	expectedLabelSelector := expectedLabels.AsSelector()
 	assert.Equal(tf.t, expectedLabelSelector, tf.watchRestrictions.Labels)
+}
+
+type fakeRESTMapper struct {
+}
+
+func (f fakeRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
+	return &meta.RESTMapping{
+		Resource: PodGVR,
+	}, nil
+}
+
+func (f fakeRESTMapper) Reset() {
 }

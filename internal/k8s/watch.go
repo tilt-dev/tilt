@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/metadata/metadatainformer"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -269,6 +270,36 @@ func (kCli K8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels
 	})
 
 	go runInformer(ctx, "services", informer)
+
+	return ch, nil
+}
+
+func (kCli K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan *metav1.ObjectMeta, error) {
+	factory := metadatainformer.NewFilteredSharedInformerFactory(kCli.metadata, resyncPeriod, ns.String(), func(*metav1.ListOptions) {})
+	gvr, err := kCli.gvr(ctx, gvk)
+	if err != nil {
+		return nil, errors.Wrap(err, "WatchMeta")
+	}
+
+	informer := factory.ForResource(gvr).Informer()
+
+	ch := make(chan *metav1.ObjectMeta)
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			mObj, ok := obj.(*metav1.PartialObjectMetadata)
+			if ok {
+				ch <- &mObj.ObjectMeta
+			}
+		},
+		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			mNewObj, ok := newObj.(*metav1.PartialObjectMetadata)
+			if ok {
+				ch <- &mNewObj.ObjectMeta
+			}
+		},
+	})
+
+	go runInformer(ctx, fmt.Sprintf("%s-metadata", gvk.Kind), informer)
 
 	return ch, nil
 }
