@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -30,6 +31,10 @@ func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) err
 }
 
 func (ec *explodingClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
+func (ec *explodingClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

@@ -225,7 +225,7 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	of := k8s.ProvideOwnerFetcher(kClient)
+	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 
 	clock := clockwork.NewFakeClock()
 	st := store.NewTestingStore()
