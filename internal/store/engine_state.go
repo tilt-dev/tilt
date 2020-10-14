@@ -614,16 +614,34 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 var _ model.TargetStatus = &ManifestState{}
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
+	// TODO(maia): we should probably let users define the order of their endpoints;
+	//  at minimum, arbitrary links and port fwd URLs should stay together (currently
+	//  if a k8s resource has both links and port fwds, the whole list of endpoints
+	//  will be alphabetized). However, we don't expect lots of people to specify
+	//  links and port fwds on the same resource, so this is fine for now.
 	defer func() {
 		sort.Sort(model.ByURL(endpoints))
 	}()
 
-	// If the user specified port-forwards in the Tiltfile, we
-	// assume that's what they want to see in the UI
-	portForwards := mt.Manifest.K8sTarget().PortForwards
-	if len(portForwards) > 0 {
-		for _, pf := range portForwards {
-			endpoints = append(endpoints, pf.ToLink())
+	if mt.Manifest.IsK8s() {
+		k8sTarg := mt.Manifest.K8sTarget()
+		endpoints = append(endpoints, k8sTarg.Links...)
+
+		// If the user specified port-forwards in the Tiltfile, we
+		// assume that's what they want to see in the UI (so it
+		// takes precedence over any load balancer URLs
+		portForwards := k8sTarg.PortForwards
+		if len(portForwards) > 0 {
+			for _, pf := range portForwards {
+				endpoints = append(endpoints, pf.ToLink())
+			}
+			return endpoints
+		}
+
+		for _, u := range mt.State.K8sRuntimeState().LBs {
+			if u != nil {
+				endpoints = append(endpoints, model.Link{URL: u})
+			}
 		}
 		return endpoints
 	}
@@ -637,13 +655,6 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 	if len(publishedPorts) > 0 {
 		for _, p := range publishedPorts {
 			endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
-		}
-		return endpoints
-	}
-
-	for _, u := range mt.State.K8sRuntimeState().LBs {
-		if u != nil {
-			endpoints = append(endpoints, model.Link{URL: u})
 		}
 	}
 	return endpoints

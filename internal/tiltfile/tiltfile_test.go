@@ -45,6 +45,9 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+type localResourceLinks []model.Link
+type k8sResourceLinks []model.Link
+
 const simpleDockerfile = "FROM golang:1.10"
 
 const simpleDockerignore = "build/"
@@ -723,7 +726,7 @@ k8s_resource('foo', port_forwards=EXPR)
 	}
 }
 
-func TestLocalResourceLinks(t *testing.T) {
+func TestResourceLinks(t *testing.T) {
 	cases := []resourceLinkCase{
 		newResourceLinkErrorCase("invalid_type", "123",
 			"Want a string, a link, or a sequence of these; found 123"),
@@ -742,7 +745,7 @@ func TestLocalResourceLinks(t *testing.T) {
 			[]model.Link{model.MustNewLink("https://www.zombo.com", "")}),
 		newResourceLinkSuccessCase("value_link_positional_args", "link('https://www.zombo.com', 'zombo')",
 			[]model.Link{model.MustNewLink("https://www.zombo.com", "zombo")}),
-		newResourceLinkSuccessCase("vlink_constructor_adds_scheme", "link('www.zombo.com', 'zombo')",
+		newResourceLinkSuccessCase("link_constructor_adds_scheme", "link('www.zombo.com', 'zombo')",
 			[]model.Link{model.MustNewLink("http://www.zombo.com", "zombo")}),
 		newResourceLinkErrorCase("link_constructor_requires_URL", "link(name='zombo')",
 			"link: missing argument for url"),
@@ -764,7 +767,7 @@ func TestLocalResourceLinks(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
+		t.Run("LocalResource-"+c.name, func(t *testing.T) {
 			f := newFixture(t)
 			defer f.TearDown()
 
@@ -780,11 +783,55 @@ local_resource('foo', 'echo hi', links=%s)
 
 			f.load()
 			f.assertNextManifest("foo",
-				c.expected,
+				localResourceLinks(c.expected),
 				localTarget(updateCmd("echo hi")),
 			)
 		})
+
+		t.Run("K8s-"+c.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.setupFoo()
+			s := `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_resource('foo', links=EXPR)
+`
+			s = strings.Replace(s, "EXPR", c.expr, -1)
+			f.file("Tiltfile", s)
+
+			if c.errorMsg != "" {
+				f.loadErrString(c.errorMsg)
+				return
+			}
+
+			f.load()
+			f.assertNextManifest("foo",
+				k8sResourceLinks(c.expected),
+				db(image("gcr.io/foo")),
+				deployment("foo"))
+		})
 	}
+}
+
+func TestK8sResourceWithLinksAndPortForwards(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=[8000, 8001], links=link("www.zombo.com", name="zombo"))
+`)
+
+	f.load()
+	f.assertNextManifest("foo",
+		[]model.PortForward{{LocalPort: 8000}, {LocalPort: 8001}},
+		k8sResourceLinks{model.MustNewLink("http://www.zombo.com", "zombo")},
+		db(image("gcr.io/foo")),
+		deployment("foo"))
 }
 
 func TestExpand(t *testing.T) {
@@ -6058,8 +6105,10 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
-		case []model.Link:
+		case localResourceLinks:
 			f.assertLinks(opt, m.LocalTarget().Links)
+		case k8sResourceLinks:
+			f.assertLinks(opt, m.K8sTarget().Links)
 		case model.TriggerMode:
 			assert.Equal(f.t, opt, m.TriggerMode)
 		case resourceDependenciesHelper:

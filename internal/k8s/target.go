@@ -17,7 +17,7 @@ func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
-	target, err := NewTarget(name, entities, nil, nil, nil, nil, model.PodReadinessIgnore, nil)
+	target, err := NewTarget(name, entities, nil, nil, nil, nil, model.PodReadinessIgnore, nil, nil)
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
@@ -32,7 +32,8 @@ func NewTarget(
 	dependencyIDs []model.TargetID,
 	refInjectCounts map[string]int,
 	podReadinessMode model.PodReadinessMode,
-	allLocators []ImageLocator) (model.K8sTarget, error) {
+	allLocators []ImageLocator,
+	links []model.Link) (model.K8sTarget, error) {
 	sorted := SortedEntities(entities)
 	yaml, err := SerializeSpecYAML(sorted)
 	if err != nil {
@@ -63,11 +64,12 @@ func NewTarget(
 		ObjectRefs:        objectRefs,
 		PodReadinessMode:  podReadinessMode,
 		ImageLocators:     myLocators,
+		Links:             links,
 	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 
 func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity, allLocators []ImageLocator) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, model.PodReadinessIgnore, allLocators)
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, model.PodReadinessIgnore, allLocators, nil)
 	if err != nil {
 		return model.Manifest{}, err
 	}

@@ -61,6 +61,10 @@ type K8sTarget struct {
 	// (right now, Tiltfile and Engine have two different ways of finding a
 	// given image in a k8s entity.
 	refInjectCounts map[string]int
+
+	// zero+ links assoc'd with this resource (to be displayed in UIs,
+	// in addition to any port forwards/LB endpoints)
+	Links []Link
 }
 
 func (k8s K8sTarget) Empty() bool { return reflect.DeepEqual(k8s, K8sTarget{}) }

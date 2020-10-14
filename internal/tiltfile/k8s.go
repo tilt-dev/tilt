@@ -14,6 +14,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/tilt-dev/tilt/internal/tiltfile/links"
+
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
@@ -58,6 +60,8 @@ type k8sResource struct {
 	resourceDeps []string
 
 	manuallyGrouped bool
+
+	links []model.Link
 }
 
 const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
@@ -78,6 +82,7 @@ type k8sResourceOptions struct {
 	objects           []string
 	manuallyGrouped   bool
 	podReadinessMode  model.PodReadinessMode
+	links             []model.Link
 }
 
 func (r *k8sResource) addRefSelector(selector container.RefSelector) {
@@ -408,6 +413,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 	var resourceDepsVal starlark.Sequence
 	var objectsVal starlark.Sequence
 	var podReadinessMode tiltfile_k8s.PodReadinessMode
+	var links links.LinkList
 	autoInit := true
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -420,6 +426,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		"objects?", &objectsVal,
 		"auto_init?", &autoInit,
 		"pod_readiness?", &podReadinessMode,
+		"links?", &links,
 	); err != nil {
 		return nil, err
 	}
@@ -477,6 +484,7 @@ func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Buil
 		objects:           objects,
 		manuallyGrouped:   manuallyGrouped,
 		podReadinessMode:  podReadinessMode.Value,
+		links:             links.Links,
 	}
 
 	return starlark.None, nil

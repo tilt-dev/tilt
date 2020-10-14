@@ -32,11 +32,12 @@ type endpointsCase struct {
 
 	dcPublishedPorts []int
 
+	k8sResLinks   []model.Link
 	localResLinks []model.Link
 }
 
 func (c endpointsCase) validate() {
-	if len(c.portFwds) > 0 || len(c.lbURLs) > 0 {
+	if len(c.portFwds) > 0 || len(c.lbURLs) > 0 || len(c.k8sResLinks) > 0 {
 		if len(c.dcPublishedPorts) > 0 || len(c.localResLinks) > 0 {
 			// portForwards and LoadBalancerURLs are exclusively the province
 			// of k8s resources, so you should never see them paired with
@@ -242,6 +243,24 @@ func TestManifestTargetEndpoints(t *testing.T) {
 			},
 		},
 		{
+			name: "port forward and links",
+			expected: []model.Link{
+				// NOTE(maia): this is current sorting behavior (i.e. whole list of
+				// endpoints is sorted) and isn't great; probably arbitrary links and
+				// port forward URLs should be grouped together.
+				model.MustNewLink("http://apple.edu", "apple"),
+				model.MustNewLink("http://localhost:8000/", "foobar"),
+				model.MustNewLink("www.zombo.com", "zombo"),
+			},
+			portFwds: []model.PortForward{
+				{LocalPort: 8000, Name: "foobar"},
+			},
+			k8sResLinks: []model.Link{
+				model.MustNewLink("http://apple.edu", "apple"),
+				model.MustNewLink("www.zombo.com", "zombo"),
+			},
+		},
+		{
 			name: "local resource links",
 			expected: []model.Link{
 				model.MustNewLink("www.apple.edu", "apple"),
@@ -269,6 +288,17 @@ func TestManifestTargetEndpoints(t *testing.T) {
 			lbURLs: []string{"www.zombo.com", "www.apple.edu"},
 		},
 		{
+			name: "load balancers and links",
+			expected: []model.Link{
+				model.MustNewLink("www.apple.edu", "apple"),
+				model.MustNewLink("www.zombo.com", ""),
+			},
+			lbURLs: []string{"www.zombo.com"},
+			k8sResLinks: []model.Link{
+				model.MustNewLink("www.apple.edu", "apple"),
+			},
+		},
+		{
 			name: "port forwards supercede LBs",
 			expected: []model.Link{
 				model.MustNewLink("http://localhost:7000/", ""),
@@ -285,22 +315,30 @@ func TestManifestTargetEndpoints(t *testing.T) {
 			c.validate()
 			m := model.Manifest{Name: "foo"}
 
-			if len(c.portFwds) > 0 {
-				m = m.WithDeployTarget(model.K8sTarget{PortForwards: c.portFwds})
+			if len(c.portFwds) > 0 || len(c.k8sResLinks) > 0 {
+				m = m.WithDeployTarget(model.K8sTarget{
+					PortForwards: c.portFwds,
+					Links:        c.k8sResLinks,
+				})
 			} else if len(c.localResLinks) > 0 {
 				m = m.WithDeployTarget(model.LocalTarget{Links: c.localResLinks})
 			} else if len(c.dcPublishedPorts) > 0 {
 				m = m.WithDeployTarget(model.DockerComposeTarget{}.WithPublishedPorts(c.dcPublishedPorts))
 			}
 
-			mt := newManifestTargetWithLoadBalancerURLs(t, m, c.lbURLs)
+			mt := newManifestTargetWithLoadBalancerURLs(m, c.lbURLs)
 			actual := ManifestTargetEndpoints(mt)
 			assert.Equal(t, c.expected, actual)
 		})
 	}
 }
 
-func newManifestTargetWithLoadBalancerURLs(t *testing.T, m model.Manifest, urls []string) *ManifestTarget {
+func newManifestTargetWithLoadBalancerURLs(m model.Manifest, urls []string) *ManifestTarget {
+	mt := NewManifestTarget(m)
+	if len(urls) == 0 {
+		return mt
+	}
+
 	lbs := make(map[k8s.ServiceName]*url.URL)
 	for i, s := range urls {
 		u, err := url.Parse(s)
@@ -311,9 +349,15 @@ func newManifestTargetWithLoadBalancerURLs(t *testing.T, m model.Manifest, urls 
 		name := k8s.ServiceName(fmt.Sprintf("svc#%d", i))
 		lbs[name] = u
 	}
-	mt := NewManifestTarget(m)
 	k8sState := NewK8sRuntimeState(m)
 	k8sState.LBs = lbs
 	mt.State.RuntimeState = k8sState
+
+	if !mt.Manifest.IsK8s() {
+		// k8s state implies a k8s deploy target; if this manifest doesn't have one,
+		// add a dummy one
+		mt.Manifest = mt.Manifest.WithDeployTarget(model.K8sTarget{})
+	}
+
 	return mt
 }
