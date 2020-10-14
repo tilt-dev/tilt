@@ -62,7 +62,7 @@ type K8sTarget struct {
 	// given image in a k8s entity.
 	refInjectCounts map[string]int
 
-	// (optional) one+ links assoc'd with this resource (to be displayed in UIs,
+	// zero+ links assoc'd with this resource (to be displayed in UIs,
 	// in addition to any port forwards/LB endpoints)
 	Links []Link
 }

@@ -1,0 +1,930 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox1
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox1
+  template:
+    metadata:
+      labels:
+        app: busybox1
+    spec:
+      containers:
+      - name: busybox1
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox2
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox2
+  template:
+    metadata:
+      labels:
+        app: busybox2
+    spec:
+      containers:
+      - name: busybox2
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox3
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox3
+  template:
+    metadata:
+      labels:
+        app: busybox3
+    spec:
+      containers:
+      - name: busybox3
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox4
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox4
+  template:
+    metadata:
+      labels:
+        app: busybox4
+    spec:
+      containers:
+      - name: busybox4
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox5
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox5
+  template:
+    metadata:
+      labels:
+        app: busybox5
+    spec:
+      containers:
+      - name: busybox5
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox6
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox6
+  template:
+    metadata:
+      labels:
+        app: busybox6
+    spec:
+      containers:
+      - name: busybox6
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox7
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox7
+  template:
+    metadata:
+      labels:
+        app: busybox7
+    spec:
+      containers:
+      - name: busybox7
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox8
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox8
+  template:
+    metadata:
+      labels:
+        app: busybox8
+    spec:
+      containers:
+      - name: busybox8
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox9
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox9
+  template:
+    metadata:
+      labels:
+        app: busybox9
+    spec:
+      containers:
+      - name: busybox9
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox10
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox10
+  template:
+    metadata:
+      labels:
+        app: busybox10
+    spec:
+      containers:
+      - name: busybox10
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox11
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox11
+  template:
+    metadata:
+      labels:
+        app: busybox11
+    spec:
+      containers:
+      - name: busybox11
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox12
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox12
+  template:
+    metadata:
+      labels:
+        app: busybox12
+    spec:
+      containers:
+      - name: busybox12
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox13
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox13
+  template:
+    metadata:
+      labels:
+        app: busybox13
+    spec:
+      containers:
+      - name: busybox13
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox14
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox14
+  template:
+    metadata:
+      labels:
+        app: busybox14
+    spec:
+      containers:
+      - name: busybox14
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox15
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox15
+  template:
+    metadata:
+      labels:
+        app: busybox15
+    spec:
+      containers:
+      - name: busybox15
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox16
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox16
+  template:
+    metadata:
+      labels:
+        app: busybox16
+    spec:
+      containers:
+      - name: busybox16
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox17
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox17
+  template:
+    metadata:
+      labels:
+        app: busybox17
+    spec:
+      containers:
+      - name: busybox17
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox18
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox18
+  template:
+    metadata:
+      labels:
+        app: busybox18
+    spec:
+      containers:
+      - name: busybox18
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox19
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox19
+  template:
+    metadata:
+      labels:
+        app: busybox19
+    spec:
+      containers:
+      - name: busybox19
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox20
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox20
+  template:
+    metadata:
+      labels:
+        app: busybox20
+    spec:
+      containers:
+      - name: busybox20
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox21
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox21
+  template:
+    metadata:
+      labels:
+        app: busybox21
+    spec:
+      containers:
+      - name: busybox21
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox22
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox22
+  template:
+    metadata:
+      labels:
+        app: busybox22
+    spec:
+      containers:
+      - name: busybox22
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox23
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox23
+  template:
+    metadata:
+      labels:
+        app: busybox23
+    spec:
+      containers:
+      - name: busybox23
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox24
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox24
+  template:
+    metadata:
+      labels:
+        app: busybox24
+    spec:
+      containers:
+      - name: busybox24
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox25
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox25
+  template:
+    metadata:
+      labels:
+        app: busybox25
+    spec:
+      containers:
+      - name: busybox25
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox26
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox26
+  template:
+    metadata:
+      labels:
+        app: busybox26
+    spec:
+      containers:
+      - name: busybox26
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox27
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox27
+  template:
+    metadata:
+      labels:
+        app: busybox27
+    spec:
+      containers:
+      - name: busybox27
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox28
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox28
+  template:
+    metadata:
+      labels:
+        app: busybox28
+    spec:
+      containers:
+      - name: busybox28
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox29
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox29
+  template:
+    metadata:
+      labels:
+        app: busybox29
+    spec:
+      containers:
+      - name: busybox29
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox30
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox30
+  template:
+    metadata:
+      labels:
+        app: busybox30
+    spec:
+      containers:
+      - name: busybox30
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox31
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox31
+  template:
+    metadata:
+      labels:
+        app: busybox31
+    spec:
+      containers:
+      - name: busybox31
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox32
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox32
+  template:
+    metadata:
+      labels:
+        app: busybox32
+    spec:
+      containers:
+      - name: busybox32
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox33
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox33
+  template:
+    metadata:
+      labels:
+        app: busybox33
+    spec:
+      containers:
+      - name: busybox33
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox34
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox34
+  template:
+    metadata:
+      labels:
+        app: busybox34
+    spec:
+      containers:
+      - name: busybox34
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox35
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox35
+  template:
+    metadata:
+      labels:
+        app: busybox35
+    spec:
+      containers:
+      - name: busybox35
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox36
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox36
+  template:
+    metadata:
+      labels:
+        app: busybox36
+    spec:
+      containers:
+      - name: busybox36
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox37
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox37
+  template:
+    metadata:
+      labels:
+        app: busybox37
+    spec:
+      containers:
+      - name: busybox37
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox38
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox38
+  template:
+    metadata:
+      labels:
+        app: busybox38
+    spec:
+      containers:
+      - name: busybox38
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox39
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox39
+  template:
+    metadata:
+      labels:
+        app: busybox39
+    spec:
+      containers:
+      - name: busybox39
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox40
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox40
+  template:
+    metadata:
+      labels:
+        app: busybox40
+    spec:
+      containers:
+      - name: busybox40
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox41
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox41
+  template:
+    metadata:
+      labels:
+        app: busybox41
+    spec:
+      containers:
+      - name: busybox41
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox42
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox42
+  template:
+    metadata:
+      labels:
+        app: busybox42
+    spec:
+      containers:
+      - name: busybox42
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox43
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox43
+  template:
+    metadata:
+      labels:
+        app: busybox43
+    spec:
+      containers:
+      - name: busybox43
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox44
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox44
+  template:
+    metadata:
+      labels:
+        app: busybox44
+    spec:
+      containers:
+      - name: busybox44
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox45
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox45
+  template:
+    metadata:
+      labels:
+        app: busybox45
+    spec:
+      containers:
+      - name: busybox45
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox46
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox46
+  template:
+    metadata:
+      labels:
+        app: busybox46
+    spec:
+      containers:
+      - name: busybox46
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox47
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox47
+  template:
+    metadata:
+      labels:
+        app: busybox47
+    spec:
+      containers:
+      - name: busybox47
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox48
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox48
+  template:
+    metadata:
+      labels:
+        app: busybox48
+    spec:
+      containers:
+      - name: busybox48
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox49
+  namespace: tilt-integration
+spec:
+  selector:
+    matchLabels:
+      app: busybox49
+  template:
+    metadata:
+      labels:
+        app: busybox49
+    spec:
+      containers:
+      - name: busybox49
+        image: busybox
+        command: ["busybox", "httpd", "-f", "-p", "8080"]

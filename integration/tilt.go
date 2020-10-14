@@ -41,6 +41,20 @@ func (d *TiltDriver) Down(out io.Writer) error {
 	return cmd.Run()
 }
 
+func (d *TiltDriver) CI(out io.Writer, args ...string) error {
+	cmd := d.cmd(append([]string{
+		"ci",
+
+		// Debug logging for integration tests
+		"--debug",
+		"--klog=1",
+
+		// Even if we're on a debug build, don't start a debug webserver
+		"--web-mode=prod",
+	}, args...), out)
+	return cmd.Run()
+}
+
 func (d *TiltDriver) Up(args []string, out io.Writer) (*TiltUpResponse, error) {
 	mandatoryArgs := []string{"up",
 		// Can't attach a HUD or install browsers in headless mode

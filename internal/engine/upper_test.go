@@ -3599,7 +3599,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	ns := k8s.Namespace("default")
 	kCli := k8s.NewFakeK8sClient()
-	of := k8s.ProvideOwnerFetcher(kCli)
+	of := k8s.ProvideOwnerFetcher(ctx, kCli)
 	pw := k8swatch.NewPodWatcher(kCli, of, ns)
 	sw := k8swatch.NewServiceWatcher(kCli, of, ns)
 

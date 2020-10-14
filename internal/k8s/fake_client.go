@@ -13,7 +13,9 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -66,6 +68,8 @@ type FakeK8sClient struct {
 
 	entityByName            map[string]K8sEntity
 	getByReferenceCallCount int
+	listCallCount           int
+	listReturnsEmpty        bool
 
 	ExecCalls  []ExecCall
 	ExecErrors []error
@@ -159,6 +163,10 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *
 		c.mu.Unlock()
 	}()
 	return ch, nil
+}
+
+func (c *FakeK8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan *metav1.ObjectMeta, error) {
+	return make(chan *metav1.ObjectMeta), nil
 }
 
 func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
@@ -321,6 +329,25 @@ func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectRef
 		return nil, apierrors.NewNotFound(v1.Resource(ref.Kind), ref.Name)
 	}
 	return resp.meta(), nil
+}
+
+func (c *FakeK8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
+	c.listCallCount++
+	if c.listReturnsEmpty {
+		return nil, nil
+	}
+
+	result := make([]ObjectMeta, 0)
+	for _, entity := range c.entityByName {
+		if entity.Namespace() != ns {
+			continue
+		}
+		if entity.GVK() != gvk {
+			continue
+		}
+		result = append(result, entity.meta())
+	}
+	return result, nil
 }
 
 func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {

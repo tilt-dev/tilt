@@ -10,7 +10,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // The ObjectRefTree only contains immutable properties
@@ -44,18 +47,76 @@ func (t ObjectRefTree) String() string {
 	return strings.Join(t.stringLines(), "\n")
 }
 
-type OwnerFetcher struct {
-	kCli  Client
-	cache map[types.UID]*objectTreePromise
-	mu    *sync.Mutex
+type resourceNamespace struct {
+	Namespace Namespace
+	GVK       schema.GroupVersionKind
 }
 
-func ProvideOwnerFetcher(kCli Client) OwnerFetcher {
+type OwnerFetcher struct {
+	globalCtx context.Context
+	kCli      Client
+	cache     map[types.UID]*objectTreePromise
+	mu        *sync.Mutex
+
+	metaCache       map[types.UID]ObjectMeta
+	resourceFetches map[resourceNamespace]*sync.Once
+}
+
+func ProvideOwnerFetcher(ctx context.Context, kCli Client) OwnerFetcher {
 	return OwnerFetcher{
-		kCli:  kCli,
-		cache: make(map[types.UID]*objectTreePromise),
-		mu:    &sync.Mutex{},
+		globalCtx: ctx,
+		kCli:      kCli,
+		cache:     make(map[types.UID]*objectTreePromise),
+		mu:        &sync.Mutex{},
+
+		metaCache:       make(map[types.UID]ObjectMeta),
+		resourceFetches: make(map[resourceNamespace]*sync.Once),
 	}
+}
+
+func (v OwnerFetcher) getOrCreateResourceFetch(gvk schema.GroupVersionKind, ns Namespace) *sync.Once {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	rns := resourceNamespace{Namespace: ns, GVK: gvk}
+	fetch, ok := v.resourceFetches[rns]
+	if !ok {
+		fetch = &sync.Once{}
+		v.resourceFetches[rns] = fetch
+	}
+	return fetch
+}
+
+// As an optimization, we batch fetch all the ObjectMetas of a resource type
+// the first time we need that resource, then watch updates.
+func (v OwnerFetcher) ensureResourceFetched(gvk schema.GroupVersionKind, ns Namespace) {
+	fetch := v.getOrCreateResourceFetch(gvk, ns)
+	fetch.Do(func() {
+		metas, err := v.kCli.ListMeta(v.globalCtx, gvk, ns)
+		if err != nil {
+			logger.Get(v.globalCtx).Debugf("Error fetching metadata: %v", err)
+			return
+		}
+
+		v.mu.Lock()
+		for _, meta := range metas {
+			v.metaCache[meta.GetUID()] = meta
+		}
+		v.mu.Unlock()
+
+		ch, err := v.kCli.WatchMeta(v.globalCtx, gvk, ns)
+		if err != nil {
+			logger.Get(v.globalCtx).Debugf("Error watching metadata: %v", err)
+			return
+		}
+
+		go func() {
+			for meta := range ch {
+				v.mu.Lock()
+				v.metaCache[meta.GetUID()] = meta
+				v.mu.Unlock()
+			}
+		}()
+	})
 }
 
 // Returns a promise and a boolean. The boolean is true if the promise is
@@ -91,7 +152,7 @@ func (v OwnerFetcher) OwnerTreeOfRef(ctx context.Context, ref v1.ObjectReference
 		}
 	}()
 
-	meta, err := v.kCli.GetMetaByReference(ctx, ref)
+	meta, err := v.getMetaByReference(ctx, ref)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ObjectRefTree{Ref: ref}, nil
@@ -99,6 +160,21 @@ func (v OwnerFetcher) OwnerTreeOfRef(ctx context.Context, ref v1.ObjectReference
 		return ObjectRefTree{}, err
 	}
 	return v.ownerTreeOfHelper(ctx, ref, meta)
+}
+
+func (v OwnerFetcher) getMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+	gvk := ReferenceGVK(ref)
+	v.ensureResourceFetched(gvk, Namespace(ref.Namespace))
+
+	v.mu.Lock()
+	meta, ok := v.metaCache[ref.UID]
+	v.mu.Unlock()
+
+	if ok {
+		return meta, nil
+	}
+
+	return v.kCli.GetMetaByReference(ctx, ref)
 }
 
 func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result ObjectRefTree, err error) {

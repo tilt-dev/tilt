@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -79,6 +80,7 @@ type Client interface {
 	Delete(ctx context.Context, entities []K8sEntity) error
 
 	GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error)
+	ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error)
 
 	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
 
@@ -107,6 +109,8 @@ type Client interface {
 
 	WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error)
 
+	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan *metav1.ObjectMeta, error)
+
 	ConnectedToCluster(ctx context.Context) error
 
 	ContainerRuntime(ctx context.Context) container.Runtime
@@ -118,6 +122,11 @@ type Client interface {
 	NodeIP(ctx context.Context) NodeIP
 
 	Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error
+}
+
+type RESTMapper interface {
+	RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error)
+	Reset()
 }
 
 type K8sClient struct {
@@ -133,7 +142,7 @@ type K8sClient struct {
 	runtimeAsync      *runtimeAsync
 	registryAsync     *registryAsync
 	nodeIPAsync       *nodeIPAsync
-	drm               *restmapper.DeferredDiscoveryRESTMapper
+	drm               RESTMapper
 }
 
 var _ Client = K8sClient{}
@@ -412,14 +421,8 @@ func (k K8sClient) actOnEntity(ctx context.Context, cmdArgs []string, entity K8s
 	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
-func (k K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
-	group := getGroup(ref)
-	kind := ref.Kind
-	namespace := ref.Namespace
-	name := ref.Name
-	resourceVersion := ref.ResourceVersion
-	uid := ref.UID
-	rm, err := k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
+func (k K8sClient) gvr(ctx context.Context, gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
+	rm, err := k.drm.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		// The REST mapper doesn't have any sort of internal invalidation
 		// mechanism. So if the user applies a CRD (i.e., changing the available
@@ -432,13 +435,47 @@ func (k K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReferenc
 		// reset the REST mapper and retry, so that it discovers the types.
 		k.drm.Reset()
 
-		rm, err = k.drm.RESTMapping(schema.GroupKind{Group: group, Kind: kind})
+		rm, err = k.drm.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error mapping %s/%s", group, kind)
+			return schema.GroupVersionResource{}, errors.Wrapf(err, "error mapping %s/%s", gvk.Group, gvk.Kind)
 		}
 	}
+	return rm.Resource, nil
+}
 
-	typeAndMeta, err := k.metadata.Resource(rm.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{
+func (k K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
+	gvr, err := k.gvr(ctx, gvk)
+	if err != nil {
+		return nil, err
+	}
+
+	metaList, err := k.metadata.Resource(gvr).Namespace(ns.String()).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// type conversion
+	result := make([]ObjectMeta, len(metaList.Items))
+	for i, meta := range metaList.Items {
+		m := meta.ObjectMeta
+		result[i] = &m
+	}
+	return result, nil
+}
+
+func (k K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+	gvk := ReferenceGVK(ref)
+	gvr, err := k.gvr(ctx, gvk)
+	if err != nil {
+		return nil, err
+	}
+
+	namespace := ref.Namespace
+	name := ref.Name
+	resourceVersion := ref.ResourceVersion
+	uid := ref.UID
+
+	typeAndMeta, err := k.metadata.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{
 		ResourceVersion: resourceVersion,
 	})
 	if err != nil {
@@ -446,7 +483,7 @@ func (k K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReferenc
 	}
 	meta := typeAndMeta.ObjectMeta
 	if uid != "" && meta.UID != uid {
-		return nil, apierrors.NewNotFound(v1.Resource(kind), name)
+		return nil, apierrors.NewNotFound(v1.Resource(gvr.Resource), name)
 	}
 	return &meta, nil
 }
@@ -457,7 +494,7 @@ func (k K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReferenc
 // versioning information. Broadly, a version string might look like v2 or v2beta1.
 var versionRegex = regexp.MustCompile(`^v\d+(?:(?:alpha|beta)(?:\d+)?)?$`)
 
-func getGroup(involvedObject v1.ObjectReference) string {
+func ReferenceGVK(involvedObject v1.ObjectReference) schema.GroupVersionKind {
 	// For some types, APIVersion is incorrectly just the group w/ no version, which leads GroupVersionKind to return
 	// a value where Group is empty and Version contains the group, so we need to correct for that.
 	// An empty Group is valid, though: it's empty for apps in the core group.
@@ -468,12 +505,12 @@ func getGroup(involvedObject v1.ObjectReference) string {
 	// https://github.com/kubernetes/kubernetes/issues/3030
 
 	gvk := involvedObject.GroupVersionKind()
-	group := gvk.Group
 	if !versionRegex.MatchString(gvk.Version) {
-		group = involvedObject.APIVersion
+		gvk.Group = involvedObject.APIVersion
+		gvk.Version = ""
 	}
 
-	return group
+	return gvk
 }
 
 func ProvideServerVersion(maybeClientset ClientsetOrError) (*version.Info, error) {
