@@ -5,11 +5,12 @@ import SidebarTriggerButton, {
 } from "./SidebarTriggerButton"
 import { ResourceView, TriggerMode } from "./types"
 import { oneResource, twoResourceView } from "./testdata"
-import SidebarResources from "./SidebarResources"
+import SidebarResources, { triggerUpdate } from "./SidebarResources"
 import SidebarItem from "./SidebarItem"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import fetchMock from "jest-fetch-mock"
+import { createMemoryHistory } from "history"
 
 type Resource = Proto.webviewResource
 
@@ -44,12 +45,12 @@ describe("SidebarTriggerButton", () => {
       <SidebarTriggerButton
         isTiltfile={false}
         isSelected={true}
-        resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManualAfterInitial}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 
@@ -58,7 +59,7 @@ describe("SidebarTriggerButton", () => {
     element.simulate("click")
 
     expect(fetchMock.mock.calls.length).toEqual(1)
-    expect(fetchMock.mock.calls[0][0]).toEqual("//localhost/api/trigger")
+    expect(fetchMock.mock.calls[0][0]).toEqual("/api/trigger")
     expect(fetchMock.mock.calls[0][1]?.method).toEqual("post")
     expect(fetchMock.mock.calls[0][1]?.body).toEqual(
       JSON.stringify({
@@ -75,12 +76,12 @@ describe("SidebarTriggerButton", () => {
       <SidebarTriggerButton
         isTiltfile={false}
         isSelected={true}
-        resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManualAfterInitial}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={true}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 
@@ -98,12 +99,12 @@ describe("SidebarTriggerButton", () => {
       <SidebarTriggerButton
         isSelected={true}
         isTiltfile={false}
-        resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManualIncludingInitial}
         hasBuilt={false}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 

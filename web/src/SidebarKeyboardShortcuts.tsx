@@ -9,6 +9,7 @@ type Props = {
   selected: string
   pathBuilder: PathBuilder
   history: History
+  onTrigger: () => void
 }
 
 /**
@@ -54,6 +55,27 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         history.push(path)
         e.preventDefault()
         break
+
+      case "Enter":
+        for (
+          let current: any = e.target;
+          current;
+          current = current.parentNode
+        ) {
+          let tagName = current.tagName
+          if (
+            tagName === "INPUT" ||
+            tagName === "TEXTAREA" ||
+            tagName === "A" ||
+            tagName === "BUTTON"
+          ) {
+            return
+          }
+        }
+
+        this.props.onTrigger()
+        e.preventDefault()
+        break
     }
   }
 
@@ -66,6 +88,7 @@ type PublicProps = {
   items: SidebarItem[]
   selected: string
   pathBuilder: PathBuilder
+  onTrigger: () => void
 }
 
 export default function(props: PublicProps) {

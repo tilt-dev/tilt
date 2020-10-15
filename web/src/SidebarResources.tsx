@@ -20,6 +20,7 @@ import {
   Width,
 } from "./style-helpers"
 import SidebarItem from "./SidebarItem"
+import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 
 // Styles:
 const barberpole = keyframes`
@@ -80,13 +81,6 @@ let SidebarItemStyle = styled.li`
     animation: ${barberpole} 8s linear infinite;
   }
 `
-let SidebarItemLink = styled(Link)`
-  display: flex;
-  align-items: stretch;
-  text-decoration: none;
-  // To truncate long names, root element needs an explicit width (i.e., not flex: 1)
-  width: calc(100% - ${Width.sidebarTriggerButton}px);
-`
 
 let SidebarItemAll = styled(SidebarItemStyle)`
   text-transform: uppercase;
@@ -129,6 +123,66 @@ let SidebarItemTimeAgo = styled.span`
 type Resource = Proto.webviewResource
 type Build = Proto.webviewBuildRecord
 
+export const triggerUpdate = (name: string): void => {
+  let url = `/api/trigger`
+
+  fetch(url, {
+    method: "post",
+    body: JSON.stringify({
+      manifest_names: [name],
+      build_reason: 16 /* BuildReasonFlagTriggerWeb */,
+    }),
+  }).then(response => {
+    if (!response.ok) {
+      console.log(response)
+    }
+  })
+}
+
+let SidebarItemLinkButton = styled.button`
+  display: flex;
+  align-items: stretch;
+  text-decoration: none;
+  // To truncate long names, root element needs an explicit width (i.e., not flex: 1)
+  width: calc(100% - ${Width.sidebarTriggerButton}px);
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+`
+
+let SidebarItemLinkAnchor = styled(Link)`
+  display: flex;
+  align-items: stretch;
+  text-decoration: none;
+  // To truncate long names, root element needs an explicit width (i.e., not flex: 1)
+  width: calc(100% - ${Width.sidebarTriggerButton}px);
+`
+
+export function SidebarItemLink(props: {
+  title: string
+  onTrigger?: () => void
+  onNavLink: string
+  isSelected: boolean
+  children: any
+}) {
+  if (props.isSelected && props.onTrigger) {
+    return (
+      <SidebarItemLinkButton onClick={props.onTrigger} title={props.title}>
+        {props.children}
+      </SidebarItemLinkButton>
+    )
+  }
+  return (
+    <SidebarItemLinkAnchor to={props.onNavLink} title={props.title}>
+      {props.children}
+    </SidebarItemLinkAnchor>
+  )
+}
+
 type SidebarProps = {
   items: SidebarItem[]
   selected: string
@@ -137,6 +191,17 @@ type SidebarProps = {
 }
 
 class SidebarResources extends PureComponent<SidebarProps> {
+  constructor(props: SidebarProps) {
+    super(props)
+    this.triggerSelected = this.triggerSelected.bind(this)
+  }
+
+  triggerSelected() {
+    if (this.props.selected) {
+      triggerUpdate(this.props.selected)
+    }
+  }
+
   render() {
     let pb = this.props.pathBuilder
 
@@ -172,6 +237,8 @@ class SidebarResources extends PureComponent<SidebarProps> {
 
       let isSelectedClass = isSelected ? "isSelected" : ""
       let isBuildingClass = building ? "isBuilding" : ""
+      let onTrigger = triggerUpdate.bind(null, item.name)
+      let onNavLink = pb.path(link)
 
       return (
         <SidebarItemStyle
@@ -179,8 +246,9 @@ class SidebarResources extends PureComponent<SidebarProps> {
           className={`${isSelectedClass} ${isBuildingClass}`}
         >
           <SidebarItemLink
-            className="SidebarItem-link"
-            to={pb.path(link)}
+            isSelected={isSelected}
+            onNavLink={onNavLink}
+            onTrigger={onTrigger}
             title={item.name}
           >
             <SidebarIcon status={item.status} alertCount={item.alertCount} />
@@ -201,7 +269,6 @@ class SidebarResources extends PureComponent<SidebarProps> {
             </SidebarTiming>
           </SidebarItemLink>
           <SidebarTriggerButton
-            resourceName={item.name}
             isTiltfile={item.isTiltfile}
             isSelected={isSelected}
             hasPendingChanges={item.hasPendingChanges}
@@ -209,6 +276,7 @@ class SidebarResources extends PureComponent<SidebarProps> {
             isBuilding={building}
             triggerMode={item.triggerMode}
             isQueued={item.queued}
+            onTrigger={onTrigger}
           />
         </SidebarItemStyle>
       )
@@ -220,7 +288,11 @@ class SidebarResources extends PureComponent<SidebarProps> {
       <SidebarResourcesRoot className="Sidebar-resources">
         <SidebarList>
           <SidebarItemAll className={nothingSelected ? "isSelected" : ""}>
-            <SidebarItemLink to={allLink}>
+            <SidebarItemLink
+              isSelected={nothingSelected}
+              title={"all"}
+              onNavLink={allLink}
+            >
               <SidebarIcon
                 status={ResourceStatus.None}
                 alertCount={totalAlerts}
@@ -230,6 +302,12 @@ class SidebarResources extends PureComponent<SidebarProps> {
           </SidebarItemAll>
           {listItems}
         </SidebarList>
+        <SidebarKeyboardShortcuts
+          selected={this.props.selected}
+          items={this.props.items}
+          pathBuilder={this.props.pathBuilder}
+          onTrigger={this.triggerSelected}
+        />
       </SidebarResourcesRoot>
     )
   }

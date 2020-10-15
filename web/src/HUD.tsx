@@ -5,7 +5,6 @@ import Sidebar from "./Sidebar"
 import SidebarAccount from "./SidebarAccount"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
-import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import Statusbar, { StatusItem } from "./Statusbar"
 import LogPane from "./LogPane"
 import HeroScreen from "./HeroScreen"
@@ -429,11 +428,6 @@ class HUD extends Component<HudProps, HudState> {
       let name = props.match.params.name
       return (
         <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
-          <SidebarKeyboardShortcuts
-            selected={name}
-            items={sidebarItems}
-            pathBuilder={this.pathBuilder}
-          />
           <SidebarAccount
             tiltCloudUsername={tiltCloudUsername}
             tiltCloudSchemeHost={tiltCloudSchemeHost}
