@@ -677,7 +677,7 @@ func TestPortForward(t *testing.T) {
 		// PortForward values (via constructor)
 		newPortForwardSuccessCase("value_constructor_local", "port_forward(8001)", []model.PortForward{{LocalPort: 8001}}),
 		newPortForwardSuccessCase("value_constructor_local_named", "port_forward(8001, name='foo')", []model.PortForward{{LocalPort: 8001, Name: "foo"}}),
-		newPortForwardSuccessCase("value_constructor_local_path", "port_forward(8001, path='v1/ui')", []model.PortForward{{LocalPort: 8001, Path: "v1/ui"}}),
+		newPortForwardSuccessCase("value_constructor_local_path", "port_forward(8001, link_path='v1/ui')", []model.PortForward{{LocalPort: 8001, Path: "v1/ui"}}),
 		newPortForwardSuccessCase("value_constructor_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}),
 		newPortForwardSuccessCase("value_constructor_both_named", "port_forward(8001, 443, name='foo')", []model.PortForward{{LocalPort: 8001, ContainerPort: 443, Name: "foo"}}),
 		newPortForwardSuccessCase("value_constructor_all_positional", "port_forward(8001, 443, 'foo', 'v1/ui')",

@@ -868,7 +868,7 @@ func (s *tiltfileState) portForward(thread *starlark.Thread, fn *starlark.Builti
 		"local_port", &local,
 		"container_port?", &container,
 		"name?", &name,
-		"path?", &path); err != nil {
+		"link_path?", &path); err != nil {
 		return nil, err
 	}
 
