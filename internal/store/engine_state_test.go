@@ -248,7 +248,7 @@ func TestManifestTargetEndpoints(t *testing.T) {
 				model.MustNewLink("http://localhost:8000/stuff", "foobar"),
 			},
 			portFwds: []model.PortForward{
-				{LocalPort: 8000, ContainerPort: 5000, Name: "foobar", Path: "stuff"},
+				model.MustPortForward(8000, 5000, "", "foobar", "stuff"),
 			},
 		},
 		{
@@ -257,7 +257,7 @@ func TestManifestTargetEndpoints(t *testing.T) {
 				model.MustNewLink("http://localhost:8000/v1/ui", "UI"),
 			},
 			portFwds: []model.PortForward{
-				{LocalPort: 8000, Name: "UI", Path: "/v1/ui"},
+				model.MustPortForward(8000, 0, "", "UI", "/v1/ui"),
 			},
 		},
 		{
@@ -267,8 +267,8 @@ func TestManifestTargetEndpoints(t *testing.T) {
 				model.MustNewLink("http://host2:7000/banana", ""),
 			},
 			portFwds: []model.PortForward{
-				{LocalPort: 8000, ContainerPort: 5000, Host: "host1", Name: "foobar", Path: "apple"},
-				{LocalPort: 7000, ContainerPort: 5001, Host: "host2", Path: "/banana"},
+				model.MustPortForward(8000, 5000, "host1", "foobar", "apple"),
+				model.MustPortForward(7000, 5001, "host2", "", "/banana"),
 			},
 		},
 		{

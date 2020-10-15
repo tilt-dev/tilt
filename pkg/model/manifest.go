@@ -449,7 +449,42 @@ type PortForward struct {
 	// Optional path at the port forward that we link to in UIs
 	// (useful if e.g. nothing lives at "/" and devs will always
 	// want "localhost:xxxx/v1/app")
-	Path string
+	// (Private with getter/setter b/c may be nil.)
+	path *url.URL
+}
+
+func (pf PortForward) PathForAppend() string {
+	if pf.path == nil {
+		return ""
+	}
+	path := pf.path.String()
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+	return path
+}
+
+func (pf PortForward) WithPath(p *url.URL) PortForward {
+	pf.path = p
+	return pf
+}
+
+func MustPortForward(local int, container int, host string, name string, path string) PortForward {
+	var parsedPath *url.URL
+	var err error
+	if path != "" {
+		parsedPath, err = url.Parse(path)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return PortForward{
+		ContainerPort: container,
+		LocalPort:     local,
+		Host:          host,
+		Name:          name,
+		path:          parsedPath,
+	}
 }
 
 // A link associated with resource; may represent a port forward, an endpoint
@@ -496,11 +531,7 @@ func (pf PortForward) ToLink() Link {
 	if host == "" {
 		host = "localhost"
 	}
-	path := pf.Path
-	if strings.HasPrefix(path, "/") {
-		path = pf.Path[1:]
-	}
-	url := fmt.Sprintf("http://%s:%d/%s", host, pf.LocalPort, path)
+	url := fmt.Sprintf("http://%s:%d/%s", host, pf.LocalPort, pf.PathForAppend())
 
 	// We panic on error here because we provide the URL format ourselves,
 	// so if it's bad, something is very wrong.
