@@ -64,8 +64,11 @@ class HUD extends Component<HudProps, HudState> {
     this.pathBuilder = new PathBuilder(window.location)
     this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
-    this.unlisten = this.history.listen((location, _) => {
-      let tags = { type: pathToTag(location.pathname) }
+    this.unlisten = this.history.listen((location: any, action: string) => {
+      let tags: any = { type: pathToTag(location.pathname) }
+      if (action === "PUSH" && location?.state?.action) {
+        tags.action = location.state.action
+      }
       incr("ui.web.navigation", tags)
 
       this.handleClearHighlight()
