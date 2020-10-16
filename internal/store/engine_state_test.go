@@ -223,8 +223,8 @@ func TestManifestTargetEndpoints(t *testing.T) {
 		{
 			name: "port forward",
 			expected: []model.Link{
-				model.MustNewLink("http://localhost:7000/", ""),
 				model.MustNewLink("http://localhost:8000/", "foobar"),
+				model.MustNewLink("http://localhost:7000/", ""),
 			},
 			portFwds: []model.PortForward{
 				{LocalPort: 8000, ContainerPort: 5000, Name: "foobar"},
@@ -274,19 +274,16 @@ func TestManifestTargetEndpoints(t *testing.T) {
 		{
 			name: "port forward and links",
 			expected: []model.Link{
-				// NOTE(maia): this is current sorting behavior (i.e. whole list of
-				// endpoints is sorted) and isn't great; probably arbitrary links and
-				// port forward URLs should be grouped together.
+				model.MustNewLink("www.zombo.com", "zombo"),
 				model.MustNewLink("http://apple.edu", "apple"),
 				model.MustNewLink("http://localhost:8000/", "foobar"),
-				model.MustNewLink("www.zombo.com", "zombo"),
 			},
 			portFwds: []model.PortForward{
 				{LocalPort: 8000, Name: "foobar"},
 			},
 			k8sResLinks: []model.Link{
-				model.MustNewLink("http://apple.edu", "apple"),
 				model.MustNewLink("www.zombo.com", "zombo"),
+				model.MustNewLink("http://apple.edu", "apple"),
 			},
 		},
 		{
@@ -303,28 +300,30 @@ func TestManifestTargetEndpoints(t *testing.T) {
 		{
 			name: "docker compose ports",
 			expected: []model.Link{
-				model.MustNewLink("http://localhost:7000/", ""),
 				model.MustNewLink("http://localhost:8000/", ""),
+				model.MustNewLink("http://localhost:7000/", ""),
 			},
 			dcPublishedPorts: []int{8000, 7000},
 		},
 		{
 			name: "load balancers",
 			expected: []model.Link{
-				model.MustNewLink("www.apple.edu", ""),
-				model.MustNewLink("www.zombo.com", ""),
+				model.MustNewLink("a", ""), model.MustNewLink("b", ""), model.MustNewLink("c", ""), model.MustNewLink("d", ""),
+				model.MustNewLink("w", ""), model.MustNewLink("x", ""), model.MustNewLink("y", ""), model.MustNewLink("z", ""),
 			},
-			lbURLs: []string{"www.zombo.com", "www.apple.edu"},
+			// this is where we have some room for non-determinism, so maximize the chance of something going wrong
+			lbURLs: []string{"z", "y", "x", "w", "d", "c", "b", "a"},
 		},
 		{
 			name: "load balancers and links",
 			expected: []model.Link{
-				model.MustNewLink("www.apple.edu", "apple"),
-				model.MustNewLink("www.zombo.com", ""),
+				model.MustNewLink("www.zombo.com", "zombo"),
+				model.MustNewLink("www.apple.edu", ""),
+				model.MustNewLink("www.banana.com", ""),
 			},
-			lbURLs: []string{"www.zombo.com"},
+			lbURLs: []string{"www.banana.com", "www.apple.edu"},
 			k8sResLinks: []model.Link{
-				model.MustNewLink("www.apple.edu", "apple"),
+				model.MustNewLink("www.zombo.com", "zombo"),
 			},
 		},
 		{
@@ -357,7 +356,7 @@ func TestManifestTargetEndpoints(t *testing.T) {
 
 			mt := newManifestTargetWithLoadBalancerURLs(m, c.lbURLs)
 			actual := ManifestTargetEndpoints(mt)
-			assert.Equal(t, c.expected, actual)
+			assertLinks(t, c.expected, actual)
 		})
 	}
 }
@@ -389,4 +388,16 @@ func newManifestTargetWithLoadBalancerURLs(m model.Manifest, urls []string) *Man
 	}
 
 	return mt
+}
+
+// assert.Equal on a URL is ugly and hard to read; where it's helpful, compare URLs as strings
+func assertLinks(t *testing.T, expected, actual []model.Link) {
+	require.Len(t, actual, len(expected), "expected %d links but got %d", len(expected), len(actual))
+	expectedStrs := model.LinksToURLStrings(expected)
+	actualStrs := model.LinksToURLStrings(actual)
+	// compare the URLs as strings for readability
+	if assert.Equal(t, expectedStrs, actualStrs, "url string comparison") {
+		// and if those match, compare everything else
+		assert.Equal(t, expected, actual)
+	}
 }
