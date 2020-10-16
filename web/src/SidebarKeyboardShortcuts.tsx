@@ -51,7 +51,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
 
         let name = names[targetIndex]
         let path = name ? pathBuilder.path(`/r/${name}`) : pathBuilder.path("/")
-        history.push(path)
+        history.push(path, { action: "shortcut" })
         e.preventDefault()
         break
     }

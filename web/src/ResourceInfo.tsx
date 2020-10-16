@@ -4,6 +4,7 @@ import * as s from "./style-helpers"
 import { SnapshotHighlight } from "./types"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 import ResourceInfoKeyboardShortcuts from "./ResourceInfoKeyboardShortcuts"
+import { incr } from "./analytics"
 
 type Link = Proto.webviewLink
 
@@ -135,6 +136,7 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
 
         {endpoints?.map(ep => (
           <Endpoint
+            onClick={() => void incr("ui.web.endpoint", { action: "click" })}
             href={ep.url}
             // We use ep.url as the target, so that clicking the link re-uses the tab.
             target={ep.url}

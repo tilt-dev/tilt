@@ -10,6 +10,7 @@ import ButtonInput from "./ButtonInput"
 import ReactOutlineManager from "react-outline-manager"
 import FloatDialog from "./FloatDialog"
 import ShortcutsDialog from "./ShortcutsDialog"
+import { incr } from "./analytics"
 
 export const SidebarAccountRoot = styled.div`
   position: relative; // Anchor SidebarAccountMenu
@@ -228,8 +229,19 @@ function SidebarAccount(props: SidebarAccountProps) {
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
 
-  let toggleAccountMenu = () => setAccountMenuOpen(!accountMenuOpen)
-  let toggleShortcutsDialog = () => setShortcutsDialogOpen(!shortcutsDialogOpen)
+  let toggleAccountMenu = (action: string) => {
+    if (!accountMenuOpen) {
+      incr("ui.web.menu", { type: "account", action: action })
+    }
+    setAccountMenuOpen(!accountMenuOpen)
+  }
+
+  let toggleShortcutsDialog = (action: string) => {
+    if (!shortcutsDialogOpen) {
+      incr("ui.web.menu", { type: "shortcuts", action: action })
+    }
+    setShortcutsDialogOpen(!shortcutsDialogOpen)
+  }
 
   let optionalLearnMore = null
   if (!props.tiltCloudUsername) {
@@ -281,28 +293,28 @@ function SidebarAccount(props: SidebarAccountProps) {
     <SidebarAccountRoot>
       <ReactOutlineManager>
         <SidebarAccountHeader>
-          <SidebarAccountButton onClick={toggleShortcutsDialog}>
+          <SidebarAccountButton onClick={() => toggleShortcutsDialog("click")}>
             <SidebarHelpIcon />
           </SidebarAccountButton>
-          <SidebarAccountButton onClick={toggleAccountMenu}>
+          <SidebarAccountButton onClick={() => toggleAccountMenu("click")}>
             <SidebarAccountIcon />
           </SidebarAccountButton>
         </SidebarAccountHeader>
         <FloatDialog
           title={accountMenuHeader}
           isOpen={accountMenuOpen}
-          onRequestClose={toggleAccountMenu}
+          onRequestClose={() => toggleAccountMenu("close")}
           style={accountMenuStyle}
         >
           <SidebarMenuContent {...props} />
         </FloatDialog>
         <ShortcutsDialog
           isOpen={shortcutsDialogOpen}
-          onRequestClose={toggleShortcutsDialog}
+          onRequestClose={() => toggleShortcutsDialog("close")}
           style={shortcutsDialogStyle}
         />
         <SidebarAccountShortcuts
-          toggleShortcutsDialog={toggleShortcutsDialog}
+          toggleShortcutsDialog={() => toggleShortcutsDialog("shortcut")}
         />
       </ReactOutlineManager>
     </SidebarAccountRoot>

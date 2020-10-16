@@ -1,4 +1,5 @@
 import React, { Component } from "react"
+import { incr } from "./analytics"
 
 type Link = Proto.webviewLink
 
@@ -41,6 +42,7 @@ class ResourceInfoKeyboardShortcuts extends Component<Props> {
         return
       }
 
+      incr("ui.web.endpoint", { action: "shortcut" })
       this.props.openEndpointUrl(endpoint.url)
       e.preventDefault()
       return

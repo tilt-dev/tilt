@@ -35,12 +35,12 @@ class SecondaryNavKeyboardShortcuts extends Component<Props> {
     let history = this.props.history
     switch (key) {
       case "1":
-        history.push(this.props.logUrl)
+        history.push(this.props.logUrl, { action: "shortcut" })
         e.preventDefault()
         break
 
       case "2":
-        history.push(this.props.alertsUrl)
+        history.push(this.props.alertsUrl, { action: "shortcut" })
         e.preventDefault()
         break
 
@@ -48,7 +48,7 @@ class SecondaryNavKeyboardShortcuts extends Component<Props> {
         if (!this.props.facetsUrl) {
           return
         }
-        history.push(this.props.facetsUrl)
+        history.push(this.props.facetsUrl, { action: "shortcut" })
         e.preventDefault()
         break
     }
