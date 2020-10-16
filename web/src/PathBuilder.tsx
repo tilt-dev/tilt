@@ -1,14 +1,24 @@
 // A little helper class for building paths relative to the root of the app.
 
 class PathBuilder {
+  private protocol: string
   private host: string
   private snapId: string = ""
 
-  constructor(host: string, pathname: string) {
-    this.host = host
+  static forTesting(host: string, pathname: string) {
+    return new PathBuilder({
+      protocol: "http:",
+      host: host,
+      pathname: pathname,
+    })
+  }
+
+  constructor(loc: { protocol: string; host: string; pathname: string }) {
+    this.host = loc.host
+    this.protocol = loc.protocol
 
     const snapshotRe = new RegExp("^/snapshot/([^/]+)")
-    let snapMatch = snapshotRe.exec(pathname)
+    let snapMatch = snapshotRe.exec(loc.pathname)
     if (snapMatch) {
       this.snapId = snapMatch[1]
     }
@@ -18,7 +28,13 @@ class PathBuilder {
     if (this.isSnapshot()) {
       return this.snapshotDataUrl()
     }
-    return `ws://${this.host}/ws/view`
+    return this.isSecure()
+      ? `wss://${this.host}/ws/view`
+      : `ws://${this.host}/ws/view`
+  }
+
+  isSecure(): boolean {
+    return this.protocol === "https:"
   }
 
   isSnapshot(): boolean {

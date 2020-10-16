@@ -12,7 +12,7 @@ type Resource = Proto.webviewResource
 
 let logStore = new LogStore()
 
-let pb = new PathBuilder("localhost", "")
+let pb = PathBuilder.forTesting("localhost", "")
 beforeEach(() => {
   fetchMock.resetMocks()
   Date.now = jest.fn(() => 1482363367071)

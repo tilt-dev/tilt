@@ -11,7 +11,7 @@ import SidebarResources from "./SidebarResources"
 
 type Resource = Proto.webviewResource
 
-let pathBuilder = new PathBuilder("localhost", "/")
+let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 let realDateNow = Date.now
 

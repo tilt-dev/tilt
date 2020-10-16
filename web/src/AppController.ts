@@ -93,7 +93,9 @@ class AppController {
 
     let backoff = Math.pow(2, this.tryConnectCount) * 1000
     let maxTimeout = 10 * 1000 // 10sec
-    let isLocal = this.url.indexOf("ws://localhost") === 0
+    let isLocal =
+      this.url.indexOf("ws://localhost") === 0 ||
+      this.url.indexOf("wss://localhost") === 0
     if (isLocal) {
       // if this is a local connection, max out at 1.5sec.
       // this makes it a bit easier to detect when a window is already open.

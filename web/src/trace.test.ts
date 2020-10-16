@@ -32,7 +32,7 @@ it("generates trace nav data", () => {
     ],
   })
 
-  let pb = new PathBuilder("localhost:10350", "/r/fe")
+  let pb = PathBuilder.forTesting("localhost:10350", "/r/fe")
   expect(traceNav(logs, pb, "build:1")).toEqual({
     count: 2,
     current: {

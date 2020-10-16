@@ -13,7 +13,7 @@ import fetchMock from "jest-fetch-mock"
 
 type Resource = Proto.webviewResource
 
-let pathBuilder = new PathBuilder("localhost", "/")
+let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 let expectClickable = (button: any, expected: boolean) => {
   expect(button.hasClass("clickable")).toEqual(expected)
