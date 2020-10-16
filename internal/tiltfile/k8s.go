@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
@@ -861,18 +862,27 @@ func convertPortForwards(val starlark.Value) ([]model.PortForward, error) {
 
 func (s *tiltfileState) portForward(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var local, container int
-	var name string
+	var name, path string
 
 	// TODO: can specify host (see `stringToPortForward` for host validation logic)
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"local_port", &local,
 		"container_port?", &container,
-		"name?", &name); err != nil {
+		"name?", &name,
+		"link_path?", &path); err != nil {
 		return nil, err
 	}
 
+	var parsedPath *url.URL
+	if path != "" {
+		var err error
+		parsedPath, err = url.Parse(path)
+		if err != nil {
+			return portForward{}, errors.Wrapf(err, "parsing `path` param")
+		}
+	}
 	return portForward{
-		model.PortForward{LocalPort: local, ContainerPort: container, Name: name},
+		model.PortForward{LocalPort: local, ContainerPort: container, Name: name}.WithPath(parsedPath),
 	}, nil
 }
 

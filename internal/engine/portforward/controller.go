@@ -61,7 +61,7 @@ func (m *Controller) diff(ctx context.Context, st store.RStore) (toStart []portF
 
 		oldEntry, isActive := m.activeForwards[podID]
 		if isActive {
-			if cmp.Equal(oldEntry.forwards, forwards) {
+			if cmp.Equal(oldEntry.forwards, forwards, cmp.AllowUnexported(model.PortForward{})) {
 				continue
 			}
 			toShutdown = append(toShutdown, oldEntry)
@@ -82,7 +82,7 @@ func (m *Controller) diff(ctx context.Context, st store.RStore) (toStart []portF
 	}
 
 	// Find all the port-forwards that aren't in the manifest anymore
-	// and need to be shutdown.
+	// and need to be shut down.
 	for key, value := range m.activeForwards {
 		_, inState := statePods[key]
 		if inState {

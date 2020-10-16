@@ -445,6 +445,42 @@ type PortForward struct {
 	// Optional name of the port forward; if given, used as text of the URL
 	// displayed in the web UI (e.g. <a href="localhost:8888">Debugger</a>)
 	Name string
+
+	// Optional path at the port forward that we link to in UIs
+	// (useful if e.g. nothing lives at "/" and devs will always
+	// want "localhost:xxxx/v1/app")
+	// (Private with getter/setter b/c may be nil.)
+	path *url.URL
+}
+
+func (pf PortForward) PathForAppend() string {
+	if pf.path == nil {
+		return ""
+	}
+	return strings.TrimPrefix(pf.path.String(), "/")
+}
+
+func (pf PortForward) WithPath(p *url.URL) PortForward {
+	pf.path = p
+	return pf
+}
+
+func MustPortForward(local int, container int, host string, name string, path string) PortForward {
+	var parsedPath *url.URL
+	var err error
+	if path != "" {
+		parsedPath, err = url.Parse(path)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return PortForward{
+		ContainerPort: container,
+		LocalPort:     local,
+		Host:          host,
+		Name:          name,
+		path:          parsedPath,
+	}
 }
 
 // A link associated with resource; may represent a port forward, an endpoint
@@ -491,7 +527,7 @@ func (pf PortForward) ToLink() Link {
 	if host == "" {
 		host = "localhost"
 	}
-	url := fmt.Sprintf("http://%s:%d/", host, pf.LocalPort)
+	url := fmt.Sprintf("http://%s:%d/%s", host, pf.LocalPort, pf.PathForAppend())
 
 	// We panic on error here because we provide the URL format ourselves,
 	// so if it's bad, something is very wrong.
@@ -514,6 +550,7 @@ var localTargetAllowUnexported = cmp.AllowUnexported(LocalTarget{})
 var selectorAllowUnexported = cmp.AllowUnexported(container.RefSelector{})
 var refSetAllowUnexported = cmp.AllowUnexported(container.RefSet{})
 var registryAllowUnexported = cmp.AllowUnexported(container.Registry{})
+var portForwardPathAllowUnexported = cmp.AllowUnexported(PortForward{})
 var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
 var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 
@@ -547,6 +584,7 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		selectorAllowUnexported,
 		refSetAllowUnexported,
 		registryAllowUnexported,
+		portForwardPathAllowUnexported,
 		dockerRefEqual,
 		imageLocatorEqual,
 
