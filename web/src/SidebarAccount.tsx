@@ -1,19 +1,15 @@
-import React, { useState } from "react"
+import React, { useState, Component } from "react"
 import cookies from "js-cookie"
-import styled, { keyframes } from "styled-components"
-import {
-  Color,
-  Font,
-  FontSize,
-  SizeUnit,
-  AnimDuration,
-  ZIndex,
-} from "./style-helpers"
+import styled from "styled-components"
+import { Color, Font, FontSize, SizeUnit, AnimDuration } from "./style-helpers"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
+import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as TiltCloudLogoSvg } from "./assets/svg/logo-Tilt-Cloud.svg"
 import ButtonLink from "./ButtonLink"
 import ButtonInput from "./ButtonInput"
 import ReactOutlineManager from "react-outline-manager"
+import FloatDialog from "./FloatDialog"
+import ShortcutsDialog from "./ShortcutsDialog"
 
 export const SidebarAccountRoot = styled.div`
   position: relative; // Anchor SidebarAccountMenu
@@ -46,64 +42,19 @@ let SidebarAccountIcon = styled(AccountIcon)`
     fill: ${Color.blueLight};
   }
 `
-let SidebarAccountLabel = styled.p`
-  position: absolute;
-  font-family: ${Font.monospace};
-  font-size: ${FontSize.small};
-  color: ${Color.grayLightest};
-  margin-right: ${SizeUnit(0.25)};
-  opacity: 0;
-  right: 100%;
-  transition: opacity ${AnimDuration.short} ease;
-  white-space: nowrap;
+let SidebarHelpIcon = styled(HelpIcon)`
+  fill: ${Color.blue};
+  transition: fill ${AnimDuration.default} linear;
 
-  ${SidebarAccountButton}:hover & {
-    transition-delay: ${AnimDuration.long};
-    opacity: 1;
+  &:hover {
+    fill: ${Color.blueLight};
   }
 `
-let scaleWithBounce = keyframes`
-    0% {
-        transform: scaleY(0)
-    }
-    80% {
-        transform: scaleY(1.05)
-    }
-    100% {
-        transform: scaleY(1)
-    }
-`
-let SidebarAccountMenu = styled.div`
-  position: absolute;
-  left: 0;
-  right: 0;
-  background-color: ${Color.white};
-  color: ${Color.text};
-  border-radius: ${SizeUnit(0.25)};
-  margin-top: ${SizeUnit(0.25)};
-  margin-left: ${SizeUnit(0.15)};
-  margin-right: ${SizeUnit(0.15)};
-  z-index: ${ZIndex.SidebarMenu};
-  transform: scaleY(0);
-  opacity: 0;
-  transform-origin: top center;
-  transition: transform ${AnimDuration.short} ease,
-    opacity ${AnimDuration.short} linear;
-
-  &.is-visible {
-    transform: scaleY(1);
-    animation: ${scaleWithBounce} 300ms ease-in-out;
-    opacity: 1;
-  }
-`
-let SidebarAccountMenuHeader = styled.header`
+let SidebarAccountMenuHeader = styled.div`
   display: flex;
+  flex-grow: 1;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px dotted ${Color.grayLight};
-  padding-top: ${SizeUnit(0.25)};
-  padding-bottom: ${SizeUnit(0.25)};
-  padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
 `
 let SidebarAccountMenuLogo = styled(TiltCloudLogoSvg)`
@@ -115,10 +66,7 @@ let SidebarAccountMenuLearn = styled.a`
   color: ${Color.grayLight};
 `
 let SidebarAccountMenuContent = styled.div`
-  font-family: ${Font.monospace};
-  font-size: ${FontSize.default};
   color: ${Color.grayLight};
-  padding: ${SizeUnit(0.5)};
 
   p + p {
     margin-top: ${SizeUnit(0.25)};
@@ -184,55 +132,41 @@ function notifyTiltOfRegistration() {
   })
 }
 
-function SidebarAccount(props: SidebarAccountProps) {
-  const [accountMenuIsVisible, toggleAccountMenu] = useState(false)
+function SidebarMenuContent(props: SidebarAccountProps) {
+  if (props.tiltCloudUsername) {
+    let teamContent = null
+    if (props.tiltCloudTeamID) {
+      teamContent = (
+        <MenuContentTeam>
+          On team{" "}
+          <MenuContentTeamName>
+            {props.tiltCloudTeamName ?? props.tiltCloudTeamID}
+          </MenuContentTeamName>
+          <br />
+          <MenuContentTeamInTiltfile>
+            From <strong>`set_team()`</strong> in Tiltfile
+          </MenuContentTeamInTiltfile>
+        </MenuContentTeam>
+      )
+    }
 
-  let optionalLearnMore = null
-  if (!props.tiltCloudUsername) {
-    optionalLearnMore = (
-      <SidebarAccountMenuLearn
-        href={props.tiltCloudSchemeHost}
-        target="_blank"
-        rel="noopener noreferrer nofollow"
-      >
-        Learn More
-      </SidebarAccountMenuLearn>
+    return (
+      <SidebarAccountMenuContent className="is-signedIn">
+        <p>
+          Signed in as <strong>{props.tiltCloudUsername}</strong>
+        </p>
+        {teamContent}
+        <MenuContentButtonTiltCloud
+          href={props.tiltCloudSchemeHost}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+        >
+          View Tilt Cloud
+        </MenuContentButtonTiltCloud>
+      </SidebarAccountMenuContent>
     )
   }
-
-  let teamContent = null
-  if (props.tiltCloudTeamID) {
-    teamContent = (
-      <MenuContentTeam>
-        On team{" "}
-        <MenuContentTeamName>
-          {props.tiltCloudTeamName ?? props.tiltCloudTeamID}
-        </MenuContentTeamName>
-        <br />
-        <MenuContentTeamInTiltfile>
-          From <strong>`set_team()`</strong> in Tiltfile
-        </MenuContentTeamInTiltfile>
-      </MenuContentTeam>
-    )
-  }
-
-  let signedInMenuContent = (
-    <SidebarAccountMenuContent className="is-signedIn">
-      <p>
-        Signed in as <strong>{props.tiltCloudUsername}</strong>
-      </p>
-      {teamContent}
-      <MenuContentButtonTiltCloud
-        href={props.tiltCloudSchemeHost}
-        target="_blank"
-        rel="noopener noreferrer nofollow"
-      >
-        View Tilt Cloud
-      </MenuContentButtonTiltCloud>
-    </SidebarAccountMenuContent>
-  )
-
-  let signedOutMenuContent = (
+  return (
     <SidebarAccountMenuContent>
       <p>
         Tilt Cloud is a platform for making all kinds of data from Tilt
@@ -252,30 +186,125 @@ function SidebarAccount(props: SidebarAccountProps) {
       </form>
     </SidebarAccountMenuContent>
   )
+}
+
+export { SidebarMenuContent }
+
+/**
+ * Sets up keyboard shortcuts that depend on the sidebar account block.
+ */
+class SidebarAccountShortcuts extends Component<{
+  toggleShortcutsDialog: () => void
+}> {
+  constructor(props: { toggleShortcutsDialog: () => void }) {
+    super(props)
+    this.onKeydown = this.onKeydown.bind(this)
+  }
+
+  componentDidMount() {
+    document.body.addEventListener("keydown", this.onKeydown)
+  }
+
+  componentWillUnmount() {
+    document.body.removeEventListener("keydown", this.onKeydown)
+  }
+
+  onKeydown(e: KeyboardEvent) {
+    if (e.metaKey || e.altKey || e.ctrlKey || e.isComposing) {
+      return
+    }
+    if (e.key === "?") {
+      this.props.toggleShortcutsDialog()
+      e.preventDefault()
+    }
+  }
+
+  render() {
+    return <span></span>
+  }
+}
+
+function SidebarAccount(props: SidebarAccountProps) {
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+
+  let toggleAccountMenu = () => setAccountMenuOpen(!accountMenuOpen)
+  let toggleShortcutsDialog = () => setShortcutsDialogOpen(!shortcutsDialogOpen)
+
+  let optionalLearnMore = null
+  if (!props.tiltCloudUsername) {
+    optionalLearnMore = (
+      <SidebarAccountMenuLearn
+        href={props.tiltCloudSchemeHost}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+      >
+        Learn More
+      </SidebarAccountMenuLearn>
+    )
+  }
 
   if (props.isSnapshot) {
     return null
   }
 
+  let accountMenuHeader = (
+    <SidebarAccountMenuHeader>
+      <SidebarAccountMenuLogo></SidebarAccountMenuLogo>
+      {optionalLearnMore}
+    </SidebarAccountMenuHeader>
+  )
+
+  // NOTE(nick): A better way to position these would be to re-parent them under
+  // SidebarAccountHeader, but to do that we'd need to do some react wiring that
+  // I'm not enthusiastic about.
+  let accountMenuStyle = {
+    content: {
+      top: SizeUnit(3),
+      right: SizeUnit(0.5),
+      position: "absolute",
+      width: "400px",
+    },
+    overlay: { display: "block" },
+  }
+  let shortcutsDialogStyle = {
+    content: {
+      top: SizeUnit(3),
+      right: SizeUnit(1.5),
+      position: "absolute",
+      width: "400px",
+    },
+    overlay: { display: "block" },
+  }
+
   return (
     <SidebarAccountRoot>
-      <SidebarAccountHeader>
-        <ReactOutlineManager>
-          <SidebarAccountButton
-            onClick={() => toggleAccountMenu(!accountMenuIsVisible)}
-          >
-            <SidebarAccountLabel>Your Tilt Cloud status</SidebarAccountLabel>
+      <ReactOutlineManager>
+        <SidebarAccountHeader>
+          <SidebarAccountButton onClick={toggleShortcutsDialog}>
+            <SidebarHelpIcon />
+          </SidebarAccountButton>
+          <SidebarAccountButton onClick={toggleAccountMenu}>
             <SidebarAccountIcon />
           </SidebarAccountButton>
-        </ReactOutlineManager>
-      </SidebarAccountHeader>
-      <SidebarAccountMenu className={accountMenuIsVisible ? "is-visible" : ""}>
-        <SidebarAccountMenuHeader>
-          <SidebarAccountMenuLogo></SidebarAccountMenuLogo>
-          {optionalLearnMore}
-        </SidebarAccountMenuHeader>
-        {props.tiltCloudUsername ? signedInMenuContent : signedOutMenuContent}
-      </SidebarAccountMenu>
+        </SidebarAccountHeader>
+        <FloatDialog
+          title={accountMenuHeader}
+          isOpen={accountMenuOpen}
+          onRequestClose={toggleAccountMenu}
+          style={accountMenuStyle}
+        >
+          <SidebarMenuContent {...props} />
+        </FloatDialog>
+        <ShortcutsDialog
+          isOpen={shortcutsDialogOpen}
+          onRequestClose={toggleShortcutsDialog}
+          style={shortcutsDialogStyle}
+        />
+        <SidebarAccountShortcuts
+          toggleShortcutsDialog={toggleShortcutsDialog}
+        />
+      </ReactOutlineManager>
     </SidebarAccountRoot>
   )
 }
