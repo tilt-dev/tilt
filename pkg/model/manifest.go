@@ -550,6 +550,7 @@ var localTargetAllowUnexported = cmp.AllowUnexported(LocalTarget{})
 var selectorAllowUnexported = cmp.AllowUnexported(container.RefSelector{})
 var refSetAllowUnexported = cmp.AllowUnexported(container.RefSet{})
 var registryAllowUnexported = cmp.AllowUnexported(container.Registry{})
+var portForwardPathAllowUnexported = cmp.AllowUnexported(PortForward{})
 var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
 var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 
@@ -583,6 +584,7 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		selectorAllowUnexported,
 		refSetAllowUnexported,
 		registryAllowUnexported,
+		portForwardPathAllowUnexported,
 		dockerRefEqual,
 		imageLocatorEqual,
 
