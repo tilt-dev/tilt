@@ -96,17 +96,37 @@ func TestStateToViewPortForwards(t *testing.T) {
 	v := StateToView(*state, &sync.RWMutex{})
 	res, _ := v.Resource(m.Name)
 	assert.Equal(t,
-		[]string{"http://localhost:7000/", "http://localhost:8000/"},
+		[]string{"http://localhost:8000/", "http://localhost:7000/"},
 		res.Endpoints)
 }
 
+func TestStateToWebViewLinksAndPortForwards(t *testing.T) {
+	m := model.Manifest{
+		Name: "foo",
+	}.WithDeployTarget(model.K8sTarget{
+		PortForwards: []model.PortForward{
+			{LocalPort: 8000, ContainerPort: 5000},
+			{LocalPort: 8001, ContainerPort: 5001, Name: "debugger"},
+		},
+		Links: []model.Link{
+			model.MustNewLink("www.apple.edu", "apple"),
+			model.MustNewLink("www.zombo.com", "zombo"),
+		},
+	})
+	state := newState([]model.Manifest{m})
+	v := StateToView(*state, &sync.RWMutex{})
+	res, _ := v.Resource(m.Name)
+	assert.Equal(t,
+		[]string{"www.apple.edu", "www.zombo.com", "http://localhost:8000/", "http://localhost:8001/"},
+		res.Endpoints)
+}
 func TestStateToViewLocalResourceLinks(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.LocalTarget{
 		Links: []model.Link{
-			model.MustNewLink("www.zombo.com", "zombo"),
 			model.MustNewLink("www.apple.edu", "apple"),
+			model.MustNewLink("www.zombo.com", "zombo"),
 		},
 	})
 	state := newState([]model.Manifest{m})

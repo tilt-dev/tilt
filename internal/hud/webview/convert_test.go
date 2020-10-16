@@ -79,18 +79,44 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 		PortForwards: []model.PortForward{
 			{LocalPort: 8000, ContainerPort: 5000},
 			{LocalPort: 7000, ContainerPort: 5001},
-			{LocalPort: 6000, ContainerPort: 5003, Name: "debugger"},
 			{LocalPort: 5000, ContainerPort: 5002, Host: "127.0.0.2", Name: "dashboard"},
+			{LocalPort: 6000, ContainerPort: 5003, Name: "debugger"},
 		},
 	})
 	state := newState([]model.Manifest{m})
 	v := stateToProtoView(t, *state)
 
 	expected := []*proto_webview.Link{
+		&proto_webview.Link{Url: "http://localhost:8000/"},
+		&proto_webview.Link{Url: "http://localhost:7000/"},
 		&proto_webview.Link{Url: "http://127.0.0.2:5000/", Name: "dashboard"},
 		&proto_webview.Link{Url: "http://localhost:6000/", Name: "debugger"},
-		&proto_webview.Link{Url: "http://localhost:7000/"},
+	}
+	res, _ := findResource(m.Name, v)
+	assert.Equal(t, expected, res.EndpointLinks)
+}
+
+func TestStateToWebViewLinksAndPortForwards(t *testing.T) {
+	m := model.Manifest{
+		Name: "foo",
+	}.WithDeployTarget(model.K8sTarget{
+		PortForwards: []model.PortForward{
+			{LocalPort: 8000, ContainerPort: 5000},
+			{LocalPort: 8001, ContainerPort: 5001, Name: "debugger"},
+		},
+		Links: []model.Link{
+			model.MustNewLink("www.apple.edu", "apple"),
+			model.MustNewLink("www.zombo.com", "zombo"),
+		},
+	})
+	state := newState([]model.Manifest{m})
+	v := stateToProtoView(t, *state)
+
+	expected := []*proto_webview.Link{
+		&proto_webview.Link{Url: "www.apple.edu", Name: "apple"},
+		&proto_webview.Link{Url: "www.zombo.com", Name: "zombo"},
 		&proto_webview.Link{Url: "http://localhost:8000/"},
+		&proto_webview.Link{Url: "http://localhost:8001/", Name: "debugger"},
 	}
 	res, _ := findResource(m.Name, v)
 	assert.Equal(t, expected, res.EndpointLinks)
@@ -101,8 +127,8 @@ func TestStateToWebViewLocalResourceLink(t *testing.T) {
 		Name: "foo",
 	}.WithDeployTarget(model.LocalTarget{
 		Links: []model.Link{
-			model.MustNewLink("www.zombo.com", "zombo"),
 			model.MustNewLink("www.apple.edu", "apple"),
+			model.MustNewLink("www.zombo.com", "zombo"),
 		},
 	})
 	state := newState([]model.Manifest{m})
