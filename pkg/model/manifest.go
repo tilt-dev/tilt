@@ -457,11 +457,7 @@ func (pf PortForward) PathForAppend() string {
 	if pf.path == nil {
 		return ""
 	}
-	path := pf.path.String()
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
-	return path
+	return strings.TrimPrefix(pf.path.String(), "/")
 }
 
 func (pf PortForward) WithPath(p *url.URL) PortForward {
