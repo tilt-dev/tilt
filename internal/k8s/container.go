@@ -134,6 +134,15 @@ func FixContainerStatusImages(pod *v1.Pod) {
 	}
 }
 
+// FixContainerStatusImagesNoMutation is the same as FixContainerStatusImages but it does not mutate the input.
+// It instead makes a deep copy and returns that with the updated status.
+// It should be used over FixContainerStatusImages when the source of the pod is shared such as an informer.
+func FixContainerStatusImagesNoMutation(pod *v1.Pod) *v1.Pod {
+	pod = pod.DeepCopy()
+	FixContainerStatusImages(pod)
+	return pod
+}
+
 func ContainerMatching(pod *v1.Pod, ref container.RefSelector) (v1.ContainerStatus, error) {
 	for _, c := range pod.Status.ContainerStatuses {
 		cRef, err := container.ParseNamed(c.Image)
