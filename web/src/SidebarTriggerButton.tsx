@@ -28,7 +28,6 @@ export const TriggerButtonTooltip = {
 }
 
 type SidebarTriggerButtonProps = {
-  resourceName: string
   isTiltfile: boolean
   isBuilding: boolean
   hasBuilt: boolean
@@ -36,22 +35,7 @@ type SidebarTriggerButtonProps = {
   isSelected: boolean
   hasPendingChanges: boolean
   isQueued: boolean
-}
-
-const triggerUpdate = (name: string): void => {
-  let url = `//${window.location.host}/api/trigger`
-
-  fetch(url, {
-    method: "post",
-    body: JSON.stringify({
-      manifest_names: [name],
-      build_reason: 16 /* BuildReasonFlagTriggerWeb */,
-    }),
-  }).then(response => {
-    if (!response.ok) {
-      console.log(response)
-    }
-  })
+  onTrigger: (action: string) => void
 }
 
 const titleText = (
@@ -103,9 +87,7 @@ export default class SidebarTriggerButton extends PureComponent<
 
     return (
       <SidebarTriggerButtonStyle
-        onClick={() => {
-          triggerUpdate(props.resourceName)
-        }}
+        onClick={() => props.onTrigger("click")}
         className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
           ${clickable ? " clickable" : ""}${clickMe ? " clickMe" : ""}${
           props.isQueued ? " isQueued" : ""

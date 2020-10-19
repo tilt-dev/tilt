@@ -20,6 +20,8 @@ import {
   Width,
 } from "./style-helpers"
 import SidebarItem from "./SidebarItem"
+import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
+import { incr } from "./analytics"
 
 // Styles:
 const barberpole = keyframes`
@@ -129,6 +131,24 @@ let SidebarItemTimeAgo = styled.span`
 type Resource = Proto.webviewResource
 type Build = Proto.webviewBuildRecord
 
+export const triggerUpdate = (name: string, action: string): void => {
+  incr("ui.web.triggerResource", { action })
+
+  let url = `//${window.location.host}/api/trigger`
+
+  fetch(url, {
+    method: "post",
+    body: JSON.stringify({
+      manifest_names: [name],
+      build_reason: 16 /* BuildReasonFlagTriggerWeb */,
+    }),
+  }).then(response => {
+    if (!response.ok) {
+      console.log(response)
+    }
+  })
+}
+
 type SidebarProps = {
   items: SidebarItem[]
   selected: string
@@ -137,6 +157,17 @@ type SidebarProps = {
 }
 
 class SidebarResources extends PureComponent<SidebarProps> {
+  constructor(props: SidebarProps) {
+    super(props)
+    this.triggerSelected = this.triggerSelected.bind(this)
+  }
+
+  triggerSelected(action: string) {
+    if (this.props.selected) {
+      triggerUpdate(this.props.selected, action)
+    }
+  }
+
   render() {
     let pb = this.props.pathBuilder
 
@@ -172,6 +203,7 @@ class SidebarResources extends PureComponent<SidebarProps> {
 
       let isSelectedClass = isSelected ? "isSelected" : ""
       let isBuildingClass = building ? "isBuilding" : ""
+      let onTrigger = triggerUpdate.bind(null, item.name)
 
       return (
         <SidebarItemStyle
@@ -201,7 +233,6 @@ class SidebarResources extends PureComponent<SidebarProps> {
             </SidebarTiming>
           </SidebarItemLink>
           <SidebarTriggerButton
-            resourceName={item.name}
             isTiltfile={item.isTiltfile}
             isSelected={isSelected}
             hasPendingChanges={item.hasPendingChanges}
@@ -209,6 +240,7 @@ class SidebarResources extends PureComponent<SidebarProps> {
             isBuilding={building}
             triggerMode={item.triggerMode}
             isQueued={item.queued}
+            onTrigger={onTrigger}
           />
         </SidebarItemStyle>
       )
@@ -230,6 +262,12 @@ class SidebarResources extends PureComponent<SidebarProps> {
           </SidebarItemAll>
           {listItems}
         </SidebarList>
+        <SidebarKeyboardShortcuts
+          selected={this.props.selected}
+          items={this.props.items}
+          pathBuilder={this.props.pathBuilder}
+          onTrigger={this.triggerSelected}
+        />
       </SidebarResourcesRoot>
     )
   }
