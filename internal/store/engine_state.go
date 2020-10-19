@@ -614,15 +614,6 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 var _ model.TargetStatus = &ManifestState{}
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
-	// TODO(maia): we should probably let users define the order of their endpoints;
-	//  at minimum, arbitrary links and port fwd URLs should stay together (currently
-	//  if a k8s resource has both links and port fwds, the whole list of endpoints
-	//  will be alphabetized). However, we don't expect lots of people to specify
-	//  links and port fwds on the same resource, so this is fine for now.
-	defer func() {
-		sort.Sort(model.ByURL(endpoints))
-	}()
-
 	if mt.Manifest.IsK8s() {
 		k8sTarg := mt.Manifest.K8sTarget()
 		endpoints = append(endpoints, k8sTarg.Links...)
@@ -638,12 +629,16 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 			return endpoints
 		}
 
+		lbEndpoints := []model.Link{}
 		for _, u := range mt.State.K8sRuntimeState().LBs {
 			if u != nil {
-				endpoints = append(endpoints, model.Link{URL: u})
+				lbEndpoints = append(lbEndpoints, model.Link{URL: u})
 			}
 		}
-		return endpoints
+		// Sort so the ordering of LB endpoints is deterministic
+		// (otherwise it's not, because they live in a map)
+		sort.Sort(model.ByURL(lbEndpoints))
+		endpoints = append(endpoints, lbEndpoints...)
 	}
 
 	localResourceLinks := mt.Manifest.LocalTarget().Links
