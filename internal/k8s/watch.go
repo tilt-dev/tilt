@@ -214,14 +214,14 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Sel
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(*v1.Pod)
 			if ok {
-				FixContainerStatusImages(mObj)
+				obj = FixContainerStatusImagesNoMutation(mObj)
 			}
 			ch <- ObjectUpdate{obj: obj}
 		},
 		DeleteFunc: func(obj interface{}) {
 			mObj, ok := obj.(*v1.Pod)
 			if ok {
-				FixContainerStatusImages(mObj)
+				obj = FixContainerStatusImagesNoMutation(mObj)
 			}
 			ch <- ObjectUpdate{obj: obj, isDelete: true}
 		},
@@ -236,7 +236,7 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Sel
 				return
 			}
 
-			FixContainerStatusImages(newPod)
+			newPod = FixContainerStatusImagesNoMutation(newPod)
 			ch <- ObjectUpdate{obj: newPod}
 		},
 	})
