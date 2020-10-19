@@ -38,6 +38,7 @@ export default function ShortcutsDialog(props: props) {
   return (
     <FloatDialog title="Keyboard Shortcuts" {...props}>
       <Shortcut keys="j, k" label="Navigate Resource" />
+      <Shortcut keys="r" label="Trigger rebuild for a resource" />
       <Shortcut keys="Shift+1, 2..." label="Open Endpoint" />
       <Shortcut keys="1" label="View Logs" />
       <Shortcut keys="2" label="View Alerts" />

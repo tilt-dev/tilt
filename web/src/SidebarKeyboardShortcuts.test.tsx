@@ -10,11 +10,14 @@ import { fireEvent } from "@testing-library/dom"
 var fakeHistory: any
 const pathBuilder = PathBuilder.forTesting("localhost", "/")
 let component: any
+let triggered: any = false
 const shortcuts = (items: SidebarItem[], selected: string) => {
   let CaptureHistory = () => {
     fakeHistory = useHistory()
     return <span />
   }
+  triggered = false
+
   component = mount(
     <MemoryRouter initialEntries={["/init"]}>
       <CaptureHistory />
@@ -22,6 +25,9 @@ const shortcuts = (items: SidebarItem[], selected: string) => {
         items={items}
         selected={selected}
         pathBuilder={pathBuilder}
+        onTrigger={() => {
+          triggered = true
+        }}
       />
     </MemoryRouter>
   )
@@ -60,4 +66,12 @@ it("navigates backwards no wrap", () => {
   let sks = shortcuts(items, "")
   fireEvent.keyDown(document.body, { key: "k" })
   expect(fakeHistory.location.pathname).toEqual("/init")
+})
+
+it("triggers update", () => {
+  let items = twoResourceView().resources.map(res => new SidebarItem(res))
+  let sks = shortcuts(items, "")
+  expect(triggered).toEqual(false)
+  fireEvent.keyDown(document.body, { key: "r" })
+  expect(triggered).toEqual(true)
 })

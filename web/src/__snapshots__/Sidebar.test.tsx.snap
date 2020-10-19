@@ -417,6 +417,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
       />
     </li>
   </ul>
+  <span />
 </nav>
 `;
 
@@ -450,6 +451,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
       </a>
     </li>
   </ul>
+  <span />
 </nav>
 `;
 
@@ -595,6 +597,7 @@ exports[`sidebar renders list of resources 1`] = `
       />
     </li>
   </ul>
+  <span />
 </nav>
 `;
 
@@ -730,5 +733,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       />
     </li>
   </ul>
+  <span />
 </nav>
 `;

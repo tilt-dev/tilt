@@ -5,11 +5,12 @@ import SidebarTriggerButton, {
 } from "./SidebarTriggerButton"
 import { ResourceView, TriggerMode } from "./types"
 import { oneResource, twoResourceView } from "./testdata"
-import SidebarResources from "./SidebarResources"
+import SidebarResources, { triggerUpdate } from "./SidebarResources"
 import SidebarItem from "./SidebarItem"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import fetchMock from "jest-fetch-mock"
+import { createMemoryHistory } from "history"
 
 type Resource = Proto.webviewResource
 
@@ -44,12 +45,12 @@ describe("SidebarTriggerButton", () => {
       <SidebarTriggerButton
         isTiltfile={false}
         isSelected={true}
-        resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManualAfterInitial}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
+        onTrigger={() => triggerUpdate("doggos", "click")}
       />
     )
 
@@ -57,10 +58,21 @@ describe("SidebarTriggerButton", () => {
     expect(element).toHaveLength(1)
     element.simulate("click")
 
-    expect(fetchMock.mock.calls.length).toEqual(1)
-    expect(fetchMock.mock.calls[0][0]).toEqual("//localhost/api/trigger")
-    expect(fetchMock.mock.calls[0][1]?.method).toEqual("post")
+    expect(fetchMock.mock.calls.length).toEqual(2)
+    expect(fetchMock.mock.calls[0][0]).toEqual("//localhost/api/analytics")
     expect(fetchMock.mock.calls[0][1]?.body).toEqual(
+      JSON.stringify([
+        {
+          verb: "incr",
+          name: "ui.web.triggerResource",
+          tags: { action: "click" },
+        },
+      ])
+    )
+
+    expect(fetchMock.mock.calls[1][0]).toEqual("//localhost/api/trigger")
+    expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
+    expect(fetchMock.mock.calls[1][1]?.body).toEqual(
       JSON.stringify({
         manifest_names: ["doggos"],
         build_reason: 16 /* BuildReasonFlagTriggerWeb */,
@@ -75,12 +87,12 @@ describe("SidebarTriggerButton", () => {
       <SidebarTriggerButton
         isTiltfile={false}
         isSelected={true}
-        resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManualAfterInitial}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={true}
+        onTrigger={() => triggerUpdate("doggos", "click")}
       />
     )
 
@@ -98,12 +110,12 @@ describe("SidebarTriggerButton", () => {
       <SidebarTriggerButton
         isSelected={true}
         isTiltfile={false}
-        resourceName="doggos"
         triggerMode={TriggerMode.TriggerModeManualIncludingInitial}
         hasBuilt={false}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
+        onTrigger={() => triggerUpdate("doggos", "click")}
       />
     )
 
@@ -111,7 +123,7 @@ describe("SidebarTriggerButton", () => {
     expect(element).toHaveLength(1)
     element.simulate("click")
 
-    expect(fetchMock.mock.calls.length).toEqual(1)
+    expect(fetchMock.mock.calls.length).toEqual(2)
   })
 
   it("shows clickable + clickMe trigger button for manual resource with pending changes", () => {
