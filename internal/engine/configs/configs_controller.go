@@ -92,6 +92,10 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 		reason = reason.With(model.BuildReasonFlagTiltfileArgs)
 	}
 
+	if state.PendingTiltfileTrigger.Time.After(lastStartTime) {
+		reason = reason.With(state.PendingTiltfileTrigger.Reason)
+	}
+
 	if reason == model.BuildReasonNone {
 		return buildEntry{}, false
 	}

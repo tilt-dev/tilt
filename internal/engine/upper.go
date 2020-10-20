@@ -176,7 +176,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleExitAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
-
+	case store.TriggerTiltfileAction:
+		handleRequestConfigReloadAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -658,11 +659,16 @@ func handleConfigsReloaded(
 
 	state.UpdateSettings = event.UpdateSettings
 
+	lastBuildStart := state.TiltfileState.LastBuild().StartTime
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
-		if store.BeforeOrEqual(modTime, state.TiltfileState.LastBuild().StartTime) {
+		if store.BeforeOrEqual(modTime, lastBuildStart) {
 			delete(state.PendingConfigFileChanges, file)
 		}
+	}
+
+	if store.BeforeOrEqual(state.PendingTiltfileTrigger.Time, lastBuildStart) {
+		state.PendingTiltfileTrigger = store.TriggerTiltfileAction{}
 	}
 }
 
@@ -820,4 +826,8 @@ func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 	state.CloudStatus.WaitingForStatusPostRegistration = true
+}
+
+func handleRequestConfigReloadAction(state *store.EngineState, action store.TriggerTiltfileAction) {
+	state.PendingTiltfileTrigger = action
 }

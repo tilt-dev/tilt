@@ -82,6 +82,7 @@ type EngineState struct {
 	WatchSettings model.WatchSettings
 
 	PendingConfigFileChanges map[string]time.Time
+	PendingTiltfileTrigger   TriggerTiltfileAction
 
 	TriggerQueue []model.ManifestName
 
