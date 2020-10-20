@@ -349,7 +349,7 @@ describe("SidebarTriggerButton", () => {
     expectWithTooltip(button, TriggerButtonTooltip.ClickToForce)
   })
 
-  it("disables trigger button for Tiltfile", () => {
+  it("shows trigger button for Tiltfile", () => {
     let res = oneResource()
     res.name = "(Tiltfile)"
     res.isTiltfile = true
@@ -373,9 +373,8 @@ describe("SidebarTriggerButton", () => {
     let button = root.find("button.SidebarTriggerButton")
     expect(button).toHaveLength(1)
 
-    expectClickable(button, false)
+    expectClickable(button, true)
     expectClickMe(button, false)
     expectIsQueued(button, false)
-    expectWithTooltip(button, TriggerButtonTooltip.CannotTriggerTiltfile)
   })
 })
