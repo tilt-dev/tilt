@@ -177,7 +177,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
 	case store.TriggerTiltfileAction:
-		handleRequestConfigReloadAction(state, action)
+		handleTriggerTiltfileAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -828,6 +828,6 @@ func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 	state.CloudStatus.WaitingForStatusPostRegistration = true
 }
 
-func handleRequestConfigReloadAction(state *store.EngineState, action store.TriggerTiltfileAction) {
+func handleTriggerTiltfileAction(state *store.EngineState, action store.TriggerTiltfileAction) {
 	state.PendingTiltfileTrigger = action
 }

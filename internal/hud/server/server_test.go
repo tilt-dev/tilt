@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -302,6 +303,30 @@ func TestHandleTriggerMalformedPayload(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), "error parsing JSON")
 }
 
+func TestHandleTriggerTiltfileOK(t *testing.T) {
+	f := newTestFixture(t)
+
+	payload := fmt.Sprintf(`{"manifest_names":["%s"]}`, model.TiltfileManifestName)
+	var jsonStr = []byte(payload)
+	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleTrigger)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+	// assert.Contains(t, rr.Body.String(), "error parsing JSON")
+	fmt.Println(rr.Body.String())
+}
+
 func TestSendToTriggerQueue_manualManifest(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("TODO(nick): fix this")
@@ -356,6 +381,25 @@ func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
 		t.Fatalf("Action was not of type 'AppendToTriggerQueueAction': %+v", action)
 	}
 	assert.Equal(t, "foobar", action.Name.String())
+}
+
+func TestSendToTriggerQueue_Tiltfile(t *testing.T) {
+	f := newTestFixture(t)
+	start := time.Now()
+
+	err := server.SendToTriggerQueue(f.st, model.TiltfileManifestName.String(), model.BuildReasonFlagTriggerWeb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := store.WaitForAction(t, reflect.TypeOf(store.TriggerTiltfileAction{}), f.getActions)
+	action, ok := a.(store.TriggerTiltfileAction)
+	if !ok {
+		t.Fatalf("Action was not of type 'TriggerTiltfileAction': %+v", action)
+	}
+	assert.True(t, action.Time.After(start), "expected TriggerTiltfileAction time %s to be after test start time %s",
+		action.Time.String(), start.String())
+	assert.Equal(t, model.BuildReasonFlagTriggerWeb, action.Reason, "TriggerTiltfileAction had unexpected BuildReason")
 }
 
 func TestSendToTriggerQueue_noManifestWithName(t *testing.T) {
