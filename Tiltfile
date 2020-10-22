@@ -1,5 +1,6 @@
 username = str(local('whoami')).rstrip('\n')
 experimental_analytics_report({'user.name': username})
+analytics_settings(enable=True)
 
 def remove_all_empty_and_whitespace(my_list):
   ret = []
