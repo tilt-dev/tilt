@@ -3551,6 +3551,121 @@ fail('x')`)
 	assert.NoError(t, err)
 }
 
+func TestHandleTriggerTiltfileAction(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `print("hello world")`)
+
+	f.Init(InitAction{
+		EngineMode:   store.EngineModeUp,
+		TiltfilePath: f.JoinPath("Tiltfile"),
+		TerminalMode: store.TerminalModeHUD,
+		StartTime:    f.Now(),
+	})
+
+	f.WaitUntil("init action processed", func(state store.EngineState) bool {
+		return !state.TiltStartTime.IsZero()
+	})
+
+	f.withState(func(st store.EngineState) {
+		assert.Equal(t, store.TriggerTiltfileAction{}, st.PendingTiltfileTrigger,
+			"inital state should have no pending Tiltfile trigger")
+	})
+
+	action1 := store.TriggerTiltfileAction{Time: time.Now(), Reason: 123}
+	f.store.Dispatch(action1)
+
+	f.WaitUntil("TriggerTiltfileAction processed", func(st store.EngineState) bool {
+		return st.PendingTiltfileTrigger == action1
+	})
+
+	action2 := store.TriggerTiltfileAction{Time: time.Now(), Reason: 456}
+	f.store.Dispatch(action2)
+
+	f.WaitUntil("second TriggerTiltfileAction processed", func(st store.EngineState) bool {
+		// overwrite previous PendingTiltfileTrigger
+		return st.PendingTiltfileTrigger == action2
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
+func TestClearPendingTiltfileTrigger(t *testing.T) {
+	lastTiltfileLoad := time.Now()
+	beforeLastTiltfileLoad := lastTiltfileLoad.Add(-10 * time.Minute)
+	afterLastTiltfileLoad := lastTiltfileLoad.Add(10 * time.Minute)
+
+	for _, c := range []struct {
+		name          string
+		triggerTime   time.Time
+		tfError       error
+		expectCleared bool
+	}{
+		{
+			name:          "clear trigger from before last Tiltfile load",
+			triggerTime:   beforeLastTiltfileLoad,
+			expectCleared: true,
+		},
+		{
+			name:          "don't clear trigger from after last Tiltfile load",
+			triggerTime:   afterLastTiltfileLoad,
+			expectCleared: false,
+		},
+		{
+			name:          "don't clear trigger if Tiltfile load error",
+			triggerTime:   beforeLastTiltfileLoad,
+			tfError:       fmt.Errorf("there are 2 impostors among us"),
+			expectCleared: false,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			// <setup>
+			f := newTestFixture(t)
+			defer f.TearDown()
+
+			f.WriteFile("Tiltfile", `print("hello world")`)
+
+			f.Init(InitAction{
+				EngineMode:   store.EngineModeUp,
+				TiltfilePath: f.JoinPath("Tiltfile"),
+				TerminalMode: store.TerminalModeHUD,
+				StartTime:    f.Now(),
+			})
+
+			f.WaitUntil("init action processed", func(state store.EngineState) bool {
+				return !state.TiltStartTime.IsZero()
+			})
+
+			triggerAction := store.TriggerTiltfileAction{Time: c.triggerTime, Reason: 123}
+			f.store.Dispatch(triggerAction)
+
+			f.WaitUntil("TriggerTiltfileAction processed", func(st store.EngineState) bool {
+				return st.PendingTiltfileTrigger == triggerAction
+			})
+
+			// </setup>
+			st := f.store.LockMutableStateForTesting()
+			st.TiltfileState.AddCompletedBuild(model.BuildRecord{StartTime: lastTiltfileLoad})
+			f.store.UnlockMutableState()
+
+			f.store.Dispatch(configs.ConfigsReloadedAction{
+				FinishTime: time.Now(),
+				Err:        c.tfError,
+			})
+
+			f.WaitUntil("configsReloadedAction processed as expected", func(st store.EngineState) bool {
+				if c.expectCleared {
+					return store.TriggerTiltfileAction{} == st.PendingTiltfileTrigger
+				} else {
+					return triggerAction == st.PendingTiltfileTrigger
+				}
+			})
+		})
+	}
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
