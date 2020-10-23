@@ -89,6 +89,7 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 	}
 
 	cn := c.Cluster
+	cl := config.Clusters[cn]
 	if strings.HasPrefix(cn, string(EnvMinikube)) {
 		return EnvMinikube
 	} else if strings.HasPrefix(cn, "docker-for-desktop-cluster") || strings.HasPrefix(cn, "docker-desktop") {
@@ -121,6 +122,12 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 	k3dDir := filepath.Join(homedir, ".config", "k3d")
 	if ospath.IsChild(k3dDir, loc) {
 		return EnvK3D
+	}
+
+	minikubeDir := filepath.Join(homedir, ".minikube")
+	if cl != nil && cl.CertificateAuthority != "" &&
+		ospath.IsChild(minikubeDir, cl.CertificateAuthority) {
+		return EnvMinikube
 	}
 
 	// NOTE(nick): Users can set the KIND cluster name with `kind create cluster
