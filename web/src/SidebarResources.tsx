@@ -158,7 +158,7 @@ type SidebarProps = {
 
 function renderSidebarItem(
   item: SidebarItem,
-  props: SidebarProps,
+  props: SidebarProps
 ): JSX.Element {
   let link = `/r/${item.name}`
   switch (props.resourceView) {
@@ -174,9 +174,7 @@ function renderSidebarItem(
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
   let hasBuilt = item.lastBuild !== null
   let building = !isZeroTime(item.currentBuildStartTime)
-  let buildDur = item.lastBuildDur
-    ? formatBuildDuration(item.lastBuildDur)
-    : ""
+  let buildDur = item.lastBuildDur ? formatBuildDuration(item.lastBuildDur) : ""
   let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
   let isSelected = props.selected === item.name
 
@@ -225,57 +223,49 @@ function renderSidebarItem(
   )
 }
 
-class SidebarResources extends PureComponent<SidebarProps> {
-  constructor(props: SidebarProps) {
-    super(props)
-    this.triggerSelected = this.triggerSelected.bind(this)
-  }
-
-  triggerSelected(action: string) {
-    if (this.props.selected) {
-      triggerUpdate(this.props.selected, action)
+function SidebarResources(props: SidebarProps) {
+  function triggerSelected(action: string) {
+    if (props.selected) {
+      triggerUpdate(props.selected, action)
     }
   }
+  let pb = props.pathBuilder
 
-  render() {
-    let pb = this.props.pathBuilder
+  let allLink =
+    props.resourceView === ResourceView.Alerts
+      ? pb.path("/alerts")
+      : pb.path("/")
 
-    let allLink =
-      this.props.resourceView === ResourceView.Alerts
-        ? pb.path("/alerts")
-        : pb.path("/")
+  let totalAlerts = props.items
+    .map(i => i.alertCount)
+    .reduce((sum, current) => sum + current, 0)
 
-    let totalAlerts = this.props.items
-      .map(i => i.alertCount)
-      .reduce((sum, current) => sum + current, 0)
+  let listItems = props.items.map(item => renderSidebarItem(item, props))
 
-    let listItems = this.props.items.map(item => renderSidebarItem(item, this.props))
+  let nothingSelected = !props.selected
 
-    let nothingSelected = !this.props.selected
-
-    return (
-      <SidebarResourcesRoot className="Sidebar-resources">
-        <SidebarList>
-          <SidebarItemAll className={nothingSelected ? "isSelected" : ""}>
-            <SidebarItemLink to={allLink}>
-              <SidebarIcon
-                status={ResourceStatus.None}
-                alertCount={totalAlerts}
-              />
-              <SidebarItemName>All</SidebarItemName>
-            </SidebarItemLink>
-          </SidebarItemAll>
-          {listItems}
-        </SidebarList>
-        <SidebarKeyboardShortcuts
-          selected={this.props.selected}
-          items={this.props.items}
-          pathBuilder={this.props.pathBuilder}
-          onTrigger={this.triggerSelected}
-        />
-      </SidebarResourcesRoot>
-    )
-  }
+  return (
+    <SidebarResourcesRoot className="Sidebar-resources">
+      <SidebarList>
+        <SidebarItemAll className={nothingSelected ? "isSelected" : ""}>
+          <SidebarItemLink to={allLink}>
+            <SidebarIcon
+              status={ResourceStatus.None}
+              alertCount={totalAlerts}
+            />
+            <SidebarItemName>All</SidebarItemName>
+          </SidebarItemLink>
+        </SidebarItemAll>
+        {listItems}
+      </SidebarList>
+      <SidebarKeyboardShortcuts
+        selected={props.selected}
+        items={props.items}
+        pathBuilder={props.pathBuilder}
+        onTrigger={triggerSelected}
+      />
+    </SidebarResourcesRoot>
+  )
 }
 
 export default SidebarResources
