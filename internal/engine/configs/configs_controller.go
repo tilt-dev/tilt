@@ -77,7 +77,7 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 	}
 
 	tfState := state.TiltfileState
-	reason := tfState.TriggerReason
+	var reason model.BuildReason
 	lastStartTime := tfState.LastBuild().StartTime
 	if !tfState.StartedFirstBuild() {
 		reason = reason.With(model.BuildReasonFlagInit)
@@ -93,8 +93,8 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 		reason = reason.With(model.BuildReasonFlagTiltfileArgs)
 	}
 
-	if state.PendingTiltfileTrigger.Time.After(lastStartTime) {
-		reason = reason.With(state.PendingTiltfileTrigger.Reason)
+	if state.PendingTiltfileTrigger.After(lastStartTime) {
+		reason = reason.With(state.TiltfileState.TriggerReason)
 	}
 
 	if reason == model.BuildReasonNone {

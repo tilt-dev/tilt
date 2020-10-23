@@ -282,16 +282,11 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 func SendToTriggerQueue(st store.RStore, name string, buildReason model.BuildReason) error {
 	mName := model.ManifestName(name)
 
-	if mName == model.TiltfileManifestName {
-		st.Dispatch(store.NewTriggerTiltfileAction(buildReason))
-		return nil
-	}
-
 	state := st.RLockState()
 	_, ok := state.Manifest(mName)
 	st.RUnlockState()
 
-	if !ok {
+	if !ok && mName != model.TiltfileManifestName {
 		return fmt.Errorf("no manifest found with name '%s'", mName)
 	}
 

@@ -385,21 +385,23 @@ func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
 
 func TestSendToTriggerQueue_Tiltfile(t *testing.T) {
 	f := newTestFixture(t)
-	start := time.Now()
 
 	err := server.SendToTriggerQueue(f.st, model.TiltfileManifestName.String(), model.BuildReasonFlagTriggerWeb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	a := store.WaitForAction(t, reflect.TypeOf(store.TriggerTiltfileAction{}), f.getActions)
-	action, ok := a.(store.TriggerTiltfileAction)
+	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
+	action, ok := a.(server.AppendToTriggerQueueAction)
 	if !ok {
 		t.Fatalf("Action was not of type 'TriggerTiltfileAction': %+v", action)
 	}
-	assert.True(t, action.Time.After(start), "expected TriggerTiltfileAction time %s to be after test start time %s",
-		action.Time.String(), start.String())
-	assert.Equal(t, model.BuildReasonFlagTriggerWeb, action.Reason, "TriggerTiltfileAction had unexpected BuildReason")
+
+	expected := server.AppendToTriggerQueueAction{
+		Name:   model.TiltfileManifestName,
+		Reason: model.BuildReasonFlagTriggerWeb,
+	}
+	assert.Equal(t, expected, action)
 }
 
 func TestSendToTriggerQueue_noManifestWithName(t *testing.T) {

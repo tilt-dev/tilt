@@ -87,10 +87,8 @@ func TestBuildReasonTrigger(t *testing.T) {
 	f.setTiltfileHasBuilt()
 
 	state := f.st.LockMutableStateForTesting()
-	state.PendingTiltfileTrigger = store.TriggerTiltfileAction{
-		Time:   time.Now(),
-		Reason: model.BuildReasonFlagTriggerWeb,
-	}
+	state.PendingTiltfileTrigger = time.Now()
+	state.TiltfileState.TriggerReason = model.BuildReasonFlagTriggerWeb
 	f.st.UnlockMutableState()
 
 	reloadStarted, _ := f.run(bar)
@@ -108,10 +106,8 @@ func TestBuildReasonTriggerAndOtherReason(t *testing.T) {
 	f.setTiltfileHasBuilt()
 
 	state := f.st.LockMutableStateForTesting()
-	state.PendingTiltfileTrigger = store.TriggerTiltfileAction{
-		Time:   time.Now(),
-		Reason: model.BuildReasonFlagTriggerWeb,
-	}
+	state.PendingTiltfileTrigger = time.Now()
+	state.TiltfileState.TriggerReason = model.BuildReasonFlagTriggerWeb
 	state.PendingConfigFileChanges["somefile.txt"] = time.Now()
 	f.st.UnlockMutableState()
 
@@ -127,14 +123,14 @@ func TestDontBuildForOldTrigger(t *testing.T) {
 	f := newCCFixture(t)
 	defer f.TearDown()
 
+	f.addManifest("fe")
+	manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.setTiltfileHasBuilt()
 
 	state := f.st.LockMutableStateForTesting()
-	state.PendingTiltfileTrigger = store.TriggerTiltfileAction{
-		// Trigger from before last Tiltfile build shouldn't cause a build
-		Time:   time.Now().Add(-20 * time.Minute),
-		Reason: model.BuildReasonFlagTriggerWeb,
-	}
+	// Trigger from before last Tiltfile build shouldn't cause a build
+	state.PendingTiltfileTrigger = time.Now().Add(-20 * time.Minute)
+	state.TiltfileState.TriggerReason = model.BuildReasonFlagTriggerWeb
 	f.st.UnlockMutableState()
 
 	f.runAndAssertNoConfigsReload()

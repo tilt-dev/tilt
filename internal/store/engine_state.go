@@ -81,8 +81,9 @@ type EngineState struct {
 	Tiltignore    model.Dockerignore
 	WatchSettings model.WatchSettings
 
-	PendingConfigFileChanges map[string]time.Time
-	PendingTiltfileTrigger   TriggerTiltfileAction
+	PendingConfigFileChanges  map[string]time.Time
+	PendingTiltfileTrigger    time.Time
+	OLDPendingTiltfileTrigger TriggerTiltfileAction
 
 	TriggerQueue []model.ManifestName
 

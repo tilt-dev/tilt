@@ -452,6 +452,12 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 }
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName, reason model.BuildReason) {
+	if mn == model.TiltfileManifestName {
+		state.PendingTiltfileTrigger = time.Now()
+		state.TiltfileState.TriggerReason = reason
+		return
+	}
+
 	ms, ok := state.ManifestState(mn)
 	if !ok {
 		return
@@ -667,8 +673,8 @@ func handleConfigsReloaded(
 		}
 	}
 
-	if store.BeforeOrEqual(state.PendingTiltfileTrigger.Time, lastBuildStart) {
-		state.PendingTiltfileTrigger = store.TriggerTiltfileAction{}
+	if store.BeforeOrEqual(state.OLDPendingTiltfileTrigger.Time, lastBuildStart) {
+		state.OLDPendingTiltfileTrigger = store.TriggerTiltfileAction{}
 	}
 }
 
@@ -829,5 +835,5 @@ func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 }
 
 func handleTriggerTiltfileAction(state *store.EngineState, action store.TriggerTiltfileAction) {
-	state.PendingTiltfileTrigger = action
+	state.OLDPendingTiltfileTrigger = action
 }

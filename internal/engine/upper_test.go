@@ -3569,7 +3569,7 @@ func TestHandleTriggerTiltfileAction(t *testing.T) {
 	})
 
 	f.withState(func(st store.EngineState) {
-		assert.Equal(t, store.TriggerTiltfileAction{}, st.PendingTiltfileTrigger,
+		assert.Equal(t, store.TriggerTiltfileAction{}, st.OLDPendingTiltfileTrigger,
 			"initial state should have no pending Tiltfile trigger")
 	})
 
@@ -3577,15 +3577,15 @@ func TestHandleTriggerTiltfileAction(t *testing.T) {
 	f.store.Dispatch(action1)
 
 	f.WaitUntil("TriggerTiltfileAction processed", func(st store.EngineState) bool {
-		return st.PendingTiltfileTrigger == action1
+		return st.OLDPendingTiltfileTrigger == action1
 	})
 
 	action2 := store.TriggerTiltfileAction{Time: time.Now(), Reason: 456}
 	f.store.Dispatch(action2)
 
 	f.WaitUntil("second TriggerTiltfileAction processed", func(st store.EngineState) bool {
-		// overwrite previous PendingTiltfileTrigger
-		return st.PendingTiltfileTrigger == action2
+		// overwrite previous OLDPendingTiltfileTrigger
+		return st.OLDPendingTiltfileTrigger == action2
 	})
 
 	err := f.Stop()
@@ -3642,7 +3642,7 @@ func TestClearPendingTiltfileTrigger(t *testing.T) {
 			f.store.Dispatch(triggerAction)
 
 			f.WaitUntil("TriggerTiltfileAction processed", func(st store.EngineState) bool {
-				return st.PendingTiltfileTrigger == triggerAction
+				return st.OLDPendingTiltfileTrigger == triggerAction
 			})
 
 			// </setup>
@@ -3657,9 +3657,9 @@ func TestClearPendingTiltfileTrigger(t *testing.T) {
 
 			f.WaitUntil("configsReloadedAction processed as expected", func(st store.EngineState) bool {
 				if c.expectCleared {
-					return store.TriggerTiltfileAction{} == st.PendingTiltfileTrigger
+					return store.TriggerTiltfileAction{} == st.OLDPendingTiltfileTrigger
 				} else {
-					return triggerAction == st.PendingTiltfileTrigger
+					return triggerAction == st.OLDPendingTiltfileTrigger
 				}
 			})
 		})
