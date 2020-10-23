@@ -156,6 +156,75 @@ type SidebarProps = {
   pathBuilder: PathBuilder
 }
 
+function renderSidebarItem(
+  item: SidebarItem,
+  props: SidebarProps,
+): JSX.Element {
+  let link = `/r/${item.name}`
+  switch (props.resourceView) {
+    case ResourceView.Alerts:
+      link += "/alerts"
+      break
+    case ResourceView.Facets:
+      link += "/facets"
+      break
+  }
+
+  let formatter = timeAgoFormatter
+  let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
+  let hasBuilt = item.lastBuild !== null
+  let building = !isZeroTime(item.currentBuildStartTime)
+  let buildDur = item.lastBuildDur
+    ? formatBuildDuration(item.lastBuildDur)
+    : ""
+  let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+  let isSelected = props.selected === item.name
+
+  let isSelectedClass = isSelected ? "isSelected" : ""
+  let isBuildingClass = building ? "isBuilding" : ""
+  let onTrigger = triggerUpdate.bind(null, item.name)
+
+  return (
+    <SidebarItemStyle
+      key={item.name}
+      className={`${isSelectedClass} ${isBuildingClass}`}
+    >
+      <SidebarItemLink
+        className="SidebarItem-link"
+        to={props.pathBuilder.path(link)}
+        title={item.name}
+      >
+        <SidebarIcon status={item.status} alertCount={item.alertCount} />
+        <SidebarItemName>
+          <SidebarItemNameTruncate>{item.name}</SidebarItemNameTruncate>
+        </SidebarItemName>
+        <SidebarTiming>
+          <SidebarItemTimeAgo
+            className={hasSuccessfullyDeployed ? "" : "isEmpty"}
+          >
+            {hasSuccessfullyDeployed ? timeAgo : "—"}
+          </SidebarItemTimeAgo>
+          <SidebarItemDuration
+            className={hasSuccessfullyDeployed ? "" : "isEmpty"}
+          >
+            {hasSuccessfullyDeployed ? buildDur : "—"}
+          </SidebarItemDuration>
+        </SidebarTiming>
+      </SidebarItemLink>
+      <SidebarTriggerButton
+        isTiltfile={item.isTiltfile}
+        isSelected={isSelected}
+        hasPendingChanges={item.hasPendingChanges}
+        hasBuilt={hasBuilt}
+        isBuilding={building}
+        triggerMode={item.triggerMode}
+        isQueued={item.queued}
+        onTrigger={onTrigger}
+      />
+    </SidebarItemStyle>
+  )
+}
+
 class SidebarResources extends PureComponent<SidebarProps> {
   constructor(props: SidebarProps) {
     super(props)
@@ -180,71 +249,7 @@ class SidebarResources extends PureComponent<SidebarProps> {
       .map(i => i.alertCount)
       .reduce((sum, current) => sum + current, 0)
 
-    let listItems = this.props.items.map(item => {
-      let link = `/r/${item.name}`
-      switch (this.props.resourceView) {
-        case ResourceView.Alerts:
-          link += "/alerts"
-          break
-        case ResourceView.Facets:
-          link += "/facets"
-          break
-      }
-
-      let formatter = timeAgoFormatter
-      let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
-      let hasBuilt = item.lastBuild !== null
-      let building = !isZeroTime(item.currentBuildStartTime)
-      let buildDur = item.lastBuildDur
-        ? formatBuildDuration(item.lastBuildDur)
-        : ""
-      let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
-      let isSelected = this.props.selected === item.name
-
-      let isSelectedClass = isSelected ? "isSelected" : ""
-      let isBuildingClass = building ? "isBuilding" : ""
-      let onTrigger = triggerUpdate.bind(null, item.name)
-
-      return (
-        <SidebarItemStyle
-          key={item.name}
-          className={`${isSelectedClass} ${isBuildingClass}`}
-        >
-          <SidebarItemLink
-            className="SidebarItem-link"
-            to={pb.path(link)}
-            title={item.name}
-          >
-            <SidebarIcon status={item.status} alertCount={item.alertCount} />
-            <SidebarItemName>
-              <SidebarItemNameTruncate>{item.name}</SidebarItemNameTruncate>
-            </SidebarItemName>
-            <SidebarTiming>
-              <SidebarItemTimeAgo
-                className={hasSuccessfullyDeployed ? "" : "isEmpty"}
-              >
-                {hasSuccessfullyDeployed ? timeAgo : "—"}
-              </SidebarItemTimeAgo>
-              <SidebarItemDuration
-                className={hasSuccessfullyDeployed ? "" : "isEmpty"}
-              >
-                {hasSuccessfullyDeployed ? buildDur : "—"}
-              </SidebarItemDuration>
-            </SidebarTiming>
-          </SidebarItemLink>
-          <SidebarTriggerButton
-            isTiltfile={item.isTiltfile}
-            isSelected={isSelected}
-            hasPendingChanges={item.hasPendingChanges}
-            hasBuilt={hasBuilt}
-            isBuilding={building}
-            triggerMode={item.triggerMode}
-            isQueued={item.queued}
-            onTrigger={onTrigger}
-          />
-        </SidebarItemStyle>
-      )
-    })
+    let listItems = this.props.items.map(item => renderSidebarItem(item, this.props))
 
     let nothingSelected = !this.props.selected
 
