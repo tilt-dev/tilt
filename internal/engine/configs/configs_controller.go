@@ -59,6 +59,7 @@ func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
 // 3) Those files have changed since the last Tiltfile build
 //    (so that we don't keep re-running a failed build)
 // 4) OR the command-line args have changed since the last Tiltfile build
+// 5) OR user has manually triggered a Tiltfile build
 func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
 	state := st.RLockState()
 	defer st.RUnlockState()

@@ -32,7 +32,7 @@ func TestConfigsController(t *testing.T) {
 	f.addManifest("fe")
 
 	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
-	a := f.run(bar)
+	_, a := f.run(bar)
 
 	expected := ConfigsReloadedAction{
 		Manifests:  []model.Manifest{bar},
@@ -55,7 +55,7 @@ func TestConfigsControllerDockerNotConnected(t *testing.T) {
 		WithK8sYAML(testyaml.SanchoYAML).
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		Build()
-	a := f.run(bar)
+	_, a := f.run(bar)
 
 	if assert.Error(t, a.Err) {
 		assert.Equal(t, "Failed to connect to Docker: connection-error", a.Err.Error())
@@ -73,9 +73,71 @@ func TestConfigsControllerDockerNotConnectedButNotRequired(t *testing.T) {
 	bar := manifestbuilder.New(f, "bar").
 		WithK8sYAML(testyaml.SanchoYAML).
 		Build()
-	a := f.run(bar)
+	_, a := f.run(bar)
 
 	assert.NoError(t, a.Err)
+}
+
+func TestBuildReasonTrigger(t *testing.T) {
+	f := newCCFixture(t)
+	defer f.TearDown()
+
+	f.addManifest("fe")
+	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.setTiltfileHasBuilt()
+
+	state := f.st.LockMutableStateForTesting()
+	state.PendingTiltfileTrigger = store.TriggerTiltfileAction{
+		Time:   time.Now(),
+		Reason: model.BuildReasonFlagTriggerWeb,
+	}
+	f.st.UnlockMutableState()
+
+	reloadStarted, _ := f.run(bar)
+
+	fmt.Println(reloadStarted.Reason.String())
+	assert.Equal(t, model.BuildReasonFlagTriggerWeb, reloadStarted.Reason)
+}
+
+func TestBuildReasonTriggerAndOtherReason(t *testing.T) {
+	f := newCCFixture(t)
+	defer f.TearDown()
+
+	f.addManifest("fe")
+	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.setTiltfileHasBuilt()
+
+	state := f.st.LockMutableStateForTesting()
+	state.PendingTiltfileTrigger = store.TriggerTiltfileAction{
+		Time:   time.Now(),
+		Reason: model.BuildReasonFlagTriggerWeb,
+	}
+	state.PendingConfigFileChanges["somefile.txt"] = time.Now()
+	f.st.UnlockMutableState()
+
+	reloadStarted, _ := f.run(bar)
+
+	assert.True(t, reloadStarted.Reason.Has(model.BuildReasonFlagTriggerWeb),
+		"expected build reason flag: TriggerWeb")
+	assert.True(t, reloadStarted.Reason.Has(model.BuildReasonFlagChangedFiles),
+		"expected build reason flag: ChangedFiles")
+}
+
+func TestDontBuildForOldTrigger(t *testing.T) {
+	f := newCCFixture(t)
+	defer f.TearDown()
+
+	f.setTiltfileHasBuilt()
+
+	state := f.st.LockMutableStateForTesting()
+	state.PendingTiltfileTrigger = store.TriggerTiltfileAction{
+		// Trigger from before last Tiltfile build shouldn't cause a build
+		Time:   time.Now().Add(-20 * time.Minute),
+		Reason: model.BuildReasonFlagTriggerWeb,
+	}
+	f.st.UnlockMutableState()
+
+	f.runAndAssertNoConfigsReload()
 }
 
 type ccFixture struct {
@@ -133,20 +195,39 @@ func (f *ccFixture) addManifest(name model.ManifestName) {
 	f.st.UnlockMutableState()
 }
 
-func (f *ccFixture) run(m model.Manifest) ConfigsReloadedAction {
+func (f *ccFixture) run(m model.Manifest) (start ConfigsReloadStartedAction, end ConfigsReloadedAction) {
 	f.tfl.Result = tiltfile.TiltfileLoadResult{
 		Manifests: []model.Manifest{m},
 	}
 
 	f.cc.OnChange(f.ctx, f.st)
 
-	a := store.WaitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.st.Actions)
-	cra, ok := a.(ConfigsReloadedAction)
+	var ok bool
+	a := store.WaitForAction(f.T(), reflect.TypeOf(ConfigsReloadStartedAction{}), f.st.Actions)
+	start, ok = a.(ConfigsReloadStartedAction)
+	if !ok {
+		f.T().Fatalf("didn't get an action of type %T", ConfigsReloadStartedAction{})
+	}
+
+	a = store.WaitForAction(f.T(), reflect.TypeOf(ConfigsReloadedAction{}), f.st.Actions)
+	end, ok = a.(ConfigsReloadedAction)
 	if !ok {
 		f.T().Fatalf("didn't get an action of type %T", ConfigsReloadedAction{})
 	}
 
-	return cra
+	return start, end
+}
+
+func (f *ccFixture) runAndAssertNoConfigsReload() {
+	f.cc.OnChange(f.ctx, f.st)
+
+	store.AssertNoActionOfType(f.T(), reflect.TypeOf(ConfigsReloadStartedAction{}), f.st.Actions)
+}
+
+func (f *ccFixture) setTiltfileHasBuilt() {
+	state := f.st.LockMutableStateForTesting()
+	state.TiltfileState.AddCompletedBuild(model.BuildRecord{StartTime: time.Now()})
+	f.st.UnlockMutableState()
 }
 
 const SanchoDockerfile = `
