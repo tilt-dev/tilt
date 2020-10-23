@@ -1,4 +1,4 @@
-import React, { useContext } from "react"
+import React, { PureComponent, useContext } from "react"
 import { Link } from "react-router-dom"
 import { ResourceStatus, ResourceView } from "./types"
 import TimeAgo from "react-timeago"
@@ -82,7 +82,7 @@ let SidebarItemBox = styled.span`
     animation: ${barberpole} 8s linear infinite;
   }
 `
-let SidebarItemLink = styled(Link)`
+export const SidebarItemLink = styled(Link)`
   display: flex;
   align-items: stretch;
   text-decoration: none;
@@ -137,7 +137,7 @@ const SidebarListSectionItems = styled.ul`
   list-style: none;
 `
 
-function SidebarListSection(
+export function SidebarListSection(
   props: React.PropsWithChildren<{ name: string }>
 ): JSX.Element {
   return (
@@ -256,26 +256,7 @@ function renderSidebarItem(
   )
 }
 
-function PureSidebarResources(props: SidebarProps) {
-  function triggerSelected(action: string) {
-    if (props.selected) {
-      triggerUpdate(props.selected, action)
-    }
-  }
-
-  let pb = props.pathBuilder
-
-  let allLink =
-    props.resourceView === ResourceView.Alerts
-      ? pb.path("/alerts")
-      : pb.path("/")
-
-  let totalAlerts = props.items
-    .map(i => i.alertCount)
-    .reduce((sum, current) => sum + current, 0)
-
-  let listItems = props.items.map(item => renderSidebarItem(item, props, true))
-
+function PinnedItems(props: SidebarProps) {
   let ctx = useContext(sidebarPinContext)
   let pinnedItems = ctx.pinnedResources?.flatMap(r =>
     props.items
@@ -283,39 +264,73 @@ function PureSidebarResources(props: SidebarProps) {
       .map(i => renderSidebarItem(i, props, false))
   )
 
-  let nothingSelected = !props.selected
+  if (!pinnedItems?.length) {
+    return null
+  }
 
-  return (
-    <SidebarResourcesRoot className="Sidebar-resources">
-      <SidebarList>
-        <SidebarListSection name="">
-          <SidebarItemAll>
-            <SidebarItemBox className={nothingSelected ? "isSelected" : ""}>
-              <SidebarItemLink to={allLink}>
-                <SidebarIcon
-                  status={ResourceStatus.None}
-                  alertCount={totalAlerts}
-                />
-                <SidebarItemName>All</SidebarItemName>
-              </SidebarItemLink>
-            </SidebarItemBox>
-          </SidebarItemAll>
-        </SidebarListSection>
-        {pinnedItems?.length ? (
-          <SidebarListSection name="favorites">
-            {pinnedItems}
+  return <SidebarListSection name="favorites">{pinnedItems}</SidebarListSection>
+}
+
+// note: this is a PureComponent but we're not currently getting much value out of its pureness
+// https://app.clubhouse.io/windmill/story/9949/web-purecomponent-optimizations-seem-to-not-be-working
+class PureSidebarResources extends PureComponent<SidebarProps> {
+  constructor(props: SidebarProps) {
+    super(props)
+    this.triggerSelected = this.triggerSelected.bind(this)
+  }
+
+  triggerSelected(action: string) {
+    if (this.props.selected) {
+      triggerUpdate(this.props.selected, action)
+    }
+  }
+
+  render() {
+    let pb = this.props.pathBuilder
+
+    let allLink =
+      this.props.resourceView === ResourceView.Alerts
+        ? pb.path("/alerts")
+        : pb.path("/")
+
+    let totalAlerts = this.props.items
+      .map(i => i.alertCount)
+      .reduce((sum, current) => sum + current, 0)
+
+    let listItems = this.props.items.map(item =>
+      renderSidebarItem(item, this.props, true)
+    )
+
+    let nothingSelected = !this.props.selected
+
+    return (
+      <SidebarResourcesRoot className="Sidebar-resources">
+        <SidebarList>
+          <SidebarListSection name="">
+            <SidebarItemAll>
+              <SidebarItemBox className={nothingSelected ? "isSelected" : ""}>
+                <SidebarItemLink to={allLink}>
+                  <SidebarIcon
+                    status={ResourceStatus.None}
+                    alertCount={totalAlerts}
+                  />
+                  <SidebarItemName>All</SidebarItemName>
+                </SidebarItemLink>
+              </SidebarItemBox>
+            </SidebarItemAll>
           </SidebarListSection>
-        ) : null}
-        <SidebarListSection name="resources">{listItems}</SidebarListSection>
-      </SidebarList>
-      <SidebarKeyboardShortcuts
-        selected={props.selected}
-        items={props.items}
-        pathBuilder={props.pathBuilder}
-        onTrigger={triggerSelected}
-      />
-    </SidebarResourcesRoot>
-  )
+          <PinnedItems {...this.props} />
+          <SidebarListSection name="resources">{listItems}</SidebarListSection>
+        </SidebarList>
+        <SidebarKeyboardShortcuts
+          selected={this.props.selected}
+          items={this.props.items}
+          pathBuilder={this.props.pathBuilder}
+          onTrigger={this.triggerSelected}
+        />
+      </SidebarResourcesRoot>
+    )
+  }
 }
 
 export default SidebarResources
