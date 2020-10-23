@@ -3570,7 +3570,7 @@ func TestHandleTriggerTiltfileAction(t *testing.T) {
 
 	f.withState(func(st store.EngineState) {
 		assert.Equal(t, store.TriggerTiltfileAction{}, st.PendingTiltfileTrigger,
-			"inital state should have no pending Tiltfile trigger")
+			"initial state should have no pending Tiltfile trigger")
 	})
 
 	action1 := store.TriggerTiltfileAction{Time: time.Now(), Reason: 123}
