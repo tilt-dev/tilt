@@ -111,6 +111,12 @@ func (v OwnerFetcher) ensureResourceFetched(gvk schema.GroupVersionKind, ns Name
 
 		go func() {
 			for meta := range ch {
+				// NOTE(nick): I don't think we can ever get a blank UID, but want to protect
+				// us from weird k8s bugs.
+				if meta.GetUID() == "" {
+					continue
+				}
+
 				v.mu.Lock()
 				v.metaCache[meta.GetUID()] = meta
 				v.mu.Unlock()
