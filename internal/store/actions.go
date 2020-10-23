@@ -161,14 +161,3 @@ type PanicAction struct {
 }
 
 func (PanicAction) Action() {}
-
-type TriggerTiltfileAction struct {
-	Time   time.Time
-	Reason model.BuildReason
-}
-
-func (TriggerTiltfileAction) Action() {}
-
-func NewTriggerTiltfileAction(reason model.BuildReason) TriggerTiltfileAction {
-	return TriggerTiltfileAction{Time: time.Now(), Reason: reason}
-}

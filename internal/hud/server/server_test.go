@@ -394,7 +394,7 @@ func TestSendToTriggerQueue_Tiltfile(t *testing.T) {
 	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 	action, ok := a.(server.AppendToTriggerQueueAction)
 	if !ok {
-		t.Fatalf("Action was not of type 'TriggerTiltfileAction': %+v", action)
+		t.Fatalf("Action was not of type 'AppendToTriggreQueueAction': %+v", action)
 	}
 
 	expected := server.AppendToTriggerQueueAction{

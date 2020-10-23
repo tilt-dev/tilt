@@ -176,8 +176,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleExitAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
-	case store.TriggerTiltfileAction:
-		handleTriggerTiltfileAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -453,6 +451,8 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName, reason model.BuildReason) {
 	if mn == model.TiltfileManifestName {
+		// the Tiltfile doesn't get queued like other manifests; instead we mark it as
+		// "pending" in the engine state and it gets picked up by the configs controller
 		state.PendingTiltfileTrigger = time.Now()
 		state.TiltfileState.TriggerReason = reason
 		return
@@ -673,8 +673,10 @@ func handleConfigsReloaded(
 		}
 	}
 
-	if store.BeforeOrEqual(state.OLDPendingTiltfileTrigger.Time, lastBuildStart) {
-		state.OLDPendingTiltfileTrigger = store.TriggerTiltfileAction{}
+	if !state.PendingTiltfileTrigger.IsZero() &&
+		store.BeforeOrEqual(state.PendingTiltfileTrigger, lastBuildStart) {
+		state.PendingTiltfileTrigger = time.Time{}
+		state.TiltfileState.TriggerReason = model.BuildReasonNone
 	}
 }
 
@@ -832,8 +834,4 @@ func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 	state.CloudStatus.WaitingForStatusPostRegistration = true
-}
-
-func handleTriggerTiltfileAction(state *store.EngineState, action store.TriggerTiltfileAction) {
-	state.OLDPendingTiltfileTrigger = action
 }
