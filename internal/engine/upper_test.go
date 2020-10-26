@@ -3569,113 +3569,61 @@ func TestHandleTiltfileAppendToTriggerQueue(t *testing.T) {
 	})
 
 	f.withState(func(st store.EngineState) {
-		assert.True(t, st.PendingTiltfileTrigger.IsZero(),
-			"initial state should have no pending Tiltfile trigger")
+		assert.False(t, st.TiltfileInTriggerQueue(),
+			"initial state should NOT have Tiltfile in trigger queue")
 		assert.Equal(t, model.BuildReasonNone, st.TiltfileState.TriggerReason,
-			"initial state should have Tiltfile trigger reason")
+			"initial state should not have Tiltfile trigger reason")
 	})
-	t1 := f.clock.Now()
-	action1 := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: 123}
-	f.store.Dispatch(action1)
+	action := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: 123}
+	f.store.Dispatch(action)
 
 	f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {
-		return st.PendingTiltfileTrigger.After(t1) && st.TiltfileState.TriggerReason == 123
-	})
-
-	t2 := f.clock.Now()
-	action2 := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: 456}
-	f.store.Dispatch(action2)
-
-	f.WaitUntil("second Tiltfile trigger processed", func(st store.EngineState) bool {
-		// overwrite previous pending time & trigger reason
-		return st.PendingTiltfileTrigger.After(t2) && st.TiltfileState.TriggerReason == 456
+		return st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == 123
 	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
 }
 
-func TestClearPendingTiltfileTrigger(t *testing.T) {
-	past := time.Now().Add(-10 * time.Minute)
-	future := time.Now().Add(10 * time.Minute)
-	reason := model.BuildReason(123)
+func TestRmTiltfileFromTriggerQueue(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
 
-	for _, c := range []struct {
-		name                 string
-		lastTiltfileLoadTime time.Time
-		tfError              error
-		expectCleared        bool
-	}{
-		{
-			name:                 "clear trigger from before last Tiltfile load",
-			lastTiltfileLoadTime: future, // last Tiltfile load comes AFTER Tiltfile trigger
-			expectCleared:        true,
-		},
-		{
-			name:                 "don't clear trigger from after last Tiltfile load",
-			lastTiltfileLoadTime: past, // last Tiltfile load comes BEFORE Tiltfile trigger
-			expectCleared:        false,
-		},
-		{
-			name:                 "don't clear trigger if Tiltfile load error",
-			lastTiltfileLoadTime: future,
-			tfError:              fmt.Errorf("there are 2 impostors among us"),
-			expectCleared:        false,
-		},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			// <setup>
-			f := newTestFixture(t)
-			defer f.TearDown()
+	f.WriteFile("Tiltfile", `print("hello world")`)
 
-			f.WriteFile("Tiltfile", `print("hello world")`)
+	f.Init(InitAction{
+		EngineMode:   store.EngineModeUp,
+		TiltfilePath: f.JoinPath("Tiltfile"),
+		TerminalMode: store.TerminalModeHUD,
+		StartTime:    f.Now(),
+	})
 
-			f.Init(InitAction{
-				EngineMode:   store.EngineModeUp,
-				TiltfilePath: f.JoinPath("Tiltfile"),
-				TerminalMode: store.TerminalModeHUD,
-				StartTime:    f.Now(),
-			})
+	f.WaitUntil("init action processed", func(state store.EngineState) bool {
+		return !state.TiltStartTime.IsZero()
+	})
 
-			f.WaitUntil("init action processed", func(state store.EngineState) bool {
-				return !state.TiltStartTime.IsZero()
-			})
+	f.withState(func(st store.EngineState) {
+		assert.False(t, st.TiltfileInTriggerQueue(),
+			"initial state should NOT have Tiltfile in trigger queue")
+		assert.Equal(t, model.BuildReasonNone, st.TiltfileState.TriggerReason,
+			"initial state should not have Tiltfile trigger reason")
+		assert.Len(t, st.TiltfileState.BuildHistory, 1,
+			"expect 1 Tiltfile build after initialization")
+	})
 
-			st := f.store.LockMutableStateForTesting()
-			st.TiltfileState.AddCompletedBuild(model.BuildRecord{StartTime: c.lastTiltfileLoadTime})
-			f.store.UnlockMutableState()
+	action := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: model.BuildReasonFlagTriggerCLI}
+	f.store.Dispatch(action)
 
-			f.withState(func(st store.EngineState) {
-				assert.True(t, st.PendingTiltfileTrigger.IsZero(), "expect no pending Tiltfile trigger")
-				assert.Equal(t, model.BuildReasonNone, st.TiltfileState.TriggerReason, "expect no pending trigger reason")
-			})
+	f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {
+		return st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == model.BuildReasonFlagTriggerCLI
+	})
 
-			f.cc.DisableForTesting(true) // let us control the flow with events
-			// </setup>
+	f.WaitUntil("Tiltfile built and trigger cleared", func(st store.EngineState) bool {
+		return len(st.TiltfileState.BuildHistory) == 2 && // Tiltfile built b/c it was triggered...
 
-			action := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: reason}
-			f.store.Dispatch(action)
-
-			f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {
-				return !st.PendingTiltfileTrigger.IsZero() && st.TiltfileState.TriggerReason == reason
-			})
-
-			f.store.Dispatch(configs.ConfigsReloadedAction{
-				FinishTime: time.Now(),
-				Err:        c.tfError,
-			})
-
-			if c.expectCleared {
-				f.WaitUntil("configsReloadedAction processed as expected", func(st store.EngineState) bool {
-					return st.PendingTiltfileTrigger.IsZero() && st.TiltfileState.TriggerReason == model.BuildReasonNone
-				})
-			} else {
-				time.Sleep(300 * time.Millisecond)
-				assert.False(t, st.PendingTiltfileTrigger.IsZero(), "should not have cleared PendingTiltfileTrigger")
-				assert.Equal(t, reason, st.TiltfileState.TriggerReason, "should not have cleared TriggerReason")
-			}
-		})
-	}
+			// and the trigger was cleared
+			!st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == model.BuildReasonNone
+	})
 }
 
 type testFixture struct {

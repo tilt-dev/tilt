@@ -149,7 +149,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case dcwatch.EventAction:
 		handleDockerComposeEvent(ctx, state, action)
 	case server.AppendToTriggerQueueAction:
-		appendToTriggerQueue(state, action.Name, action.Reason)
+		state.AppendToTriggerQueue(action.Name, action.Reason)
 	case hud.StartProfilingAction:
 		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
@@ -224,7 +224,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 	}
 
 	state.CurrentlyBuilding[mn] = true
-	removeFromTriggerQueue(state, mn)
+	state.RemoveFromTriggerQueue(mn)
 }
 
 // When a Manifest build finishes, update the BuildStatus for all applicable
@@ -449,48 +449,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 }
 
-func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName, reason model.BuildReason) {
-	if mn == model.TiltfileManifestName {
-		// the Tiltfile doesn't get queued like other manifests; instead we mark it as
-		// "pending" in the engine state and it gets picked up by the configs controller
-		state.PendingTiltfileTrigger = time.Now()
-		state.TiltfileState.TriggerReason = reason
-		return
-	}
-
-	ms, ok := state.ManifestState(mn)
-	if !ok {
-		return
-	}
-
-	if reason == 0 {
-		reason = model.BuildReasonFlagTriggerUnknown
-	}
-
-	ms.TriggerReason = ms.TriggerReason.With(reason)
-
-	for _, queued := range state.TriggerQueue {
-		if mn == queued {
-			return
-		}
-	}
-	state.TriggerQueue = append(state.TriggerQueue, mn)
-}
-
-func removeFromTriggerQueue(state *store.EngineState, mn model.ManifestName) {
-	mState, ok := state.ManifestState(mn)
-	if ok {
-		mState.TriggerReason = model.BuildReasonNone
-	}
-
-	for i, triggerName := range state.TriggerQueue {
-		if triggerName == mn {
-			state.TriggerQueue = append(state.TriggerQueue[:i], state.TriggerQueue[i+1:]...)
-			break
-		}
-	}
-}
-
 func handleStopProfilingAction(state *store.EngineState) {
 	state.IsProfiling = false
 }
@@ -542,6 +500,7 @@ func handleConfigsReloadStarted(
 	}
 
 	state.TiltfileState.CurrentBuild = status
+	state.RemoveFromTriggerQueue(model.TiltfileManifestName)
 	state.StartedTiltfileLoadCount++
 }
 
@@ -665,18 +624,11 @@ func handleConfigsReloaded(
 
 	state.UpdateSettings = event.UpdateSettings
 
-	lastBuildStart := state.TiltfileState.LastBuild().StartTime
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
-		if store.BeforeOrEqual(modTime, lastBuildStart) {
+		if store.BeforeOrEqual(modTime, state.TiltfileState.LastBuild().StartTime) {
 			delete(state.PendingConfigFileChanges, file)
 		}
-	}
-
-	if !state.PendingTiltfileTrigger.IsZero() &&
-		store.BeforeOrEqual(state.PendingTiltfileTrigger, lastBuildStart) {
-		state.PendingTiltfileTrigger = time.Time{}
-		state.TiltfileState.TriggerReason = model.BuildReasonNone
 	}
 }
 

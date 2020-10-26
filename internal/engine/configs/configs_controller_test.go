@@ -87,8 +87,7 @@ func TestBuildReasonTrigger(t *testing.T) {
 	f.setTiltfileHasBuilt()
 
 	state := f.st.LockMutableStateForTesting()
-	state.PendingTiltfileTrigger = time.Now()
-	state.TiltfileState.TriggerReason = model.BuildReasonFlagTriggerWeb
+	state.AppendToTriggerQueue(model.TiltfileManifestName, model.BuildReasonFlagTriggerWeb)
 	f.st.UnlockMutableState()
 
 	reloadStarted, _ := f.run(bar)
@@ -106,8 +105,7 @@ func TestBuildReasonTriggerAndOtherReason(t *testing.T) {
 	f.setTiltfileHasBuilt()
 
 	state := f.st.LockMutableStateForTesting()
-	state.PendingTiltfileTrigger = time.Now()
-	state.TiltfileState.TriggerReason = model.BuildReasonFlagTriggerWeb
+	state.AppendToTriggerQueue(model.TiltfileManifestName, model.BuildReasonFlagTriggerWeb)
 	state.PendingConfigFileChanges["somefile.txt"] = time.Now()
 	f.st.UnlockMutableState()
 
@@ -117,23 +115,6 @@ func TestBuildReasonTriggerAndOtherReason(t *testing.T) {
 		"expected build reason flag: TriggerWeb")
 	assert.True(t, reloadStarted.Reason.Has(model.BuildReasonFlagChangedFiles),
 		"expected build reason flag: ChangedFiles")
-}
-
-func TestDontBuildForOldTrigger(t *testing.T) {
-	f := newCCFixture(t)
-	defer f.TearDown()
-
-	f.addManifest("fe")
-	manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
-	f.setTiltfileHasBuilt()
-
-	state := f.st.LockMutableStateForTesting()
-	// Trigger from before last Tiltfile build shouldn't cause a build
-	state.PendingTiltfileTrigger = time.Now().Add(-20 * time.Minute)
-	state.TiltfileState.TriggerReason = model.BuildReasonFlagTriggerWeb
-	f.st.UnlockMutableState()
-
-	f.runAndAssertNoConfigsReload()
 }
 
 type ccFixture struct {
