@@ -279,6 +279,12 @@ var equalitytests = []struct {
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(CustomBuild{Deps: []string{"bar", "quux"}})),
 		false,
 	},
+	{
+		"DockerBuild.CacheFrom unequal and doesn't invalidate",
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{CacheFrom: []string{"foo", "bar"}})),
+		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{CacheFrom: []string{"bar", "quux"}})),
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {

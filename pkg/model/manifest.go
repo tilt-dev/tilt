@@ -553,6 +553,7 @@ var registryAllowUnexported = cmp.AllowUnexported(container.Registry{})
 var portForwardPathAllowUnexported = cmp.AllowUnexported(PortForward{})
 var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
 var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
+var ignoreDockerBuildCacheFrom = cmpopts.IgnoreFields(DockerBuild{}, "CacheFrom")
 
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
@@ -591,5 +592,9 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		// deps changes don't invalidate a build, so don't compare fields used only for deps
 		ignoreCustomBuildDepsField,
 		ignoreLocalTargetDepsField,
+
+		// DockerBuild.CacheFrom doesn't invalidate a build (b/c it affects HOW we build but
+		// shouldn't affect the result of the build), so don't compare these fields
+		ignoreDockerBuildCacheFrom,
 	)
 }
