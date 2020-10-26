@@ -19,7 +19,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
+	difake "k8s.io/client-go/discovery/fake"
 	dfake "k8s.io/client-go/dynamic/fake"
 	kfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -305,6 +307,22 @@ func TestK8sClient_WatchMeta(t *testing.T) {
 	tf.assertMeta(expected, ch)
 }
 
+func TestK8sClient_WatchMetaBackfillK8s14(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	tf.version.Minor = "14"
+
+	pod1 := fakePod(PodID("abcd"), "efgh")
+	pod2 := fakePod(PodID("1234"), "hieruyge")
+	ch := tf.watchMeta(schema.GroupVersionKind{Version: "v1", Kind: "Pod"})
+
+	tf.addObjects(pod1, pod2)
+
+	expected := []*metav1.ObjectMeta{&pod1.ObjectMeta, &pod2.ObjectMeta}
+	tf.assertMeta(expected, ch)
+}
+
 type watchTestFixture struct {
 	t    *testing.T
 	kCli K8sClient
@@ -316,6 +334,7 @@ type watchTestFixture struct {
 	watchErr          error
 	nsRestriction     Namespace
 	cancel            context.CancelFunc
+	version           *version.Info
 }
 
 func newWatchTestFixture(t *testing.T) *watchTestFixture {
@@ -365,6 +384,12 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	mcs.PrependWatchReactor("*", wr)
 	ret.metadata = mcs
 
+	version := &version.Info{Major: "1", Minor: "19"}
+	di := &difake.FakeDiscovery{
+		Fake:               &ktesting.Fake{},
+		FakedServerVersion: version,
+	}
+
 	ret.kCli = K8sClient{
 		env:       EnvUnknown,
 		drm:       fakeRESTMapper{},
@@ -372,7 +397,9 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 		clientset: cs,
 		metadata:  mcs,
 		core:      cs.CoreV1(),
+		discovery: di,
 	}
+	ret.version = version
 
 	return ret
 }
@@ -413,7 +440,7 @@ func (tf *watchTestFixture) watchEvents() <-chan *v1.Event {
 	return ch
 }
 
-func (tf *watchTestFixture) watchMeta(gvr schema.GroupVersionKind) <-chan *metav1.ObjectMeta {
+func (tf *watchTestFixture) watchMeta(gvr schema.GroupVersionKind) <-chan ObjectMeta {
 	ch, err := tf.kCli.WatchMeta(tf.ctx, gvr, "default")
 	if err != nil {
 		tf.t.Fatalf("watchMeta: %v", err)
@@ -519,7 +546,7 @@ func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-c
 	assert.ElementsMatch(tf.t, expectedOutput, observedEvents)
 }
 
-func (tf *watchTestFixture) assertMeta(expected []*metav1.ObjectMeta, ch <-chan *metav1.ObjectMeta) {
+func (tf *watchTestFixture) assertMeta(expected []*metav1.ObjectMeta, ch <-chan ObjectMeta) {
 	var observed []*metav1.ObjectMeta
 
 	done := false
@@ -529,7 +556,7 @@ func (tf *watchTestFixture) assertMeta(expected []*metav1.ObjectMeta, ch <-chan 
 			if !ok {
 				done = true
 			} else {
-				observed = append(observed, m)
+				observed = append(observed, m.(*metav1.ObjectMeta))
 			}
 		case <-time.After(200 * time.Millisecond):
 			// if we haven't seen any events for 10ms, assume we're done
