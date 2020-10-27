@@ -147,6 +147,21 @@ local('exit 1')
 		"exit status 1")
 }
 
+func TestLoadDynamic(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("foo/Tiltfile", `
+x = 1
+`)
+	f.file("Tiltfile", `
+print(load_dynamic('./foo/Tiltfile'))
+`)
+
+	f.load()
+	assert.Contains(t, f.out.String(), `{"x": 1}`)
+}
+
 func assertContainsOnce(t *testing.T, s, contains string) {
 	assert.Contains(t, s, contains)
 	assert.Equal(t, 1, strings.Count(s, contains))

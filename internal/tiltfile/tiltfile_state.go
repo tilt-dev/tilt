@@ -29,6 +29,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/loaddynamic"
 	"github.com/tilt-dev/tilt/internal/tiltfile/metrics"
 	"github.com/tilt-dev/tilt/internal/tiltfile/os"
 	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
@@ -214,6 +215,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		encoding.NewExtension(),
 		shlex.NewExtension(),
 		watch.NewExtension(),
+		loaddynamic.NewExtension(),
 		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 		links.NewExtension(),
 	)
