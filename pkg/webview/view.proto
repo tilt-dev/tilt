@@ -199,6 +199,9 @@ message View {
   // Allows us to synchronize on a running Tilt intance,
   // so we can tell when Tilt restarted.
   google.protobuf.Timestamp tilt_start_time = 14;
+
+  // an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile
+  string tiltfile_key = 17;
 }
 
 message GetViewRequest {}

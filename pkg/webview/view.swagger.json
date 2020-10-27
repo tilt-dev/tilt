@@ -593,6 +593,9 @@
           "type": "string",
           "format": "date-time",
           "description": "Allows us to synchronize on a running Tilt intance,\nso we can tell when Tilt restarted."
+        },
+        "tiltfile_key": {
+          "type": "string"
         }
       }
     },

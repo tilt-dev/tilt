@@ -165,6 +165,8 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 	}
 	ret.TiltStartTime = start
 
+	ret.TiltfileKey = s.TiltfilePath
+
 	return ret, nil
 }
 
