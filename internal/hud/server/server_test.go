@@ -323,8 +323,6 @@ func TestHandleTriggerTiltfileOK(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
-	// assert.Contains(t, rr.Body.String(), "error parsing JSON")
-	fmt.Println(rr.Body.String())
 }
 
 func TestSendToTriggerQueue_manualManifest(t *testing.T) {

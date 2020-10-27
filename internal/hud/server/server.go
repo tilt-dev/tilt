@@ -283,10 +283,10 @@ func SendToTriggerQueue(st store.RStore, name string, buildReason model.BuildRea
 	mName := model.ManifestName(name)
 
 	state := st.RLockState()
-	_, ok := state.Manifest(mName)
+	_, ok := state.ManifestState(mName)
 	st.RUnlockState()
 
-	if !ok && mName != model.TiltfileManifestName {
+	if !ok {
 		return fmt.Errorf("no manifest found with name '%s'", mName)
 	}
 

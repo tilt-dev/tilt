@@ -92,7 +92,6 @@ func TestBuildReasonTrigger(t *testing.T) {
 
 	reloadStarted, _ := f.run(bar)
 
-	fmt.Println(reloadStarted.Reason.String())
 	assert.Equal(t, model.BuildReasonFlagTriggerWeb, reloadStarted.Reason)
 }
 
@@ -112,9 +111,9 @@ func TestBuildReasonTriggerAndOtherReason(t *testing.T) {
 	reloadStarted, _ := f.run(bar)
 
 	assert.True(t, reloadStarted.Reason.Has(model.BuildReasonFlagTriggerWeb),
-		"expected build reason flag: TriggerWeb")
+		"expected build reason has flag: TriggerWeb")
 	assert.True(t, reloadStarted.Reason.Has(model.BuildReasonFlagChangedFiles),
-		"expected build reason flag: ChangedFiles")
+		"expected build reason has flag: ChangedFiles")
 }
 
 type ccFixture struct {
@@ -193,12 +192,6 @@ func (f *ccFixture) run(m model.Manifest) (start ConfigsReloadStartedAction, end
 	}
 
 	return start, end
-}
-
-func (f *ccFixture) runAndAssertNoConfigsReload() {
-	f.cc.OnChange(f.ctx, f.st)
-
-	store.AssertNoActionOfType(f.T(), reflect.TypeOf(ConfigsReloadStartedAction{}), f.st.Actions)
 }
 
 func (f *ccFixture) setTiltfileHasBuilt() {

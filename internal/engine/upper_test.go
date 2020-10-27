@@ -3551,7 +3551,7 @@ fail('x')`)
 	assert.NoError(t, err)
 }
 
-func TestHandleTiltfileAppendToTriggerQueue(t *testing.T) {
+func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
@@ -3581,49 +3581,15 @@ func TestHandleTiltfileAppendToTriggerQueue(t *testing.T) {
 		return st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == 123
 	})
 
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
-func TestRmTiltfileFromTriggerQueue(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	f.WriteFile("Tiltfile", `print("hello world")`)
-
-	f.Init(InitAction{
-		EngineMode:   store.EngineModeUp,
-		TiltfilePath: f.JoinPath("Tiltfile"),
-		TerminalMode: store.TerminalModeHUD,
-		StartTime:    f.Now(),
-	})
-
-	f.WaitUntil("init action processed", func(state store.EngineState) bool {
-		return !state.TiltStartTime.IsZero()
-	})
-
-	f.withState(func(st store.EngineState) {
-		assert.False(t, st.TiltfileInTriggerQueue(),
-			"initial state should NOT have Tiltfile in trigger queue")
-		assert.Equal(t, model.BuildReasonNone, st.TiltfileState.TriggerReason,
-			"initial state should not have Tiltfile trigger reason")
-		assert.Len(t, st.TiltfileState.BuildHistory, 1,
-			"expect 1 Tiltfile build after initialization")
-	})
-
-	action := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: model.BuildReasonFlagTriggerCLI}
-	f.store.Dispatch(action)
-
-	f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {
-		return st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == model.BuildReasonFlagTriggerCLI
-	})
-
 	f.WaitUntil("Tiltfile built and trigger cleared", func(st store.EngineState) bool {
 		return len(st.TiltfileState.BuildHistory) == 2 && // Tiltfile built b/c it was triggered...
 
 			// and the trigger was cleared
 			!st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == model.BuildReasonNone
 	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
 }
 
 type testFixture struct {
