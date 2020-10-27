@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -11,6 +12,7 @@ import (
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
@@ -274,16 +276,65 @@ func (kCli K8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan *metav1.ObjectMeta, error) {
-	factory := metadatainformer.NewFilteredSharedInformerFactory(kCli.metadata, resyncPeriod, ns.String(), func(*metav1.ListOptions) {})
+func (kCli K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error) {
 	gvr, err := kCli.gvr(ctx, gvk)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchMeta")
 	}
 
+	version, err := kCli.discovery.ServerVersion()
+	if err != nil {
+		return nil, errors.Wrap(err, "WatchMeta")
+	}
+
+	minor, err := strconv.Atoi(version.Minor)
+	if version.Major == "1" && err == nil && minor <= 14 {
+		return kCli.watchMeta14Minus(ctx, gvr, ns)
+	}
+	return kCli.watchMeta15Plus(ctx, gvr, ns)
+}
+
+// workaround a bug in client-go
+// https://github.com/kubernetes/client-go/issues/882
+func (kCli K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan ObjectMeta, error) {
+	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientset, resyncPeriod, informers.WithNamespace(ns.String()))
+	resFactory, err := factory.ForResource(gvr)
+	if err != nil {
+		return nil, errors.Wrap(err, "watchMeta")
+	}
+	informer := resFactory.Informer()
+	ch := make(chan ObjectMeta)
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			mObj, ok := obj.(runtime.Object)
+			if !ok {
+				return
+			}
+
+			entity := NewK8sEntity(mObj)
+			ch <- entity.meta()
+		},
+		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			mNewObj, ok := newObj.(runtime.Object)
+			if !ok {
+				return
+			}
+
+			entity := NewK8sEntity(mNewObj)
+			ch <- entity.meta()
+		},
+	})
+
+	go runInformer(ctx, fmt.Sprintf("%s-metadata", gvr.Resource), informer)
+
+	return ch, nil
+}
+
+func (kCli K8sClient) watchMeta15Plus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan ObjectMeta, error) {
+	factory := metadatainformer.NewFilteredSharedInformerFactory(kCli.metadata, resyncPeriod, ns.String(), func(*metav1.ListOptions) {})
 	informer := factory.ForResource(gvr).Informer()
 
-	ch := make(chan *metav1.ObjectMeta)
+	ch := make(chan ObjectMeta)
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(*metav1.PartialObjectMetadata)
@@ -299,7 +350,7 @@ func (kCli K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind
 		},
 	})
 
-	go runInformer(ctx, fmt.Sprintf("%s-metadata", gvk.Kind), informer)
+	go runInformer(ctx, fmt.Sprintf("%s-metadata", gvr.Resource), informer)
 
 	return ch, nil
 }

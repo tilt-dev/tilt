@@ -109,7 +109,7 @@ type Client interface {
 
 	WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error)
 
-	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan *metav1.ObjectMeta, error)
+	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error)
 
 	ConnectedToCluster(ctx context.Context) error
 
@@ -137,6 +137,7 @@ type K8sClient struct {
 	portForwardClient PortForwardClient
 	configNamespace   Namespace
 	clientset         kubernetes.Interface
+	discovery         discovery.DiscoveryInterface
 	dynamic           dynamic.Interface
 	metadata          metadata.Interface
 	runtimeAsync      *runtimeAsync
@@ -192,7 +193,9 @@ func ProvideK8sClient(
 		return &explodingClient{fmt.Errorf("unable to create discovery client: %v", err)}
 	}
 
-	drm := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
+	discovery := memory.NewMemCacheClient(discoveryClient)
+
+	drm := restmapper.NewDeferredDiscoveryRESTMapper(discovery)
 
 	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
 	writer := logger.Get(ctx).Writer(logger.DebugLvl)
@@ -205,6 +208,7 @@ func ProvideK8sClient(
 		core:              core,
 		restConfig:        restConfig,
 		portForwardClient: pfClient,
+		discovery:         discovery,
 		configNamespace:   configNamespace,
 		clientset:         clientset,
 		runtimeAsync:      runtimeAsync,
