@@ -149,7 +149,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case dcwatch.EventAction:
 		handleDockerComposeEvent(ctx, state, action)
 	case server.AppendToTriggerQueueAction:
-		appendToTriggerQueue(state, action.Name, action.Reason)
+		state.AppendToTriggerQueue(action.Name, action.Reason)
 	case hud.StartProfilingAction:
 		handleStartProfilingAction(state)
 	case hud.StopProfilingAction:
@@ -225,7 +225,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 	}
 
 	state.CurrentlyBuilding[mn] = true
-	removeFromTriggerQueue(state, mn)
+	state.RemoveFromTriggerQueue(mn)
 }
 
 // When a Manifest build finishes, update the BuildStatus for all applicable
@@ -447,40 +447,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			lrs.HasSucceededAtLeastOnce = true
 		}
 		ms.RuntimeState = lrs
-	}
-}
-
-func appendToTriggerQueue(state *store.EngineState, mn model.ManifestName, reason model.BuildReason) {
-	ms, ok := state.ManifestState(mn)
-	if !ok {
-		return
-	}
-
-	if reason == 0 {
-		reason = model.BuildReasonFlagTriggerUnknown
-	}
-
-	ms.TriggerReason = ms.TriggerReason.With(reason)
-
-	for _, queued := range state.TriggerQueue {
-		if mn == queued {
-			return
-		}
-	}
-	state.TriggerQueue = append(state.TriggerQueue, mn)
-}
-
-func removeFromTriggerQueue(state *store.EngineState, mn model.ManifestName) {
-	mState, ok := state.ManifestState(mn)
-	if ok {
-		mState.TriggerReason = model.BuildReasonNone
-	}
-
-	for i, triggerName := range state.TriggerQueue {
-		if triggerName == mn {
-			state.TriggerQueue = append(state.TriggerQueue[:i], state.TriggerQueue[i+1:]...)
-			break
-		}
 	}
 }
 
