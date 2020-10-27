@@ -42,18 +42,18 @@ export const sidebarPinContext = React.createContext<SidebarPinContext>({
 })
 
 export function SidebarPinContextProvider(
-  props: PropsWithChildren<{ initialValue?: NonNullable<Array<string>> }>
+  props: PropsWithChildren<{ initialValue?: Array<string> }>
 ) {
-  const [pinnedResources, setPinnedResources] = useState<
-    NonNullable<Array<string>>
-  >(props.initialValue ?? [])
+  const [pinnedResources, setPinnedResources] = useState<Array<string>>(
+    props.initialValue ?? []
+  )
 
   function pinResource(name: string) {
     setPinnedResources(prevState => {
       const ret = prevState.includes(name) ? prevState : [...prevState, name]
       incr("ui.web.pin", {
         newPinCount: ret.length.toString(),
-        pinning: "true",
+        action: "pin",
       })
       return ret
     })
@@ -61,10 +61,10 @@ export function SidebarPinContextProvider(
 
   function unpinResource(name: string) {
     setPinnedResources(prevState => {
-      const ret = !prevState ? prevState : prevState.filter(n => n !== name)
+      const ret = prevState.filter(n => n !== name)
       incr("ui.web.pin", {
         newPinCount: ret.length.toString(),
-        pinning: "false",
+        action: "unpin",
       })
       return ret
     })
