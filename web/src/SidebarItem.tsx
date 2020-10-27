@@ -1,6 +1,16 @@
 import { numberOfAlerts } from "./alerts"
 import { ResourceStatus, TriggerMode } from "./types"
 import { combinedStatus } from "./status"
+import styled from "styled-components"
+import { Height, SizeUnit } from "./style-helpers"
+
+export const SidebarItemStyle = styled.li`
+  height: ${Height.sidebarItem}px;
+  & + & {
+    margin-top: ${SizeUnit(0.2)};
+  }
+  clear: both;
+`
 
 const moment = require("moment")
 

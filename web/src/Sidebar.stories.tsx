@@ -10,6 +10,7 @@ import {
 import PathBuilder from "./PathBuilder"
 import { MemoryRouter } from "react-router"
 import { ResourceStatus, ResourceView, TriggerMode } from "./types"
+import Sidebar from "./Sidebar"
 
 type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -21,12 +22,14 @@ function twoItemSidebar() {
   items[0].name = "snapshot-frontend-binary-long-name"
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <SidebarResources
-        items={items}
-        selected=""
-        resourceView={ResourceView.Log}
-        pathBuilder={pathBuilder}
-      />
+      <Sidebar isClosed={false} toggleSidebar={() => {}}>
+        <SidebarResources
+          items={items}
+          selected=""
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
+      </Sidebar>
     </MemoryRouter>
   )
 }
@@ -38,12 +41,34 @@ function twoItemSidebarClosed() {
   items[0].name = "snapshot-frontend-binary-long-name"
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <SidebarResources
-        items={items}
-        selected=""
-        resourceView={ResourceView.Log}
-        pathBuilder={pathBuilder}
-      />
+      <Sidebar isClosed={true} toggleSidebar={() => {}}>
+        <SidebarResources
+          items={items}
+          selected=""
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
+      </Sidebar>
+    </MemoryRouter>
+  )
+}
+
+function twoItemSidebarOnePinned() {
+  let items = twoResourceView().resources.map(
+    (res: Resource) => new SidebarItem(res)
+  )
+  items[0].name = "snapshot-frontend-binary-long-name"
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <Sidebar isClosed={false} toggleSidebar={() => {}}>
+        <SidebarResources
+          items={items}
+          selected=""
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+          initialPinnedItems={[items[1].name]}
+        />
+      </Sidebar>
     </MemoryRouter>
   )
 }
@@ -58,12 +83,14 @@ function oneItemWithTrigger() {
   })
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <SidebarResources
-        items={items}
-        selected=""
-        resourceView={ResourceView.Log}
-        pathBuilder={pathBuilder}
-      />
+      <Sidebar isClosed={false} toggleSidebar={() => {}}>
+        <SidebarResources
+          items={items}
+          selected=""
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
+      </Sidebar>
     </MemoryRouter>
   )
 }
@@ -81,12 +108,14 @@ function oneItemWithStatus(status: ResourceStatus) {
   let items = [item]
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <SidebarResources
-        items={items}
-        selected=""
-        resourceView={ResourceView.Log}
-        pathBuilder={pathBuilder}
-      />
+      <Sidebar isClosed={false} toggleSidebar={() => {}}>
+        <SidebarResources
+          items={items}
+          selected=""
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
+      </Sidebar>
     </MemoryRouter>
   )
 }
@@ -94,6 +123,7 @@ function oneItemWithStatus(status: ResourceStatus) {
 storiesOf("Sidebar", module)
   .add("two-items", twoItemSidebar)
   .add("two-items-closed", twoItemSidebarClosed)
+  .add("two-items-one-pinned", twoItemSidebarOnePinned)
   .add("one-item-with-trigger", oneItemWithTrigger)
   .add(
     "one-item-building",
