@@ -10,7 +10,7 @@ import SidebarItem from "./SidebarItem"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import { SidebarPinButton } from "./SidebarPin"
-import {expectIncr} from "./analytics_test_helpers"
+import { expectIncr } from "./analytics_test_helpers"
 import fetchMock from "jest-fetch-mock"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -63,7 +63,7 @@ describe("SidebarResources", () => {
 
     expect(getPinnedItemNames(root)).toEqual(["snack"])
 
-    expectIncr(0, 'ui.web.pin', {newPinCount: '1', pinning: 'true'})
+    expectIncr(0, "ui.web.pin", { newPinCount: "1", pinning: "true" })
   })
 
   it("adds items to the pinned group when items are pinned", () => {
@@ -86,6 +86,6 @@ describe("SidebarResources", () => {
 
     expect(getPinnedItemNames(root)).toEqual(["vigoda"])
 
-    expectIncr(0, 'ui.web.pin', {newPinCount: '1', pinning: 'false'})
+    expectIncr(0, "ui.web.pin", { newPinCount: "1", pinning: "false" })
   })
 })

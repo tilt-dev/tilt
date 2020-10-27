@@ -10,7 +10,7 @@ import SidebarItem from "./SidebarItem"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import fetchMock from "jest-fetch-mock"
-import {expectIncr} from "./analytics_test_helpers"
+import { expectIncr } from "./analytics_test_helpers"
 
 type Resource = Proto.webviewResource
 
@@ -59,7 +59,7 @@ describe("SidebarTriggerButton", () => {
     element.simulate("click")
 
     expect(fetchMock.mock.calls.length).toEqual(2)
-    expectIncr(0, 'ui.web.triggerResource', { action: 'click' })
+    expectIncr(0, "ui.web.triggerResource", { action: "click" })
 
     expect(fetchMock.mock.calls[1][0]).toEqual("//localhost/api/trigger")
     expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
