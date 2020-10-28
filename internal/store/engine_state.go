@@ -271,6 +271,40 @@ func (e *EngineState) ManifestInTriggerQueue(mn model.ManifestName) bool {
 	return false
 }
 
+func (e *EngineState) AppendToTriggerQueue(mn model.ManifestName, reason model.BuildReason) {
+	ms, ok := e.ManifestState(mn)
+	if !ok {
+		return
+	}
+
+	if reason == 0 {
+		reason = model.BuildReasonFlagTriggerUnknown
+	}
+
+	ms.TriggerReason = ms.TriggerReason.With(reason)
+
+	for _, queued := range e.TriggerQueue {
+		if mn == queued {
+			return
+		}
+	}
+	e.TriggerQueue = append(e.TriggerQueue, mn)
+}
+
+func (e *EngineState) RemoveFromTriggerQueue(mn model.ManifestName) {
+	mState, ok := e.ManifestState(mn)
+	if ok {
+		mState.TriggerReason = model.BuildReasonNone
+	}
+
+	for i, triggerName := range e.TriggerQueue {
+		if triggerName == mn {
+			e.TriggerQueue = append(e.TriggerQueue[:i], e.TriggerQueue[i+1:]...)
+			break
+		}
+	}
+}
+
 func (e EngineState) RelativeTiltfilePath() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {

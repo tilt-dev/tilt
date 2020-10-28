@@ -262,6 +262,41 @@ func TestInitContainerLogs(t *testing.T) {
 	f.AssertOutputContains("hello world!")
 }
 
+func TestIstioContainerLogs(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	f.kClient.SetLogsForPodContainer(podID, "cont1", "hello world!")
+
+	state := f.store.LockMutableStateForTesting()
+
+	istioInit := IstioInitContainerName
+	istioSidecar := IstioSidecarContainerName
+	cNormal := container.Name("cNameNormal")
+	p := store.Pod{
+		PodID: podID,
+		InitContainers: []store.Container{
+			NewTerminatedContainer(istioInit, "cID-init"),
+		},
+		Containers: []store.Container{
+			NewRunningContainer(istioSidecar, "cID-sidecar"),
+			NewRunningContainer(cNormal, "cID-normal"),
+		},
+	}
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "server"}, p))
+	f.store.UnlockMutableState()
+
+	f.kClient.SetLogsForPodContainer(podID, istioInit, "init istio!")
+	f.kClient.SetLogsForPodContainer(podID, istioSidecar, "hello istio!")
+	f.kClient.SetLogsForPodContainer(podID, cNormal, "hello world!")
+
+	f.plm.OnChange(f.ctx, f.store)
+
+	f.AssertOutputDoesNotContain("istio")
+	f.AssertOutputContains("hello world!")
+}
+
 type plmFixture struct {
 	*tempdir.TempDirFixture
 	ctx     context.Context

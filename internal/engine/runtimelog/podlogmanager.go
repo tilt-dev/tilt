@@ -14,6 +14,9 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
+const IstioInitContainerName = container.Name("istio-init")
+const IstioSidecarContainerName = container.Name("istio-proxy")
+
 // Collects logs from deployed containers.
 type PodLogManager struct {
 	kClient k8s.Client
@@ -36,6 +39,33 @@ func cancelAll(watches []PodLogWatch) {
 	}
 }
 
+// Always ignore the istio-init container.
+// TODO(nick): Make this configurable. See https://github.com/tilt-dev/tilt/issues/3814
+func (m *PodLogManager) initContainersWithWatchedLogs(pod store.Pod) []store.Container {
+	result := []store.Container{}
+	for _, c := range pod.InitContainers {
+		if c.Name == IstioInitContainerName {
+			continue
+		}
+		result = append(result, c)
+	}
+	return result
+}
+
+// Always ignore the istio-sidecar container.
+// TODO(nick): Make this configurable. See https://github.com/tilt-dev/tilt/issues/3814
+func (m *PodLogManager) runContainersWithWatchedLogs(pod store.Pod) []store.Container {
+	result := []store.Container{}
+	for _, c := range pod.Containers {
+		if c.Name == IstioSidecarContainerName {
+			continue
+		}
+		result = append(result, c)
+	}
+	return result
+
+}
+
 // Diff the current watches against the state store of what
 // we're supposed to be watching, returning the changes
 // we need to make.
@@ -55,9 +85,11 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 				continue
 			}
 
+			initContainers := m.initContainersWithWatchedLogs(pod)
+			runContainers := m.runContainersWithWatchedLogs(pod)
 			containers := []store.Container{}
-			containers = append(containers, pod.InitContainers...)
-			containers = append(containers, pod.Containers...)
+			containers = append(containers, initContainers...)
+			containers = append(containers, runContainers...)
 
 			for i, c := range containers {
 				// Key the log watcher by the container id, so we auto-restart the
@@ -70,14 +102,14 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 					continue
 				}
 
-				isInitContainer := i < len(pod.InitContainers)
+				isInitContainer := i < len(initContainers)
 
 				// We don't want to clutter the logs with a container name
 				// if it's unambiguous what container we're looking at.
 				//
 				// Long-term, we should make the container name a log field
 				// and have better ways to display it visually.
-				shouldPrefix := isInitContainer || len(pod.Containers) > 1
+				shouldPrefix := isInitContainer || len(runContainers) > 1
 
 				stateWatches[key] = true
 

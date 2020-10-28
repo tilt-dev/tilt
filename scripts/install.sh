@@ -26,7 +26,7 @@ function copy_binary() {
 }
 
 function install_tilt() {
-  if [[ "$OSTYPE" == "linux-gnu" ]]; then
+  if [[ "$OSTYPE" == "linux"* ]]; then
       if [[ "$BREW" != "" ]]; then
           set -x
           brew tap tilt-dev/tap
@@ -52,8 +52,12 @@ function install_tilt() {
       fi
   else
       set +x
-      echo "The Tilt installer does not work for your platform: $OS"
-      echo "Please file an issue at https://github.com/tilt-dev/tilt/issues/new"
+      echo "The Tilt installer does not work for your platform: $OSTYPE"
+      echo "For other installation options, check the following page:"
+      echo "https://docs.tilt.dev/install.html#alternative-installations"
+      echo "If you think your platform should be supported, please file an issue:"
+      echo "https://github.com/tilt-dev/tilt/issues/new"
+      echo "Thank you!"
       exit 1
   fi
 

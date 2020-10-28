@@ -1,4 +1,4 @@
-type Tags = { [key: string]: string }
+export type Tags = { [key: string]: string }
 
 // Fire and forget all analytics events
 const incr = (name: string, tags: Tags = {}): void => {

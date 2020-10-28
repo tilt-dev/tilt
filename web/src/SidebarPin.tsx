@@ -8,6 +8,7 @@ import styled from "styled-components"
 import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin-resource-filled.svg"
 import { Color, Height, Width } from "./style-helpers"
 import { SidebarItemStyle } from "./SidebarItem"
+import { incr } from "./analytics"
 import { localStorageContext } from "./LocalStorage"
 
 let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
@@ -64,18 +65,24 @@ export function SidebarPinContextProvider(
 
   function pinResource(name: string) {
     setPinnedResources(prevState => {
-      if (prevState.includes(name)) {
-        return prevState
-      } else {
-        return [...prevState, name]
-      }
+      const ret = prevState.includes(name) ? prevState : [...prevState, name]
+      incr("ui.web.pin", {
+        newPinCount: ret.length.toString(),
+        action: "pin",
+      })
+      return ret
     })
   }
 
   function unpinResource(name: string) {
-    setPinnedResources(prevState =>
-      !prevState ? prevState : prevState.filter(n => n !== name)
-    )
+    setPinnedResources(prevState => {
+      const ret = prevState.filter(n => n !== name)
+      incr("ui.web.pin", {
+        newPinCount: ret.length.toString(),
+        action: "unpin",
+      })
+      return ret
+    })
   }
 
   return (
