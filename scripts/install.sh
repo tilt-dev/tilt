@@ -26,7 +26,7 @@ function copy_binary() {
 }
 
 function install_tilt() {
-  if [[ "$OSTYPE" == "linux-gnu" ]]; then
+  if [[ "$OSTYPE" == "linux"* ]]; then
       if [[ "$BREW" != "" ]]; then
           set -x
           brew tap tilt-dev/tap
