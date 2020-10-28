@@ -12,6 +12,7 @@ type view = {
   resources: Array<Resource>
   logList?: Proto.webviewLogList
   featureFlags?: { [featureFlag: string]: boolean }
+  tiltfileKey?: string
 }
 
 // NOTE(dmiller) 4-02-19 this function is currently unused but I'm going to keep it around.
@@ -211,7 +212,7 @@ function oneResourceUnrecognizedError(): Resource {
 }
 
 function oneResourceView(): view {
-  return { resources: [oneResource()] }
+  return { resources: [oneResource()], tiltfileKey: "test" }
 }
 
 function twoResourceView(): view {
@@ -255,7 +256,7 @@ function twoResourceView(): view {
     facets: [],
     queued: false,
   }
-  return { resources: [vigoda, snack] }
+  return { resources: [vigoda, snack], tiltfileKey: "test" }
 }
 
 function oneResourceFailedToBuild(): Resource[] {

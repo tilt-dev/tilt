@@ -12,6 +12,7 @@ import PathBuilder from "./PathBuilder"
 import { SidebarPinButton } from "./SidebarPin"
 import { expectIncr } from "./analytics_test_helpers"
 import fetchMock from "jest-fetch-mock"
+import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
@@ -42,18 +43,21 @@ describe("SidebarResources", () => {
 
   afterEach(() => {
     fetchMock.resetMocks()
+    localStorage.clear()
   })
 
   it("adds items to the pinned group when items are pinned", () => {
     let items = twoResourceView().resources.map(r => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
-        <SidebarResources
-          items={items}
-          selected={""}
-          resourceView={ResourceView.Log}
-          pathBuilder={pathBuilder}
-        />
+        <LocalStorageContextProvider tiltfileKey={"test"}>
+          <SidebarResources
+            items={items}
+            selected={""}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </LocalStorageContextProvider>
       </MemoryRouter>
     )
 
@@ -64,19 +68,52 @@ describe("SidebarResources", () => {
     expect(getPinnedItemNames(root)).toEqual(["snack"])
 
     expectIncr(0, "ui.web.pin", { newPinCount: "1", action: "pin" })
+
+    expect(localStorage.getItem(makeKey("test", "pinned-resources"))).toEqual(
+      JSON.stringify(["snack"])
+    )
+  })
+
+  it("reads pinned items from local storage", () => {
+    localStorage.setItem(
+      makeKey("test", "pinned-resources"),
+      JSON.stringify(["vigoda", "snack"])
+    )
+
+    let items = twoResourceView().resources.map(r => new SidebarItem(r))
+    const root = mount(
+      <MemoryRouter>
+        <LocalStorageContextProvider tiltfileKey={"test"}>
+          <SidebarResources
+            items={items}
+            selected={""}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </LocalStorageContextProvider>
+      </MemoryRouter>
+    )
+
+    expect(getPinnedItemNames(root)).toEqual(["vigoda", "snack"])
   })
 
   it("removes items from the pinned group when items are pinned", () => {
     let items = twoResourceView().resources.map(r => new SidebarItem(r))
+    localStorage.setItem(
+      makeKey("test", "pinned-resources"),
+      JSON.stringify(items.map(i => i.name))
+    )
+
     const root = mount(
       <MemoryRouter>
-        <SidebarResources
-          items={items}
-          selected={""}
-          resourceView={ResourceView.Log}
-          pathBuilder={pathBuilder}
-          initialPinnedItems={["vigoda", "snack"]}
-        />
+        <LocalStorageContextProvider tiltfileKey={"test"}>
+          <SidebarResources
+            items={items}
+            selected={""}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </LocalStorageContextProvider>
       </MemoryRouter>
     )
 
@@ -87,5 +124,9 @@ describe("SidebarResources", () => {
     expect(getPinnedItemNames(root)).toEqual(["vigoda"])
 
     expectIncr(0, "ui.web.pin", { newPinCount: "1", action: "unpin" })
+
+    expect(localStorage.getItem(makeKey("test", "pinned-resources"))).toEqual(
+      JSON.stringify(["vigoda"])
+    )
   })
 })

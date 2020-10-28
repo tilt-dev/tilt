@@ -41,6 +41,7 @@ import HUDLayout from "./HUDLayout"
 import LogStore from "./LogStore"
 import { traceNav } from "./trace"
 import ErrorModal from "./ErrorModal"
+import { LocalStorageContextProvider } from "./LocalStorage"
 
 type HudProps = {
   history: History
@@ -242,7 +243,7 @@ class HUD extends Component<HudProps, HudState> {
 
     let needsNudge = view?.needsAnalyticsNudge ?? false
     let resources = view?.resources ?? []
-    if (!resources?.length) {
+    if (!resources?.length || !view?.tiltfileKey) {
       return <HeroScreen message={"Loading…"} />
     }
     let statusItems = resources.map(res => new StatusItem(res))
@@ -277,24 +278,26 @@ class HUD extends Component<HudProps, HudState> {
     let isTwoLevelHeader = !!matchTraceParams?.span
 
     return (
-      <div className={hudClasses.join(" ")}>
-        <AnalyticsNudge needsNudge={needsNudge} />
-        <SocketBar state={this.state.socketState} />
-        {fatalErrorModal}
-        {errorModal}
-        {shareSnapshotModal}
+      <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
+        <div className={hudClasses.join(" ")}>
+          <AnalyticsNudge needsNudge={needsNudge} />
+          <SocketBar state={this.state.socketState} />
+          {fatalErrorModal}
+          {errorModal}
+          {shareSnapshotModal}
 
-        {this.renderSidebarSwitch()}
-        {statusbar}
+          {this.renderSidebarSwitch()}
+          {statusbar}
 
-        <HUDLayout
-          header={this.renderHUDHeader()}
-          isSidebarClosed={!!this.state.isSidebarClosed}
-          isTwoLevelHeader={isTwoLevelHeader}
-        >
-          {this.renderMainPaneSwitch()}
-        </HUDLayout>
-      </div>
+          <HUDLayout
+            header={this.renderHUDHeader()}
+            isSidebarClosed={!!this.state.isSidebarClosed}
+            isTwoLevelHeader={isTwoLevelHeader}
+          >
+            {this.renderMainPaneSwitch()}
+          </HUDLayout>
+        </div>
+      </LocalStorageContextProvider>
     )
   }
 

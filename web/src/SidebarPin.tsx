@@ -1,9 +1,15 @@
-import React, { PropsWithChildren, useContext, useState } from "react"
+import React, {
+  PropsWithChildren,
+  useContext,
+  useEffect,
+  useState,
+} from "react"
 import styled from "styled-components"
 import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin-resource-filled.svg"
 import { Color, Height, Width } from "./style-helpers"
 import { SidebarItemStyle } from "./SidebarItem"
 import { incr } from "./analytics"
+import { localStorageContext } from "./LocalStorage"
 
 let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
   fill: ${Color.grayLight};
@@ -42,11 +48,20 @@ export const sidebarPinContext = React.createContext<SidebarPinContext>({
 })
 
 export function SidebarPinContextProvider(
-  props: PropsWithChildren<{ initialValue?: Array<string> }>
+  props: PropsWithChildren<{ initialValueForTesting?: string[] }>
 ) {
+  let lsc = useContext(localStorageContext)
+
   const [pinnedResources, setPinnedResources] = useState<Array<string>>(
-    props.initialValue ?? []
+    () =>
+      props.initialValueForTesting ??
+      lsc.get<Array<string>>("pinned-resources") ??
+      []
   )
+
+  useEffect(() => {
+    lsc.set("pinned-resources", pinnedResources)
+  }, [pinnedResources, lsc])
 
   function pinResource(name: string) {
     setPinnedResources(prevState => {

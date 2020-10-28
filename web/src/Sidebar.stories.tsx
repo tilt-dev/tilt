@@ -66,7 +66,7 @@ function twoItemSidebarOnePinned() {
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          initialPinnedItems={[items[1].name]}
+          initialPinnedItemsForTesting={[items[1].name]}
         />
       </Sidebar>
     </MemoryRouter>
