@@ -10,6 +10,8 @@ import SidebarItem from "./SidebarItem"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import { SidebarPinButton } from "./SidebarPin"
+import { expectIncr } from "./analytics_test_helpers"
+import fetchMock from "jest-fetch-mock"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
@@ -33,6 +35,15 @@ function clickPin(
 }
 
 describe("SidebarResources", () => {
+  beforeEach(() => {
+    fetchMock.resetMocks()
+    fetchMock.mockResponse(JSON.stringify({}))
+  })
+
+  afterEach(() => {
+    fetchMock.resetMocks()
+  })
+
   it("adds items to the pinned group when items are pinned", () => {
     let items = twoResourceView().resources.map(r => new SidebarItem(r))
     const root = mount(
@@ -51,9 +62,11 @@ describe("SidebarResources", () => {
     clickPin(root, "snack")
 
     expect(getPinnedItemNames(root)).toEqual(["snack"])
+
+    expectIncr(0, "ui.web.pin", { newPinCount: "1", action: "pin" })
   })
 
-  it("adds items to the pinned group when items are pinned", () => {
+  it("removes items from the pinned group when items are pinned", () => {
     let items = twoResourceView().resources.map(r => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
@@ -72,5 +85,7 @@ describe("SidebarResources", () => {
     clickPin(root, "snack")
 
     expect(getPinnedItemNames(root)).toEqual(["vigoda"])
+
+    expectIncr(0, "ui.web.pin", { newPinCount: "1", action: "unpin" })
   })
 })

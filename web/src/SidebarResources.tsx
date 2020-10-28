@@ -174,7 +174,7 @@ type SidebarProps = {
   selected: string
   resourceView: ResourceView
   pathBuilder: PathBuilder
-  initialPinnedItems?: NonNullable<Array<string>>
+  initialPinnedItems?: Array<string>
 }
 
 function SidebarResources(props: SidebarProps) {
