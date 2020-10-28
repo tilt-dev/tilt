@@ -200,7 +200,9 @@ it("renders no error count in tabnav if there are no errors", () => {
   const root = mount(emptyHUD())
   const hud = root.find(HUD)
 
-  hud.setState({ view: { resources: [oneResourceNoAlerts()] } })
+  hud.setState({
+    view: { resources: [oneResourceNoAlerts()], tiltfileKey: "test" },
+  })
   let errorTab = root.find(".secondaryNavLink--alerts")
   expect(errorTab.at(0).text()).toEqual("Alerts")
 })

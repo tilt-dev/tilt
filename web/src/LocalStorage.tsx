@@ -17,46 +17,33 @@ export function makeKey(tiltfileKey: string, key: string): string {
 // Provides access localStorage, but namespaced by `tiltfileKey`
 // Also handles serialization and typing.
 export function LocalStorageContextProvider(
-  props: React.PropsWithChildren<{ tiltfileKey?: string }>
+  props: React.PropsWithChildren<{ tiltfileKey: string }>
 ) {
-  let context: LocalStorageContext
+  let tiltfileKey = props.tiltfileKey
 
-  if (!props.tiltfileKey) {
-    // if there's no tiltfile key (presumably because we're initializing), just make this all a noop
-    context = {
-      set: (key: string, value: any) => {},
-      get: (key: string) => {
-        return null
-      },
-    }
-  } else {
-    let tiltfileKey = props.tiltfileKey
+  let set = (key: string, value: any): void => {
+    localStorage.setItem(makeKey(tiltfileKey, key), JSON.stringify(value))
+  }
 
-    let set = (key: string, value: any): void => {
-      localStorage.setItem(makeKey(tiltfileKey, key), JSON.stringify(value))
+  let get = <T extends {}>(key: string): T | null => {
+    let lsk = makeKey(tiltfileKey, key)
+    let json = localStorage.getItem(lsk)
+    if (!json) {
+      return null
     }
 
-    let get = <T extends {}>(key: string): T | null => {
-      let lsk = makeKey(tiltfileKey, key)
-      let json = localStorage.getItem(lsk)
-      if (!json) {
-        return null
-      }
-
-      try {
-        return JSON.parse(json)
-      } catch (e) {
-        console.log(
-          `error parsing local storage w/ key ${lsk}, val ${json}: ${e}`
-        )
-        return null
-      }
+    try {
+      return JSON.parse(json)
+    } catch (e) {
+      console.log(
+        `error parsing local storage w/ key ${lsk}, val ${json}: ${e}`
+      )
+      return null
     }
-    context = { set: set, get: get }
   }
 
   return (
-    <localStorageContext.Provider value={context}>
+    <localStorageContext.Provider value={{ set: set, get: get }}>
       {props.children}
     </localStorageContext.Provider>
   )

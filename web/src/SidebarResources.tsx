@@ -174,12 +174,14 @@ type SidebarProps = {
   selected: string
   resourceView: ResourceView
   pathBuilder: PathBuilder
-  initialPinnedItems?: NonNullable<Array<string>>
+  initialPinnedItemsForTesting?: string[]
 }
 
 function SidebarResources(props: SidebarProps) {
   return (
-    <SidebarPinContextProvider initialValue={props.initialPinnedItems}>
+    <SidebarPinContextProvider
+      initialValueForTesting={props.initialPinnedItemsForTesting}
+    >
       <PureSidebarResources {...props} />
     </SidebarPinContextProvider>
   )
