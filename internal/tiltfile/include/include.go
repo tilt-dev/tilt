@@ -11,6 +11,9 @@ import (
 // The main difference is that include() doesn't bind any arguments into the
 // global scope, whereas load() forces you to bind at least one argument into the global
 // scope (i.e., you can't load() a Tilfile for its side-effects).
+//
+// Users should generally be discouraged from using this function. They should use
+// load_dynamic instead, which has a more self-descriptive name and can load symbols.
 type IncludeFn struct {
 }
 
