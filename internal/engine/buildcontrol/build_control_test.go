@@ -263,6 +263,15 @@ func TestHoldForDeploy(t *testing.T) {
 
 	sancho.State.K8sRuntimeState().Pods["pod-1"] = successPod("pod-1", sanchoImage.Refs.ClusterRef())
 	f.assertNextTargetToBuild("sancho")
+
+	sancho.State.K8sRuntimeState().Pods["pod-1"] = crashingPod("pod-1", sanchoImage.Refs.ClusterRef())
+	f.assertNextTargetToBuild("sancho")
+
+	sancho.State.K8sRuntimeState().Pods["pod-1"] = crashedInThePastPod("pod-1", sanchoImage.Refs.ClusterRef())
+	f.assertNextTargetToBuild("sancho")
+
+	sancho.State.K8sRuntimeState().Pods["pod-1"] = sidecarCrashedPod("pod-1", sanchoImage.Refs.ClusterRef())
+	f.assertNextTargetToBuild("sancho")
 }
 
 func successPod(podID k8s.PodID, ref reference.Named) *store.Pod {
@@ -277,6 +286,68 @@ func successPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 				Ready:    true,
 				Running:  true,
 				ImageRef: ref,
+			},
+		},
+	}
+}
+
+func crashingPod(podID k8s.PodID, ref reference.Named) *store.Pod {
+	return &store.Pod{
+		PodID:  podID,
+		Phase:  v1.PodRunning,
+		Status: "CrashLoopBackOff",
+		Containers: []store.Container{
+			store.Container{
+				ID:       container.ID(podID + "-container"),
+				Name:     "c",
+				Ready:    false,
+				Running:  false,
+				ImageRef: ref,
+				Restarts: 1,
+			},
+		},
+	}
+}
+
+func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *store.Pod {
+	return &store.Pod{
+		PodID:  podID,
+		Phase:  v1.PodRunning,
+		Status: "Ready",
+		Containers: []store.Container{
+			store.Container{
+				ID:       container.ID(podID + "-container"),
+				Name:     "c",
+				Ready:    true,
+				Running:  true,
+				ImageRef: ref,
+				Restarts: 1,
+			},
+		},
+	}
+}
+
+func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *store.Pod {
+	return &store.Pod{
+		PodID:  podID,
+		Phase:  v1.PodRunning,
+		Status: "Ready",
+		Containers: []store.Container{
+			store.Container{
+				ID:       container.ID(podID + "-container"),
+				Name:     "c",
+				Ready:    true,
+				Running:  true,
+				ImageRef: ref,
+				Restarts: 0,
+			},
+			store.Container{
+				ID:       container.ID(podID + "-sidecar"),
+				Name:     "s",
+				Ready:    false,
+				Running:  false,
+				ImageRef: container.MustParseNamed("sidecar"),
+				Restarts: 1,
 			},
 		},
 	}

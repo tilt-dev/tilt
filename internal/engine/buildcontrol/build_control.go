@@ -407,6 +407,17 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 			if len(cInfos) != 0 {
 				return false
 			}
+
+			// If the container in this pod is in a crash loop, then don't hold back
+			// updates until the deploy finishes -- this is a pretty good signal
+			// that it might not become healthy.
+			pod := mt.State.K8sRuntimeState().MostRecentPod()
+			for _, c := range pod.Containers {
+				if c.Restarts > 0 {
+					return false
+				}
+			}
+
 		} else if mt.Manifest.IsDC() {
 			cInfos := store.RunningContainersForDC(mt.State.DCRuntimeState())
 			if len(cInfos) != 0 {
