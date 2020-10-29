@@ -3551,6 +3551,47 @@ fail('x')`)
 	assert.NoError(t, err)
 }
 
+func TestHandleTiltfileTriggerQueue(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.WriteFile("Tiltfile", `print("hello world")`)
+
+	f.Init(InitAction{
+		EngineMode:   store.EngineModeUp,
+		TiltfilePath: f.JoinPath("Tiltfile"),
+		TerminalMode: store.TerminalModeHUD,
+		StartTime:    f.Now(),
+	})
+
+	f.WaitUntil("init action processed", func(state store.EngineState) bool {
+		return !state.TiltStartTime.IsZero()
+	})
+
+	f.withState(func(st store.EngineState) {
+		assert.False(t, st.TiltfileInTriggerQueue(),
+			"initial state should NOT have Tiltfile in trigger queue")
+		assert.Equal(t, model.BuildReasonNone, st.TiltfileState.TriggerReason,
+			"initial state should not have Tiltfile trigger reason")
+	})
+	action := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: 123}
+	f.store.Dispatch(action)
+
+	f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {
+		return st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == 123
+	})
+
+	f.WaitUntil("Tiltfile built and trigger cleared", func(st store.EngineState) bool {
+		return len(st.TiltfileState.BuildHistory) == 2 && // Tiltfile built b/c it was triggered...
+
+			// and the trigger was cleared
+			!st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == model.BuildReasonNone
+	})
+
+	err := f.Stop()
+	assert.NoError(t, err)
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T

@@ -59,6 +59,7 @@ func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
 // 3) Those files have changed since the last Tiltfile build
 //    (so that we don't keep re-running a failed build)
 // 4) OR the command-line args have changed since the last Tiltfile build
+// 5) OR user has manually triggered a Tiltfile build
 func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
 	state := st.RLockState()
 	defer st.RUnlockState()
@@ -76,7 +77,7 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 	}
 
 	tfState := state.TiltfileState
-	reason := tfState.TriggerReason
+	var reason model.BuildReason
 	lastStartTime := tfState.LastBuild().StartTime
 	if !tfState.StartedFirstBuild() {
 		reason = reason.With(model.BuildReasonFlagInit)
@@ -90,6 +91,10 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 
 	if state.UserConfigState.ArgsChangeTime.After(lastStartTime) {
 		reason = reason.With(model.BuildReasonFlagTiltfileArgs)
+	}
+
+	if state.TiltfileInTriggerQueue() {
+		reason = reason.With(state.TiltfileState.TriggerReason)
 	}
 
 	if reason == model.BuildReasonNone {

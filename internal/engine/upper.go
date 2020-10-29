@@ -176,7 +176,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleExitAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
-
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -501,6 +500,7 @@ func handleConfigsReloadStarted(
 	}
 
 	state.TiltfileState.CurrentBuild = status
+	state.RemoveFromTriggerQueue(model.TiltfileManifestName)
 	state.StartedTiltfileLoadCount++
 }
 

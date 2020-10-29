@@ -87,7 +87,7 @@ type EngineState struct {
 
 	IsProfiling bool
 
-	TiltfileState ManifestState
+	TiltfileState *ManifestState
 
 	SuggestedTiltVersion string
 	VersionSettings      model.VersionSettings
@@ -203,6 +203,10 @@ func (e EngineState) Manifest(mn model.ManifestName) (model.Manifest, bool) {
 }
 
 func (e EngineState) ManifestState(mn model.ManifestName) (*ManifestState, bool) {
+	if mn == model.TiltfileManifestName {
+		return e.TiltfileState, true
+	}
+
 	m, ok := e.ManifestTargets[mn]
 	if !ok {
 		return nil, ok
@@ -269,6 +273,10 @@ func (e *EngineState) ManifestInTriggerQueue(mn model.ManifestName) bool {
 		}
 	}
 	return false
+}
+
+func (e *EngineState) TiltfileInTriggerQueue() bool {
+	return e.ManifestInTriggerQueue(model.TiltfileManifestName)
 }
 
 func (e *EngineState) AppendToTriggerQueue(mn model.ManifestName, reason model.BuildReason) {
@@ -450,6 +458,7 @@ func NewState() *EngineState {
 	}
 	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
+	ret.TiltfileState = &ManifestState{}
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
 		ret.AnalyticsEnvOpt = analytics.OptOut
