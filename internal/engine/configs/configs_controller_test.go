@@ -84,36 +84,15 @@ func TestBuildReasonTrigger(t *testing.T) {
 
 	f.addManifest("fe")
 	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
-	f.setTiltfileHasBuilt()
 
 	state := f.st.LockMutableStateForTesting()
 	state.AppendToTriggerQueue(model.TiltfileManifestName, model.BuildReasonFlagTriggerWeb)
-	f.st.UnlockMutableState()
-
-	reloadStarted, _ := f.run(bar)
-
-	assert.Equal(t, model.BuildReasonFlagTriggerWeb, reloadStarted.Reason)
-}
-
-func TestBuildReasonTriggerAndOtherReason(t *testing.T) {
-	f := newCCFixture(t)
-	defer f.TearDown()
-
-	f.addManifest("fe")
-	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
-	f.setTiltfileHasBuilt()
-
-	state := f.st.LockMutableStateForTesting()
-	state.AppendToTriggerQueue(model.TiltfileManifestName, model.BuildReasonFlagTriggerWeb)
-	state.PendingConfigFileChanges["somefile.txt"] = time.Now().Add(time.Second)
 	f.st.UnlockMutableState()
 
 	reloadStarted, _ := f.run(bar)
 
 	assert.True(t, reloadStarted.Reason.Has(model.BuildReasonFlagTriggerWeb),
 		"expected build reason has flag: TriggerWeb")
-	assert.True(t, reloadStarted.Reason.Has(model.BuildReasonFlagChangedFiles),
-		"expected build reason has flag: ChangedFiles")
 }
 
 type ccFixture struct {
@@ -192,12 +171,6 @@ func (f *ccFixture) run(m model.Manifest) (start ConfigsReloadStartedAction, end
 	}
 
 	return start, end
-}
-
-func (f *ccFixture) setTiltfileHasBuilt() {
-	state := f.st.LockMutableStateForTesting()
-	state.TiltfileState.AddCompletedBuild(model.BuildRecord{StartTime: time.Now()})
-	f.st.UnlockMutableState()
 }
 
 const SanchoDockerfile = `
