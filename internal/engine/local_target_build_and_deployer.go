@@ -46,24 +46,38 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 		return store.BuildResultSet{}, buildcontrol.DontFallBackErrorf("Command %q failed: %v", targ.UpdateCmd.String(), err)
 	}
 
-	if state := stateSet[targ.ID()]; state.IsEmpty() {
-		// HACK(maia) If target A generates file X and target B depends on file X, it was common that on Tilt startup,
-		// targets A and B would both be queued for their initial build, A would run, modify X, and then B would start
-		// running before Tilt processed the change to X, so we'd end up with this:
-		// 1. A starts building
-		// 2. A writes X
-		// 3. A finishes building
-		// 4. B starts building
-		// 5. Tilt observes change to X
-		// 6. B finishes building
-		// 7. B is dirty because there was a change to X since the last time it started building, so it starts building again
-		// Empirically, this sleep generally suffices to ensure that step (5) precedes step (4), which eliminates step (7)
-		// It has been observed to fail to suffice when inotify is under load.
-		// At the moment (2020-01-31), local_resources will not build in parallel with other resources, so this works fine
-		// If/when we reenable parallel builds for local_resources, it will still help if the Tiltfile specifies
-		// A as a resource dependency of B (NB: both the problem and resource_dep only apply to initial builds).
-		time.Sleep(250 * time.Millisecond)
-	}
+	// HACK(maia) Suppose target A modifies file X and target B depends on file X.
+	//
+	// Consider this sequence:
+	//
+	// 1. A starts
+	// 2. A modifies X at time T1
+	// 3. A modifies X at time T2
+	// 4. A finishes
+	// 5. B starts, caused by change at T1
+	// 6. Tilt observes change at T2
+	// 7. B finishes building
+	// 8. B builds again, because the change at T2 was observed after the first build started.
+	//
+	// Empirically, this sleep ensures that any local file changes are processed
+	// before the next build starts.
+	//
+	// At the moment (2020-01-31), local_resources will not build in parallel with
+	// other resources by default, so this works fine.
+	//
+	// Possible approaches for a better system:
+	//
+	// - Use mtimes rather than our own internal modification tracking
+	//   for determining dirtiness. Here is some good discussion of this approach:
+	//   https://github.com/ninja-build/ninja/blob/master/src/deps_log.h#L29
+	//   https://apenwarr.ca/log/20181113
+	//   which has a lot of caveats, but you can boil it down to "using mtimes can
+	//   make things a lot more efficient, but be careful how you use them"
+	//
+	// - Make a "dummy" change to the file system and make sure it propagates
+	//   through the watch system before we start the next build (like fsync() does
+	//   in our watch tests).
+	time.Sleep(250 * time.Millisecond)
 
 	return bd.successfulBuildResult(targ), nil
 }
