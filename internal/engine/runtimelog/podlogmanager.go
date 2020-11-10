@@ -23,6 +23,10 @@ type PodLogManager struct {
 
 	watches         map[podLogKey]PodLogWatch
 	hasClosedStream map[podLogKey]bool
+
+	newTicker func(d time.Duration) *time.Ticker
+	since     func(t time.Time) time.Duration
+	now       func() time.Time
 }
 
 func NewPodLogManager(kClient k8s.Client) *PodLogManager {
@@ -30,6 +34,9 @@ func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 		kClient:         kClient,
 		watches:         make(map[podLogKey]PodLogWatch),
 		hasClosedStream: make(map[podLogKey]bool),
+		newTicker:       time.NewTicker,
+		since:           time.Since,
+		now:             time.Now,
 	}
 }
 
@@ -196,7 +203,7 @@ func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore) {
 
 func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 	defer func() {
-		watch.terminationTime <- time.Now()
+		watch.terminationTime <- m.now()
 		watch.cancel()
 	}()
 
@@ -204,7 +211,7 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 	pID := watch.podID
 	containerName := watch.cName
 	ns := watch.namespace
-	startTime := watch.startWatchTime
+	startReadTime := watch.startWatchTime
 	ctx := logger.CtxWithLogHandler(watch.ctx, PodLogActionWriter{
 		Store:        st,
 		ManifestName: name,
@@ -215,22 +222,58 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 		ctx = logger.WithLogger(ctx, logger.NewPrefixedLogger(prefix, logger.Get(ctx)))
 	}
 
-	readCloser, err := m.kClient.ContainerLogs(ctx, pID, containerName, ns, startTime)
-	if err != nil {
-		// TODO(nick): Should this be Warnf/Errorf?
-		logger.Get(ctx).Infof("Error streaming %s logs: %v", name, err)
-		return
-	}
-	defer func() {
-		_ = readCloser.Close()
-	}()
+	retry := true
+	for retry {
+		retry = false
+		ctx, cancel := context.WithCancel(ctx)
+		readCloser, err := m.kClient.ContainerLogs(ctx, pID, containerName, ns, startReadTime)
+		if err != nil {
+			cancel()
 
-	_, err = io.Copy(logger.Get(ctx).Writer(logger.InfoLvl),
-		NewHardCancelReader(ctx, readCloser))
-	if err != nil && ctx.Err() == nil {
-		// TODO(nick): Should this be Warnf/Errorf?
-		logger.Get(ctx).Infof("Error streaming %s logs: %v", name, err)
-		return
+			// TODO(nick): Should this be Warnf/Errorf?
+			logger.Get(ctx).Infof("Error streaming %s logs: %v", name, err)
+			return
+		}
+
+		reader := NewHardCancelReader(ctx, readCloser)
+		reader.now = m.now
+
+		// A hacky workaround for
+		// https://github.com/tilt-dev/tilt/issues/3908
+		// Every 15 seconds, check to see if the logs have stopped streaming.
+		// If they have, reconnect to the log stream.
+		done := make(chan bool)
+		go func() {
+			ticker := m.newTicker(15 * time.Second)
+			for {
+				select {
+				case <-done:
+					return
+
+				case <-ticker.C:
+					lastRead := reader.LastReadTime()
+					if lastRead.IsZero() || m.since(lastRead) < 15*time.Second {
+						continue
+					}
+
+					retry = true
+					startReadTime = lastRead
+					cancel()
+					return
+				}
+			}
+		}()
+
+		_, err = io.Copy(logger.Get(ctx).Writer(logger.InfoLvl), reader)
+		_ = readCloser.Close()
+		close(done)
+		cancel()
+
+		if !retry && err != nil && ctx.Err() == nil {
+			// TODO(nick): Should this be Warnf/Errorf?
+			logger.Get(ctx).Infof("Error streaming %s logs: %v", name, err)
+			return
+		}
 	}
 }
 

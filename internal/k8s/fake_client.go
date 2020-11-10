@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,8 +48,9 @@ type FakeK8sClient struct {
 	LastPodQueryNamespace Namespace
 	LastPodQueryImage     reference.NamedTagged
 
-	PodLogsByPodAndContainer map[PodAndCName]BufferCloser
+	PodLogsByPodAndContainer map[PodAndCName]ReaderCloser
 	LastPodLogStartTime      time.Time
+	LastPodLogContext        context.Context
 	ContainerLogsError       error
 
 	podWatches     []fakePodWatch
@@ -247,7 +249,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.S
 
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
-		PodLogsByPodAndContainer: make(map[PodAndCName]BufferCloser),
+		PodLogsByPodAndContainer: make(map[PodAndCName]ReaderCloser),
 	}
 }
 
@@ -354,7 +356,11 @@ func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interf
 }
 
 func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, logs string) {
-	c.PodLogsByPodAndContainer[PodAndCName{pID, cName}] = BufferCloser{Buffer: bytes.NewBufferString(logs)}
+	c.SetLogReaderForPodContainer(pID, cName, strings.NewReader(logs))
+}
+
+func (c *FakeK8sClient) SetLogReaderForPodContainer(pID PodID, cName container.Name, reader io.Reader) {
+	c.PodLogsByPodAndContainer[PodAndCName{pID, cName}] = ReaderCloser{Reader: reader}
 }
 
 func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
@@ -364,11 +370,12 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 
 	// If we have specific logs for this pod/container combo, return those
 	c.LastPodLogStartTime = startTime
+	c.LastPodLogContext = ctx
 	if buf, ok := c.PodLogsByPodAndContainer[PodAndCName{pID, cName}]; ok {
 		return buf, nil
 	}
 
-	return BufferCloser{Buffer: bytes.NewBuffer(nil)}, nil
+	return ReaderCloser{Reader: bytes.NewBuffer(nil)}, nil
 }
 
 func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
@@ -466,15 +473,15 @@ func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.N
 	return nil
 }
 
-type BufferCloser struct {
-	*bytes.Buffer
+type ReaderCloser struct {
+	io.Reader
 }
 
-func (b BufferCloser) Close() error {
+func (b ReaderCloser) Close() error {
 	return nil
 }
 
-var _ io.ReadCloser = BufferCloser{}
+var _ io.ReadCloser = ReaderCloser{}
 
 type FakePortForwarder struct {
 	localPort int

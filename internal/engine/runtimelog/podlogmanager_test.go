@@ -3,11 +3,10 @@ package runtimelog
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/tilt-dev/tilt/internal/testutils"
 
 	"github.com/stretchr/testify/assert"
 
@@ -228,6 +227,83 @@ func TestTerminatedContainerLogs(t *testing.T) {
 	f.AssertOutputDoesNotContain("goodbye world!")
 }
 
+// https://github.com/tilt-dev/tilt/issues/3908
+func TestLogReconnection(t *testing.T) {
+	f := newPLMFixture(t)
+	defer f.TearDown()
+
+	state := f.store.LockMutableStateForTesting()
+
+	cName := container.Name("cName")
+	p := store.Pod{
+		PodID: podID,
+		Containers: []store.Container{
+			NewRunningContainer(cName, "cID"),
+		},
+	}
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "server"}, p))
+	f.store.UnlockMutableState()
+
+	reader, writer := io.Pipe()
+	defer writer.Close()
+	f.kClient.SetLogReaderForPodContainer(podID, cName, reader)
+
+	// Set up fake time
+	startTime := time.Now()
+	currentTime := startTime.Add(5 * time.Second)
+	timeCh := make(chan time.Time)
+	ticker := time.Ticker{C: timeCh}
+	f.plm.now = func() time.Time { return currentTime }
+	f.plm.since = func(t time.Time) time.Duration { return currentTime.Sub(t) }
+	f.plm.newTicker = func(d time.Duration) *time.Ticker { return &ticker }
+
+	f.store.WithState(func(state *store.EngineState) {
+		state.TiltStartTime = startTime
+	})
+
+	f.plm.OnChange(f.ctx, f.store)
+
+	_, _ = writer.Write([]byte("hello world!"))
+	f.AssertOutputContains("hello world!")
+	assert.Equal(t, startTime, f.kClient.LastPodLogStartTime)
+
+	currentTime = currentTime.Add(20 * time.Second)
+	lastRead := currentTime
+	_, _ = writer.Write([]byte("hello world2!"))
+	f.AssertOutputContains("hello world2!")
+
+	// Simulate Kubernetes rotating the logs by creating a new pipe.
+	reader2, writer2 := io.Pipe()
+	defer writer2.Close()
+	f.kClient.SetLogReaderForPodContainer(podID, cName, reader2)
+	go func() {
+		_, _ = writer2.Write([]byte("goodbye world!"))
+	}()
+	f.AssertOutputDoesNotContain("goodbye world!")
+
+	currentTime = currentTime.Add(5 * time.Second)
+	timeCh <- currentTime
+	f.AssertOutputDoesNotContain("goodbye world!")
+
+	currentTime = currentTime.Add(5 * time.Second)
+	timeCh <- currentTime
+	f.AssertOutputDoesNotContain("goodbye world!")
+	assert.Equal(t, startTime, f.kClient.LastPodLogStartTime)
+
+	// simulate 15s since we last read a log; this triggers a reconnect
+	currentTime = currentTime.Add(5 * time.Second)
+	timeCh <- currentTime
+	time.Sleep(20 * time.Millisecond)
+	assert.Error(t, f.kClient.LastPodLogContext.Err())
+	writer.Close()
+
+	f.AssertOutputContains("goodbye world!")
+
+	// Make sure the start time was adjusted for when the last read happened.
+	assert.Equal(t, lastRead, f.kClient.LastPodLogStartTime)
+}
+
 func TestInitContainerLogs(t *testing.T) {
 	f := newPLMFixture(t)
 	defer f.TearDown()
@@ -297,6 +373,32 @@ func TestIstioContainerLogs(t *testing.T) {
 	f.AssertOutputContains("hello world!")
 }
 
+type plmStore struct {
+	t *testing.T
+	*store.TestingStore
+	out *bufsync.ThreadSafeBuffer
+}
+
+func newPLMStore(t *testing.T, out *bufsync.ThreadSafeBuffer) *plmStore {
+	return &plmStore{
+		t:            t,
+		TestingStore: store.NewTestingStore(),
+		out:          out,
+	}
+}
+
+func (s *plmStore) Dispatch(action store.Action) {
+	event, ok := action.(store.LogAction)
+	if !ok {
+		s.t.Errorf("Expected action type LogAction. Actual: %T", action)
+	}
+
+	_, err := s.out.Write(event.Message())
+	if err != nil {
+		fmt.Printf("error writing event: %v\n", err)
+	}
+}
+
 type plmFixture struct {
 	*tempdir.TempDirFixture
 	ctx     context.Context
@@ -304,7 +406,7 @@ type plmFixture struct {
 	plm     *PodLogManager
 	cancel  func()
 	out     *bufsync.ThreadSafeBuffer
-	store   *store.Store
+	store   *plmStore
 }
 
 func newPLMFixture(t *testing.T) *plmFixture {
@@ -312,27 +414,12 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	kClient := k8s.NewFakeK8sClient()
 
 	out := bufsync.NewThreadSafeBuffer()
-	reducer := func(ctx context.Context, state *store.EngineState, action store.Action) {
-		event, ok := action.(store.LogAction)
-		if !ok {
-			t.Errorf("Expected action type LogAction. Actual: %T", action)
-		}
-		_, err := out.Write(event.Message())
-		if err != nil {
-			fmt.Printf("error writing event: %v\n", err)
-		}
-	}
-
-	st := store.NewStore(store.Reducer(reducer), store.LogActionsFlag(false))
+	st := newPLMStore(t, out)
 	plm := NewPodLogManager(kClient)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx = logger.WithLogger(ctx, l)
-	go func() {
-		err := st.Loop(ctx)
-		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
-	}()
 
 	return &plmFixture{
 		TempDirFixture: f,
