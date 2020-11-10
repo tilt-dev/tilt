@@ -7,7 +7,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func convertStructuredDataToStarlark(j interface{}) (starlark.Value, error) {
+func ConvertStructuredDataToStarlark(j interface{}) (starlark.Value, error) {
 	switch j := j.(type) {
 	case bool:
 		return starlark.Bool(j), nil
@@ -19,7 +19,7 @@ func convertStructuredDataToStarlark(j interface{}) (starlark.Value, error) {
 		listOfValues := []starlark.Value{}
 
 		for _, v := range j {
-			convertedValue, err := convertStructuredDataToStarlark(v)
+			convertedValue, err := ConvertStructuredDataToStarlark(v)
 			if err != nil {
 				return nil, err
 			}
@@ -31,7 +31,7 @@ func convertStructuredDataToStarlark(j interface{}) (starlark.Value, error) {
 		mapOfValues := &starlark.Dict{}
 
 		for k, v := range j {
-			convertedValue, err := convertStructuredDataToStarlark(v)
+			convertedValue, err := ConvertStructuredDataToStarlark(v)
 			if err != nil {
 				return nil, err
 			}

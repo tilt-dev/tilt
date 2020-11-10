@@ -59,7 +59,7 @@ func jsonStringToStarlark(s string, source string) (starlark.Value, error) {
 		return nil, errors.Wrap(err, errmsg)
 	}
 
-	v, err := convertStructuredDataToStarlark(decodedJSON)
+	v, err := ConvertStructuredDataToStarlark(decodedJSON)
 	if err != nil {
 		errmsg := "error converting JSON to Starlark"
 		if source != "" {
