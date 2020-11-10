@@ -52,11 +52,17 @@ export function SidebarPinContextProvider(
 ) {
   let lsc = useContext(localStorageContext)
 
+  function getInitialCount(): string[] {
+    let ret = lsc.get<Array<string>>("pinned-resources") ?? []
+    incr("ui.web.pin", {
+      pinCount: ret.length.toString(),
+      action: "load",
+    })
+    return ret
+  }
+
   const [pinnedResources, setPinnedResources] = useState<Array<string>>(
-    () =>
-      props.initialValueForTesting ??
-      lsc.get<Array<string>>("pinned-resources") ??
-      []
+    () => props.initialValueForTesting ?? getInitialCount()
   )
 
   useEffect(() => {
@@ -67,7 +73,7 @@ export function SidebarPinContextProvider(
     setPinnedResources(prevState => {
       const ret = prevState.includes(name) ? prevState : [...prevState, name]
       incr("ui.web.pin", {
-        newPinCount: ret.length.toString(),
+        pinCount: ret.length.toString(),
         action: "pin",
       })
       return ret
@@ -78,7 +84,7 @@ export function SidebarPinContextProvider(
     setPinnedResources(prevState => {
       const ret = prevState.filter(n => n !== name)
       incr("ui.web.pin", {
-        newPinCount: ret.length.toString(),
+        pinCount: ret.length.toString(),
         action: "unpin",
       })
       return ret
