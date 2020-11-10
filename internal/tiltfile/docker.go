@@ -268,7 +268,7 @@ func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
 	var commandVal, commandBatVal starlark.Value
-	var deps *starlark.List
+	deps := value.NewLocalPathListUnpacker(thread)
 	var tag string
 	var disablePush bool
 	var liveUpdateVal, ignoreVal starlark.Value
@@ -300,22 +300,6 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	ref, err := container.ParseNamed(dockerRef)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 1 (ref): can't parse %q: %v", dockerRef, err)
-	}
-
-	if deps == nil || deps.Len() == 0 {
-		return nil, fmt.Errorf("Argument 3 (deps) can't be empty")
-	}
-
-	var localDeps []string
-	iter := deps.Iterate()
-	defer iter.Done()
-	var v starlark.Value
-	for iter.Next(&v) {
-		p, err := value.ValueToAbsPath(thread, v)
-		if err != nil {
-			return nil, fmt.Errorf("Argument 3 (deps): %v", err)
-		}
-		localDeps = append(localDeps, p)
 	}
 
 	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
@@ -357,7 +341,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		workDir:           starkit.AbsWorkingDir(thread),
 		configurationRef:  container.NewRefSelector(ref),
 		customCommand:     command,
-		customDeps:        localDeps,
+		customDeps:        deps.Value,
 		customTag:         tag,
 		disablePush:       disablePush,
 		skipsLocalDocker:  skipsLocalDocker,

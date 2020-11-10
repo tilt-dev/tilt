@@ -31,23 +31,15 @@ type dcResourceSet struct {
 func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var configPathsValue starlark.Value
+	configPaths := value.NewLocalPathListUnpacker(thread)
 
-	err := s.unpackArgs(fn.Name(), args, kwargs, "configPaths", &configPathsValue)
+	err := s.unpackArgs(fn.Name(), args, kwargs, "configPaths", &configPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	pathSlice := starlarkValueOrSequenceToSlice(configPathsValue)
-	var configPaths []string
-	for _, v := range pathSlice {
-		path, err := value.ValueToAbsPath(thread, v)
-		if err != nil {
-			return nil, fmt.Errorf("docker_compose files must be a string or a sequence of strings; found a %T", v)
-		}
-		configPaths = append(configPaths, path)
-
-		err = io.RecordReadPath(thread, io.WatchFileOnly, path)
+	for _, v := range configPaths.Value {
+		err = io.RecordReadPath(thread, io.WatchFileOnly, v)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +56,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	// To make sure all the docker-compose files are compatible together,
 	// parse them all together.
 	allConfigPaths := append([]string{}, dc.configPaths...)
-	allConfigPaths = append(allConfigPaths, configPaths...)
+	allConfigPaths = append(allConfigPaths, configPaths.Value...)
 
 	services, err := parseDCConfig(s.ctx, s.dcCli, allConfigPaths)
 	if err != nil {

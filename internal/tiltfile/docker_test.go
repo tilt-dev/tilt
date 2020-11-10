@@ -105,6 +105,19 @@ custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', ['src'])
 	assert.Contains(t, localPathStrings, f.JoinPath("src"))
 }
 
+func TestCustomBuildDepsZeroArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
+	f.file("Tiltfile", `
+k8s_yaml('fe.yaml')
+custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', [])
+`)
+
+	f.load()
+}
+
 func TestCustomBuildOutputsImageRefsTo(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

@@ -97,7 +97,8 @@ docker_build('gcr.io/foo', 'foo',
     sync('bar', '/baz'),
   ],
 )`)
-	f.loadErrString("fall_back_on", "value '4' of type 'int'")
+	f.loadErrString("fall_back_on",
+		"fall_back_on: for parameter paths: value should be a string or List or Tuple of strings, but is of type int")
 }
 
 func TestLiveUpdateNonStringInRunTriggers(t *testing.T) {
