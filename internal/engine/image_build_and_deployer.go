@@ -360,9 +360,13 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			}
 		}
 
-		// StatefulSet pods should be managed in parallel. See discussion:
-		// https://github.com/tilt-dev/tilt/issues/1962
-		e = k8s.InjectParallelPodManagementPolicy(e)
+		if len(iTargetMap) > 0 {
+			// StatefulSet pods should be managed in parallel when we're doing iterative
+			// development. See discussion:
+			// https://github.com/tilt-dev/tilt/issues/1962
+			// https://github.com/tilt-dev/tilt/issues/3906
+			e = k8s.InjectParallelPodManagementPolicy(e)
+		}
 
 		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
