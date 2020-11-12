@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/metadata/metadatainformer"
@@ -276,6 +277,20 @@ func (kCli K8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels
 	return ch, nil
 }
 
+func supportsPartialMetadata(v *version.Info) bool {
+	k1dot15, err := semver.ParseTolerant("v1.15.0")
+	if err != nil {
+		return false
+	}
+	version, err := semver.ParseTolerant(v.GitVersion)
+	if err != nil {
+		// If we don't recognize the version number,
+		// assume this server doesn't support metadata.
+		return false
+	}
+	return version.GTE(k1dot15)
+}
+
 func (kCli K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error) {
 	gvr, err := kCli.gvr(ctx, gvk)
 	if err != nil {
@@ -287,11 +302,10 @@ func (kCli K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind
 		return nil, errors.Wrap(err, "WatchMeta")
 	}
 
-	minor, err := strconv.Atoi(version.Minor)
-	if version.Major == "1" && err == nil && minor <= 14 {
-		return kCli.watchMeta14Minus(ctx, gvr, ns)
+	if supportsPartialMetadata(version) {
+		return kCli.watchMeta15Plus(ctx, gvr, ns)
 	}
-	return kCli.watchMeta15Plus(ctx, gvr, ns)
+	return kCli.watchMeta14Minus(ctx, gvr, ns)
 }
 
 // workaround a bug in client-go
