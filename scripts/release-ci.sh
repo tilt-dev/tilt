@@ -30,7 +30,7 @@ echo "$TILT_CLOUD_TOKEN" > ~/.tilt-dev/token
 
 git fetch --tags
 ./scripts/upload-assets.py latest
-goreleaser --rm-dist --skip-publish --snapshot
+goreleaser --rm-dist
 
 VERSION=$(git describe --abbrev=0 --tags)
 
