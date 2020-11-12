@@ -311,7 +311,7 @@ func TestK8sClient_WatchMetaBackfillK8s14(t *testing.T) {
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
 
-	tf.version.Minor = "14"
+	tf.version.GitVersion = "v1.14.1"
 
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	pod2 := fakePod(PodID("1234"), "hieruyge")
@@ -321,6 +321,38 @@ func TestK8sClient_WatchMetaBackfillK8s14(t *testing.T) {
 
 	expected := []*metav1.ObjectMeta{&pod1.ObjectMeta, &pod2.ObjectMeta}
 	tf.assertMeta(expected, ch)
+}
+
+type partialMetaTestCase struct {
+	v        string
+	expected bool
+}
+
+func TestSupportsPartialMeta(t *testing.T) {
+	cases := []partialMetaTestCase{
+		// minikube
+		partialMetaTestCase{"v1.19.1", true},
+		partialMetaTestCase{"v1.15.0", true},
+		partialMetaTestCase{"v1.14.0", false},
+
+		// gke
+		partialMetaTestCase{"v1.18.10-gke.601", true},
+		partialMetaTestCase{"v1.15.10-gke.601", true},
+		partialMetaTestCase{"v1.14.10-gke.601", false},
+
+		// microk8s
+		partialMetaTestCase{"v1.19.3-34+fa32ff1c160058", true},
+		partialMetaTestCase{"v1.15.3-34+fa32ff1c160058", true},
+		partialMetaTestCase{"v1.14.3-34+fa32ff1c160058", false},
+
+		partialMetaTestCase{"garbage", false},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.v, func(t *testing.T) {
+			assert.Equal(t, c.expected, supportsPartialMetadata(&version.Info{GitVersion: c.v}))
+		})
+	}
 }
 
 type watchTestFixture struct {
@@ -384,7 +416,7 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	mcs.PrependWatchReactor("*", wr)
 	ret.metadata = mcs
 
-	version := &version.Info{Major: "1", Minor: "19"}
+	version := &version.Info{Major: "1", Minor: "19", GitVersion: "v1.19.1"}
 	di := &difake.FakeDiscovery{
 		Fake:               &ktesting.Fake{},
 		FakedServerVersion: version,
