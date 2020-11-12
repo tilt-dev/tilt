@@ -174,6 +174,40 @@ func TestNoImageTargets(t *testing.T) {
 	assert.Contains(t, f.k8s.Yaml, "imagePullPolicy: Always")
 }
 
+func TestStatefulSetPodManagementPolicy(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	targName := "redis"
+
+	iTarget := NewSanchoDockerBuildImageTarget(f)
+	yaml := strings.Replace(
+		testyaml.RedisStatefulSetYAML,
+		`image: "docker.io/bitnami/redis:4.0.12"`,
+		fmt.Sprintf(`image: %q`, iTarget.Refs.LocalRef().String()), 1)
+	kTarget := k8s.MustTarget(model.TargetName(targName), yaml)
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st,
+		[]model.TargetSpec{kTarget}, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NoError(t, err)
+	assert.NotContains(t, f.k8s.Yaml, "podManagementPolicy: Parallel")
+
+	_, err = f.ibd.BuildAndDeploy(f.ctx, f.st,
+		[]model.TargetSpec{
+			iTarget,
+			kTarget.WithDependencyIDs([]model.TargetID{iTarget.ID()}),
+		},
+		store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NoError(t, err)
+	assert.Contains(t, f.k8s.Yaml, "podManagementPolicy: Parallel")
+}
+
 func TestImageIsClean(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
