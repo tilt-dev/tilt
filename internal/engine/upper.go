@@ -217,6 +217,19 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 		ms.RuntimeState = state
 	}
 
+	// If this is a full build, we know all the containers will get replaced,
+	// so just reset them now.
+	//
+	// NOTE(nick): Currently, this addresses an issue where the full build deletes
+	// the deployment, which then starts killing pods, which we interpret as a
+	// crash. A better way to resolve this problem would be to watch for deletions
+	// directly. But it's still semantically correct to record that we intended to
+	// delete the containers.
+	if action.FullBuildTriggered {
+		// Reset all the container ids
+		ms.LiveUpdatedContainerIDs = container.NewIDSet()
+	}
+
 	// Keep the crash log around until we have a rebuild
 	// triggered by a explicit change (i.e., not a crash rebuild)
 	if !action.Reason.IsCrashOnly() {

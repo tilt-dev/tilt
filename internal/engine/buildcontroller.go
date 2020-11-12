@@ -90,11 +90,12 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
 	}
 
 	st.Dispatch(buildcontrol.BuildStartedAction{
-		ManifestName: entry.name,
-		StartTime:    time.Now(),
-		FilesChanged: entry.filesChanged,
-		Reason:       entry.buildReason,
-		SpanID:       entry.spanID,
+		ManifestName:       entry.name,
+		StartTime:          time.Now(),
+		FilesChanged:       entry.filesChanged,
+		Reason:             entry.buildReason,
+		SpanID:             entry.spanID,
+		FullBuildTriggered: entry.buildStateSet.FullBuildTriggered(),
 	})
 
 	go func() {
