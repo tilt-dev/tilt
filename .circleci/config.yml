@@ -150,6 +150,22 @@ jobs:
       - run: ./configs/storybook/deploy.sh
       - slack/notify-on-failure:
           only_for_branches: master
+          
+  release:
+    docker:
+      - image: gcr.io/windmill-public-containers/tilt-releaser
+    steps:
+      - setup_remote_docker:
+          version: 19.03.12
+      - checkout
+      - gcp-cli/install
+      - gcp-cli/initialize
+      - run:
+          name: Setup Docker Credentials
+          command: gcloud auth configure-docker
+      - run: ./scripts/release-ci.sh
+      - slack/status:
+          mentions: "nick"
 
 workflows:
   version: 2
@@ -157,7 +173,9 @@ workflows:
     jobs:
       - shellcheck/check:
           path: scripts
+          
   build:
+        
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
@@ -185,3 +203,18 @@ workflows:
           filters:
             branches:
               only: master
+              
+  release:
+    jobs:
+      - release:
+          context:
+          - Tilt Slack Context
+          - Tilt Release CLI Context
+          - Tilt Docker Login Context
+          - Tilt Cloud Login Context
+          - Tilt Deploy Context
+          filters:
+            branches:
+              only: never-release-on-a-branch
+            tags:
+              only: /v[0-9]+.[0-9]+.[0-9]+/

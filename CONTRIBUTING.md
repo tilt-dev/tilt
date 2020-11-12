@@ -261,33 +261,19 @@ you've got it working.
 
 ## Releasing
 
-We use [goreleaser](https://goreleaser.com) for releases.
-
-Requirements:
-- Python
-- [gsutil](https://cloud.google.com/storage/docs/gsutil_install)
-- `GITHUB_TOKEN` env variable with repo scope
-
-We cross-compile the binary in a container, so that you don't need to have xcode
-or goreleaser installed.
+We use [goreleaser](https://goreleaser.com) to publish binaries. We never run it
+locally. We run it in a CircleCI container.
 
 To create a new release at tag `$TAG`:
 
 ```
 git fetch --tags
-git tag -a v0.0.1 -m "my release"
-git push origin v0.0.1
-make release
+git tag -a v0.x.y -m "v0.x.y"
+git push origin v0.x.y
 ```
 
-goreleaser will build binaries for the latest tag (using semantic version to
-determine "latest"). Check the current releases to figure out what the latest
-release ought to be.
-
-Add a [summary section](https://github.com/tilt-dev/company/blob/master/user-support/README.md#releases) 
-in the release notes.
-
-The script has been updated to automatically update install scripts and docs.
+CircleCI will automatically start building your release, and notify the
+#notify-circleci slack channel when it's done.
 
 ### Version numbers
 For pre-v1.0:
