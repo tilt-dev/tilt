@@ -29,12 +29,12 @@ func TestGetOrCreateToken(t *testing.T) {
 type fixture struct {
 	*tempdir.TempDirFixture
 	t   *testing.T
-	dir *dirs.WindmillDir
+	dir *dirs.TiltDevDir
 }
 
 func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
-	temp := dirs.NewWindmillDirAt(f.Path())
+	temp := dirs.NewTiltDevDirAt(f.Path())
 	return &fixture{
 		TempDirFixture: f,
 		t:              t,

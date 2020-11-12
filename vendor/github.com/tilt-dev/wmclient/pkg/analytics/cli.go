@@ -38,7 +38,7 @@ func analyticsOpt(_ *cobra.Command, args []string) (outerErr error) {
 	if err != nil {
 		return err
 	}
-	d, err := dirs.UseWindmillDir()
+	d, err := dirs.UseTiltDevDir()
 	if err != nil {
 		return err
 	}
@@ -50,16 +50,16 @@ const choiceFile = "analytics/user/choice.txt"
 
 func NewCommand() *cobra.Command {
 	analytics := &cobra.Command{
-		Use:   "analytics",
-		Short: "info and status about windmill analytics",
-		RunE:  analyticsStatus,
+		Use:                   "analytics",
+		Short:                 "info and status about tilt-dev analytics",
+		RunE:                  analyticsStatus,
 		DisableFlagsInUseLine: true,
-		Args: cobra.NoArgs,
+		Args:                  cobra.NoArgs,
 	}
 
 	opt := &cobra.Command{
 		Use:   "opt",
-		Short: "opt-in or -out to windmill analytics collection/upload",
+		Short: "opt-in or -out to tilt-dev analytics collection/upload",
 		RunE:  analyticsOpt,
 	}
 	analytics.AddCommand(opt)
