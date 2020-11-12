@@ -132,22 +132,13 @@ func (s *tiltfileState) recordLiveUpdateStep(step liveUpdateStep) {
 }
 
 func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var files starlark.Value
+	files := value.NewLocalPathListUnpacker(thread)
 	if err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &files); err != nil {
 		return nil, err
 	}
-	filesSlice := starlarkValueOrSequenceToSlice(files)
-	var paths []string
-	for _, f := range filesSlice {
-		path, err := value.ValueToAbsPath(thread, f)
-		if err != nil {
-			return nil, fmt.Errorf("fall_back_on step contained value '%s' of type '%s'. it may only contain strings", f, f.Type())
-		}
-		paths = append(paths, path)
-	}
 
 	ret := liveUpdateFallBackOnStep{
-		files:    paths,
+		files:    files.Value,
 		position: thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)

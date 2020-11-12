@@ -33,7 +33,9 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var name string
 	var updateCmdVal, updateCmdBatVal, serveCmdVal, serveCmdBatVal starlark.Value
 	var triggerMode triggerMode
-	var deps starlark.Value
+
+	deps := value.NewLocalPathListUnpacker(thread)
+
 	var resourceDepsVal starlark.Sequence
 	var ignoresVal starlark.Value
 	var allowParallel bool
@@ -57,17 +59,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	depsVals := starlarkValueOrSequenceToSlice(deps)
-	var depsStrings []string
-	for _, v := range depsVals {
-		path, err := value.ValueToAbsPath(thread, v)
-		if err != nil {
-			return nil, fmt.Errorf("deps must be a string or a sequence of strings; found a %T", v)
-		}
-		depsStrings = append(depsStrings, path)
-	}
-
-	repos := reposForPaths(depsStrings)
+	repos := reposForPaths(deps.Value)
 
 	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
 	if err != nil {
@@ -97,7 +89,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		updateCmd:     updateCmd,
 		serveCmd:      serveCmd,
 		workdir:       filepath.Dir(starkit.CurrentExecPath(thread)),
-		deps:          depsStrings,
+		deps:          deps.Value,
 		triggerMode:   triggerMode,
 		autoInit:      autoInit,
 		repos:         repos,
