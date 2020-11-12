@@ -15,7 +15,7 @@ func (t Token) String() string {
 	return string(t)
 }
 
-func GetOrCreateToken(dir *dirs.WindmillDir) (Token, error) {
+func GetOrCreateToken(dir *dirs.TiltDevDir) (Token, error) {
 	token, err := getExistingToken(dir)
 	if os.IsNotExist(err) {
 		u := uuid.New()
@@ -32,7 +32,7 @@ func GetOrCreateToken(dir *dirs.WindmillDir) (Token, error) {
 	return token, nil
 }
 
-func getExistingToken(dir *dirs.WindmillDir) (Token, error) {
+func getExistingToken(dir *dirs.TiltDevDir) (Token, error) {
 	token, err := dir.ReadFile(tokenFileName)
 	if err != nil {
 		return "", err
@@ -40,6 +40,6 @@ func getExistingToken(dir *dirs.WindmillDir) (Token, error) {
 	return Token(token), nil
 }
 
-func writeToken(dir *dirs.WindmillDir, t Token) error {
+func writeToken(dir *dirs.TiltDevDir, t Token) error {
 	return dir.WriteFile(tokenFileName, string(t))
 }

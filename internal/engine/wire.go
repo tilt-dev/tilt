@@ -72,7 +72,7 @@ func provideBuildAndDeployer(
 	ctx context.Context,
 	docker docker.Client,
 	kClient k8s.Client,
-	dir *dirs.WindmillDir,
+	dir *dirs.TiltDevDir,
 	env k8s.Env,
 	updateMode buildcontrol.UpdateModeFlag,
 	sCli *synclet.TestSyncletClient,
@@ -93,7 +93,7 @@ func provideImageBuildAndDeployer(
 	docker docker.Client,
 	kClient k8s.Client,
 	env k8s.Env,
-	dir *dirs.WindmillDir,
+	dir *dirs.TiltDevDir,
 	clock build.Clock,
 	kp KINDLoader,
 	analytics *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
@@ -114,7 +114,7 @@ func provideDockerComposeBuildAndDeployer(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
 	dCli docker.Client,
-	dir *dirs.WindmillDir) (*DockerComposeBuildAndDeployer, error) {
+	dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		wire.Value(buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)),

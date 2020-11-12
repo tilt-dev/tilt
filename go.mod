@@ -70,7 +70,7 @@ require (
 	github.com/tilt-dev/fsnotify v1.4.8-0.20200727200623-991e307aab7f
 	github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
-	github.com/tilt-dev/wmclient v0.0.0-20200901155816-d8d972f01eb9
+	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	go.opencensus.io v0.22.4

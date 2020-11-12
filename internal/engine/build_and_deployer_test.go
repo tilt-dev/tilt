@@ -791,7 +791,7 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	ctx, cancel := context.WithCancel(ctx)
 	f := tempdir.NewTempDirFixture(t)
-	dir := dirs.NewWindmillDirAt(f.Path())
+	dir := dirs.NewTiltDevDirAt(f.Path())
 	docker := docker.NewFakeClient()
 	docker.ContainerListOutput = map[string][]types.Container{
 		"pod": []types.Container{

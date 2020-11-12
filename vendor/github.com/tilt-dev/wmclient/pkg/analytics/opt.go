@@ -69,7 +69,7 @@ func SetOptStr(s string) (Opt, error) {
 func SetOpt(c Opt) error {
 	s := c.String()
 
-	d, err := dirs.UseWindmillDir()
+	d, err := dirs.UseTiltDevDir()
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func SetOpt(c Opt) error {
 }
 
 func readChoiceFile() (string, error) {
-	d, err := dirs.UseWindmillDir()
+	d, err := dirs.UseTiltDevDir()
 	if err != nil {
 		return "", err
 	}

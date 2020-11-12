@@ -494,7 +494,7 @@ github.com/tilt-dev/go-get/internal/web
 # github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 ## explicit
 github.com/tilt-dev/localregistry-go
-# github.com/tilt-dev/wmclient v0.0.0-20200901155816-d8d972f01eb9
+# github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 ## explicit
 github.com/tilt-dev/wmclient/pkg/analytics
 github.com/tilt-dev/wmclient/pkg/dirs
@@ -572,7 +572,7 @@ golang.org/x/oauth2/jwt
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20200916030750-2334cc1a136f => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
+# golang.org/x/sys v0.0.0-20201106081118-db71ae66460a => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix

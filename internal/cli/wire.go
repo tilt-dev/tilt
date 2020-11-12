@@ -134,7 +134,7 @@ var BaseWireSet = wire.NewSet(
 	wire.Bind(new(sdktrace.SpanProcessor), new(*tracer.SpanCollector)),
 	wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)),
 
-	dirs.UseWindmillDir,
+	dirs.UseTiltDevDir,
 	token.GetOrCreateToken,
 
 	engine.NewKINDLoader,

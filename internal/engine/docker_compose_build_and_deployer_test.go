@@ -180,7 +180,7 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 
 	f := tempdir.NewTempDirFixture(t)
 
-	dir := dirs.NewWindmillDirAt(f.Path())
+	dir := dirs.NewTiltDevDirAt(f.Path())
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dCli := docker.NewFakeClient()
 

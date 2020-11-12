@@ -964,7 +964,7 @@ type ibdFixture struct {
 
 func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
-	dir := dirs.NewWindmillDirAt(f.Path())
+	dir := dirs.NewTiltDevDirAt(f.Path())
 
 	docker := docker.NewFakeClient()
 
