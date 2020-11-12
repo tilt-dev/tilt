@@ -119,7 +119,7 @@ func yamlStreamToStarlark(s string, source string) (*starlark.List, error) {
 			return nil, errors.Wrap(err, errmsg)
 		}
 
-		v, err := convertStructuredDataToStarlark(decodedYAML)
+		v, err := ConvertStructuredDataToStarlark(decodedYAML)
 		if err != nil {
 			errmsg := "error converting YAML to Starlark"
 			if source != "" {

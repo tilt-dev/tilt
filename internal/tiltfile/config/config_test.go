@@ -508,7 +508,7 @@ func NewFixture(tb testing.TB, userConfigState model.UserConfigState, tiltSubcom
 type typeTestCase struct {
 	name          string
 	define        string
-	arg           string
+	args          []string
 	configFile    string
 	expectedVal   string
 	expectedError string
@@ -531,8 +531,8 @@ func (ttc typeTestCase) withExpectedError(expectedError string) typeTestCase {
 	return ttc
 }
 
-func (ttc typeTestCase) withArgs(args string) typeTestCase {
-	ttc.arg = args
+func (ttc typeTestCase) withArgs(args ...string) typeTestCase {
+	ttc.args = args
 	return ttc
 }
 
@@ -545,32 +545,36 @@ func TestTypes(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
 		define        string
-		arg           string
+		args          []string
 		configFile    string
 		expectedVal   string
 		expectedError string
 	}{
-		newTypeTestCase("string_list from args", "config.define_string_list('foo')").withArgs("--foo 1 --foo 2").withExpectedVal("['1', '2']"),
+		newTypeTestCase("string_list from args", "config.define_string_list('foo')").withArgs("--foo", "1", "--foo", "2").withExpectedVal("['1', '2']"),
 		newTypeTestCase("string_list from config", "config.define_string_list('foo')").withConfigFile(`{"foo": ["1", "2"]}`).withExpectedVal("['1', '2']"),
 		newTypeTestCase("invalid string_list from config", "config.define_string_list('foo')").withConfigFile(`{"foo": [1, 2]}`).withExpectedError("expected string, got float64"),
 
-		newTypeTestCase("string from args", "config.define_string('foo')").withArgs("--foo bar").withExpectedVal("'bar'"),
+		newTypeTestCase("string from args", "config.define_string('foo')").withArgs("--foo", "bar").withExpectedVal("'bar'"),
 		newTypeTestCase("string from config", "config.define_string('foo')").withConfigFile(`{"foo": "bar"}`).withExpectedVal("'bar'"),
-		newTypeTestCase("string defined multiple times", "config.define_string('foo')").withArgs("--foo bar --foo baz").withExpectedError("string settings can only be specified once"),
+		newTypeTestCase("string defined multiple times", "config.define_string('foo')").withArgs("--foo", "bar", "--foo", "baz").withExpectedError("string settings can only be specified once"),
 		newTypeTestCase("invalid string from config", "config.define_string('foo')").withConfigFile(`{"foo": 5}`).withExpectedError("expected string, found float64"),
 
 		newTypeTestCase("bool from args w/ implicit value", "config.define_bool('foo')").withArgs("--foo").withExpectedVal("True"),
 		newTypeTestCase("bool from config", "config.define_bool('foo')").withConfigFile(`{"foo": true}`).withExpectedVal("True"),
-		newTypeTestCase("bool defined multiple times", "config.define_bool('foo')").withArgs("--foo --foo").withExpectedError("bool settings can only be specified once"),
+		newTypeTestCase("bool defined multiple times", "config.define_bool('foo')").withArgs("--foo", "--foo").withExpectedError("bool settings can only be specified once"),
 		newTypeTestCase("invalid bool from config", "config.define_bool('foo')").withConfigFile(`{"foo": 5}`).withExpectedError("expected bool, found float64"),
+
+		newTypeTestCase("obj from args", "config.define_object('foo')").
+			withArgs(`--foo`, `["a", "b", "c"]`).
+			withExpectedVal(`["a", "b", "c"]`),
+
+		newTypeTestCase("obj from config", "config.define_object('foo')").
+			withConfigFile(`{"foo": ["a", "b", "c"]}`).
+			withExpectedVal(`["a", "b", "c"]`),
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var args []string
-			if tc.arg != "" {
-				args = strings.Split(tc.arg, " ")
-			}
 			f := NewFixture(t, model.UserConfigState{
-				Args: args,
+				Args: tc.args,
 			}, "")
 			defer f.TearDown()
 
