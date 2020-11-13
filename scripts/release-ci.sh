@@ -26,7 +26,7 @@ cd "$DIR/.."
 echo "$DOCKER_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
 
 mkdir -p ~/.tilt-dev
-echo "$TILT_CLOUD_TOKEN" > ~/.tilt-dev/token
+echo "$TILT_CLOUD_TOKEN" > ~/.windmill/token
 
 git fetch --tags
 ./scripts/upload-assets.py latest
