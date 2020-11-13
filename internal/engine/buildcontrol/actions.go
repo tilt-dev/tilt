@@ -9,11 +9,12 @@ import (
 )
 
 type BuildStartedAction struct {
-	ManifestName model.ManifestName
-	StartTime    time.Time
-	FilesChanged []string
-	Reason       model.BuildReason
-	SpanID       logstore.SpanID
+	ManifestName       model.ManifestName
+	StartTime          time.Time
+	FilesChanged       []string
+	Reason             model.BuildReason
+	SpanID             logstore.SpanID
+	FullBuildTriggered bool
 }
 
 func (BuildStartedAction) Action() {}

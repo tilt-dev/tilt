@@ -17,6 +17,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -611,6 +612,53 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 		return true
 	})
 }
+
+// Make sure we don't try display messages about live update after a full build trigger.
+// https://github.com/tilt-dev/tilt/issues/3915
+func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	mName := model.ManifestName("foobar")
+
+	manifest := f.newManifest(mName.String())
+	manifests := []model.Manifest{manifest}
+	opt := func(ia InitAction) InitAction {
+		ia.TerminalMode = store.TerminalModeStream
+		return ia
+	}
+	f.Start(manifests, opt)
+
+	f.nextCallComplete()
+
+	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.WaitUntilManifestState("foobar loaded", "foobar", func(ms store.ManifestState) bool {
+		return len(ms.K8sRuntimeState().Pods) == 1
+	})
+	f.withManifestState("foobar", func(ms store.ManifestState) {
+		ms.LiveUpdatedContainerIDs["containerID"] = true
+	})
+
+	deleteEvent := k8swatch.NewPodChangeAction(
+		podbuilder.New(f.T(), manifest).WithDeletionTime(time.Now()).Build(),
+		manifest.Name, f.lastDeployedUID(manifest.Name))
+
+	f.b.completeBuildsManually = true
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
+	f.WaitUntilManifestState("foobar building", "foobar", func(ms store.ManifestState) bool {
+		return ms.IsBuilding()
+	})
+
+	f.store.Dispatch(deleteEvent)
+	f.WaitUntilManifestState("foobar deleting", "foobar", func(ms store.ManifestState) bool {
+		return len(ms.K8sRuntimeState().Pods) == 0
+	})
+	assert.Contains(t, f.log.String(), "Initial Build • foobar")
+	assert.Contains(t, f.log.String(), "Unknown Trigger • foobar")
+	assert.NotContains(t, f.log.String(), "Detected a container change")
+
+	f.completeBuildForManifest(manifest)
+}
+
 func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
