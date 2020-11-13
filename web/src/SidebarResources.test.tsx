@@ -67,7 +67,8 @@ describe("SidebarResources", () => {
 
     expect(getPinnedItemNames(root)).toEqual(["snack"])
 
-    expectIncr(0, "ui.web.pin", { newPinCount: "1", action: "pin" })
+    expectIncr(0, "ui.web.pin", { pinCount: "0", action: "load" })
+    expectIncr(1, "ui.web.pin", { pinCount: "1", action: "pin" })
 
     expect(localStorage.getItem(makeKey("test", "pinned-resources"))).toEqual(
       JSON.stringify(["snack"])
@@ -123,7 +124,8 @@ describe("SidebarResources", () => {
 
     expect(getPinnedItemNames(root)).toEqual(["vigoda"])
 
-    expectIncr(0, "ui.web.pin", { newPinCount: "1", action: "unpin" })
+    expectIncr(0, "ui.web.pin", { pinCount: "2", action: "load" })
+    expectIncr(1, "ui.web.pin", { pinCount: "1", action: "unpin" })
 
     expect(localStorage.getItem(makeKey("test", "pinned-resources"))).toEqual(
       JSON.stringify(["vigoda"])

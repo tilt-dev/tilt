@@ -60,6 +60,15 @@ export function SidebarPinContextProvider(
   )
 
   useEffect(() => {
+    incr("ui.web.pin", {
+      pinCount: pinnedResources.length.toString(),
+      action: "load",
+    })
+    // empty deps because we only want to report the loaded pin count once per app load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
     lsc.set("pinned-resources", pinnedResources)
   }, [pinnedResources, lsc])
 
@@ -67,7 +76,7 @@ export function SidebarPinContextProvider(
     setPinnedResources(prevState => {
       const ret = prevState.includes(name) ? prevState : [...prevState, name]
       incr("ui.web.pin", {
-        newPinCount: ret.length.toString(),
+        pinCount: ret.length.toString(),
         action: "pin",
       })
       return ret
@@ -78,7 +87,7 @@ export function SidebarPinContextProvider(
     setPinnedResources(prevState => {
       const ret = prevState.filter(n => n !== name)
       incr("ui.web.pin", {
-        newPinCount: ret.length.toString(),
+        pinCount: ret.length.toString(),
         action: "unpin",
       })
       return ret
