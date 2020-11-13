@@ -52,18 +52,21 @@ export function SidebarPinContextProvider(
 ) {
   let lsc = useContext(localStorageContext)
 
-  function getInitialCount(): string[] {
-    let ret = lsc.get<Array<string>>("pinned-resources") ?? []
+  const [pinnedResources, setPinnedResources] = useState<Array<string>>(
+    () =>
+      props.initialValueForTesting ??
+      lsc.get<Array<string>>("pinned-resources") ??
+      []
+  )
+
+  useEffect(() => {
     incr("ui.web.pin", {
-      pinCount: ret.length.toString(),
+      pinCount: pinnedResources.length.toString(),
       action: "load",
     })
-    return ret
-  }
-
-  const [pinnedResources, setPinnedResources] = useState<Array<string>>(
-    () => props.initialValueForTesting ?? getInitialCount()
-  )
+    // empty deps because we only want to report the loaded pin count once per app load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     lsc.set("pinned-resources", pinnedResources)
