@@ -22,8 +22,8 @@ let PinnedPinIcon = styled(PinResourceFilledSvg)`
   fill: ${Color.yellowLight};
 `
 let PinButton = styled.button`
-  float: left;
   cursor: pointer;
+  padding: 0;
   background-position: center center;
   background-repeat: no-repeat;
   background-color: transparent;
@@ -128,3 +128,7 @@ export function SidebarPinButton(props: { resourceName: string }): JSX.Element {
     </PinButton>
   )
 }
+
+export const SidebarPinButtonSpacer = styled.div`
+  width: ${Width.sidebarPinButton}px;
+`

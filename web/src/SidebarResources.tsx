@@ -22,6 +22,7 @@ import {
 import SidebarItem, { SidebarItemStyle } from "./SidebarItem"
 import {
   SidebarPinButton,
+  SidebarPinButtonSpacer,
   sidebarPinContext,
   SidebarPinContextProvider,
 } from "./SidebarPin"
@@ -39,14 +40,16 @@ let SidebarResourcesRoot = styled.nav`
   margin-left: ${SizeUnit(0.2)};
   margin-right: ${SizeUnit(0.2)};
 `
-let SidebarList = styled.span``
-let SidebarItemBox = styled.span`
+let SidebarList = styled.div``
+let SidebarItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
   align-items: stretch;
-  float: right;
-  width: ${Width.sidebar - Width.sidebarTriggerButton - 1}px;
+  width: ${Width.sidebar -
+    Width.sidebarTriggerButton -
+    Width.sidebarPinButton -
+    1}px;
   height: ${Height.sidebarItem}px;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
@@ -126,9 +129,9 @@ let SidebarItemDuration = styled.span`
 let SidebarItemTimeAgo = styled.span`
   color: inherit;
 `
-let SidebarListSectionName = styled.span`
-  float: right;
+let SidebarListSectionName = styled.div`
   width: ${Width.sidebar - Width.sidebarTriggerButton - 1}px;
+  margin-left: ${Width.sidebarPinButton}px;
   text-transform: uppercase;
   color: ${Color.grayLight};
   font-size: ${FontSize.small};
@@ -141,10 +144,10 @@ export function SidebarListSection(
   props: React.PropsWithChildren<{ name: string }>
 ): JSX.Element {
   return (
-    <span>
+    <div>
       <SidebarListSectionName>{props.name}</SidebarListSectionName>
       <SidebarListSectionItems>{props.children}</SidebarListSectionItems>
-    </span>
+    </div>
   )
 }
 
@@ -219,7 +222,11 @@ function renderSidebarItem(
       key={item.name}
       className={`${isSelectedClass} ${isBuildingClass}`}
     >
-      {renderPin ? <SidebarPinButton resourceName={item.name} /> : null}
+      {renderPin ? (
+        <SidebarPinButton resourceName={item.name} />
+      ) : (
+        <SidebarPinButtonSpacer />
+      )}
       <SidebarItemBox className={`${isSelectedClass} ${isBuildingClass}`}>
         <SidebarItemLink
           className="SidebarItem-link"
