@@ -10,6 +10,7 @@ export const SidebarItemStyle = styled.li`
     margin-top: ${SizeUnit(0.2)};
   }
   clear: both;
+  display: flex;
 `
 
 const moment = require("moment")
