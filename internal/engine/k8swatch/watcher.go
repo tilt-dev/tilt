@@ -42,6 +42,7 @@ func newWatcherKnownState(cfgNS k8s.Namespace) watcherKnownState {
 // Assumes we're holding an RLock on both states.
 func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTaskList {
 	newUIDs := make(map[types.UID]model.ManifestName)
+	seenUIDs := make(map[types.UID]bool)
 	namespaces := make(map[k8s.Namespace]bool)
 	for _, mt := range state.Targets() {
 		if !mt.Manifest.IsK8s() {
@@ -65,6 +66,19 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 
 		// Collect all the new UIDs
 		for id := range mt.State.K8sRuntimeState().DeployedUIDSet {
+			// Our data model allows people to have the same resource defined in
+			// multiple manifests, and so we can have the same deployed UID in
+			// multiple manifests.
+			//
+			// This check protects us from infinite loops where the diff keeps flipping
+			// between the two manifests.
+			//
+			// Ideally, our data model would prevent this from happening entirely.
+			if seenUIDs[id] {
+				continue
+			}
+			seenUIDs[id] = true
+
 			oldName := ks.knownDeployedUIDs[id]
 			if name != oldName {
 				newUIDs[id] = name
