@@ -69,6 +69,30 @@ func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
 	f.assertActions(expected)
 }
 
+func TestEventWatchManager_duplicateDeployIDs(t *testing.T) {
+	f := newEWMFixture(t)
+	defer f.TearDown()
+
+	fe1 := model.ManifestName("fe1")
+	m1 := f.addManifest(fe1)
+	fe2 := model.ManifestName("fe2")
+	m2 := f.addManifest(fe2)
+
+	// Seed the k8s client with a pod and its owner tree
+	pb := podbuilder.New(t, m1)
+	f.addDeployedUID(m1, pb.DeploymentUID())
+	f.addDeployedUID(m2, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+
+	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
+
+	f.kClient.EmitEvent(f.ctx, evt)
+	f.ewm.OnChange(f.ctx, f.store)
+	f.ewm.OnChange(f.ctx, f.store)
+	expected := store.K8sEventAction{Event: evt, ManifestName: fe1}
+	f.assertActions(expected)
+}
+
 type eventTestCase struct {
 	Reason   string
 	Type     string
