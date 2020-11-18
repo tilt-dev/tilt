@@ -50,6 +50,9 @@ func initMetrics(ctx context.Context, cmdName model.TiltSubcommand) (context.Con
 		CommandCount,
 		engine.ImageBuildDurationView,
 		engine.ImageBuildCount,
+		engine.K8sDeployDurationView,
+		engine.K8sDeployCount,
+		engine.K8sDeployObjectsCount,
 		tiltfile.TiltfileExecDurationView,
 		tiltfile.TiltfileExecCount)
 	if err != nil {

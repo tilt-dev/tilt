@@ -193,9 +193,12 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		return newResults, buildcontrol.WrapDontFallBackError(err)
 	}
 
+	startDeployTime := time.Now()
+
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
 	k8sResult, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.AllResults(), anyLiveUpdate)
+	reportK8sDeployMetrics(ctx, kTarget, time.Since(startDeployTime), err != nil)
 	if err != nil {
 		return newResults, buildcontrol.WrapDontFallBackError(err)
 	}
