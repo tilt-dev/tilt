@@ -59,7 +59,7 @@ brews:
   commit_author:
     name: Tilt Dev
     email: hi@tilt.dev
-  url_template: "http://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+  url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   homepage: "https://tilt.dev/"
   description: "Tilt powers multi-service developments for teams that deploy to Kubernetes."
   test: |
@@ -71,7 +71,7 @@ dockers:
     - "tiltdev/tilt:{{ .Tag }}"
   dockerfile: scripts/tilt.Dockerfile
 scoop:
-  url_template: "http://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+  url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   bucket:
     owner: tilt-dev
     name: scoop-bucket
