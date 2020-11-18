@@ -653,7 +653,9 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 		return len(ms.K8sRuntimeState().Pods) == 0
 	})
 	assert.Contains(t, f.log.String(), "Initial Build • foobar")
-	assert.Contains(t, f.log.String(), "Unknown Trigger • foobar")
+	f.WaitUntil("Trigger appears", func(st store.EngineState) bool {
+		return strings.Contains(f.log.String(), "Unknown Trigger • foobar")
+	})
 	assert.NotContains(t, f.log.String(), "Detected a container change")
 
 	f.completeBuildForManifest(manifest)
