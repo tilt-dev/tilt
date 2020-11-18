@@ -224,6 +224,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	duration := time.Since(start)
 	s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
 	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration)
+	reportTiltfileExecMetrics(ctx, duration, err != nil)
 
 	if len(aSettings.CustomTagsToReport) > 0 {
 		reportCustomTags(tfl.analytics, aSettings.CustomTagsToReport)
@@ -240,7 +241,8 @@ func reportCustomTags(a *analytics.TiltAnalytics, tags map[string]string) {
 	a.Incr("tiltfile.custom.report", tags)
 }
 
-func (tfl *tiltfileLoader) reportTiltfileLoaded(callCounts map[string]int,
+func (tfl *tiltfileLoader) reportTiltfileLoaded(
+	callCounts map[string]int,
 	argCounts map[string]map[string]int, loadDur time.Duration) {
 	tags := make(map[string]string)
 

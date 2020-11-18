@@ -9,6 +9,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/engine"
 	"github.com/tilt-dev/tilt/internal/engine/metrics"
+	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -48,7 +49,9 @@ func initMetrics(ctx context.Context, cmdName model.TiltSubcommand) (context.Con
 	err := view.Register(
 		CommandCount,
 		engine.ImageBuildDurationView,
-		engine.ImageBuildCount)
+		engine.ImageBuildCount,
+		tiltfile.TiltfileExecDurationView,
+		tiltfile.TiltfileExecCount)
 	if err != nil {
 		return nil, cleanup, err
 	}
