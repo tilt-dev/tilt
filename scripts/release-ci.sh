@@ -25,7 +25,7 @@ cd "$DIR/.."
 
 echo "$DOCKER_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
 
-mkdir -p ~/.tilt-dev
+mkdir -p ~/.windmill
 echo "$TILT_CLOUD_TOKEN" > ~/.windmill/token
 
 git fetch --tags
