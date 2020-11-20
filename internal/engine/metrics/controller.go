@@ -25,7 +25,13 @@ type MetricsState struct {
 }
 
 func (s MetricsState) Enabled() bool {
-	return s.settings.Enabled && s.username != "" && s.token != ""
+	if !s.settings.Enabled {
+		return false
+	}
+	if s.settings.AllowAnonymous {
+		return true
+	}
+	return s.username != "" && s.token != ""
 }
 
 type Controller struct {

@@ -49,6 +49,7 @@ func ProvideSubscribers(
 	podm *k8srollout.PodMonitor,
 	ec *exit.Controller,
 	mc *metrics.Controller,
+	mmc *metrics.ModeController,
 ) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
@@ -77,5 +78,6 @@ func ProvideSubscribers(
 		podm,
 		ec,
 		mc,
+		mmc,
 	}
 }

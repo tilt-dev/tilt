@@ -3724,8 +3724,9 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
+	mcc := metrics.NewModeController("localhost")
 
-	subs := ProvideSubscribers(h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, dp, tc, lc, podm, ec, mc)
+	subs := ProvideSubscribers(h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
 	ret.upper = NewUpper(ctx, st, subs)
 
 	go func() {

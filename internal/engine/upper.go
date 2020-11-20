@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
@@ -176,6 +177,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleExitAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
+	case metrics.MetricsModeAction:
+		// TODO(nick): Fill this in
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}

@@ -77,6 +77,7 @@ var BaseWireSet = wire.NewSet(
 
 	ProvideDeferredExporter,
 	metrics.NewController,
+	metrics.NewModeController,
 	dockercompose.NewDockerComposeClient,
 
 	clockwork.NewRealClock,

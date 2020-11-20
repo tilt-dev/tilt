@@ -272,13 +272,14 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController)
+	modeController := metrics.NewModeController(modelWebHost)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
 	upper := engine.NewUpper(ctx, storeStore, v2)
-	windmillDir, err := dirs.UseTiltDevDir()
+	tiltDevDir, err := dirs.UseTiltDevDir()
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	tokenToken, err := token.GetOrCreateToken(windmillDir)
+	tokenToken, err := token.GetOrCreateToken(tiltDevDir)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -433,13 +434,14 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController)
+	modeController := metrics.NewModeController(modelWebHost)
+	v2 := engine.ProvideSubscribers(headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, syncletManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
 	upper := engine.NewUpper(ctx, storeStore, v2)
-	windmillDir, err := dirs.UseTiltDevDir()
+	tiltDevDir, err := dirs.UseTiltDevDir()
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	tokenToken, err := token.GetOrCreateToken(windmillDir)
+	tokenToken, err := token.GetOrCreateToken(tiltDevDir)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -729,7 +731,7 @@ func wireAnalytics(l logger.Logger, cmdName model.TiltSubcommand) (*analytics.Ti
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideKubectlRunner, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher, ProvideKubeContextOverride)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.NewController, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward.NewController, engine.NewBuildController, local.ProvideExecer, local.NewController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, exit.NewController, provideClock, hud.WireSet, prompt.WireSet, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewGitManager, fswatch.NewWatchManager, fswatch.ProvideFsWatcherMaker, fswatch.ProvideTimerMaker, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, provideKubectlLogLevel, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.NewController, metrics.NewModeController, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward.NewController, engine.NewBuildController, local.ProvideExecer, local.NewController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, exit.NewController, provideClock, hud.WireSet, prompt.WireSet, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewGitManager, fswatch.NewWatchManager, fswatch.ProvideFsWatcherMaker, fswatch.ProvideTimerMaker, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
