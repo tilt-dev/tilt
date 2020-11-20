@@ -2052,7 +2052,7 @@ k8s_yaml('snack.yaml')
 	}, f.idNames(m.DependencyIDs()))
 	assert.Equal(t, []string{}, f.idNames(m.ImageTargets[0].DependencyIDs()))
 	assert.Equal(t, []string{"gcr.io/image-a"}, f.idNames(m.ImageTargets[1].DependencyIDs()))
-	assert.Equal(t, []string{"gcr.io/image-b"}, f.idNames(m.DeployTarget().DependencyIDs()))
+	assert.Equal(t, []string{"gcr.io/image-b"}, f.idNames(m.DeployTarget.DependencyIDs()))
 }
 
 func TestImageDependencyNormalization(t *testing.T) {
@@ -6155,7 +6155,7 @@ func (f *fixture) assertManifestConsistency(m model.Manifest) {
 		iTargetIDs[iTarget.ID()] = true
 	}
 
-	deployTarget := m.DeployTarget()
+	deployTarget := m.DeployTarget
 	for _, depID := range deployTarget.DependencyIDs() {
 		if !iTargetIDs[depID] {
 			f.t.Fatalf("Image Target needed by deploy target is missing: %s", depID)

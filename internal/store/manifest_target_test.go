@@ -16,7 +16,7 @@ func TestManifestTarget_FacetsSecretsScrubbed(t *testing.T) {
 
 	s := "password1"
 	b64 := base64.StdEncoding.EncodeToString([]byte(s))
-	mt.State.BuildStatuses[m.DeployTarget().ID()] = &BuildStatus{
+	mt.State.BuildStatuses[m.DeployTarget.ID()] = &BuildStatus{
 		LastResult: K8sBuildResult{AppliedEntitiesText: fmt.Sprintf("text %s moretext", b64)},
 	}
 	secrets := model.SecretSet{}

@@ -36,7 +36,7 @@ type Manifest struct {
 	ImageTargets []ImageTarget
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
-	deployTarget TargetSpec
+	DeployTarget TargetSpec
 
 	// How updates are triggered:
 	// - automatically, when we detect a change
@@ -60,8 +60,8 @@ func (m Manifest) DependencyIDs() []TargetID {
 	for _, iTarget := range m.ImageTargets {
 		result = append(result, iTarget.ID())
 	}
-	if !m.deployTarget.ID().Empty() {
-		result = append(result, m.deployTarget.ID())
+	if !m.DeployTarget.ID().Empty() {
+		result = append(result, m.DeployTarget.ID())
 	}
 	return result
 }
@@ -74,9 +74,9 @@ func (m Manifest) ReverseDependencyIDs() map[TargetID][]TargetID {
 			result[depID] = append(result[depID], iTarget.ID())
 		}
 	}
-	if !m.deployTarget.ID().Empty() {
-		for _, depID := range m.deployTarget.DependencyIDs() {
-			result[depID] = append(result[depID], m.deployTarget.ID())
+	if !m.DeployTarget.ID().Empty() {
+		for _, depID := range m.DeployTarget.DependencyIDs() {
+			result[depID] = append(result[depID], m.DeployTarget.ID())
 		}
 	}
 	return result
@@ -111,44 +111,40 @@ func (m Manifest) ImageTargetWithID(id TargetID) ImageTarget {
 type DockerBuildArgs map[string]string
 
 func (m Manifest) LocalTarget() LocalTarget {
-	ret, _ := m.deployTarget.(LocalTarget)
+	ret, _ := m.DeployTarget.(LocalTarget)
 	return ret
 }
 
 func (m Manifest) IsLocal() bool {
-	_, ok := m.deployTarget.(LocalTarget)
+	_, ok := m.DeployTarget.(LocalTarget)
 	return ok
 }
 
 func (m Manifest) DockerComposeTarget() DockerComposeTarget {
-	ret, _ := m.deployTarget.(DockerComposeTarget)
+	ret, _ := m.DeployTarget.(DockerComposeTarget)
 	return ret
 }
 
 func (m Manifest) IsDC() bool {
-	_, ok := m.deployTarget.(DockerComposeTarget)
+	_, ok := m.DeployTarget.(DockerComposeTarget)
 	return ok
 }
 
 func (m Manifest) K8sTarget() K8sTarget {
-	ret, _ := m.deployTarget.(K8sTarget)
+	ret, _ := m.DeployTarget.(K8sTarget)
 	return ret
 }
 
 func (m Manifest) IsK8s() bool {
-	_, ok := m.deployTarget.(K8sTarget)
+	_, ok := m.DeployTarget.(K8sTarget)
 	return ok
 }
 
 func (m Manifest) PodReadinessMode() PodReadinessMode {
-	if k8sTarget, ok := m.deployTarget.(K8sTarget); ok {
+	if k8sTarget, ok := m.DeployTarget.(K8sTarget); ok {
 		return k8sTarget.PodReadinessMode
 	}
 	return PodReadinessNone
-}
-
-func (m Manifest) DeployTarget() TargetSpec {
-	return m.deployTarget
 }
 
 func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
@@ -160,7 +156,7 @@ func (m Manifest) WithDeployTarget(t TargetSpec) Manifest {
 		typedTarget.Name = m.Name.TargetName()
 		t = typedTarget
 	}
-	m.deployTarget = t
+	m.DeployTarget = t
 	return m
 }
 
@@ -183,15 +179,15 @@ func (m Manifest) TargetSpecs() []TargetSpec {
 	for _, t := range m.ImageTargets {
 		result = append(result, t)
 	}
-	if m.deployTarget != nil {
-		result = append(result, m.deployTarget)
+	if m.DeployTarget != nil {
+		result = append(result, m.DeployTarget)
 	}
 	return result
 }
 
 func (m Manifest) IsImageDeployed(iTarget ImageTarget) bool {
 	id := iTarget.ID()
-	for _, depID := range m.DeployTarget().DependencyIDs() {
+	for _, depID := range m.DeployTarget.DependencyIDs() {
 		if depID == id {
 			return true
 		}
@@ -201,7 +197,7 @@ func (m Manifest) IsImageDeployed(iTarget ImageTarget) bool {
 
 func (m Manifest) LocalPaths() []string {
 	// TODO(matt?) DC syncs should probably stored somewhere more consistent with Docker/Fast Build
-	switch di := m.deployTarget.(type) {
+	switch di := m.DeployTarget.(type) {
 	case DockerComposeTarget:
 		return di.LocalPaths()
 	case LocalTarget:
@@ -228,8 +224,8 @@ func (m Manifest) Validate() error {
 		}
 	}
 
-	if m.deployTarget != nil {
-		err := m.deployTarget.Validate()
+	if m.DeployTarget != nil {
+		err := m.DeployTarget.Validate()
 		if err != nil {
 			return err
 		}
