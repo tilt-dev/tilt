@@ -288,6 +288,8 @@ spec:
 const grafanaConfig = `
 kind: ConfigMap
 apiVersion: v1
+metadata:
+  name: tilt-grafana-config
 data:
   dashboards.yaml: |
     apiVersion: 1
@@ -318,6 +320,8 @@ data:
 const grafanaDashboardConfig = `
 kind: ConfigMap
 apiVersion: v1
+metadata:
+  name: tilt-grafana-dashboards
 data:
   tiltfile-execution.json: |
     {

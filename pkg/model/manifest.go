@@ -46,6 +46,8 @@ type Manifest struct {
 	// The resource in this manifest will not be built until all of its dependencies have been
 	// ready at least once.
 	ResourceDependencies []ManifestName
+
+	Source ManifestSource
 }
 
 func (m Manifest) ID() TargetID {
@@ -594,3 +596,8 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		ignoreDockerBuildCacheFrom,
 	)
 }
+
+type ManifestSource string
+
+const ManifestSourceTiltfile = ManifestSource("")
+const ManifestSourceMetrics = ManifestSource("metrics")

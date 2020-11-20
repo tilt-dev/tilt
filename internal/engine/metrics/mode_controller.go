@@ -66,7 +66,7 @@ func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore) {
 		Mode: store.MetricsLocal,
 		Settings: model.MetricsSettings{
 			Enabled:         true,
-			Address:         fmt.Sprintf("%s:%d", c.host, grafanaHostPort),
+			Address:         fmt.Sprintf("%s:%d", c.host, collectorHostPort),
 			Insecure:        true,
 			ReportingPeriod: 5 * time.Second,
 			AllowAnonymous:  true,
@@ -102,7 +102,7 @@ func (c *ModeController) localMetricsStack() ([]model.Manifest, error) {
 		grafana,
 		grafanaConfig,
 		grafanaDashboardConfig,
-	}, []model.PortForward{{ContainerPort: 9090, LocalPort: grafanaHostPort, Host: string(c.host)}})
+	}, []model.PortForward{{ContainerPort: 3000, LocalPort: grafanaHostPort, Host: string(c.host)}})
 	if err != nil {
 		return nil, errors.Wrap(err, "init metrics grafana")
 	}
@@ -123,5 +123,8 @@ func (c *ModeController) localMetricsManifest(name model.ManifestName, yaml []st
 	if err != nil {
 		return model.Manifest{}, fmt.Errorf("init local metrics: %v", err)
 	}
-	return model.Manifest{Name: name}.WithDeployTarget(kTarget), nil
+	return model.Manifest{
+		Name:   name,
+		Source: model.ManifestSourceMetrics,
+	}.WithDeployTarget(kTarget), nil
 }
