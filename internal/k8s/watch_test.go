@@ -355,6 +355,13 @@ func TestSupportsPartialMeta(t *testing.T) {
 	}
 }
 
+type fakeDiscovery struct {
+	*difake.FakeDiscovery
+}
+
+func (fakeDiscovery) Fresh() bool { return true }
+func (fakeDiscovery) Invalidate() {}
+
 type watchTestFixture struct {
 	t    *testing.T
 	kCli K8sClient
@@ -417,9 +424,11 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	ret.metadata = mcs
 
 	version := &version.Info{Major: "1", Minor: "19", GitVersion: "v1.19.1"}
-	di := &difake.FakeDiscovery{
-		Fake:               &ktesting.Fake{},
-		FakedServerVersion: version,
+	di := fakeDiscovery{
+		FakeDiscovery: &difake.FakeDiscovery{
+			Fake:               &ktesting.Fake{},
+			FakedServerVersion: version,
+		},
 	}
 
 	ret.kCli = K8sClient{
@@ -623,11 +632,13 @@ func (tf *watchTestFixture) testServiceLabels(input labels.Set, expectedLabels l
 }
 
 type fakeRESTMapper struct {
+	*meta.DefaultRESTMapper
 }
 
 func (f fakeRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
 	return &meta.RESTMapping{
 		Resource: PodGVR,
+		Scope:    meta.RESTScopeNamespace,
 	}, nil
 }
 
