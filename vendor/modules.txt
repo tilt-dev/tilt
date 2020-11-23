@@ -316,8 +316,6 @@ github.com/json-iterator/go
 github.com/json-iterator/go/extra
 # github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 ## explicit
-# github.com/konsorten/go-windows-terminal-sequences v1.0.3
-github.com/konsorten/go-windows-terminal-sequences
 # github.com/kr/text v0.2.0
 ## explicit
 # github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
@@ -448,7 +446,7 @@ github.com/russross/blackfriday/v2
 github.com/schollz/closestmatch
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
-# github.com/sirupsen/logrus v1.6.0
+# github.com/sirupsen/logrus v1.7.0
 github.com/sirupsen/logrus
 # github.com/spf13/cobra v1.0.0
 ## explicit
@@ -713,7 +711,11 @@ gopkg.in/inf.v0
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 gopkg.in/yaml.v3
-# k8s.io/api v0.19.0
+# helm.sh/helm/v3 v3.4.1
+## explicit
+helm.sh/helm/v3/internal/third_party/k8s.io/kubernetes/deployment/util
+helm.sh/helm/v3/pkg/kube
+# k8s.io/api v0.19.3
 ## explicit
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -759,7 +761,11 @@ k8s.io/api/settings/v1alpha1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-# k8s.io/apimachinery v0.19.0
+# k8s.io/apiextensions-apiserver v0.19.3
+k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
+k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
+k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
+# k8s.io/apimachinery v0.19.3
 ## explicit
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -815,7 +821,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/cli-runtime v0.19.0
+# k8s.io/cli-runtime v0.19.3
 ## explicit
 k8s.io/cli-runtime/pkg/genericclioptions
 k8s.io/cli-runtime/pkg/kustomize
@@ -829,7 +835,7 @@ k8s.io/cli-runtime/pkg/kustomize/k8sdeps/transformer/patch
 k8s.io/cli-runtime/pkg/kustomize/k8sdeps/validator
 k8s.io/cli-runtime/pkg/printers
 k8s.io/cli-runtime/pkg/resource
-# k8s.io/client-go v0.19.0
+# k8s.io/client-go v0.19.3
 ## explicit
 k8s.io/client-go/discovery
 k8s.io/client-go/discovery/cached/disk
@@ -1065,7 +1071,7 @@ k8s.io/client-go/util/homedir
 k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/workqueue
-# k8s.io/component-base v0.19.0
+# k8s.io/component-base v0.19.3
 ## explicit
 k8s.io/component-base/cli/flag
 k8s.io/component-base/version
@@ -1076,7 +1082,7 @@ k8s.io/klog/v2
 k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/util/proto/validation
-# k8s.io/kubectl v0.19.0
+# k8s.io/kubectl v0.19.3
 ## explicit
 k8s.io/kubectl/pkg/cmd/apply
 k8s.io/kubectl/pkg/cmd/create
@@ -1106,6 +1112,7 @@ k8s.io/utils/buffer
 k8s.io/utils/exec
 k8s.io/utils/integer
 k8s.io/utils/net
+k8s.io/utils/pointer
 k8s.io/utils/trace
 # sigs.k8s.io/kustomize v2.0.3+incompatible
 ## explicit

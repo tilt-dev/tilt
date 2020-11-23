@@ -10,7 +10,6 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bugsnag/bugsnag-go v1.5.3 // indirect
 	github.com/bugsnag/panicwrap v1.2.0 // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/cloudflare/cfssl v1.4.1 // indirect
 	github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe
@@ -85,13 +84,14 @@ require (
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.19.0
-	k8s.io/apimachinery v0.19.0
-	k8s.io/cli-runtime v0.19.0
-	k8s.io/client-go v0.19.0
-	k8s.io/component-base v0.19.0
+	helm.sh/helm/v3 v3.4.1
+	k8s.io/api v0.19.3
+	k8s.io/apimachinery v0.19.3
+	k8s.io/cli-runtime v0.19.3
+	k8s.io/client-go v0.19.3
+	k8s.io/component-base v0.19.3
 	k8s.io/klog/v2 v2.2.0
-	k8s.io/kubectl v0.19.0
+	k8s.io/kubectl v0.19.3
 	sigs.k8s.io/kustomize v2.0.3+incompatible
 	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
