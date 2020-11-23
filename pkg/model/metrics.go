@@ -14,6 +14,11 @@ type MetricsSettings struct {
 	// How often Tilt reports its metrics. Useful for testing.
 	// https://pkg.go.dev/go.opencensus.io/stats/view?tab=doc#SetReportingPeriod
 	ReportingPeriod time.Duration
+
+	// Whether anonymous metrics are allowed.
+	// The normal tilt prod metrics processor requires the
+	// user to be logged in.
+	AllowAnonymous bool
 }
 
 func DefaultMetricsSettings() MetricsSettings {

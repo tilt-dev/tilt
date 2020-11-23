@@ -113,6 +113,7 @@ type EngineState struct {
 	TelemetrySettings model.TelemetrySettings
 
 	MetricsSettings model.MetricsSettings
+	MetricsMode     MetricsMode
 
 	UserConfigState model.UserConfigState
 }
