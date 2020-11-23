@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	_ "helm.sh/helm/v3/pkg/kube"
+
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
