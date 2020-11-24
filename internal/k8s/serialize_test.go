@@ -117,16 +117,6 @@ func TestListYAML(t *testing.T) {
 	}, kinds)
 }
 
-func TestDeleted(t *testing.T) {
-	result, err := parseYAMLFromStringWithDeletedResources(testyaml.OneDeleted)
-	assert.Nil(t, err)
-	assert.Equal(t, 1, len(result))
-
-	result, err = parseYAMLFromStringWithDeletedResources(testyaml.TwoDeleted)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(result))
-}
-
 func TestBase64Serialization(t *testing.T) {
 	// json-iterator used to have a bug where it serialized this incorrectly.
 	// https://github.com/json-iterator/go/issues/272

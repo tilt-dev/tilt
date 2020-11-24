@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,18 +17,6 @@ import (
 func ParseYAMLFromString(yaml string) ([]K8sEntity, error) {
 	buf := bytes.NewBuffer([]byte(yaml))
 	return ParseYAML(buf)
-}
-
-func parseYAMLFromStringWithDeletedResources(yamlWithDeletedResources string) ([]K8sEntity, error) {
-	lines := strings.Split(yamlWithDeletedResources, "\n")
-	for len(lines) > 0 {
-		line := lines[0]
-		if !strings.HasSuffix(line, "deleted") {
-			break
-		}
-		lines = lines[1:]
-	}
-	return ParseYAMLFromString(strings.Join(lines, "\n"))
 }
 
 func decodeMetaList(list *metav1.List) ([]K8sEntity, error) {
@@ -146,6 +133,14 @@ func serializeSpec(obj runtime.Object, w io.Writer) error {
 // By convention, all K8s objects contain ObjectMetadata, Spec, and Status.
 // This only serializes the metadata and spec, skipping the status.
 func SerializeSpecYAML(decoded []K8sEntity) (string, error) {
+	buf, err := SerializeSpecYAMLToBuffer(decoded)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func SerializeSpecYAMLToBuffer(decoded []K8sEntity) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
 	for i, obj := range decoded {
 		if i != 0 {
@@ -153,8 +148,8 @@ func SerializeSpecYAML(decoded []K8sEntity) (string, error) {
 		}
 		err := serializeSpec(obj.Obj, buf)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
-	return buf.String(), nil
+	return buf, nil
 }
