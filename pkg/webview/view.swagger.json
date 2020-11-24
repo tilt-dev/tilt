@@ -322,6 +322,19 @@
         }
       }
     },
+    "webviewMetricsServing": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Whether we're using the local or remote metrics stack."
+        },
+        "grafana_host": {
+          "type": "string",
+          "title": "e.g., \"localhost:10352\""
+        }
+      }
+    },
     "webviewResource": {
       "type": "object",
       "properties": {
@@ -595,7 +608,11 @@
           "description": "Allows us to synchronize on a running Tilt intance,\nso we can tell when Tilt restarted."
         },
         "tiltfile_key": {
-          "type": "string"
+          "type": "string",
+          "title": "an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile"
+        },
+        "metrics_serving": {
+          "$ref": "#/definitions/webviewMetricsServing"
         }
       }
     },

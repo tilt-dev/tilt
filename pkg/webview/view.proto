@@ -202,6 +202,16 @@ message View {
 
   // an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile
   string tiltfile_key = 17;
+
+  MetricsServing metrics_serving = 18;
+}
+
+message MetricsServing {
+  // Whether we're using the local or remote metrics stack.
+  string mode = 1;
+
+  // e.g., "localhost:10352"
+  string grafana_host = 2;
 }
 
 message GetViewRequest {}

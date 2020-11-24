@@ -6,7 +6,7 @@ import (
 )
 
 type MetricsModeAction struct {
-	Mode      store.MetricsMode
+	Serving   store.MetricsServing
 	Settings  model.MetricsSettings
 	Manifests []model.Manifest
 }

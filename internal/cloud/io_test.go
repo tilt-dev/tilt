@@ -47,7 +47,10 @@ func TestWriteSnapshotTo(t *testing.T) {
       "fromCheckpoint": -1,
       "toCheckpoint": -1
     },
-    "tiltStartTime": "0001-01-01T00:00:00Z"
+    "tiltStartTime": "0001-01-01T00:00:00Z",
+    "metricsServing": {
+
+    }
   }
 }
 `, buf.String())
