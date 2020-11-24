@@ -106,10 +106,6 @@ func provideImageBuildAndDeployer(
 	return nil, nil
 }
 
-func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
-	return k8s.KubectlLogLevel(0)
-}
-
 func provideDockerComposeBuildAndDeployer(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
@@ -119,7 +115,6 @@ func provideDockerComposeBuildAndDeployer(
 		DeployerWireSetTest,
 		wire.Value(buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)),
 		build.ProvideClock,
-		provideKubectlLogLevelInfo,
 
 		// EnvNone ensures that we get an exploding k8s client.
 		wire.Value(k8s.Env(k8s.EnvNone)),
@@ -127,7 +122,6 @@ func provideDockerComposeBuildAndDeployer(
 		k8s.ProvideClientConfig,
 		k8s.ProvideConfigNamespace,
 		k8s.ProvideKubeContext,
-		k8s.ProvideKubectlRunner,
 		k8s.ProvideK8sClient,
 		k8s.ProvideRESTConfig,
 		k8s.ProvideClientset,

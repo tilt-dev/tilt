@@ -54,6 +54,15 @@ func TestUpsert(t *testing.T) {
 	assert.Equal(t, 5, len(f.helmKube.updates))
 }
 
+func TestDelete(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
+	assert.Nil(t, err)
+	err = f.client.Delete(f.ctx, postgres)
+	assert.Nil(t, err)
+	assert.Equal(t, 5, len(f.helmKube.deletes))
+}
+
 func TestUpsertMutableAndImmutable(t *testing.T) {
 	f := newClientTestFixture(t)
 	eDeploy := MustParseYAMLFromString(t, testyaml.SanchoYAML)[0]
@@ -204,8 +213,6 @@ func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout str
 	return f.stdout, f.stderr, f.err
 }
 
-var _ kubectlRunner = &fakeKubectlRunner{}
-
 type fakeHelmKubeClient struct {
 	updates   kube.ResourceList
 	creates   kube.ResourceList
@@ -300,7 +307,6 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 
 	ret.client = K8sClient{
 		env:               EnvUnknown,
-		kubectlRunner:     ret.runner,
 		core:              core,
 		portForwardClient: &FakePortForwardClient{},
 		runtimeAsync:      runtimeAsync,

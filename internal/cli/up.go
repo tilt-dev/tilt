@@ -18,7 +18,6 @@ import (
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -205,10 +204,6 @@ func provideUpdateModeFlag() buildcontrol.UpdateModeFlag {
 
 func provideLogActions() store.LogActionsFlag {
 	return store.LogActionsFlag(logActionsFlag)
-}
-
-func provideKubectlLogLevel() k8s.KubectlLogLevel {
-	return k8s.KubectlLogLevel(klogLevel)
 }
 
 func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
