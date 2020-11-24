@@ -178,7 +178,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
 	case metrics.MetricsModeAction:
-		// TODO(nick): Fill this in
+		handleMetricsModeAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -527,6 +527,10 @@ func handleConfigsReloaded(
 ) {
 
 	manifests := event.Manifests
+	manifestNames := map[model.ManifestName]bool{}
+	for _, m := range manifests {
+		manifestNames[m.Name] = true
+	}
 
 	b := state.TiltfileState.CurrentBuild
 
@@ -559,9 +563,13 @@ func handleConfigsReloaded(
 		state.TeamID = event.TeamID
 	}
 
-	// Add metrics if it exists, even if execution failed.
-	if event.MetricsSettings.Enabled || event.Err == nil {
-		state.MetricsSettings = event.MetricsSettings
+	// Only set the metrics settings from the tiltfile if the mode
+	// hasn't been configured from elsewhere.
+	if state.MetricsMode == store.MetricsNone {
+		// Add metrics if it exists, even if execution failed.
+		if event.MetricsSettings.Enabled || event.Err == nil {
+			state.MetricsSettings = event.MetricsSettings
+		}
 	}
 
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
@@ -628,8 +636,25 @@ func handleConfigsReloaded(
 		}
 		state.UpsertManifestTarget(mt)
 	}
-	// TODO(dmiller) handle deleting manifests
+
+	// Go through all the existing manifest targets:
+	// 1) If they were from the Tiltfile, but were removed from the latest
+	//    Tiltfile execution, delete them.
+	// 2) If they were not from the Tiltfile, preserve them.
+	for _, mt := range state.Targets() {
+		m := mt.Manifest
+		if m.Source == model.ManifestSourceTiltfile {
+			if !manifestNames[m.Name] {
+				delete(state.ManifestTargets, m.Name)
+			}
+			continue
+		}
+
+		newDefOrder = append(newDefOrder, m.Name)
+	}
+
 	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
+
 	state.ManifestDefinitionOrder = newDefOrder
 	state.ConfigFiles = event.ConfigFiles
 
@@ -802,4 +827,42 @@ func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 	state.CloudStatus.WaitingForStatusPostRegistration = true
+}
+
+func handleMetricsModeAction(state *store.EngineState, action metrics.MetricsModeAction) {
+	state.MetricsMode = action.Mode
+	state.MetricsSettings = action.Settings
+
+	manifests := action.Manifests
+	manifestNames := map[model.ManifestName]bool{}
+	for _, m := range manifests {
+		manifestNames[m.Name] = true
+
+		mt, ok := state.ManifestTargets[m.ManifestName()]
+		if !ok {
+			mt = store.NewManifestTarget(m)
+		}
+
+		mt.Manifest = m
+		state.UpsertManifestTarget(mt)
+	}
+
+	// Go through all the existing manifest targets:
+	// 1) If they were from the metrics, but were removed from the latest
+	//    action, delete them.
+	// 2) If they were not from the metrics, preserve them.
+	newDefOrder := make([]model.ManifestName, 0)
+	for _, mt := range state.Targets() {
+		m := mt.Manifest
+		if m.Source == model.ManifestSourceMetrics {
+			if !manifestNames[m.Name] {
+				delete(state.ManifestTargets, m.Name)
+				continue
+			}
+		}
+
+		newDefOrder = append(newDefOrder, m.Name)
+	}
+
+	state.ManifestDefinitionOrder = newDefOrder
 }

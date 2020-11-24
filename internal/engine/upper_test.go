@@ -3592,6 +3592,26 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestMetricsModeAction(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m1 := f.newManifest("fe")
+	f.Start([]model.Manifest{m1})
+
+	m2 := f.newManifest("collector")
+	f.store.Dispatch(metrics.MetricsModeAction{
+		Mode:      store.MetricsLocal,
+		Settings:  model.MetricsSettings{Address: "localhost:10352"},
+		Manifests: []model.Manifest{m2},
+	})
+
+	f.waitForCompletedBuildCount(2)
+	f.withState(func(state store.EngineState) {
+		assert.Equal(t, []model.ManifestName{"fe", "collector"}, state.ManifestDefinitionOrder)
+	})
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T

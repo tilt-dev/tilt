@@ -91,7 +91,7 @@ func (icb *imageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
 
 	defer func() {
 		latencyMs := float64(time.Since(startTime)) / float64(time.Millisecond)
-		errorTag := ""
+		errorTag := "0"
 		if err != nil {
 			errorTag = "1"
 		}
