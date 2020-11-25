@@ -179,6 +179,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleSwitchTerminalModeAction(state, action)
 	case metrics.MetricsModeAction:
 		handleMetricsModeAction(state, action)
+	case metrics.MetricsDashboardAction:
+		handleMetricsDashboardAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -674,6 +676,10 @@ func handleConfigsReloaded(
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
+	manifest, ok := state.Manifest(action.ManifestName())
+	if ok && manifest.Source == model.ManifestSourceMetrics {
+		return
+	}
 	state.LogStore.Append(action, state.Secrets)
 }
 
@@ -830,6 +836,11 @@ func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 }
 
 func handleMetricsModeAction(state *store.EngineState, action metrics.MetricsModeAction) {
+	// Don't deploy the local metrics stack in CI mode.
+	if action.Serving.Mode == model.MetricsLocal && state.EngineMode != store.EngineModeUp {
+		return
+	}
+
 	state.MetricsServing = action.Serving
 	state.MetricsSettings = action.Settings
 
@@ -865,4 +876,8 @@ func handleMetricsModeAction(state *store.EngineState, action metrics.MetricsMod
 	}
 
 	state.ManifestDefinitionOrder = newDefOrder
+}
+
+func handleMetricsDashboardAction(state *store.EngineState, action metrics.MetricsDashboardAction) {
+	state.MetricsServing.GrafanaHost = action.GrafanaHost
 }

@@ -25,6 +25,7 @@ import {
   SnapshotHighlight,
   SocketState,
   ShowErrorModal,
+  TargetType,
 } from "./types"
 import { logLinesFromString } from "./logs"
 import HudState from "./HudState"
@@ -349,6 +350,10 @@ class HUD extends Component<HudProps, HudState> {
   renderSecondaryNav() {
     let view = this.state.view
     let resources = view?.resources ?? []
+    let hasK8s = resources.some(r => {
+      let specs = r.specs ?? []
+      return specs.some(spec => spec.type === TargetType.K8s)
+    })
 
     let secondaryNavRoute = (
       t: ResourceView,
@@ -363,7 +368,8 @@ class HUD extends Component<HudProps, HudState> {
 
       let facetsUrl = name !== "" ? this.path(`/r/${name}/facets`) : null
       let metricsUrl = ""
-      if (view.metricsServing?.mode === "local" && name === "") {
+      let showMetricsTab = name === "" && (hasK8s || view?.metricsServing?.mode)
+      if (showMetricsTab) {
         metricsUrl = this.path("/metrics")
       }
 

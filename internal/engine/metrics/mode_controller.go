@@ -23,12 +23,6 @@ const promManifestName = model.ManifestName("(tilt-prometheus)")
 const collectorHostPort = 10351
 const grafanaHostPort = 10352
 
-func IsLocalMetricsStack(name model.ManifestName) bool {
-	return name == grafanaManifestName ||
-		name == collectorManifestName ||
-		name == promManifestName
-}
-
 type ModeController struct {
 	host        model.WebHost
 	userPrefs   user.PrefsInterface
@@ -91,18 +85,78 @@ func (c *ModeController) SetUserMode(ctx context.Context, rStore store.RStore, n
 	c.setMetricsNone(ctx, rStore)
 }
 
+// When the grafana dashboard becomes ready, fire an action to tell
+// the UI where to find it.
+func (c *ModeController) checkReady(ctx context.Context, rStore store.RStore) {
+	state := rStore.RLockState()
+	defer rStore.RUnlockState()
+
+	if state.MetricsServing.Mode != model.MetricsLocal {
+		// No readiness check needed.
+		return
+	}
+
+	if state.MetricsServing.GrafanaHost != "" {
+		// Grafana URL already populated.
+		return
+	}
+
+	ms, ok := state.ManifestState(grafanaManifestName)
+	if !ok {
+		return
+	}
+
+	status := ms.K8sRuntimeState().RuntimeStatus()
+	if status != model.RuntimeStatusOK {
+		return
+	}
+
+	rStore.Dispatch(MetricsDashboardAction{
+		GrafanaHost: fmt.Sprintf("%s:%d", c.host, grafanaHostPort),
+	})
+}
+
 func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore) {
+	c.initialize(ctx, rStore)
+	c.checkReady(ctx, rStore)
+}
+
+func (c *ModeController) initialize(ctx context.Context, rStore store.RStore) {
 	if c.initialized {
 		return
 	}
-	c.initialized = true
 
 	mode := c.desiredMetricsMode()
 	if mode != model.MetricsLocal {
+		c.initialized = true
+		return
+	}
+
+	if !c.supportsLocalMetricsStack(rStore) {
+		// Check again later.
 		return
 	}
 
 	c.setMetricsLocal(ctx, rStore)
+	c.initialized = true
+}
+
+// Before deploying a local metrics stack, we want to check if:
+// 1) The user is running Kubernetes
+// 2) The user is trying to deploy to a valid Kubernetes cluster (i.e., we don't
+//    want to accidentally deploy to a prod cluster).
+// As a proxy for both of these, we check that the the initial Tiltfile execution
+// has completed with some Kubernetes resources.
+func (c *ModeController) supportsLocalMetricsStack(rStore store.RStore) bool {
+	state := rStore.RLockState()
+	defer rStore.RUnlockState()
+
+	for _, mt := range state.Targets() {
+		if mt.Manifest.IsK8s() && mt.Manifest.Source == model.ManifestSourceTiltfile {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *ModeController) setMetricsNone(ctx context.Context, rStore store.RStore) {
@@ -122,8 +176,7 @@ func (c *ModeController) setMetricsLocal(ctx context.Context, rStore store.RStor
 
 	rStore.Dispatch(MetricsModeAction{
 		Serving: store.MetricsServing{
-			Mode:        model.MetricsLocal,
-			GrafanaHost: fmt.Sprintf("%s:%d", c.host, grafanaHostPort),
+			Mode: model.MetricsLocal,
 		},
 		Settings: model.MetricsSettings{
 			Enabled:         true,
@@ -197,7 +250,7 @@ func (c *ModeController) localMetricsManifest(name model.ManifestName, yaml []st
 	}
 
 	kTarget, err := k8s.NewTarget(model.TargetName(name), entities, ports,
-		nil, nil, nil, model.PodReadinessIgnore, nil, nil)
+		nil, nil, nil, model.PodReadinessWait, nil, nil)
 	if err != nil {
 		return model.Manifest{}, fmt.Errorf("init local metrics: %v", err)
 	}

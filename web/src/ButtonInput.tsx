@@ -11,6 +11,7 @@ let ButtonInputRoot = styled.input`
 type ButtonLinkProps = {
   value: string
   type: string
+  onClick?: () => void
 }
 
 function ButtonInput(props: ButtonLinkProps) {

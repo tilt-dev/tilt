@@ -213,11 +213,12 @@ func (s *HeadsUpServer) HandleMetricsOpt(w http.ResponseWriter, req *http.Reques
 	}
 
 	newState := model.MetricsMode(strings.TrimSpace(string(content)))
-	if newState != model.MetricsDisabled && newState != model.MetricsLocal {
+	if newState != model.MetricsDisabled && newState != model.MetricsLocal && newState != model.MetricsDefault {
 		http.Error(w, fmt.Sprintf("unexpected state: %v", string(content)), http.StatusBadRequest)
 		return
 	}
 
+	s.a.Incr("metrics.mode.update", map[string]string{"mode": string(newState)})
 	s.metrics.SetUserMode(req.Context(), s.store, newState)
 }
 
