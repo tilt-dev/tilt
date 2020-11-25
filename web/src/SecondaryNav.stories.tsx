@@ -22,6 +22,25 @@ function topBarDefault() {
           numberOfAlerts={1}
           facetsUrl="/r/foo/facets"
           traceNav={null}
+          metricsUrl=""
+        />
+      </BG>
+    </MemoryRouter>
+  )
+}
+
+function topBarWithMetrics() {
+  return (
+    <MemoryRouter>
+      <BG>
+        <SecondaryNav
+          logUrl="/"
+          alertsUrl="/alerts"
+          resourceView={ResourceView.Metrics}
+          numberOfAlerts={1}
+          facetsUrl=""
+          traceNav={null}
+          metricsUrl="/metrics"
         />
       </BG>
     </MemoryRouter>
@@ -39,6 +58,7 @@ function topBarTeam() {
           numberOfAlerts={1}
           facetsUrl="/r/foo/facets"
           traceNav={null}
+          metricsUrl=""
         />
       </BG>
     </MemoryRouter>
@@ -67,6 +87,7 @@ function traceNavFirst() {
           numberOfAlerts={0}
           facetsUrl="/r/foo/facets"
           traceNav={traceNav}
+          metricsUrl=""
         />
       </BG>
     </MemoryRouter>
@@ -94,6 +115,7 @@ function traceNavLast() {
           numberOfAlerts={0}
           facetsUrl="/r/foo/facets"
           traceNav={traceNav}
+          metricsUrl=""
         />
       </BG>
     </MemoryRouter>
@@ -102,6 +124,7 @@ function traceNavLast() {
 
 storiesOf("SecondaryNav", module)
   .add("default", topBarDefault)
+  .add("metrics", topBarWithMetrics)
   .add("team", topBarTeam)
   .add("traceNavFirst", traceNavFirst)
   .add("traceNavLast", traceNavLast)

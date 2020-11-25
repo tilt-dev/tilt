@@ -83,6 +83,11 @@ func (s prodServer) fetchFromAssetBucket(w http.ResponseWriter, req *http.Reques
 
 	// In case we change the length of the response below, we don't want the browser to be mad
 	outres.Header.Del("Content-Length")
+
+	// The x-frame-options header isn't applicable to this app. We often
+	// want to embed other frames.
+	outres.Header.Del("X-Frame-Options")
+
 	copyHeader(w.Header(), outres.Header)
 
 	resBody, err := ioutil.ReadAll(outres.Body)

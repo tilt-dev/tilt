@@ -27,6 +27,9 @@ const pathToTag = (path: string): string => {
   if (parts[0] === "trace") {
     return "trace"
   }
+  if (parts[0] === "metrics") {
+    return "metrics"
+  }
 
   if (parts[0] === "r") {
     if (parts.length <= 2) {
@@ -40,6 +43,9 @@ const pathToTag = (path: string): string => {
     }
     if (parts[2] === "trace") {
       return "trace"
+    }
+    if (parts[2] === "metrics") {
+      return "metrics"
     }
   }
 
