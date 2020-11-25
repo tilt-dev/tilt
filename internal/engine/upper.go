@@ -565,7 +565,7 @@ func handleConfigsReloaded(
 
 	// Only set the metrics settings from the tiltfile if the mode
 	// hasn't been configured from elsewhere.
-	if state.MetricsMode == store.MetricsNone {
+	if state.MetricsServing.Mode == store.MetricsNone {
 		// Add metrics if it exists, even if execution failed.
 		if event.MetricsSettings.Enabled || event.Err == nil {
 			state.MetricsSettings = event.MetricsSettings
@@ -830,7 +830,7 @@ func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 }
 
 func handleMetricsModeAction(state *store.EngineState, action metrics.MetricsModeAction) {
-	state.MetricsMode = action.Mode
+	state.MetricsServing = action.Serving
 	state.MetricsSettings = action.Settings
 
 	manifests := action.Manifests

@@ -31,6 +31,11 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			continue
 		}
 
+		// Skip manifests that don't come from the tiltfile.
+		if mt.Manifest.Source != model.ManifestSourceTiltfile {
+			continue
+		}
+
 		ms := mt.State
 
 		var absWatchDirs []string
@@ -166,8 +171,16 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 	ret.TiltStartTime = start
 
 	ret.TiltfileKey = s.TiltfilePath
+	ret.MetricsServing = toMetricsServingProto(s.MetricsServing)
 
 	return ret, nil
+}
+
+func toMetricsServingProto(s store.MetricsServing) *proto_webview.MetricsServing {
+	return &proto_webview.MetricsServing{
+		Mode:        string(s.Mode),
+		GrafanaHost: s.GrafanaHost,
+	}
 }
 
 func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, error) {

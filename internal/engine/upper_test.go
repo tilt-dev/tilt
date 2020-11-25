@@ -3601,7 +3601,7 @@ func TestMetricsModeAction(t *testing.T) {
 
 	m2 := f.newManifest("collector")
 	f.store.Dispatch(metrics.MetricsModeAction{
-		Mode:      store.MetricsLocal,
+		Serving:   store.MetricsServing{Mode: store.MetricsLocal},
 		Settings:  model.MetricsSettings{Address: "localhost:10352"},
 		Manifests: []model.Manifest{m2},
 	})

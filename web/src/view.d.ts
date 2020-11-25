@@ -28,6 +28,7 @@ declare namespace Proto {
      */
     tiltStartTime?: string;
     tiltfileKey?: string;
+    metricsServing?: webviewMetricsServing;
   }
   export interface webviewVersionSettings {
     checkUpdates?: boolean;
@@ -88,6 +89,13 @@ declare namespace Proto {
     crashLogSpanId?: string;
     facets?: webviewFacet[];
     queued?: boolean;
+  }
+  export interface webviewMetricsServing {
+    /**
+     * Whether we're using the local or remote metrics stack.
+     */
+    mode?: string;
+    grafanaHost?: string;
   }
   export interface webviewLogSpan {
     manifestName?: string;

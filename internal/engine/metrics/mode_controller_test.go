@@ -19,7 +19,7 @@ func TestEnableLocalMetrics(t *testing.T) {
 
 	f.mc.OnChange(f.ctx, f.st)
 	if assert.NotNil(t, f.st.action) {
-		assert.Equal(t, store.MetricsLocal, f.st.action.Mode)
+		assert.Equal(t, store.MetricsLocal, f.st.action.Serving.Mode)
 		assert.Equal(t, 3, len(f.st.action.Manifests))
 	}
 }

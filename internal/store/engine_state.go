@@ -113,7 +113,7 @@ type EngineState struct {
 	TelemetrySettings model.TelemetrySettings
 
 	MetricsSettings model.MetricsSettings
-	MetricsMode     MetricsMode
+	MetricsServing  MetricsServing
 
 	UserConfigState model.UserConfigState
 }
@@ -709,6 +709,11 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 	for _, name := range s.ManifestDefinitionOrder {
 		mt, ok := s.ManifestTargets[name]
 		if !ok {
+			continue
+		}
+
+		// Skip manifests that don't come from the tiltfile.
+		if mt.Manifest.Source != model.ManifestSourceTiltfile {
 			continue
 		}
 

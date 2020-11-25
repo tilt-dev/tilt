@@ -36,10 +36,10 @@ func NewModeController(host model.WebHost) *ModeController {
 	return &ModeController{host: host}
 }
 
-func (c *ModeController) currentMode(rStore store.RStore) store.MetricsMode {
+func (c *ModeController) currentMode(rStore store.RStore) store.MetricsServing {
 	state := rStore.RLockState()
 	defer rStore.RUnlockState()
-	return state.MetricsMode
+	return state.MetricsServing
 }
 
 func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore) {
@@ -63,7 +63,10 @@ func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore) {
 	}
 
 	rStore.Dispatch(MetricsModeAction{
-		Mode: store.MetricsLocal,
+		Serving: store.MetricsServing{
+			Mode:        store.MetricsLocal,
+			GrafanaHost: fmt.Sprintf("%s:%d", c.host, grafanaHostPort),
+		},
 		Settings: model.MetricsSettings{
 			Enabled:         true,
 			Address:         fmt.Sprintf("%s:%d", c.host, collectorHostPort),

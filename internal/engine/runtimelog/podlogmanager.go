@@ -85,7 +85,16 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	}
 
 	stateWatches := make(map[podLogKey]bool)
-	for _, ms := range state.ManifestStates() {
+	for _, mt := range state.Targets() {
+		man := mt.Manifest
+
+		// Skip logs that don't come from tiltfile-generated manifests
+		// (in particular, the local metrics stack).
+		if man.Source != model.ManifestSourceTiltfile {
+			continue
+		}
+
+		ms := mt.State
 		runtime := ms.K8sRuntimeState()
 		for _, pod := range runtime.PodList() {
 			if pod.PodID == "" {
