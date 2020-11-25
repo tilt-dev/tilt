@@ -1,28 +1,21 @@
 package k8s
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	restfake "k8s.io/client-go/rest/fake"
 	ktesting "k8s.io/client-go/testing"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -51,7 +44,8 @@ func TestUpsert(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
-	assert.Equal(t, 5, len(f.helmKube.updates))
+	assert.Equal(t, 5, len(f.runner.calls))
+	assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
 }
 
 func TestUpsertMutableAndImmutable(t *testing.T) {
@@ -65,30 +59,56 @@ func TestUpsertMutableAndImmutable(t *testing.T) {
 		t.FailNow()
 	}
 
-	require.Len(t, f.helmKube.updates, 2)
-	require.Len(t, f.helmKube.creates, 1)
+	// two different calls: one for mutable entities (namespace, deployment),
+	// one for immutable (job)
+	require.Len(t, f.runner.calls, 3)
+
+	call0 := f.runner.calls[0]
+	call1 := f.runner.calls[1]
+	require.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, call0.argv, "expected args for call 0")
+	require.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, call1.argv, "expected args for call 1")
 
 	// compare entities instead of strings because str > entity > string gets weird
-	call0Entity := NewK8sEntity(f.helmKube.updates[0].Object)
-	call1Entity := NewK8sEntity(f.helmKube.updates[1].Object)
+	call0Entity := mustParseYAML(t, call0.stdin)[0]
+	call1Entity := mustParseYAML(t, call1.stdin)[0]
 
 	// `apply` should preserve input order of entities (we sort them further upstream)
 	require.Equal(t, eDeploy, call0Entity, "expect call 0 to have applied deployment first (preserve input order)")
 	require.Equal(t, eNamespace, call1Entity, "expect call 0 to have applied namespace second (preserve input order)")
 
-	call2Entity := NewK8sEntity(f.helmKube.creates[0].Object)
-	require.Equal(t, eJob, call2Entity, "expect create job")
+	call2 := f.runner.calls[2]
+	require.Equal(t, []string{"replace", "-o", "yaml", "--force", "-f", "-"}, call2.argv, "expected args for call 1")
+	call2Entities := mustParseYAML(t, call2.stdin)
+	require.Len(t, call2Entities, 1, "expect only one immutable entity applied")
+	require.Equal(t, eJob, call2Entities[0], "expect call 1 to have applied job")
 }
 
 func TestUpsertAnnotationTooLong(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
 
-	f.helmKube.updateErr = fmt.Errorf(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
+	f.setStderr(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
 	_, err := f.k8sUpsert(f.ctx, postgres)
-	assert.Nil(t, err)
-	assert.Equal(t, 1, len(f.helmKube.creates))
-	assert.Equal(t, 4, len(f.helmKube.updates))
+	if !assert.Nil(t, err) {
+		t.FailNow()
+	}
+
+	expectedArgs := [][]string{
+		{"apply", "-o", "yaml", "-f", "-"},
+		{"delete", "--ignore-not-found=true", "-f", "-"},
+		{"create", "-o", "yaml", "-f", "-"},
+		{"apply", "-o", "yaml", "-f", "-"},
+		{"apply", "-o", "yaml", "-f", "-"},
+		{"apply", "-o", "yaml", "-f", "-"},
+		{"apply", "-o", "yaml", "-f", "-"},
+	}
+	require.Len(t, f.runner.calls, len(expectedArgs))
+
+	for i, call := range f.runner.calls {
+		require.Equalf(t, expectedArgs[i], call.argv, "expected args for call %d", i)
+		observedEntities := mustParseYAML(t, call.stdin)
+		require.Len(t, observedEntities, 1, "expect 1 entity")
+	}
 }
 
 func TestUpsertStatefulsetForbidden(t *testing.T) {
@@ -96,11 +116,17 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
 	assert.Nil(t, err)
 
-	f.helmKube.updateErr = fmt.Errorf(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
+	f.setStderr(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
 	_, err = f.k8sUpsert(f.ctx, postgres)
-	assert.Nil(t, err)
-	assert.Equal(t, 1, len(f.helmKube.creates))
-	assert.Equal(t, 4, len(f.helmKube.updates))
+	if assert.Nil(t, err) && assert.Equal(t, 7, len(f.runner.calls)) {
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
+		assert.Equal(t, []string{"delete", "--ignore-not-found=true", "-f", "-"}, f.runner.calls[1].argv)
+		assert.Equal(t, []string{"create", "-o", "yaml", "-f", "-"}, f.runner.calls[2].argv)
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[3].argv)
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[4].argv)
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[5].argv)
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[6].argv)
+	}
 }
 
 func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
@@ -112,14 +138,16 @@ func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 	// field error. Make sure we treat it as what it is and bail out of `kubectl apply`
 	// rather than trying to --force
 	errStr := `Error from server (Forbidden): error when creating "STDIN": deployments.apps "sancho" is forbidden: unable to create new content in namespace sancho-ns because it is being terminated`
-	f.helmKube.updateErr = fmt.Errorf(errStr)
+	f.setStderr(errStr)
 
 	_, err = f.k8sUpsert(f.ctx, postgres)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), errStr)
 	}
-	assert.Equal(t, 0, len(f.helmKube.updates))
-	assert.Equal(t, 0, len(f.helmKube.creates))
+	if assert.Equal(t, 1, len(f.runner.calls)) {
+		assert.Equal(t, []string{"apply", "-o", "yaml", "-f", "-"}, f.runner.calls[0].argv)
+	}
+
 }
 
 func TestGetGroup(t *testing.T) {
@@ -143,6 +171,25 @@ func TestGetGroup(t *testing.T) {
 			assert.Equal(t, test.expectedGroup, ReferenceGVK(obj).Group)
 		})
 	}
+}
+
+func TestUpsertTimeout(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
+
+	f.runner.pauseForever = true
+
+	// we can't use a fake clock with context.Context, so we'll cheat a bit
+	// and just pass Upsert an already expired context.
+	var cancel context.CancelFunc
+	f.ctx, cancel = context.WithDeadline(f.ctx, time.Now().Add(-time.Hour))
+	defer cancel()
+
+	timeout := time.Second * 123
+	_, err := f.client.Upsert(f.ctx, postgres, timeout)
+
+	require.Error(t, err)
+	require.Equal(t, err.Error(), timeoutError(timeout).Error())
 }
 
 type call struct {
@@ -206,55 +253,6 @@ func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout str
 
 var _ kubectlRunner = &fakeKubectlRunner{}
 
-type fakeHelmKubeClient struct {
-	updates   kube.ResourceList
-	creates   kube.ResourceList
-	deletes   kube.ResourceList
-	updateErr error
-}
-
-func (c *fakeHelmKubeClient) Update(original, target kube.ResourceList, force bool) (*kube.Result, error) {
-	defer func() {
-		c.updateErr = nil
-	}()
-
-	if c.updateErr != nil {
-		return nil, c.updateErr
-	}
-	c.updates = append(c.updates, target...)
-	return &kube.Result{Updated: target}, nil
-}
-func (c *fakeHelmKubeClient) Delete(l kube.ResourceList) (*kube.Result, []error) {
-	c.deletes = append(c.deletes, l...)
-	return &kube.Result{Deleted: l}, nil
-}
-func (c *fakeHelmKubeClient) Create(l kube.ResourceList) (*kube.Result, error) {
-	c.creates = append(c.creates, l...)
-	return &kube.Result{Created: l}, nil
-}
-func (c *fakeHelmKubeClient) Build(r io.Reader, validate bool) (kube.ResourceList, error) {
-	entities, err := ParseYAML(r)
-	if err != nil {
-		return nil, err
-	}
-	list := kube.ResourceList{}
-	for _, e := range entities {
-		list = append(list, &resource.Info{
-			// Create a fake HTTP client that returns 404 for every request.
-			Client: &restfake.RESTClient{
-				NegotiatedSerializer: scheme.Codecs,
-				Resp:                 &http.Response{StatusCode: http.StatusNotFound, Body: ioutil.NopCloser(&bytes.Buffer{})},
-			},
-			Mapping:   &meta.RESTMapping{Scope: meta.RESTScopeNamespace},
-			Object:    e.Obj,
-			Name:      e.Name(),
-			Namespace: string(e.Namespace()),
-		})
-	}
-
-	return list, nil
-}
-
 type clientTestFixture struct {
 	t           *testing.T
 	ctx         context.Context
@@ -262,7 +260,6 @@ type clientTestFixture struct {
 	runner      *fakeKubectlRunner
 	tracker     ktesting.ObjectTracker
 	watchNotify chan watch.Interface
-	helmKube    *fakeHelmKubeClient
 }
 
 func newClientTestFixture(t *testing.T) *clientTestFixture {
@@ -295,9 +292,6 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	core := cs.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
 	registryAsync := newRegistryAsync(EnvUnknown, core, runtimeAsync)
-	helmKube := &fakeHelmKubeClient{}
-	ret.helmKube = helmKube
-
 	ret.client = K8sClient{
 		env:               EnvUnknown,
 		kubectlRunner:     ret.runner,
@@ -305,8 +299,6 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 		portForwardClient: &FakePortForwardClient{},
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,
-		helmKubeClient:    helmKube,
-		drm:               fakeRESTMapper{},
 	}
 
 	return ret

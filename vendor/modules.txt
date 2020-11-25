@@ -46,6 +46,8 @@ github.com/blang/semver
 ## explicit
 # github.com/bugsnag/panicwrap v1.2.0
 ## explicit
+# github.com/cenkalti/backoff v2.2.1+incompatible
+## explicit
 # github.com/census-instrumentation/opencensus-proto v0.2.1
 github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1
 github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1

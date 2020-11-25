@@ -9,9 +9,10 @@ import (
 	"strings"
 	"time"
 
+	_ "helm.sh/helm/v3/pkg/kube"
+
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -21,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -127,15 +127,8 @@ type Client interface {
 }
 
 type RESTMapper interface {
-	meta.RESTMapper
+	RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error)
 	Reset()
-}
-
-type HelmKubeClient interface {
-	Update(original, target kube.ResourceList, force bool) (*kube.Result, error)
-	Delete(existing kube.ResourceList) (*kube.Result, []error)
-	Create(l kube.ResourceList) (*kube.Result, error)
-	Build(r io.Reader, validate bool) (kube.ResourceList, error)
 }
 
 type K8sClient struct {
@@ -146,15 +139,13 @@ type K8sClient struct {
 	portForwardClient PortForwardClient
 	configNamespace   Namespace
 	clientset         kubernetes.Interface
-	discovery         discovery.CachedDiscoveryInterface
+	discovery         discovery.DiscoveryInterface
 	dynamic           dynamic.Interface
 	metadata          metadata.Interface
 	runtimeAsync      *runtimeAsync
 	registryAsync     *registryAsync
 	nodeIPAsync       *nodeIPAsync
 	drm               RESTMapper
-	clientLoader      clientcmd.ClientConfig
-	helmKubeClient    HelmKubeClient
 }
 
 var _ Client = K8sClient{}
@@ -213,7 +204,7 @@ func ProvideK8sClient(
 	browser.Stdout = writer
 	browser.Stderr = writer
 
-	c := K8sClient{
+	return K8sClient{
 		env:               env,
 		kubectlRunner:     runner,
 		core:              core,
@@ -228,10 +219,7 @@ func ProvideK8sClient(
 		dynamic:           di,
 		drm:               drm,
 		metadata:          meta,
-		clientLoader:      clientLoader,
 	}
-	c.helmKubeClient = kube.New(c)
-	return c
 }
 
 func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
@@ -289,19 +277,6 @@ func timeoutError(timeout time.Duration) error {
 	return errors.New(fmt.Sprintf("Killed kubectl. Hit timeout of %v.", timeout))
 }
 
-func (k K8sClient) ToRESTConfig() (*rest.Config, error) {
-	return k.restConfig, nil
-}
-func (k K8sClient) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
-	return k.discovery, nil
-}
-func (k K8sClient) ToRESTMapper() (meta.RESTMapper, error) {
-	return k.drm, nil
-}
-func (k K8sClient) ToRawKubeConfigLoader() clientcmd.ClientConfig {
-	return k.clientLoader
-}
-
 func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	result := make([]K8sEntity, 0, len(entities))
 
@@ -339,141 +314,42 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout tim
 }
 
 func (k K8sClient) forceReplaceEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
-	existing, resources, err := k.prepareUpdate(ctx, []K8sEntity{entity})
+	stdout, stderr, err := k.actOnEntity(ctx, []string{"replace", "-o", "yaml", "--force"}, entity)
 	if err != nil {
-		return nil, errors.Wrap(err, "kubernetes replace")
+		return nil, errors.Wrapf(err, "kubectl replace:\nstderr: %s", stderr)
 	}
 
-	if len(existing) > 0 {
-		_, errs := k.helmKubeClient.Delete(existing)
-		for _, err := range errs {
-			if apierrors.IsNotFound(err) {
-				continue
-			}
-			return nil, err
-		}
-	}
-
-	result, err := k.helmKubeClient.Create(resources)
-	if err != nil {
-		return nil, errors.Wrap(err, "kubernetes create")
-	}
-
-	return k.helmResultToEntities(result)
-}
-
-func (k K8sClient) prepareUpdate(ctx context.Context, entities []K8sEntity) (kube.ResourceList, kube.ResourceList, error) {
-	// Make sure that we've discovered the REST mapping for all these entities.
-	for _, e := range entities {
-		_, _ = k.gvr(ctx, e.GVK())
-	}
-
-	rawYAML, err := SerializeSpecYAMLToBuffer(entities)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	resources, err := k.helmKubeClient.Build(rawYAML, false)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	existing, err := existingResourceConflict(resources)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return existing, resources, nil
-}
-
-// Loosely adapted from Helm: visit the resource list and get all the existing resources.
-func existingResourceConflict(resources kube.ResourceList) (kube.ResourceList, error) {
-	var requireUpdate kube.ResourceList
-
-	err := resources.Visit(func(info *resource.Info, err error) error {
-		if err != nil {
-			return err
-		}
-
-		helper := resource.NewHelper(info.Client, info.Mapping)
-		existing, err := helper.Get(info.Namespace, info.Name)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
-			}
-			return errors.Wrap(err, "could not get information about the resource")
-		}
-
-		newRes := *info
-		_ = newRes.Refresh(existing, true)
-
-		requireUpdate.Append(&newRes)
-		return nil
-	})
-
-	return requireUpdate, err
-}
-
-func (k K8sClient) helmResultToEntities(result *kube.Result) ([]K8sEntity, error) {
-	entities := []K8sEntity{}
-	for _, info := range result.Created {
-		entities = append(entities, NewK8sEntity(info.Object))
-	}
-	for _, info := range result.Updated {
-		entities = append(entities, NewK8sEntity(info.Object))
-	}
-
-	// Helm parses the results as unstructured info, but Tilt needs them parsed with the current
-	// API scheme. The easiest way to do this is to serialize them to yaml and re-parse again.
-	buf, err := SerializeSpecYAMLToBuffer(entities)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading kubernetes result")
-	}
-
-	parsed, err := ParseYAML(buf)
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing kubernetes result")
-	}
-	return parsed, nil
+	return parseYAMLFromStringWithDeletedResources(stdout)
 }
 
 // applyEntityAndMaybeForce `kubectl apply`'s the given entity, and if the call fails with
 // an immutible field error, attempts to `replace --force` it.
 func (k K8sClient) applyEntityAndMaybeForce(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
-	existing, resources, err := k.prepareUpdate(ctx, []K8sEntity{entity})
+	stdout, stderr, err := k.actOnEntity(ctx, []string{"apply", "-o", "yaml"}, entity)
 	if err != nil {
-		return nil, errors.Wrap(err, "kubernetes apply")
-	}
+		reason, shouldTryReplace := maybeShouldTryReplaceReason(stderr)
 
-	result, err := k.helmKubeClient.Update(existing, resources, false)
-	if err != nil {
-		reason, shouldTryReplace := maybeShouldTryReplaceReason(err.Error())
 		if !shouldTryReplace {
-			return nil, err
+			return nil, errors.Wrapf(err, "kubectl apply:\nstderr: %s", stderr)
 		}
 
-		// NOTE(maia): we don't use `kubectl replace --force`, because we want to ensure that all
+		// NOTE(maia): we don't use `kubecutl replace --force`, because we want to ensure that all
 		// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
 		// and recreated so they have all the new labels, etc. of their controlling k8s entity.
-		logger.Get(ctx).Infof("Updating %s failed. Attempting to delete + recreate: %s", entity.Name(), reason)
-		if len(existing) > 0 {
-			_, errs := k.helmKubeClient.Delete(existing)
-			for _, err := range errs {
-				if apierrors.IsNotFound(err) {
-					continue
-				}
-				return nil, err
-			}
-		}
-
-		result, err = k.helmKubeClient.Create(resources)
+		logger.Get(ctx).Infof("Applying %s failed. Retrying with 'kubectl delete && create': %s", entity.Name(), reason)
+		// --ignore-not-found because, e.g., if we fell back due to large metadata.annotations, the object might not exist
+		_, stderr, err = k.actOnEntity(ctx, []string{"delete", "--ignore-not-found=true"}, entity)
 		if err != nil {
-			return nil, errors.Wrap(err, "kubernetes create")
+			return nil, errors.Wrapf(err, "kubectl delete (as part of delete && create):\nstderr: %s", stderr)
+		}
+		stdout, stderr, err = k.actOnEntity(ctx, []string{"create", "-o", "yaml"}, entity)
+		if err != nil {
+			return nil, errors.Wrapf(err, "kubectl create (as part of delete && create):\nstderr: %s", stderr)
 		}
 		logger.Get(ctx).Infof("Succeeded!")
 	}
 
-	return k.helmResultToEntities(result)
+	return ParseYAMLFromString(stdout)
 }
 
 func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
