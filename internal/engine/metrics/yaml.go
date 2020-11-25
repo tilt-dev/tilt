@@ -312,9 +312,16 @@ data:
       type: prometheus
       url: http://tilt-local-metrics-prometheus:9090/
       default: true
-  grafana.ini: |+
+  grafana.ini: |-
+    [auth]
+    disable_login_form = true
+
     [auth.anonymous]
     enabled = true
+    org_role = Editor
+
+    [security]
+    allow_embedding = true
 `
 
 const grafanaDashboardConfig = `
@@ -355,7 +362,11 @@ data:
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {
+                "align": null,
+                "filterable": false
+              },
+              "mappings": []
             },
             "overrides": []
           },
@@ -393,25 +404,38 @@ data:
           "pointradius": 2,
           "points": true,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "/session/",
+              "dashes": true,
+              "points": false
+            }
+          ],
           "spaceLength": 10,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "rate(tiltfile_exec_duration_dist_sum[60s]) / rate(tiltfile_exec_duration_dist_count[60s])",
+              "expr": "rate(tiltfile_exec_duration_dist_sum{error=\"0\"}[60s]) / rate(tiltfile_exec_duration_dist_count{error=\"0\"}[60s]) unless rate(tiltfile_exec_duration_dist_count{error=\"0\"}[60s]) == 0",
+              "format": "time_series",
               "instant": false,
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Rolling 5 min avg (Error: {{error}})",
+              "legendFormat": "1 min avg",
               "refId": "B"
+            },
+            {
+              "expr": "tiltfile_exec_duration_dist_sum{error=\"0\"} / tiltfile_exec_duration_dist_count{error=\"0\"} unless tiltfile_exec_duration_dist_count{error=\"0\"} == 0",
+              "interval": "",
+              "legendFormat": "session avg",
+              "refId": "A"
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Tiltfile Execution (ms)",
+          "title": "Tiltfile Execution",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -447,8 +471,131 @@ data:
             "align": true,
             "alignLevel": null
           }
+        },
+        {
+          "aliasColors": {
+            "Rolling 15 minute average ": "yellow"
+          },
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "Prometheus",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": null,
+                "filterable": false
+              },
+              "mappings": []
+            },
+            "overrides": []
+          },
+          "fill": 0,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "hiddenSeries": false,
+          "id": 3,
+          "legend": {
+            "alignAsTable": false,
+            "avg": false,
+            "current": false,
+            "hideEmpty": false,
+            "hideZero": true,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": false
+          },
+          "percentage": false,
+          "pluginVersion": "7.3.3",
+          "pointradius": 2,
+          "points": true,
+          "renderer": "flot",
+          "seriesOverrides": [
+            {
+              "alias": "/session/",
+              "dashes": true,
+              "points": false
+            }
+          ],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "rate(image_build_duration_dist_sum{build_error=\"0\"}[60s]) / rate(image_build_duration_dist_count{build_error=\"0\"}[60s]) unless rate(image_build_duration_dist_count{build_error=\"0\"}[60s]) == 0",
+              "format": "time_series",
+              "instant": false,
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "rolling 1 min avg: {{image_ref}} ",
+              "refId": "B"
+            },
+            {
+              "expr": "image_build_duration_dist_sum{build_error=\"0\"} / image_build_duration_dist_count{build_error=\"0\"} unless image_build_duration_dist_count{build_error=\"0\"} == 0",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "session avg: {{image_ref}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Image Builds",
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ms",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": true,
+            "alignLevel": null
+          }
         }
       ],
+      "refresh": "5s",
       "schemaVersion": 26,
       "style": "dark",
       "tags": [],
@@ -463,6 +610,6 @@ data:
       "timezone": "",
       "title": "Tilt Local Metrics",
       "uid": "nIq4P-TMz",
-      "version": 2
+      "version": 8
     }
 `
