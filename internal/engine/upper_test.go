@@ -72,6 +72,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -3601,7 +3602,7 @@ func TestMetricsModeAction(t *testing.T) {
 
 	m2 := f.newManifest("collector")
 	f.store.Dispatch(metrics.MetricsModeAction{
-		Serving:   store.MetricsServing{Mode: store.MetricsLocal},
+		Serving:   store.MetricsServing{Mode: model.MetricsLocal},
 		Settings:  model.MetricsSettings{Address: "localhost:10352"},
 		Manifests: []model.Manifest{m2},
 	})
@@ -3744,7 +3745,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
-	mcc := metrics.NewModeController("localhost")
+	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
 	subs := ProvideSubscribers(h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, sm, ar, hudsc, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
 	ret.upper = NewUpper(ctx, st, subs)

@@ -28,3 +28,11 @@ func DefaultMetricsSettings() MetricsSettings {
 		ReportingPeriod: DefaultReportingPeriod,
 	}
 }
+
+// User metrics preferences
+type MetricsMode string
+
+const MetricsDefault = MetricsMode("")
+const MetricsDisabled = MetricsMode("disabled")
+const MetricsLocal = MetricsMode("local")
+const MetricsProd = MetricsMode("prod")

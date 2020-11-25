@@ -1,13 +1,8 @@
 package store
 
-// How metrics are served to the user.
-type MetricsMode string
-
-const MetricsNone = MetricsMode("")
-const MetricsLocal = MetricsMode("local")
-const MetricsProd = MetricsMode("prod")
+import "github.com/tilt-dev/tilt/pkg/model"
 
 type MetricsServing struct {
-	Mode        MetricsMode
+	Mode        model.MetricsMode
 	GrafanaHost string
 }

@@ -46,6 +46,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -76,8 +77,8 @@ var BaseWireSet = wire.NewSet(
 	docker.SwitchWireSet,
 
 	ProvideDeferredExporter,
-	metrics.NewController,
-	metrics.NewModeController,
+	metrics.WireSet,
+	user.WireSet,
 	dockercompose.NewDockerComposeClient,
 
 	clockwork.NewRealClock,

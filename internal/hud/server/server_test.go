@@ -14,7 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/user"
 
 	grpcRuntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/stretchr/testify/assert"
@@ -468,6 +470,28 @@ func TestSetTiltfileArgs(t *testing.T) {
 	assert.Equal(t, []string{"--foo", "bar", "as df"}, action.Args)
 }
 
+func TestMetricsOpter(t *testing.T) {
+	f := newTestFixture(t)
+
+	req, err := http.NewRequest("POST", "/api/metrics_opt", strings.NewReader("local"))
+	require.NoError(t, err)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(f.serv.HandleMetricsOpt)
+	handler.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	a := store.WaitForAction(t, reflect.TypeOf(metrics.MetricsModeAction{}), f.getActions)
+	action, ok := a.(metrics.MetricsModeAction)
+	if !ok {
+		t.Fatalf("Action was not of type '%T': %+v", metrics.MetricsModeAction{}, action)
+	}
+	assert.Equal(t, model.MetricsLocal, action.Serving.Mode)
+
+	mode := f.up.Prefs.MetricsMode
+	assert.Equal(t, model.MetricsLocal, mode)
+}
+
 type serverFixture struct {
 	t            *testing.T
 	serv         *server.HeadsUpServer
@@ -476,6 +500,7 @@ type serverFixture struct {
 	st           *store.Store
 	getActions   func() []store.Action
 	snapshotHTTP *fakeHTTPClient
+	up           *user.FakePrefs
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
@@ -489,7 +514,9 @@ func newTestFixture(t *testing.T) *serverFixture {
 	snapshotHTTP := &fakeHTTPClient{}
 	addr := cloudurl.Address("nonexistent.example.com")
 	uploader := cloud.NewSnapshotUploader(snapshotHTTP, addr)
-	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, uploader)
+	up := user.NewFakePrefs()
+	mcc := metrics.NewModeController("localhost", up)
+	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, mcc, uploader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -502,6 +529,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 		st:           st,
 		getActions:   getActions,
 		snapshotHTTP: snapshotHTTP,
+		up:           up,
 	}
 }
 
