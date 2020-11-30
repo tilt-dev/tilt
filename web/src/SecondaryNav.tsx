@@ -10,6 +10,7 @@ type NavProps = {
   traceNav: LogTraceNav | null
   alertsUrl: string
   facetsUrl: string | null
+  metricsUrl: string | null
   resourceView: ResourceView
   numberOfAlerts: number
 }
@@ -171,11 +172,13 @@ class SecondaryNav extends PureComponent<NavProps> {
     let logUrl = this.props.logUrl
     let alertsUrl = this.props.alertsUrl
     let facetsUrl = this.props.facetsUrl || ""
+    let metricsUrl = this.props.metricsUrl || ""
     let traceIsSelected = this.props.resourceView === ResourceView.Trace
     let logIsSelected =
       this.props.resourceView === ResourceView.Log || traceIsSelected
     let alertsIsSelected = this.props.resourceView === ResourceView.Alerts
     let facetsIsSelected = this.props.resourceView === ResourceView.Facets
+    let metricsIsSelected = this.props.resourceView === ResourceView.Metrics
 
     let secondLevelNav = this.renderSecondLevelNav()
 
@@ -188,6 +191,20 @@ class SecondaryNav extends PureComponent<NavProps> {
             to={facetsUrl}
           >
             Facets
+          </NavLink>
+        </NavListItem>
+      )
+    }
+
+    let metricsItem = null
+    if (metricsUrl) {
+      metricsItem = (
+        <NavListItem>
+          <NavLink
+            className={`tabLink ${metricsIsSelected ? "isSelected" : ""}`}
+            to={metricsUrl}
+          >
+            Metrics
           </NavLink>
         </NavListItem>
       )
@@ -221,6 +238,7 @@ class SecondaryNav extends PureComponent<NavProps> {
             </NavLink>
           </NavListItem>
           {facetItem}
+          {metricsItem}
         </NavList>
         {secondLevelNav}
       </Root>

@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"os"
 	"strings"
@@ -88,7 +89,7 @@ func (c *ModeController) localMetricsStack() ([]model.Manifest, error) {
 	collector, err := c.localMetricsManifest(collectorManifestName, []string{
 		collector,
 		collectorConfig,
-	}, []model.PortForward{{ContainerPort: 55678, LocalPort: collectorHostPort, Host: string(c.host)}})
+	}, []model.PortForward{{ContainerPort: 55678, LocalPort: collectorHostPort, Host: string(c.host)}}, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "init metrics collector")
 	}
@@ -96,23 +97,29 @@ func (c *ModeController) localMetricsStack() ([]model.Manifest, error) {
 	prometheus, err := c.localMetricsManifest(promManifestName, []string{
 		prometheus,
 		prometheusConfig,
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "init metrics prometheus")
+	}
+
+	// Hash the grafana config so that the grafana server reloads if it changes.
+	configHash := md5.Sum([]byte(grafanaConfig + grafanaDashboardConfig))
+	grafanaLabels := []model.LabelPair{
+		model.LabelPair{Key: "tilt.dev/config-hash", Value: fmt.Sprintf("%x", configHash)},
 	}
 
 	grafana, err := c.localMetricsManifest(grafanaManifestName, []string{
 		grafana,
 		grafanaConfig,
 		grafanaDashboardConfig,
-	}, []model.PortForward{{ContainerPort: 3000, LocalPort: grafanaHostPort, Host: string(c.host)}})
+	}, []model.PortForward{{ContainerPort: 3000, LocalPort: grafanaHostPort, Host: string(c.host)}}, grafanaLabels)
 	if err != nil {
 		return nil, errors.Wrap(err, "init metrics grafana")
 	}
 	return []model.Manifest{collector, prometheus, grafana}, nil
 }
 
-func (c *ModeController) localMetricsManifest(name model.ManifestName, yaml []string, ports []model.PortForward) (model.Manifest, error) {
+func (c *ModeController) localMetricsManifest(name model.ManifestName, yaml []string, ports []model.PortForward, labels []model.LabelPair) (model.Manifest, error) {
 	entities := []k8s.K8sEntity{}
 	for _, c := range yaml {
 		newEs, err := k8s.ParseYAML(strings.NewReader(c))
@@ -121,6 +128,17 @@ func (c *ModeController) localMetricsManifest(name model.ManifestName, yaml []st
 		}
 		entities = append(entities, newEs...)
 	}
+
+	if len(labels) > 0 {
+		for i, e := range entities {
+			e, err := k8s.InjectLabels(e, labels)
+			if err != nil {
+				return model.Manifest{}, fmt.Errorf("init local metrics: %v", err)
+			}
+			entities[i] = e
+		}
+	}
+
 	kTarget, err := k8s.NewTarget(model.TargetName(name), entities, ports,
 		nil, nil, nil, model.PodReadinessIgnore, nil, nil)
 	if err != nil {

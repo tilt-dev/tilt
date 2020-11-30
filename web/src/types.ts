@@ -10,6 +10,7 @@ export enum ResourceView {
   Alerts,
   Facets,
   Trace,
+  Metrics,
 }
 
 export enum TriggerMode {

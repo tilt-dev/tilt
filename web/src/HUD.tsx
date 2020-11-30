@@ -29,6 +29,7 @@ import {
 import { logLinesFromString } from "./logs"
 import HudState from "./HudState"
 import AlertPane from "./AlertPane"
+import MetricsPane from "./MetricsPane"
 import AnalyticsNudge from "./AnalyticsNudge"
 import NotFound from "./NotFound"
 import { numberOfAlerts } from "./alerts"
@@ -361,6 +362,10 @@ class HUD extends Component<HudProps, HudState> {
         name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
 
       let facetsUrl = name !== "" ? this.path(`/r/${name}/facets`) : null
+      let metricsUrl = ""
+      if (view.metricsServing?.mode === "local" && name === "") {
+        metricsUrl = this.path("/metrics")
+      }
 
       let currentTraceNav =
         span && this.state.logStore
@@ -385,6 +390,7 @@ class HUD extends Component<HudProps, HudState> {
           resourceView={t}
           numberOfAlerts={numAlerts}
           facetsUrl={facetsUrl}
+          metricsUrl={metricsUrl}
           traceNav={currentTraceNav}
         />
       )
@@ -411,6 +417,10 @@ class HUD extends Component<HudProps, HudState> {
         <Route
           path={this.path("/alerts")}
           render={secondaryNavRoute.bind(null, ResourceView.Alerts)}
+        />
+        <Route
+          path={this.path("/metrics")}
+          render={secondaryNavRoute.bind(null, ResourceView.Metrics)}
         />
         <Route render={secondaryNavRoute.bind(null, ResourceView.Log)} />
       </Switch>
@@ -460,6 +470,10 @@ class HUD extends Component<HudProps, HudState> {
         <Route
           path={this.path("/alerts")}
           render={sidebarRoute.bind(null, ResourceView.Alerts)}
+        />
+        <Route
+          path={this.path("/metrics")}
+          render={sidebarRoute.bind(null, ResourceView.Metrics)}
         />
         <Route
           path={this.path("/r/:name")}
@@ -573,6 +587,8 @@ class HUD extends Component<HudProps, HudState> {
       )
     }
 
+    let serving = view.metricsServing as Proto.webviewMetricsServing
+
     return (
       <Switch>
         <Route exact path={this.path("/")} render={allLogsRoute} />
@@ -585,6 +601,13 @@ class HUD extends Component<HudProps, HudState> {
               resources={resources}
               logStore={logStore}
             />
+          )}
+        />
+        <Route
+          exact
+          path={this.path("/metrics")}
+          render={() => (
+            <MetricsPane pathBuilder={this.pathBuilder} serving={serving} />
           )}
         />
         <Route exact path={this.path("/r/:name")} render={logsRoute} />
