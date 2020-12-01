@@ -86,6 +86,14 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 		}
 	}
 
+	// If we're no longer deploying a manifest, delete it from the known deployed UIDs.
+	// This ensures that if it shows up again, we process it correctly.
+	for uid := range ks.knownDeployedUIDs {
+		if !seenUIDs[uid] {
+			delete(ks.knownDeployedUIDs, uid)
+		}
+	}
+
 	var watchableNamespaces []k8s.Namespace
 	var setupNamespaces []k8s.Namespace
 	var teardownNamespaces []k8s.Namespace
