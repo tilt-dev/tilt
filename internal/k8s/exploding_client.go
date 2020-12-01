@@ -78,10 +78,6 @@ func (ec *explodingClient) WatchMeta(ctx context.Context, gvk schema.GroupVersio
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) ConnectedToCluster(ctx context.Context) error {
-	return errors.Wrap(ec.err, "could not set up k8s client")
-}
-
 func (ec *explodingClient) ContainerRuntime(ctx context.Context) container.Runtime {
 	return container.RuntimeUnknown
 }

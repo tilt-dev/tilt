@@ -116,10 +116,8 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	if err != nil {
 		return nil, err
 	}
-	int2 := provideKubectlLogLevelInfo()
-	kubectlRunner := k8s.ProvideKubectlRunner(kubeContext, int2)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, kubectlRunner, minikubeClient, clientConfig)
+	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	updateMode, err := buildcontrol.ProvideUpdateMode(updateModeFlag, env, runtime)
 	if err != nil {
@@ -152,7 +150,3 @@ var DeployerWireSetTest = wire.NewSet(
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet, containerupdate.NewSyncletManager,
 )
-
-func provideKubectlLogLevelInfo() k8s.KubectlLogLevel {
-	return k8s.KubectlLogLevel(0)
-}

@@ -112,8 +112,6 @@ type Client interface {
 
 	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error)
 
-	ConnectedToCluster(ctx context.Context) error
-
 	ContainerRuntime(ctx context.Context) container.Runtime
 
 	// Some clusters support a local image registry that we can push to.
@@ -132,7 +130,6 @@ type RESTMapper interface {
 
 type K8sClient struct {
 	env               Env
-	kubectlRunner     kubectlRunner
 	core              apiv1.CoreV1Interface
 	restConfig        *rest.Config
 	portForwardClient PortForwardClient
@@ -158,7 +155,6 @@ func ProvideK8sClient(
 	maybeClientset ClientsetOrError,
 	pfClient PortForwardClient,
 	configNamespace Namespace,
-	runner kubectlRunner,
 	mkClient MinikubeClient,
 	clientLoader clientcmd.ClientConfig) Client {
 	if env == EnvNone {
@@ -207,7 +203,6 @@ func ProvideK8sClient(
 
 	c := K8sClient{
 		env:               env,
-		kubectlRunner:     runner,
 		core:              core,
 		restConfig:        restConfig,
 		portForwardClient: pfClient,
@@ -451,15 +446,6 @@ func (k K8sClient) applyEntityAndMaybeForce(ctx context.Context, entity K8sEntit
 	return k.helmResultToEntities(result)
 }
 
-func (k K8sClient) ConnectedToCluster(ctx context.Context) error {
-	stdout, stderr, err := k.kubectlRunner.exec(ctx, []string{"cluster-info"})
-	if err != nil {
-		return errors.Wrapf(err, "Unable to connect to cluster via `kubectl cluster-info`:\nstdout: %s\nstderr: %s", stdout, stderr)
-	}
-
-	return nil
-}
-
 // We're using kubectl, so we only get stderr, not structured errors.
 //
 // Take a wild guess if the update is failing due to immutable field errors.
@@ -502,28 +488,33 @@ func maybeShouldTryReplaceReason(stderr string) (string, bool) {
 // behavior for our use cases.
 func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	l := logger.Get(ctx)
-	l.Infof("Deleting via kubectl:")
+	l.Infof("Deleting kubernetes objects:")
 	for _, e := range entities {
 		l.Infof("→ %s/%s", e.GVK().Kind, e.Name())
+	}
 
-		_, stderr, err := k.actOnEntity(ctx, []string{"delete", "--ignore-not-found"}, e)
+	rawYAML, err := SerializeSpecYAMLToBuffer(entities)
+	if err != nil {
+		return errors.Wrap(err, "kubernetes delete")
+	}
+
+	resources, err := k.helmKubeClient.Build(rawYAML, false)
+	if err != nil {
+		return errors.Wrap(err, "kubernetes delete")
+	}
+
+	_, errs := k.helmKubeClient.Delete(resources)
+	for _, err := range errs {
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+
 		if err != nil {
-			return errors.Wrapf(err, "kubectl delete:\nstderr: %s", stderr)
+			return errors.Wrap(err, "kubernetes delete")
 		}
 	}
+
 	return nil
-}
-
-func (k K8sClient) actOnEntity(ctx context.Context, cmdArgs []string, entity K8sEntity) (stdout string, stderr string, err error) {
-	args := append([]string{}, cmdArgs...)
-	args = append(args, "-f", "-")
-
-	rawYAML, err := SerializeSpecYAML([]K8sEntity{entity})
-	if err != nil {
-		return "", "", errors.Wrapf(err, "serializeYaml for kubectl %s", cmdArgs)
-	}
-
-	return k.kubectlRunner.execWithStdin(ctx, args, rawYAML)
 }
 
 func (k K8sClient) gvr(ctx context.Context, gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {

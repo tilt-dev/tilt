@@ -268,10 +268,6 @@ func (c *FakeK8sClient) TearDown() {
 	}
 }
 
-func (c *FakeK8sClient) ConnectedToCluster(ctx context.Context) error {
-	return nil
-}
-
 func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	if c.UpsertError != nil {
 		return nil, c.UpsertError

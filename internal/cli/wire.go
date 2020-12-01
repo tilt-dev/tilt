@@ -61,7 +61,6 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideRESTConfig,
 	k8s.ProvidePortForwardClient,
 	k8s.ProvideConfigNamespace,
-	k8s.ProvideKubectlRunner,
 	k8s.ProvideContainerRuntime,
 	k8s.ProvideServerVersion,
 	k8s.ProvideK8sClient,
@@ -71,7 +70,6 @@ var K8sWireSet = wire.NewSet(
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
 	tiltfile.WireSet,
-	provideKubectlLogLevel,
 	git.ProvideGitRemote,
 
 	docker.SwitchWireSet,
@@ -215,7 +213,6 @@ func wireClusterName(ctx context.Context) (k8s.ClusterName, error) {
 func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	wire.Build(
 		K8sWireSet,
-		provideKubectlLogLevel,
 		k8s.ProvideMinikubeClient,
 	)
 	return "", nil
@@ -224,7 +221,6 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	wire.Build(
 		K8sWireSet,
-		provideKubectlLogLevel,
 		k8s.ProvideMinikubeClient,
 	)
 	return nil, nil
