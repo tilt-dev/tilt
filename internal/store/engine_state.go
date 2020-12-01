@@ -195,6 +195,18 @@ func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
 	e.ManifestTargets[mn] = mt
 }
 
+func (e *EngineState) RemoveManifestTarget(mn model.ManifestName) {
+	delete(e.ManifestTargets, mn)
+	newOrder := []model.ManifestName{}
+	for _, n := range e.ManifestDefinitionOrder {
+		if n == mn {
+			continue
+		}
+		newOrder = append(newOrder, n)
+	}
+	e.ManifestDefinitionOrder = newOrder
+}
+
 func (e EngineState) Manifest(mn model.ManifestName) (model.Manifest, bool) {
 	m, ok := e.ManifestTargets[mn]
 	if !ok {

@@ -247,6 +247,37 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 	}
 }
 
+func TestPodWatchReadd(t *testing.T) {
+	f := newPWFixture(t)
+	defer f.TearDown()
+
+	manifest := f.addManifestWithSelectors("server")
+
+	f.pw.OnChange(f.ctx, f.store)
+
+	pb := podbuilder.New(t, manifest)
+	p := pb.Build()
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	f.kClient.EmitPod(labels.Everything(), p)
+
+	f.assertObservedPods(p)
+
+	f.removeManifest("server")
+	f.pw.OnChange(f.ctx, f.store)
+
+	f.pods = nil
+	_ = f.addManifestWithSelectors("server")
+	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.pw.OnChange(f.ctx, f.store)
+
+	// Make sure the pods are re-broadcast.
+	// Even though the pod didn't change when the manifest was
+	// redeployed, we still need to broadcast the pod to make
+	// sure it gets repopulated.
+	f.assertObservedPods(p)
+}
+
 type podStatusTestCase struct {
 	pod      corev1.PodStatus
 	status   string
@@ -308,17 +339,9 @@ func (f *pwFixture) addManifestWithSelectors(manifestName string, ls ...labels.S
 	return mt.Manifest
 }
 
-func (f *pwFixture) removeManifest(manifestName string) {
-	mn := model.ManifestName(manifestName)
+func (f *pwFixture) removeManifest(mn model.ManifestName) {
 	state := f.store.LockMutableStateForTesting()
-	delete(state.ManifestTargets, model.ManifestName(mn))
-	var newDefOrder []model.ManifestName
-	for _, e := range state.ManifestDefinitionOrder {
-		if mn != e {
-			newDefOrder = append(newDefOrder, e)
-		}
-	}
-	state.ManifestDefinitionOrder = newDefOrder
+	state.RemoveManifestTarget(mn)
 	f.store.UnlockMutableState()
 }
 
