@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -21,6 +22,7 @@ import (
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
+	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -59,6 +61,7 @@ type HeadsUpServer struct {
 	store             *store.Store
 	router            *mux.Router
 	a                 *tiltanalytics.TiltAnalytics
+	metrics           *metrics.ModeController
 	uploader          cloud.SnapshotUploader
 	numWebsocketConns int32
 }
@@ -68,6 +71,7 @@ func ProvideHeadsUpServer(
 	store *store.Store,
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
+	metrics *metrics.ModeController,
 	uploader cloud.SnapshotUploader) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
@@ -75,6 +79,7 @@ func ProvideHeadsUpServer(
 		store:    store,
 		router:   r,
 		a:        analytics,
+		metrics:  metrics,
 		uploader: uploader,
 	}
 
@@ -82,6 +87,7 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/api/dump/engine", s.DumpEngineJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
+	r.HandleFunc("/api/metrics_opt", s.HandleMetricsOpt)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/api/action", s.DispatchAction).Methods("POST")
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
@@ -191,6 +197,28 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 	}
 
 	s.store.Dispatch(store.AnalyticsUserOptAction{Opt: opt})
+}
+
+func (s *HeadsUpServer) HandleMetricsOpt(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	defer req.Body.Close()
+	content, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	newState := model.MetricsMode(strings.TrimSpace(string(content)))
+	if newState != model.MetricsDisabled && newState != model.MetricsLocal {
+		http.Error(w, fmt.Sprintf("unexpected state: %v", string(content)), http.StatusBadRequest)
+		return
+	}
+
+	s.metrics.SetUserMode(req.Context(), s.store, newState)
 }
 
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {

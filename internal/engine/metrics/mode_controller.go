@@ -12,6 +12,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -30,17 +31,64 @@ func IsLocalMetricsStack(name model.ManifestName) bool {
 
 type ModeController struct {
 	host        model.WebHost
+	userPrefs   user.PrefsInterface
 	initialized bool
 }
 
-func NewModeController(host model.WebHost) *ModeController {
-	return &ModeController{host: host}
+func NewModeController(host model.WebHost, userPrefs user.PrefsInterface) *ModeController {
+	return &ModeController{host: host, userPrefs: userPrefs}
 }
 
-func (c *ModeController) currentMode(rStore store.RStore) store.MetricsServing {
+func (c *ModeController) currentMode(rStore store.RStore) model.MetricsMode {
 	state := rStore.RLockState()
 	defer rStore.RUnlockState()
-	return state.MetricsServing
+	return state.MetricsServing.Mode
+}
+
+// TODO(nick): Eventually we will need to reconcile multiple signals for
+// enabling metrics:
+//
+// 1) A team setting on cloud.tilt.dev
+// 2) A personal setting under ~/.tilt-dev
+// 3) An environment variable
+// 4) A Tiltfile setting
+//
+// As well as different signals on where to send those metrics
+// (to a local collector vs a remote collector).
+func (c *ModeController) desiredMetricsMode() model.MetricsMode {
+	// Env variable taks precedence over everything else.
+	envMode := model.MetricsMode(os.Getenv("TILT_METRICS"))
+	if envMode == model.MetricsLocal || envMode == model.MetricsDisabled {
+		return envMode
+	}
+
+	// The personal setting is next.
+	userPrefs, _ := c.userPrefs.Get()
+	userMode := model.MetricsMode(userPrefs.MetricsMode)
+	if userMode == model.MetricsLocal || userMode == model.MetricsDisabled {
+		return userMode
+	}
+
+	return model.MetricsDefault
+}
+
+func (c *ModeController) SetUserMode(ctx context.Context, rStore store.RStore, newMode model.MetricsMode) {
+	currentMode := c.currentMode(rStore)
+	if currentMode == newMode {
+		return
+	}
+
+	err := user.UpdateMetricsMode(c.userPrefs, newMode)
+	if err != nil {
+		logger.Get(ctx).Debugf("writing metrics mode: %v", err)
+		return
+	}
+
+	if newMode == model.MetricsLocal {
+		c.setMetricsLocal(ctx, rStore)
+		return
+	}
+	c.setMetricsNone(ctx, rStore)
 }
 
 func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore) {
@@ -49,14 +97,23 @@ func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore) {
 	}
 	c.initialized = true
 
-	// NOTE(nick): This is a hack until we have a real flow for
-	// letting the user set the metrics mode from the UI, or letting
-	// their team lead set it from a dashboard.
-	localMetricsEnv := os.Getenv("TILT_LOCAL_METRICS")
-	if localMetricsEnv != "1" {
+	mode := c.desiredMetricsMode()
+	if mode != model.MetricsLocal {
 		return
 	}
 
+	c.setMetricsLocal(ctx, rStore)
+}
+
+func (c *ModeController) setMetricsNone(ctx context.Context, rStore store.RStore) {
+	rStore.Dispatch(MetricsModeAction{
+		Serving: store.MetricsServing{
+			Mode: model.MetricsDefault,
+		},
+	})
+}
+
+func (c *ModeController) setMetricsLocal(ctx context.Context, rStore store.RStore) {
 	stack, err := c.localMetricsStack()
 	if err != nil {
 		logger.Get(ctx).Warnf("metrics mode: %v", err)
@@ -65,7 +122,7 @@ func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore) {
 
 	rStore.Dispatch(MetricsModeAction{
 		Serving: store.MetricsServing{
-			Mode:        store.MetricsLocal,
+			Mode:        model.MetricsLocal,
 			GrafanaHost: fmt.Sprintf("%s:%d", c.host, grafanaHostPort),
 		},
 		Settings: model.MetricsSettings{

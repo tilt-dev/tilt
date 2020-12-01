@@ -9,17 +9,19 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestEnableLocalMetrics(t *testing.T) {
 	f := newModeFixture(t)
-	os.Setenv("TILT_LOCAL_METRICS", "1")
-	defer os.Unsetenv("TILT_LOCAL_METRICS")
+	os.Setenv("TILT_METRICS", "local")
+	defer os.Unsetenv("TILT_METRICS")
 
 	f.mc.OnChange(f.ctx, f.st)
 	if assert.NotNil(t, f.st.action) {
-		assert.Equal(t, store.MetricsLocal, f.st.action.Serving.Mode)
+		assert.Equal(t, model.MetricsLocal, f.st.action.Serving.Mode)
 		assert.Equal(t, 3, len(f.st.action.Manifests))
 	}
 }
@@ -53,7 +55,7 @@ func newModeFixture(t *testing.T) *modeFixture {
 	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
 	ctx := logger.WithLogger(context.Background(), l)
 
-	mc := NewModeController("localhost")
+	mc := NewModeController("localhost", user.NewFakePrefs())
 	return &modeFixture{
 		TempDirFixture: f,
 		ctx:            ctx,

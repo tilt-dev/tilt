@@ -565,7 +565,7 @@ func handleConfigsReloaded(
 
 	// Only set the metrics settings from the tiltfile if the mode
 	// hasn't been configured from elsewhere.
-	if state.MetricsServing.Mode == store.MetricsNone {
+	if state.MetricsServing.Mode == model.MetricsDefault {
 		// Add metrics if it exists, even if execution failed.
 		if event.MetricsSettings.Enabled || event.Err == nil {
 			state.MetricsSettings = event.MetricsSettings
