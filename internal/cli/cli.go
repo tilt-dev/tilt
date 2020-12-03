@@ -112,13 +112,13 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) (context.Cont
 	// SIGNAL TRAPPING
 	ctx, cancel := context.WithCancel(ctx)
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
 		<-sigs
 
 		cancel()
 
-		// If we get another SIGINT/SIGTERM, OR it takes too long for tilt to
+		// If we get another signal, OR it takes too long for tilt to
 		// exit after canceling context, just exit
 		select {
 		case <-sigs:
