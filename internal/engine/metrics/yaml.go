@@ -33,7 +33,7 @@ spec:
 
       containers:
         - name: otel-collector
-          image: otel/opentelemetry-collector:0.14.0
+          image: otel/opentelemetry-collector:0.15.0
           command:
           - "/otelcol"
           - "--config=/conf/otel-collector-config.yaml"
@@ -61,8 +61,6 @@ spec:
           readinessProbe:
             httpGet:
               port: 13133
-            initialDelaySeconds: 5
-            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
@@ -172,8 +170,6 @@ spec:
           readinessProbe:
             httpGet:
               port: 9090
-            initialDelaySeconds: 5
-            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
@@ -281,8 +277,6 @@ spec:
           readinessProbe:
             httpGet:
               port: 3000
-            initialDelaySeconds: 5
-            periodSeconds: 10
 `
 
 const grafanaConfig = `
@@ -318,7 +312,7 @@ data:
 
     [auth.anonymous]
     enabled = true
-    org_role = Editor
+    org_role = Admin
 
     [security]
     allow_embedding = true

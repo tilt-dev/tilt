@@ -12,3 +12,11 @@ type MetricsModeAction struct {
 }
 
 func (MetricsModeAction) Action() {}
+
+// Broadcasts information about the Grafana dashboard.
+// In the future, this may come from cloud.tilt.dev.
+type MetricsDashboardAction struct {
+	GrafanaHost string
+}
+
+func (MetricsDashboardAction) Action() {}

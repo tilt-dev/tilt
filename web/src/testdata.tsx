@@ -62,6 +62,21 @@ function getMockRouterProps<P>(data: P) {
   return props
 }
 
+function vigodaSpecs(): any {
+  return [
+    {
+      hasLiveUpdate: false,
+      id: "image:vigoda",
+      type: "TARGET_TYPE_IMAGE",
+    },
+    {
+      hasLiveUpdate: false,
+      id: "k8s:vigoda",
+      type: "TARGET_TYPE_K8S",
+    },
+  ]
+}
+
 function oneResource(): Resource {
   const ts = new Date(Date.now()).toISOString()
   const tsPast = new Date(Date.now() - 12300).toISOString()
@@ -100,6 +115,7 @@ function oneResource(): Resource {
     isTiltfile: false,
     facets: [],
     queued: false,
+    specs: vigodaSpecs(),
   }
   return resource
 }
@@ -127,6 +143,7 @@ function oneResourceNoAlerts(): Resource {
     },
     endpointLinks: [unnamedEndpointLink],
     runtimeStatus: "ok",
+    specs: vigodaSpecs(),
   }
   return resource
 }
@@ -154,6 +171,7 @@ function oneResourceImagePullBackOff(): Resource {
     },
     endpointLinks: [unnamedEndpointLink],
     runtimeStatus: "ok",
+    specs: vigodaSpecs(),
   }
   return resource
 }
@@ -181,6 +199,7 @@ function oneResourceErrImgPull(): Resource {
     },
     endpointLinks: [unnamedEndpointLink],
     runtimeStatus: "ok",
+    specs: vigodaSpecs(),
   }
   return resource
 }
@@ -207,6 +226,7 @@ function oneResourceUnrecognizedError(): Resource {
       podStatusMessage: "Detailed message on GarbleError",
     },
     runtimeStatus: "ok",
+    specs: vigodaSpecs(),
   }
   return resource
 }
@@ -255,6 +275,7 @@ function twoResourceView(): view {
     hasPendingChanges: false,
     facets: [],
     queued: false,
+    specs: vigodaSpecs(),
   }
   return { resources: [vigoda, snack], tiltfileKey: "test" }
 }

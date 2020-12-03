@@ -142,7 +142,7 @@ it("renders tab nav", () => {
   let resourceView = oneResourceView()
   hud.setState({ view: resourceView })
   let tabNavLinks = root.find(".secondaryNav Link")
-  expect(tabNavLinks).toHaveLength(2)
+  expect(tabNavLinks).toHaveLength(3)
 })
 
 it("renders number of errors in tabnav when no resource is selected", () => {

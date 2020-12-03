@@ -7,7 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -20,6 +22,38 @@ func TestEnableLocalMetrics(t *testing.T) {
 	defer os.Unsetenv("TILT_METRICS")
 
 	f.mc.OnChange(f.ctx, f.st)
+	assert.Equal(t, model.MetricsDefault, f.st.action.Serving.Mode)
+
+	// Insert a K8s resource into the state store, and make sure that
+	// metrics gets turned on.
+	f.st.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "fe").
+			WithK8sYAML(testyaml.SanchoYAML).
+			Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+	})
+	f.mc.OnChange(f.ctx, f.st)
+
+	if assert.NotNil(t, f.st.action) {
+		assert.Equal(t, model.MetricsLocal, f.st.action.Serving.Mode)
+		assert.Equal(t, 3, len(f.st.action.Manifests))
+	}
+}
+
+func TestSetLocalMetrics(t *testing.T) {
+	f := newModeFixture(t)
+
+	f.st.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "fe").
+			WithK8sYAML(testyaml.SanchoYAML).
+			Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+	})
+	f.mc.OnChange(f.ctx, f.st)
+	assert.Equal(t, model.MetricsDefault, f.st.action.Serving.Mode)
+
+	f.mc.SetUserMode(f.ctx, f.st, model.MetricsLocal)
+
 	if assert.NotNil(t, f.st.action) {
 		assert.Equal(t, model.MetricsLocal, f.st.action.Serving.Mode)
 		assert.Equal(t, 3, len(f.st.action.Manifests))
