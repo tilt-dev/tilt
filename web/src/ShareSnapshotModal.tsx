@@ -1,9 +1,9 @@
+import cookies from "js-cookie"
 import React, { PureComponent } from "react"
 import Modal from "react-modal"
-import "./ShareSnapshotModal.scss"
-import cookies from "js-cookie"
 import intro from "./assets/png/share-snapshot-intro.png"
 import { ReactComponent as ArrowSvg } from "./assets/svg/arrow.svg"
+import "./ShareSnapshotModal.scss"
 
 type props = {
   handleSendSnapshot: () => void

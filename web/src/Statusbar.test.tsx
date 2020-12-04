@@ -1,9 +1,9 @@
+import { mount } from "enzyme"
 import React from "react"
+import { MemoryRouter } from "react-router"
 import renderer from "react-test-renderer"
 import Statusbar, { StatusItem } from "./Statusbar"
-import { mount } from "enzyme"
 import { twoResourceView } from "./testdata"
-import { MemoryRouter } from "react-router"
 
 type TiltBuild = Proto.webviewTiltBuild
 

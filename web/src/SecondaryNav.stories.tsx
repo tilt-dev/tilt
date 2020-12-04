@@ -1,9 +1,9 @@
-import React from "react"
 import { storiesOf } from "@storybook/react"
-import SecondaryNav from "./SecondaryNav"
+import React from "react"
 import { MemoryRouter } from "react-router"
-import { ResourceView } from "./types"
 import s from "styled-components"
+import SecondaryNav from "./SecondaryNav"
+import { ResourceView } from "./types"
 
 let BG = s.div`
   background-color: #001b20;

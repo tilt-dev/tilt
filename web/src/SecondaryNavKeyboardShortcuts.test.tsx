@@ -1,9 +1,8 @@
-import { MemoryRouter, useHistory } from "react-router"
-import React from "react"
-import { createMemoryHistory } from "history"
-import { mount } from "enzyme"
-import SecondaryNavKeyboardShortcuts from "./SecondaryNavKeyboardShortcuts"
 import { fireEvent } from "@testing-library/dom"
+import { mount } from "enzyme"
+import React from "react"
+import { MemoryRouter, useHistory } from "react-router"
+import SecondaryNavKeyboardShortcuts from "./SecondaryNavKeyboardShortcuts"
 
 var fakeHistory: any
 let component: any

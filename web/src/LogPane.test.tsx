@@ -1,10 +1,9 @@
+import { mount } from "enzyme"
 import React from "react"
 import ReactDOM from "react-dom"
-import LogPane, { logText } from "./LogPane"
 import renderer from "react-test-renderer"
-import { mount, render } from "enzyme"
+import LogPane, { logText } from "./LogPane"
 import { logLinesFromString } from "./logs"
-import { LogLine } from "./types"
 
 const fakeHandleSetHighlight = () => {}
 const fakeHandleClearHighlight = () => {}

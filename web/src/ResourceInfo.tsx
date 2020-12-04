@@ -1,10 +1,10 @@
 import React, { PureComponent } from "react"
 import styled from "styled-components"
-import * as s from "./style-helpers"
-import { SnapshotHighlight } from "./types"
+import { incr } from "./analytics"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 import ResourceInfoKeyboardShortcuts from "./ResourceInfoKeyboardShortcuts"
-import { incr } from "./analytics"
+import * as s from "./style-helpers"
+import { SnapshotHighlight } from "./types"
 
 type Link = Proto.webviewLink
 

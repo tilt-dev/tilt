@@ -1,5 +1,5 @@
-import React, { Component } from "react"
 import { History } from "history"
+import React, { Component } from "react"
 import { useHistory } from "react-router"
 
 type Props = {

@@ -1,5 +1,5 @@
 import { css } from "styled-components"
-import { Font, FontSize, Color, SizeUnit, AnimDuration } from "./style-helpers"
+import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 export const ButtonMixin = css`
   display: flex;

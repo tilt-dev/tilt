@@ -1,8 +1,7 @@
-import React from "react"
 import { storiesOf } from "@storybook/react"
-
-import ShareSnapshotModal from "./ShareSnapshotModal"
+import React from "react"
 import ReactModal from "react-modal"
+import ShareSnapshotModal from "./ShareSnapshotModal"
 
 ReactModal.setAppElement(document.body)
 

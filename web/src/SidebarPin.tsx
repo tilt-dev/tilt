@@ -5,11 +5,11 @@ import React, {
   useState,
 } from "react"
 import styled from "styled-components"
-import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin-resource-filled.svg"
-import { Color, Height, Width } from "./style-helpers"
-import { SidebarItemStyle } from "./SidebarItem"
 import { incr } from "./analytics"
+import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin-resource-filled.svg"
 import { localStorageContext } from "./LocalStorage"
+import { SidebarItemStyle } from "./SidebarItem"
+import { Color, Height, Width } from "./style-helpers"
 
 let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
   fill: ${Color.grayLight};

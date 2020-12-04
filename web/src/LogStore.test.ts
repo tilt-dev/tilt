@@ -1,5 +1,5 @@
-import LogStore from "./LogStore"
 import { logLinesToString } from "./logs"
+import LogStore from "./LogStore"
 
 describe("LogStore", () => {
   function now() {

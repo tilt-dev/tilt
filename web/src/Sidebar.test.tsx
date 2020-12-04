@@ -1,13 +1,11 @@
 import React from "react"
-import { mount } from "enzyme"
-import renderer from "react-test-renderer"
 import { MemoryRouter } from "react-router"
-import Sidebar from "./SidebarResources"
-import SidebarItem from "./SidebarItem"
-import { oneResource, twoResourceView } from "./testdata"
-import { ResourceView, TriggerMode } from "./types"
+import renderer from "react-test-renderer"
 import PathBuilder from "./PathBuilder"
+import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
+import { oneResource, twoResourceView } from "./testdata"
+import { ResourceView } from "./types"
 
 type Resource = Proto.webviewResource
 

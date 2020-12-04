@@ -1,7 +1,7 @@
 import React from "react"
-import ButtonLink from "./ButtonLink"
-import ButtonInput from "./ButtonInput"
 import styled from "styled-components"
+import ButtonInput from "./ButtonInput"
+import ButtonLink from "./ButtonLink"
 
 export default {
   title: "Button",

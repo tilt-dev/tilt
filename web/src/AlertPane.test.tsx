@@ -1,12 +1,12 @@
+import { mount } from "enzyme"
+import fetchMock from "jest-fetch-mock"
 import React from "react"
-import AlertPane from "./AlertPane"
 import renderer from "react-test-renderer"
+import AlertPane from "./AlertPane"
+import LogStore from "./LogStore"
+import PathBuilder from "./PathBuilder"
 import { oneResourceUnrecognizedError } from "./testdata"
 import { TriggerMode } from "./types"
-import PathBuilder from "./PathBuilder"
-import { mount } from "enzyme"
-import LogStore from "./LogStore"
-import fetchMock from "jest-fetch-mock"
 
 type Resource = Proto.webviewResource
 

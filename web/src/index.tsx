@@ -1,10 +1,10 @@
+import { createBrowserHistory } from "history"
 import React from "react"
 import ReactDOM from "react-dom"
-import "./index.scss"
-import HUD from "./HUD"
-import { Router } from "react-router-dom"
-import { createBrowserHistory } from "history"
 import ReactModal from "react-modal"
+import { Router } from "react-router-dom"
+import HUD from "./HUD"
+import "./index.scss"
 
 ReactModal.setAppElement(document.body)
 

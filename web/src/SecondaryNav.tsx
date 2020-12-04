@@ -1,9 +1,9 @@
 import React, { PureComponent } from "react"
-import styled from "styled-components"
 import { Link } from "react-router-dom"
-import { LogTraceNav, ResourceView } from "./types"
-import * as s from "./style-helpers"
+import styled from "styled-components"
 import SecondaryNavKeyboardShortcuts from "./SecondaryNavKeyboardShortcuts"
+import * as s from "./style-helpers"
+import { LogTraceNav, ResourceView } from "./types"
 
 type NavProps = {
   logUrl: string

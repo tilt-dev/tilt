@@ -1,8 +1,7 @@
+import { combinedStatus, warnings } from "./status"
 import { oneResource } from "./testdata"
 import { zeroTime } from "./time"
-import { combinedStatus, warnings } from "./status"
 import { ResourceStatus, RuntimeStatus } from "./types"
-import { NodeRuntime } from "inspector"
 
 function emptyResource() {
   let res = oneResource()

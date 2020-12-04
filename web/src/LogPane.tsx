@@ -1,13 +1,13 @@
 import React, { Component } from "react"
-import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import ReactDOM from "react-dom"
-import { LogLine, SnapshotHighlight } from "./types"
-import LogPaneLine from "./LogPaneLine"
-import findLogLineID from "./findLogLine"
 import styled, { keyframes } from "styled-components"
-import { SizeUnit } from "./style-helpers"
-import selection from "./selection"
+import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
+import findLogLineID from "./findLogLine"
 import "./LogPane.scss"
+import LogPaneLine from "./LogPaneLine"
+import selection from "./selection"
+import { SizeUnit } from "./style-helpers"
+import { LogLine, SnapshotHighlight } from "./types"
 
 type LogPaneProps = {
   manifestName: string

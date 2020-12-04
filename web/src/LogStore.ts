@@ -4,8 +4,8 @@
 // pkg/model/logstore/logstore.go
 // but with better support for incremental updates and rendering.
 
-import { LogLine } from "./types"
 import { isBuildSpanId } from "./logs"
+import { LogLine } from "./types"
 
 // Firestore doesn't properly handle maps with keys equal to the empty string, so
 // we normalize all empty span ids to '_' client-side.

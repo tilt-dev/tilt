@@ -1,7 +1,7 @@
-import React from "react"
 import { storiesOf } from "@storybook/react"
-import HUDLayout from "./HUDLayout"
+import React from "react"
 import styled from "styled-components"
+import HUDLayout from "./HUDLayout"
 import { Color, SizeUnit } from "./style-helpers"
 
 let Header = styled.header`

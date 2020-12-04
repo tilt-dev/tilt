@@ -1,16 +1,16 @@
-import React, { useState, Component } from "react"
 import cookies from "js-cookie"
+import React, { Component, useState } from "react"
+import ReactOutlineManager from "react-outline-manager"
 import styled from "styled-components"
-import { Color, Font, FontSize, SizeUnit, AnimDuration } from "./style-helpers"
+import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as TiltCloudLogoSvg } from "./assets/svg/logo-Tilt-Cloud.svg"
-import ButtonLink from "./ButtonLink"
 import ButtonInput from "./ButtonInput"
-import ReactOutlineManager from "react-outline-manager"
+import ButtonLink from "./ButtonLink"
 import FloatDialog from "./FloatDialog"
 import ShortcutsDialog from "./ShortcutsDialog"
-import { incr } from "./analytics"
+import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 export const SidebarAccountRoot = styled.div`
   position: relative; // Anchor SidebarAccountMenu

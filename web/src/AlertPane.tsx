@@ -1,12 +1,12 @@
 import React, { PureComponent } from "react"
-import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
-import AnsiLine from "./AnsiLine"
 import TimeAgo from "react-timeago"
 import "./AlertPane.scss"
-import { timeAgoFormatter } from "./timeFormatters"
 import { getResourceAlerts, hasAlert } from "./alerts"
-import PathBuilder from "./PathBuilder"
+import AnsiLine from "./AnsiLine"
+import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import LogStore from "./LogStore"
+import PathBuilder from "./PathBuilder"
+import { timeAgoFormatter } from "./timeFormatters"
 
 type Resource = Proto.webviewResource
 

@@ -1,6 +1,6 @@
-import { isZeroTime } from "./time"
-import { StatusItem } from "./Statusbar"
 import { podStatusIsCrash, podStatusIsError } from "./constants"
+import { StatusItem } from "./Statusbar"
+import { isZeroTime } from "./time"
 
 const combinedStatusMessage = (resources: StatusItem[]): string => {
   let buildingResources = resources.filter(

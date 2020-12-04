@@ -1,16 +1,16 @@
+import { fireEvent } from "@testing-library/dom"
+import { mount } from "enzyme"
 import React from "react"
+import { act } from "react-dom/test-utils"
+import ReactModal from "react-modal"
+import { MemoryRouter } from "react-router-dom"
+import ShortcutsDialog from "./ShortcutsDialog"
 import SidebarAccount, {
-  SidebarAccountRoot,
-  SidebarMenuContent,
   MenuContentButtonSignUp,
   MenuContentButtonTiltCloud,
+  SidebarAccountRoot,
+  SidebarMenuContent,
 } from "./SidebarAccount"
-import ShortcutsDialog from "./ShortcutsDialog"
-import { MemoryRouter } from "react-router-dom"
-import { mount } from "enzyme"
-import { fireEvent } from "@testing-library/dom"
-import ReactModal from "react-modal"
-import { act } from "react-dom/test-utils"
 
 beforeEach(() => {
   ReactModal.setAppElement(document.body)

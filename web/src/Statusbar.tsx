@@ -1,14 +1,14 @@
 import React, { PureComponent, ReactElement } from "react"
-import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
+import { Link } from "react-router-dom"
 import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
-import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
+import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
 import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-available.svg"
+import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
+import { combinedStatusMessage } from "./combinedStatusMessage"
+import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
-import { combinedStatusMessage } from "./combinedStatusMessage"
 import { ResourceStatus } from "./types"
-import mostRecentBuildToDisplay from "./mostRecentBuild"
-import { Link } from "react-router-dom"
 
 type Build = Proto.webviewBuildRecord
 type TiltBuild = Proto.webviewTiltBuild

@@ -1,8 +1,8 @@
 import React from "react"
 import Modal from "react-modal"
 import styled from "styled-components"
-import { Color, Font, FontSize } from "./style-helpers"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
+import { Color, Font, FontSize } from "./style-helpers"
 
 type props = {
   title: string | React.ReactElement

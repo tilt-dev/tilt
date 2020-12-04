@@ -1,8 +1,8 @@
-import React, { Component } from "react"
 import { History } from "history"
-import SidebarItem from "./SidebarItem"
-import PathBuilder from "./PathBuilder"
+import React, { Component } from "react"
 import { useHistory } from "react-router"
+import PathBuilder from "./PathBuilder"
+import SidebarItem from "./SidebarItem"
 
 type Props = {
   items: SidebarItem[]

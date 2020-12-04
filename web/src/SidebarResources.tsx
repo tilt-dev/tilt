@@ -1,14 +1,20 @@
 import React, { PureComponent, useContext } from "react"
 import { Link } from "react-router-dom"
-import { ResourceStatus, ResourceView } from "./types"
 import TimeAgo from "react-timeago"
-import { timeAgoFormatter } from "./timeFormatters"
-import { isZeroTime } from "./time"
+import styled, { keyframes } from "styled-components"
+import { incr } from "./analytics"
+import { formatBuildDuration } from "./format"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
+import SidebarItem, { SidebarItemStyle } from "./SidebarItem"
+import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
+import {
+  SidebarPinButton,
+  SidebarPinButtonSpacer,
+  sidebarPinContext,
+  SidebarPinContextProvider,
+} from "./SidebarPin"
 import SidebarTriggerButton from "./SidebarTriggerButton"
-import styled, { keyframes } from "styled-components"
-import { formatBuildDuration } from "./format"
 import {
   AnimDuration,
   Color,
@@ -19,15 +25,9 @@ import {
   SizeUnit,
   Width,
 } from "./style-helpers"
-import SidebarItem, { SidebarItemStyle } from "./SidebarItem"
-import {
-  SidebarPinButton,
-  SidebarPinButtonSpacer,
-  sidebarPinContext,
-  SidebarPinContextProvider,
-} from "./SidebarPin"
-import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { incr } from "./analytics"
+import { isZeroTime } from "./time"
+import { timeAgoFormatter } from "./timeFormatters"
+import { ResourceStatus, ResourceView } from "./types"
 
 // Styles:
 const barberpole = keyframes`
