@@ -1,6 +1,6 @@
-import { SocketState, Snapshot } from "./types"
 import HudState from "./HudState"
 import PathBuilder from "./PathBuilder"
+import { Snapshot, SocketState } from "./types"
 
 interface HudInt {
   setAppState: <K extends keyof HudState>(state: Pick<HudState, K>) => void

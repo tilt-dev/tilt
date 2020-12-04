@@ -1,14 +1,14 @@
-import {
-  oneResourceBuilding,
-  oneResourceFailedToBuild,
-  oneResourceCrashedOnStart,
-  oneResourceNoAlerts,
-  oneResourceErrImgPull,
-  oneResourceImagePullBackOff,
-  oneResourceUnrecognizedError,
-} from "./testdata"
 import { combinedStatusMessage } from "./combinedStatusMessage"
 import { StatusItem } from "./Statusbar"
+import {
+  oneResourceBuilding,
+  oneResourceCrashedOnStart,
+  oneResourceErrImgPull,
+  oneResourceFailedToBuild,
+  oneResourceImagePullBackOff,
+  oneResourceNoAlerts,
+  oneResourceUnrecognizedError,
+} from "./testdata"
 
 describe("combined status message", () => {
   it("should show that there's one resource building", () => {

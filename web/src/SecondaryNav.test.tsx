@@ -1,7 +1,7 @@
 import React from "react"
+import { MemoryRouter } from "react-router"
 import renderer from "react-test-renderer"
 import SecondaryNav from "./SecondaryNav"
-import { MemoryRouter } from "react-router"
 import { ResourceView } from "./types"
 
 it("shows logs", () => {

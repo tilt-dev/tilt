@@ -1,5 +1,5 @@
-import { formatBuildDuration } from "./format"
 import moment from "moment"
+import { formatBuildDuration } from "./format"
 
 it("format durations correctly", () => {
   function assertFormatted(expected: string, ms: number) {

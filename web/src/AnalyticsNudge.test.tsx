@@ -1,6 +1,6 @@
+import { shallow } from "enzyme"
 import React from "react"
 import AnalyticsNudge from "./AnalyticsNudge"
-import { shallow } from "enzyme"
 
 it("shows nudge if needsNudge", () => {
   const component = shallow(<AnalyticsNudge needsNudge={true} />)

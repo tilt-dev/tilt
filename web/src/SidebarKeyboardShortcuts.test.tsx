@@ -1,11 +1,11 @@
-import { MemoryRouter, useHistory } from "react-router"
-import React from "react"
-import PathBuilder from "./PathBuilder"
+import { fireEvent } from "@testing-library/dom"
 import { mount } from "enzyme"
-import { twoResourceView } from "./testdata"
+import React from "react"
+import { MemoryRouter, useHistory } from "react-router"
+import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { fireEvent } from "@testing-library/dom"
+import { twoResourceView } from "./testdata"
 
 var fakeHistory: any
 const pathBuilder = PathBuilder.forTesting("localhost", "/")

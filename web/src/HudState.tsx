@@ -1,10 +1,10 @@
+import LogStore from "./LogStore"
 import {
+  ShowErrorModal,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
-  ShowErrorModal,
 } from "./types"
-import LogStore from "./LogStore"
 
 type HudState = {
   view: Proto.webviewView

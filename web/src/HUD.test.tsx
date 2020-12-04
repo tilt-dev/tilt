@@ -1,17 +1,17 @@
+import { mount } from "enzyme"
+import { createMemoryHistory } from "history"
 import React from "react"
 import ReactDOM from "react-dom"
+import ReactModal from "react-modal"
 import { MemoryRouter } from "react-router"
 import HUD from "./HUD"
 import SocketBar from "./SocketBar"
-import { mount } from "enzyme"
 import {
+  oneResourceNoAlerts,
   oneResourceView,
   twoResourceView,
-  oneResourceNoAlerts,
 } from "./testdata"
-import { createMemoryHistory } from "history"
 import { SocketState } from "./types"
-import ReactModal from "react-modal"
 
 ReactModal.setAppElement(document.body)
 

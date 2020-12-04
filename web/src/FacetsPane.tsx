@@ -1,8 +1,8 @@
 import React, { Component } from "react"
-import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import AnsiLine from "./AnsiLine"
-import LogStore from "./LogStore"
+import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import "./FacetsPane.scss"
+import LogStore from "./LogStore"
 
 type Resource = Proto.webviewResource
 

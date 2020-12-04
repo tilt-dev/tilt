@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react"
 import Modal from "react-modal"
-import { ShowErrorModal } from "./types"
 import "./FatalErrorModal.scss"
+import { ShowErrorModal } from "./types"
 
 type props = {
   error: string | undefined

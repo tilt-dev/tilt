@@ -1,7 +1,7 @@
-import React from "react"
-import { mount } from "enzyme"
-import ResourceInfoKeyboardShortcuts from "./ResourceInfoKeyboardShortcuts"
 import { fireEvent } from "@testing-library/dom"
+import { mount } from "enzyme"
+import React from "react"
+import ResourceInfoKeyboardShortcuts from "./ResourceInfoKeyboardShortcuts"
 
 function numKeyCode(num: number): number {
   return num + 48

@@ -1,12 +1,9 @@
-import React from "react"
-import renderer from "react-test-renderer"
-import { MemoryRouter } from "react-router"
-import { ResourceView, SnapshotHighlight, TriggerMode } from "./types"
-import ResourceInfo from "./ResourceInfo"
-import fetchMock from "jest-fetch-mock"
 import { mount } from "enzyme"
-import SidebarTriggerButton from "./SidebarTriggerButton"
-import { unnamedEndpointLink, namedEndpointLink } from "./testdata"
+import React from "react"
+import { MemoryRouter } from "react-router"
+import renderer from "react-test-renderer"
+import ResourceInfo from "./ResourceInfo"
+import { namedEndpointLink, unnamedEndpointLink } from "./testdata"
 
 const fakeHandleOpenModal = () => {}
 

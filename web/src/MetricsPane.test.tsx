@@ -1,9 +1,8 @@
-import React from "react"
-import ReactDOM from "react-dom"
-import MetricsPane from "./MetricsPane"
-import PathBuilder from "./PathBuilder"
 import { mount } from "enzyme"
 import fetchMock from "jest-fetch-mock"
+import React from "react"
+import MetricsPane from "./MetricsPane"
+import PathBuilder from "./PathBuilder"
 
 let pb = PathBuilder.forTesting("localhost", "/")
 

@@ -1,5 +1,5 @@
-import React from "react"
 import { storiesOf } from "@storybook/react"
+import React from "react"
 import FatalErrorModal from "./FatalErrorModal"
 import { ShowFatalErrorModal } from "./types"
 

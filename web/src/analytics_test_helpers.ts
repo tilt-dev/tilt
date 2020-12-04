@@ -1,5 +1,5 @@
-import { Tags } from "./analytics"
 import fetchMock from "jest-fetch-mock"
+import { Tags } from "./analytics"
 
 export function expectIncr(fetchMockIndex: number, name: string, tags: Tags) {
   expect(fetchMock.mock.calls.length).toBeGreaterThan(fetchMockIndex)

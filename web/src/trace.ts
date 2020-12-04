@@ -1,7 +1,7 @@
-import { LogTraceNav, LogTrace } from "./types"
 import { isBuildSpanId } from "./logs"
-import PathBuilder from "./PathBuilder"
 import LogStore from "./LogStore"
+import PathBuilder from "./PathBuilder"
+import { LogTrace, LogTraceNav } from "./types"
 
 function traceData(
   pb: PathBuilder,

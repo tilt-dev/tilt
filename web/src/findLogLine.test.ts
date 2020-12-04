@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom"
-import { logPaneDOM } from "./testdata"
 import findLogLineID from "./findLogLine"
+import { logPaneDOM } from "./testdata"
 
 describe("findLogLine", () => {
   it("returns null if passed null", () => {

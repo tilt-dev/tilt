@@ -1,8 +1,8 @@
+import { shallow } from "enzyme"
 import React from "react"
-import { mount, shallow } from "enzyme"
-import SidebarIcon, { IconType } from "./SidebarIcon"
-import { ResourceStatus } from "./types"
+import SidebarIcon from "./SidebarIcon"
 import { Color } from "./style-helpers"
+import { ResourceStatus } from "./types"
 
 const cases: Array<[string, ResourceStatus, Color]> = [
   ["isPending", ResourceStatus.Pending, Color.white],

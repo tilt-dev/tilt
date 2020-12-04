@@ -1,16 +1,16 @@
-import React from "react"
 import { mount } from "enzyme"
+import fetchMock from "jest-fetch-mock"
+import React from "react"
+import { MemoryRouter } from "react-router"
+import { expectIncr } from "./analytics_test_helpers"
+import PathBuilder from "./PathBuilder"
+import SidebarItem from "./SidebarItem"
+import SidebarResources, { triggerUpdate } from "./SidebarResources"
 import SidebarTriggerButton, {
   TriggerButtonTooltip,
 } from "./SidebarTriggerButton"
-import { ResourceView, TriggerMode } from "./types"
 import { oneResource, twoResourceView } from "./testdata"
-import SidebarResources, { triggerUpdate } from "./SidebarResources"
-import SidebarItem from "./SidebarItem"
-import { MemoryRouter } from "react-router"
-import PathBuilder from "./PathBuilder"
-import fetchMock from "jest-fetch-mock"
-import { expectIncr } from "./analytics_test_helpers"
+import { ResourceView, TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
 

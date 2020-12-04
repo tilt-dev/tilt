@@ -1,18 +1,18 @@
-import React from "react"
 import { mount, ReactWrapper } from "enzyme"
-import { ResourceView } from "./types"
-import { twoResourceView } from "./testdata"
+import fetchMock from "jest-fetch-mock"
+import React from "react"
+import { MemoryRouter } from "react-router"
+import { expectIncr } from "./analytics_test_helpers"
+import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
+import PathBuilder from "./PathBuilder"
+import SidebarItem from "./SidebarItem"
+import { SidebarPinButton } from "./SidebarPin"
 import SidebarResources, {
   SidebarItemLink,
   SidebarListSection,
 } from "./SidebarResources"
-import SidebarItem from "./SidebarItem"
-import { MemoryRouter } from "react-router"
-import PathBuilder from "./PathBuilder"
-import { SidebarPinButton } from "./SidebarPin"
-import { expectIncr } from "./analytics_test_helpers"
-import fetchMock from "jest-fetch-mock"
-import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
+import { twoResourceView } from "./testdata"
+import { ResourceView } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 

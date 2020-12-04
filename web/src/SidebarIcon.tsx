@@ -1,5 +1,5 @@
 import React, { PureComponent } from "react"
-import { ResourceStatus } from "./types"
+import styled, { keyframes } from "styled-components"
 import {
   AnimDuration,
   Color,
@@ -7,9 +7,9 @@ import {
   ColorRGBA,
   Font,
   FontSize,
+  Width,
 } from "./style-helpers"
-import styled, { keyframes } from "styled-components"
-import { Width } from "./style-helpers"
+import { ResourceStatus } from "./types"
 
 type SidebarIconProps = {
   status: ResourceStatus

@@ -1,10 +1,10 @@
-import React from "react"
 import { mount } from "enzyme"
+import React from "react"
 import {
-  LocalStorageContextProvider,
   localStorageContext,
-  makeKey,
   LocalStorageContext,
+  LocalStorageContextProvider,
+  makeKey,
 } from "./LocalStorage"
 
 function lscp(f: (lsc: LocalStorageContext) => any) {

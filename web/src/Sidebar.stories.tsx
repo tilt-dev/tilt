@@ -1,16 +1,16 @@
-import React from "react"
 import { storiesOf } from "@storybook/react"
-import SidebarResources from "./SidebarResources"
+import React from "react"
+import { MemoryRouter } from "react-router"
+import PathBuilder from "./PathBuilder"
+import Sidebar from "./Sidebar"
 import SidebarItem from "./SidebarItem"
+import SidebarResources from "./SidebarResources"
 import {
-  oneResourceView,
   oneResourceNoAlerts,
+  oneResourceView,
   twoResourceView,
 } from "./testdata"
-import PathBuilder from "./PathBuilder"
-import { MemoryRouter } from "react-router"
 import { ResourceStatus, ResourceView, TriggerMode } from "./types"
-import Sidebar from "./Sidebar"
 
 type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")

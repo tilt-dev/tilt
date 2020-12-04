@@ -1,4 +1,4 @@
-import { podStatusIsError, podStatusIsCrash } from "./constants"
+import { podStatusIsCrash, podStatusIsError } from "./constants"
 import { logLinesToString } from "./logs"
 import LogStore from "./LogStore"
 

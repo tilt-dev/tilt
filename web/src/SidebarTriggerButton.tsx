@@ -1,8 +1,8 @@
 import React, { PureComponent } from "react"
-import { TriggerMode } from "./types"
-import "./SidebarTriggerButton.scss"
 import styled from "styled-components"
+import "./SidebarTriggerButton.scss"
 import { Height, Width } from "./style-helpers"
+import { TriggerMode } from "./types"
 
 let SidebarTriggerButtonStyle = styled.button`
   background-position: center center;

@@ -1,8 +1,8 @@
-import { numberOfAlerts } from "./alerts"
-import { ResourceStatus, TriggerMode } from "./types"
-import { combinedStatus } from "./status"
 import styled from "styled-components"
+import { numberOfAlerts } from "./alerts"
+import { combinedStatus } from "./status"
 import { Height, SizeUnit } from "./style-helpers"
+import { ResourceStatus, TriggerMode } from "./types"
 
 export const SidebarItemStyle = styled.li`
   height: ${Height.sidebarItem}px;

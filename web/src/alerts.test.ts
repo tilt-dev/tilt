@@ -8,8 +8,8 @@ import {
   PodStatusErrorType,
   WarningErrorType,
 } from "./alerts"
-import { TriggerMode } from "./types"
 import LogStore from "./LogStore"
+import { TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
 type K8sResourceInfo = Proto.webviewK8sResourceInfo
