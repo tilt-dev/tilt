@@ -43,10 +43,10 @@ class AlertPane extends PureComponent<AlertsProps> {
     let resources = this.props.resources
     let isSnapshot = this.props.pathBuilder.isSnapshot()
 
-    let alertResources = resources.filter(r => hasAlert(r))
-    alertResources.forEach(resource => {
+    let alertResources = resources.filter((r) => hasAlert(r))
+    alertResources.forEach((resource) => {
       let resName = resource.name ?? ""
-      getResourceAlerts(resource, this.props.logStore).forEach(alert => {
+      getResourceAlerts(resource, this.props.logStore).forEach((alert) => {
         let dismissButton = <div />
         if (alert.dismissHandler && !isSnapshot) {
           dismissButton = (

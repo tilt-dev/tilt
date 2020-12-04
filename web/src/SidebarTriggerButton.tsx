@@ -53,9 +53,7 @@ const titleText = (
   }
 }
 
-export default class SidebarTriggerButton extends PureComponent<
-  SidebarTriggerButtonProps
-> {
+export default class SidebarTriggerButton extends PureComponent<SidebarTriggerButtonProps> {
   render() {
     let props = this.props
 

@@ -43,7 +43,7 @@ class AppController {
     let socket = this.socket
 
     this.socket.addEventListener("close", this.onSocketClose.bind(this))
-    this.socket.addEventListener("message", event => {
+    this.socket.addEventListener("message", (event) => {
       if (!this.liveSocket) {
         this.loadCount++
       }
@@ -120,7 +120,7 @@ class AppController {
   setStateFromSnapshot(): void {
     let url = this.url
     fetch(url)
-      .then(resp => resp.json())
+      .then((resp) => resp.json())
       .then((data: Snapshot) => {
         data.view = data.view || {}
 
@@ -137,7 +137,7 @@ class AppController {
           })
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err)
         this.component.setAppState({ error: err })
       })

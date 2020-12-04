@@ -7,7 +7,7 @@ type AnsiLineProps = {
   className?: string
 }
 
-let AnsiLine = React.memo(function(props: AnsiLineProps) {
+let AnsiLine = React.memo(function (props: AnsiLineProps) {
   return (
     <React.Fragment>
       <Ansi linkify={false} useClasses={true} className={props.className}>

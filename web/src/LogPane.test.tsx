@@ -425,7 +425,7 @@ it("renders highlighted lines", () => {
 
 it.each(["update", "mount"])(
   "scrolls to highlighted lines in snapshot",
-  verb => {
+  (verb) => {
     const fakeScrollIntoView = jest.fn()
     Element.prototype.scrollIntoView = fakeScrollIntoView
 
@@ -514,7 +514,7 @@ it("doesn't set selection event handler if snapshot", () => {
     />
   )
 
-  let registeredEventHandlers = fakeAddEventListener.mock.calls.map(c => c[0])
+  let registeredEventHandlers = fakeAddEventListener.mock.calls.map((c) => c[0])
 
   expect(registeredEventHandlers).not.toEqual(
     expect.arrayContaining(["selectionchange"])

@@ -4,7 +4,7 @@ import LogPane from "./LogPane"
 import { LogLine } from "./types"
 
 function logPane(lines: LogLine[]) {
-  let nullFn = function() {}
+  let nullFn = function () {}
   return (
     <LogPane
       manifestName=""

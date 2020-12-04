@@ -13,7 +13,7 @@ import { StatusItem } from "./Statusbar"
 describe("combined status message", () => {
   it("should show that there's one resource building", () => {
     let data = oneResourceBuilding()
-    let resources = data.map(r => new StatusItem(r))
+    let resources = data.map((r) => new StatusItem(r))
     let actual = combinedStatusMessage(resources)
 
     expect(actual).toBe("Updating snack…")

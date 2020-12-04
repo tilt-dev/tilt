@@ -42,7 +42,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
       case "j":
       case "k":
         // An array of sidebar items, plus one at the beginning for 'All'
-        let names = [""].concat(items.map(item => item.name))
+        let names = [""].concat(items.map((item) => item.name))
         let index = names.indexOf(selected)
         let dir = e.key === "j" ? 1 : -1
         let targetIndex = index + dir
@@ -75,7 +75,7 @@ type PublicProps = {
   onTrigger: (action: string) => void
 }
 
-export default function(props: PublicProps) {
+export default function (props: PublicProps) {
   let history = useHistory()
   return <SidebarKeyboardShortcuts {...props} history={history} />
 }

@@ -171,7 +171,7 @@ class Statusbar extends PureComponent<StatusBarProps> {
     let upCount = 0
 
     let items = this.props.items
-    items.forEach(item => {
+    items.forEach((item) => {
       if (item.hasError) {
         errorCount++
       }

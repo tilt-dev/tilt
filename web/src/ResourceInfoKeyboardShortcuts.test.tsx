@@ -20,7 +20,7 @@ const shortcuts = (endpoints: Link[]) => {
     <ResourceInfoKeyboardShortcuts
       endpoints={endpoints}
       showSnapshotButton={showSnapshotButton}
-      openEndpointUrl={url => (endpointUrl = url)}
+      openEndpointUrl={(url) => (endpointUrl = url)}
       openSnapshotModal={() => (openedSnapshotModal = true)}
     />
   )

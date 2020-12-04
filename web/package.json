@@ -76,7 +76,7 @@
     "jest-fetch-mock": "^3.0.3",
     "jest-junit": "^10.0.0",
     "jsdom": "^15.2.1",
-    "prettier": "1.19.1",
+    "prettier": "2.2.1",
     "react-test-renderer": "^16.9.0"
   },
   "engines": {

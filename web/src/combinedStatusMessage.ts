@@ -4,21 +4,21 @@ import { podStatusIsCrash, podStatusIsError } from "./constants"
 
 const combinedStatusMessage = (resources: StatusItem[]): string => {
   let buildingResources = resources.filter(
-    r => !isZeroTime(r.currentBuild.startTime)
+    (r) => !isZeroTime(r.currentBuild.startTime)
   )
 
   if (buildingResources.length > 0) {
     return `Updating ${buildingResources[0].name}…`
   }
 
-  let containerCrashedResources = resources.filter(r =>
+  let containerCrashedResources = resources.filter((r) =>
     podStatusIsCrash(r.podStatus)
   )
   if (containerCrashedResources.length > 0) {
     return "Container crashed: " + containerCrashedResources[0].name
   }
 
-  let resourcesWithBuildErrors = resources.filter(r => {
+  let resourcesWithBuildErrors = resources.filter((r) => {
     return r.lastBuild && r.lastBuild.error
   })
 
@@ -27,7 +27,7 @@ const combinedStatusMessage = (resources: StatusItem[]): string => {
   }
 
   let resourcesWithInterestingPodStatuses = resources.filter(
-    r => podStatusIsError(r.podStatus) || r.podStatusMessage
+    (r) => podStatusIsError(r.podStatus) || r.podStatusMessage
   )
   if (resourcesWithInterestingPodStatuses.length > 0) {
     let r = resourcesWithInterestingPodStatuses[0]

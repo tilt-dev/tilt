@@ -7,7 +7,7 @@ export function logLinesFromString(
   manifestName?: string
 ): LogLine[] {
   let lines = log.split("\n")
-  return lines.map(text => {
+  return lines.map((text) => {
     return {
       text: text,
       manifestName: manifestName ?? "",
@@ -22,7 +22,7 @@ export function logLinesToString(
   showManifestPrefix: boolean
 ): string {
   return lines
-    .map(line => {
+    .map((line) => {
       let text = line.text
       if (showManifestPrefix) {
         text = sourcePrefix(line.manifestName) + text

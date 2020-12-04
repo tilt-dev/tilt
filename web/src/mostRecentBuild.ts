@@ -48,8 +48,8 @@ const mostRecentBuildToDisplay = (
 ): BuildTuple | null => {
   let r = null
   let pendingBuildsSorted = resources
-    .map(r => makePendingBuild(r))
-    .filter(b => !isZeroTime(b.since))
+    .map((r) => makePendingBuild(r))
+    .filter((b) => !isZeroTime(b.since))
     .sort(buildByDate)
 
   if (pendingBuildsSorted.length > 0) {
@@ -57,7 +57,7 @@ const mostRecentBuildToDisplay = (
   }
 
   let buildHistorySorted = resources
-    .flatMap(r => r.buildHistory.map(b => makeBuildHistory(r, b)))
+    .flatMap((r) => r.buildHistory.map((b) => makeBuildHistory(r, b)))
     .sort(buildByDate)
 
   if (buildHistorySorted.length > 0 && buildHistorySorted[0].edits.length > 0) {
