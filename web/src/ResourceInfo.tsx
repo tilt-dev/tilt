@@ -134,7 +134,7 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
           Endpoint{endpoints?.length > 1 ? "s" : ""}:
         </EndpointsLabel>
 
-        {endpoints?.map(ep => (
+        {endpoints?.map((ep) => (
           <Endpoint
             onClick={() => void incr("ui.web.endpoint", { action: "click" })}
             href={ep.url}

@@ -145,7 +145,7 @@ class LogStore {
       }
     }
 
-    newSegments.forEach(newSegment => {
+    newSegments.forEach((newSegment) => {
       // workaround firestore bug. see comments on defaultSpanId.
       newSegment.spanId = newSegment.spanId || defaultSpanId
       this.segments.push(newSegment)
@@ -227,7 +227,7 @@ class LogStore {
 
   spanLog(spanIds: string[]): LogLine[] {
     let spans: { [key: string]: LogSpan } = {}
-    spanIds.forEach(spanId => {
+    spanIds.forEach((spanId) => {
       spanId = spanId ? spanId : defaultSpanId
       let span = this.spans[spanId]
       if (span) {
@@ -276,7 +276,9 @@ class LogStore {
   }
 
   getOrderedBuildSpans(spanId: string): LogSpan[] {
-    return this.getOrderedBuildSpanIds(spanId).map(spanId => this.spans[spanId])
+    return this.getOrderedBuildSpanIds(spanId).map(
+      (spanId) => this.spans[spanId]
+    )
   }
 
   // Given a build span in the current manifest, find the next build span.

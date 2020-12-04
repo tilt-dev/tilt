@@ -133,7 +133,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
     let step = Math.max(renderWindowMinStep, linesNeeded)
     let newRenderWindow = this.state.renderWindow + step
     if (this.state.renderWindow < newRenderWindow) {
-      this.setState(prevState => {
+      this.setState((prevState) => {
         if (prevState.renderWindow < newRenderWindow) {
           return { renderWindow: newRenderWindow }
         }
@@ -393,7 +393,7 @@ class LogPane extends Component<LogPaneProps, LogPaneState> {
 function logText(n: ParentNode): string {
   let nodes = n.querySelectorAll("code.LogPaneLine-content span")
   return Array.from(nodes)
-    .map(node => node.textContent)
+    .map((node) => node.textContent)
     .join("")
 }
 

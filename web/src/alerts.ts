@@ -123,7 +123,7 @@ function podRestartAlert(r: Resource): Alert {
       headers: {
         "Content-Type": "application/json",
       },
-    }).then(response => {
+    }).then((response) => {
       if (!response.ok) {
         console.error(response)
       }
@@ -178,7 +178,7 @@ function warningsAlerts(resource: Resource): Alert[] {
     warnings = history[0].warnings ?? []
   }
   if (warnings.length > 0) {
-    warnings.forEach(w => {
+    warnings.forEach((w) => {
       alertArray.push({
         alertType: WarningErrorType,
         header: resource.name ?? "",

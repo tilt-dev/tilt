@@ -12,7 +12,7 @@ function lscp(f: (lsc: LocalStorageContext) => any) {
     <LocalStorageContextProvider tiltfileKey={"test"}>
       {
         <localStorageContext.Consumer>
-          {ctx => f(ctx)}
+          {(ctx) => f(ctx)}
         </localStorageContext.Consumer>
       }
     </LocalStorageContextProvider>
@@ -25,7 +25,7 @@ describe("localStorageContext", () => {
   })
 
   it("stores data to local storage", () => {
-    lscp(ctx => {
+    lscp((ctx) => {
       ctx.set("test-key", "test-write-value")
       return null
     })
@@ -41,7 +41,7 @@ describe("localStorageContext", () => {
       JSON.stringify("test-read-value")
     )
 
-    let root = lscp(ctx => {
+    let root = lscp((ctx) => {
       return <p>{ctx.get<string>("test-key")}</p>
     })
 

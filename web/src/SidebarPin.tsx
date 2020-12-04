@@ -43,8 +43,8 @@ type SidebarPinContext = {
 
 export const sidebarPinContext = React.createContext<SidebarPinContext>({
   pinnedResources: [],
-  pinResource: s => {},
-  unpinResource: s => {},
+  pinResource: (s) => {},
+  unpinResource: (s) => {},
 })
 
 export function SidebarPinContextProvider(
@@ -73,7 +73,7 @@ export function SidebarPinContextProvider(
   }, [pinnedResources, lsc])
 
   function pinResource(name: string) {
-    setPinnedResources(prevState => {
+    setPinnedResources((prevState) => {
       const ret = prevState.includes(name) ? prevState : [...prevState, name]
       incr("ui.web.pin", {
         pinCount: ret.length.toString(),
@@ -84,8 +84,8 @@ export function SidebarPinContextProvider(
   }
 
   function unpinResource(name: string) {
-    setPinnedResources(prevState => {
-      const ret = prevState.filter(n => n !== name)
+    setPinnedResources((prevState) => {
+      const ret = prevState.filter((n) => n !== name)
       incr("ui.web.pin", {
         pinCount: ret.length.toString(),
         action: "unpin",

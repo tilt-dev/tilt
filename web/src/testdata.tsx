@@ -40,18 +40,18 @@ function getMockRouterProps<P>(data: P) {
       location: location,
       push: () => {},
       replace: () => {},
-      go: num => {},
+      go: (num) => {},
       goBack: () => {},
       goForward: () => {},
-      block: t => {
+      block: (t) => {
         var temp: UnregisterCallback = () => {}
         return temp
       },
-      createHref: t => {
+      createHref: (t) => {
         var temp: Href = ""
         return temp
       },
-      listen: t => {
+      listen: (t) => {
         var temp: UnregisterCallback = () => {}
         return temp
       },

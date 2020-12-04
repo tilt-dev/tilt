@@ -129,7 +129,7 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
-    this.setState(prevState => {
+    this.setState((prevState) => {
       let newState = _.clone(state) as any
       newState.logStore = prevState.logStore ?? new LogStore()
 
@@ -153,7 +153,7 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   toggleSidebar() {
-    this.setState(prevState => {
+    this.setState((prevState) => {
       return {
         isSidebarClosed: !prevState.isSidebarClosed,
       }
@@ -191,7 +191,7 @@ class HUD extends Component<HudProps, HudState> {
       method: "post",
       body: body,
     })
-      .then(res => {
+      .then((res) => {
         res
           .json()
           .then((value: Proto.webviewUploadSnapshotResponse) => {
@@ -199,7 +199,7 @@ class HUD extends Component<HudProps, HudState> {
               snapshotLink: value.url ? value.url : "",
             })
           })
-          .catch(err => {
+          .catch((err) => {
             console.error(err)
             this.setAppState({
               showSnapshotModal: false,
@@ -207,7 +207,7 @@ class HUD extends Component<HudProps, HudState> {
             })
           })
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err)
         this.setAppState({
           showSnapshotModal: false,
@@ -248,7 +248,7 @@ class HUD extends Component<HudProps, HudState> {
     if (!resources?.length || !view?.tiltfileKey) {
       return <HeroScreen message={"Loading…"} />
     }
-    let statusItems = resources.map(res => new StatusItem(res))
+    let statusItems = resources.map((res) => new StatusItem(res))
 
     let runningBuild = view?.runningTiltBuild
     let suggestedVersion = view?.suggestedTiltVersion
@@ -321,7 +321,7 @@ class HUD extends Component<HudProps, HudState> {
 
     let view = this.state.view
     let resources = view?.resources ?? []
-    let selectedResource = resources?.find(r => r.name === name)
+    let selectedResource = resources?.find((r) => r.name === name)
 
     let endpoints = selectedResource?.endpointLinks ?? []
     let podID = selectedResource?.podID ?? ""
@@ -350,9 +350,9 @@ class HUD extends Component<HudProps, HudState> {
   renderSecondaryNav() {
     let view = this.state.view
     let resources = view?.resources ?? []
-    let hasK8s = resources.some(r => {
+    let hasK8s = resources.some((r) => {
       let specs = r.specs ?? []
-      return specs.some(spec => spec.type === TargetType.K8s)
+      return specs.some((spec) => spec.type === TargetType.K8s)
     })
 
     let secondaryNavRoute = (
@@ -379,13 +379,13 @@ class HUD extends Component<HudProps, HudState> {
           : null
 
       if (name) {
-        let selectedResource = resources.find(r => r.name === name)
+        let selectedResource = resources.find((r) => r.name === name)
         if (selectedResource) {
           numAlerts = numberOfAlerts(selectedResource)
         }
       } else {
         numAlerts = resources
-          .map(r => numberOfAlerts(r))
+          .map((r) => numberOfAlerts(r))
           .reduce((sum, current) => sum + current, 0)
       }
 
@@ -436,7 +436,7 @@ class HUD extends Component<HudProps, HudState> {
   renderSidebarSwitch() {
     let view = this.state.view
     let resources = view?.resources || []
-    let sidebarItems = resources.map(res => new SidebarItem(res))
+    let sidebarItems = resources.map((res) => new SidebarItem(res))
     let isSidebarClosed = !!this.state.isSidebarClosed
     let tiltCloudUsername = view?.tiltCloudUsername || null
     let tiltCloudSchemeHost = view?.tiltCloudSchemeHost || ""
@@ -501,7 +501,7 @@ class HUD extends Component<HudProps, HudState> {
       let name = props.match.params?.name ?? ""
       let span = props.match.params?.span ?? ""
 
-      let r = resources.find(r => r.name === name)
+      let r = resources.find((r) => r.name === name)
       if (r === undefined) {
         return <Route component={NotFound} />
       }
@@ -526,7 +526,7 @@ class HUD extends Component<HudProps, HudState> {
 
     let logsRoute = (props: RouteComponentProps<any>) => {
       let name = props.match.params?.name ?? ""
-      let r = resources.find(r => r.name === name)
+      let r = resources.find((r) => r.name === name)
       if (r === undefined) {
         return <Route component={NotFound} />
       }
@@ -551,7 +551,7 @@ class HUD extends Component<HudProps, HudState> {
 
     let errorRoute = (props: RouteComponentProps<any>): React.ReactNode => {
       let name = props.match.params ? props.match.params.name : ""
-      let er = resources.find(r => r.name === name)
+      let er = resources.find((r) => r.name === name)
       if (!er) {
         return <Route component={NotFound} />
       }
@@ -565,7 +565,7 @@ class HUD extends Component<HudProps, HudState> {
     }
     let facetsRoute = (props: RouteComponentProps<any>): React.ReactNode => {
       let name = props.match.params ? props.match.params.name : ""
-      let fr = resources.find(r => r.name === name)
+      let fr = resources.find((r) => r.name === name)
       if (!fr) {
         return <Route component={NotFound} />
       }

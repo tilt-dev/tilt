@@ -45,7 +45,7 @@ describe("getResourceAlerts", () => {
     let rInfo = r.k8sResourceInfo
     if (!rInfo) throw new Error("missing k8s info")
     rInfo.podRestarts = 1
-    let actual = getResourceAlerts(r, logStore).map(a => {
+    let actual = getResourceAlerts(r, logStore).map((a) => {
       delete a.dismissHandler
       return a
     })
@@ -163,7 +163,7 @@ describe("getResourceAlerts", () => {
       segments: [{ text: "Build error log", spanId: "build:1" }],
     })
 
-    let actual = getResourceAlerts(r, logStore).map(a => {
+    let actual = getResourceAlerts(r, logStore).map((a) => {
       delete a.dismissHandler
       return a
     })

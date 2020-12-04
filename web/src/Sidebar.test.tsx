@@ -62,7 +62,7 @@ describe("sidebar", () => {
   })
 
   it("abbreviates durations under a minute", () => {
-    let items = [4, 9, 19, 29, 39, 49, 54].map(d => {
+    let items = [4, 9, 19, 29, 39, 49, 54].map((d) => {
       let res = oneResource()
       res.name = `resource${d}`
       res.lastDeployTime = new Date(Date.now() - d * 1000).toISOString()

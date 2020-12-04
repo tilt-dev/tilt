@@ -65,7 +65,7 @@ type PublicProps = {
   facetsUrl: string | null
 }
 
-export default function(props: PublicProps) {
+export default function (props: PublicProps) {
   let history = useHistory()
   return <SecondaryNavKeyboardShortcuts {...props} history={history} />
 }

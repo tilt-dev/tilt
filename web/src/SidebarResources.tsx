@@ -47,9 +47,9 @@ let SidebarItemBox = styled.div`
   display: flex;
   align-items: stretch;
   width: ${Width.sidebar -
-    Width.sidebarTriggerButton -
-    Width.sidebarPinButton -
-    1}px;
+  Width.sidebarTriggerButton -
+  Width.sidebarPinButton -
+  1}px;
   height: ${Height.sidebarItem}px;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
@@ -165,7 +165,7 @@ export const triggerUpdate = (name: string, action: string): void => {
       manifest_names: [name],
       build_reason: 16 /* BuildReasonFlagTriggerWeb */,
     }),
-  }).then(response => {
+  }).then((response) => {
     if (!response.ok) {
       console.log(response)
     }
@@ -267,10 +267,10 @@ function renderSidebarItem(
 
 function PinnedItems(props: SidebarProps) {
   let ctx = useContext(sidebarPinContext)
-  let pinnedItems = ctx.pinnedResources?.flatMap(r =>
+  let pinnedItems = ctx.pinnedResources?.flatMap((r) =>
     props.items
-      .filter(i => i.name === r)
-      .map(i => renderSidebarItem(i, props, false))
+      .filter((i) => i.name === r)
+      .map((i) => renderSidebarItem(i, props, false))
   )
 
   if (!pinnedItems?.length) {
@@ -303,10 +303,10 @@ class PureSidebarResources extends PureComponent<SidebarProps> {
         : pb.path("/")
 
     let totalAlerts = this.props.items
-      .map(i => i.alertCount)
+      .map((i) => i.alertCount)
       .reduce((sum, current) => sum + current, 0)
 
-    let listItems = this.props.items.map(item =>
+    let listItems = this.props.items.map((item) =>
       renderSidebarItem(item, this.props, true)
     )
 

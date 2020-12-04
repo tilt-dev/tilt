@@ -23,7 +23,7 @@ function getPinnedItemNames(
     .find(SidebarListSection)
     .find({ name: "favorites" })
     .find(SidebarItemLink)
-  return pinnedItems.map(i => i.prop("title"))
+  return pinnedItems.map((i) => i.prop("title"))
 }
 
 function clickPin(
@@ -47,7 +47,7 @@ describe("SidebarResources", () => {
   })
 
   it("adds items to the pinned group when items are pinned", () => {
-    let items = twoResourceView().resources.map(r => new SidebarItem(r))
+    let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
         <LocalStorageContextProvider tiltfileKey={"test"}>
@@ -81,7 +81,7 @@ describe("SidebarResources", () => {
       JSON.stringify(["vigoda", "snack"])
     )
 
-    let items = twoResourceView().resources.map(r => new SidebarItem(r))
+    let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
         <LocalStorageContextProvider tiltfileKey={"test"}>
@@ -99,10 +99,10 @@ describe("SidebarResources", () => {
   })
 
   it("removes items from the pinned group when items are pinned", () => {
-    let items = twoResourceView().resources.map(r => new SidebarItem(r))
+    let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     localStorage.setItem(
       makeKey("test", "pinned-resources"),
-      JSON.stringify(items.map(i => i.name))
+      JSON.stringify(items.map((i) => i.name))
     )
 
     const root = mount(
