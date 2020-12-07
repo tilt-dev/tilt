@@ -681,12 +681,15 @@ func TestPortForward(t *testing.T) {
 			[]model.PortForward{model.MustPortForward(8001, 0, "", "", "v1/ui")}),
 		newPortForwardSuccessCase("value_constructor_both", "port_forward(8001, 443)", []model.PortForward{{LocalPort: 8001, ContainerPort: 443}}),
 		newPortForwardSuccessCase("value_constructor_both_named", "port_forward(8001, 443, name='foo')", []model.PortForward{{LocalPort: 8001, ContainerPort: 443, Name: "foo"}}),
-		newPortForwardSuccessCase("value_constructor_all_positional", "port_forward(8001, 443, 'foo', 'v1/ui')",
-			[]model.PortForward{model.MustPortForward(8001, 443, "", "foo", "v1/ui")}),
+		newPortForwardSuccessCase("value_constructor_all_positional", "port_forward(8001, 443, 'foo', 'v1/ui', 'elasticsearch:9200')",
+			[]model.PortForward{model.MustPortForward(8001, 443, "elasticsearch:9200", "foo", "v1/ui")}),
 		newPortForwardErrorCase("value_constructor_no_local_port", "port_forward(container_port=443)", "missing argument for local_port"),
 		newPortForwardErrorCase("value_constructor_local_port_wrong_type", "port_forward('8001')", "for parameter local_port: got string, want int"),
 		newPortForwardErrorCase("value_constructor_bad_path", "port_forward(8001, 443, link_path='invalid_escape%')", "invalid URL escape"),
 		newPortForwardErrorCase("value_constructor_name_wrong_type", "port_forward(8001, 443, 54321)", "for parameter name: got int, want string"),
+		newPortForwardSuccessCase("value_constructor_host", "port_forward(8001, 443, host='elasticsearch:9200')",
+			[]model.PortForward{{LocalPort: 8001, ContainerPort: 443, Host: "elasticsearch:9200"}}),
+		newPortForwardErrorCase("value_constructor_host_wrong_type", "port_forward(8001, 443, host=54321)", "for parameter \"host\": got int, want string"),
 
 		// list values
 		newPortForwardSuccessCase("list_mixed", "[8000, port_forward(8001, 443), '8002', '8003:444'],", []model.PortForward{{LocalPort: 8000}, {LocalPort: 8001, ContainerPort: 443}, {LocalPort: 8002}, {LocalPort: 8003, ContainerPort: 444}}),
