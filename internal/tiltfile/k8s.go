@@ -25,6 +25,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+var emptyYAMLError = fmt.Errorf("Empty YAML passed to k8s_yaml")
+
 type referenceList []reference.Named
 
 func (l referenceList) Len() int           { return len(l) }
@@ -141,7 +143,7 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 
 		//the parameter blob('') results in an empty string
 		if len(entities) == 0 && val == "" {
-			return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
+			return nil, emptyYAMLError
 		}
 		err = s.k8sObjectIndex.Append(thread, entities, allowDuplicates)
 		if err != nil {
@@ -151,7 +153,7 @@ func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, a
 		s.k8sUnresourced = append(s.k8sUnresourced, entities...)
 
 	} else {
-		return nil, fmt.Errorf("Empty or Invalid YAML Resource Detected")
+		return nil, emptyYAMLError
 	}
 
 	return starlark.None, nil
