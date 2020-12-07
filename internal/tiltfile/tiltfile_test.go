@@ -1280,7 +1280,7 @@ func TestFilterYamlNoMatch(t *testing.T) {
 doggos, rest = filter_yaml('k8s.yaml', namespace='dne', kind='deployment')
 k8s_yaml(doggos)
 `)
-	f.loadErrString("Empty or Invalid YAML Resource Detected")
+	f.loadErrString(emptyYAMLError.Error())
 }
 
 func TestYamlNone(t *testing.T) {
@@ -1292,8 +1292,7 @@ func TestYamlNone(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml(None)
 `)
-
-	f.loadErrString("Empty or Invalid YAML Resource Detected")
+	f.loadErrString(emptyYAMLError.Error())
 }
 
 func TestYamlEmptyBlob(t *testing.T) {
@@ -1305,8 +1304,7 @@ func TestYamlEmptyBlob(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml(blob(''))
 `)
-
-	f.loadErrString("Empty or Invalid YAML Resource Detected")
+	f.loadErrString(emptyYAMLError.Error())
 }
 
 func TestDuplicateLocalResources(t *testing.T) {
