@@ -65,11 +65,6 @@ type k8sResource struct {
 	links []model.Link
 }
 
-const deprecatedResourceAssemblyV1Warning = "This Tiltfile is using k8s resource assembly version 1, which has been " +
-	"deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
-
-const deprecatedResourceAssemblyVersionWarning = "This Tiltfile is calling k8s_resource_assembly_version, which has been deprecated. See https://docs.tilt.dev/resource_assembly_migration.html for more information."
-
 // holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
 	// if non-empty, how to rename this resource
@@ -266,78 +261,6 @@ func (s *tiltfileState) filterYaml(thread *starlark.Thread, fn *starlark.Builtin
 	}, nil
 }
 
-func (s *tiltfileState) k8sResourceV1(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if !s.warnedDeprecatedResourceAssembly {
-		s.logger.Warnf("%s", deprecatedResourceAssemblyV1Warning)
-		s.warnedDeprecatedResourceAssembly = true
-	}
-
-	var name string
-	var yamlValue starlark.Value
-	var imageVal starlark.Value
-	var portForwardsVal starlark.Value
-	var extraPodSelectorsVal starlark.Value
-
-	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"name", &name,
-		"yaml?", &yamlValue,
-		"image?", &imageVal,
-		"port_forwards?", &portForwardsVal,
-		"extra_pod_selectors?", &extraPodSelectorsVal,
-	); err != nil {
-		return nil, err
-	}
-
-	if name == "" {
-		return nil, fmt.Errorf("k8s_resource: name must not be empty")
-	}
-	r, err := s.makeK8sResource(name)
-	if err != nil {
-		return nil, err
-	}
-
-	entities, err := s.yamlEntitiesFromSkylarkValueOrList(thread, yamlValue)
-	if err != nil {
-		return nil, err
-	}
-
-	var imageRefAsStr string
-	switch imageVal := imageVal.(type) {
-	case nil:
-		// empty
-	case starlark.String:
-		imageRefAsStr = string(imageVal)
-	default:
-		return nil, fmt.Errorf("image arg must be a string; got %T", imageVal)
-	}
-
-	portForwards, err := convertPortForwards(portForwardsVal)
-	if err != nil {
-		return nil, errors.Wrapf(err, "%s %q", fn.Name(), name)
-	}
-
-	err = r.addEntities(entities, s.k8sImageLocatorsList(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if imageRefAsStr != "" {
-		imageRef, err := container.ParseNamed(imageRefAsStr)
-		if err != nil {
-			return nil, err
-		}
-		r.addRefSelector(container.NewRefSelector(imageRef))
-	}
-	r.portForwards = portForwards
-
-	r.extraPodSelectors, err = podLabelsFromStarlarkValue(extraPodSelectorsVal)
-	if err != nil {
-		return nil, err
-	}
-
-	return starlark.None, nil
-}
-
 func (s *tiltfileState) k8sImageLocatorsList() []k8s.ImageLocator {
 	locators := []k8s.ImageLocator{}
 	for _, info := range s.k8sKinds {
@@ -347,65 +270,6 @@ func (s *tiltfileState) k8sImageLocatorsList() []k8s.ImageLocator {
 }
 
 func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	switch s.k8sResourceAssemblyVersion {
-	case 1:
-		return s.k8sResourceV1(thread, fn, args, kwargs)
-	case 2:
-		return s.k8sResourceV2(thread, fn, args, kwargs)
-	default:
-		return starlark.None, fmt.Errorf("invalid k8s resource assembly version: %v", s.k8sResourceAssemblyVersion)
-	}
-}
-
-// v1 syntax:
-// `k8s_resource(name, yaml='', image='', port_forwards=[], extra_pod_selectors=[])`
-// v2 syntax:
-// `k8s_resource(workload, new_name='', port_forwards=[], extra_pod_selectors=[])`
-// this function tries to tell if they're still using a v1 tiltfile after we made v2 the default
-func (s *tiltfileState) isProbablyK8sResourceV1Call(args starlark.Tuple, kwargs []starlark.Tuple) (bool, string) {
-	var k8sResourceV1OnlyNames = map[string]bool{
-		"name":  true,
-		"yaml":  true,
-		"image": true,
-	}
-	for _, item := range kwargs {
-		name := string(item[0].(starlark.String))
-		if _, ok := k8sResourceV1OnlyNames[name]; ok {
-			return true, fmt.Sprintf("it was called with kwarg %q, which no longer exists", name)
-		}
-	}
-
-	// check positional args
-	// check if the second arg is yaml (v1) instead of a resource name (v2)
-	if args.Len() >= 2 {
-		switch x := args[1].(type) {
-		case starlark.Sequence:
-			return true, "second arg was a sequence"
-		case io.Blob:
-			return true, "second arg was a blob"
-		// if a Tiltfile contains `k8s_resource('foo', 'foo.yaml')`
-		// in v1, the second arg is a yaml file name
-		// in v2, it's the new resource name
-		case starlark.String:
-			if strings.HasSuffix(string(x), ".yaml") || strings.HasSuffix(string(x), ".yml") {
-				return true, "second arg looks like a yaml file name, not a resource name"
-			}
-		default:
-			// this is invalid in both v1 and v2 syntax, so fall back and let v2 parsing error out
-		}
-	}
-
-	// we don't need to check the subsequent positional args because they can't include a third positional arg without
-	// including a second!
-
-	return false, ""
-}
-
-func (s *tiltfileState) k8sResourceV2(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	isV1, msg := s.isProbablyK8sResourceV1Call(args, kwargs)
-	if isV1 {
-		return starlark.None, fmt.Errorf("It looks like k8s_resource is being called with deprecated arguments: %s.\n\n%s", msg, deprecatedResourceAssemblyV1Warning)
-	}
 	var workload string
 	var newName string
 	var portForwardsVal starlark.Value
@@ -957,33 +821,6 @@ func stringToPortForward(s starlark.String) (model.PortForward, error) {
 		}
 	}
 	return model.PortForward{LocalPort: local, ContainerPort: container, Host: host}, nil
-}
-
-func (s *tiltfileState) k8sResourceAssemblyVersionFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var version int
-	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"version", &version,
-	); err != nil {
-		return nil, err
-	}
-
-	if len(s.k8sUnresourced) > 0 || len(s.k8s) > 0 || len(s.k8sResourceOptions) > 0 {
-		return starlark.None, fmt.Errorf("%s can only be called before introducing any k8s resources", fn.Name())
-	}
-
-	if version < 1 || version > 2 {
-		return starlark.None, fmt.Errorf("invalid %s %d. Must be 1 or 2.", fn.Name(), version)
-	}
-
-	if !s.warnedDeprecatedResourceAssembly {
-		s.logger.Warnf(deprecatedResourceAssemblyVersionWarning)
-		s.warnedDeprecatedResourceAssembly = true
-	}
-
-	s.k8sResourceAssemblyVersion = version
-	s.k8sResourceAssemblyVersionReason = k8sResourceAssemblyVersionReasonExplicit
-
-	return starlark.None, nil
 }
 
 func (s *tiltfileState) calculateResourceNames(workloads []k8s.K8sEntity) ([]string, error) {
