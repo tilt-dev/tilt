@@ -862,14 +862,15 @@ func convertPortForwards(val starlark.Value) ([]model.PortForward, error) {
 
 func (s *tiltfileState) portForward(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var local, container int
-	var name, path string
+	var name, path, host string
 
 	// TODO: can specify host (see `stringToPortForward` for host validation logic)
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"local_port", &local,
 		"container_port?", &container,
 		"name?", &name,
-		"link_path?", &path); err != nil {
+		"link_path?", &path,
+		"host?", &host); err != nil {
 		return nil, err
 	}
 
@@ -882,7 +883,7 @@ func (s *tiltfileState) portForward(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 	return portForward{
-		model.PortForward{LocalPort: local, ContainerPort: container, Name: name}.WithPath(parsedPath),
+		model.PortForward{LocalPort: local, ContainerPort: container, Host: host, Name: name}.WithPath(parsedPath),
 	}, nil
 }
 
