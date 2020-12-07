@@ -1,4 +1,3 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import MetricsPane from "./MetricsPane"
 import PathBuilder from "./PathBuilder"
@@ -20,7 +19,12 @@ function graphs() {
   return <MetricsPane pathBuilder={pb} serving={serving} />
 }
 
-storiesOf("MetricsPane", module)
-  .add("teaser", teaser)
-  .add("graphs", graphs)
-  .add("loading", loading)
+export default {
+  title: "MetricsPane",
+}
+
+export const Teaser = teaser
+
+export const Graphs = graphs
+
+export const Loading = loading

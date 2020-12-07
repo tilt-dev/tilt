@@ -1,7 +1,8 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import AnalyticsNudge from "./AnalyticsNudge"
 
-storiesOf("AnalyticsNudge", module).add("needsNudge", () => (
-  <AnalyticsNudge needsNudge={true} />
-))
+export default {
+  title: "AnalyticsNudge",
+}
+
+export const NeedsNudge = () => <AnalyticsNudge needsNudge={true} />

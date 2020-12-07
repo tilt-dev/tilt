@@ -1,4 +1,3 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
@@ -64,18 +63,26 @@ function itemView(...options: optionFn[]) {
   )
 }
 
-storiesOf("SidebarItemView", module)
-  .add("one-item-building", () => itemView(withStatus(ResourceStatus.Building)))
-  .add("one-item-pending", () => itemView(withStatus(ResourceStatus.Pending)))
-  .add("one-item-healthy", () => itemView(withStatus(ResourceStatus.Healthy)))
-  .add("one-item-unhealthy", () =>
-    itemView(withStatus(ResourceStatus.Unhealthy))
-  )
-  .add("one-item-warning", () => itemView(withStatus(ResourceStatus.Warning)))
-  .add("one-item-none", () => itemView(withStatus(ResourceStatus.None)))
-  .add("one-item-trigger", () =>
-    itemView(withStatus(ResourceStatus.Pending), withManualTrigger())
-  )
-  .add("one-item-long-name", () =>
-    itemView(withName("longnamelongnameverylongname"))
-  )
+export default {
+  title: "SidebarItemView",
+}
+
+export const OneItemBuilding = () =>
+  itemView(withStatus(ResourceStatus.Building))
+
+export const OneItemPending = () => itemView(withStatus(ResourceStatus.Pending))
+
+export const OneItemHealthy = () => itemView(withStatus(ResourceStatus.Healthy))
+
+export const OneItemUnhealthy = () =>
+  itemView(withStatus(ResourceStatus.Unhealthy))
+
+export const OneItemWarning = () => itemView(withStatus(ResourceStatus.Warning))
+
+export const OneItemNone = () => itemView(withStatus(ResourceStatus.None))
+
+export const OneItemTrigger = () =>
+  itemView(withStatus(ResourceStatus.Pending), withManualTrigger())
+
+export const OneItemLongName = () =>
+  itemView(withName("longnamelongnameverylongname"))

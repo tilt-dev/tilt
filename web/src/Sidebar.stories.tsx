@@ -1,4 +1,3 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
@@ -120,20 +119,41 @@ function oneItemWithStatus(status: ResourceStatus) {
   )
 }
 
-storiesOf("Sidebar", module)
-  .add("two-items", twoItemSidebar)
-  .add("two-items-closed", twoItemSidebarClosed)
-  .add("two-items-one-pinned", twoItemSidebarOnePinned)
-  .add("one-item-with-trigger", oneItemWithTrigger)
-  .add(
-    "one-item-building",
-    oneItemWithStatus.bind(null, ResourceStatus.Building)
-  )
-  .add("one-item-pending", oneItemWithStatus.bind(null, ResourceStatus.Pending))
-  .add("one-item-healthy", oneItemWithStatus.bind(null, ResourceStatus.Healthy))
-  .add(
-    "one-item-unhealthy",
-    oneItemWithStatus.bind(null, ResourceStatus.Unhealthy)
-  )
-  .add("one-item-warning", oneItemWithStatus.bind(null, ResourceStatus.Warning))
-  .add("one-item-none", oneItemWithStatus.bind(null, ResourceStatus.None))
+export default {
+  title: "Sidebar",
+}
+
+export const TwoItems = twoItemSidebar
+
+export const TwoItemsClosed = twoItemSidebarClosed
+
+export const TwoItemsOnePinned = twoItemSidebarOnePinned
+
+export const OneItemWithTrigger = oneItemWithTrigger
+
+export const OneItemBuilding = oneItemWithStatus.bind(
+  null,
+  ResourceStatus.Building
+)
+
+export const OneItemPending = oneItemWithStatus.bind(
+  null,
+  ResourceStatus.Pending
+)
+
+export const OneItemHealthy = oneItemWithStatus.bind(
+  null,
+  ResourceStatus.Healthy
+)
+
+export const OneItemUnhealthy = oneItemWithStatus.bind(
+  null,
+  ResourceStatus.Unhealthy
+)
+
+export const OneItemWarning = oneItemWithStatus.bind(
+  null,
+  ResourceStatus.Warning
+)
+
+export const OneItemNone = oneItemWithStatus.bind(null, ResourceStatus.None)

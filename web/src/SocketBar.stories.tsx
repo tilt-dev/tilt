@@ -1,8 +1,11 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import SocketBar from "./SocketBar"
 import { SocketState } from "./types"
 
-storiesOf("SocketBar", module).add("reconnecting", () => (
+export default {
+  title: "SocketBar",
+}
+
+export const _Reconnecting = () => (
   <SocketBar state={SocketState.Reconnecting} />
-))
+)
