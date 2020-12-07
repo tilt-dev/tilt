@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react"
 import TimeAgo from "react-timeago"
 import "./AlertPane.scss"
-import { getResourceAlerts, hasAlert } from "./alerts"
+import { combinedAlerts } from "./alerts"
 import AnsiLine from "./AnsiLine"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
 import LogStore from "./LogStore"
@@ -43,10 +43,14 @@ class AlertPane extends PureComponent<AlertsProps> {
     let resources = this.props.resources
     let isSnapshot = this.props.pathBuilder.isSnapshot()
 
-    let alertResources = resources.filter((r) => hasAlert(r))
-    alertResources.forEach((resource) => {
+    resources.forEach((resource) => {
       let resName = resource.name ?? ""
-      getResourceAlerts(resource, this.props.logStore).forEach((alert) => {
+      let alerts = combinedAlerts(resource, this.props.logStore)
+      if (!alerts.length) {
+        return
+      }
+
+      alerts.forEach((alert) => {
         let dismissButton = <div />
         if (alert.dismissHandler && !isSnapshot) {
           dismissButton = (

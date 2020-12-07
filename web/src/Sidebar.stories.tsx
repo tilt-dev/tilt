@@ -96,13 +96,15 @@ function oneItemWithTrigger() {
 
 function oneItemWithStatus(status: ResourceStatus) {
   let item = new SidebarItem(oneResourceNoAlerts())
-  item.status = status
+  item.buildStatus = status
+  item.runtimeStatus = status
   item.currentBuildStartTime = ""
   if (
     status === ResourceStatus.Unhealthy ||
     status === ResourceStatus.Warning
   ) {
-    item.alertCount = 1
+    item.buildAlertCount = 1
+    item.runtimeAlertCount = 1
   }
   let items = [item]
   return (

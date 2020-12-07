@@ -20,10 +20,6 @@ export const CrashRebuildErrorType = "ResourceCrashRebuild"
 export const BuildFailedErrorType = "BuildError"
 export const WarningErrorType = "Warning"
 
-function hasAlert(resource: Resource) {
-  return numberOfAlerts(resource) > 0
-}
-
 //These functions determine what kind of error has occurred based on information about
 //the resource - return booleans
 
@@ -54,9 +50,7 @@ function buildFailed(resource: Resource) {
   return history.length > 0 && history[0].error
 }
 
-//This function determines what kind of alert should be made based on the functions defined
-//above
-function getResourceAlerts(r: Resource, logStore: LogStore | null): Alert[] {
+function runtimeAlerts(r: Resource, logStore: LogStore | null): Alert[] {
   let result: Alert[] = []
 
   if (r.k8sResourceInfo) {
@@ -71,17 +65,27 @@ function getResourceAlerts(r: Resource, logStore: LogStore | null): Alert[] {
     }
   }
 
+  return result
+}
+
+function buildAlerts(r: Resource, logStore: LogStore | null): Alert[] {
+  let result: Alert[] = []
+
   if (buildFailed(r)) {
     result.push(buildFailedAlert(r, logStore))
   }
-  if (warningsAlerts(r).length > 0) {
-    result = result.concat(warningsAlerts(r))
+
+  let bwa = buildWarningsAlerts(r)
+  if (bwa.length > 0) {
+    result.push(...bwa)
   }
   return result
 }
 
-function numberOfAlerts(resource: Resource): number {
-  return getResourceAlerts(resource, null).length
+function combinedAlerts(r: Resource, logStore: LogStore | null): Alert[] {
+  let result = runtimeAlerts(r, logStore)
+  result.push(...buildAlerts(r, logStore))
+  return result
 }
 
 //The following functions create the alerts based on their types, since
@@ -169,7 +173,8 @@ function buildFailedAlert(
     resourceName: resource.name ?? "",
   }
 }
-function warningsAlerts(resource: Resource): Alert[] {
+
+function buildWarningsAlerts(resource: Resource): Alert[] {
   let warnings: string[] = []
   let alertArray: Alert[] = []
   let history = resource.buildHistory ?? []
@@ -192,12 +197,12 @@ function warningsAlerts(resource: Resource): Alert[] {
 }
 
 export {
-  getResourceAlerts,
-  numberOfAlerts,
+  combinedAlerts,
+  buildAlerts,
+  runtimeAlerts,
   podStatusIsErrAlert,
-  warningsAlerts,
+  buildWarningsAlerts,
   buildFailedAlert,
   crashRebuildAlert,
   podRestartAlert,
-  hasAlert,
 }

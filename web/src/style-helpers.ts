@@ -65,14 +65,13 @@ export enum Height {
   secondaryNavLower = unit * 0.8,
   secondaryNavOverlap = unit * -0.2,
   secondaryNavTwoLevel = unit * 1.8,
-  sidebarItem = unit * 1.4,
   statusbar = unit * 1.5,
 }
 export enum Width {
   badge = unit * 0.6,
   secondaryNavItem = unit * 5,
-  sidebarTriggerButton = unit * 1.4,
-  sidebarPinButton = unit * 0.7,
+  sidebarTriggerButton = unit,
+  sidebarPinButton = unit * 0.75,
   sidebar = unit * 10.5, // Sync with constants.scss > $sidebar-width
   sidebarCollapsed = unit,
   statusbar = unit * 1.5, // sync with constants.scss > $statusbar-height

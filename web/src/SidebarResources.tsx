@@ -6,7 +6,7 @@ import { incr } from "./analytics"
 import { formatBuildDuration } from "./format"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
-import SidebarItem, { SidebarItemStyle } from "./SidebarItem"
+import SidebarItem, { SidebarItemRoot } from "./SidebarItem"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import {
   SidebarPinButton,
@@ -20,8 +20,8 @@ import {
   Color,
   ColorAlpha,
   ColorRGBA,
+  Font,
   FontSize,
-  Height,
   SizeUnit,
   Width,
 } from "./style-helpers"
@@ -41,21 +41,23 @@ let SidebarResourcesRoot = styled.nav`
   margin-right: ${SizeUnit(0.2)};
 `
 let SidebarList = styled.div``
-let SidebarItemBox = styled.div`
+
+export let SidebarItemBox = styled(Link)`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
-  align-items: stretch;
-  width: ${Width.sidebar -
-  Width.sidebarTriggerButton -
-  Width.sidebarPinButton -
-  1}px;
-  height: ${Height.sidebarItem}px;
+  flex-direction: column;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
-  border-radius: ${SizeUnit(0.15)};
+  border-radius: 6px;
   overflow: hidden;
+  border: 1px solid ${Color.gray};
   position: relative; // Anchor the .isBuilding::after psuedo-element
+  flex-grow: 1;
+  text-decoration: none;
+  font-size: ${FontSize.small};
+  font-family: ${Font.monospace};
+  margin-right: ${SizeUnit(0.5)};
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -85,50 +87,87 @@ let SidebarItemBox = styled.div`
     animation: ${barberpole} 8s linear infinite;
   }
 `
-export const SidebarItemLink = styled(Link)`
-  display: flex;
-  align-items: stretch;
-  text-decoration: none;
-  // To truncate long names, root element needs an explicit width (i.e., not flex: 1)
-  width: calc(100% - ${Width.sidebarTriggerButton}px);
+
+let SidebarItemAllBox = styled(SidebarItemBox)`
+  flex-direction: row;
+  height: ${SizeUnit(1.5)};
 `
 
-let SidebarItemAll = styled(SidebarItemStyle)`
+let SidebarItemRuntimeBox = styled.div`
+  display: flex;
+  align-items: center;
+  height: ${SizeUnit(1)};
+  border-bottom: 1px solid ${Color.grayLight};
+  box-sizing: border-box;
+`
+
+let SidebarItemBuildBox = styled.div`
+  display: flex;
+  align-items: center;
+  flex-shrink: 1;
+  height: ${SizeUnit(0.875)};
+`
+
+let SidebarItemAllRoot = styled(SidebarItemRoot)`
   margin-left: ${Width.sidebarPinButton}px;
   text-transform: uppercase;
 `
 
-let SidebarItemName = styled.p`
-  color: inherit;
+type SidebarItemAllProps = {
+  nothingSelected: boolean
+  totalAlerts: number
+  allLink: string
+}
+
+export function SidebarItemAll(props: SidebarItemAllProps) {
+  return (
+    <SidebarItemAllRoot>
+      <SidebarItemAllBox
+        className={props.nothingSelected ? "isSelected" : ""}
+        to={props.allLink}
+      >
+        <SidebarIcon
+          status={ResourceStatus.None}
+          alertCount={props.totalAlerts}
+        />
+        <SidebarItemName>All</SidebarItemName>
+      </SidebarItemAllBox>
+    </SidebarItemAllRoot>
+  )
+}
+
+let SidebarItemText = styled.div`
   display: flex;
   align-items: center;
   flex: 1;
-  overflow: hidden; // Reinforce truncation
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: ${ColorAlpha.almostOpaque};
+  line-height: normal;
 `
 
-// This child element helps truncated names show ellipses properly:
+let SidebarItemNameRoot = styled(SidebarItemText)`
+  opacity: 1;
+  font-family: ${Font.sansSerif};
+`
+
 let SidebarItemNameTruncate = styled.span`
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `
 
-let SidebarTiming = styled.div`
-  font-size: ${FontSize.small};
-  line-height: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-end;
-  flex-basis: auto;
-`
-let SidebarItemDuration = styled.span`
-  opacity: ${ColorAlpha.almostOpaque};
-  color: inherit;
-`
+let SidebarItemName = (props: { children: React.ReactNode }) => {
+  return (
+    <SidebarItemNameRoot>
+      <SidebarItemNameTruncate>{props.children}</SidebarItemNameTruncate>
+    </SidebarItemNameRoot>
+  )
+}
+
 let SidebarItemTimeAgo = styled.span`
-  color: inherit;
+  opacity: ${ColorAlpha.almostOpaque};
 `
+
 let SidebarListSectionName = styled.div`
   width: ${Width.sidebar - Width.sidebarTriggerButton - 1}px;
   margin-left: ${Width.sidebarPinButton}px;
@@ -154,7 +193,7 @@ export function SidebarListSection(
 type Resource = Proto.webviewResource
 type Build = Proto.webviewBuildRecord
 
-export const triggerUpdate = (name: string, action: string): void => {
+export function triggerUpdate(name: string, action: string) {
   incr("ui.web.triggerResource", { action })
 
   let url = `//${window.location.host}/api/trigger`
@@ -198,6 +237,25 @@ type SidebarItemViewProps = {
   pathBuilder: PathBuilder
 }
 
+function buildStatusText(item: SidebarItem): string {
+  let buildDur = item.lastBuildDur ? formatBuildDuration(item.lastBuildDur) : ""
+  let buildStatus = item.buildStatus
+  if (buildStatus === ResourceStatus.Pending) {
+    return "Pending"
+  } else if (buildStatus === ResourceStatus.Building) {
+    return "Updating…"
+  } else if (buildStatus === ResourceStatus.Unhealthy) {
+    return "Update error"
+  } else if (buildStatus === ResourceStatus.Healthy) {
+    let msg = `Completed in ${buildDur}`
+    if (item.buildAlertCount > 0) {
+      msg += ", with issues"
+    }
+    return msg
+  }
+  return "Unknown"
+}
+
 export function SidebarItemView(props: SidebarItemViewProps) {
   let item = props.item
   let link = `/r/${item.name}`
@@ -214,7 +272,6 @@ export function SidebarItemView(props: SidebarItemViewProps) {
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
   let hasBuilt = item.lastBuild !== null
   let building = !isZeroTime(item.currentBuildStartTime)
-  let buildDur = item.lastBuildDur ? formatBuildDuration(item.lastBuildDur) : ""
   let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
   let isSelected = props.selected
 
@@ -224,7 +281,7 @@ export function SidebarItemView(props: SidebarItemViewProps) {
   let renderPin = props.renderPin
 
   return (
-    <SidebarItemStyle
+    <SidebarItemRoot
       key={item.name}
       className={`${isSelectedClass} ${isBuildingClass}`}
     >
@@ -233,41 +290,40 @@ export function SidebarItemView(props: SidebarItemViewProps) {
       ) : (
         <SidebarPinButtonSpacer />
       )}
-      <SidebarItemBox className={`${isSelectedClass} ${isBuildingClass}`}>
-        <SidebarItemLink
-          className="SidebarItem-link"
-          to={props.pathBuilder.path(link)}
-          title={item.name}
-        >
-          <SidebarIcon status={item.status} alertCount={item.alertCount} />
-          <SidebarItemName>
-            <SidebarItemNameTruncate>{item.name}</SidebarItemNameTruncate>
-          </SidebarItemName>
-          <SidebarTiming>
-            <SidebarItemTimeAgo
-              className={hasSuccessfullyDeployed ? "" : "isEmpty"}
-            >
-              {hasSuccessfullyDeployed ? timeAgo : "—"}
-            </SidebarItemTimeAgo>
-            <SidebarItemDuration
-              className={hasSuccessfullyDeployed ? "" : "isEmpty"}
-            >
-              {hasSuccessfullyDeployed ? buildDur : "—"}
-            </SidebarItemDuration>
-          </SidebarTiming>
-        </SidebarItemLink>
-        <SidebarTriggerButton
-          isTiltfile={item.isTiltfile}
-          isSelected={isSelected}
-          hasPendingChanges={item.hasPendingChanges}
-          hasBuilt={hasBuilt}
-          isBuilding={building}
-          triggerMode={item.triggerMode}
-          isQueued={item.queued}
-          onTrigger={onTrigger}
-        />
+      <SidebarItemBox
+        className={`${isSelectedClass} ${isBuildingClass}`}
+        to={props.pathBuilder.path(link)}
+        title={item.name}
+      >
+        <SidebarItemRuntimeBox>
+          <SidebarIcon
+            status={item.runtimeStatus}
+            alertCount={item.runtimeAlertCount}
+          />
+          <SidebarItemName>{item.name}</SidebarItemName>
+          <SidebarItemTimeAgo>
+            {hasSuccessfullyDeployed ? timeAgo : "—"}
+          </SidebarItemTimeAgo>
+          <SidebarTriggerButton
+            isTiltfile={item.isTiltfile}
+            isSelected={isSelected}
+            hasPendingChanges={item.hasPendingChanges}
+            hasBuilt={hasBuilt}
+            isBuilding={building}
+            triggerMode={item.triggerMode}
+            isQueued={item.queued}
+            onTrigger={onTrigger}
+          />
+        </SidebarItemRuntimeBox>
+        <SidebarItemBuildBox>
+          <SidebarIcon
+            status={item.buildStatus}
+            alertCount={item.buildAlertCount}
+          />
+          <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
+        </SidebarItemBuildBox>
       </SidebarItemBox>
-    </SidebarItemStyle>
+    </SidebarItemRoot>
   )
 }
 
@@ -317,7 +373,7 @@ class PureSidebarResources extends PureComponent<SidebarProps> {
         : pb.path("/")
 
     let totalAlerts = this.props.items
-      .map((i) => i.alertCount)
+      .map((i) => i.buildAlertCount + i.runtimeAlertCount)
       .reduce((sum, current) => sum + current, 0)
 
     let listItems = this.props.items.map((item) =>
@@ -336,17 +392,11 @@ class PureSidebarResources extends PureComponent<SidebarProps> {
       <SidebarResourcesRoot className="Sidebar-resources">
         <SidebarList>
           <SidebarListSection name="">
-            <SidebarItemAll>
-              <SidebarItemBox className={nothingSelected ? "isSelected" : ""}>
-                <SidebarItemLink to={allLink}>
-                  <SidebarIcon
-                    status={ResourceStatus.None}
-                    alertCount={totalAlerts}
-                  />
-                  <SidebarItemName>All</SidebarItemName>
-                </SidebarItemLink>
-              </SidebarItemBox>
-            </SidebarItemAll>
+            <SidebarItemAll
+              nothingSelected={nothingSelected}
+              allLink={allLink}
+              totalAlerts={totalAlerts}
+            />
           </SidebarListSection>
           <PinnedItems {...this.props} />
           <SidebarListSection name="resources">{listItems}</SidebarListSection>
