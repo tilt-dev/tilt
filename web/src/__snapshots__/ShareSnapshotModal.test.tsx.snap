@@ -17,6 +17,7 @@ exports[`ShareSnapshotModal renders team link 1`] = `
   }
 >
   <div
+    aria-modal={true}
     className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
     onClick={[Function]}
     onKeyDown={[Function]}
@@ -141,6 +142,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
   }
 >
   <div
+    aria-modal={true}
     className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
     onClick={[Function]}
     onKeyDown={[Function]}
@@ -245,6 +247,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
   }
 >
   <div
+    aria-modal={true}
     className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
     onClick={[Function]}
     onKeyDown={[Function]}
@@ -356,6 +359,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
   }
 >
   <div
+    aria-modal={true}
     className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
     onClick={[Function]}
     onKeyDown={[Function]}

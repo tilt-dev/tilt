@@ -2,17 +2,17 @@
 
 exports[`shows a facets tab 1`] = `
 <nav
-  className="sc-bdnylx jiVbiK secondaryNav"
+  className="sc-bdfBwQ cSqurG secondaryNav"
 >
   <span />
   <ul
-    className="sc-gtssRu hcdlKW"
+    className="sc-gsTCUz gaUPzf"
   >
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX"
+        className="sc-gKsewC gExKPF"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -20,10 +20,10 @@ exports[`shows a facets tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX secondaryNavLink--alerts "
+        className="sc-gKsewC gExKPF secondaryNavLink--alerts "
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -31,10 +31,10 @@ exports[`shows a facets tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX tabLink isSelected"
+        className="sc-gKsewC gExKPF tabLink isSelected"
         href="/r/foo/facets"
         onClick={[Function]}
       >
@@ -47,17 +47,17 @@ exports[`shows a facets tab 1`] = `
 
 exports[`shows error pane 1`] = `
 <nav
-  className="sc-bdnylx jiVbiK secondaryNav"
+  className="sc-bdfBwQ cSqurG secondaryNav"
 >
   <span />
   <ul
-    className="sc-gtssRu hcdlKW"
+    className="sc-gsTCUz gaUPzf"
   >
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX"
+        className="sc-gKsewC gExKPF"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -65,10 +65,10 @@ exports[`shows error pane 1`] = `
       </a>
     </li>
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX secondaryNavLink--alerts isSelected"
+        className="sc-gKsewC gExKPF secondaryNavLink--alerts isSelected"
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -81,17 +81,17 @@ exports[`shows error pane 1`] = `
 
 exports[`shows logs 1`] = `
 <nav
-  className="sc-bdnylx jiVbiK secondaryNav"
+  className="sc-bdfBwQ cSqurG secondaryNav"
 >
   <span />
   <ul
-    className="sc-gtssRu hcdlKW"
+    className="sc-gsTCUz gaUPzf"
   >
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX isSelected"
+        className="sc-gKsewC gExKPF isSelected"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -99,10 +99,10 @@ exports[`shows logs 1`] = `
       </a>
     </li>
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX secondaryNavLink--alerts "
+        className="sc-gKsewC gExKPF secondaryNavLink--alerts "
         href="/r/foo/alerts"
         onClick={[Function]}
       >
@@ -115,17 +115,17 @@ exports[`shows logs 1`] = `
 
 exports[`shows the number of errors in the error tab 1`] = `
 <nav
-  className="sc-bdnylx jiVbiK secondaryNav"
+  className="sc-bdfBwQ cSqurG secondaryNav"
 >
   <span />
   <ul
-    className="sc-gtssRu hcdlKW"
+    className="sc-gsTCUz gaUPzf"
   >
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX"
+        className="sc-gKsewC gExKPF"
         href="/r/foo"
         onClick={[Function]}
       >
@@ -133,16 +133,16 @@ exports[`shows the number of errors in the error tab 1`] = `
       </a>
     </li>
     <li
-      className="sc-jSFkmK khFzSJ"
+      className="sc-jSgupP dUbuzN"
     >
       <a
-        className="sc-gKAblj kyKRjX secondaryNavLink--alerts isSelected"
+        className="sc-gKsewC gExKPF secondaryNavLink--alerts isSelected"
         href="/r/foo/alerts"
         onClick={[Function]}
       >
         Alerts
         <div
-          className="sc-iCoHVE lobeSd"
+          className="sc-iBPRYJ jbVCJA"
         >
           27
         </div>

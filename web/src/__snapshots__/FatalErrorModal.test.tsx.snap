@@ -17,6 +17,7 @@ exports[`FatalErrorModal does render if there is a fatal error and the modal has
   }
 >
   <div
+    aria-modal={true}
     className="ReactModal__Content ReactModal__Content--after-open FatalErrorModal"
     onClick={[Function]}
     onKeyDown={[Function]}
