@@ -1,4 +1,3 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import ReactModal from "react-modal"
 import ShareSnapshotModal from "./ShareSnapshotModal"
@@ -85,9 +84,16 @@ let withTeam = () => {
   )
 }
 
-storiesOf("ShareSnapshotModal", module)
-  .add("signed-out", signedOut)
-  .add("signed-in", signedIn)
-  .add("with-url", withUrl)
-  .add("with-url-overflow", withUrlOverflow)
-  .add("with-team", withTeam)
+export default {
+  title: "ShareSnapshotModal",
+}
+
+export const SignedOut = signedOut
+
+export const SignedIn = signedIn
+
+export const WithUrl = withUrl
+
+export const WithUrlOverflow = withUrlOverflow
+
+export const WithTeam = withTeam

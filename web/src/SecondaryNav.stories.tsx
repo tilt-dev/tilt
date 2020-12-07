@@ -1,4 +1,3 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import s from "styled-components"
@@ -122,9 +121,16 @@ function traceNavLast() {
   )
 }
 
-storiesOf("SecondaryNav", module)
-  .add("default", topBarDefault)
-  .add("metrics", topBarWithMetrics)
-  .add("team", topBarTeam)
-  .add("traceNavFirst", traceNavFirst)
-  .add("traceNavLast", traceNavLast)
+export default {
+  title: "SecondaryNav",
+}
+
+export const Default = topBarDefault
+
+export const _Metrics = topBarWithMetrics
+
+export const Team = topBarTeam
+
+export const TraceNavFirst = traceNavFirst
+
+export const TraceNavLast = traceNavLast

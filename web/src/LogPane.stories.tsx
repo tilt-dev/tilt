@@ -1,4 +1,3 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import LogPane from "./LogPane"
 import { LogLine } from "./types"
@@ -48,4 +47,8 @@ function threeResources() {
   return logPane(lines)
 }
 
-storiesOf("LogPane", module).add("three-resources", threeResources)
+export default {
+  title: "LogPane",
+}
+
+export const ThreeResources = threeResources

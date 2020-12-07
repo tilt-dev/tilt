@@ -1,4 +1,3 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import LogPaneLine from "./LogPaneLine"
 
@@ -68,7 +67,10 @@ function threeLines() {
   )
 }
 
-storiesOf("LogPaneLine", module)
-  .add("infoLine", infoLine)
-  .add("warnLine", warnLine)
-  .add("threeLines", threeLines)
+export default {
+  title: "LogPaneLine",
+}
+
+export const InfoLine = infoLine
+export const WarnLine = warnLine
+export const ThreeLines = threeLines

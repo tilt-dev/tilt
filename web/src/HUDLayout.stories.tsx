@@ -1,4 +1,3 @@
-import { storiesOf } from "@storybook/react"
 import React from "react"
 import styled from "styled-components"
 import HUDLayout from "./HUDLayout"
@@ -106,7 +105,12 @@ function layoutTwoLevelNav() {
   )
 }
 
-storiesOf("HUDLayout", module)
-  .add("default", layoutDefault)
-  .add("sidebar-collapsed", layoutWithSidebarCollapsed)
-  .add("two-level-nav", layoutTwoLevelNav)
+export default {
+  title: "HUDLayout",
+}
+
+export const Default = layoutDefault
+
+export const SidebarCollapsed = layoutWithSidebarCollapsed
+
+export const TwoLevelNav = layoutTwoLevelNav
