@@ -91,9 +91,7 @@ type tiltfileState struct {
 
 	k8sKinds map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo
 
-	k8sResourceAssemblyVersion       int
-	k8sResourceAssemblyVersionReason k8sResourceAssemblyVersionReason
-	workloadToResourceFunction       workloadToResourceFunction
+	workloadToResourceFunction workloadToResourceFunction
 
 	// for assembly
 	usedImages map[string]bool
@@ -121,22 +119,12 @@ type tiltfileState struct {
 
 	secretSettings model.SecretSettings
 
-	logger                           logger.Logger
-	warnedDeprecatedResourceAssembly bool
+	logger logger.Logger
 
 	// postExecReadFiles is generally a mistake -- it means that if tiltfile execution fails,
 	// these will never be read. Remove these when you can!!!
 	postExecReadFiles []string
 }
-
-type k8sResourceAssemblyVersionReason int
-
-const (
-	// assembly version is just at the default; the user hasn't set anything
-	k8sResourceAssemblyVersionReasonDefault k8sResourceAssemblyVersionReason = iota
-	// the user has explicit set the assembly version
-	k8sResourceAssemblyVersionReasonExplicit
-)
 
 func newTiltfileState(
 	ctx context.Context,
@@ -148,28 +136,27 @@ func newTiltfileState(
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
-		ctx:                        ctx,
-		dcCli:                      dcCli,
-		webHost:                    webHost,
-		k8sContextExt:              k8sContextExt,
-		versionExt:                 versionExt,
-		configExt:                  configExt,
-		localRegistry:              localRegistry,
-		buildIndex:                 newBuildIndex(),
-		k8sObjectIndex:             tiltfile_k8s.NewState(),
-		k8sByName:                  make(map[string]*k8sResource),
-		usedImages:                 make(map[string]bool),
-		logger:                     logger.Get(ctx),
-		builtinCallCounts:          make(map[string]int),
-		builtinArgCounts:           make(map[string]map[string]int),
-		unconsumedLiveUpdateSteps:  make(map[string]liveUpdateStep),
-		k8sResourceAssemblyVersion: 2,
-		k8sResourceOptions:         make(map[string]k8sResourceOptions),
-		localResources:             []localResource{},
-		triggerMode:                TriggerModeAuto,
-		features:                   features,
-		secretSettings:             model.DefaultSecretSettings(),
-		k8sKinds:                   make(map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo),
+		ctx:                       ctx,
+		dcCli:                     dcCli,
+		webHost:                   webHost,
+		k8sContextExt:             k8sContextExt,
+		versionExt:                versionExt,
+		configExt:                 configExt,
+		localRegistry:             localRegistry,
+		buildIndex:                newBuildIndex(),
+		k8sObjectIndex:            tiltfile_k8s.NewState(),
+		k8sByName:                 make(map[string]*k8sResource),
+		usedImages:                make(map[string]bool),
+		logger:                    logger.Get(ctx),
+		builtinCallCounts:         make(map[string]int),
+		builtinArgCounts:          make(map[string]map[string]int),
+		unconsumedLiveUpdateSteps: make(map[string]liveUpdateStep),
+		k8sResourceOptions:        make(map[string]k8sResourceOptions),
+		localResources:            []localResource{},
+		triggerMode:               TriggerModeAuto,
+		features:                  features,
+		secretSettings:            model.DefaultSecretSettings(),
+		k8sKinds:                  make(map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo),
 	}
 }
 
@@ -308,7 +295,6 @@ const (
 	dcResourceN    = "dc_resource"
 
 	// k8s functions
-	k8sResourceAssemblyVersionN = "k8s_resource_assembly_version"
 	k8sYamlN                    = "k8s_yaml"
 	filterYamlN                 = "filter_yaml"
 	k8sResourceN                = "k8s_resource"
@@ -490,7 +476,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{defaultRegistryN, s.defaultRegistry},
 		{dockerComposeN, s.dockerCompose},
 		{dcResourceN, s.dcResource},
-		{k8sResourceAssemblyVersionN, s.k8sResourceAssemblyVersionFn},
 		{k8sYamlN, s.k8sYaml},
 		{filterYamlN, s.filterYaml},
 		{k8sResourceN, s.k8sResource},
@@ -551,12 +536,7 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		return resourceSet{}, nil, err
 	}
 
-	switch s.k8sResourceAssemblyVersion {
-	case 1:
-		err = s.assembleK8sV1()
-	case 2:
-		err = s.assembleK8sV2()
-	}
+	err = s.assembleK8s()
 	if err != nil {
 		return resourceSet{}, nil, err
 	}
@@ -660,27 +640,7 @@ func (s *tiltfileState) assembleDC() error {
 	return nil
 }
 
-func (s *tiltfileState) assembleK8sV1() error {
-	err := s.assembleK8sWithImages()
-	if err != nil {
-		return err
-	}
-
-	err = s.assembleK8sUnresourced()
-	if err != nil {
-		return err
-	}
-
-	for _, r := range s.k8s {
-		if err := s.validateK8s(r); err != nil {
-			return err
-		}
-	}
-	return nil
-
-}
-
-func (s *tiltfileState) assembleK8sV2() error {
+func (s *tiltfileState) assembleK8s() error {
 	err := s.assembleK8sByWorkload()
 	if err != nil {
 		return err
@@ -900,37 +860,6 @@ func (s *tiltfileState) isWorkload(e k8s.K8sEntity, locators []k8s.ImageLocator)
 	} else {
 		return len(images) > 0, nil
 	}
-}
-
-// assembleK8sWithImages matches images we know how to build with any k8s entities
-// that use that image, storing the resulting resource(s) on the tiltfileState.
-func (s *tiltfileState) assembleK8sWithImages() error {
-	// find all images mentioned in k8s entities that don't yet belong to k8sResources
-	k8sRefs, err := s.findUnresourcedImages()
-	if err != nil {
-		return err
-	}
-
-	for _, k8sRef := range k8sRefs {
-		image := s.buildIndex.findBuilderForConsumedImage(k8sRef)
-		if image == nil {
-			// only expand for images we know how to build
-			continue
-		}
-
-		ref := image.configurationRef
-		target, err := s.k8sResourceForImage(ref)
-		if err != nil {
-			return err
-		}
-		// find k8s entities that use this image; pull them out of pool of
-		// unresourced entities and instead attach them to the target k8sResource
-		if err := s.extractEntities(target, ref); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // assembleK8sUnresourced makes k8sResources for all k8s entities that:
