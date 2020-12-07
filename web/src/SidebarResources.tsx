@@ -190,11 +190,16 @@ function SidebarResources(props: SidebarProps) {
   )
 }
 
-function renderSidebarItem(
-  item: SidebarItem,
-  props: SidebarProps,
+type SidebarItemViewProps = {
+  item: SidebarItem
+  selected: boolean
   renderPin: boolean
-): JSX.Element {
+  resourceView: ResourceView
+  pathBuilder: PathBuilder
+}
+
+export function SidebarItemView(props: SidebarItemViewProps) {
+  let item = props.item
   let link = `/r/${item.name}`
   switch (props.resourceView) {
     case ResourceView.Alerts:
@@ -211,11 +216,12 @@ function renderSidebarItem(
   let building = !isZeroTime(item.currentBuildStartTime)
   let buildDur = item.lastBuildDur ? formatBuildDuration(item.lastBuildDur) : ""
   let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
-  let isSelected = props.selected === item.name
+  let isSelected = props.selected
 
   let isSelectedClass = isSelected ? "isSelected" : ""
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
+  let renderPin = props.renderPin
 
   return (
     <SidebarItemStyle
@@ -270,7 +276,15 @@ function PinnedItems(props: SidebarProps) {
   let pinnedItems = ctx.pinnedResources?.flatMap((r) =>
     props.items
       .filter((i) => i.name === r)
-      .map((i) => renderSidebarItem(i, props, false))
+      .map((i) =>
+        SidebarItemView({
+          item: i,
+          selected: props.selected === i.name,
+          renderPin: false,
+          pathBuilder: props.pathBuilder,
+          resourceView: props.resourceView,
+        })
+      )
   )
 
   if (!pinnedItems?.length) {
@@ -307,7 +321,13 @@ class PureSidebarResources extends PureComponent<SidebarProps> {
       .reduce((sum, current) => sum + current, 0)
 
     let listItems = this.props.items.map((item) =>
-      renderSidebarItem(item, this.props, true)
+      SidebarItemView({
+        item: item,
+        selected: this.props.selected === item.name,
+        renderPin: true,
+        pathBuilder: this.props.pathBuilder,
+        resourceView: this.props.resourceView,
+      })
     )
 
     let nothingSelected = !this.props.selected
