@@ -52,13 +52,21 @@ let SidebarIconRoot = styled.div`
     opacity ${AnimDuration.default} linear;
 
   &.isWarning {
-    background-color: ${Color.yellow};
+    background:
+		  linear-gradient(0deg, transparent 0, transparent 6px, ${Color.yellow} 6px, ${Color.yellow} 7px),
+		  linear-gradient(90deg, transparent 0, transparent 1px, 
+                             ${Color.yellow} 1px, ${Color.yellow} 2px),
+		  ${Color.yellowLight};
+	  background-size: 2px 7px;
   }
   &.isHealthy {
     background-color: ${Color.green};
   }
   &.isUnhealthy {
-    background-color: ${Color.red};
+    background:
+		  radial-gradient(circle at 50% 50%, ${Color.redDark} 0, ${Color.redDark} 0.65px, transparent 0.65px),
+      ${Color.red};
+	  background-size: 3px 3px;
   }
   &.isBuilding {
     background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
