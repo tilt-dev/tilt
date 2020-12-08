@@ -44,9 +44,11 @@ exports[`renders correctly - isUnhealthy 1`] = `
 <styled.div
   className="isUnhealthy"
 >
-  <span>
-     
-  </span>
+  <ForwardRef(SvgError)
+    fill="#fff"
+    height="12px"
+    width="12px"
+  />
 </styled.div>
 `;
 
@@ -54,8 +56,10 @@ exports[`renders correctly - isWarning 1`] = `
 <styled.div
   className="isWarning"
 >
-  <span>
-     
-  </span>
+  <ForwardRef(SvgWarning)
+    fill="#fff"
+    height="9px"
+    width="9px"
+  />
 </styled.div>
 `;
