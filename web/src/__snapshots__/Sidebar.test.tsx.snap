@@ -9,147 +9,114 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
   >
     <div>
       <div
-        className="sc-fodVxV gWHarz"
+        className="sc-fFubgz hIGdYH"
       >
         
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
-          className="sc-bdfBwQ sc-iqHYGH bbQbwz cQzyJf"
+          className="sc-bdfBwQ sc-dQppl fKFkSC cvRQvE"
         >
-          <div
-            className="sc-jrAGrp eEIpTi isSelected"
+          <a
+            className="sc-jrAGrp sc-kEjbxe bcHXUh fOSgZM isSelected"
+            href="/"
+            onClick={[Function]}
           >
-            <a
-              className="sc-kEjbxe kbombs"
-              href="/"
-              onClick={[Function]}
+            <div
+              className="sc-gsTCUz iZQOBB isNone"
             >
-              <div
-                className="sc-gsTCUz iGdQvZ isNone"
+              <span
+                className="sc-dlfnbm jAGXAl"
               >
-                <span
-                  className="sc-dlfnbm jAGXAl"
-                >
-                  7
-                </span>
-              </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+                7
+              </span>
+            </div>
+            <div
+              className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
+            >
+              <span
+                className="sc-hBEYos jsLRUj"
               >
                 All
-              </p>
-            </a>
-          </div>
+              </span>
+            </div>
+          </a>
         </li>
       </ul>
     </div>
     <div>
       <div
-        className="sc-fodVxV gWHarz"
+        className="sc-fFubgz hIGdYH"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
+          className="sc-bdfBwQ fKFkSC  isBuilding"
         >
           <button
-            className="sc-jSgupP hoVBLD"
+            className="sc-jSgupP bujtng"
             onClick={[Function]}
             title="pin"
           >
             <svg
-              className="sc-hKgILt eAgqne"
+              className="sc-eCssSg hOYBLG"
             >
               pin-resource-filled.svg
             </svg>
           </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/resource4"
+            onClick={[Function]}
+            title="resource4"
           >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/resource4"
-              onClick={[Function]}
-              title="resource4"
+            <div
+              className="sc-iqHYGH bHnIUA"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isHealthy"
               >
-                <span
-                  className="sc-dlfnbm jAGXAl"
-                >
-                  1
+                <span>
+                   
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource4
                 </span>
-              </p>
-              <div
-                className="sc-bqyKva jGaTAI"
-              >
-                <span
-                  className="sc-hBEYos fDweZX"
-                >
-                  <time
-                    dateTime="2017-12-21T15:36:03.000Z"
-                    title="2017-12-21T15:36:03.000Z"
-                  >
-                    &lt;5s ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  12s
-                </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:36:03.000Z"
+                  title="2017-12-21T15:36:03.000Z"
+                >
+                  &lt;5s ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
           "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
-        </li>
-        <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
-        >
-          <button
-            className="sc-jSgupP hoVBLD"
-            onClick={[Function]}
-            title="pin"
-          >
-            <svg
-              className="sc-hKgILt eAgqne"
-            >
-              pin-resource-filled.svg
-            </svg>
-          </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
-          >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/resource9"
-              onClick={[Function]}
-              title="resource9"
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
                   className="sc-dlfnbm jAGXAl"
@@ -157,69 +124,76 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   1
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
+        </li>
+        <li
+          className="sc-bdfBwQ fKFkSC  isBuilding"
+        >
+          <button
+            className="sc-jSgupP bujtng"
+            onClick={[Function]}
+            title="pin"
+          >
+            <svg
+              className="sc-eCssSg hOYBLG"
+            >
+              pin-resource-filled.svg
+            </svg>
+          </button>
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/resource9"
+            onClick={[Function]}
+            title="resource9"
+          >
+            <div
+              className="sc-iqHYGH bHnIUA"
+            >
+              <div
+                className="sc-gsTCUz iZQOBB isHealthy"
+              >
+                <span>
+                   
+                </span>
+              </div>
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource9
                 </span>
-              </p>
-              <div
-                className="sc-bqyKva jGaTAI"
-              >
-                <span
-                  className="sc-hBEYos fDweZX"
-                >
-                  <time
-                    dateTime="2017-12-21T15:35:58.000Z"
-                    title="2017-12-21T15:35:58.000Z"
-                  >
-                    &lt;15s ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  12s
-                </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:35:58.000Z"
+                  title="2017-12-21T15:35:58.000Z"
+                >
+                  &lt;15s ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
           "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
-        </li>
-        <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
-        >
-          <button
-            className="sc-jSgupP hoVBLD"
-            onClick={[Function]}
-            title="pin"
-          >
-            <svg
-              className="sc-hKgILt eAgqne"
-            >
-              pin-resource-filled.svg
-            </svg>
-          </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
-          >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/resource19"
-              onClick={[Function]}
-              title="resource19"
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
                   className="sc-dlfnbm jAGXAl"
@@ -227,69 +201,76 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   1
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
+        </li>
+        <li
+          className="sc-bdfBwQ fKFkSC  isBuilding"
+        >
+          <button
+            className="sc-jSgupP bujtng"
+            onClick={[Function]}
+            title="pin"
+          >
+            <svg
+              className="sc-eCssSg hOYBLG"
+            >
+              pin-resource-filled.svg
+            </svg>
+          </button>
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/resource19"
+            onClick={[Function]}
+            title="resource19"
+          >
+            <div
+              className="sc-iqHYGH bHnIUA"
+            >
+              <div
+                className="sc-gsTCUz iZQOBB isHealthy"
+              >
+                <span>
+                   
+                </span>
+              </div>
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource19
                 </span>
-              </p>
-              <div
-                className="sc-bqyKva jGaTAI"
-              >
-                <span
-                  className="sc-hBEYos fDweZX"
-                >
-                  <time
-                    dateTime="2017-12-21T15:35:48.000Z"
-                    title="2017-12-21T15:35:48.000Z"
-                  >
-                    &lt;30s ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  12s
-                </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:35:48.000Z"
+                  title="2017-12-21T15:35:48.000Z"
+                >
+                  &lt;30s ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
           "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
-        </li>
-        <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
-        >
-          <button
-            className="sc-jSgupP hoVBLD"
-            onClick={[Function]}
-            title="pin"
-          >
-            <svg
-              className="sc-hKgILt eAgqne"
-            >
-              pin-resource-filled.svg
-            </svg>
-          </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
-          >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/resource29"
-              onClick={[Function]}
-              title="resource29"
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
                   className="sc-dlfnbm jAGXAl"
@@ -297,69 +278,76 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   1
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
+        </li>
+        <li
+          className="sc-bdfBwQ fKFkSC  isBuilding"
+        >
+          <button
+            className="sc-jSgupP bujtng"
+            onClick={[Function]}
+            title="pin"
+          >
+            <svg
+              className="sc-eCssSg hOYBLG"
+            >
+              pin-resource-filled.svg
+            </svg>
+          </button>
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/resource29"
+            onClick={[Function]}
+            title="resource29"
+          >
+            <div
+              className="sc-iqHYGH bHnIUA"
+            >
+              <div
+                className="sc-gsTCUz iZQOBB isHealthy"
+              >
+                <span>
+                   
+                </span>
+              </div>
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource29
                 </span>
-              </p>
-              <div
-                className="sc-bqyKva jGaTAI"
-              >
-                <span
-                  className="sc-hBEYos fDweZX"
-                >
-                  <time
-                    dateTime="2017-12-21T15:35:38.000Z"
-                    title="2017-12-21T15:35:38.000Z"
-                  >
-                    &lt;30s ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  12s
-                </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:35:38.000Z"
+                  title="2017-12-21T15:35:38.000Z"
+                >
+                  &lt;30s ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
           "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
-        </li>
-        <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
-        >
-          <button
-            className="sc-jSgupP hoVBLD"
-            onClick={[Function]}
-            title="pin"
-          >
-            <svg
-              className="sc-hKgILt eAgqne"
-            >
-              pin-resource-filled.svg
-            </svg>
-          </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
-          >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/resource39"
-              onClick={[Function]}
-              title="resource39"
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
                   className="sc-dlfnbm jAGXAl"
@@ -367,69 +355,76 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   1
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
+        </li>
+        <li
+          className="sc-bdfBwQ fKFkSC  isBuilding"
+        >
+          <button
+            className="sc-jSgupP bujtng"
+            onClick={[Function]}
+            title="pin"
+          >
+            <svg
+              className="sc-eCssSg hOYBLG"
+            >
+              pin-resource-filled.svg
+            </svg>
+          </button>
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/resource39"
+            onClick={[Function]}
+            title="resource39"
+          >
+            <div
+              className="sc-iqHYGH bHnIUA"
+            >
+              <div
+                className="sc-gsTCUz iZQOBB isHealthy"
+              >
+                <span>
+                   
+                </span>
+              </div>
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource39
                 </span>
-              </p>
-              <div
-                className="sc-bqyKva jGaTAI"
-              >
-                <span
-                  className="sc-hBEYos fDweZX"
-                >
-                  <time
-                    dateTime="2017-12-21T15:35:28.000Z"
-                    title="2017-12-21T15:35:28.000Z"
-                  >
-                    &lt;45s ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  12s
-                </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:35:28.000Z"
+                  title="2017-12-21T15:35:28.000Z"
+                >
+                  &lt;45s ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
           "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
-        </li>
-        <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
-        >
-          <button
-            className="sc-jSgupP hoVBLD"
-            onClick={[Function]}
-            title="pin"
-          >
-            <svg
-              className="sc-hKgILt eAgqne"
-            >
-              pin-resource-filled.svg
-            </svg>
-          </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
-          >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/resource49"
-              onClick={[Function]}
-              title="resource49"
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
                   className="sc-dlfnbm jAGXAl"
@@ -437,69 +432,76 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   1
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
+        </li>
+        <li
+          className="sc-bdfBwQ fKFkSC  isBuilding"
+        >
+          <button
+            className="sc-jSgupP bujtng"
+            onClick={[Function]}
+            title="pin"
+          >
+            <svg
+              className="sc-eCssSg hOYBLG"
+            >
+              pin-resource-filled.svg
+            </svg>
+          </button>
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/resource49"
+            onClick={[Function]}
+            title="resource49"
+          >
+            <div
+              className="sc-iqHYGH bHnIUA"
+            >
+              <div
+                className="sc-gsTCUz iZQOBB isHealthy"
+              >
+                <span>
+                   
+                </span>
+              </div>
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource49
                 </span>
-              </p>
-              <div
-                className="sc-bqyKva jGaTAI"
-              >
-                <span
-                  className="sc-hBEYos fDweZX"
-                >
-                  <time
-                    dateTime="2017-12-21T15:35:18.000Z"
-                    title="2017-12-21T15:35:18.000Z"
-                  >
-                    &lt;1m ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  12s
-                </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:35:18.000Z"
+                  title="2017-12-21T15:35:18.000Z"
+                >
+                  &lt;1m ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
           "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
-        </li>
-        <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
-        >
-          <button
-            className="sc-jSgupP hoVBLD"
-            onClick={[Function]}
-            title="pin"
-          >
-            <svg
-              className="sc-hKgILt eAgqne"
-            >
-              pin-resource-filled.svg
-            </svg>
-          </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
-          >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/resource54"
-              onClick={[Function]}
-              title="resource54"
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
                   className="sc-dlfnbm jAGXAl"
@@ -507,43 +509,90 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   1
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
+        </li>
+        <li
+          className="sc-bdfBwQ fKFkSC  isBuilding"
+        >
+          <button
+            className="sc-jSgupP bujtng"
+            onClick={[Function]}
+            title="pin"
+          >
+            <svg
+              className="sc-eCssSg hOYBLG"
+            >
+              pin-resource-filled.svg
+            </svg>
+          </button>
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/resource54"
+            onClick={[Function]}
+            title="resource54"
+          >
+            <div
+              className="sc-iqHYGH bHnIUA"
+            >
+              <div
+                className="sc-gsTCUz iZQOBB isHealthy"
+              >
+                <span>
+                   
+                </span>
+              </div>
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource54
                 </span>
-              </p>
+              </div>
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:35:13.000Z"
+                  title="2017-12-21T15:35:13.000Z"
+                >
+                  &lt;1m ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
+          "
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
+            >
               <div
-                className="sc-bqyKva jGaTAI"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
-                  className="sc-hBEYos fDweZX"
+                  className="sc-dlfnbm jAGXAl"
                 >
-                  <time
-                    dateTime="2017-12-21T15:35:13.000Z"
-                    title="2017-12-21T15:35:13.000Z"
-                  >
-                    &lt;1m ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  12s
+                  1
                 </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
-          "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
         </li>
       </ul>
     </div>
@@ -561,49 +610,49 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
   >
     <div>
       <div
-        className="sc-fodVxV gWHarz"
+        className="sc-fFubgz hIGdYH"
       >
         
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
-          className="sc-bdfBwQ sc-iqHYGH bbQbwz cQzyJf"
+          className="sc-bdfBwQ sc-dQppl fKFkSC cvRQvE"
         >
-          <div
-            className="sc-jrAGrp eEIpTi isSelected"
+          <a
+            className="sc-jrAGrp sc-kEjbxe bcHXUh fOSgZM isSelected"
+            href="/"
+            onClick={[Function]}
           >
-            <a
-              className="sc-kEjbxe kbombs"
-              href="/"
-              onClick={[Function]}
+            <div
+              className="sc-gsTCUz iZQOBB isNone"
             >
-              <div
-                className="sc-gsTCUz iGdQvZ isNone"
-              >
-                <span>
-                   
-                </span>
-              </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <span>
+                 
+              </span>
+            </div>
+            <div
+              className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
+            >
+              <span
+                className="sc-hBEYos jsLRUj"
               >
                 All
-              </p>
-            </a>
-          </div>
+              </span>
+            </div>
+          </a>
         </li>
       </ul>
     </div>
     <div>
       <div
-        className="sc-fodVxV gWHarz"
+        className="sc-fFubgz hIGdYH"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       />
     </div>
   </div>
@@ -620,147 +669,114 @@ exports[`sidebar renders list of resources 1`] = `
   >
     <div>
       <div
-        className="sc-fodVxV gWHarz"
+        className="sc-fFubgz hIGdYH"
       >
         
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
-          className="sc-bdfBwQ sc-iqHYGH bbQbwz cQzyJf"
+          className="sc-bdfBwQ sc-dQppl fKFkSC cvRQvE"
         >
-          <div
-            className="sc-jrAGrp eEIpTi isSelected"
+          <a
+            className="sc-jrAGrp sc-kEjbxe bcHXUh fOSgZM isSelected"
+            href="/"
+            onClick={[Function]}
           >
-            <a
-              className="sc-kEjbxe kbombs"
-              href="/"
-              onClick={[Function]}
+            <div
+              className="sc-gsTCUz iZQOBB isNone"
             >
-              <div
-                className="sc-gsTCUz iGdQvZ isNone"
+              <span
+                className="sc-dlfnbm jAGXAl"
               >
-                <span
-                  className="sc-dlfnbm jAGXAl"
-                >
-                  2
-                </span>
-              </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+                2
+              </span>
+            </div>
+            <div
+              className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
+            >
+              <span
+                className="sc-hBEYos jsLRUj"
               >
                 All
-              </p>
-            </a>
-          </div>
+              </span>
+            </div>
+          </a>
         </li>
       </ul>
     </div>
     <div>
       <div
-        className="sc-fodVxV gWHarz"
+        className="sc-fFubgz hIGdYH"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
+          className="sc-bdfBwQ fKFkSC  isBuilding"
         >
           <button
-            className="sc-jSgupP hoVBLD"
+            className="sc-jSgupP bujtng"
             onClick={[Function]}
             title="pin"
           >
             <svg
-              className="sc-hKgILt eAgqne"
+              className="sc-eCssSg hOYBLG"
             >
               pin-resource-filled.svg
             </svg>
           </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/vigoda"
+            onClick={[Function]}
+            title="vigoda"
           >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/vigoda"
-              onClick={[Function]}
-              title="vigoda"
+            <div
+              className="sc-iqHYGH bHnIUA"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isHealthy"
               >
-                <span
-                  className="sc-dlfnbm jAGXAl"
-                >
-                  1
+                <span>
+                   
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   vigoda
                 </span>
-              </p>
-              <div
-                className="sc-bqyKva jGaTAI"
-              >
-                <span
-                  className="sc-hBEYos fDweZX"
-                >
-                  <time
-                    dateTime="2017-12-21T15:36:07.000Z"
-                    title="2017-12-21T15:36:07.000Z"
-                  >
-                    &lt;5s ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  12s
-                </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:36:07.000Z"
+                  title="2017-12-21T15:36:07.000Z"
+                >
+                  &lt;5s ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
           "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
-        </li>
-        <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
-        >
-          <button
-            className="sc-jSgupP hoVBLD"
-            onClick={[Function]}
-            title="pin"
-          >
-            <svg
-              className="sc-hKgILt eAgqne"
-            >
-              pin-resource-filled.svg
-            </svg>
-          </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
-          >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/snack"
-              onClick={[Function]}
-              title="snack"
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
                   className="sc-dlfnbm jAGXAl"
@@ -768,43 +784,90 @@ exports[`sidebar renders list of resources 1`] = `
                   1
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
+        </li>
+        <li
+          className="sc-bdfBwQ fKFkSC  isBuilding"
+        >
+          <button
+            className="sc-jSgupP bujtng"
+            onClick={[Function]}
+            title="pin"
+          >
+            <svg
+              className="sc-eCssSg hOYBLG"
+            >
+              pin-resource-filled.svg
+            </svg>
+          </button>
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/snack"
+            onClick={[Function]}
+            title="snack"
+          >
+            <div
+              className="sc-iqHYGH bHnIUA"
+            >
+              <div
+                className="sc-gsTCUz iZQOBB isHealthy"
+              >
+                <span>
+                   
+                </span>
+              </div>
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   snack
                 </span>
-              </p>
+              </div>
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                <time
+                  dateTime="2017-12-21T15:35:57.000Z"
+                  title="2017-12-21T15:35:57.000Z"
+                >
+                  &lt;15s ago
+                </time>
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
+          "
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
+            >
               <div
-                className="sc-bqyKva jGaTAI"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
-                  className="sc-hBEYos fDweZX"
+                  className="sc-dlfnbm jAGXAl"
                 >
-                  <time
-                    dateTime="2017-12-21T15:35:57.000Z"
-                    title="2017-12-21T15:35:57.000Z"
-                  >
-                    &lt;15s ago
-                  </time>
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR"
-                >
-                  -10.0s
+                  1
                 </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
-          "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
         </li>
       </ul>
     </div>
@@ -822,142 +885,109 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
   >
     <div>
       <div
-        className="sc-fodVxV gWHarz"
+        className="sc-fFubgz hIGdYH"
       >
         
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
-          className="sc-bdfBwQ sc-iqHYGH bbQbwz cQzyJf"
+          className="sc-bdfBwQ sc-dQppl fKFkSC cvRQvE"
         >
-          <div
-            className="sc-jrAGrp eEIpTi isSelected"
+          <a
+            className="sc-jrAGrp sc-kEjbxe bcHXUh fOSgZM isSelected"
+            href="/"
+            onClick={[Function]}
           >
-            <a
-              className="sc-kEjbxe kbombs"
-              href="/"
-              onClick={[Function]}
+            <div
+              className="sc-gsTCUz iZQOBB isNone"
             >
-              <div
-                className="sc-gsTCUz iGdQvZ isNone"
+              <span
+                className="sc-dlfnbm jAGXAl"
               >
-                <span
-                  className="sc-dlfnbm jAGXAl"
-                >
-                  2
-                </span>
-              </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+                2
+              </span>
+            </div>
+            <div
+              className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
+            >
+              <span
+                className="sc-hBEYos jsLRUj"
               >
                 All
-              </p>
-            </a>
-          </div>
+              </span>
+            </div>
+          </a>
         </li>
       </ul>
     </div>
     <div>
       <div
-        className="sc-fodVxV gWHarz"
+        className="sc-fFubgz hIGdYH"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
+          className="sc-bdfBwQ fKFkSC  isBuilding"
         >
           <button
-            className="sc-jSgupP hoVBLD"
+            className="sc-jSgupP bujtng"
             onClick={[Function]}
             title="pin"
           >
             <svg
-              className="sc-hKgILt eAgqne"
+              className="sc-eCssSg hOYBLG"
             >
               pin-resource-filled.svg
             </svg>
           </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/vigoda"
+            onClick={[Function]}
+            title="vigoda"
           >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/vigoda"
-              onClick={[Function]}
-              title="vigoda"
+            <div
+              className="sc-iqHYGH bHnIUA"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isHealthy"
               >
-                <span
-                  className="sc-dlfnbm jAGXAl"
-                >
-                  1
+                <span>
+                   
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   vigoda
                 </span>
-              </p>
-              <div
-                className="sc-bqyKva jGaTAI"
-              >
-                <span
-                  className="sc-hBEYos fDweZX isEmpty"
-                >
-                  —
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR isEmpty"
-                >
-                  —
-                </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                —
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
           "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
-        </li>
-        <li
-          className="sc-bdfBwQ bbQbwz  isBuilding"
-        >
-          <button
-            className="sc-jSgupP hoVBLD"
-            onClick={[Function]}
-            title="pin"
-          >
-            <svg
-              className="sc-hKgILt eAgqne"
-            >
-              pin-resource-filled.svg
-            </svg>
-          </button>
-          <div
-            className="sc-jrAGrp eEIpTi  isBuilding"
-          >
-            <a
-              className="sc-kEjbxe kbombs SidebarItem-link"
-              href="/r/snack"
-              onClick={[Function]}
-              title="snack"
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
             >
               <div
-                className="sc-gsTCUz iGdQvZ isBuilding"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
                   className="sc-dlfnbm jAGXAl"
@@ -965,38 +995,85 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   1
                 </span>
               </div>
-              <p
-                className="sc-crrsfI bJBIQE"
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
+        </li>
+        <li
+          className="sc-bdfBwQ fKFkSC  isBuilding"
+        >
+          <button
+            className="sc-jSgupP bujtng"
+            onClick={[Function]}
+            title="pin"
+          >
+            <svg
+              className="sc-eCssSg hOYBLG"
+            >
+              pin-resource-filled.svg
+            </svg>
+          </button>
+          <a
+            className="sc-jrAGrp bcHXUh  isBuilding"
+            href="/r/snack"
+            onClick={[Function]}
+            title="snack"
+          >
+            <div
+              className="sc-iqHYGH bHnIUA"
+            >
+              <div
+                className="sc-gsTCUz iZQOBB isHealthy"
+              >
+                <span>
+                   
+                </span>
+              </div>
+              <div
+                className="sc-bqyKva sc-kstrdz dHnJEw elihkm"
               >
                 <span
-                  className="sc-dQppl iyJVaI"
+                  className="sc-hBEYos jsLRUj"
                 >
                   snack
                 </span>
-              </p>
+              </div>
+              <span
+                className="sc-fodVxV cOMzyj"
+              >
+                —
+              </span>
+              <button
+                className="sc-iBPRYJ duoIAk SidebarTriggerButton 
+          "
+                disabled={true}
+                onClick={[Function]}
+                title="Cannot trigger an update while resource is updating or update is pending."
+              />
+            </div>
+            <div
+              className="sc-crrsfI bEhhkd"
+            >
               <div
-                className="sc-bqyKva jGaTAI"
+                className="sc-gsTCUz iZQOBB isBuilding"
               >
                 <span
-                  className="sc-hBEYos fDweZX isEmpty"
+                  className="sc-dlfnbm jAGXAl"
                 >
-                  —
-                </span>
-                <span
-                  className="sc-kstrdz bHChfR isEmpty"
-                >
-                  —
+                  1
                 </span>
               </div>
-            </a>
-            <button
-              className="sc-iBPRYJ brdESs SidebarTriggerButton 
-          "
-              disabled={true}
-              onClick={[Function]}
-              title="Cannot trigger an update while resource is updating or update is pending."
-            />
-          </div>
+              <div
+                className="sc-bqyKva dHnJEw"
+              >
+                Updating…
+              </div>
+            </div>
+          </a>
         </li>
       </ul>
     </div>

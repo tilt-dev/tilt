@@ -1,11 +1,10 @@
 import styled from "styled-components"
-import { numberOfAlerts } from "./alerts"
-import { combinedStatus } from "./status"
-import { Height, SizeUnit } from "./style-helpers"
+import { buildAlerts, runtimeAlerts } from "./alerts"
+import { buildStatus, runtimeStatus } from "./status"
+import { SizeUnit } from "./style-helpers"
 import { ResourceStatus, TriggerMode } from "./types"
 
-export const SidebarItemStyle = styled.li`
-  height: ${Height.sidebarItem}px;
+export const SidebarItemRoot = styled.li`
   & + & {
     margin-top: ${SizeUnit(0.2)};
   }
@@ -27,13 +26,15 @@ function timeDiff(start: string, end: string): moment.Duration {
 class SidebarItem {
   name: string
   isTiltfile: boolean
-  status: ResourceStatus
+  buildStatus: ResourceStatus
+  buildAlertCount: number
+  runtimeStatus: ResourceStatus
+  runtimeAlertCount: number
   hasEndpoints: boolean
   lastBuildDur: moment.Duration | null
   lastDeployTime: string
   pendingBuildSince: string
   currentBuildStartTime: string
-  alertCount: number
   triggerMode: TriggerMode
   hasPendingChanges: boolean
   queued: boolean
@@ -48,7 +49,10 @@ class SidebarItem {
 
     this.name = res.name ?? ""
     this.isTiltfile = !!res.isTiltfile
-    this.status = combinedStatus(res)
+    this.buildStatus = buildStatus(res)
+    this.buildAlertCount = buildAlerts(res, null).length
+    this.runtimeStatus = runtimeStatus(res)
+    this.runtimeAlertCount = runtimeAlerts(res, null).length
     this.hasEndpoints = (res.endpointLinks || []).length > 0
     this.lastBuildDur =
       lastBuild && lastBuild.startTime && lastBuild.finishTime
@@ -57,7 +61,6 @@ class SidebarItem {
     this.lastDeployTime = res.lastDeployTime ?? ""
     this.pendingBuildSince = res.pendingBuildSince ?? ""
     this.currentBuildStartTime = res.currentBuild?.startTime ?? ""
-    this.alertCount = numberOfAlerts(res)
     this.triggerMode = res.triggerMode ?? TriggerMode.TriggerModeAuto
     this.hasPendingChanges = !!res.hasPendingChanges
     this.queued = !!res.queued

@@ -8,7 +8,7 @@ import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { SidebarPinButton } from "./SidebarPin"
 import SidebarResources, {
-  SidebarItemLink,
+  SidebarItemBox,
   SidebarListSection,
 } from "./SidebarResources"
 import { twoResourceView } from "./testdata"
@@ -22,7 +22,7 @@ function getPinnedItemNames(
   let pinnedItems = root
     .find(SidebarListSection)
     .find({ name: "favorites" })
-    .find(SidebarItemLink)
+    .find(SidebarItemBox)
   return pinnedItems.map((i) => i.prop("title"))
 }
 

@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react"
 import styled from "styled-components"
 import "./SidebarTriggerButton.scss"
-import { Height, Width } from "./style-helpers"
+import { Width } from "./style-helpers"
 import { TriggerMode } from "./types"
 
 let SidebarTriggerButtonStyle = styled.button`
@@ -9,11 +9,12 @@ let SidebarTriggerButtonStyle = styled.button`
   background-repeat: no-repeat;
   background-color: transparent;
   border: 0 none;
-  height: ${Height.sidebarItem}px;
   width: ${Width.sidebarTriggerButton}px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 `
 
 export const TriggerButtonTooltip = {

@@ -8,31 +8,35 @@ import styled from "styled-components"
 import { incr } from "./analytics"
 import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin-resource-filled.svg"
 import { localStorageContext } from "./LocalStorage"
-import { SidebarItemStyle } from "./SidebarItem"
-import { Color, Height, Width } from "./style-helpers"
+import { SidebarItemRoot } from "./SidebarItem"
+import { Color, Width } from "./style-helpers"
 
-let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
-  fill: ${Color.grayLight};
-  display: none;
-  ${SidebarItemStyle}:hover & {
-    display: flex;
-  }
-`
 let PinnedPinIcon = styled(PinResourceFilledSvg)`
   fill: ${Color.yellowLight};
 `
+let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
+  transition: fill 300ms ease;
+  fill: ${Color.grayLight};
+  display: none;
+  ${SidebarItemRoot}:hover & {
+    display: flex;
+  }
+  &:hover {
+    fill: ${Color.yellowLight};
+  }
+`
 let PinButton = styled.button`
+  display: flex;
   cursor: pointer;
   padding: 0;
   background-position: center center;
   background-repeat: no-repeat;
   background-color: transparent;
   border: 0 none;
-  height: ${Height.sidebarItem}px;
   width: ${Width.sidebarPinButton}px;
-  display: inline;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 `
 
 type SidebarPinContext = {

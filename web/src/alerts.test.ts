@@ -1,9 +1,8 @@
 import {
   Alert,
   BuildFailedErrorType,
+  combinedAlerts,
   CrashRebuildErrorType,
-  getResourceAlerts,
-  numberOfAlerts,
   PodRestartErrorType,
   PodStatusErrorType,
   WarningErrorType,
@@ -20,14 +19,14 @@ beforeEach(() => {
   logStore = new LogStore()
 })
 
-describe("getResourceAlerts", () => {
+describe("combinedAlerts", () => {
   it("K8Resource: shows that a pod status of error is an alert", () => {
     let r: Resource = k8sResource()
     let rInfo = <K8sResourceInfo>r.k8sResourceInfo
     rInfo.podStatus = "Error"
     rInfo.podStatusMessage = "I'm a pod in Error"
 
-    let actual = getResourceAlerts(r, logStore)
+    let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
         alertType: PodStatusErrorType,
@@ -45,7 +44,7 @@ describe("getResourceAlerts", () => {
     let rInfo = r.k8sResourceInfo
     if (!rInfo) throw new Error("missing k8s info")
     rInfo.podRestarts = 1
-    let actual = getResourceAlerts(r, logStore).map((a) => {
+    let actual = combinedAlerts(r, logStore).map((a) => {
       delete a.dismissHandler
       return a
     })
@@ -75,7 +74,7 @@ describe("getResourceAlerts", () => {
       spans: { "build:1": r.name },
       segments: [{ text: "Build error log", spanId: "build:1" }],
     })
-    let actual = getResourceAlerts(r, logStore)
+    let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
         alertType: BuildFailedErrorType,
@@ -103,7 +102,7 @@ describe("getResourceAlerts", () => {
     if (!rInfo) throw new Error("missing k8s info")
     rInfo.podCreationTime = "10:00AM"
 
-    let actual = getResourceAlerts(r, logStore)
+    let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
         alertType: CrashRebuildErrorType,
@@ -128,7 +127,7 @@ describe("getResourceAlerts", () => {
       },
     ]
 
-    let actual = getResourceAlerts(r, logStore)
+    let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
         alertType: WarningErrorType,
@@ -163,7 +162,7 @@ describe("getResourceAlerts", () => {
       segments: [{ text: "Build error log", spanId: "build:1" }],
     })
 
-    let actual = getResourceAlerts(r, logStore).map((a) => {
+    let actual = combinedAlerts(r, logStore).map((a) => {
       delete a.dismissHandler
       return a
     })
@@ -202,7 +201,7 @@ describe("getResourceAlerts", () => {
       spans: { "build:1": r.name },
       segments: [{ text: "Build failed log", spanId: "build:1" }],
     })
-    let actual = getResourceAlerts(r, logStore)
+    let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
         alertType: CrashRebuildErrorType,
@@ -234,7 +233,7 @@ describe("getResourceAlerts", () => {
     let rInfo = r.k8sResourceInfo
     if (!rInfo) throw new Error("missing k8s info")
     rInfo.podRestarts = 1
-    let actualNum = numberOfAlerts(r)
+    let actualNum = combinedAlerts(r, null).length
     let expectedNum = 1
 
     expect(actualNum).toEqual(expectedNum)
@@ -253,7 +252,7 @@ it("DC Resource: should show a warning alert using the first build history", () 
       warnings: ["This warning shouldn't show up", "Or this one"],
     },
   ]
-  let actual = getResourceAlerts(r, logStore)
+  let actual = combinedAlerts(r, logStore)
   let expectedAlerts: Alert[] = [
     {
       alertType: WarningErrorType,
@@ -278,7 +277,7 @@ it("DC resource: should show a warning alert using the first build history", () 
       warnings: ["This warning shouldn't show up", "Or this one"],
     },
   ]
-  let actual = getResourceAlerts(r, logStore)
+  let actual = combinedAlerts(r, logStore)
   let expectedAlerts: Alert[] = [
     {
       alertType: WarningErrorType,
@@ -307,7 +306,7 @@ it("DC Resource has build failed alert using first build history info ", () => {
     spans: { "build:1": r.name },
     segments: [{ text: "Hi you're build failed :'(", spanId: "build:1" }],
   })
-  let actual = getResourceAlerts(r, logStore)
+  let actual = combinedAlerts(r, logStore)
   let expectedAlerts: Alert[] = [
     {
       alertType: BuildFailedErrorType,
@@ -354,8 +353,8 @@ it("renders a build error for both a K8s resource and DC resource ", () => {
     ],
   })
 
-  let dcAlerts = getResourceAlerts(dcresource, logStore)
-  let k8sAlerts = getResourceAlerts(k8sresource, logStore)
+  let dcAlerts = combinedAlerts(dcresource, logStore)
+  let k8sAlerts = combinedAlerts(k8sresource, logStore)
 
   let actual = dcAlerts.concat(k8sAlerts)
   let expectedAlerts: Alert[] = [

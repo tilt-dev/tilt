@@ -4,7 +4,7 @@ import React, { Component } from "react"
 import { matchPath } from "react-router"
 import { Route, RouteComponentProps, Switch } from "react-router-dom"
 import AlertPane from "./AlertPane"
-import { numberOfAlerts } from "./alerts"
+import { combinedAlerts } from "./alerts"
 import { incr, pathToTag } from "./analytics"
 import AnalyticsNudge from "./AnalyticsNudge"
 import AppController from "./AppController"
@@ -381,11 +381,11 @@ class HUD extends Component<HudProps, HudState> {
       if (name) {
         let selectedResource = resources.find((r) => r.name === name)
         if (selectedResource) {
-          numAlerts = numberOfAlerts(selectedResource)
+          numAlerts = combinedAlerts(selectedResource, null).length
         }
       } else {
         numAlerts = resources
-          .map((r) => numberOfAlerts(r))
+          .map((r) => combinedAlerts(r, null).length)
           .reduce((sum, current) => sum + current, 0)
       }
 

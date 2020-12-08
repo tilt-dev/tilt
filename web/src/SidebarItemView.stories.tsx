@@ -2,7 +2,7 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import { SidebarItemView } from "./SidebarResources"
+import { SidebarItemAll, SidebarItemView } from "./SidebarResources"
 import { oneResourceNoAlerts } from "./testdata"
 import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 
@@ -27,7 +27,8 @@ function withName(n: string): optionFn {
 
 function withStatus(status: ResourceStatus): optionFn {
   return (item: SidebarItem) => {
-    item.status = status
+    item.buildStatus = status
+    item.runtimeStatus = status
     if (status === ResourceStatus.Building) {
       item.currentBuildStartTime = new Date(Date.now() - 1).toISOString()
     }
@@ -35,7 +36,8 @@ function withStatus(status: ResourceStatus): optionFn {
       status === ResourceStatus.Unhealthy ||
       status === ResourceStatus.Warning
     ) {
-      item.alertCount = 1
+      item.buildAlertCount = 1
+      item.runtimeAlertCount = 1
     }
   }
 }
@@ -86,3 +88,19 @@ export const OneItemTrigger = () =>
 
 export const OneItemLongName = () =>
   itemView(withName("longnamelongnameverylongname"))
+
+export const AllItemSelected = () => {
+  return (
+    <ItemWrapper>
+      <SidebarItemAll nothingSelected={true} totalAlerts={1} allLink={"/"} />
+    </ItemWrapper>
+  )
+}
+
+export const AllItemUnselected = () => {
+  return (
+    <ItemWrapper>
+      <SidebarItemAll nothingSelected={false} totalAlerts={1} allLink={"/"} />
+    </ItemWrapper>
+  )
+}
