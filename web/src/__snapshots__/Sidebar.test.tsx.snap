@@ -9,18 +9,18 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
   >
     <div>
       <div
-        className="sc-fodVxV bgoZhk"
+        className="sc-fFubgz hIGdYH"
       >
         
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
           className="sc-bdfBwQ sc-crrsfI fKFkSC cKzMdO"
         >
           <a
-            className="sc-pFZIQ sc-jrAGrp gITkdQ jSaHfr isSelected"
+            className="sc-pFZIQ sc-jrAGrp gITkdQ jSZySy isSelected"
             href="/"
             onClick={[Function]}
           >
@@ -32,13 +32,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+              className="sc-dQppl sc-bqyKva ffqbbn gTLxMz"
             >
-              <span
-                className="sc-kstrdz cYoIXh"
-              >
-                All
-              </span>
+              All
             </div>
           </a>
         </li>
@@ -46,12 +42,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
     </div>
     <div>
       <div
-        className="sc-fodVxV bgoZhk"
+        className="sc-fFubgz hIGdYH"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
           className="sc-bdfBwQ fKFkSC  isBuilding"
@@ -84,16 +80,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource4
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:36:03.000Z"
@@ -159,16 +155,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource9
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:35:58.000Z"
@@ -234,16 +230,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource19
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:35:48.000Z"
@@ -309,16 +305,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource29
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:35:38.000Z"
@@ -384,16 +380,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource39
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:35:28.000Z"
@@ -459,16 +455,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource49
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:35:18.000Z"
@@ -534,16 +530,16 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   resource54
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:35:13.000Z"
@@ -594,18 +590,18 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
   >
     <div>
       <div
-        className="sc-fodVxV bgoZhk"
+        className="sc-fFubgz hIGdYH"
       >
         
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
           className="sc-bdfBwQ sc-crrsfI fKFkSC cKzMdO"
         >
           <a
-            className="sc-pFZIQ sc-jrAGrp gITkdQ jSaHfr isSelected"
+            className="sc-pFZIQ sc-jrAGrp gITkdQ jSZySy isSelected"
             href="/"
             onClick={[Function]}
           >
@@ -617,13 +613,9 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+              className="sc-dQppl sc-bqyKva ffqbbn gTLxMz"
             >
-              <span
-                className="sc-kstrdz cYoIXh"
-              >
-                All
-              </span>
+              All
             </div>
           </a>
         </li>
@@ -631,12 +623,12 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
     </div>
     <div>
       <div
-        className="sc-fodVxV bgoZhk"
+        className="sc-fFubgz hIGdYH"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       />
     </div>
   </div>
@@ -653,18 +645,18 @@ exports[`sidebar renders list of resources 1`] = `
   >
     <div>
       <div
-        className="sc-fodVxV bgoZhk"
+        className="sc-fFubgz hIGdYH"
       >
         
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
           className="sc-bdfBwQ sc-crrsfI fKFkSC cKzMdO"
         >
           <a
-            className="sc-pFZIQ sc-jrAGrp gITkdQ jSaHfr isSelected"
+            className="sc-pFZIQ sc-jrAGrp gITkdQ jSZySy isSelected"
             href="/"
             onClick={[Function]}
           >
@@ -676,13 +668,9 @@ exports[`sidebar renders list of resources 1`] = `
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+              className="sc-dQppl sc-bqyKva ffqbbn gTLxMz"
             >
-              <span
-                className="sc-kstrdz cYoIXh"
-              >
-                All
-              </span>
+              All
             </div>
           </a>
         </li>
@@ -690,12 +678,12 @@ exports[`sidebar renders list of resources 1`] = `
     </div>
     <div>
       <div
-        className="sc-fodVxV bgoZhk"
+        className="sc-fFubgz hIGdYH"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
           className="sc-bdfBwQ fKFkSC  isBuilding"
@@ -728,16 +716,16 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   vigoda
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:36:07.000Z"
@@ -803,16 +791,16 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   snack
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 <time
                   dateTime="2017-12-21T15:35:57.000Z"
@@ -863,18 +851,18 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
   >
     <div>
       <div
-        className="sc-fodVxV bgoZhk"
+        className="sc-fFubgz hIGdYH"
       >
         
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
           className="sc-bdfBwQ sc-crrsfI fKFkSC cKzMdO"
         >
           <a
-            className="sc-pFZIQ sc-jrAGrp gITkdQ jSaHfr isSelected"
+            className="sc-pFZIQ sc-jrAGrp gITkdQ jSZySy isSelected"
             href="/"
             onClick={[Function]}
           >
@@ -886,13 +874,9 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+              className="sc-dQppl sc-bqyKva ffqbbn gTLxMz"
             >
-              <span
-                className="sc-kstrdz cYoIXh"
-              >
-                All
-              </span>
+              All
             </div>
           </a>
         </li>
@@ -900,12 +884,12 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
     </div>
     <div>
       <div
-        className="sc-fodVxV bgoZhk"
+        className="sc-fFubgz hIGdYH"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz jIfaex"
+        className="sc-bkzZxe jjCdaj"
       >
         <li
           className="sc-bdfBwQ fKFkSC  isBuilding"
@@ -938,16 +922,16 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   vigoda
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 —
               </span>
@@ -1008,16 +992,16 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
+                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
               >
                 <span
-                  className="sc-kstrdz cYoIXh"
+                  className="sc-hBEYos jsLRUj"
                 >
                   snack
                 </span>
               </div>
               <span
-                className="sc-hBEYos bwuTbc"
+                className="sc-fodVxV cOMzyj"
               >
                 —
               </span>
