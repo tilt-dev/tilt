@@ -28,7 +28,7 @@ process starts over.
 
 ### Examples
 
-Almost everything in Tilt is implmented as a subscriber that fires actions.
+Almost everything in Tilt is implemented as a subscriber that fires actions.
 
 - **The pod log manager.** On each `OnChange`, the pod log manager looks for
   new pods that Tilt knows about. If a new pod appears, the log manager
