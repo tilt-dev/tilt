@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/kube"
@@ -154,65 +153,6 @@ func TestGetGroup(t *testing.T) {
 	}
 }
 
-type call struct {
-	argv  []string
-	stdin string
-}
-
-type fakeKubectlRunner struct {
-	pauseForever bool
-	stdout       string
-	stderr       string
-	err          error
-
-	calls []call
-}
-
-func (f *fakeKubectlRunner) waitForDeadline(ctx context.Context) {
-	// hopefully 10 seconds is longer than any test is going to execute for
-	// this means that in case we run this without a higher level timeout, a broken test will still exit
-	select {
-	case <-ctx.Done():
-		f.err = errors.New("context was canceled")
-	case <-time.After(10 * time.Second):
-		f.err = errors.New("test set to have kubectl pause forever, but it never timed kubectl out!")
-	}
-}
-
-func (f *fakeKubectlRunner) execWithStdin(ctx context.Context, args []string, stdin string) (stdout string, stderr string, err error) {
-	f.calls = append(f.calls, call{argv: args, stdin: stdin})
-
-	defer func() {
-		f.stdout = ""
-		f.stderr = ""
-		f.err = nil
-		f.pauseForever = false
-	}()
-
-	if f.pauseForever {
-		f.waitForDeadline(ctx)
-	}
-
-	return f.stdout, f.stderr, f.err
-}
-
-func (f *fakeKubectlRunner) exec(ctx context.Context, args []string) (stdout string, stderr string, err error) {
-	f.calls = append(f.calls, call{argv: args})
-
-	defer func() {
-		f.stdout = ""
-		f.stderr = ""
-		f.err = nil
-		f.pauseForever = false
-	}()
-
-	if f.pauseForever {
-		f.waitForDeadline(ctx)
-	}
-
-	return f.stdout, f.stderr, f.err
-}
-
 type fakeHelmKubeClient struct {
 	updates   kube.ResourceList
 	creates   kube.ResourceList
@@ -266,7 +206,6 @@ type clientTestFixture struct {
 	t           *testing.T
 	ctx         context.Context
 	client      K8sClient
-	runner      *fakeKubectlRunner
 	tracker     ktesting.ObjectTracker
 	watchNotify chan watch.Interface
 	helmKube    *fakeHelmKubeClient
@@ -277,7 +216,6 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.t = t
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ret.ctx = ctx
-	ret.runner = &fakeKubectlRunner{}
 
 	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
 	watchNotify := make(chan watch.Interface, 100)
@@ -354,21 +292,4 @@ func (c clientTestFixture) updatePod(pod *v1.Pod) {
 			c.t.Fatal(err)
 		}
 	}
-}
-
-func (c clientTestFixture) setOutput(s string) {
-	c.runner.stdout = s
-}
-
-func (c clientTestFixture) setStderr(stderr string) {
-	c.runner.stderr = stderr
-	c.runner.err = fmt.Errorf("exit status 1")
-}
-
-func (c clientTestFixture) setError(err error) {
-	c.runner.err = err
-}
-
-func (c clientTestFixture) setKubectlPauseForever(d time.Duration) {
-	c.runner.pauseForever = true
 }
