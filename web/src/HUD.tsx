@@ -239,15 +239,18 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   handleShowCopySuccess() {
-    this.setState({
-      showCopySuccess: true,
-    }, () => {
-      setTimeout(() => {
-        this.setState({
-          showCopySuccess: false,
-        })
-      }, 1500)
-    })
+    this.setState(
+      {
+        showCopySuccess: true,
+      },
+      () => {
+        setTimeout(() => {
+          this.setState({
+            showCopySuccess: false,
+          })
+        }, 1500)
+      }
+    )
   }
 
   private handleOpenModal() {

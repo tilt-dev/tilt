@@ -1,8 +1,8 @@
 import React, { PureComponent } from "react"
 import styled from "styled-components"
 import { incr } from "./analytics"
-import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
+import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 import ResourceInfoKeyboardShortcuts from "./ResourceInfoKeyboardShortcuts"
 import * as s from "./style-helpers"
@@ -128,7 +128,7 @@ function openEndpointUrl(url: string) {
 }
 
 async function copyTextToClipboard(text: string) {
-  await navigator.clipboard.writeText(text);
+  await navigator.clipboard.writeText(text)
 }
 
 class ResourceInfo extends PureComponent<HUDHeaderProps> {
@@ -191,13 +191,20 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
         />
         <ResourceInfoStyle>
           <PodStatus>{podStatus}</PodStatus>
-          {podID && (<PodId>
-            {podID}
-            <CopyButton onClick={() => podID && this.handleCopyButtonClick(podID, this.props.handleClickCopy)}>
-              {!showCopySuccess && <CopyButtonSvg />}
-              {showCopySuccess && <CheckmarkButtonSvg />}
-            </CopyButton>
-          </PodId>)}
+          {podID && (
+            <PodId>
+              {podID}
+              <CopyButton
+                onClick={() =>
+                  podID &&
+                  this.handleCopyButtonClick(podID, this.props.handleClickCopy)
+                }
+              >
+                {!showCopySuccess && <CopyButtonSvg />}
+                {showCopySuccess && <CheckmarkButtonSvg />}
+              </CopyButton>
+            </PodId>
+          )}
           {endpointsEl}
         </ResourceInfoStyle>
         {this.renderSnapshotButton()}
