@@ -11,6 +11,7 @@ type HudState = {
   isSidebarClosed: boolean
   snapshotLink: string
   showSnapshotModal: boolean
+  showCopySuccess: boolean
   showFatalErrorModal: ShowFatalErrorModal
   error: string | undefined
   showErrorModal: ShowErrorModal

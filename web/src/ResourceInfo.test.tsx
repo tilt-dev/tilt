@@ -6,6 +6,7 @@ import ResourceInfo from "./ResourceInfo"
 import { namedEndpointLink, unnamedEndpointLink } from "./testdata"
 
 const fakeHandleOpenModal = () => {}
+const fakeHandleClickCopy = () => {}
 
 it("shows snapshot url", () => {
   const tree = renderer
@@ -15,6 +16,8 @@ it("shows snapshot url", () => {
           showSnapshotButton={true}
           handleOpenModal={fakeHandleOpenModal}
           highlight={null}
+          handleClickCopy={fakeHandleClickCopy}
+          showCopySuccess={false}
         />
       </MemoryRouter>
     )
@@ -31,6 +34,8 @@ it("doesn't render snapshot button if it's a snapshot", () => {
           showSnapshotButton={false}
           handleOpenModal={fakeHandleOpenModal}
           highlight={null}
+          handleClickCopy={fakeHandleClickCopy}
+          showCopySuccess={false}
         />
       </MemoryRouter>
     )
@@ -46,6 +51,8 @@ it("uses endpoint name as endpoint text, if given", () => {
       handleOpenModal={fakeHandleOpenModal}
       highlight={null}
       endpoints={[namedEndpointLink]}
+      handleClickCopy={fakeHandleClickCopy}
+      showCopySuccess={false}
     />
   )
 
@@ -62,6 +69,8 @@ it("uses url as endpoint text if name not given", () => {
       handleOpenModal={fakeHandleOpenModal}
       highlight={null}
       endpoints={[unnamedEndpointLink]}
+      handleClickCopy={fakeHandleClickCopy}
+      showCopySuccess={false}
     />
   )
 
@@ -78,6 +87,8 @@ it("displays mixed named/unnamed endpoints", () => {
       handleOpenModal={fakeHandleOpenModal}
       highlight={null}
       endpoints={[unnamedEndpointLink, namedEndpointLink]}
+      handleClickCopy={fakeHandleClickCopy}
+      showCopySuccess={false}
     />
   )
 
@@ -104,6 +115,8 @@ it("trims URLs for unnamed endpoints", () => {
       handleOpenModal={fakeHandleOpenModal}
       highlight={null}
       endpoints={endpoints}
+      handleClickCopy={fakeHandleClickCopy}
+      showCopySuccess={false}
     />
   )
 

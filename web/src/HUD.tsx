@@ -99,6 +99,7 @@ class HUD extends Component<HudProps, HudState> {
       snapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
+      showCopySuccess: false,
       snapshotHighlight: undefined,
       socketState: SocketState.Closed,
       showErrorModal: ShowErrorModal.Default,
@@ -109,6 +110,7 @@ class HUD extends Component<HudProps, HudState> {
     this.handleClearHighlight = this.handleClearHighlight.bind(this)
     this.handleSetHighlight = this.handleSetHighlight.bind(this)
     this.handleOpenModal = this.handleOpenModal.bind(this)
+    this.handleShowCopySuccess = this.handleShowCopySuccess.bind(this)
   }
 
   componentDidMount() {
@@ -236,6 +238,18 @@ class HUD extends Component<HudProps, HudState> {
     })
   }
 
+  handleShowCopySuccess() {
+    this.setState({
+      showCopySuccess: true,
+    }, () => {
+      setTimeout(() => {
+        this.setState({
+          showCopySuccess: false,
+        })
+      }, 1500)
+    })
+  }
+
   private handleOpenModal() {
     this.setState({ showSnapshotModal: true })
   }
@@ -320,6 +334,7 @@ class HUD extends Component<HudProps, HudState> {
     let name = params?.name
 
     let view = this.state.view
+    let showCopySuccess = this.state.showCopySuccess
     let resources = view?.resources ?? []
     let selectedResource = resources?.find((r) => r.name === name)
 
@@ -341,8 +356,10 @@ class HUD extends Component<HudProps, HudState> {
         podID={podID}
         podStatus={podStatus}
         showSnapshotButton={showSnapshot}
+        showCopySuccess={showCopySuccess}
         highlight={snapshotHighlight}
         handleOpenModal={this.handleOpenModal}
+        handleClickCopy={this.handleShowCopySuccess}
       />
     )
   }
