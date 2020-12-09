@@ -84,12 +84,12 @@ require (
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 	helm.sh/helm/v3 v3.4.1
 	k8s.io/api v0.19.3
 	k8s.io/apimachinery v0.19.3
 	k8s.io/cli-runtime v0.19.3
 	k8s.io/client-go v0.19.3
-	k8s.io/component-base v0.19.3
 	k8s.io/klog/v2 v2.2.0
 	k8s.io/kubectl v0.19.3
 	sigs.k8s.io/kustomize v2.0.3+incompatible

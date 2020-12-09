@@ -59,21 +59,14 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, &logsCmd{})
 
 	rootCmd.AddCommand(analytics.NewCommand())
-	rootCmd.AddCommand(newKubectlCmd())
 	rootCmd.AddCommand(newDumpCmd(rootCmd))
 	rootCmd.AddCommand(newTriggerCmd())
 	rootCmd.AddCommand(newAlphaCmd())
 
-	if len(os.Args) > 2 && os.Args[1] == "kubectl" {
-		// Hack in global flags from kubectl
-		flush := preKubectlCmdInit()
-		defer flush()
-	} else {
-		globalFlags := rootCmd.PersistentFlags()
-		globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
-		globalFlags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-		globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
-	}
+	globalFlags := rootCmd.PersistentFlags()
+	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
+	globalFlags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
+	globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
