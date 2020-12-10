@@ -59,7 +59,7 @@ func setStateFn(model Model, typ reflect.Type, fn interface{}) error {
 	// Overwrite the value in the state store.
 	existing, ok := model.state[inTyp]
 	if !ok {
-		return fmt.Errorf("Internal error: Type not found in state store: %T", inTyp)
+		return fmt.Errorf("Internal error: Type not found in state store: %s", inTyp)
 	}
 
 	outs := reflect.ValueOf(fn).Call([]reflect.Value{reflect.ValueOf(existing)})
