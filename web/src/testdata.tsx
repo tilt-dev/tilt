@@ -13,6 +13,14 @@ type view = {
   logList?: Proto.webviewLogList
   featureFlags?: { [featureFlag: string]: boolean }
   tiltfileKey?: string
+  runningTiltBuild?: Proto.webviewTiltBuild
+}
+
+let runningTiltBuild = {
+  commitSHA: "658f2719f3380bee8e7119c7eb29f4a4a986ac6e",
+  date: "2020-12-10",
+  dev: true,
+  version: "0.17.13",
 }
 
 // NOTE(dmiller) 4-02-19 this function is currently unused but I'm going to keep it around.
@@ -232,7 +240,7 @@ function oneResourceUnrecognizedError(): Resource {
 }
 
 function oneResourceView(): view {
-  return { resources: [oneResource()], tiltfileKey: "test" }
+  return { resources: [oneResource()], tiltfileKey: "test", runningTiltBuild }
 }
 
 function twoResourceView(): view {
@@ -277,7 +285,7 @@ function twoResourceView(): view {
     queued: false,
     specs: vigodaSpecs(),
   }
-  return { resources: [vigoda, snack], tiltfileKey: "test" }
+  return { resources: [vigoda, snack], tiltfileKey: "test", runningTiltBuild }
 }
 
 function oneResourceFailedToBuild(): Resource[] {
