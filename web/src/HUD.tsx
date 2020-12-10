@@ -24,6 +24,7 @@ import LogStore from "./LogStore"
 import MetricsPane from "./MetricsPane"
 import NoMatch from "./NoMatch"
 import NotFound from "./NotFound"
+import OverviewPane from "./OverviewPane"
 import PathBuilder from "./PathBuilder"
 import ResourceInfo from "./ResourceInfo"
 import SecondaryNav from "./SecondaryNav"
@@ -295,6 +296,31 @@ class HUD extends Component<HudProps, HudState> {
     })
     let matchTraceParams: any = matchTrace?.params
     let isTwoLevelHeader = !!matchTraceParams?.span
+    let matchOverview = matchPath(
+      String(this.props.history.location.pathname),
+      {
+        path: this.path("/overview"),
+      }
+    )
+
+    if (matchOverview) {
+      return (
+        <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
+          <div className={hudClasses.join(" ")}>
+            <AnalyticsNudge needsNudge={needsNudge} />
+            <SocketBar state={this.state.socketState} />
+            {fatalErrorModal}
+            {errorModal}
+            {shareSnapshotModal}
+
+            <OverviewPane
+              view={this.state.view}
+              pathBuilder={this.pathBuilder}
+            />
+          </div>
+        </LocalStorageContextProvider>
+      )
+    }
 
     return (
       <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
