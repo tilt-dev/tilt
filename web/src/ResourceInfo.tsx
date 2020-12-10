@@ -1,6 +1,8 @@
 import React, { PureComponent } from "react"
 import styled from "styled-components"
 import { incr } from "./analytics"
+import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
+import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
 import ResourceInfoKeyboardShortcuts from "./ResourceInfoKeyboardShortcuts"
 import * as s from "./style-helpers"
@@ -13,10 +15,12 @@ type HUDHeaderProps = {
   endpoints?: Link[]
   podStatus?: string
   showSnapshotButton: boolean
+  showCopySuccess: boolean
   highlight: SnapshotHighlight | null
 
   // TODO(nick): This needs a better name
   handleOpenModal: () => void
+  handleClickCopy: () => void
 }
 
 let Root = styled.div`
@@ -38,7 +42,26 @@ let PodStatus = styled.span`
   flex: 1;
 `
 
-let PodId = styled.span``
+let PodId = styled.span`
+  display: flex;
+`
+
+let CopyButton = styled.span`
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  cursor: pointer;
+`
+
+let CopyButtonSvg = styled(CopySvg)`
+  height: 1em;
+  margin-left: ${s.SizeUnit(0.25)};
+`
+
+let CheckmarkButtonSvg = styled(CheckmarkSvg)`
+  height: 1em;
+  margin-left: ${s.SizeUnit(0.25)};
+`
 
 let Endpoints = styled.span`
   ${PodId} + & {
@@ -104,7 +127,16 @@ function openEndpointUrl(url: string) {
   window.open(url, url)
 }
 
+async function copyTextToClipboard(text: string) {
+  await navigator.clipboard.writeText(text)
+}
+
 class ResourceInfo extends PureComponent<HUDHeaderProps> {
+  async handleCopyButtonClick(text: string, cb: () => void) {
+    await copyTextToClipboard(text)
+    cb()
+  }
+
   renderSnapshotButton() {
     let highlight = this.props.highlight
 
@@ -126,6 +158,7 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
   render() {
     let podStatus = this.props.podStatus
     let podID = this.props.podID
+    let showCopySuccess = this.props.showCopySuccess
 
     let endpoints = this.props.endpoints ?? []
     let endpointsEl = endpoints?.length > 0 && (
@@ -158,7 +191,20 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
         />
         <ResourceInfoStyle>
           <PodStatus>{podStatus}</PodStatus>
-          {podID && <PodId>{podID}</PodId>}
+          {podID && (
+            <PodId>
+              {podID}
+              <CopyButton
+                onClick={() =>
+                  podID &&
+                  this.handleCopyButtonClick(podID, this.props.handleClickCopy)
+                }
+              >
+                {!showCopySuccess && <CopyButtonSvg />}
+                {showCopySuccess && <CheckmarkButtonSvg />}
+              </CopyButton>
+            </PodId>
+          )}
           {endpointsEl}
         </ResourceInfoStyle>
         {this.renderSnapshotButton()}
