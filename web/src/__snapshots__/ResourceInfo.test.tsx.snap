@@ -28,11 +28,11 @@ exports[`shows snapshot url 1`] = `
     />
   </div>
   <button
-    className="sc-iBPRYJ iRbujy snapshotButton "
+    className="sc-jrAGrp kCSDWA snapshotButton "
     onClick={[Function]}
   >
     <svg
-      className="sc-fubCfw dnQem"
+      className="sc-kEjbxe iWvONy"
     >
       snapshot.svg
     </svg>
