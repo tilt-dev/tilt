@@ -11,12 +11,12 @@ import (
 )
 
 func apiHost() string {
-	return fmt.Sprintf("%s:%d", webHost, webPort)
+	return fmt.Sprintf("%s:%d", provideWebHost(), provideWebPort())
 }
 
 func apiURL(path string) string {
 	path = strings.TrimLeft(path, "/")
-	return fmt.Sprintf("http://%s:%d/api/%s", webHost, webPort, path)
+	return fmt.Sprintf("http://%s:%d/api/%s", provideWebHost(), provideWebPort(), path)
 }
 
 func apiGet(path string) (body io.ReadCloser) {

@@ -1,11 +1,37 @@
 package cli
 
 import (
+	"os"
+	"strconv"
+
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 )
+
+var defaultWebHost = "localhost"
+var defaultWebPort = 10350
+var webHostFlag = ""
+var webPortFlag = 0
+
+func readEnvDefaults() error {
+	envPort := os.Getenv("TILT_PORT")
+	if envPort != "" {
+		port, err := strconv.Atoi(envPort)
+		if err != nil {
+			return errors.Wrap(err, "parsing env TILT_PORT")
+		}
+		defaultWebPort = port
+	}
+
+	envHost := os.Getenv("TILT_HOST")
+	if envHost != "" {
+		defaultWebHost = envHost
+	}
+	return nil
+}
 
 // Common flags used across multiple commands.
 
@@ -20,14 +46,14 @@ func addKubeContextFlag(cmd *cobra.Command) {
 
 // For commands that talk to the web server.
 func addConnectServerFlags(cmd *cobra.Command) {
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Only necessary if you started Tilt with --port.")
-	cmd.Flags().StringVar(&webHost, "host", DefaultWebHost, "Host for the Tilt HTTP server. Only necessary if you started Tilt with --host.")
+	cmd.Flags().IntVar(&webPortFlag, "port", defaultWebPort, "Port for the Tilt HTTP server. Only necessary if you started Tilt with --port. Overrides TILT_PORT env variable.")
+	cmd.Flags().StringVar(&webHostFlag, "host", defaultWebHost, "Host for the Tilt HTTP server. Only necessary if you started Tilt with --host. Overrides TILT_HOST env variable.")
 }
 
 // For commands that start a web server.
 func addStartServerFlags(cmd *cobra.Command) {
-	cmd.Flags().IntVar(&webPort, "port", DefaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable.")
-	cmd.Flags().StringVar(&webHost, "host", DefaultWebHost, "Host for the Tilt HTTP server and default host for any port-forwards. Set to 0.0.0.0 to listen on all interfaces.")
+	cmd.Flags().IntVar(&webPortFlag, "port", defaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable. Overrides TILT_PORT env variable.")
+	cmd.Flags().StringVar(&webHostFlag, "host", defaultWebHost, "Host for the Tilt HTTP server and default host for any port-forwards. Set to 0.0.0.0 to listen on all interfaces. Overrides TILT_HOST env variable.")
 }
 
 func addDevServerFlags(cmd *cobra.Command) {

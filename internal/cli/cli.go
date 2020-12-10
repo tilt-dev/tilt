@@ -33,6 +33,12 @@ func logLevel(verbose, debug bool) logger.Level {
 }
 
 func Execute() {
+	err := readEnvDefaults()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	rootCmd := &cobra.Command{
 		Use:   "tilt",
 		Short: "Multi-service development with no stress",

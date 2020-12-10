@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -60,7 +58,10 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 	if err != nil {
 		st.Dispatch(
 			store.NewErrorAction(
-				errors.Wrapf(err, "Cannot start Tilt. Maybe another process is already running on port %d? Use --port to set a custom port", s.port)))
+				fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
+					"If you want to run multiple Tilt instances simultaneously,\n"+
+					"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
+					s.port, err)))
 		return
 	}
 

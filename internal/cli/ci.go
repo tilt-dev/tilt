@@ -42,7 +42,7 @@ While Tilt is running, you can view the UI at %s:%d
 (configurable with --host and --port).
 
 See blog post for additional information: https://blog.tilt.dev/2020/04/16/how-to-not-break-server-startup.html
-`, DefaultWebHost, DefaultWebPort),
+`, defaultWebHost, defaultWebPort),
 	}
 
 	addStartServerFlags(cmd)

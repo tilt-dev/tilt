@@ -25,14 +25,11 @@ import (
 	"github.com/tilt-dev/tilt/web"
 )
 
-const DefaultWebHost = "localhost"
-const DefaultWebPort = 10350
+var webModeFlag model.WebMode = model.DefaultWebMode
+
 const DefaultWebDevPort = 46764
 
 var updateModeFlag string = string(buildcontrol.UpdateModeAuto)
-var webModeFlag model.WebMode = model.DefaultWebMode
-var webPort = 0
-var webHost = DefaultWebHost
 var webDevPort = 0
 var logActionsFlag bool = false
 
@@ -221,11 +218,11 @@ func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 }
 
 func provideWebHost() model.WebHost {
-	return model.WebHost(webHost)
+	return model.WebHost(webHostFlag)
 }
 
 func provideWebPort() model.WebPort {
-	return model.WebPort(webPort)
+	return model.WebPort(webPortFlag)
 }
 
 func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, error) {
@@ -235,7 +232,7 @@ func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, 
 
 	if webHost == "0.0.0.0" {
 		// 0.0.0.0 means "listen on all hosts"
-		// For UI displays, we use 127.0.0.01 (loopback)
+		// For UI displays, we use 127.0.0.1 (loopback)
 		webHost = "127.0.0.1"
 	}
 
