@@ -1,12 +1,12 @@
 import React, { PureComponent } from "react"
 import styled, { keyframes } from "styled-components"
+import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
+import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import {
   AnimDuration,
   Color,
   ColorAlpha,
   ColorRGBA,
-  Font,
-  FontSize,
   Width,
 } from "./style-helpers"
 import { ResourceStatus } from "./types"
@@ -82,22 +82,17 @@ let SidebarIconRoot = styled.div`
   }
 `
 
-let AlertCount = styled.span`
-  font-family: ${Font.sansSerif};
-  font-size: ${FontSize.smallest};
-  color: ${Color.black};
-`
-
 export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   render() {
+    let icon = <span>&nbsp;</span>
+    if (this.props.status === ResourceStatus.Warning) {
+      icon = <WarningSvg fill="#fff" height="9px" width="9px" />
+    } else if (this.props.status === ResourceStatus.Unhealthy) {
+      icon = <ErrorSvg fill="#fff" height="12px" width="12px" />
+    }
+
     return (
-      <SidebarIconRoot className={`${this.status()}`}>
-        {this.props.alertCount > 0 ? (
-          <AlertCount>{this.props.alertCount}</AlertCount>
-        ) : (
-          <span>&nbsp;</span>
-        )}
-      </SidebarIconRoot>
+      <SidebarIconRoot className={`${this.status()}`}>{icon}</SidebarIconRoot>
     )
   }
 
