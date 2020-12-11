@@ -204,7 +204,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 		BuildHistory: []*proto_webview.BuildRecord{
 			pltfb,
 		},
-		RuntimeStatus: string(model.RuntimeStatusOK),
+		RuntimeStatus: string(model.RuntimeStatusNotApplicable),
 	}
 	start, err := timeToProto(ctfb.StartTime)
 	if err != nil {
