@@ -115,7 +115,6 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
-	f.ibd.injectSynclet = true
 
 	iTarget1 := NewSanchoLiveUpdateImageTarget(f)
 	iTarget2 := NewSanchoSidecarLiveUpdateImageTarget(f)
@@ -142,9 +141,6 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	assert.Equal(t, expectedSidecarRef, image.String())
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
-
-	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, "gcr.io/windmill-public-containers/tilt-synclet:"),
-		"Expected synclet to be injected once in YAML: %s", f.k8s.Yaml)
 }
 
 func TestNoImageTargets(t *testing.T) {

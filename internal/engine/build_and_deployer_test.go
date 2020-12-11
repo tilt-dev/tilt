@@ -30,8 +30,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/synclet"
-	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -79,10 +77,6 @@ func TestGKEDeploy(t *testing.T) {
 	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
-
-	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should not deploy synclet without explicitly specifying updateMode=Synclet: %s", f.k8s.Yaml)
-	}
 }
 
 func TestDockerForMacDeploy(t *testing.T) {
@@ -108,10 +102,6 @@ func TestDockerForMacDeploy(t *testing.T) {
 	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
 		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 	}
-
-	if strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName) {
-		t.Errorf("Should not deploy the synclet on docker-for-desktop: %s", f.k8s.Yaml)
-	}
 }
 
 func TestYamlManifestDeploy(t *testing.T) {
@@ -126,7 +116,6 @@ func TestYamlManifestDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
 	assert.Equal(t, 0, f.docker.BuildCount)
 	assert.Equal(t, 0, f.docker.PushCount)
 	f.assertK8sUpsertCalled(true)
@@ -623,9 +612,6 @@ func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
 	assert.Equal(t, 2, f.docker.BuildCount)
 	assert.Equal(t, 2, f.docker.PushCount)
 	f.assertK8sUpsertCalled(true)
-
-	// should NOT have run live update
-	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
 }
 
 func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntImageBuild(t *testing.T) {
@@ -692,9 +678,6 @@ func TestLiveUpdateMultipleImagesOneWithUnsyncedChangeFileFallsBackToImageBuild(
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// should NOT have run live update
-	assert.Equal(t, 0, f.sCli.UpdateContainerCount)
 
 	// expect image build (2x images) when we fall back from failed LiveUpdate
 	assert.Equal(t, 2, f.docker.BuildCount)
@@ -775,7 +758,6 @@ type bdFixture struct {
 	cancel func()
 	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
-	sCli   *synclet.TestSyncletClient
 	bd     BuildAndDeployer
 	st     *store.TestingStore
 	dcCli  *dockercompose.FakeDCClient
@@ -802,11 +784,10 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	}
 	k8s := k8s.NewFakeK8sClient()
 	k8s.Runtime = runtime
-	sCli := synclet.NewTestSyncletClient(docker)
 	mode := buildcontrol.UpdateModeFlag(um)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kl := &fakeKINDLoader{}
-	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, sCli, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kl, ta)
+	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kl, ta)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -819,7 +800,6 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 		cancel:         cancel,
 		docker:         docker,
 		k8s:            k8s,
-		sCli:           sCli,
 		bd:             bd,
 		st:             st,
 		dcCli:          dcc,

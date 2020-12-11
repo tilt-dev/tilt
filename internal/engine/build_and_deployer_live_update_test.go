@@ -19,7 +19,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -52,15 +51,9 @@ type testCase struct {
 	expectDockerExecCount    int
 	expectDockerRestartCount int
 
-	// Most synclet behavior is tested via the fake docker client,
-	// but you can assert on this to make sure updates actually happened
-	// via the synclet and not the DockerContainerUpdater
-	expectSyncletUpdateContainerCount int
-
 	// k8s/deploy actions
-	expectK8sExecCount  int
-	expectK8sDeploy     bool
-	expectSyncletDeploy bool
+	expectK8sExecCount int
+	expectK8sDeploy    bool
 
 	// logs checks
 	logsContain     []string
@@ -120,7 +113,6 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		f.assertContainerRestarts(tCase.expectDockerRestartCount)
 	}
 
-	assert.Equal(t, tCase.expectSyncletUpdateContainerCount, f.sCli.UpdateContainerCount)
 	assert.Equal(t, tCase.expectK8sExecCount, len(f.k8s.ExecCalls), "# k8s exec calls")
 
 	logsStr := f.logs.String()
@@ -144,7 +136,6 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		if !strings.Contains(f.k8s.Yaml, expectedYaml) {
 			t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
 		}
-		assert.Equal(t, tCase.expectSyncletDeploy, strings.Contains(f.k8s.Yaml, sidecar.DefaultSyncletImageName), "expected synclet-deploy = %t (deployed yaml was: %s)", tCase.expectSyncletDeploy, f.k8s.Yaml)
 		return
 	} else {
 		require.Empty(t, f.k8s.Yaml, "expected no k8s deploy, but we deployed YAML: %s", f.k8s.Yaml)
@@ -711,14 +702,13 @@ func TestLiveUpdateRunTriggerExec(t *testing.T) {
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
-		changedFiles:                      []string{"a.txt"},
-		expectDockerBuildCount:            0,
-		expectDockerPushCount:             0,
-		expectSyncletUpdateContainerCount: 0,
-		expectDockerCopyCount:             0,
-		expectDockerExecCount:             0, // one run's triggers don't match -- should only exec the other two.
-		expectDockerRestartCount:          0,
-		expectK8sExecCount:                3, // one copy, two runs (third run's triggers don't match so don't exec it)
+		changedFiles:             []string{"a.txt"},
+		expectDockerBuildCount:   0,
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0, // one run's triggers don't match -- should only exec the other two.
+		expectDockerRestartCount: 0,
+		expectK8sExecCount:       3, // one copy, two runs (third run's triggers don't match so don't exec it)
 	}
 	runTestCase(t, f, tCase)
 }
@@ -734,14 +724,13 @@ func TestLiveUpdateCustomBuildExec(t *testing.T) {
 			WithImageTarget(NewSanchoCustomBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
-		changedFiles:                      []string{"app/a.txt"},
-		expectDockerBuildCount:            0,
-		expectDockerPushCount:             0,
-		expectSyncletUpdateContainerCount: 0,
-		expectDockerCopyCount:             0,
-		expectDockerExecCount:             0,
-		expectDockerRestartCount:          0,
-		expectK8sExecCount:                2,
+		changedFiles:             []string{"app/a.txt"},
+		expectDockerBuildCount:   0,
+		expectDockerPushCount:    0,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0,
+		expectDockerRestartCount: 0,
+		expectK8sExecCount:       2,
 	}
 	runTestCase(t, f, tCase)
 }
@@ -783,8 +772,7 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 		changedFiles:           []string{"a.txt"},
 		expectDockerBuildCount: 0,
 		expectDockerPushCount:  0,
-		expectK8sExecCount:     2,     // one tar archive, one run cmd
-		expectSyncletDeploy:    false, // exec updater should not deploy synclet
+		expectK8sExecCount:     2, // one tar archive, one run cmd
 	}
 	runTestCase(t, f, tCase)
 }

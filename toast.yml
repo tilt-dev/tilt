@@ -1,21 +1,5 @@
 image: gcr.io/windmill-public-containers/tilt-toast@sha256:481cd7eb12dc5b82ea5f6832b2895f914a6b21621dbb122ea5290ae73bb0d1b3
 tasks:
-  synclet-proto:
-    input_paths:
-      - internal/synclet/synclet.proto
-    output_paths:
-      - internal/synclet/proto/synclet.pb.go
-    command: |
-      set -euo pipefail
-      protoc \
-       -I. \
-       -I/usr/include \
-       --go_out=plugins=grpc,paths=source_relative:. \
-       internal/synclet/synclet.proto
-      mkdir -p internal/synclet/proto
-      mv internal/synclet/synclet.pb.go internal/synclet/proto
-      goimports -local github.com/tilt-dev/tilt -w internal/synclet/proto/synclet.pb.go
-
   webview-proto:
     input_paths:
       - pkg/webview/log.proto
@@ -56,12 +40,10 @@ tasks:
       - integration
       - internal
       - pkg
-      - synclet
       - web/web.go
       - vendor
       - Makefile
     output_paths:
       - ./internal/cli/wire_gen.go
-      - ./internal/synclet/wire_gen.go
       - ./internal/engine/wire_gen.go
-    command: wire ./internal/engine && wire ./internal/cli && wire ./internal/synclet && make goimports
+    command: wire ./internal/engine && wire ./internal/cli && make goimports

@@ -19,9 +19,6 @@ var (
 	// Only do image builds
 	UpdateModeImage UpdateMode = "image"
 
-	// Deploy a synclet to make container updates faster
-	UpdateModeSynclet UpdateMode = "synclet"
-
 	// Update containers in-place. This mode only works with DockerForDesktop and Minikube.
 	// If you try to use this mode with a different K8s cluster type, we will return an error
 	UpdateModeContainer UpdateMode = "container"
@@ -33,7 +30,6 @@ var (
 var AllUpdateModes = []UpdateMode{
 	UpdateModeAuto,
 	UpdateModeImage,
-	UpdateModeSynclet,
 	UpdateModeContainer,
 	UpdateModeKubectlExec,
 }
@@ -55,11 +51,6 @@ func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runti
 		if !env.UsesLocalDockerRegistry() || runtime != container.RuntimeDocker {
 			return "", fmt.Errorf("update mode %q is only valid with local Docker clusters like Docker For Mac, Minikube, and MicroK8s", flag)
 		}
-	}
-
-	if mode == UpdateModeSynclet {
-		return "", fmt.Errorf("update mode %q has been removed; please use update mode %q instead. "+
-			"If this breaks your workflow, contact us: https://tilt.dev/contact", flag, UpdateModeKubectlExec)
 	}
 
 	return mode, nil

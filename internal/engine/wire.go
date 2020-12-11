@@ -12,8 +12,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-	"github.com/tilt-dev/tilt/internal/synclet"
-	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -29,7 +27,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Value(dockerfile.Labels{}),
 	wire.Value(UpperReducer),
 
-	sidecar.WireSet,
 	k8s.ProvideMinikubeClient,
 	build.DefaultDockerBuilder,
 	build.NewDockerImageBuilder,
@@ -40,7 +37,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	NewLocalTargetBuildAndDeployer,
 	NewImageBuildAndDeployer,
 	containerupdate.NewDockerUpdater,
-	containerupdate.NewSyncletUpdater,
 	containerupdate.NewExecUpdater,
 	NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
@@ -56,16 +52,11 @@ var DeployerBaseWireSet = wire.NewSet(
 
 var DeployerWireSetTest = wire.NewSet(
 	DeployerBaseWireSet,
-	containerupdate.NewSyncletManagerForTests,
 	wire.InterfaceValue(new(sdktrace.SpanProcessor), (sdktrace.SpanProcessor)(nil)),
-
-	// A fake synclet wrapped in a GRPC interface
-	synclet.FakeGRPCWrapper,
 )
 
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
-	containerupdate.NewSyncletManager,
 )
 
 func provideBuildAndDeployer(
@@ -75,7 +66,6 @@ func provideBuildAndDeployer(
 	dir *dirs.TiltDevDir,
 	env k8s.Env,
 	updateMode buildcontrol.UpdateModeFlag,
-	sCli *synclet.TestSyncletClient,
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
 	kp KINDLoader,

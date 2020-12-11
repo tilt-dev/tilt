@@ -30,7 +30,6 @@ var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
 	dcu     *containerupdate.DockerUpdater
-	scu     *containerupdate.SyncletUpdater
 	ecu     *containerupdate.ExecUpdater
 	updMode buildcontrol.UpdateMode
 	env     k8s.Env
@@ -39,11 +38,10 @@ type LiveUpdateBuildAndDeployer struct {
 }
 
 func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
-	scu *containerupdate.SyncletUpdater, ecu *containerupdate.ExecUpdater,
+	ecu *containerupdate.ExecUpdater,
 	updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime, c build.Clock) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
 		dcu:     dcu,
-		scu:     scu,
 		ecu:     ecu,
 		updMode: updMode,
 		env:     env,
@@ -257,10 +255,6 @@ func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.
 	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
 	if isDC || lubad.updMode == buildcontrol.UpdateModeContainer {
 		return lubad.dcu
-	}
-
-	if lubad.updMode == buildcontrol.UpdateModeSynclet {
-		return lubad.scu
 	}
 
 	if lubad.updMode == buildcontrol.UpdateModeKubectlExec {
