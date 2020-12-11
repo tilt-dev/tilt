@@ -24,9 +24,7 @@ exports[`renders correctly - isNone 1`] = `
 <styled.div
   className="isNone"
 >
-  <span>
-     
-  </span>
+  <ForwardRef(SvgCheckmarkSmall) />
 </styled.div>
 `;
 
@@ -45,9 +43,7 @@ exports[`renders correctly - isUnhealthy 1`] = `
   className="isUnhealthy"
 >
   <ForwardRef(SvgError)
-    fill="#fff"
-    height="12px"
-    width="12px"
+    fill="#ffffff"
   />
 </styled.div>
 `;
@@ -57,9 +53,9 @@ exports[`renders correctly - isWarning 1`] = `
   className="isWarning"
 >
   <ForwardRef(SvgWarning)
-    fill="#fff"
-    height="9px"
-    width="9px"
+    fill="#ffffff"
+    height="10px"
+    width="10px"
   />
 </styled.div>
 `;

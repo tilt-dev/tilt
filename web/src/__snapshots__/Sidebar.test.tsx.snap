@@ -20,19 +20,19 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-bdfBwQ sc-crrsfI fKFkSC cKzMdO"
         >
           <a
-            className="sc-pFZIQ sc-jrAGrp cqQIiN jSaHfr isSelected"
+            className="sc-pFZIQ sc-jrAGrp gITkdQ jSaHfr isSelected"
             href="/"
             onClick={[Function]}
           >
             <div
-              className="sc-gsTCUz iZQOBB isNone"
+              className="sc-gsTCUz gURyfg isNone"
             >
-              <span>
-                 
-              </span>
+              <svg>
+                checkmark-small.svg
+              </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+              className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
             >
               <span
                 className="sc-kstrdz cYoIXh"
@@ -68,23 +68,23 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/resource4"
             onClick={[Function]}
             title="resource4"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -114,7 +114,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -143,23 +143,23 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/resource9"
             onClick={[Function]}
             title="resource9"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -189,7 +189,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -218,23 +218,23 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/resource19"
             onClick={[Function]}
             title="resource19"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -264,7 +264,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -293,23 +293,23 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/resource29"
             onClick={[Function]}
             title="resource29"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -339,7 +339,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -368,23 +368,23 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/resource39"
             onClick={[Function]}
             title="resource39"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -414,7 +414,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -443,23 +443,23 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/resource49"
             onClick={[Function]}
             title="resource49"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -489,7 +489,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -518,23 +518,23 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/resource54"
             onClick={[Function]}
             title="resource54"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -564,7 +564,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -605,19 +605,19 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
           className="sc-bdfBwQ sc-crrsfI fKFkSC cKzMdO"
         >
           <a
-            className="sc-pFZIQ sc-jrAGrp cqQIiN jSaHfr isSelected"
+            className="sc-pFZIQ sc-jrAGrp gITkdQ jSaHfr isSelected"
             href="/"
             onClick={[Function]}
           >
             <div
-              className="sc-gsTCUz iZQOBB isNone"
+              className="sc-gsTCUz gURyfg isNone"
             >
-              <span>
-                 
-              </span>
+              <svg>
+                checkmark-small.svg
+              </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+              className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
             >
               <span
                 className="sc-kstrdz cYoIXh"
@@ -664,19 +664,19 @@ exports[`sidebar renders list of resources 1`] = `
           className="sc-bdfBwQ sc-crrsfI fKFkSC cKzMdO"
         >
           <a
-            className="sc-pFZIQ sc-jrAGrp cqQIiN jSaHfr isSelected"
+            className="sc-pFZIQ sc-jrAGrp gITkdQ jSaHfr isSelected"
             href="/"
             onClick={[Function]}
           >
             <div
-              className="sc-gsTCUz iZQOBB isNone"
+              className="sc-gsTCUz gURyfg isNone"
             >
-              <span>
-                 
-              </span>
+              <svg>
+                checkmark-small.svg
+              </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+              className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
             >
               <span
                 className="sc-kstrdz cYoIXh"
@@ -712,23 +712,23 @@ exports[`sidebar renders list of resources 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/vigoda"
             onClick={[Function]}
             title="vigoda"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -758,7 +758,7 @@ exports[`sidebar renders list of resources 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -787,23 +787,23 @@ exports[`sidebar renders list of resources 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/snack"
             onClick={[Function]}
             title="snack"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -833,7 +833,7 @@ exports[`sidebar renders list of resources 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -874,19 +874,19 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           className="sc-bdfBwQ sc-crrsfI fKFkSC cKzMdO"
         >
           <a
-            className="sc-pFZIQ sc-jrAGrp cqQIiN jSaHfr isSelected"
+            className="sc-pFZIQ sc-jrAGrp gITkdQ jSaHfr isSelected"
             href="/"
             onClick={[Function]}
           >
             <div
-              className="sc-gsTCUz iZQOBB isNone"
+              className="sc-gsTCUz gURyfg isNone"
             >
-              <span>
-                 
-              </span>
+              <svg>
+                checkmark-small.svg
+              </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+              className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
             >
               <span
                 className="sc-kstrdz cYoIXh"
@@ -922,23 +922,23 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/vigoda"
             onClick={[Function]}
             title="vigoda"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -963,7 +963,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    
@@ -992,23 +992,23 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             </svg>
           </button>
           <a
-            className="sc-pFZIQ cqQIiN  isBuilding"
+            className="sc-pFZIQ gITkdQ  isBuilding"
             href="/r/snack"
             onClick={[Function]}
             title="snack"
           >
             <div
-              className="sc-kEjbxe kgoKCF"
+              className="sc-kEjbxe ikFKQb"
             >
               <div
-                className="sc-gsTCUz iZQOBB isHealthy"
+                className="sc-gsTCUz gURyfg isHealthy"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-bqyKva ffqbbn gwrrUk"
+                className="sc-dQppl sc-bqyKva ffqbbn dXPzUm"
               >
                 <span
                   className="sc-kstrdz cYoIXh"
@@ -1033,7 +1033,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
-                className="sc-gsTCUz iZQOBB isBuilding"
+                className="sc-gsTCUz gURyfg isBuilding"
               >
                 <span>
                    

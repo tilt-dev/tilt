@@ -13,6 +13,7 @@ export enum Color {
 
   offWhite = "#eef1f1",
   grayLightest = "#93a1a1", // Solarized base1 (darkest content tone)
+  grayLighter = "#2D4D55",
   grayLight = "#586e75", // Solarized base01
   gray = "#073642", // Solarized base02
   grayDark = "#002b36", // Solarized base03 (darkest bg tone)

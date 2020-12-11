@@ -49,9 +49,9 @@ export let SidebarItemBox = styled(Link)`
   flex-direction: column;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
-  border-radius: 6px;
+  border-radius: 5px;
   overflow: hidden;
-  border: 1px solid ${Color.gray};
+  border: 1px solid ${Color.grayLighter};
   position: relative; // Anchor the .isBuilding::after psuedo-element
   flex-grow: 1;
   text-decoration: none;
@@ -97,8 +97,13 @@ let SidebarItemRuntimeBox = styled.div`
   display: flex;
   align-items: center;
   height: ${SizeUnit(1)};
-  border-bottom: 1px solid ${Color.grayLight};
+  border-bottom: 1px solid ${Color.grayLighter};
   box-sizing: border-box;
+  transition: border-color ${AnimDuration.default} linear;
+
+  .isSelected & {
+    border-bottom-color: ${Color.grayLightest};
+  }
 `
 
 let SidebarItemBuildBox = styled.div`
@@ -149,6 +154,7 @@ let SidebarItemText = styled.div`
 let SidebarItemNameRoot = styled(SidebarItemText)`
   opacity: 1;
   font-family: ${Font.sansSerif};
+  z-index: 1; // Appear above the .isBuilding gradient
 `
 
 let SidebarItemNameTruncate = styled.span`
