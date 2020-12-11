@@ -90,7 +90,7 @@ export let SidebarItemBox = styled(Link)`
 
 let SidebarItemAllBox = styled(SidebarItemBox)`
   flex-direction: row;
-  height: ${SizeUnit(1.5)};
+  height: ${SizeUnit(1.0)};
 `
 
 let SidebarItemRuntimeBox = styled.div`
@@ -118,6 +118,20 @@ let SidebarItemAllRoot = styled(SidebarItemRoot)`
   text-transform: uppercase;
 `
 
+let SidebarItemText = styled.div`
+  display: flex;
+  align-items: center;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: ${ColorAlpha.almostOpaque};
+  line-height: normal;
+`
+
+let SidebarItemAllName = styled(SidebarItemText)`
+  opacity: 1;
+`
+
 type SidebarItemAllProps = {
   nothingSelected: boolean
   totalAlerts: number
@@ -135,21 +149,11 @@ export function SidebarItemAll(props: SidebarItemAllProps) {
           status={ResourceStatus.None}
           alertCount={props.totalAlerts}
         />
-        <SidebarItemName>All</SidebarItemName>
+        <SidebarItemAllName>All</SidebarItemAllName>
       </SidebarItemAllBox>
     </SidebarItemAllRoot>
   )
 }
-
-let SidebarItemText = styled.div`
-  display: flex;
-  align-items: center;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  opacity: ${ColorAlpha.almostOpaque};
-  line-height: normal;
-`
 
 let SidebarItemNameRoot = styled(SidebarItemText)`
   opacity: 1;
@@ -235,7 +239,7 @@ function SidebarResources(props: SidebarProps) {
   )
 }
 
-type SidebarItemViewProps = {
+export type SidebarItemViewProps = {
   item: SidebarItem
   selected: boolean
   renderPin: boolean

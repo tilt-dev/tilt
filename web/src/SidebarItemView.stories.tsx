@@ -2,7 +2,11 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import { SidebarItemAll, SidebarItemView } from "./SidebarResources"
+import {
+  SidebarItemAll,
+  SidebarItemView,
+  SidebarItemViewProps,
+} from "./SidebarResources"
 import { oneResourceNoAlerts } from "./testdata"
 import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 
@@ -17,16 +21,18 @@ function ItemWrapper(props: { children: React.ReactNode }) {
   )
 }
 
-type optionFn = (item: SidebarItem) => void
+type optionFn = (item: SidebarItemViewProps) => void
 
 function withName(n: string): optionFn {
-  return (item: SidebarItem) => {
+  return (props: SidebarItemViewProps) => {
+    let item = props.item
     item.name = n
   }
 }
 
 function withStatus(status: ResourceStatus): optionFn {
-  return (item: SidebarItem) => {
+  return (props: SidebarItemViewProps) => {
+    let item = props.item
     item.buildStatus = status
     item.runtimeStatus = status
     if (status === ResourceStatus.Building) {
@@ -43,24 +49,32 @@ function withStatus(status: ResourceStatus): optionFn {
 }
 
 function withManualTrigger(): optionFn {
-  return (item: SidebarItem) => {
+  return (props: SidebarItemViewProps) => {
+    let item = props.item
     item.triggerMode = TriggerMode.TriggerModeManualIncludingInitial
     item.hasPendingChanges = true
   }
 }
 
+function withSelected(v: boolean): optionFn {
+  return (props: SidebarItemViewProps) => {
+    props.selected = v
+  }
+}
+
 function itemView(...options: optionFn[]) {
   let item = new SidebarItem(oneResourceNoAlerts())
-  options.forEach((option) => option(item))
+  let props = {
+    item: item,
+    selected: false,
+    renderPin: true,
+    resourceView: ResourceView.Log,
+    pathBuilder: pathBuilder,
+  }
+  options.forEach((option) => option(props))
   return (
     <ItemWrapper>
-      <SidebarItemView
-        item={item}
-        selected={false}
-        renderPin={true}
-        resourceView={ResourceView.Log}
-        pathBuilder={pathBuilder}
-      />
+      <SidebarItemView {...props} />
     </ItemWrapper>
   )
 }
@@ -75,6 +89,9 @@ export const OneItemBuilding = () =>
 export const OneItemPending = () => itemView(withStatus(ResourceStatus.Pending))
 
 export const OneItemHealthy = () => itemView(withStatus(ResourceStatus.Healthy))
+
+export const OneItemHealthySelected = () =>
+  itemView(withStatus(ResourceStatus.Healthy), withSelected(true))
 
 export const OneItemUnhealthy = () =>
   itemView(withStatus(ResourceStatus.Unhealthy))
