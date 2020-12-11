@@ -22,6 +22,6 @@ func TestCrash(t *testing.T) {
 	res, err := f.tilt.Up([]string{"--watch=false"}, out)
 	assert.NoError(t, err)
 	<-res.Done()
-	assert.Contains(t, out.String(), "Cannot start Tilt")
+	assert.Contains(t, out.String(), "Tilt cannot start")
 	assert.NotContains(t, out.String(), "Usage:")
 }
