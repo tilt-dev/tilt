@@ -16,14 +16,14 @@ let OverviewPaneRoot = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
   background-color: ${Color.grayDark};
 `
 
 export default function OverviewPane(props: OverviewPaneProps) {
   return (
     <OverviewPaneRoot>
-      <OverviewTabBar {...props} />
+      <OverviewTabBar pathBuilder={props.pathBuilder} />
       <OverviewResourceBar {...props} />
       <OverviewGrid {...props} />
       <OverviewStatusBar build={props.view.runningTiltBuild} />

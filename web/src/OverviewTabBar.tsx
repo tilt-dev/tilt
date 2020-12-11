@@ -4,8 +4,9 @@ import PathBuilder from "./PathBuilder"
 import { Color } from "./style-helpers"
 
 type OverviewTabBarProps = {
-  view: Proto.webviewView
   pathBuilder: PathBuilder
+  logoOnly?: boolean
+  tabsOnly?: boolean
 }
 
 let OverviewTabBarRoot = styled.div`
@@ -25,11 +26,13 @@ let Tab = styled.div`
 `
 
 export default function OverviewTabBar(props: OverviewTabBarProps) {
-  return (
-    <OverviewTabBarRoot>
-      <Tab>Logo</Tab>
-      <Tab>Tab 1</Tab>
-      <Tab>Tab 2</Tab>
-    </OverviewTabBarRoot>
-  )
+  let tabs = []
+  if (!props.tabsOnly) {
+    tabs.push(<Tab>Logo</Tab>)
+  }
+
+  if (!props.logoOnly) {
+    tabs.push(<Tab>Tab 1</Tab>, <Tab>Tab 2</Tab>)
+  }
+  return <OverviewTabBarRoot>{tabs}</OverviewTabBarRoot>
 }
