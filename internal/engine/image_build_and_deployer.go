@@ -20,7 +20,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -60,16 +59,14 @@ func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
 }
 
 type ImageBuildAndDeployer struct {
-	db               build.DockerBuilder
-	ib               *imageBuilder
-	k8sClient        k8s.Client
-	env              k8s.Env
-	runtime          container.Runtime
-	analytics        *analytics.TiltAnalytics
-	injectSynclet    bool
-	clock            build.Clock
-	kl               KINDLoader
-	syncletContainer sidecar.SyncletContainer
+	db        build.DockerBuilder
+	ib        *imageBuilder
+	k8sClient k8s.Client
+	env       k8s.Env
+	runtime   container.Runtime
+	analytics *analytics.TiltAnalytics
+	clock     build.Clock
+	kl        KINDLoader
 }
 
 func NewImageBuildAndDeployer(
@@ -82,24 +79,17 @@ func NewImageBuildAndDeployer(
 	c build.Clock,
 	runtime container.Runtime,
 	kl KINDLoader,
-	syncletContainer sidecar.SyncletContainer,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		db:               db,
-		ib:               NewImageBuilder(db, customBuilder, updMode),
-		k8sClient:        k8sClient,
-		env:              env,
-		analytics:        analytics,
-		clock:            c,
-		runtime:          runtime,
-		kl:               kl,
-		syncletContainer: syncletContainer,
+		db:        db,
+		ib:        NewImageBuilder(db, customBuilder, updMode),
+		k8sClient: k8sClient,
+		env:       env,
+		analytics: analytics,
+		clock:     c,
+		runtime:   runtime,
+		kl:        kl,
 	}
-}
-
-// Turn on synclet injection. Should be called before any builds.
-func (ibd *ImageBuildAndDeployer) SetInjectSynclet(inject bool) {
-	ibd.injectSynclet = inject
 }
 
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
@@ -160,8 +150,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ps.EndPipelineStep(ctx)
 	}
 
-	var anyLiveUpdate bool
-
 	iTargetMap := model.ImageTargetsByID(iTargets)
 	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
@@ -184,7 +172,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return nil, err
 		}
 
-		anyLiveUpdate = anyLiveUpdate || !iTarget.LiveUpdateInfo().Empty()
 		return store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef), nil
 	})
 
@@ -197,7 +184,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	k8sResult, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.AllResults(), anyLiveUpdate)
+	k8sResult, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.AllResults())
 	reportK8sDeployMetrics(ctx, kTarget, time.Since(startDeployTime), err != nil)
 	if err != nil {
 		return newResults, buildcontrol.WrapDontFallBackError(err)
@@ -263,13 +250,13 @@ func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg m
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
 func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState,
-	iTargetMap map[model.TargetID]model.ImageTarget, kTarget model.K8sTarget, results store.BuildResultSet, needsSynclet bool) (store.BuildResult, error) {
+	iTargetMap map[model.TargetID]model.ImageTarget, kTarget model.K8sTarget, results store.BuildResultSet) (store.BuildResult, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
-	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results, needsSynclet)
+	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results)
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +316,7 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 	iTargetMap map[model.TargetID]model.ImageTarget, k8sTarget model.K8sTarget,
-	results store.BuildResultSet, needsSynclet bool) ([]k8s.K8sEntity, error) {
+	results store.BuildResultSet) ([]k8s.K8sEntity, error) {
 	newK8sEntities := []k8s.K8sEntity{}
 
 	// TODO(nick): The parsed YAML should probably be a part of the model?
@@ -343,7 +330,6 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 	depIDs := k8sTarget.DependencyIDs()
 	injectedDepIDs := map[model.TargetID]bool{}
 	for _, e := range entities {
-		injectedSynclet := false
 		e, err = k8s.InjectLabels(e, []model.LabelPair{
 			k8s.TiltManagedByLabel(),
 		})
@@ -401,20 +387,6 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 					if err != nil {
 						return nil, err
 					}
-				}
-
-				if ibd.injectSynclet && needsSynclet && !injectedSynclet {
-					injectedRefSelector := container.NewRefSelector(ref).WithExactMatch()
-
-					var sidecarInjected bool
-					e, sidecarInjected, err = sidecar.InjectSyncletSidecar(e, injectedRefSelector, ibd.syncletContainer)
-					if err != nil {
-						return nil, err
-					}
-					if !sidecarInjected {
-						return nil, fmt.Errorf("Could not inject synclet: %v", e)
-					}
-					injectedSynclet = true
 				}
 			}
 		}

@@ -127,9 +127,5 @@ func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *ImageBuildAndDep
 		return BuildOrder{dcbad, ibad, ltbad}
 	}
 
-	if updMode == buildcontrol.UpdateModeSynclet {
-		ibad.SetInjectSynclet(true)
-	}
-
 	return BuildOrder{lubad, dcbad, ibad, ltbad}
 }

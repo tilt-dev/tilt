@@ -14,7 +14,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/synclet/sidecar"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -48,7 +47,6 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	podInfo.StartedAt = pod.CreationTimestamp.Time
 	podInfo.Status = k8swatch.PodStatusToString(*pod)
 	podInfo.Namespace = k8s.NamespaceFromPod(pod)
-	podInfo.HasSynclet = sidecar.PodSpecContainsSynclet(pod.Spec)
 	podInfo.SpanID = runtimelog.SpanIDForPod(podInfo.PodID)
 	podInfo.Deleting = pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
 	podInfo.Phase = pod.Status.Phase
@@ -189,11 +187,6 @@ func podContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.Cont
 
 // Convert a Kubernetes Pod and ContainerStatus into a simpler Container model to store in the engine state.
 func containerForStatus(ctx context.Context, pod *v1.Pod, cStatus v1.ContainerStatus) (store.Container, error) {
-	if cStatus.Name == sidecar.SyncletContainerName {
-		// We don't want logs, status, etc. for the Tilt synclet.
-		return store.Container{}, nil
-	}
-
 	cName := k8s.ContainerNameFromContainerStatus(cStatus)
 
 	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)

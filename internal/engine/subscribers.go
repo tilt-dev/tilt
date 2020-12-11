@@ -2,7 +2,6 @@ package engine
 
 import (
 	"github.com/tilt-dev/tilt/internal/cloud"
-	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
@@ -37,7 +36,6 @@ func ProvideSubscribers(
 	dcw *dcwatch.EventWatcher,
 	dclm *runtimelog.DockerComposeLogManager,
 	pm *ProfilerManager,
-	sm containerupdate.SyncletManager,
 	ar *analytics.AnalyticsReporter,
 	hudsc *server.HeadsUpServerController,
 	au *analytics.AnalyticsUpdater,
@@ -66,7 +64,6 @@ func ProvideSubscribers(
 		dcw,
 		dclm,
 		pm,
-		sm,
 		ar,
 		hudsc,
 		au,

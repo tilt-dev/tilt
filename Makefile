@@ -11,41 +11,20 @@ all: check-go check-js test-js test-storybook
 # https://github.com/golang/go/issues/26186#issuecomment-435544512
 GO_PARALLEL_JOBS := 4
 
-SYNCLET_IMAGE := gcr.io/windmill-public-containers/tilt-synclet
-SYNCLET_DEV_IMAGE_TAG_FILE := .synclet-dev-image-tag
-
 CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
 
 GOIMPORTS_LOCAL_ARG := -local github.com/tilt-dev/tilt
 
 proto:
-	toast synclet-proto
 	toast proto-ts
 
-# Build a binary that uses the synclet tag specified in sidecar.go
+# Build a binary the current commit SHA
 install:
 	go install -mod vendor -ldflags "-X 'github.com/tilt-dev/tilt/internal/cli.commitSHA=$$(git merge-base master HEAD)'" ./cmd/tilt/...
-
-# Build a binary that uses a dev synclet image produced by `make synclet-dev`
-install-dev:
-	@if ! [[ -e "$(SYNCLET_DEV_IMAGE_TAG_FILE)" ]]; then echo "No dev synclet found. Run make synclet-dev."; exit 1; fi
-	go install -mod vendor -ldflags "-X 'github.com/tilt-dev/tilt/internal/synclet/sidecar.SyncletTag=$$(<$(SYNCLET_DEV_IMAGE_TAG_FILE))'" ./...
 
 # disable optimizations and inlining, to allow more complete information when attaching a debugger or capturing a profile
 install-debug:
 	go install -mod vendor -gcflags "all=-N -l" ./...
-
-define synclet-build-dev
-	echo $1 > $(SYNCLET_DEV_IMAGE_TAG_FILE)
-	docker tag $(SYNCLET_IMAGE):dirty $(SYNCLET_IMAGE):$1
-	docker push $(SYNCLET_IMAGE):$1
-endef
-
-synclet-dev: synclet-cache
-	docker build --build-arg baseImage=synclet-cache -t $(SYNCLET_IMAGE):dirty -f synclet/Dockerfile .
-	$(call synclet-build-dev,$(shell docker inspect $(SYNCLET_IMAGE):dirty -f '{{.Id}}' | sed -E 's/sha256:(.{20}).*/dirty-\1/'))
-
-build-synclet-and-install: synclet-dev install-dev
 
 lint: golangci-lint
 
@@ -142,12 +121,11 @@ wire:
 	toast wire
 
 wire-dev:
-	wire ./internal/engine && wire ./internal/cli && wire ./internal/synclet
+	wire ./internal/engine && wire ./internal/cli
 
 wire-check:
 	wire check ./internal/engine
 	wire check ./internal/cli
-	wire check ./internal/synclet
 
 release-container:
 	scripts/build-tilt-releaser.sh
@@ -162,23 +140,6 @@ ci-integration-container:
 
 clean:
 	go clean -cache -testcache -r -i ./...
-	docker rmi synclet-cache
-
-synclet-cache:
-	if [ "$(shell docker images synclet-cache -q)" = "" ]; then \
-		docker build -t synclet-cache -f synclet/Dockerfile --target=go-cache .; \
-	fi;
-
-synclet-release:
-	$(eval TAG := $(shell date +v%Y%m%d))
-	docker build -t $(SYNCLET_IMAGE):$(TAG) -f synclet/Dockerfile .
-	docker push $(SYNCLET_IMAGE):$(TAG)
-	sed -i 's/var SyncletTag = ".*"/var SyncletTag = "$(TAG)"/' internal/synclet/sidecar/sidecar.go
-
-custom-synclet-release:
-	$(eval TAG := $(if $(SYNCLET_TAG),$(SYNCLET_TAG),$(shell date +v%Y%m%d)))
-	docker build -t $(SYNCLET_IMAGE):$(TAG) -f synclet/Dockerfile .
-	docker push $(SYNCLET_IMAGE):$(TAG)
 
 release:
 	./scripts/release.sh
