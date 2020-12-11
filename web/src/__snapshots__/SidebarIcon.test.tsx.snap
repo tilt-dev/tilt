@@ -1,61 +1,85 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`renders correctly - isBuilding 1`] = `
-<styled.div
-  className="isBuilding"
+<TiltTooltip
+  title="help"
 >
-  <span>
-     
-  </span>
-</styled.div>
+  <styled.div
+    className="isBuilding"
+  >
+    <span>
+       
+    </span>
+  </styled.div>
+</TiltTooltip>
 `;
 
 exports[`renders correctly - isHealthy 1`] = `
-<styled.div
-  className="isHealthy"
+<TiltTooltip
+  title="help"
 >
-  <span>
-     
-  </span>
-</styled.div>
+  <styled.div
+    className="isHealthy"
+  >
+    <span>
+       
+    </span>
+  </styled.div>
+</TiltTooltip>
 `;
 
 exports[`renders correctly - isNone 1`] = `
-<styled.div
-  className="isNone"
+<TiltTooltip
+  title="help"
 >
-  <ForwardRef(SvgCheckmarkSmall) />
-</styled.div>
+  <styled.div
+    className="isNone"
+  >
+    <ForwardRef(SvgCheckmarkSmall) />
+  </styled.div>
+</TiltTooltip>
 `;
 
 exports[`renders correctly - isPending 1`] = `
-<styled.div
-  className="isPending"
+<TiltTooltip
+  title="help"
 >
-  <span>
-     
-  </span>
-</styled.div>
+  <styled.div
+    className="isPending"
+  >
+    <span>
+       
+    </span>
+  </styled.div>
+</TiltTooltip>
 `;
 
 exports[`renders correctly - isUnhealthy 1`] = `
-<styled.div
-  className="isUnhealthy"
+<TiltTooltip
+  title="help"
 >
-  <ForwardRef(SvgError)
-    fill="#ffffff"
-  />
-</styled.div>
+  <styled.div
+    className="isUnhealthy"
+  >
+    <ForwardRef(SvgError)
+      fill="#ffffff"
+    />
+  </styled.div>
+</TiltTooltip>
 `;
 
 exports[`renders correctly - isWarning 1`] = `
-<styled.div
-  className="isWarning"
+<TiltTooltip
+  title="help"
 >
-  <ForwardRef(SvgWarning)
-    fill="#ffffff"
-    height="10px"
-    width="10px"
-  />
-</styled.div>
+  <styled.div
+    className="isWarning"
+  >
+    <ForwardRef(SvgWarning)
+      fill="#ffffff"
+      height="10px"
+      width="10px"
+    />
+  </styled.div>
+</TiltTooltip>
 `;

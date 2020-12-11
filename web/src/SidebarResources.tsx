@@ -148,6 +148,7 @@ export function SidebarItemAll(props: SidebarItemAllProps) {
         <SidebarIcon
           status={ResourceStatus.None}
           alertCount={props.totalAlerts}
+          tooltipText={""}
         />
         <SidebarItemAllName>All</SidebarItemAllName>
       </SidebarItemAllBox>
@@ -158,6 +159,7 @@ export function SidebarItemAll(props: SidebarItemAllProps) {
 let SidebarItemNameRoot = styled(SidebarItemText)`
   opacity: 1;
   font-family: ${Font.sansSerif};
+  font-weight: 600;
   z-index: 1; // Appear above the .isBuilding gradient
 `
 
@@ -166,10 +168,12 @@ let SidebarItemNameTruncate = styled.span`
   text-overflow: ellipsis;
 `
 
-let SidebarItemName = (props: { children: React.ReactNode }) => {
+let SidebarItemName = (props: { name: string }) => {
+  // A common complaint is that long names get truncated, so we
+  // use a title prop so that the user can see the full name.
   return (
-    <SidebarItemNameRoot>
-      <SidebarItemNameTruncate>{props.children}</SidebarItemNameTruncate>
+    <SidebarItemNameRoot title={props.name}>
+      <SidebarItemNameTruncate>{props.name}</SidebarItemNameTruncate>
     </SidebarItemNameRoot>
   )
 }
@@ -266,6 +270,40 @@ function buildStatusText(item: SidebarItem): string {
   return "Unknown"
 }
 
+function runtimeTooltipText(status: ResourceStatus): string {
+  switch (status) {
+    case ResourceStatus.Building:
+      return "Server: deploying"
+    case ResourceStatus.Pending:
+      return "Server: pending"
+    case ResourceStatus.Warning:
+      return "Server: issues"
+    case ResourceStatus.Healthy:
+      return "Server: ready"
+    case ResourceStatus.Unhealthy:
+      return "Server: unhealthy"
+    default:
+      return "No server"
+  }
+}
+
+function buildTooltipText(status: ResourceStatus): string {
+  switch (status) {
+    case ResourceStatus.Building:
+      return "Update: in progress"
+    case ResourceStatus.Pending:
+      return "Update: pending"
+    case ResourceStatus.Warning:
+      return "Update: warning"
+    case ResourceStatus.Healthy:
+      return "Update: success"
+    case ResourceStatus.Unhealthy:
+      return "Update: error"
+    default:
+      return "No update status"
+  }
+}
+
 export function SidebarItemView(props: SidebarItemViewProps) {
   let item = props.item
   let link = `/r/${item.name}`
@@ -303,14 +341,15 @@ export function SidebarItemView(props: SidebarItemViewProps) {
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
         to={props.pathBuilder.path(link)}
-        title={item.name}
+        data-name={item.name}
       >
         <SidebarItemRuntimeBox>
           <SidebarIcon
+            tooltipText={runtimeTooltipText(item.runtimeStatus)}
             status={item.runtimeStatus}
             alertCount={item.runtimeAlertCount}
           />
-          <SidebarItemName>{item.name}</SidebarItemName>
+          <SidebarItemName name={item.name} />
           <SidebarItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </SidebarItemTimeAgo>
@@ -327,6 +366,7 @@ export function SidebarItemView(props: SidebarItemViewProps) {
         </SidebarItemRuntimeBox>
         <SidebarItemBuildBox>
           <SidebarIcon
+            tooltipText={buildTooltipText(item.buildStatus)}
             status={item.buildStatus}
             alertCount={item.buildAlertCount}
           />

@@ -10,11 +10,13 @@ import {
   ColorRGBA,
   Width,
 } from "./style-helpers"
+import Tooltip from "./Tooltip"
 import { ResourceStatus } from "./types"
 
 type SidebarIconProps = {
   status: ResourceStatus
   alertCount: number
+  tooltipText: string
 }
 
 // For testing
@@ -104,8 +106,16 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       icon = <CheckmarkSmallSvg />
     }
 
+    if (!this.props.tooltipText) {
+      return (
+        <SidebarIconRoot className={`${this.status()}`}>{icon}</SidebarIconRoot>
+      )
+    }
+
     return (
-      <SidebarIconRoot className={`${this.status()}`}>{icon}</SidebarIconRoot>
+      <Tooltip title={this.props.tooltipText}>
+        <SidebarIconRoot className={`${this.status()}`}>{icon}</SidebarIconRoot>
+      </Tooltip>
     )
   }
 

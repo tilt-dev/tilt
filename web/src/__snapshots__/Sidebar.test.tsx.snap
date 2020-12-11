@@ -65,22 +65,31 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="resource4"
             href="/r/resource4"
             onClick={[Function]}
-            title="resource4"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="resource4"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -110,7 +119,15 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -140,22 +157,31 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="resource9"
             href="/r/resource9"
             onClick={[Function]}
-            title="resource9"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="resource9"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -185,7 +211,15 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -215,22 +249,31 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="resource19"
             href="/r/resource19"
             onClick={[Function]}
-            title="resource19"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="resource19"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -260,7 +303,15 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -290,22 +341,31 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="resource29"
             href="/r/resource29"
             onClick={[Function]}
-            title="resource29"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="resource29"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -335,7 +395,15 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -365,22 +433,31 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="resource39"
             href="/r/resource39"
             onClick={[Function]}
-            title="resource39"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="resource39"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -410,7 +487,15 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -440,22 +525,31 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="resource49"
             href="/r/resource49"
             onClick={[Function]}
-            title="resource49"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="resource49"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -485,7 +579,15 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -515,22 +617,31 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="resource54"
             href="/r/resource54"
             onClick={[Function]}
-            title="resource54"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="resource54"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -560,7 +671,15 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -701,22 +820,31 @@ exports[`sidebar renders list of resources 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="vigoda"
             href="/r/vigoda"
             onClick={[Function]}
-            title="vigoda"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="vigoda"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -746,7 +874,15 @@ exports[`sidebar renders list of resources 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -776,22 +912,31 @@ exports[`sidebar renders list of resources 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="snack"
             href="/r/snack"
             onClick={[Function]}
-            title="snack"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="snack"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -821,7 +966,15 @@ exports[`sidebar renders list of resources 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -907,22 +1060,31 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="vigoda"
             href="/r/vigoda"
             onClick={[Function]}
-            title="vigoda"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="vigoda"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -947,7 +1109,15 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
@@ -977,22 +1147,31 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           </button>
           <a
             className="sc-pFZIQ gITkdQ  isBuilding"
+            data-name="snack"
             href="/r/snack"
             onClick={[Function]}
-            title="snack"
           >
             <div
               className="sc-kEjbxe ikFKQb"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isHealthy"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Server: ready"
               >
                 <span>
                    
                 </span>
               </div>
               <div
-                className="sc-dQppl sc-kstrdz ffqbbn kLICcA"
+                className="sc-dQppl sc-kstrdz ffqbbn fpKEWH"
+                title="snack"
               >
                 <span
                   className="sc-hBEYos jsLRUj"
@@ -1017,7 +1196,15 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               className="sc-iqHYGH kQyqCY"
             >
               <div
+                aria-describedby={null}
                 className="sc-gsTCUz gURyfg isBuilding"
+                onBlur={[Function]}
+                onFocus={[Function]}
+                onMouseLeave={[Function]}
+                onMouseOver={[Function]}
+                onTouchEnd={[Function]}
+                onTouchStart={[Function]}
+                title="Update: in progress"
               >
                 <span>
                    
