@@ -1,5 +1,6 @@
 import React, { PureComponent } from "react"
 import styled, { keyframes } from "styled-components"
+import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
 import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import {
@@ -75,10 +76,20 @@ let SidebarIconRoot = styled.div`
     animation: ${glowDark} 2s linear infinite;
   }
   &.isNone {
-    background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
+    border-right: 1px solid ${Color.grayLighter};
+    box-sizing: border-box;
+    transition: border-color ${AnimDuration.default} linear;
+
+    svg {
+      fill: ${Color.grayLight};
+    }
   }
   .isSelected &.isNone {
-    background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+    border-right-color: ${Color.grayLightest};
+
+    svg {
+      fill: ${Color.grayLighter};
+    }
   }
 `
 
@@ -86,9 +97,11 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   render() {
     let icon = <span>&nbsp;</span>
     if (this.props.status === ResourceStatus.Warning) {
-      icon = <WarningSvg fill="#fff" height="9px" width="9px" />
+      icon = <WarningSvg fill={Color.white} width="10px" height="10px" />
     } else if (this.props.status === ResourceStatus.Unhealthy) {
-      icon = <ErrorSvg fill="#fff" height="12px" width="12px" />
+      icon = <ErrorSvg fill={Color.white} />
+    } else if (this.props.status === ResourceStatus.None) {
+      icon = <CheckmarkSmallSvg />
     }
 
     return (
