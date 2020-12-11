@@ -16,7 +16,7 @@ let pathBuilder = PathBuilder.forTesting("localhost", "/")
 function ItemWrapper(props: { children: React.ReactNode }) {
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <div style={{ width: "336px" }}>{props.children}</div>
+      <div style={{ width: "336px", margin: "100px" }}>{props.children}</div>
     </MemoryRouter>
   )
 }
@@ -27,6 +27,23 @@ function withName(n: string): optionFn {
   return (props: SidebarItemViewProps) => {
     let item = props.item
     item.name = n
+  }
+}
+
+function withBuildStatusOnly(status: ResourceStatus): optionFn {
+  return (props: SidebarItemViewProps) => {
+    let item = props.item
+    item.buildStatus = status
+    item.runtimeStatus = ResourceStatus.None
+    if (status === ResourceStatus.Building) {
+      item.currentBuildStartTime = new Date(Date.now() - 1).toISOString()
+    }
+    if (
+      status === ResourceStatus.Unhealthy ||
+      status === ResourceStatus.Warning
+    ) {
+      item.buildAlertCount = 1
+    }
   }
 }
 
@@ -105,6 +122,9 @@ export const OneItemTrigger = () =>
 
 export const OneItemLongName = () =>
   itemView(withName("longnamelongnameverylongname"))
+
+export const Tiltfile = () =>
+  itemView(withName("(Tiltfile)"), withBuildStatusOnly(ResourceStatus.Healthy))
 
 export const AllItemSelected = () => {
   return (

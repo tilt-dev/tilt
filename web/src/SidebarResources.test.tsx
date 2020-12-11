@@ -23,7 +23,7 @@ function getPinnedItemNames(
     .find(SidebarListSection)
     .find({ name: "favorites" })
     .find(SidebarItemBox)
-  return pinnedItems.map((i) => i.prop("title"))
+  return pinnedItems.map((i) => i.prop("data-name"))
 }
 
 function clickPin(

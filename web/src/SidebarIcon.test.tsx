@@ -17,6 +17,8 @@ test.each(cases)("renders correctly - %s", (className, status, color) => {
   // TODO(han) - need to check that background-color is as expected
   // Since we're using styled-components, we should test individual style rules with
   // jest-styled-components, which requires an upgrade to styled-components v5
-  const wrapper = shallow(<SidebarIcon status={status} alertCount={0} />)
+  const wrapper = shallow(
+    <SidebarIcon status={status} alertCount={0} tooltipText={"help"} />
+  )
   expect(wrapper).toMatchSnapshot()
 })
