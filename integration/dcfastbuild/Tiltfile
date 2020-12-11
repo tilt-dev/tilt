@@ -1,9 +1,0 @@
-# -*- mode: Python -*-
-
-docker_compose('docker-compose.yaml')
-docker_build('gcr.io/windmill-test-containers/dcfastbuild', '.',
-                   live_update=[
-                     sync('.', '/go/src/github.com/tilt-dev/tilt/integration/dcfastbuild'),
-                     run('go install github.com/tilt-dev/tilt/integration/dcfastbuild/cmd/dcfastbuild'),
-                     restart_container(),
-                   ])

@@ -210,32 +210,6 @@ k8s_yaml('foo.yaml')
 	f.loadErrString("Cannot specify both dockerfile and dockerfile_contents")
 }
 
-func TestFastBuildFails(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupFoo()
-	f.file("Tiltfile", `
-fast_build('gcr.io/foo', 'foo/Dockerfile') \
-  .add('foo', 'src/') \
-  .run("echo hi")
-k8s_yaml('foo.yaml')
-`)
-	f.loadErrString("fast_build is no longer supported")
-}
-
-func TestAddFastBuildFails(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-	f.setupFoo()
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo') \
-  .add('foo', 'src/') \
-  .run("echo hi")
-k8s_yaml('foo.yaml')
-`)
-	f.loadErrString("fast_build is no longer supported")
-}
-
 func TestVerifiesGitRepo(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

@@ -22,7 +22,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var fastBuildDeletedErr = fmt.Errorf("fast_build is no longer supported. live_update provides the same functionality with less set-up: https://docs.tilt.dev/live_update_tutorial.html . If you run into problems, let us know: https://tilt.dev/contact")
 var cacheObsoleteWarning = "docker_build(cache=...) is obsolete, and currently a no-op.\n" +
 	"You should switch to live_update to optimize your builds."
 
@@ -242,10 +241,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	// NOTE(maia): docker_build returned a fast build that users can optionally
-	// populate; now it just errors
-	fb := &fastBuild{}
-	return fb, nil
+	return starlark.None, nil
 }
 
 func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
@@ -386,15 +382,6 @@ func (b *customBuild) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: custom_build")
 }
 
-func (b *customBuild) Attr(name string) (starlark.Value, error) {
-	switch name {
-	case "add_fast_build":
-		return nil, fastBuildDeletedErr
-	default:
-		return nil, nil
-	}
-}
-
 func (b *customBuild) AttrNames() []string {
 	return []string{}
 }
@@ -417,41 +404,6 @@ func parseValuesToStrings(value starlark.Value, param string) ([]string, error) 
 	}
 	return ignores, nil
 
-}
-func (s *tiltfileState) fastBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	return nil, fastBuildDeletedErr
-}
-
-// fastBuild exists just to error
-type fastBuild struct {
-}
-
-var _ starlark.Value = &fastBuild{}
-
-func (b *fastBuild) String() string {
-	return "fast_build(%q)"
-}
-
-func (b *fastBuild) Type() string {
-	return "fast_build"
-}
-
-func (b *fastBuild) Freeze() {}
-
-func (b *fastBuild) Truth() starlark.Bool {
-	return true
-}
-
-func (b *fastBuild) Hash() (uint32, error) {
-	return 0, fmt.Errorf("unhashable type: fast_build")
-}
-
-func (b *fastBuild) Attr(name string) (starlark.Value, error) {
-	return nil, fastBuildDeletedErr
-}
-
-func (b *fastBuild) AttrNames() []string {
-	return []string{}
 }
 
 func isGitRepoBase(path string) bool {

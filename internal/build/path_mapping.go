@@ -133,10 +133,7 @@ func fileToPathMapping(file string, sync []model.Sync) (pm PathMapping, couldMap
 			}, true, nil
 		}
 	}
-	// (Potentially) expected case: the file doesn't match any sync src's. It's up
-	// to the caller to decide whether this is expected or not.
-	// E.g. for LiveUpdate, this is an expected case; for FastBuild, it means
-	// something is wrong (as we only WATCH files/dirs specified by the sync's).
+	// The file doesn't match any sync src's.
 	return PathMapping{}, false, nil
 }
 

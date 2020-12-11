@@ -19,8 +19,6 @@ const (
 	TargetTypeK8s TargetType = "k8s"
 
 	// Image builds
-	// TODO(nick): It might make sense to represent FastBuild and normal Docker builds
-	// as separate types.
 	TargetTypeImage TargetType = "image"
 
 	// Docker-compose service build and deploy
