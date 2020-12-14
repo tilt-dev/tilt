@@ -32,7 +32,7 @@ type Manifest struct {
 	// Properties for all manifests.
 	Name ManifestName
 
-	// Info needed to build an image. (This struct contains details of DockerBuild, FastBuild... etc.)
+	// Info needed to build an image. (This struct contains details of DockerBuild, CustomBuild... etc.)
 	ImageTargets []ImageTarget
 
 	// Info needed to deploy. Can be k8s yaml, docker compose, etc.
@@ -198,7 +198,7 @@ func (m Manifest) IsImageDeployed(iTarget ImageTarget) bool {
 }
 
 func (m Manifest) LocalPaths() []string {
-	// TODO(matt?) DC syncs should probably stored somewhere more consistent with Docker/Fast Build
+	// TODO(matt?) DC syncs should probably stored somewhere more consistent with Docker/Custom
 	switch di := m.DeployTarget.(type) {
 	case DockerComposeTarget:
 		return di.LocalPaths()

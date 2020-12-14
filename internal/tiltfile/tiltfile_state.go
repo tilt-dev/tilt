@@ -286,7 +286,6 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 const (
 	// build functions
 	dockerBuildN     = "docker_build"
-	fastBuildN       = "fast_build"
 	customBuildN     = "custom_build"
 	defaultRegistryN = "default_registry"
 
@@ -471,7 +470,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	}{
 		{localN, s.potentiallyK8sUnsafeBuiltin(s.local)},
 		{dockerBuildN, s.dockerBuild},
-		{fastBuildN, s.fastBuild},
 		{customBuildN, s.customBuild},
 		{defaultRegistryN, s.defaultRegistry},
 		{dockerComposeN, s.dockerCompose},
