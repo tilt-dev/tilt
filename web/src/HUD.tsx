@@ -25,6 +25,7 @@ import MetricsPane from "./MetricsPane"
 import NoMatch from "./NoMatch"
 import NotFound from "./NotFound"
 import OverviewPane from "./OverviewPane"
+import OverviewResourcePane from "./OverviewResourcePane"
 import PathBuilder from "./PathBuilder"
 import ResourceInfo from "./ResourceInfo"
 import SecondaryNav from "./SecondaryNav"
@@ -296,12 +297,13 @@ class HUD extends Component<HudProps, HudState> {
     })
     let matchTraceParams: any = matchTrace?.params
     let isTwoLevelHeader = !!matchTraceParams?.span
-    let matchOverview = matchPath(
-      String(this.props.history.location.pathname),
-      {
+    let matchOverview =
+      matchPath(String(this.props.history.location.pathname), {
         path: this.path("/overview"),
-      }
-    )
+      }) ||
+      matchPath(String(this.props.history.location.pathname), {
+        path: this.path("/r/:name/overview"),
+      })
 
     if (matchOverview) {
       return (
@@ -313,10 +315,7 @@ class HUD extends Component<HudProps, HudState> {
             {errorModal}
             {shareSnapshotModal}
 
-            <OverviewPane
-              view={this.state.view}
-              pathBuilder={this.pathBuilder}
-            />
+            {this.renderOverviewSwitch()}
           </div>
         </LocalStorageContextProvider>
       )
@@ -343,6 +342,31 @@ class HUD extends Component<HudProps, HudState> {
           </HUDLayout>
         </div>
       </LocalStorageContextProvider>
+    )
+  }
+
+  renderOverviewSwitch() {
+    return (
+      <Switch>
+        <Route
+          path={this.path("/r/:name/overview")}
+          render={(props: RouteComponentProps<any>) => (
+            <OverviewResourcePane
+              name={props.match.params?.name || ""}
+              view={this.state.view}
+              pathBuilder={this.pathBuilder}
+            />
+          )}
+        />
+        <Route
+          render={() => (
+            <OverviewPane
+              view={this.state.view}
+              pathBuilder={this.pathBuilder}
+            />
+          )}
+        />
+      </Switch>
     )
   }
 
