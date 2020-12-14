@@ -25,12 +25,22 @@ function copy_binary() {
   fi
 }
 
+function brew_install_or_upgrade() {
+  set -x
+  brew tap tilt-dev/tap
+  if test -d "$(brew --prefix tilt-dev/tap/tilt)"; then
+    # Tilt already installed via Brew, upgrade it
+    brew upgrade tilt-dev/tap/tilt
+  else
+    # fresh install
+    brew install tilt-dev/tap/tilt
+  fi
+}
+
 function install_tilt() {
   if [[ "$OSTYPE" == "linux"* ]]; then
       if [[ "$BREW" != "" ]]; then
-          set -x
-          brew tap tilt-dev/tap
-          brew install tilt-dev/tap/tilt
+          brew_install_or_upgrade
 
           # linux-homebrew is relatively recent. Make sure that tilt
           # under $HOME/.local/bin isn't overriding the homebrew one.
@@ -42,9 +52,7 @@ function install_tilt() {
       fi
   elif [[ "$OSTYPE" == "darwin"* ]]; then
       if [[ "$BREW" != "" ]]; then
-          set -x
-          brew tap tilt-dev/tap
-          brew install tilt-dev/tap/tilt
+          brew_install_or_upgrade
       else
           set -x
           curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.x86_64.tar.gz | tar -xzv tilt
