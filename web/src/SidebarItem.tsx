@@ -1,7 +1,9 @@
+import moment from "moment"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { buildStatus, runtimeStatus } from "./status"
 import { SizeUnit } from "./style-helpers"
+import { timeDiff } from "./time"
 import { ResourceStatus, TriggerMode } from "./types"
 
 export const SidebarItemRoot = styled.li`
@@ -12,16 +14,8 @@ export const SidebarItemRoot = styled.li`
   display: flex;
 `
 
-const moment = require("moment")
-
 type Resource = Proto.webviewResource
 type Build = Proto.webviewBuildRecord
-
-function timeDiff(start: string, end: string): moment.Duration {
-  let t1 = moment(start)
-  let t2 = moment(end)
-  return moment.duration(t2.diff(t1))
-}
 
 class SidebarItem {
   name: string
