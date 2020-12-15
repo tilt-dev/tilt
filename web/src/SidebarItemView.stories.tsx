@@ -2,11 +2,10 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import {
+import SidebarItemView, {
   SidebarItemAll,
-  SidebarItemView,
   SidebarItemViewProps,
-} from "./SidebarResources"
+} from "./SidebarItemView"
 import { oneResourceNoAlerts } from "./testdata"
 import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 

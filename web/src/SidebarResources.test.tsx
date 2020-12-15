@@ -6,11 +6,9 @@ import { expectIncr } from "./analytics_test_helpers"
 import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
+import { SidebarItemBox } from "./SidebarItemView"
 import { SidebarPinButton } from "./SidebarPin"
-import SidebarResources, {
-  SidebarItemBox,
-  SidebarListSection,
-} from "./SidebarResources"
+import SidebarResources, { SidebarListSection } from "./SidebarResources"
 import { twoResourceView } from "./testdata"
 import { ResourceView } from "./types"
 
