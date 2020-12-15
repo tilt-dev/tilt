@@ -315,8 +315,12 @@ function twoResourceView(): view {
 }
 
 export function tenResourceView(): view {
+  return nResourceView(10)
+}
+
+export function nResourceView(n: number): view {
   let resources: Resource[] = []
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < n; i++) {
     if (i === 0) {
       let res = tiltfileResource()
       resources.push(res)
