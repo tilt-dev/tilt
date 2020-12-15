@@ -35,6 +35,16 @@ function brew_install_or_upgrade() {
     # fresh install
     brew install tilt-dev/tap/tilt
   fi
+
+  set +x
+  location=$(command -v tilt)
+  brew_root=$(brew --prefix)
+  if [[ "$location" != "$brew_root"* ]]; then
+      echo "ERROR"
+      echo "Brew installed Tilt as: $brew_root/bin/tilt"
+      echo "But you have another Tilt binary at: $location"
+      exit 1
+  fi
 }
 
 function install_tilt() {
