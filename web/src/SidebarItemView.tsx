@@ -3,7 +3,6 @@ import { Link } from "react-router-dom"
 import TimeAgo from "react-timeago"
 import styled, { keyframes } from "styled-components"
 import { incr } from "./analytics"
-import { formatBuildDuration } from "./format"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem, { SidebarItemRoot } from "./SidebarItem"
@@ -19,7 +18,7 @@ import {
   SizeUnit,
   Width,
 } from "./style-helpers"
-import { isZeroTime } from "./time"
+import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { ResourceStatus, ResourceView } from "./types"
 
