@@ -42,7 +42,8 @@ func (c *helmKubeClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 		return nil, err
 	}
 
-	o.DeleteOptions = delete.NewDeleteFlags("").ToOptions(o.DynamicClient, o.IOStreams)
+	deleteOptions, _ := delete.NewDeleteFlags("").ToOptions(o.DynamicClient, o.IOStreams)
+	o.DeleteOptions = deleteOptions
 	o.ToPrinter = func(s string) (printers.ResourcePrinter, error) {
 		return genericclioptions.NewPrintFlags("created").ToPrinter()
 	}
