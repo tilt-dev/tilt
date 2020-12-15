@@ -5,7 +5,8 @@ import { MemoryRouter } from "react-router"
 import { expectIncr } from "./analytics_test_helpers"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import SidebarResources, { triggerUpdate } from "./SidebarResources"
+import { triggerUpdate } from "./SidebarItemView"
+import SidebarResources from "./SidebarResources"
 import SidebarTriggerButton, {
   TriggerButtonTooltip,
 } from "./SidebarTriggerButton"
