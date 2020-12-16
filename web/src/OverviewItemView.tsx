@@ -19,18 +19,40 @@ import {
 } from "./style-helpers"
 import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { ResourceStatus, TriggerMode } from "./types"
+import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
 export const OverviewItemRoot = styled.li`
   display: flex;
   min-width: 330px;
+  width: calc((100% - 3 * ${SizeUnit(0.75)} - 2 * ${SizeUnit(1)}) / 4);
+  box-sizing: border-box;
+  margin: 0 0 ${SizeUnit(0.75)} ${SizeUnit(0.75)};
 `
 
 type Resource = Proto.webviewResource
 type Build = Proto.webviewBuildRecord
 
+function resourceTypeLabel(res: Resource): string {
+  if (res.isTiltfile) {
+    return "Tiltfile"
+  }
+  let specs = res.specs ?? []
+  for (let i = 0; i < specs.length; i++) {
+    let spec = specs[i]
+    if (spec.type === TargetType.K8s) {
+      return "Kubernetes Deploy"
+    } else if (spec.type === TargetType.DockerCompose) {
+      return "Docker Compose Service"
+    } else if (spec.type === TargetType.Local) {
+      return "Local Script"
+    }
+  }
+  return "Unknown"
+}
+
 export class OverviewItem {
   name: string
+  resourceTypeLabel: string
   isTiltfile: boolean
   buildStatus: ResourceStatus
   buildAlertCount: number
@@ -71,6 +93,7 @@ export class OverviewItem {
     this.hasPendingChanges = !!res.hasPendingChanges
     this.queued = !!res.queued
     this.lastBuild = lastBuild
+    this.resourceTypeLabel = resourceTypeLabel(res)
   }
 }
 
@@ -87,7 +110,6 @@ export let OverviewItemBox = styled(Link)`
   flex-direction: column;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
-  border-radius: 5px;
   overflow: hidden;
   border: 1px solid ${Color.grayLighter};
   position: relative; // Anchor the .isBuilding::after psuedo-element
@@ -95,7 +117,8 @@ export let OverviewItemBox = styled(Link)`
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
-  margin-right: ${SizeUnit(0.5)};
+  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.51);
+  border-radius: 8px;
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -123,18 +146,27 @@ export let OverviewItemBox = styled(Link)`
 
 let OverviewItemRuntimeBox = styled.div`
   display: flex;
-  align-items: center;
-  height: ${SizeUnit(1)};
+  align-items: top;
   border-bottom: 1px solid ${Color.grayLighter};
-  box-sizing: border-box;
   transition: border-color ${AnimDuration.default} linear;
+`
+
+let RuntimeBoxStack = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+`
+
+let InnerRuntimeBox = styled.div`
+  display: flex;
+  align-items: center;
+  margin: 2px 0;
 `
 
 let OverviewItemBuildBox = styled.div`
   display: flex;
   align-items: center;
   flex-shrink: 1;
-  height: ${SizeUnit(0.875)};
 `
 
 let OverviewItemText = styled.div`
@@ -274,20 +306,27 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
             status={item.runtimeStatus}
             alertCount={item.runtimeAlertCount}
           />
-          <OverviewItemName name={item.name} />
-          <OverviewItemTimeAgo>
-            {hasSuccessfullyDeployed ? timeAgo : "—"}
-          </OverviewItemTimeAgo>
-          <SidebarTriggerButton
-            isTiltfile={item.isTiltfile}
-            isSelected={false}
-            hasPendingChanges={item.hasPendingChanges}
-            hasBuilt={hasBuilt}
-            isBuilding={building}
-            triggerMode={item.triggerMode}
-            isQueued={item.queued}
-            onTrigger={onTrigger}
-          />
+          <RuntimeBoxStack style={{ margin: "8px 0px" }}>
+            <InnerRuntimeBox>
+              <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
+              <OverviewItemTimeAgo>
+                {hasSuccessfullyDeployed ? timeAgo : "—"}
+              </OverviewItemTimeAgo>
+              <SidebarTriggerButton
+                isTiltfile={item.isTiltfile}
+                isSelected={false}
+                hasPendingChanges={item.hasPendingChanges}
+                hasBuilt={hasBuilt}
+                isBuilding={building}
+                triggerMode={item.triggerMode}
+                isQueued={item.queued}
+                onTrigger={onTrigger}
+              />
+            </InnerRuntimeBox>
+            <InnerRuntimeBox>
+              <OverviewItemName name={item.name} />
+            </InnerRuntimeBox>
+          </RuntimeBoxStack>
         </OverviewItemRuntimeBox>
         <OverviewItemBuildBox>
           <SidebarIcon
@@ -295,7 +334,9 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
             status={item.buildStatus}
             alertCount={item.buildAlertCount}
           />
-          <OverviewItemText>{buildStatusText(item)}</OverviewItemText>
+          <OverviewItemText style={{ margin: "8px 0px" }}>
+            {buildStatusText(item)}
+          </OverviewItemText>
         </OverviewItemBuildBox>
       </OverviewItemBox>
     </OverviewItemRoot>

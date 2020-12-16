@@ -2,7 +2,7 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewGrid from "./OverviewGrid"
 import PathBuilder from "./PathBuilder"
-import { tenResourceView, twoResourceView } from "./testdata"
+import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -26,4 +26,8 @@ export const TwoResources = () => (
 
 export const TenResources = () => {
   return <OverviewGrid view={tenResourceView()} pathBuilder={pathBuilder} />
+}
+
+export const OneHundredResources = () => {
+  return <OverviewGrid view={nResourceView(100)} pathBuilder={pathBuilder} />
 }
