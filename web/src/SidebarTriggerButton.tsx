@@ -1,4 +1,4 @@
-import React, { PureComponent } from "react"
+import React from "react"
 import styled from "styled-components"
 import "./SidebarTriggerButton.scss"
 import { Width } from "./style-helpers"
@@ -54,33 +54,37 @@ const titleText = (
   }
 }
 
-export default class SidebarTriggerButton extends PureComponent<SidebarTriggerButtonProps> {
-  render() {
-    let props = this.props
+export default React.memo(function SidebarTriggerButton(
+  props: SidebarTriggerButtonProps
+) {
+  let isManualTriggerMode = props.triggerMode !== TriggerMode.TriggerModeAuto
 
-    let isManualTriggerMode = props.triggerMode !== TriggerMode.TriggerModeAuto
-
-    // clickable (i.e. trigger button will appear) if it doesn't already have some kind of pending / active build
-    let clickable =
-      !props.isQueued && // already queued for manual run
-      !props.isBuilding && // currently building
-      !(
-        props.triggerMode !== TriggerMode.TriggerModeManualIncludingInitial &&
-        !props.hasBuilt
-      ) && // waiting to perform its initial build
-      !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
-    let clickMe = props.hasPendingChanges && isManualTriggerMode
-
-    return (
-      <SidebarTriggerButtonStyle
-        onClick={() => props.onTrigger("click")}
-        className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
-          ${clickable ? " clickable" : ""}${clickMe ? " clickMe" : ""}${
-          props.isQueued ? " isQueued" : ""
-        }`}
-        disabled={!clickable}
-        title={titleText(clickable, clickMe, props.isQueued)}
-      />
-    )
+  // clickable (i.e. trigger button will appear) if it doesn't already have some kind of pending / active build
+  let clickable =
+    !props.isQueued && // already queued for manual run
+    !props.isBuilding && // currently building
+    !(
+      props.triggerMode !== TriggerMode.TriggerModeManualIncludingInitial &&
+      !props.hasBuilt
+    ) && // waiting to perform its initial build
+    !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
+  let clickMe = props.hasPendingChanges && isManualTriggerMode
+  let onClick = (e: any) => {
+    // SidebarTriggerButton is nested in a link,
+    // and preventDefault is the standard way to cancel the navigation.
+    e.preventDefault()
+    props.onTrigger("click")
   }
-}
+
+  return (
+    <SidebarTriggerButtonStyle
+      onClick={onClick}
+      className={`SidebarTriggerButton ${props.isSelected ? "isSelected" : ""}
+          ${clickable ? " clickable" : ""}${clickMe ? " clickMe" : ""}${
+        props.isQueued ? " isQueued" : ""
+      }`}
+      disabled={!clickable}
+      title={titleText(clickable, clickMe, props.isQueued)}
+    />
+  )
+})

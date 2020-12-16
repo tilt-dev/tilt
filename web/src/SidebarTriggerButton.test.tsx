@@ -57,7 +57,14 @@ describe("SidebarTriggerButton", () => {
 
     let element = root.find("button.SidebarTriggerButton")
     expect(element).toHaveLength(1)
-    element.simulate("click")
+
+    let preventDefaulted = false
+    element.simulate("click", {
+      preventDefault: () => {
+        preventDefaulted = true
+      },
+    })
+    expect(preventDefaulted).toEqual(true)
 
     expect(fetchMock.mock.calls.length).toEqual(2)
     expectIncr(0, "ui.web.triggerResource", { action: "click" })
