@@ -19,7 +19,7 @@ function getPinnedItemNames(
 ): Array<string> {
   let pinnedItems = root
     .find(SidebarListSection)
-    .find({ name: "favorites" })
+    .find({ name: "Pinned" })
     .find(SidebarItemBox)
   return pinnedItems.map((i) => i.prop("data-name"))
 }

@@ -6,37 +6,52 @@ import React, {
 } from "react"
 import styled from "styled-components"
 import { incr } from "./analytics"
-import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin-resource-filled.svg"
+import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin.svg"
 import { localStorageContext } from "./LocalStorage"
 import { SidebarItemRoot } from "./SidebarItem"
-import { Color, Width } from "./style-helpers"
+import { AnimDuration, Color, Width } from "./style-helpers"
 
-let PinnedPinIcon = styled(PinResourceFilledSvg)`
-  fill: ${Color.yellowLight};
-`
-let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
-  transition: fill 300ms ease;
-  fill: ${Color.grayLight};
-  display: none;
-  ${SidebarItemRoot}:hover & {
-    display: flex;
-  }
-  &:hover {
-    fill: ${Color.yellowLight};
-  }
-`
 let PinButton = styled.button`
   display: flex;
   cursor: pointer;
   padding: 0;
-  background-position: center center;
-  background-repeat: no-repeat;
   background-color: transparent;
   border: 0 none;
   width: ${Width.sidebarPinButton}px;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+`
+
+let PinnedPinIcon = styled(PinResourceFilledSvg)`
+  transition: transform ${AnimDuration.short} ease;
+  fill: ${Color.blue};
+
+  ${PinButton}:active & {
+    fill: ${Color.blueDark};
+    transform: scale(1.2);
+  }
+`
+
+let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
+  transition: fill ${AnimDuration.default} linear,
+    transform ${AnimDuration.short} ease, opacity ${AnimDuration.short} linear;
+  opacity: 0;
+
+  ${SidebarItemRoot}:hover & {
+    fill: ${Color.grayLight};
+    opacity: 1;
+  }
+
+  ${PinButton}:hover & {
+    fill: ${Color.blueDark};
+    opacity: 1;
+  }
+
+  ${PinButton}:active & {
+    fill: ${Color.blue};
+    transform: scale(1.2);
+    opacity: 1;
+  }
 `
 
 type SidebarPinContext = {
@@ -119,11 +134,11 @@ export function SidebarPinButton(props: { resourceName: string }): JSX.Element {
   if (isPinned) {
     icon = <PinnedPinIcon />
     onClick = ctx.unpinResource
-    title = "unpin"
+    title = "Remove Pin"
   } else {
     icon = <UnpinnedPinIcon />
     onClick = ctx.pinResource
-    title = "pin"
+    title = "Pin to Top"
   }
 
   return (

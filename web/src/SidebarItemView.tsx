@@ -114,10 +114,6 @@ let SidebarItemText = styled.div`
   line-height: normal;
 `
 
-let SidebarItemAllName = styled(SidebarItemText)`
-  opacity: 1;
-`
-
 type SidebarItemAllProps = {
   nothingSelected: boolean
   totalAlerts: number
@@ -136,7 +132,7 @@ export function SidebarItemAll(props: SidebarItemAllProps) {
           alertCount={props.totalAlerts}
           tooltipText={""}
         />
-        <SidebarItemAllName>All</SidebarItemAllName>
+        <SidebarItemNameRoot>All</SidebarItemNameRoot>
       </SidebarItemAllBox>
     </SidebarItemAllRoot>
   )
