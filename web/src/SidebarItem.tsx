@@ -8,9 +8,8 @@ import { ResourceStatus, TriggerMode } from "./types"
 
 export const SidebarItemRoot = styled.li`
   & + & {
-    margin-top: ${SizeUnit(0.2)};
+    margin-top: ${SizeUnit(0.35)};
   }
-  clear: both;
   display: flex;
 `
 

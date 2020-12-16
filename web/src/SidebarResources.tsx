@@ -13,19 +13,19 @@ import { ResourceView } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
-  margin-left: ${SizeUnit(0.2)};
-  margin-right: ${SizeUnit(0.2)};
 `
+
 let SidebarList = styled.div``
 
 let SidebarListSectionName = styled.div`
-  width: ${Width.sidebar - Width.sidebarTriggerButton - 1}px;
+  margin-top: ${SizeUnit(0.5)};
   margin-left: ${Width.sidebarPinButton}px;
   text-transform: uppercase;
   color: ${Color.grayLight};
   font-size: ${FontSize.small};
 `
 const SidebarListSectionItems = styled.ul`
+  margin-top: ${SizeUnit(0.25)};
   list-style: none;
 `
 
@@ -81,7 +81,7 @@ function PinnedItems(props: SidebarProps) {
     return null
   }
 
-  return <SidebarListSection name="favorites">{pinnedItems}</SidebarListSection>
+  return <SidebarListSection name="Pinned">{pinnedItems}</SidebarListSection>
 }
 
 // note: this is a PureComponent but we're not currently getting much value out of its pureness
