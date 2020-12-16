@@ -1,9 +1,13 @@
-import React from "react"
+import React, { useState } from "react"
 import { Link } from "react-router-dom"
 import TimeAgo from "react-timeago"
-import styled, { keyframes } from "styled-components"
+import styled, { css, keyframes } from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { incr } from "./analytics"
+import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
+import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
+import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { ReactComponent as MaximizeSvg } from "./assets/svg/maximize.svg"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
@@ -16,6 +20,7 @@ import {
   Font,
   FontSize,
   SizeUnit,
+  Width,
 } from "./style-helpers"
 import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
@@ -67,6 +72,8 @@ export class OverviewItem {
   hasPendingChanges: boolean
   queued: boolean
   lastBuild: Build | null = null
+  endpoints: Proto.webviewLink[]
+  podId: string
 
   /**
    * Create a pared down OverviewItem from a ResourceView
@@ -94,6 +101,8 @@ export class OverviewItem {
     this.queued = !!res.queued
     this.lastBuild = lastBuild
     this.resourceTypeLabel = resourceTypeLabel(res)
+    this.endpoints = res.endpointLinks ?? []
+    this.podId = res.podID ?? ""
   }
 }
 
@@ -103,7 +112,7 @@ const barberpole = keyframes`
   }
 `
 
-export let OverviewItemBox = styled(Link)`
+export let OverviewItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
@@ -119,10 +128,11 @@ export let OverviewItemBox = styled(Link)`
   font-family: ${Font.monospace};
   box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.51);
   border-radius: 8px;
+  padding: 0;
+  align-items: stretch;
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
-    color: ${Color.blue};
   }
 
   &.isBuilding::after {
@@ -281,9 +291,164 @@ function buildTooltipText(status: ResourceStatus): string {
   }
 }
 
-export default function OverviewItemView(props: OverviewItemViewProps) {
+function BuildBox(props: { item: OverviewItem }) {
+  let item = props.item
+  return (
+    <OverviewItemBuildBox>
+      <SidebarIcon
+        tooltipText={buildTooltipText(item.buildStatus)}
+        status={item.buildStatus}
+        alertCount={item.buildAlertCount}
+      />
+      <OverviewItemText style={{ margin: "8px 0px" }}>
+        {buildStatusText(item)}
+      </OverviewItemText>
+    </OverviewItemBuildBox>
+  )
+}
+
+type OverviewItemDetailsProps = {
+  item: OverviewItem
+  pathBuilder: PathBuilder
+}
+
+let OverviewItemDetailsRoot = styled.div`
+  display: flex;
+  min-width: 330px;
+  width: calc((100% - 3 * ${SizeUnit(0.75)} - 2 * ${SizeUnit(1)}) / 4);
+  box-sizing: border-box;
+`
+
+let OverviewItemDetailsBox = styled.div`
+  color: ${Color.gray7};
+  background-color: ${Color.gray};
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid ${Color.grayLighter};
+  border-top: 0;
+  position: relative;
+  font-size: ${FontSize.small};
+  font-family: ${Font.monospace};
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.51);
+  border-radius: 0 0 8px 8px;
+`
+
+let detailsRow = css`
+  outline: none !important;
+  display: flex;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+  align-items: center;
+  text-decoration: none;
+  font: inherit;
+  color: inherit;
+  margin: 8px 0 8px ${Width.statusIcon + Width.statusIconMarginRight}px;
+  transition: color 300ms ease;
+
+  & .fillStd {
+    fill: ${Color.gray7};
+    transition: fill 300ms ease;
+  }
+  &:hover {
+    color: ${Color.blue};
+  }
+  &:hover .fillStd {
+    fill: ${Color.blue};
+  }
+`
+
+let Endpoint = styled.a`
+  ${detailsRow}
+`
+
+let Copy = styled.button`
+  ${detailsRow}
+`
+
+let ShowDetailsBox = styled(Link)`
+  ${detailsRow}
+`
+
+function displayURL(li: Proto.webviewLink): string {
+  let url = li.url?.replace(/^(http:\/\/)/, "")
+  url = url?.replace(/^(https:\/\/)/, "")
+  url = url?.replace(/^(www\.)/, "")
+  return url || ""
+}
+
+async function copyTextToClipboard(text: string, cb: () => void) {
+  await navigator.clipboard.writeText(text)
+  cb()
+}
+
+export function OverviewItemDetails(props: OverviewItemDetailsProps) {
   let item = props.item
   let link = `/r/${item.name}/overview`
+  let endpoints = item.endpoints.map((ep) => {
+    return (
+      <Endpoint
+        onClick={() => void incr("ui.web.endpoint", { action: "click" })}
+        href={ep.url}
+        // We use ep.url as the target, so that clicking the link re-uses the tab.
+        target={ep.url}
+        key={ep.url}
+      >
+        <LinkSvg />
+        <div style={{ marginLeft: "10px" }}>{ep.name || displayURL(ep)}</div>
+      </Endpoint>
+    )
+  })
+
+  let copy: React.ReactElement | null = null
+  let [showCopySuccess, setShowCopySuccess] = useState(false)
+
+  if (item.podId) {
+    let copyClick = () => {
+      copyTextToClipboard(item.podId, () => {
+        setShowCopySuccess(true)
+
+        setTimeout(() => {
+          setShowCopySuccess(false)
+        }, 5000)
+      })
+    }
+
+    let icon = showCopySuccess ? (
+      <CheckmarkSvg width="20" height="20" />
+    ) : (
+      <CopySvg width="20" height="20" />
+    )
+
+    copy = (
+      <Copy onClick={copyClick}>
+        {icon}
+        <div style={{ marginLeft: "8px" }}>Copy Pod ID</div>
+      </Copy>
+    )
+  }
+
+  return (
+    <OverviewItemDetailsRoot>
+      <OverviewItemDetailsBox>
+        {endpoints}
+        {copy}
+        <ShowDetailsBox to={props.pathBuilder.path(link)}>
+          <MaximizeSvg />
+
+          <div style={{ marginLeft: "8px" }}>Show details</div>
+        </ShowDetailsBox>
+        <BuildBox item={props.item} />
+      </OverviewItemDetailsBox>
+    </OverviewItemDetailsRoot>
+  )
+}
+
+export default function OverviewItemView(props: OverviewItemViewProps) {
+  let item = props.item
   let formatter = timeAgoFormatter
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
   let hasBuilt = item.lastBuild !== null
@@ -295,11 +460,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
 
   return (
     <OverviewItemRoot key={item.name} className={`${isBuildingClass}`}>
-      <OverviewItemBox
-        className={`${isBuildingClass}`}
-        to={props.pathBuilder.path(link)}
-        data-name={item.name}
-      >
+      <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <OverviewItemRuntimeBox>
           <SidebarIcon
             tooltipText={runtimeTooltipText(item.runtimeStatus)}
@@ -328,16 +489,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
             </InnerRuntimeBox>
           </RuntimeBoxStack>
         </OverviewItemRuntimeBox>
-        <OverviewItemBuildBox>
-          <SidebarIcon
-            tooltipText={buildTooltipText(item.buildStatus)}
-            status={item.buildStatus}
-            alertCount={item.buildAlertCount}
-          />
-          <OverviewItemText style={{ margin: "8px 0px" }}>
-            {buildStatusText(item)}
-          </OverviewItemText>
-        </OverviewItemBuildBox>
+        <BuildBox item={item} />
       </OverviewItemBox>
     </OverviewItemRoot>
   )

@@ -12,6 +12,7 @@ export enum Color {
   white = "#ffffff",
 
   offWhite = "#eef1f1",
+  gray7 = "#CCDADE",
   grayLightest = "#93a1a1", // Solarized base1 (darkest content tone)
   grayLighter = "#2D4D55",
   grayLight = "#586e75", // Solarized base01
@@ -77,6 +78,9 @@ export enum Width {
   sidebarCollapsed = unit,
   statusbar = unit * 1.5, // sync with constants.scss > $statusbar-height
   smallScreen = 1500,
+
+  statusIcon = 22,
+  statusIconMarginRight = 10,
 }
 
 export const mixinHideOnSmallScreen = `
