@@ -1,14 +1,14 @@
 import React from "react"
 import styled from "styled-components"
+import OverviewItemView, { OverviewItem } from "./OverviewItemView"
 import PathBuilder from "./PathBuilder"
-import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 type OverviewGridProps = {
   view: Proto.webviewView
   pathBuilder: PathBuilder
 }
 
-let OverviewGridRoot = styled.div`
+let OverviewGridRoot = styled.ul`
   display: flex;
   flex-wrap: wrap;
   width: 100%;
@@ -16,25 +16,17 @@ let OverviewGridRoot = styled.div`
   align-content: flex-start;
 `
 
-let Card = styled.div`
-  color: ${Color.white};
-  background-color: ${Color.gray};
-  display: flex;
-  flex-direction: column;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid ${Color.gray};
-  font-size: ${FontSize.small};
-  font-family: ${Font.monospace};
-  width: 330px;
-  margin: ${SizeUnit(1)} ${SizeUnit(0.75)};
-`
-
 export default function OverviewGrid(props: OverviewGridProps) {
-  return (
-    <OverviewGridRoot>
-      <Card>Resource 1</Card>
-      <Card>Resource 2</Card>
-    </OverviewGridRoot>
-  )
+  let resources = props.view.resources ?? []
+  let itemViews = resources.map((res) => {
+    let item = new OverviewItem(res)
+    return (
+      <OverviewItemView
+        key={item.name}
+        item={item}
+        pathBuilder={props.pathBuilder}
+      />
+    )
+  })
+  return <OverviewGridRoot>{itemViews}</OverviewGridRoot>
 }

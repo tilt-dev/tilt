@@ -85,6 +85,32 @@ function vigodaSpecs(): any {
   ]
 }
 
+export function tiltfileResource(): Resource {
+  const ts = new Date(Date.now()).toISOString()
+  const tsPast = new Date(Date.now() - 12300).toISOString()
+  const resource: Resource = {
+    name: "(Tiltfile)",
+    lastDeployTime: ts,
+    buildHistory: [
+      {
+        edits: ["Tiltfile"],
+        finishTime: ts,
+        startTime: tsPast,
+      },
+    ],
+    runtimeStatus: "not_applicable",
+    crashLog: "",
+    triggerMode: TriggerMode.TriggerModeAuto,
+    hasPendingChanges: false,
+    endpointLinks: [],
+    podID: "",
+    isTiltfile: true,
+    facets: [],
+    queued: false,
+  }
+  return resource
+}
+
 function oneResource(): Resource {
   const ts = new Date(Date.now()).toISOString()
   const tsPast = new Date(Date.now() - 12300).toISOString()
@@ -286,6 +312,21 @@ function twoResourceView(): view {
     specs: vigodaSpecs(),
   }
   return { resources: [vigoda, snack], tiltfileKey: "test", runningTiltBuild }
+}
+
+export function tenResourceView(): view {
+  let resources: Resource[] = []
+  for (let i = 0; i < 10; i++) {
+    if (i === 0) {
+      let res = tiltfileResource()
+      resources.push(res)
+    } else {
+      let res = oneResourceNoAlerts()
+      res.name += "_" + i
+      resources.push(res)
+    }
+  }
+  return { resources: resources, tiltfileKey: "test", runningTiltBuild }
 }
 
 function oneResourceFailedToBuild(): Resource[] {
