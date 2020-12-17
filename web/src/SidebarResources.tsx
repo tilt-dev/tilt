@@ -13,6 +13,11 @@ import { ResourceView } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
+
+  &.isOverview {
+    overflow: auto;
+    flex-shrink: 1;
+  }
 `
 
 let SidebarList = styled.div``
@@ -121,9 +126,11 @@ class PureSidebarResources extends PureComponent<SidebarProps> {
     )
 
     let nothingSelected = !this.props.selected
+    let isOverviewClass =
+      this.props.resourceView === ResourceView.Overview ? "isOverview" : ""
 
     return (
-      <SidebarResourcesRoot className="Sidebar-resources">
+      <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
           <SidebarListSection name="">
             <SidebarItemAll

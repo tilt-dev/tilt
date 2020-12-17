@@ -9,7 +9,6 @@ type OverviewStatusBarProps = {
 let OverviewStatusBarRoot = styled.div`
   display: flex;
   width: 100%;
-  height: {SizeUnit(1)};px;
   background-color: ${Color.white};
   align-items: center;
   justify-content: flex-end;
@@ -19,7 +18,7 @@ let OverviewStatusBarRoot = styled.div`
   padding: 0 ${SizeUnit(0.75)};
   font-weight: 400;
   box-sizing: border-box;
-  height: ${SizeUnit(1)};
+  flex: 0 0 ${SizeUnit(1)};
 `
 
 export default function OverviewStatusBar(props: OverviewStatusBarProps) {

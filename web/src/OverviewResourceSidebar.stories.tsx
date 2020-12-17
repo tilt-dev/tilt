@@ -2,7 +2,7 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import PathBuilder from "./PathBuilder"
-import { twoResourceView } from "./testdata"
+import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -24,6 +24,22 @@ export const TwoResources = () => (
   <OverviewResourceSidebar
     name={"vigoda"}
     view={twoResourceView()}
+    pathBuilder={pathBuilder}
+  />
+)
+
+export const TenResources = () => (
+  <OverviewResourceSidebar
+    name={"vigoda_1"}
+    view={tenResourceView()}
+    pathBuilder={pathBuilder}
+  />
+)
+
+export const OneHundredResources = () => (
+  <OverviewResourceSidebar
+    name={"vigoda_1"}
+    view={nResourceView(100)}
     pathBuilder={pathBuilder}
   />
 )

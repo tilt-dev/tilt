@@ -11,6 +11,7 @@ export enum ResourceView {
   Facets,
   Trace,
   Metrics,
+  Overview,
 }
 
 export enum TriggerMode {

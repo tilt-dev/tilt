@@ -253,6 +253,9 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
     case ResourceView.Facets:
       link += "/facets"
       break
+    case ResourceView.Overview:
+      link += "/overview"
+      break
   }
 
   let formatter = timeAgoFormatter
