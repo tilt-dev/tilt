@@ -230,8 +230,8 @@ func TestLiveUpdateRun(t *testing.T) {
 		tiltfileText string
 		expectedCmd  model.Cmd
 	}{
-		{"string cmd", `"echo hi"`, model.ToUnixCmd("echo hi")},
-		{"array cmd", `["echo", "hi"]`, model.Cmd{Argv: []string{"echo", "hi"}}},
+		{"string cmd", `"echo hi"`, model.ToUnixCmdInDir("echo hi", f.Path())},
+		{"array cmd", `["echo", "hi"]`, model.Cmd{Argv: []string{"echo", "hi"}, Dir: f.Path()}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f.gitInit("")
@@ -432,7 +432,7 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 		},
 		model.LiveUpdateSyncStep{Source: f.JoinPath("foo", "b"), Dest: "/c"},
 		model.LiveUpdateRunStep{
-			Command:  model.ToUnixCmd("f"),
+			Command:  model.ToUnixCmdInDir("f", f.Path()),
 			Triggers: model.NewPathSet([]string{"g", "h"}, f.Path()),
 		},
 	)

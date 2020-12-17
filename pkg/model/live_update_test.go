@@ -12,7 +12,7 @@ func TestNewLiveUpdate(t *testing.T) {
 	steps := []LiveUpdateStep{
 		LiveUpdateFallBackOnStep{[]string{"quu", "qux"}},
 		LiveUpdateSyncStep{"foo", "bar"},
-		LiveUpdateRunStep{Cmd{[]string{"hello"}}, NewPathSet([]string{"goodbye"}, BaseDir)},
+		LiveUpdateRunStep{Cmd{Argv: []string{"hello"}, Dir: BaseDir}, NewPathSet([]string{"goodbye"}, BaseDir)},
 		LiveUpdateRestartContainerStep{},
 	}
 	lu, err := NewLiveUpdate(steps, BaseDir)

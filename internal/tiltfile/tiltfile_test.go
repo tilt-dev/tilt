@@ -745,7 +745,7 @@ local_resource('foo', 'echo hi', links=%s)
 			f.load()
 			f.assertNextManifest("foo",
 				localResourceLinks(c.expected),
-				localTarget(updateCmd("echo hi")),
+				localTarget(updateCmd(f.Path(), "echo hi")),
 			)
 		})
 
@@ -2238,7 +2238,7 @@ custom_build(
 		cb(
 			image("gcr.io/foo"),
 			deps(f.JoinPath("foo")),
-			cmd("docker build -t gcr.io/foo:my-great-tag foo"),
+			cmd("docker build -t gcr.io/foo:my-great-tag foo", f.Path()),
 			tag("my-great-tag"),
 		),
 		deployment("foo"))
@@ -2267,7 +2267,7 @@ hfb = custom_build(
 		cb(
 			image("gcr.io/foo"),
 			deps(f.JoinPath("foo")),
-			cmd("docker build -t $TAG foo"),
+			cmd("docker build -t $TAG foo", f.Path()),
 			disablePush(true),
 		),
 		deployment("foo"))
@@ -3872,7 +3872,7 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load()
-	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint(model.ToUnixCmd("/bin/the_app"))))
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), entrypoint(model.ToUnixCmdInDir("/bin/the_app", f.Path()))))
 }
 
 func TestDockerBuildContainerArgs(t *testing.T) {
@@ -3948,8 +3948,8 @@ k8s_yaml('foo.yaml')
 	f.assertNextManifest("foo", cb(
 		image("gcr.io/foo"),
 		deps(f.JoinPath("foo")),
-		cmd("docker build -t $EXPECTED_REF foo"),
-		entrypoint(model.ToUnixCmd("/bin/the_app"))),
+		cmd("docker build -t $EXPECTED_REF foo", f.Path()),
+		entrypoint(model.ToUnixCmdInDir("/bin/the_app", f.Path()))),
 	)
 }
 
@@ -4189,7 +4189,7 @@ local_resource("test", "echo hi", deps=["foo/bar", "foo/a.txt"])
 	f.assertNumManifests(1)
 	path1 := "foo/bar"
 	path2 := "foo/a.txt"
-	m := f.assertNextManifest("test", localTarget(updateCmd("echo hi"), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
+	m := f.assertNextManifest("test", localTarget(updateCmd(f.Path(), "echo hi"), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
 
 	lt := m.LocalTarget()
 	f.assertRepos([]string{f.Path()}, lt.LocalRepos())
@@ -4208,7 +4208,7 @@ local_resource("test", serve_cmd="sleep 1000")
 	f.load()
 
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", localTarget(serveCmd("sleep 1000")))
+	f.assertNextManifest("test", localTarget(serveCmd(f.Path(), "sleep 1000")))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 }
@@ -4224,7 +4224,7 @@ local_resource("test", cmd="echo hi", serve_cmd="sleep 1000")
 	f.load()
 
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", localTarget(updateCmd("echo hi"), serveCmd("sleep 1000")))
+	f.assertNextManifest("test", localTarget(updateCmd(f.Path(), "echo hi"), serveCmd(f.Path(), "sleep 1000")))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 }
@@ -4250,7 +4250,7 @@ local_resource("test", ["echo", "hi"])
 
 	f.load()
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", localTarget(updateCmdArray("echo", "hi")))
+	f.assertNextManifest("test", localTarget(updateCmdArray(f.Path(), "echo", "hi")))
 }
 
 func TestLocalResourceServeCmdArray(t *testing.T) {
@@ -4263,7 +4263,7 @@ local_resource("test", serve_cmd=["echo", "hi"])
 
 	f.load()
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", localTarget(serveCmdArray("echo", "hi")))
+	f.assertNextManifest("test", localTarget(serveCmdArray(f.Path(), "echo", "hi")))
 }
 
 func TestLocalResourceWorkdir(t *testing.T) {
@@ -4286,7 +4286,9 @@ local_resource("toplvl-local", "echo hello world", deps=["foo/baz", "foo/a.txt"]
 	f.load()
 
 	f.assertNumManifests(2)
-	mNested := f.assertNextManifest("nested-local", localTarget(updateCmd("echo nested"), deps("nested/foo/bar", "nested/more_nested/repo")))
+	mNested := f.assertNextManifest("nested-local",
+		localTarget(updateCmd(f.JoinPath("nested"), "echo nested"),
+			deps("nested/foo/bar", "nested/more_nested/repo")))
 
 	ltNested := mNested.LocalTarget()
 	f.assertRepos([]string{
@@ -4294,7 +4296,7 @@ local_resource("toplvl-local", "echo hello world", deps=["foo/baz", "foo/a.txt"]
 		f.JoinPath("nested/more_nested/repo"),
 	}, ltNested.LocalRepos())
 
-	mTop := f.assertNextManifest("toplvl-local", localTarget(updateCmd("echo hello world"), deps("foo/baz", "foo/a.txt")))
+	mTop := f.assertNextManifest("toplvl-local", localTarget(updateCmd(f.Path(), "echo hello world"), deps("foo/baz", "foo/a.txt")))
 	ltTop := mTop.LocalTarget()
 	f.assertRepos([]string{
 		f.JoinPath("foo/baz"),
@@ -4359,8 +4361,7 @@ custom_build(
 	f.assertNextManifest("foo", cb(
 		image("gcr.io/foo"),
 		deps(f.JoinPath("proj/foo")),
-		cmd("build.sh"),
-		workdir(f.JoinPath("proj")),
+		cmd("build.sh", f.JoinPath("proj")),
 	))
 }
 
@@ -5772,8 +5773,6 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 					assert.Equal(f.t, matcher.deps, cbInfo.Deps)
 				case cmdHelper:
 					assert.Equal(f.t, matcher.cmd, cbInfo.Command)
-				case workDirHelper:
-					assert.Equal(f.t, matcher.path, cbInfo.WorkDir)
 				case tagHelper:
 					assert.Equal(f.t, matcher.tag, cbInfo.Tag)
 				case disablePushHelper:
@@ -6270,16 +6269,8 @@ type cmdHelper struct {
 	cmd model.Cmd
 }
 
-func cmd(cmd string) cmdHelper {
-	return cmdHelper{cmd: model.ToHostCmd(cmd)}
-}
-
-type workDirHelper struct {
-	path string
-}
-
-func workdir(path string) workDirHelper {
-	return workDirHelper{path}
+func cmd(cmd string, dir string) cmdHelper {
+	return cmdHelper{cmd: model.ToHostCmdInDir(cmd, dir)}
 }
 
 type tagHelper struct {
@@ -6310,24 +6301,24 @@ type updateCmdHelper struct {
 	cmd model.Cmd
 }
 
-func updateCmd(cmd string) updateCmdHelper {
-	return updateCmdHelper{model.ToHostCmd(cmd)}
+func updateCmd(dir string, cmd string) updateCmdHelper {
+	return updateCmdHelper{cmd: model.ToHostCmdInDir(cmd, dir)}
 }
 
-func updateCmdArray(cmd ...string) updateCmdHelper {
-	return updateCmdHelper{model.Cmd{Argv: cmd}}
+func updateCmdArray(dir string, cmd ...string) updateCmdHelper {
+	return updateCmdHelper{cmd: model.Cmd{Argv: cmd, Dir: dir}}
 }
 
 type serveCmdHelper struct {
 	cmd model.Cmd
 }
 
-func serveCmd(cmd string) serveCmdHelper {
-	return serveCmdHelper{model.ToHostCmd(cmd)}
+func serveCmd(dir string, cmd string) serveCmdHelper {
+	return serveCmdHelper{cmd: model.ToHostCmdInDir(cmd, dir)}
 }
 
-func serveCmdArray(cmd ...string) serveCmdHelper {
-	return serveCmdHelper{model.Cmd{Argv: cmd}}
+func serveCmdArray(dir string, cmd ...string) serveCmdHelper {
+	return serveCmdHelper{model.Cmd{Argv: cmd, Dir: dir}}
 }
 
 type localTargetHelper struct {

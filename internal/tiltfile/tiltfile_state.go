@@ -1452,18 +1452,19 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 			return nil, errors.Wrapf(err, "error in resource %s options", mn)
 		}
 
-		paths := append(r.deps, r.workdir)
+		paths := append([]string{}, r.deps...)
+		paths = append(paths, r.threadDir)
 
 		var ignores []model.Dockerignore
 		if len(r.ignores) != 0 {
 			ignores = append(ignores, model.Dockerignore{
 				Patterns:  r.ignores,
 				Source:    fmt.Sprintf("local_resource(%q)", r.name),
-				LocalPath: r.workdir,
+				LocalPath: r.threadDir,
 			})
 		}
 
-		lt := model.NewLocalTarget(model.TargetName(r.name), r.updateCmd, r.serveCmd, r.deps, r.workdir).
+		lt := model.NewLocalTarget(model.TargetName(r.name), r.updateCmd, r.serveCmd, r.deps).
 			WithRepos(reposForPaths(paths)).
 			WithIgnores(ignores).
 			WithAllowParallel(r.allowParallel).

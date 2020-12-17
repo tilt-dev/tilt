@@ -8,17 +8,18 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
-
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type localResource struct {
-	name          string
-	updateCmd     model.Cmd
-	serveCmd      model.Cmd
-	workdir       string
+	name      string
+	updateCmd model.Cmd
+	serveCmd  model.Cmd
+	// The working directory of the execution thread where the local resource was created.
+	threadDir     string
 	deps          []string
 	triggerMode   triggerMode
 	autoInit      bool
@@ -71,11 +72,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	updateCmd, err := value.ValueGroupToCmdHelper(updateCmdVal, updateCmdBatVal)
+	updateCmd, err := value.ValueGroupToCmdHelper(thread, updateCmdVal, updateCmdBatVal)
 	if err != nil {
 		return nil, err
 	}
-	serveCmd, err := value.ValueGroupToCmdHelper(serveCmdVal, serveCmdBatVal)
+	serveCmd, err := value.ValueGroupToCmdHelper(thread, serveCmdVal, serveCmdBatVal)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +89,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		name:          name,
 		updateCmd:     updateCmd,
 		serveCmd:      serveCmd,
-		workdir:       filepath.Dir(starkit.CurrentExecPath(thread)),
+		threadDir:     filepath.Dir(starkit.CurrentExecPath(thread)),
 		deps:          deps.Value,
 		triggerMode:   triggerMode,
 		autoInit:      autoInit,
