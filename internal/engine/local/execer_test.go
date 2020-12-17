@@ -174,13 +174,14 @@ func (f *processExecFixture) tearDown() {
 }
 
 func (f *processExecFixture) startMalformedCommand() {
-	c := model.Cmd{Argv: []string{"\""}}
-	f.execer.Start(f.ctx, c, ".", f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+	c := model.Cmd{Argv: []string{"\""}, Dir: "."}
+	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
 }
 
 func (f *processExecFixture) startWithWorkdir(cmd string, workdir string) {
 	c := model.ToHostCmd(cmd)
-	f.execer.Start(f.ctx, c, workdir, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+	c.Dir = workdir
+	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
 }
 
 func (f *processExecFixture) start(cmd string) {

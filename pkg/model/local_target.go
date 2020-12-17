@@ -10,7 +10,6 @@ type LocalTarget struct {
 	Name      TargetName
 	UpdateCmd Cmd      // e.g. `make proto`
 	ServeCmd  Cmd      // e.g. `python main.py`
-	Workdir   string   // directory from which the commands should be run
 	Links     []Link   // zero+ links assoc'd with this resource (to be displayed in UIs)
 	Deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
 	ignores   []Dockerignore
@@ -24,11 +23,10 @@ type LocalTarget struct {
 
 var _ TargetSpec = LocalTarget{}
 
-func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string, workdir string) LocalTarget {
+func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string) LocalTarget {
 	return LocalTarget{
 		Name:      name,
 		UpdateCmd: updateCmd,
-		Workdir:   workdir,
 		Deps:      deps,
 		ServeCmd:  serveCmd,
 	}
@@ -70,10 +68,11 @@ func (lt LocalTarget) DependencyIDs() []TargetID {
 }
 
 func (lt LocalTarget) Validate() error {
-	if !lt.UpdateCmd.Empty() {
-		if lt.Workdir == "" {
-			return fmt.Errorf("[Validate] LocalTarget missing workdir")
-		}
+	if !lt.UpdateCmd.Empty() && lt.UpdateCmd.Dir == "" {
+		return fmt.Errorf("[Validate] LocalTarget cmd missing workdir")
+	}
+	if !lt.ServeCmd.Empty() && lt.ServeCmd.Dir == "" {
+		return fmt.Errorf("[Validate] LocalTarget serve_cmd missing workdir")
 	}
 	return nil
 }

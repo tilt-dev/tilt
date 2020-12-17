@@ -2,6 +2,7 @@ package value
 
 import (
 	"fmt"
+	"path/filepath"
 	"runtime"
 
 	"github.com/pkg/errors"
@@ -79,29 +80,30 @@ func StringSliceToList(slice []string) *starlark.List {
 // there's a "main" command, and then various per-platform overrides.
 // https://docs.bazel.build/versions/master/be/general.html#genrule.cmd_bat
 // This helper function abstracts out the precedence rules.
-func ValueGroupToCmdHelper(cmdVal, cmdBatVal starlark.Value) (model.Cmd, error) {
+func ValueGroupToCmdHelper(t *starlark.Thread, cmdVal, cmdBatVal starlark.Value) (model.Cmd, error) {
 	if cmdBatVal != nil && runtime.GOOS == "windows" {
-		return ValueToBatCmd(cmdBatVal)
+		return ValueToBatCmd(t, cmdBatVal)
 	}
-	return ValueToHostCmd(cmdVal)
+	return ValueToHostCmd(t, cmdVal)
 }
 
 // provides dockerfile-style behavior of:
 // a string gets interpreted as a shell command (like, sh -c 'foo bar $X')
 // an array of strings gets interpreted as a raw argv to exec
-func ValueToHostCmd(v starlark.Value) (model.Cmd, error) {
-	return valueToCmdHelper(v, model.ToHostCmd)
+func ValueToHostCmd(t *starlark.Thread, v starlark.Value) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, model.ToHostCmd)
 }
 
-func ValueToBatCmd(v starlark.Value) (model.Cmd, error) {
-	return valueToCmdHelper(v, model.ToBatCmd)
+func ValueToBatCmd(t *starlark.Thread, v starlark.Value) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, model.ToBatCmd)
 }
 
-func ValueToUnixCmd(v starlark.Value) (model.Cmd, error) {
-	return valueToCmdHelper(v, model.ToUnixCmd)
+func ValueToUnixCmd(t *starlark.Thread, v starlark.Value) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, model.ToUnixCmd)
 }
 
-func valueToCmdHelper(v starlark.Value, stringToCmd func(string) model.Cmd) (model.Cmd, error) {
+func valueToCmdHelper(t *starlark.Thread, v starlark.Value, stringToCmd func(string) model.Cmd) (model.Cmd, error) {
+	dir := filepath.Dir(starkit.CurrentExecPath(t))
 	switch x := v.(type) {
 	// If a starlark function takes an optional command argument, then UnpackArgs will set its starlark.Value to nil
 	// we convert nils here to an empty Cmd, since otherwise every callsite would have to do a nil check with presumably
@@ -109,13 +111,15 @@ func valueToCmdHelper(v starlark.Value, stringToCmd func(string) model.Cmd) (mod
 	case nil:
 		return model.Cmd{}, nil
 	case starlark.String:
-		return stringToCmd(string(x)), nil
+		cmd := stringToCmd(string(x))
+		cmd.Dir = dir
+		return cmd, nil
 	case starlark.Sequence:
 		argv, err := SequenceToStringSlice(x)
 		if err != nil {
 			return model.Cmd{}, errors.Wrap(err, "a command must be a string or a list of strings")
 		}
-		return model.Cmd{Argv: argv}, nil
+		return model.Cmd{Argv: argv, Dir: dir}, nil
 	default:
 		return model.Cmd{}, fmt.Errorf("a command must be a string or list of strings. found %T", x)
 	}

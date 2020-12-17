@@ -269,8 +269,9 @@ func TestReadinessCheckFailing(t *testing.T) {
 func TestLocalResource(t *testing.T) {
 	cmd := model.Cmd{
 		Argv: []string{"make", "test"},
+		Dir:  "path/to/tiltfile",
 	}
-	lt := model.NewLocalTarget("my-local", cmd, model.Cmd{}, []string{"/foo/bar", "/baz/qux"}, "path/to/tiltfile")
+	lt := model.NewLocalTarget("my-local", cmd, model.Cmd{}, []string{"/foo/bar", "/baz/qux"})
 	m := model.Manifest{
 		Name: "test",
 	}.WithDeployTarget(lt)

@@ -169,12 +169,17 @@ func (b ManifestBuilder) Build() model.Manifest {
 			},
 			b.iTargets...)
 	} else if b.localCmd != "" || b.localServeCmd != "" {
+		updateCmd := model.ToHostCmd(b.localCmd)
+		updateCmd.Dir = b.f.Path()
+
+		serveCmd := model.ToHostCmd(b.localServeCmd)
+		serveCmd.Dir = b.f.Path()
+
 		lt := model.NewLocalTarget(
 			model.TargetName(b.name),
-			model.ToHostCmd(b.localCmd),
-			model.ToHostCmd(b.localServeCmd),
-			b.localDeps,
-			b.f.Path()).
+			updateCmd,
+			serveCmd,
+			b.localDeps).
 			WithAllowParallel(b.localAllowParallel)
 		m = model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
 	} else {

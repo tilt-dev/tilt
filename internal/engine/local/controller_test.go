@@ -145,10 +145,12 @@ func (f *fixture) teardown() {
 
 func (f *fixture) resource(name string, cmd string, workdir string, lastDeploy time.Time) {
 	n := model.ManifestName(name)
+	c := model.ToHostCmd(cmd)
+	c.Dir = workdir
 	m := model.Manifest{
 		Name: n,
 	}.WithDeployTarget(model.NewLocalTarget(
-		model.TargetName(name), model.Cmd{}, model.ToHostCmd(cmd), nil, workdir))
+		model.TargetName(name), model.Cmd{}, c, nil))
 	f.state.UpsertManifestTarget(&store.ManifestTarget{
 		Manifest: m,
 		State: &store.ManifestState{

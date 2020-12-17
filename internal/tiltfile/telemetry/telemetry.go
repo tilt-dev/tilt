@@ -38,7 +38,7 @@ func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 		return starlark.None, err
 	}
 
-	cmd, err := value.ValueGroupToCmdHelper(cmdVal, cmdBatVal)
+	cmd, err := value.ValueGroupToCmdHelper(thread, cmdVal, cmdBatVal)
 	if err != nil {
 		return nil, err
 	}

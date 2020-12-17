@@ -38,7 +38,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		return nil, err
 	}
 
-	cmd, err := value.ValueGroupToCmdHelper(commandValue, commandBatValue)
+	cmd, err := value.ValueGroupToCmdHelper(thread, commandValue, commandBatValue)
 	if err != nil {
 		return nil, err
 	}
