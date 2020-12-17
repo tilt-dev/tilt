@@ -39,10 +39,15 @@ function brew_install_or_upgrade() {
   set +x
   location=$(command -v tilt)
   brew_root=$(brew --prefix)
+  brew_tilt="$brew_root/bin/tilt"
   if [[ "$location" != "$brew_root"* ]]; then
-      echo "ERROR"
-      echo "Brew installed Tilt as: $brew_root/bin/tilt"
-      echo "But you have another Tilt binary at: $location"
+      echo "Warning: you have a conflicting binary at: $location"
+      echo "  Brew installed Tilt as: $brew_tilt"
+      echo ""
+      echo "  If you want to use the Tilt you just installed, you can:"
+      echo "  1) Remove the other binary: rm $location"
+      echo "  2) Adjust your PATH to put Brew first: export PATH=\"$brew_root/bin:\$PATH\""
+      echo "  3) Alias tilt: alias tilt=$brew_tilt"
       exit 1
   fi
 }
