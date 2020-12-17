@@ -438,7 +438,9 @@ class HUD extends Component<HudProps, HudState> {
 
       let facetsUrl = name !== "" ? this.path(`/r/${name}/facets`) : null
       let metricsUrl = ""
-      let showMetricsTab = name === "" && (hasK8s || view?.metricsServing?.mode)
+      let isSnapshot = this.pathBuilder.isSnapshot()
+      let showMetricsTab =
+        name === "" && !isSnapshot && (hasK8s || view?.metricsServing?.mode)
       if (showMetricsTab) {
         metricsUrl = this.path("/metrics")
       }
