@@ -26,6 +26,7 @@ type Fixture struct {
 	out              *bytes.Buffer
 	useRealFS        bool // Use a real filesystem
 	loadInterceptors []LoadInterceptor
+	ctx              context.Context
 }
 
 func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
@@ -39,7 +40,12 @@ func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
 		temp:       temp,
 		fs:         make(map[string]string),
 		out:        bytes.NewBuffer(nil),
+		ctx:        context.Background(),
 	}
+}
+
+func (f *Fixture) SetContext(ctx context.Context) {
+	f.ctx = ctx
 }
 
 func (f *Fixture) OnStart(e *Environment) error {
@@ -50,7 +56,7 @@ func (f *Fixture) OnStart(e *Environment) error {
 	e.SetPrint(func(t *starlark.Thread, msg string) {
 		_, _ = fmt.Fprintf(f.out, "%s\n", msg)
 	})
-	e.SetContext(context.Background())
+	e.SetContext(f.ctx)
 	return nil
 }
 

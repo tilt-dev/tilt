@@ -13,6 +13,7 @@ import (
 	"go.starlark.net/syntax"
 
 	links "github.com/tilt-dev/tilt/internal/tiltfile/links"
+	"github.com/tilt-dev/tilt/internal/tiltfile/print"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -205,6 +206,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		loaddynamic.NewExtension(),
 		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 		links.NewExtension(),
+		print.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -328,7 +330,6 @@ const (
 	disableSnapshotsN = "disable_snapshots"
 
 	// other functions
-	failN    = "fail"
 	setTeamN = "set_team"
 )
 
@@ -484,7 +485,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{workloadToResourceFunctionN, s.workloadToResourceFunctionFn},
 		{kustomizeN, s.kustomize},
 		{helmN, s.helm},
-		{failN, s.fail},
 		{triggerModeN, s.triggerModeFn},
 		{fallBackOnN, s.liveUpdateFallBackOn},
 		{syncN, s.liveUpdateSync},
