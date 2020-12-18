@@ -73,6 +73,10 @@ export default React.memo(function SidebarTriggerButton(
     // SidebarTriggerButton is nested in a link,
     // and preventDefault is the standard way to cancel the navigation.
     e.preventDefault()
+
+    // stopPropagation prevents the overview card from opening.
+    e.stopPropagation()
+
     props.onTrigger("click")
   }
 

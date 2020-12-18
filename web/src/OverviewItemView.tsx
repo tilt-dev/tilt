@@ -1,3 +1,5 @@
+import Popover from "@material-ui/core/Popover"
+import { makeStyles } from "@material-ui/core/styles"
 import React, { useState } from "react"
 import { Link } from "react-router-dom"
 import TimeAgo from "react-timeago"
@@ -157,7 +159,6 @@ export let OverviewItemBox = styled.div`
 let OverviewItemRuntimeBox = styled.div`
   display: flex;
   align-items: top;
-  border-bottom: 1px solid ${Color.grayLighter};
   transition: border-color ${AnimDuration.default} linear;
 `
 
@@ -177,6 +178,7 @@ let OverviewItemBuildBox = styled.div`
   display: flex;
   align-items: center;
   flex-shrink: 1;
+  border-top: 1px solid ${Color.grayLighter};
 `
 
 let OverviewItemText = styled.div`
@@ -310,12 +312,12 @@ function BuildBox(props: { item: OverviewItem }) {
 type OverviewItemDetailsProps = {
   item: OverviewItem
   pathBuilder: PathBuilder
+  width?: number
 }
 
 let OverviewItemDetailsRoot = styled.div`
   display: flex;
   min-width: 330px;
-  width: calc((100% - 3 * ${SizeUnit(0.75)} - 2 * ${SizeUnit(1)}) / 4);
   box-sizing: border-box;
 `
 
@@ -431,8 +433,9 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
     )
   }
 
+  let width = props.width || 330
   return (
-    <OverviewItemDetailsRoot>
+    <OverviewItemDetailsRoot style={{ width: width + "px" }}>
       <OverviewItemDetailsBox>
         {endpoints}
         {copy}
@@ -448,6 +451,32 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
 }
 
 export default function OverviewItemView(props: OverviewItemViewProps) {
+  const popoverClasses = makeStyles((theme) => ({
+    paper: {
+      background: "transparent",
+      boxShadow: "none",
+      borderRadius: "0",
+      overflow: "visible",
+    },
+  }))()
+
+  let [anchorSpec, setAnchorSpec] = useState({
+    element: null as Element | null,
+    width: 330,
+  })
+  let handleClick = (event: any) => {
+    let currentTarget = event.currentTarget
+    let buildBox = currentTarget.querySelector(`${OverviewItemBuildBox}`)
+    setAnchorSpec({ element: buildBox, width: currentTarget.offsetWidth })
+  }
+  let handleClose = (e: any) => {
+    e.stopPropagation()
+    setAnchorSpec({ element: null, width: anchorSpec.width })
+  }
+
+  let open = Boolean(anchorSpec.element)
+  let popoverId = open ? "item-open-popover" : undefined
+
   let item = props.item
   let formatter = timeAgoFormatter
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
@@ -459,7 +488,11 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
   let onTrigger = triggerUpdate.bind(null, item.name)
 
   return (
-    <OverviewItemRoot key={item.name} className={`${isBuildingClass}`}>
+    <OverviewItemRoot
+      key={item.name}
+      className={`${isBuildingClass}`}
+      onClick={handleClick}
+    >
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <OverviewItemRuntimeBox>
           <SidebarIcon
@@ -491,6 +524,28 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
         </OverviewItemRuntimeBox>
         <BuildBox item={item} />
       </OverviewItemBox>
+
+      <Popover
+        id={popoverId}
+        classes={popoverClasses}
+        open={open}
+        anchorEl={anchorSpec.element}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "center",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "center",
+        }}
+      >
+        <OverviewItemDetails
+          item={item}
+          pathBuilder={props.pathBuilder}
+          width={anchorSpec.width}
+        />
+      </Popover>
     </OverviewItemRoot>
   )
 }
