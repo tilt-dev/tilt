@@ -80,7 +80,8 @@ and announcements on the [Tilt blog](https://blog.tilt.dev).
 
 **Help us make Tilt even better:** Tilt sends anonymized usage data, so we can
 improve Tilt on every platform. Details in ["What does Tilt
-send?"](http://docs.tilt.dev/telemetry_faq.html).
+send?"](http://docs.tilt.dev/telemetry_faq.html). If you find a security issue
+in Tilt, see our [security policy](SECURITY.md).
 
 We expect everyone in our community (users, contributors, followers, and employees alike) to abide by our [**Code of Conduct**](CODE_OF_CONDUCT.md).
 
