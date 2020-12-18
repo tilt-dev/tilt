@@ -279,19 +279,3 @@ CircleCI will automatically start building your release, and notify the
 For pre-v1.0:
 * If adding backwards-compatible functionality increment the patch version (0.x.Y).
 * If adding backwards-incompatible functionality increment the minor version (0.X.y). We would probably **write a blog post** about this.
-
-### Releasing the Synclet
-
-Releasing a synclet should be very infrequent, because the amount of things it
-does is small. (It's basically an optimization over `kubectl cp`, `kubectl
-exec`, and restarting a container.)
-
-To release a synclet, run `make synclet-release`. This will automatically:
-
-- Publish a new synclet image tagged with the current date
-- Update [sidecar.go](internal/synclet/sidecar/sidecar.go) with the new tag
-
-Then submit the PR. The next time someone releases Tilt, it will use the new image tag.
-
-
-
