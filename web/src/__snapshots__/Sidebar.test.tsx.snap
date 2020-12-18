@@ -2,7 +2,7 @@
 
 exports[`sidebar abbreviates durations under a minute 1`] = `
 <nav
-  className="sc-kstrdz bziefc Sidebar-resources"
+  className="sc-kstrdz cVJnKg Sidebar-resources "
 >
   <div
     className="sc-hBEYos"
@@ -702,7 +702,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
 
 exports[`sidebar renders empty resource list without crashing 1`] = `
 <nav
-  className="sc-kstrdz bziefc Sidebar-resources"
+  className="sc-kstrdz cVJnKg Sidebar-resources "
 >
   <div
     className="sc-hBEYos"
@@ -757,7 +757,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
 
 exports[`sidebar renders list of resources 1`] = `
 <nav
-  className="sc-kstrdz bziefc Sidebar-resources"
+  className="sc-kstrdz cVJnKg Sidebar-resources "
 >
   <div
     className="sc-hBEYos"
@@ -997,7 +997,7 @@ exports[`sidebar renders list of resources 1`] = `
 
 exports[`sidebar renders resources that haven't been built yet 1`] = `
 <nav
-  className="sc-kstrdz bziefc Sidebar-resources"
+  className="sc-kstrdz cVJnKg Sidebar-resources "
 >
   <div
     className="sc-hBEYos"

@@ -19,12 +19,14 @@ let OverviewResourcePaneRoot = styled.div`
   width: 100%;
   height: 100vh;
   background-color: ${Color.grayDark};
+  max-height: 100%;
 `
 
 let Main = styled.div`
   display: flex;
   width: 100%;
-  flex-grow: 1;
+  flex: 1 1 auto;
+  overflow: hidden;
 `
 
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {

@@ -28,11 +28,11 @@ let Tab = styled.div`
 export default function OverviewTabBar(props: OverviewTabBarProps) {
   let tabs = []
   if (!props.tabsOnly) {
-    tabs.push(<Tab>Logo</Tab>)
+    tabs.push(<Tab key="logo">Logo</Tab>)
   }
 
   if (!props.logoOnly) {
-    tabs.push(<Tab>Tab 1</Tab>, <Tab>Tab 2</Tab>)
+    tabs.push(<Tab key="tab1">Tab 1</Tab>, <Tab key="tab2">Tab 2</Tab>)
   }
   return <OverviewTabBarRoot>{tabs}</OverviewTabBarRoot>
 }
