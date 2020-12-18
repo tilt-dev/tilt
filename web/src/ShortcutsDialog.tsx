@@ -3,9 +3,9 @@ import styled from "styled-components"
 import FloatDialog from "./FloatDialog"
 
 type props = {
-  isOpen: boolean
-  onRequestClose: () => void
-  style?: any
+  open: boolean
+  onClose: () => void
+  anchorEl: Element | null
 }
 
 let ShortcutRoot = styled.div`
@@ -36,7 +36,7 @@ function Shortcut(props: { keys: string; label: string }) {
 
 export default function ShortcutsDialog(props: props) {
   return (
-    <FloatDialog title="Keyboard Shortcuts" {...props}>
+    <FloatDialog id="shortcuts" title="Keyboard Shortcuts" {...props}>
       <Shortcut keys="j, k" label="Navigate Resource" />
       <Shortcut keys="r" label="Trigger rebuild for a resource" />
       <Shortcut keys="Shift+1, 2..." label="Open Endpoint" />

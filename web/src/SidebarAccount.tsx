@@ -1,4 +1,4 @@
-import React, { Component, useState } from "react"
+import React, { Component, useRef, useState } from "react"
 import ReactOutlineManager from "react-outline-manager"
 import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
@@ -91,75 +91,71 @@ class SidebarAccountShortcuts extends Component<{
 }
 
 function SidebarAccount(props: SidebarAccountProps) {
-  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false)
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const shortcutButton = useRef(null as any)
+  const accountButton = useRef(null as any)
+  const [shortcutsDialogAnchor, setShortcutsDialogAnchor] = useState(
+    null as Element | null
+  )
+  const [accountMenuAnchor, setAccountMenuAnchor] = useState(
+    null as Element | null
+  )
+  const shortcutsDialogOpen = !!shortcutsDialogAnchor
+  const accountMenuOpen = !!accountMenuAnchor
+  if (props.isSnapshot) {
+    return null
+  }
 
   let toggleAccountMenu = (action: string) => {
     if (!accountMenuOpen) {
       incr("ui.web.menu", { type: "account", action: action })
     }
-    setAccountMenuOpen(!accountMenuOpen)
+    setAccountMenuAnchor(
+      accountMenuOpen ? null : (accountButton.current as Element)
+    )
   }
 
   let toggleShortcutsDialog = (action: string) => {
     if (!shortcutsDialogOpen) {
       incr("ui.web.menu", { type: "shortcuts", action: action })
     }
-    setShortcutsDialogOpen(!shortcutsDialogOpen)
-  }
-
-  if (props.isSnapshot) {
-    return null
+    setShortcutsDialogAnchor(
+      shortcutsDialogOpen ? null : (shortcutButton.current as Element)
+    )
   }
 
   let accountMenuHeader = <AccountMenuHeader {...props} />
   let accountMenuContent = <AccountMenuContent {...props} />
 
-  // NOTE(nick): A better way to position these would be to re-parent them under
-  // SidebarAccountHeader, but to do that we'd need to do some react wiring that
-  // I'm not enthusiastic about.
-  let accountMenuStyle = {
-    content: {
-      top: SizeUnit(3),
-      right: SizeUnit(0.5),
-      position: "absolute",
-      width: "400px",
-    },
-    overlay: { display: "block" },
-  }
-  let shortcutsDialogStyle = {
-    content: {
-      top: SizeUnit(3),
-      right: SizeUnit(1.5),
-      position: "absolute",
-      width: "400px",
-    },
-    overlay: { display: "block" },
-  }
-
   return (
     <SidebarAccountRoot>
       <ReactOutlineManager>
         <SidebarAccountHeader>
-          <SidebarAccountButton onClick={() => toggleShortcutsDialog("click")}>
+          <SidebarAccountButton
+            ref={shortcutButton}
+            onClick={() => toggleShortcutsDialog("click")}
+          >
             <SidebarHelpIcon />
           </SidebarAccountButton>
-          <SidebarAccountButton onClick={() => toggleAccountMenu("click")}>
+          <SidebarAccountButton
+            ref={accountButton}
+            onClick={() => toggleAccountMenu("click")}
+          >
             <SidebarAccountIcon />
           </SidebarAccountButton>
         </SidebarAccountHeader>
         <FloatDialog
+          id="accountMenu"
           title={accountMenuHeader}
-          isOpen={accountMenuOpen}
-          onRequestClose={() => toggleAccountMenu("close")}
-          style={accountMenuStyle}
+          open={accountMenuOpen}
+          anchorEl={accountMenuAnchor}
+          onClose={() => toggleAccountMenu("close")}
         >
           {accountMenuContent}
         </FloatDialog>
         <ShortcutsDialog
-          isOpen={shortcutsDialogOpen}
-          onRequestClose={() => toggleShortcutsDialog("close")}
-          style={shortcutsDialogStyle}
+          open={shortcutsDialogOpen}
+          anchorEl={shortcutsDialogAnchor}
+          onClose={() => toggleShortcutsDialog("close")}
         />
         <SidebarAccountShortcuts
           toggleShortcutsDialog={() => toggleShortcutsDialog("shortcut")}

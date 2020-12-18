@@ -41,8 +41,9 @@ it("renders shortcuts dialog on ?", () => {
     </MemoryRouter>
   )
 
-  expect(root.find(ShortcutsDialog).props().isOpen).toEqual(false)
+  expect(root.find(ShortcutsDialog).props().open).toEqual(false)
   act(() => void fireEvent.keyDown(document.body, { key: "?" }))
-  expect(root.find(ShortcutsDialog).props().isOpen).toEqual(false)
+  root.update()
+  expect(root.find(ShortcutsDialog).props().open).toEqual(true)
   root.unmount()
 })

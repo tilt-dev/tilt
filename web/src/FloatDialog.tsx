@@ -1,26 +1,21 @@
+import Popover from "@material-ui/core/Popover"
+import { makeStyles } from "@material-ui/core/styles"
 import React from "react"
-import Modal from "react-modal"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { Color, Font, FontSize } from "./style-helpers"
 
 type props = {
+  id: string
   title: string | React.ReactElement
-  isOpen: boolean
-  onRequestClose: () => void
+  open: boolean
+  anchorEl: Element | null
+  onClose: () => void
   children: any
   style?: any
+  anchorOrigin?: any
+  transformOrigin?: any
 }
-
-let FloatDialogRoot = styled(Modal)`
-  display: flex;
-  flex-direction: column;
-  background: #ffffff;
-  color: ${Color.grayDarkest};
-  box-shadow: 3px 3px 4px rgba(0, 0, 0, 0.5);
-  border-radius: 8px;
-  padding: 16px 20px;
-`
 
 let TitleBar = styled.div`
   display: flex;
@@ -63,21 +58,52 @@ let Content = styled.div`
   line-height: 28px;
 `
 
+let useStyles = makeStyles((theme) => ({
+  paper: {
+    display: "flex",
+    flexDirection: "column",
+    background: "#fff",
+    color: Color.grayDarkest,
+    boxShadow: "3px 3px 4px rgba(0, 0, 0, 0.5)",
+    borderRadius: "8px",
+    padding: "16px 20px",
+    width: "400px",
+  },
+}))
+
 // A generic dialog that floats in a part of the screen.
 // Intended to be attached to a menu button.
 export default function FloatDialog(props: props) {
+  const popoverClasses = useStyles()
+
   let title = props.title
   let titleEl = typeof title == "string" ? <Title>{title}</Title> : title
+  let anchorOrigin = props.anchorOrigin ?? {
+    vertical: "bottom",
+    horizontal: "right",
+  }
+  let transformOrigin = props.transformOrigin ?? {
+    vertical: "top",
+    horizontal: "right",
+  }
   return (
-    <FloatDialogRoot shouldCloseOnEsc={true} {...props}>
+    <Popover
+      id={props.id}
+      classes={popoverClasses}
+      open={props.open}
+      onClose={props.onClose}
+      anchorEl={props.anchorEl}
+      anchorOrigin={anchorOrigin}
+      transformOrigin={transformOrigin}
+    >
       <TitleBar>
         {titleEl}
-        <CloseButton onClick={props.onRequestClose}>
+        <CloseButton onClick={props.onClose}>
           <CloseSvg />
         </CloseButton>
       </TitleBar>
       <HR />
       <Content>{props.children}</Content>
-    </FloatDialogRoot>
+    </Popover>
   )
 }
