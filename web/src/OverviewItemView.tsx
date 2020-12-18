@@ -450,15 +450,17 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
   )
 }
 
+let useStyles = makeStyles((theme) => ({
+  paper: {
+    background: "transparent",
+    boxShadow: "none",
+    borderRadius: "0",
+    overflow: "visible",
+  },
+}))
+
 export default function OverviewItemView(props: OverviewItemViewProps) {
-  const popoverClasses = makeStyles((theme) => ({
-    paper: {
-      background: "transparent",
-      boxShadow: "none",
-      borderRadius: "0",
-      overflow: "visible",
-    },
-  }))()
+  const popoverClasses = useStyles()
 
   let [anchorSpec, setAnchorSpec] = useState({
     element: null as Element | null,
