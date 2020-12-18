@@ -49,8 +49,8 @@ let SidebarIconRoot = styled.div`
   align-items: center;
   justify-content: center;
   height: 100%;
-  width: ${Width.sidebarCollapsed * 0.7}px;
-  margin-right: ${Width.sidebarCollapsed * 0.3}px;
+  width: ${Width.statusIcon}px;
+  margin-right: ${Width.statusIconMarginRight}px;
   transition: background-color ${AnimDuration.default} linear,
     opacity ${AnimDuration.default} linear;
 

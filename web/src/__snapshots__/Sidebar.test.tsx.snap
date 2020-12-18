@@ -25,7 +25,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             onClick={[Function]}
           >
             <div
-              className="sc-gsTCUz gURyfg isNone"
+              className="sc-gsTCUz HrTde isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -74,7 +74,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -120,7 +120,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -166,7 +166,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -212,7 +212,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -258,7 +258,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -304,7 +304,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -350,7 +350,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -396,7 +396,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -442,7 +442,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -488,7 +488,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -534,7 +534,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -580,7 +580,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -626,7 +626,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -672,7 +672,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -725,7 +725,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
             onClick={[Function]}
           >
             <div
-              className="sc-gsTCUz gURyfg isNone"
+              className="sc-gsTCUz HrTde isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -780,7 +780,7 @@ exports[`sidebar renders list of resources 1`] = `
             onClick={[Function]}
           >
             <div
-              className="sc-gsTCUz gURyfg isNone"
+              className="sc-gsTCUz HrTde isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -829,7 +829,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -875,7 +875,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -921,7 +921,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -967,7 +967,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1020,7 +1020,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             onClick={[Function]}
           >
             <div
-              className="sc-gsTCUz gURyfg isNone"
+              className="sc-gsTCUz HrTde isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -1069,7 +1069,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1110,7 +1110,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1156,7 +1156,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isHealthy"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1197,7 +1197,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz gURyfg isBuilding"
+                className="sc-gsTCUz HrTde isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}

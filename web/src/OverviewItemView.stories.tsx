@@ -2,6 +2,7 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewItemView, {
   OverviewItem,
+  OverviewItemDetails,
   OverviewItemViewProps,
 } from "./OverviewItemView"
 import PathBuilder from "./PathBuilder"
@@ -10,14 +11,6 @@ import { ResourceStatus, TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
-
-function ItemWrapper(props: { children: React.ReactNode }) {
-  return (
-    <MemoryRouter initialEntries={["/"]}>
-      <div style={{ width: "336px", margin: "100px" }}>{props.children}</div>
-    </MemoryRouter>
-  )
-}
 
 type optionFn = (item: OverviewItemViewProps) => void
 
@@ -78,15 +71,20 @@ function itemView(...options: optionFn[]) {
     pathBuilder: pathBuilder,
   }
   options.forEach((option) => option(props))
-  return (
-    <ItemWrapper>
-      <OverviewItemView {...props} />
-    </ItemWrapper>
-  )
+  return <OverviewItemView {...props} />
 }
 
 export default {
   title: "OverviewItemView",
+  decorators: [
+    (Story: any) => (
+      <MemoryRouter initialEntries={["/"]}>
+        <div style={{ width: "336px", margin: "100px" }}>
+          <Story />
+        </div>
+      </MemoryRouter>
+    ),
+  ],
 }
 
 export const OneItemBuilding = () =>
@@ -111,3 +109,20 @@ export const OneItemLongName = () =>
 
 export const Tiltfile = () =>
   itemView(withName("(Tiltfile)"), withBuildStatusOnly(ResourceStatus.Healthy))
+
+export const MinimumDetails = () => {
+  let item = new OverviewItem(oneResourceNoAlerts())
+  item.endpoints = []
+  item.podId = ""
+  return <OverviewItemDetails item={item} pathBuilder={pathBuilder} />
+}
+
+export const CompleteDetails = () => {
+  let item = new OverviewItem(oneResourceNoAlerts())
+  item.endpoints = [
+    { url: "http://localhost:4001" },
+    { url: "http://localhost:4002" },
+  ]
+  item.podId = "my-pod-deadbeef"
+  return <OverviewItemDetails item={item} pathBuilder={pathBuilder} />
+}

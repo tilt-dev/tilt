@@ -56,11 +56,13 @@ let CopyButton = styled.span`
 let CopyButtonSvg = styled(CopySvg)`
   height: 1em;
   margin-left: ${s.SizeUnit(0.25)};
+  fill: white;
 `
 
 let CheckmarkButtonSvg = styled(CheckmarkSvg)`
   height: 1em;
   margin-left: ${s.SizeUnit(0.25)};
+  fill: white;
 `
 
 let Endpoints = styled.span`
