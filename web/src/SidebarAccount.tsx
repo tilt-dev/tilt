@@ -1,16 +1,13 @@
-import cookies from "js-cookie"
 import React, { Component, useState } from "react"
 import ReactOutlineManager from "react-outline-manager"
 import styled from "styled-components"
+import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
 import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
-import { ReactComponent as TiltCloudLogoSvg } from "./assets/svg/logo-Tilt-Cloud.svg"
-import ButtonInput from "./ButtonInput"
-import ButtonLink from "./ButtonLink"
 import FloatDialog from "./FloatDialog"
 import ShortcutsDialog from "./ShortcutsDialog"
-import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { AnimDuration, Color, SizeUnit } from "./style-helpers"
 
 export const SidebarAccountRoot = styled.div`
   position: relative; // Anchor SidebarAccountMenu
@@ -51,69 +48,6 @@ let SidebarHelpIcon = styled(HelpIcon)`
     fill: ${Color.blueLight};
   }
 `
-let SidebarAccountMenuHeader = styled.div`
-  display: flex;
-  flex-grow: 1;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: ${SizeUnit(0.5)};
-`
-let SidebarAccountMenuLogo = styled(TiltCloudLogoSvg)`
-  fill: ${Color.text};
-`
-let SidebarAccountMenuLearn = styled.a`
-  font-family: ${Font.sansSerif};
-  font-size: ${FontSize.smallest};
-  color: ${Color.grayLight};
-`
-let SidebarAccountMenuContent = styled.div`
-  color: ${Color.grayLight};
-
-  p + p {
-    margin-top: ${SizeUnit(0.25)};
-  }
-
-  strong {
-    font-weight: bold;
-    color: ${Color.text};
-  }
-  small {
-    font-size: ${FontSize.small};
-  }
-  &.is-signedIn {
-    margin-top: ${SizeUnit(0.3)};
-    text-align: right;
-  }
-`
-
-let MenuContentTeam = styled.p``
-let MenuContentTeamName = styled.strong`
-  transition: background-color ${AnimDuration.default} ease;
-  transition-delay: ${AnimDuration.short};
-
-  ${MenuContentTeam}:hover & {
-    background-color: ${Color.offWhite};
-  }
-`
-let MenuContentTeamInTiltfile = styled.small`
-  opacity: 0;
-  margin-top: 0;
-  display: block;
-  transition: opacity ${AnimDuration.default} ease;
-  transition-delay: ${AnimDuration.short};
-
-  ${MenuContentTeam}:hover & {
-    opacity: 1;
-  }
-`
-export const MenuContentButtonTiltCloud = styled(ButtonLink)`
-  margin-top: ${SizeUnit(0.3)};
-`
-export const MenuContentButtonSignUp = styled(ButtonInput)`
-  margin-top: ${SizeUnit(0.5)};
-  margin-bottom: ${SizeUnit(0.25)};
-`
-
 type SidebarAccountProps = {
   isSnapshot: boolean
   tiltCloudUsername: string | null
@@ -121,75 +55,6 @@ type SidebarAccountProps = {
   tiltCloudTeamID: string | null
   tiltCloudTeamName: string | null
 }
-
-function notifyTiltOfRegistration() {
-  let url = `/api/user_started_tilt_cloud_registration`
-  fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-  })
-}
-
-function SidebarMenuContent(props: SidebarAccountProps) {
-  if (props.tiltCloudUsername) {
-    let teamContent = null
-    if (props.tiltCloudTeamID) {
-      teamContent = (
-        <MenuContentTeam>
-          On team{" "}
-          <MenuContentTeamName>
-            {props.tiltCloudTeamName ?? props.tiltCloudTeamID}
-          </MenuContentTeamName>
-          <br />
-          <MenuContentTeamInTiltfile>
-            From <strong>`set_team()`</strong> in Tiltfile
-          </MenuContentTeamInTiltfile>
-        </MenuContentTeam>
-      )
-    }
-
-    return (
-      <SidebarAccountMenuContent className="is-signedIn">
-        <p>
-          Signed in as <strong>{props.tiltCloudUsername}</strong>
-        </p>
-        {teamContent}
-        <MenuContentButtonTiltCloud
-          href={props.tiltCloudSchemeHost}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-        >
-          View Tilt Cloud
-        </MenuContentButtonTiltCloud>
-      </SidebarAccountMenuContent>
-    )
-  }
-  return (
-    <SidebarAccountMenuContent>
-      <p>
-        Tilt Cloud is a platform for making all kinds of data from Tilt
-        available to your team — and making your team’s data available to you.
-      </p>
-      <form
-        action={props.tiltCloudSchemeHost + "/start_register_token"}
-        target="_blank"
-        method="POST"
-        onSubmit={notifyTiltOfRegistration}
-      >
-        <input name="token" type="hidden" value={cookies.get("Tilt-Token")} />
-        <MenuContentButtonSignUp
-          type="submit"
-          value="Link Tilt to Tilt Cloud"
-        />
-      </form>
-    </SidebarAccountMenuContent>
-  )
-}
-
-export { SidebarMenuContent }
 
 /**
  * Sets up keyboard shortcuts that depend on the sidebar account block.
@@ -243,29 +108,12 @@ function SidebarAccount(props: SidebarAccountProps) {
     setShortcutsDialogOpen(!shortcutsDialogOpen)
   }
 
-  let optionalLearnMore = null
-  if (!props.tiltCloudUsername) {
-    optionalLearnMore = (
-      <SidebarAccountMenuLearn
-        href={props.tiltCloudSchemeHost}
-        target="_blank"
-        rel="noopener noreferrer nofollow"
-      >
-        Learn More
-      </SidebarAccountMenuLearn>
-    )
-  }
-
   if (props.isSnapshot) {
     return null
   }
 
-  let accountMenuHeader = (
-    <SidebarAccountMenuHeader>
-      <SidebarAccountMenuLogo></SidebarAccountMenuLogo>
-      {optionalLearnMore}
-    </SidebarAccountMenuHeader>
-  )
+  let accountMenuHeader = <AccountMenuHeader {...props} />
+  let accountMenuContent = <AccountMenuContent {...props} />
 
   // NOTE(nick): A better way to position these would be to re-parent them under
   // SidebarAccountHeader, but to do that we'd need to do some react wiring that
@@ -306,7 +154,7 @@ function SidebarAccount(props: SidebarAccountProps) {
           onRequestClose={() => toggleAccountMenu("close")}
           style={accountMenuStyle}
         >
-          <SidebarMenuContent {...props} />
+          {accountMenuContent}
         </FloatDialog>
         <ShortcutsDialog
           isOpen={shortcutsDialogOpen}
