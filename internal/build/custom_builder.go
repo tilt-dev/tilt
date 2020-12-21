@@ -76,6 +76,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 
 	cmd := exec.CommandContext(ctx, command.Argv[0], command.Argv[1:]...)
 	cmd.Dir = workDir
+	cmd.Env = logger.DefaultEnv(ctx)
 
 	l := logger.Get(ctx)
 

@@ -58,11 +58,16 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput bool) (string, error) {
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)
+	ctx, err := starkit.ContextFromThread(t)
+	if err != nil {
+		return "", err
+	}
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
 	c.Dir = starkit.AbsWorkingDir(t)
 	c.Stdout = stdout
 	c.Stderr = stderr
+	c.Env = logger.DefaultEnv(ctx)
 
 	if logOutput {
 		logOutput := logger.NewMutexWriter(logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl))
@@ -70,7 +75,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput 
 		c.Stderr = io.MultiWriter(stderr, logOutput)
 	}
 
-	err := c.Run()
+	err = c.Run()
 	if err != nil {
 		// If we already logged the output, we don't need to log it again.
 		if logOutput {
