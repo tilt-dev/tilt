@@ -17,6 +17,7 @@ import (
 type ClusterName string
 type Env string
 
+// TODO(nick): Port this to use ctlptl's cluster detection code.
 const (
 	EnvUnknown       Env = "unknown"
 	EnvGKE           Env = "gke"
@@ -110,6 +111,8 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 		return EnvCRC
 	} else if strings.HasPrefix(cn, "krucible-") {
 		return EnvKrucible
+	} else if strings.HasPrefix(cn, "k3d-") {
+		return EnvK3D
 	}
 
 	loc := c.LocationOfOrigin
@@ -119,6 +122,8 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 		return EnvUnknown
 	}
 
+	// K3D 1.x had a special directory where the config lived.
+	// Newer versions use a prefix like every other project.
 	k3dDir := filepath.Join(homedir, ".config", "k3d")
 	if ospath.IsChild(k3dDir, loc) {
 		return EnvK3D

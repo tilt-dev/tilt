@@ -111,6 +111,11 @@ func TestProvideEnv(t *testing.T) {
 			CertificateAuthority: filepath.Join(homedir, ".minikube", "ca.crt"),
 		},
 	}
+	k3d3xContexts := map[string]*api.Context{
+		"k3d-k3s-default": &api.Context{
+			Cluster: "k3d-k3s-default",
+		},
+	}
 
 	table := []expectedConfig{
 		{EnvNone, &api.Config{}},
@@ -133,6 +138,7 @@ func TestProvideEnv(t *testing.T) {
 		{EnvKIND6, &api.Config{CurrentContext: "kind-custom-name", Contexts: kind6Contexts}},
 		{EnvMinikube, &api.Config{CurrentContext: "custom-name", Contexts: minikubeCustomNameContexts, Clusters: minikubeCustomNameClusters}},
 		{EnvUnknown, &api.Config{CurrentContext: "custom-name", Contexts: minikubeCustomNameContexts}},
+		{EnvK3D, &api.Config{CurrentContext: "k3d-k3s-default", Contexts: k3d3xContexts}},
 	}
 
 	for _, tt := range table {
