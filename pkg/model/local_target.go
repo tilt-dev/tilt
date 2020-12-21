@@ -19,6 +19,10 @@ type LocalTarget struct {
 	// Indicates that we should allow this to run in parallel with other
 	// resources  (by default, this is presumed unsafe and is not allowed).
 	AllowParallel bool
+
+	// For testing MVP
+	Tags   []string // eventually we might want tags to be more widespread -- stored on manifest maybe?
+	IsTest bool     // does this target represent a Test?
 }
 
 var _ TargetSpec = LocalTarget{}
@@ -53,6 +57,16 @@ func (lt LocalTarget) WithIgnores(ignores []Dockerignore) LocalTarget {
 
 func (lt LocalTarget) WithLinks(links []Link) LocalTarget {
 	lt.Links = links
+	return lt
+}
+
+func (lt LocalTarget) WithIsTest(isTest bool) LocalTarget {
+	lt.IsTest = isTest
+	return lt
+}
+
+func (lt LocalTarget) WithTags(tags []string) LocalTarget {
+	lt.Tags = tags
 	return lt
 }
 

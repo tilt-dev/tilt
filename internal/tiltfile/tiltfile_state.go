@@ -304,6 +304,7 @@ const (
 
 	// local resource functions
 	localResourceN = "local_resource"
+	testN          = "test" // test is just a fork of local resource
 
 	// file functions
 	localN     = "local"
@@ -478,6 +479,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{filterYamlN, s.filterYaml},
 		{k8sResourceN, s.k8sResource},
 		{localResourceN, s.localResource},
+		{testN, s.localResource},
 		{portForwardN, s.portForward},
 		{k8sKindN, s.k8sKind},
 		{k8sImageJSONPathN, s.k8sImageJsonPath},
@@ -1468,7 +1470,9 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 			WithRepos(reposForPaths(paths)).
 			WithIgnores(ignores).
 			WithAllowParallel(r.allowParallel).
-			WithLinks(r.links)
+			WithLinks(r.links).
+			WithTags(r.tags).
+			WithIsTest(r.isTest)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
 			mds = append(mds, model.ManifestName(md))

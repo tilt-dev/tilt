@@ -28,6 +28,10 @@ type localResource struct {
 	ignores       []string
 	allowParallel bool
 	links         []model.Link
+
+	// for use in testing mvp
+	tags   []string
+	isTest bool
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -37,11 +41,21 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 
 	deps := value.NewLocalPathListUnpacker(thread)
 
-	var resourceDepsVal starlark.Sequence
+	var resourceDepsVal, tagsVal starlark.Sequence
 	var ignoresVal starlark.Value
 	var allowParallel bool
 	var links links.LinkList
 	autoInit := true
+
+	var isTest bool
+	if fn.Name() == testN {
+		// If we're initializing a test, by default parallelism is on
+		allowParallel = true
+
+		isTest = true
+
+		// TODO: implement timeout
+	}
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -56,6 +70,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"serve_cmd_bat?", &serveCmdBatVal,
 		"allow_parallel?", &allowParallel,
 		"links?", &links,
+		"tags?", &tagsVal,
 	); err != nil {
 		return nil, err
 	}
@@ -63,6 +78,10 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	repos := reposForPaths(deps.Value)
 
 	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
+	}
+	tags, err := value.SequenceToStringSlice(tagsVal)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
@@ -98,6 +117,8 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		ignores:       ignores,
 		allowParallel: allowParallel,
 		links:         links.Links,
+		tags:          tags,
+		isTest:        isTest,
 	}
 
 	//check for duplicate resources by name and throw error if found
