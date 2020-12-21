@@ -1,0 +1,16 @@
+local_resource(
+  'storybook',
+  'yarn run storybook -- --ci',
+  links=['http://localhost:9009'])
+
+local_resource(
+  'prettier',
+  'cd .. && make prettier',
+  auto_init=False,
+  trigger_mode=TRIGGER_MODE_MANUAL)
+
+local_resource(
+  'tsc',
+  'node_modules/.bin/tsc -p .',
+  auto_init=False,
+  trigger_mode=TRIGGER_MODE_MANUAL)

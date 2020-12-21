@@ -151,6 +151,7 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	c.Stderr = w
 	c.Stdout = w
 	c.Dir = cmd.Dir
+	c.Env = logger.DefaultEnv(ctx)
 
 	err := c.Start()
 	if err != nil {
