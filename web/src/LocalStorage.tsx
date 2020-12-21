@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useContext } from "react"
 
 export type LocalStorageContext = {
   set: (key: string, value: any) => void
@@ -9,6 +9,10 @@ export const localStorageContext = React.createContext<LocalStorageContext>({
   set: (key: string, value: any): void => {},
   get: <T extends {}>(key: string): T | null => null,
 })
+
+export function useLocalStorageContext(): LocalStorageContext {
+  return useContext(localStorageContext)
+}
 
 export function makeKey(tiltfileKey: string, key: string): string {
   return "tilt-" + JSON.stringify({ tiltfileKey: tiltfileKey, key: key })

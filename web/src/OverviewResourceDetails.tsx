@@ -1,6 +1,5 @@
 import React from "react"
 import styled from "styled-components"
-import OverviewTabBar from "./OverviewTabBar"
 import PathBuilder from "./PathBuilder"
 
 type OverviewResourceDetailsProps = {
@@ -32,7 +31,6 @@ export default function OverviewResourceDetails(
 ) {
   return (
     <OverviewResourceDetailsRoot>
-      <OverviewTabBar pathBuilder={props.pathBuilder} tabsOnly={true} />
       <ActionBar>
         <div>links</div>
         <div>copy pod</div>
