@@ -6,7 +6,7 @@ export default {
 }
 
 export const Default = () => (
-  <div style={{ width: "350px" }}>
+  <div style={{ width: "600px" }}>
     <SidebarAccount
       isSnapshot={false}
       tiltCloudUsername={""}
@@ -18,7 +18,7 @@ export const Default = () => (
 )
 
 export const LoggedIn = () => (
-  <div style={{ width: "350px" }}>
+  <div style={{ width: "600px" }}>
     <SidebarAccount
       isSnapshot={false}
       tiltCloudUsername={"pusheen"}

@@ -10,5 +10,9 @@ export default {
 }
 
 export const Dialog = () => (
-  <ShortcutsDialog isOpen={true} onRequestClose={onRequestClose} />
+  <ShortcutsDialog
+    open={true}
+    onClose={onRequestClose}
+    anchorEl={document.body}
+  />
 )
