@@ -42,7 +42,7 @@ describe("AppController", () => {
     ac.setStateFromSnapshot()
 
     await flushPromises()
-    expect(fakeSetAppState.mock.calls.length).toBe(2)
+    expect(fakeSetAppState.mock.calls.length).toBe(1)
     expect(fakeSetHistoryLocation.mock.calls.length).toBe(1)
     expect(fakeSetHistoryLocation.mock.calls[0][0]).toBe("/snapshot/aaaaaa/foo")
   })
@@ -64,8 +64,8 @@ describe("AppController", () => {
     ac.setStateFromSnapshot()
 
     await flushPromises()
-    expect(fakeSetAppState.mock.calls.length).toBe(4)
-    expect(fakeSetAppState.mock.calls[3][0]).toStrictEqual({
+    expect(fakeSetAppState.mock.calls.length).toBe(2)
+    expect(fakeSetAppState.mock.calls[1][0]).toStrictEqual({
       snapshotHighlight: snapshotHighlight,
     })
   })
