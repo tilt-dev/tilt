@@ -1,8 +1,17 @@
 import React from "react"
 import styled from "styled-components"
-import {ReactComponent as ChevronSvg} from "./assets/svg/chevron.svg"
-import {AnimDuration, Color, Font, FontSize, Height, SizeUnit, Width, ZIndex,} from "./style-helpers"
+import { ReactComponent as ChevronSvg } from "./assets/svg/chevron.svg"
 import SidebarItem from "./SidebarItem"
+import {
+  AnimDuration,
+  Color,
+  Font,
+  FontSize,
+  Height,
+  SizeUnit,
+  Width,
+  ZIndex,
+} from "./style-helpers"
 import { ResourceStatus } from "./types"
 
 let SidebarToggle = styled.button`
@@ -102,7 +111,7 @@ function GetTestAggregateData(items: SidebarItem[]) {
 
   for (let i = 0; i < items.length; i++) {
     let item = items[i]
-    console.log('item at index', i, ':', item)
+  
     if (!item.isTest) {
       continue
     }
@@ -119,11 +128,13 @@ function GetTestAggregateData(items: SidebarItem[]) {
       numRedTests++
     }
   }
-  return <TestData>
-    <div>Number of tests: {numTests}</div>
-    <div>Number of green tests: {numGreenTests}</div>
-    <div>Number of red tests: {numRedTests}</div>
-  </TestData>
+  return (
+    <TestData>
+      <div>Number of tests: {numTests}</div>
+      <div>Number of green tests: {numGreenTests}</div>
+      <div>Number of red tests: {numRedTests}</div>
+    </TestData>
+  )
 }
 //   numGreenTests = 0
 //   avgTestDur = 0
