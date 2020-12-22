@@ -83,7 +83,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	}
 	tags, err := value.SequenceToStringSlice(tagsVal)
 	if err != nil {
-		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
+		return nil, errors.Wrapf(err, "%s: tags", fn.Name())
 	}
 
 	ignores, err := parseValuesToStrings(ignoresVal, "ignore")
