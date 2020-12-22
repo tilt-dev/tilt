@@ -479,7 +479,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{filterYamlN, s.filterYaml},
 		{k8sResourceN, s.k8sResource},
 		{localResourceN, s.localResource},
-		{testN, s.localResource},
+		{testN, s.localResource}, // test is just a fork of local resource, w/ some switches based on fn.Name()
 		{portForwardN, s.portForward},
 		{k8sKindN, s.k8sKind},
 		{k8sImageJSONPathN, s.k8sImageJsonPath},

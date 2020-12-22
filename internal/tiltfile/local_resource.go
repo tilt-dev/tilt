@@ -55,8 +55,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		isTest = true
 
 		// TODO: implement timeout
+		//   (Maybe all local resources should accept a timeout, not just tests?)
 	}
 
+	// TODO: using this func for both `local_resource()` and `test()`, but in future
+	//   we should probably unpack args separately
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"cmd?", &updateCmdVal,
@@ -83,7 +86,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	}
 	tags, err := value.SequenceToStringSlice(tagsVal)
 	if err != nil {
-		return nil, errors.Wrapf(err, "%s: tags", fn.Name())
+		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
 	ignores, err := parseValuesToStrings(ignoresVal, "ignore")
