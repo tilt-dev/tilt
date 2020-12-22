@@ -1,11 +1,9 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewResourceDetails from "./OverviewResourceDetails"
-import PathBuilder from "./PathBuilder"
 import { oneResource } from "./testdata"
 
 type Resource = Proto.webviewResource
-let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 export default {
   title: "OverviewResourceDetails",
@@ -20,6 +18,4 @@ export default {
   ],
 }
 
-export const Vigoda = () => (
-  <OverviewResourceDetails view={oneResource()} pathBuilder={pathBuilder} />
-)
+export const Vigoda = () => <OverviewResourceDetails view={oneResource()} />

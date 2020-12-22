@@ -3,11 +3,9 @@ import { matchPath } from "react-router"
 import { Link, useHistory } from "react-router-dom"
 import styled from "styled-components"
 import { useLocalStorageContext } from "./LocalStorage"
-import PathBuilder from "./PathBuilder"
 import { Color } from "./style-helpers"
 
 type OverviewTabBarProps = {
-  pathBuilder: PathBuilder
   tabsForTesting?: string[]
 }
 

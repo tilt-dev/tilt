@@ -1,10 +1,8 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewTabBar from "./OverviewTabBar"
-import PathBuilder from "./PathBuilder"
 
 type Resource = Proto.webviewResource
-let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 export default {
   title: "OverviewTabBar",
@@ -22,13 +20,13 @@ export default {
   ],
 }
 
-export const NoTabs = () => <OverviewTabBar pathBuilder={pathBuilder} />
-export const InferOneTab = () => <OverviewTabBar pathBuilder={pathBuilder} />
+export const NoTabs = () => <OverviewTabBar />
+export const InferOneTab = () => <OverviewTabBar />
 InferOneTab.args = { url: "/r/vigoda/overview" }
 
 export const TwoTabs = () => {
   let tabs = ["vigoda", "snack"]
-  return <OverviewTabBar pathBuilder={pathBuilder} tabsForTesting={tabs} />
+  return <OverviewTabBar tabsForTesting={tabs} />
 }
 
 export const TenTabs = () => {
@@ -44,11 +42,11 @@ export const TenTabs = () => {
     "vigoda_9",
     "vigoda_10",
   ]
-  return <OverviewTabBar pathBuilder={pathBuilder} tabsForTesting={tabs} />
+  return <OverviewTabBar tabsForTesting={tabs} />
 }
 TenTabs.args = { url: "/r/vigoda_2/overview" }
 
 export const LongTabName = () => {
   let tabs = ["extremely-long-tab-name-yes-this-is-very-long"]
-  return <OverviewTabBar pathBuilder={pathBuilder} tabsForTesting={tabs} />
+  return <OverviewTabBar tabsForTesting={tabs} />
 }

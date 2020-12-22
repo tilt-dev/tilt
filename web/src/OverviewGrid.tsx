@@ -1,12 +1,10 @@
 import React from "react"
 import styled from "styled-components"
 import OverviewItemView, { OverviewItem } from "./OverviewItemView"
-import PathBuilder from "./PathBuilder"
 import { SizeUnit } from "./style-helpers"
 
 type OverviewGridProps = {
   view: Proto.webviewView
-  pathBuilder: PathBuilder
 }
 
 let OverviewGridRoot = styled.ul`
@@ -26,13 +24,7 @@ export default function OverviewGrid(props: OverviewGridProps) {
   let resources = props.view.resources ?? []
   let itemViews = resources.map((res) => {
     let item = new OverviewItem(res)
-    return (
-      <OverviewItemView
-        key={item.name}
-        item={item}
-        pathBuilder={props.pathBuilder}
-      />
-    )
+    return <OverviewItemView key={item.name} item={item} />
   })
   return <OverviewGridRoot>{itemViews}</OverviewGridRoot>
 }

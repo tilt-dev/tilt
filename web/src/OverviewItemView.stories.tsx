@@ -5,12 +5,10 @@ import OverviewItemView, {
   OverviewItemDetails,
   OverviewItemViewProps,
 } from "./OverviewItemView"
-import PathBuilder from "./PathBuilder"
 import { oneResourceNoAlerts } from "./testdata"
 import { ResourceStatus, TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
-let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 type optionFn = (item: OverviewItemViewProps) => void
 
@@ -68,7 +66,6 @@ function itemView(...options: optionFn[]) {
   let item = new OverviewItem(oneResourceNoAlerts())
   let props = {
     item: item,
-    pathBuilder: pathBuilder,
   }
   options.forEach((option) => option(props))
   return <OverviewItemView {...props} />
@@ -114,7 +111,7 @@ export const MinimumDetails = () => {
   let item = new OverviewItem(oneResourceNoAlerts())
   item.endpoints = []
   item.podId = ""
-  return <OverviewItemDetails item={item} pathBuilder={pathBuilder} />
+  return <OverviewItemDetails item={item} />
 }
 
 export const CompleteDetails = () => {
@@ -124,5 +121,5 @@ export const CompleteDetails = () => {
     { url: "http://localhost:4002" },
   ]
   item.podId = "my-pod-deadbeef"
-  return <OverviewItemDetails item={item} pathBuilder={pathBuilder} />
+  return <OverviewItemDetails item={item} />
 }

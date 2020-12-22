@@ -5,7 +5,7 @@ import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import FloatDialog from "./FloatDialog"
-import PathBuilder from "./PathBuilder"
+import { usePathBuilder } from "./PathBuilder"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { combinedStatus } from "./status"
 import { AnimDuration, Color, SizeUnit } from "./style-helpers"
@@ -13,7 +13,6 @@ import { ResourceStatus } from "./types"
 
 type OverviewResourceBarProps = {
   view: Proto.webviewView
-  pathBuilder: PathBuilder
 }
 
 let OverviewResourceBarRoot = styled.div`
@@ -293,7 +292,7 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
 }
 
 export default function OverviewResourceBar(props: OverviewResourceBarProps) {
-  let isSnapshot = props.pathBuilder.isSnapshot()
+  let isSnapshot = usePathBuilder().isSnapshot()
   let view = props.view
   let resourceBarEndProps = {
     isSnapshot,
