@@ -1,9 +1,11 @@
 import React from "react"
 import styled from "styled-components"
 import NotFound from "./NotFound"
+import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import OverviewStatusBar from "./OverviewStatusBar"
+import OverviewTabBar from "./OverviewTabBar"
 import PathBuilder from "./PathBuilder"
 import { Color } from "./style-helpers"
 
@@ -39,6 +41,8 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
 
   return (
     <OverviewResourcePaneRoot>
+      <OverviewTabBar {...props} />
+      <OverviewResourceBar {...props} />
       <Main>
         <OverviewResourceSidebar {...props} />
         <OverviewResourceDetails {...props} />

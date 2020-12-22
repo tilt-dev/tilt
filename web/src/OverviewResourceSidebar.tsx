@@ -1,6 +1,5 @@
 import React from "react"
 import styled from "styled-components"
-import OverviewTabBar from "./OverviewTabBar"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
@@ -27,9 +26,7 @@ export default function OverviewResourceSidebar(
 
   return (
     <OverviewResourceSidebarRoot>
-      <OverviewTabBar {...props} logoOnly={true} />
-      <div>16 Resources</div>
-      <div>3 errors | 0 warnings</div>
+      <div>12/16 up</div>
       <SidebarResources
         items={items}
         selected={props.name}
