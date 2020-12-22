@@ -70,6 +70,31 @@ let SidebarRoot = styled.section`
   }
 `
 
+let TestData = styled.section`
+  position: fixed;
+  // top: 0;
+  // right: 0;
+  bottom: ${Height.statusbar}px;
+  width: ${Width.sidebar}px;
+  background-color: ${Color.blue};
+  box-sizing: border-box;
+  overflow-y: auto;
+  transform: translateX(0%);
+  transition: transform ease ${AnimDuration.default};
+  font-size: ${FontSize.default};
+  display: flex;
+  flex-direction: column;
+  z-index: ${ZIndex.Sidebar};
+
+  &.isClosed {
+    transform: translateX(calc(100% - ${Width.sidebarCollapsed}px));
+  }
+
+  &.isClosed ${SidebarToggle} > svg {
+    transform: rotate(180deg);
+  }
+`
+
 type SidebarProps = {
   children: any
   isClosed: boolean
@@ -80,6 +105,7 @@ function Sidebar(props: SidebarProps) {
   return (
     <SidebarRoot className={`Sidebar ${props.isClosed ? "isClosed" : ""}`}>
       {props.children}
+      <TestData>Validation traction startup research & development advisor conversion. Deployment advisor holy grail twitter business-to-business crowdfunding churn rate.</TestData>
       <SidebarToggle className="Sidebar-toggle" onClick={props.toggleSidebar}>
         <ChevronSvg /> Collapse
       </SidebarToggle>
