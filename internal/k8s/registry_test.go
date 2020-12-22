@@ -152,7 +152,7 @@ func TestKINDWarning(t *testing.T) {
 	assert.Contains(t, out.String(), "https://github.com/tilt-dev/kind-local")
 }
 
-func TestK3DWarning(t *testing.T) {
+func TestK3DNoWarning(t *testing.T) {
 	cs := &fake.Clientset{}
 	core := cs.CoreV1()
 	registryAsync := newRegistryAsync(EnvK3D, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
@@ -160,7 +160,7 @@ func TestK3DWarning(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
 	assert.True(t, registry.Empty())
-	assert.Contains(t, out.String(), "https://github.com/tilt-dev/k3d-local-registry")
+	assert.Equal(t, out.String(), "")
 }
 
 func TestRegistryFoundInLabelsWithLocalOnly(t *testing.T) {
