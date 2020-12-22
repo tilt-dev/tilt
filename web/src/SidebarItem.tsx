@@ -19,6 +19,7 @@ type Build = Proto.webviewBuildRecord
 class SidebarItem {
   name: string
   isTiltfile: boolean
+  // isTest: boolean
   buildStatus: ResourceStatus
   buildAlertCount: number
   runtimeStatus: ResourceStatus
@@ -42,6 +43,7 @@ class SidebarItem {
 
     this.name = res.name ?? ""
     this.isTiltfile = !!res.isTiltfile
+    // this.isTest = res.localResourceInfo.isTest
     this.buildStatus = buildStatus(res)
     this.buildAlertCount = buildAlerts(res, null).length
     this.runtimeStatus = runtimeStatus(res)

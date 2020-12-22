@@ -101,6 +101,19 @@ type SidebarProps = {
   toggleSidebar: any
 }
 
+// function GetTestAggregateData(items []SidebarItems) {
+//   numTests = 0
+//   numGreenTests = 0
+//   avgTestDur = 0
+//   for item in items:
+//     if item.isTest:
+//       // get data off it and store in our aggregator
+//
+//   return <div>
+//     Number Tests: ${numTests}
+//   </div>
+// }
+
 function Sidebar(props: SidebarProps) {
   return (
     <SidebarRoot className={`Sidebar ${props.isClosed ? "isClosed" : ""}`}>
