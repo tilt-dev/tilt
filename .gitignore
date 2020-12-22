@@ -41,6 +41,7 @@ dist
 
 # web testing
 /web/coverage
+/web/.eslintcache
 
 # web production
 /web/build
