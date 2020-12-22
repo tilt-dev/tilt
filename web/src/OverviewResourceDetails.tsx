@@ -1,7 +1,9 @@
 import React from "react"
 import styled from "styled-components"
+import OverviewLogPane from "./OverviewLogPane"
 
 type OverviewResourceDetailsProps = {
+  name: string
   view: Proto.webviewResource
 }
 
@@ -33,14 +35,7 @@ export default function OverviewResourceDetails(
         <div>links</div>
         <div>copy pod</div>
       </ActionBar>
-      <LogPane>
-        <div>log line 1</div>
-        <div>log line 2</div>
-        <div>log line 3</div>
-        <div>log line 4</div>
-        <div>log line 5</div>
-        <div>log line 6</div>
-      </LogPane>
+      <OverviewLogPane manifestName={name} />
     </OverviewResourceDetailsRoot>
   )
 }

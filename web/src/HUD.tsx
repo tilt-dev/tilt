@@ -20,7 +20,7 @@ import K8sViewPane from "./K8sViewPane"
 import { LocalStorageContextProvider } from "./LocalStorage"
 import LogPane from "./LogPane"
 import { logLinesFromString } from "./logs"
-import LogStore from "./LogStore"
+import LogStore, { LogStoreProvider } from "./LogStore"
 import MetricsPane from "./MetricsPane"
 import NoMatch from "./NoMatch"
 import NotFound from "./NotFound"
@@ -106,6 +106,7 @@ class HUD extends Component<HudProps, HudState> {
       socketState: SocketState.Closed,
       showErrorModal: ShowErrorModal.Default,
       error: undefined,
+      logStore: new LogStore(),
     }
 
     this.toggleSidebar = this.toggleSidebar.bind(this)
@@ -348,18 +349,20 @@ class HUD extends Component<HudProps, HudState> {
   renderOverviewSwitch() {
     return (
       <PathBuilderProvider value={this.pathBuilder}>
-        <Switch>
-          <Route
-            path={this.path("/r/:name/overview")}
-            render={(props: RouteComponentProps<any>) => (
-              <OverviewResourcePane
-                name={props.match.params?.name || ""}
-                view={this.state.view}
-              />
-            )}
-          />
-          <Route render={() => <OverviewPane view={this.state.view} />} />
-        </Switch>
+        <LogStoreProvider value={this.state.logStore || new LogStore()}>
+          <Switch>
+            <Route
+              path={this.path("/r/:name/overview")}
+              render={(props: RouteComponentProps<any>) => (
+                <OverviewResourcePane
+                  name={props.match.params?.name || ""}
+                  view={this.state.view}
+                />
+              )}
+            />
+            <Route render={() => <OverviewPane view={this.state.view} />} />
+          </Switch>
+        </LogStoreProvider>
       </PathBuilderProvider>
     )
   }
