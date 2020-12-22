@@ -138,6 +138,7 @@ declare namespace Proto {
   }
   export interface webviewLocalResourceInfo {
     pid?: string;
+    isTest?: boolean;
   }
   export interface webviewLink {
     url?: string;

@@ -91,6 +91,7 @@ message YAMLResourceInfo {
 
 message LocalResourceInfo {
      int64 pid = 1;
+     bool is_test = 2;
 }
 
 message Facet {

@@ -245,7 +245,7 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 	}
 	if mt.Manifest.IsLocal() {
 		lState := mt.State.LocalRuntimeState()
-		r.LocalResourceInfo = &proto_webview.LocalResourceInfo{Pid: int64(lState.PID)}
+		r.LocalResourceInfo = &proto_webview.LocalResourceInfo{Pid: int64(lState.PID), IsTest: mt.Manifest.LocalTarget().IsTest}
 		r.RuntimeStatus = string(lState.RuntimeStatus())
 		return nil
 	}
