@@ -111,7 +111,7 @@ function GetTestAggregateData(items: SidebarItem[]) {
 
   for (let i = 0; i < items.length; i++) {
     let item = items[i]
-  
+
     if (!item.isTest) {
       continue
     }
@@ -136,16 +136,6 @@ function GetTestAggregateData(items: SidebarItem[]) {
     </TestData>
   )
 }
-//   numGreenTests = 0
-//   avgTestDur = 0
-//   for item in items:
-//     if item.isTest:
-//       // get data off it and store in our aggregator
-//
-//   return <div>
-//     Number Tests: ${numTests}
-//   </div>
-// }
 
 function Sidebar(props: SidebarProps) {
   // SHITTY HACK TO GET SIDEBAR ITEMS OUT OF SIDEBAR PROPS
