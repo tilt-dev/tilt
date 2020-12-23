@@ -140,7 +140,7 @@ it("shows test data in sidebar if test resources present", async () => {
   const hud = root.find(HUD)
 
   let resourceView = oneResourceView()
-  resourceView.resources[0].localResourceInfo = {isTest: true}  // make it a test resource
+  resourceView.resources[0].localResourceInfo = { isTest: true } // make it a test resource
   hud.setState({ view: resourceView })
 
   let sidebar = root.find("section.Sidebar")

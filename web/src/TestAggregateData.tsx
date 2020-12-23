@@ -3,9 +3,9 @@ import styled from "styled-components"
 import SidebarItem from "./SidebarItem"
 import {
   AnimDuration,
-  Color,
   FontSize,
-  Height, SizeUnit,
+  Height,
+  SizeUnit,
   Width,
   ZIndex,
 } from "./style-helpers"
@@ -63,11 +63,18 @@ function TestAggregateData(props: TestAggregateDataProps) {
     return null
   }
   return (
-      <TestData className="TestAggregateData">
-        <div>Number of tests: <span className="numTests">{numTests}</span></div>
-        <div>Number of green tests: <span className="numGreenTests">{numGreenTests}</span></div>
-        <div>Number of red tests: <span className="numRedTests">{numRedTests}</span></div>
-      </TestData>
+    <TestData className="TestAggregateData">
+      <div>
+        Number of tests: <span className="numTests">{numTests}</span>
+      </div>
+      <div>
+        Number of green tests:{" "}
+        <span className="numGreenTests">{numGreenTests}</span>
+      </div>
+      <div>
+        Number of red tests: <span className="numRedTests">{numRedTests}</span>
+      </div>
+    </TestData>
   )
 }
 
