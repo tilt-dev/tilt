@@ -196,10 +196,6 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 				logger.Get(ctx).Warnf("You are running Kind without a local image registry.\n" +
 					"Tilt can use the local registry to speed up builds.\n" +
 					"Instructions: https://github.com/tilt-dev/kind-local")
-			} else if r.env == EnvK3D {
-				logger.Get(ctx).Warnf("You are running K3D without a local image registry.\n" +
-					"Tilt can use the local registry to speed up builds.\n" +
-					"Instructions: https://github.com/tilt-dev/k3d-local-registry")
 			}
 		}
 	})
