@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { MemoryRouter } from "react-router"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewLogPane from "./OverviewLogPane"
@@ -10,6 +10,9 @@ function now() {
 type Line = string | { text: string; fields?: any }
 
 function appendLines(logStore: LogStore, name: string, ...lines: Line[]) {
+  let fromCheckpoint = logStore.checkpoint
+  let toCheckpoint = fromCheckpoint + lines.length
+
   let spans = {} as any
   let spanId = name || "_"
   spans[spanId] = { manifestName: name }
@@ -27,7 +30,7 @@ function appendLines(logStore: LogStore, name: string, ...lines: Line[]) {
     segments.push(obj)
   }
 
-  logStore.append({ spans, segments })
+  logStore.append({ spans, segments, fromCheckpoint, toCheckpoint })
 }
 
 export default {
@@ -48,6 +51,12 @@ export default {
       </MemoryRouter>
     ),
   ],
+  argTypes: {
+    layer1: { control: { type: "number", min: 0, max: 100 } },
+    layer2: { control: { type: "number", min: 0, max: 100 } },
+    layer3: { control: { type: "number", min: 0, max: 100 } },
+    layer4: { control: { type: "number", min: 0, max: 100 } },
+  },
 }
 
 export const ThreeLines = () => {
@@ -121,4 +130,40 @@ export const BuildEventLines = () => {
       <OverviewLogPane manifestName="fe" />
     </LogStoreProvider>
   )
+}
+
+export const ProgressLines = (args: any) => {
+  let [logStore, setLogStore] = useState(new LogStore())
+  let lines = [
+    { text: "Start build\n", fields: { progressID: "start" } },
+    { text: `Layer 1: 0%\n`, fields: { progressID: "layer1" } },
+    { text: `Layer 2: 0%\n`, fields: { progressID: "layer2" } },
+    { text: `Layer 3: 0%\n`, fields: { progressID: "layer3" } },
+    { text: `Layer 4: 0%\n`, fields: { progressID: "layer4" } },
+  ]
+  appendLines(logStore, "fe", ...lines)
+
+  useEffect(() => {
+    let lines = [
+      { text: "Start build\n", fields: { progressID: "start" } },
+      { text: `Layer 1: ${args.layer1}%\n`, fields: { progressID: "layer1" } },
+      { text: `Layer 2: ${args.layer2}%\n`, fields: { progressID: "layer2" } },
+      { text: `Layer 3: ${args.layer3}%\n`, fields: { progressID: "layer3" } },
+      { text: `Layer 4: ${args.layer4}%\n`, fields: { progressID: "layer4" } },
+    ]
+    appendLines(logStore, "fe", ...lines)
+  }, [args])
+
+  return (
+    <LogStoreProvider value={logStore}>
+      <OverviewLogPane manifestName="fe" />
+    </LogStoreProvider>
+  )
+}
+
+ProgressLines.args = {
+  layer1: 50,
+  layer2: 40,
+  layer3: 30,
+  layer4: 20,
 }
