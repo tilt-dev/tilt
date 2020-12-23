@@ -61,12 +61,16 @@ function TestAggregateData(props: TestAggregateDataProps) {
       numRedTests++
     }
   }
+
+  if (numTests === 0) {
+    return null
+  }
   return (
-    <TestData>
-      <div>Number of tests: {numTests}</div>
-      <div>Number of green tests: {numGreenTests}</div>
-      <div>Number of red tests: {numRedTests}</div>
-    </TestData>
+      <TestData className="TestAggregateData">
+        <div>Number of tests: <span className="numTests">{numTests}</span></div>
+        <div>Number of green tests: <span className="numGreenTests">{numGreenTests}</span></div>
+        <div>Number of red tests: <span className="numRedTests">{numRedTests}</span></div>
+      </TestData>
   )
 }
 
