@@ -36,6 +36,7 @@ import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
 import SocketBar from "./SocketBar"
 import Statusbar, { StatusItem } from "./Statusbar"
+import TestAggregateData from "./TestAggregateData"
 import { traceNav } from "./trace"
 import {
   LogLine,
@@ -532,6 +533,7 @@ class HUD extends Component<HudProps, HudState> {
             resourceView={t}
             pathBuilder={this.pathBuilder}
           />
+          <TestAggregateData items={sidebarItems} />
         </Sidebar>
       )
     }
