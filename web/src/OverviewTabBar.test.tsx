@@ -2,17 +2,11 @@ import { mount } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewTabBar, { Tab } from "./OverviewTabBar"
-import PathBuilder from "./PathBuilder"
-
-let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 it("infers tab from url", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/r/vigoda/overview"]}>
-      <OverviewTabBar
-        pathBuilder={pathBuilder}
-        tabsForTesting={["vigoda", "snack"]}
-      />
+      <OverviewTabBar tabsForTesting={["vigoda", "snack"]} />
     </MemoryRouter>
   )
 

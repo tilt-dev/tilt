@@ -21,25 +21,13 @@ export default {
 }
 
 export const TwoResources = () => (
-  <OverviewResourceSidebar
-    name={"vigoda"}
-    view={twoResourceView()}
-    pathBuilder={pathBuilder}
-  />
+  <OverviewResourceSidebar name={"vigoda"} view={twoResourceView()} />
 )
 
 export const TenResources = () => (
-  <OverviewResourceSidebar
-    name={"vigoda_1"}
-    view={tenResourceView()}
-    pathBuilder={pathBuilder}
-  />
+  <OverviewResourceSidebar name={"vigoda_1"} view={tenResourceView()} />
 )
 
 export const OneHundredResources = () => (
-  <OverviewResourceSidebar
-    name={"vigoda_1"}
-    view={nResourceView(100)}
-    pathBuilder={pathBuilder}
-  />
+  <OverviewResourceSidebar name={"vigoda_1"} view={nResourceView(100)} />
 )

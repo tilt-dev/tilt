@@ -1,10 +1,8 @@
 import React from "react"
 import styled from "styled-components"
-import PathBuilder from "./PathBuilder"
 
 type OverviewResourceDetailsProps = {
   view: Proto.webviewResource
-  pathBuilder: PathBuilder
 }
 
 let OverviewResourceDetailsRoot = styled.div`

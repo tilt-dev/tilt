@@ -5,12 +5,10 @@ import OverviewGrid from "./OverviewGrid"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewStatusBar from "./OverviewStatusBar"
 import OverviewTabBar from "./OverviewTabBar"
-import PathBuilder from "./PathBuilder"
 import { Color, Font, SizeUnit } from "./style-helpers"
 
 type OverviewPaneProps = {
   view: Proto.webviewView
-  pathBuilder: PathBuilder
 }
 
 let OverviewPaneRoot = styled.div`
@@ -59,7 +57,7 @@ function AllServicesDivider() {
 export default function OverviewPane(props: OverviewPaneProps) {
   return (
     <OverviewPaneRoot>
-      <OverviewTabBar pathBuilder={props.pathBuilder} />
+      <OverviewTabBar />
       <OverviewResourceBar {...props} />
       <AllServicesDivider />
       <OverviewGrid {...props} />

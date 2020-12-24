@@ -1,6 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import PathBuilder from "./PathBuilder"
+import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
 import { ResourceView } from "./types"
@@ -8,7 +8,6 @@ import { ResourceView } from "./types"
 type OverviewResourceSidebarProps = {
   name: string
   view: Proto.webviewView
-  pathBuilder: PathBuilder
 }
 
 let OverviewResourceSidebarRoot = styled.div`
@@ -21,6 +20,7 @@ let OverviewResourceSidebarRoot = styled.div`
 export default function OverviewResourceSidebar(
   props: OverviewResourceSidebarProps
 ) {
+  let pathBuilder = usePathBuilder()
   let resources = props.view.resources || []
   let items = resources.map((res) => new SidebarItem(res))
 
@@ -31,7 +31,7 @@ export default function OverviewResourceSidebar(
         items={items}
         selected={props.name}
         resourceView={ResourceView.Overview}
-        pathBuilder={props.pathBuilder}
+        pathBuilder={pathBuilder}
       />
     </OverviewResourceSidebarRoot>
   )

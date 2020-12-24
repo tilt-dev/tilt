@@ -10,7 +10,7 @@ import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { ReactComponent as MaximizeSvg } from "./assets/svg/maximize.svg"
-import PathBuilder from "./PathBuilder"
+import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { buildStatus, runtimeStatus } from "./status"
@@ -237,7 +237,6 @@ export function triggerUpdate(name: string, action: string) {
 
 export type OverviewItemViewProps = {
   item: OverviewItem
-  pathBuilder: PathBuilder
 }
 
 function buildStatusText(item: OverviewItem): string {
@@ -311,7 +310,6 @@ function BuildBox(props: { item: OverviewItem }) {
 
 type OverviewItemDetailsProps = {
   item: OverviewItem
-  pathBuilder: PathBuilder
   width?: number
 }
 
@@ -433,13 +431,14 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
     )
   }
 
+  let pathBuilder = usePathBuilder()
   let width = props.width || 330
   return (
     <OverviewItemDetailsRoot style={{ width: width + "px" }}>
       <OverviewItemDetailsBox>
         {endpoints}
         {copy}
-        <ShowDetailsBox to={props.pathBuilder.path(link)}>
+        <ShowDetailsBox to={pathBuilder.path(link)}>
           <MaximizeSvg />
 
           <div style={{ marginLeft: "8px" }}>Show details</div>
@@ -542,11 +541,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
           horizontal: "center",
         }}
       >
-        <OverviewItemDetails
-          item={item}
-          pathBuilder={props.pathBuilder}
-          width={anchorSpec.width}
-        />
+        <OverviewItemDetails item={item} width={anchorSpec.width} />
       </Popover>
     </OverviewItemRoot>
   )

@@ -1,11 +1,9 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewResourcePane from "./OverviewResourcePane"
-import PathBuilder from "./PathBuilder"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type Resource = Proto.webviewResource
-let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 export default {
   title: "OverviewResourcePane",
@@ -21,33 +19,17 @@ export default {
 }
 
 export const TwoResources = () => (
-  <OverviewResourcePane
-    name={"vigoda"}
-    view={twoResourceView()}
-    pathBuilder={pathBuilder}
-  />
+  <OverviewResourcePane name={"vigoda"} view={twoResourceView()} />
 )
 
 export const TenResources = () => (
-  <OverviewResourcePane
-    name={"vigoda_1"}
-    view={tenResourceView()}
-    pathBuilder={pathBuilder}
-  />
+  <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
 )
 
 export const OneHundredResources = () => (
-  <OverviewResourcePane
-    name={"vigoda_1"}
-    view={nResourceView(100)}
-    pathBuilder={pathBuilder}
-  />
+  <OverviewResourcePane name={"vigoda_1"} view={nResourceView(100)} />
 )
 
 export const NotFound = () => (
-  <OverviewResourcePane
-    name={"does-not-exist"}
-    view={twoResourceView()}
-    pathBuilder={pathBuilder}
-  />
+  <OverviewResourcePane name={"does-not-exist"} view={twoResourceView()} />
 )

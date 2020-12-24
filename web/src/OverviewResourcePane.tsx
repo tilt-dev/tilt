@@ -6,13 +6,11 @@ import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import OverviewStatusBar from "./OverviewStatusBar"
 import OverviewTabBar from "./OverviewTabBar"
-import PathBuilder from "./PathBuilder"
 import { Color } from "./style-helpers"
 
 type OverviewResourcePaneProps = {
   name: string
   view: Proto.webviewView
-  pathBuilder: PathBuilder
 }
 
 let OverviewResourcePaneRoot = styled.div`
@@ -41,7 +39,7 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
 
   return (
     <OverviewResourcePaneRoot>
-      <OverviewTabBar {...props} />
+      <OverviewTabBar />
       <OverviewResourceBar {...props} />
       <Main>
         <OverviewResourceSidebar {...props} />

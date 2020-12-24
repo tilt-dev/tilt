@@ -1,5 +1,6 @@
-// A little helper class for building paths relative to the root of the app.
+import React, { useContext } from "react"
 
+// A little helper class for building paths relative to the root of the app.
 class PathBuilder {
   private protocol: string
   private host: string
@@ -65,3 +66,13 @@ class PathBuilder {
 }
 
 export default PathBuilder
+
+const pathBuilderContext = React.createContext<PathBuilder>(
+  new PathBuilder(window.location)
+)
+
+export function usePathBuilder(): PathBuilder {
+  return useContext(pathBuilderContext)
+}
+
+export const PathBuilderProvider = pathBuilderContext.Provider
