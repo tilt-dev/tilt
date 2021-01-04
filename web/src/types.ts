@@ -83,6 +83,20 @@ export type LogLine = {
   level: string
   buildEvent?: string
   spanId: string
+
+  // The index of this line in the LogStore StoredLine list.
+  storedLineIndex: number
+}
+
+// Instructions on how to patch an existing log stream with new logs.
+// Includes:
+// - The lines to add. Some of these might patch existing lines.
+// - A client-side checkpoint, for determining the next patch
+//   Users of this API should not modify this. They should just pass it to
+//   the next invocation of the log getter. 0 indicates we will get all logs.
+export type LogPatchSet = {
+  lines: LogLine[]
+  checkpoint: number
 }
 
 // Display data about the current log trace.
