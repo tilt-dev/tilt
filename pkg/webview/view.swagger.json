@@ -241,6 +241,10 @@
         "pid": {
           "type": "string",
           "format": "int64"
+        },
+        "is_test": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },
