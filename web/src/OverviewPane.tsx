@@ -58,7 +58,7 @@ export default function OverviewPane(props: OverviewPaneProps) {
   return (
     <OverviewPaneRoot>
       <OverviewTabBar />
-      <OverviewResourceBar {...props} />
+      <OverviewResourceBar view={props.view} />
       <AllServicesDivider />
       <OverviewGrid {...props} />
       <OverviewStatusBar build={props.view.runningTiltBuild} />

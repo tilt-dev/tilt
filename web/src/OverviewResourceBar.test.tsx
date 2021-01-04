@@ -5,6 +5,7 @@ import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
 import { TwoResources } from "./OverviewResourceBar.stories"
 import ShortcutsDialog from "./ShortcutsDialog"
+import { SnapshotActionProvider } from "./snapshot"
 
 it("renders shortcuts dialog on ?", () => {
   const root = mount(
@@ -15,5 +16,28 @@ it("renders shortcuts dialog on ?", () => {
   act(() => void fireEvent.keyDown(document.body, { key: "?" }))
   root.update()
   expect(root.find(ShortcutsDialog).props().open).toEqual(true)
+  root.unmount()
+})
+
+it("opens snapshot modal on s", () => {
+  let opened = 0
+  let snapshot = {
+    enabled: true,
+    openModal: () => {
+      opened++
+    },
+  }
+  const root = mount(
+    <MemoryRouter initialEntries={["/"]}>
+      <SnapshotActionProvider value={snapshot}>
+        {TwoResources()}
+      </SnapshotActionProvider>
+    </MemoryRouter>
+  )
+
+  expect(opened).toEqual(0)
+  act(() => void fireEvent.keyDown(document.body, { key: "s" }))
+  root.update()
+  expect(opened).toEqual(1)
   root.unmount()
 })

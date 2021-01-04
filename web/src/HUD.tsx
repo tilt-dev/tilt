@@ -34,6 +34,7 @@ import Sidebar from "./Sidebar"
 import SidebarAccount from "./SidebarAccount"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
+import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
 import Statusbar, { StatusItem } from "./Statusbar"
 import TestAggregateData from "./TestAggregateData"
@@ -348,23 +349,33 @@ class HUD extends Component<HudProps, HudState> {
   }
 
   renderOverviewSwitch() {
+    let showSnapshot =
+      this.getFeatures().isEnabled("snapshots") &&
+      !this.pathBuilder.isSnapshot()
+    let snapshotAction = {
+      enabled: showSnapshot,
+      openModal: this.handleOpenModal,
+    }
+
     return (
-      <PathBuilderProvider value={this.pathBuilder}>
-        <LogStoreProvider value={this.state.logStore || new LogStore()}>
-          <Switch>
-            <Route
-              path={this.path("/r/:name/overview")}
-              render={(props: RouteComponentProps<any>) => (
-                <OverviewResourcePane
-                  name={props.match.params?.name || ""}
-                  view={this.state.view}
-                />
-              )}
-            />
-            <Route render={() => <OverviewPane view={this.state.view} />} />
-          </Switch>
-        </LogStoreProvider>
-      </PathBuilderProvider>
+      <SnapshotActionProvider value={snapshotAction}>
+        <PathBuilderProvider value={this.pathBuilder}>
+          <LogStoreProvider value={this.state.logStore || new LogStore()}>
+            <Switch>
+              <Route
+                path={this.path("/r/:name/overview")}
+                render={(props: RouteComponentProps<any>) => (
+                  <OverviewResourcePane
+                    name={props.match.params?.name || ""}
+                    view={this.state.view}
+                  />
+                )}
+              />
+              <Route render={() => <OverviewPane view={this.state.view} />} />
+            </Switch>
+          </LogStoreProvider>
+        </PathBuilderProvider>
+      </SnapshotActionProvider>
     )
   }
 
