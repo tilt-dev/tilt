@@ -461,20 +461,24 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 		logger.Get(ctx).Verbosef("%v", c.initError)
 	}
 
+	// Always use a one-time session when using buildkit, since credential
+	// passing is fast and we want to get the latest creds.
+	// https://github.com/tilt-dev/tilt/issues/4043
 	var oneTimeSession *session.Session
 	sessionID := c.creds.sessionID
-	if len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0 {
-		if c.builderVersion != types.BuilderBuildKit {
-			return types.ImageBuildResponse{},
-				fmt.Errorf("Docker SSH secrets only work on Buildkit, but Buildkit has been disabled")
-		}
 
+	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0
+	isUsingBuildkit := c.builderVersion == types.BuilderBuildKit
+	if isUsingBuildkit {
 		var err error
 		oneTimeSession, err = c.startBuildkitSession(ctx, identity.NewID(), options.SSHSpecs, options.SecretSpecs)
 		if err != nil {
 			return types.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
 		}
 		sessionID = oneTimeSession.ID()
+	} else if mustUseBuildkit {
+		return types.ImageBuildResponse{},
+			fmt.Errorf("Docker SSH secrets only work on Buildkit, but Buildkit has been disabled")
 	}
 
 	opts := types.ImageBuildOptions{}
