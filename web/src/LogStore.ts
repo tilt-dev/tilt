@@ -4,6 +4,7 @@
 // pkg/model/logstore/logstore.go
 // but with better support for incremental updates and rendering.
 
+import React, { useContext } from "react"
 import { isBuildSpanId } from "./logs"
 import { LogLine } from "./types"
 
@@ -419,3 +420,11 @@ class LogStore {
 }
 
 export default LogStore
+
+const logStoreContext = React.createContext<LogStore>(new LogStore())
+
+export function useLogStore(): LogStore {
+  return useContext(logStoreContext)
+}
+
+export let LogStoreProvider = logStoreContext.Provider

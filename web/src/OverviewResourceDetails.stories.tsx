@@ -18,4 +18,6 @@ export default {
   ],
 }
 
-export const Vigoda = () => <OverviewResourceDetails view={oneResource()} />
+export const Vigoda = () => (
+  <OverviewResourceDetails view={oneResource()} name="vigoda" />
+)
