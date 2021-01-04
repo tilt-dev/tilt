@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { Component, useEffect, useState } from "react"
 import { MemoryRouter } from "react-router"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewLogPane from "./OverviewLogPane"
@@ -166,4 +166,39 @@ ProgressLines.args = {
   layer2: 40,
   layer3: 30,
   layer4: 20,
+}
+
+class ForeverLogComponent extends Component {
+  logStore = new LogStore()
+  lineCount = 0
+  timer: any
+
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      let lines = [
+        { text: `Line #${this.lineCount++}\n` },
+        { text: `Line #${this.lineCount++}\n` },
+        { text: `Line #${this.lineCount++}\n` },
+        { text: `Line #${this.lineCount++}\n` },
+        { text: `Line #${this.lineCount++}\n` },
+      ]
+      appendLines(this.logStore, "fe", ...lines)
+    }, 1000)
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.timer)
+  }
+
+  render() {
+    return (
+      <LogStoreProvider value={this.logStore}>
+        <OverviewLogPane manifestName="fe" />
+      </LogStoreProvider>
+    )
+  }
+}
+
+export const ForeverLog = () => {
+  return <ForeverLogComponent />
 }
