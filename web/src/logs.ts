@@ -1,6 +1,6 @@
 // Helper functions for dealing with logs
 
-import { LogLine } from "./types"
+import { LogLine, ResourceName } from "./types"
 
 export function logLinesFromString(
   log: string,
@@ -34,7 +34,7 @@ export function logLinesToString(
 }
 
 export function sourcePrefix(n: string) {
-  if (n === "" || n === "(Tiltfile)") {
+  if (n === "" || n === ResourceName.tiltfile) {
     return ""
   }
   let max = 12

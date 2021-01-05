@@ -7,6 +7,7 @@ import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import OverviewStatusBar from "./OverviewStatusBar"
 import OverviewTabBar from "./OverviewTabBar"
 import { Color } from "./style-helpers"
+import { ResourceName } from "./types"
 
 type OverviewResourcePaneProps = {
   name: string
@@ -32,9 +33,11 @@ let Main = styled.div`
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let resources = props.view?.resources || []
   let name = props.name
-  let r = resources.find((r) => r.name === name)
-  if (r === undefined) {
-    return <NotFound location={{ pathname: `/r/${name}/overview` }} />
+  if (name !== "" && name != ResourceName.all) {
+    let r = resources.find((r) => r.name === name)
+    if (r === undefined) {
+      return <NotFound location={{ pathname: `/r/${name}/overview` }} />
+    }
   }
 
   return (

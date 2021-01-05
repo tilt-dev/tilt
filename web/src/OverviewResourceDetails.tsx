@@ -1,6 +1,7 @@
 import React from "react"
 import styled from "styled-components"
 import OverviewLogPane from "./OverviewLogPane"
+import { ResourceName } from "./types"
 
 type OverviewResourceDetailsProps = {
   name: string
@@ -29,13 +30,17 @@ let LogPane = styled.div`
 export default function OverviewResourceDetails(
   props: OverviewResourceDetailsProps
 ) {
+  let manifestName = props.name
+  if (manifestName === ResourceName.all) {
+    manifestName = ""
+  }
   return (
     <OverviewResourceDetailsRoot>
       <ActionBar>
         <div>links</div>
         <div>copy pod</div>
       </ActionBar>
-      <OverviewLogPane manifestName={props.name} />
+      <OverviewLogPane manifestName={manifestName} />
     </OverviewResourceDetailsRoot>
   )
 }

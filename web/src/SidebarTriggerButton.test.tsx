@@ -11,7 +11,7 @@ import SidebarTriggerButton, {
   TriggerButtonTooltip,
 } from "./SidebarTriggerButton"
 import { oneResource, twoResourceView } from "./testdata"
-import { ResourceView, TriggerMode } from "./types"
+import { ResourceName, ResourceView, TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
 
@@ -350,7 +350,7 @@ describe("SidebarTriggerButton", () => {
 
   it("shows trigger button for Tiltfile", () => {
     let res = oneResource()
-    res.name = "(Tiltfile)"
+    res.name = ResourceName.tiltfile
     res.isTiltfile = true
     res.currentBuild = {} // not currently building
     res.hasPendingChanges = false

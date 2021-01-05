@@ -3,12 +3,14 @@ import React, { Component } from "react"
 import { useHistory } from "react-router"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
+import { ResourceName, ResourceView } from "./types"
 
 type Props = {
   items: SidebarItem[]
   selected: string
   pathBuilder: PathBuilder
   history: History
+  resourceView: ResourceView
   onTrigger: (action: string) => void
 }
 
@@ -52,6 +54,11 @@ class SidebarKeyboardShortcuts extends Component<Props> {
 
         let name = names[targetIndex]
         let path = name ? pathBuilder.path(`/r/${name}`) : pathBuilder.path("/")
+        if (this.props.resourceView === ResourceView.OverviewDetail) {
+          path = name
+            ? pathBuilder.path(`/r/${name}/overview`)
+            : pathBuilder.path(`/r/${ResourceName.all}/overview`)
+        }
         history.push(path, { action: "shortcut" })
         e.preventDefault()
         break
@@ -73,6 +80,7 @@ type PublicProps = {
   selected: string
   pathBuilder: PathBuilder
   onTrigger: (action: string) => void
+  resourceView: ResourceView
 }
 
 export default function (props: PublicProps) {

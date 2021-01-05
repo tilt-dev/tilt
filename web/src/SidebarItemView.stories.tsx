@@ -7,7 +7,12 @@ import SidebarItemView, {
   SidebarItemViewProps,
 } from "./SidebarItemView"
 import { oneResourceNoAlerts } from "./testdata"
-import { ResourceStatus, ResourceView, TriggerMode } from "./types"
+import {
+  ResourceName,
+  ResourceStatus,
+  ResourceView,
+  TriggerMode,
+} from "./types"
 
 type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -123,7 +128,10 @@ export const OneItemLongName = () =>
   itemView(withName("longnamelongnameverylongname"))
 
 export const Tiltfile = () =>
-  itemView(withName("(Tiltfile)"), withBuildStatusOnly(ResourceStatus.Healthy))
+  itemView(
+    withName(ResourceName.tiltfile),
+    withBuildStatusOnly(ResourceStatus.Healthy)
+  )
 
 export const AllItemSelected = () => {
   return (
