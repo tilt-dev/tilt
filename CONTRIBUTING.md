@@ -264,7 +264,9 @@ you've got it working.
 We use [goreleaser](https://goreleaser.com) to publish binaries. We never run it
 locally. We run it in a CircleCI container.
 
-To create a new release at tag `$TAG`:
+To create a new release at tag `$TAG`, in the `~/go/src/github.com/tilt-dev/tilt`
+directory, first switch to `master` and pull the latest changes with `git pull`.
+And then:
 
 ```
 git fetch --tags
