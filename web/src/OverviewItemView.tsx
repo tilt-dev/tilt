@@ -1,3 +1,4 @@
+import Collapse from "@material-ui/core/Collapse"
 import Popover from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
 import React, { useState } from "react"
@@ -468,7 +469,10 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
   let handleClick = (event: any) => {
     let currentTarget = event.currentTarget
     let buildBox = currentTarget.querySelector(`${OverviewItemBuildBox}`)
-    setAnchorSpec({ element: buildBox, width: currentTarget.offsetWidth })
+    setAnchorSpec({
+      element: buildBox,
+      width: currentTarget.getBoundingClientRect().width,
+    })
   }
   let handleClose = (e: any) => {
     e.stopPropagation()
@@ -532,6 +536,8 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
         open={open}
         anchorEl={anchorSpec.element}
         onClose={handleClose}
+        disableScrollLock={true}
+        TransitionComponent={Collapse}
         anchorOrigin={{
           vertical: "top",
           horizontal: "center",
