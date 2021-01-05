@@ -183,7 +183,7 @@ class LogStore {
       let isStartingNewLine = false
       if (span.lastLineIndex === -1) {
         isStartingNewLine = true
-        this.segmentToLine.push(span.lastLineIndex)
+        this.segmentToLine.push(this.lines.length)
       } else {
         let line = this.lines[span.lastLineIndex]
         let overwriteIndex = this.maybeOverwriteLine(candidate, span)

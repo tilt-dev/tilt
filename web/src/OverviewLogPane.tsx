@@ -84,8 +84,11 @@ function newLineEl(
 
   let code = document.createElement("code")
   code.classList.add("LogPaneLine-content")
+
+  // newline ensures this takes up at least one line
+  let spacer = "\n"
   code.innerHTML = anser.linkify(
-    anser.ansiToHtml(anser.escapeForHtml(line.text), {
+    anser.ansiToHtml(anser.escapeForHtml(line.text) + spacer, {
       use_classes: true,
     })
   )
