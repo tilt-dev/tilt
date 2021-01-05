@@ -4,9 +4,11 @@ import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
 import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
+import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import FloatDialog from "./FloatDialog"
 import { usePathBuilder } from "./PathBuilder"
 import ShortcutsDialog from "./ShortcutsDialog"
+import { SnapshotAction, useSnapshotAction } from "./snapshot"
 import { combinedStatus } from "./status"
 import { AnimDuration, Color, SizeUnit } from "./style-helpers"
 import { ResourceStatus } from "./types"
@@ -176,13 +178,16 @@ let MenuButton = styled.button`
   }
 `
 
+type ResourceBarShortcutsProps = {
+  toggleShortcutsDialog: () => void
+  snapshot: SnapshotAction
+}
+
 /**
  * Sets up keyboard shortcuts that depend on the resource bar block.
  */
-class ResourceBarShortcuts extends Component<{
-  toggleShortcutsDialog: () => void
-}> {
-  constructor(props: { toggleShortcutsDialog: () => void }) {
+class ResourceBarShortcuts extends Component<ResourceBarShortcutsProps> {
+  constructor(props: ResourceBarShortcutsProps) {
     super(props)
     this.onKeydown = this.onKeydown.bind(this)
   }
@@ -202,6 +207,9 @@ class ResourceBarShortcuts extends Component<{
     if (e.key === "?") {
       this.props.toggleShortcutsDialog()
       e.preventDefault()
+    } else if (e.key === "s" && this.props.snapshot.enabled) {
+      this.props.snapshot.openModal()
+      e.preventDefault()
     }
   }
 
@@ -216,6 +224,7 @@ type ResourceBarEndProps = {
   tiltCloudSchemeHost: string
   tiltCloudTeamID: string
   tiltCloudTeamName: string
+  snapshot: SnapshotAction
 }
 
 function ResourceBarEnd(props: ResourceBarEndProps) {
@@ -254,9 +263,16 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
 
   let accountMenuHeader = <AccountMenuHeader {...props} />
   let accountMenuContent = <AccountMenuContent {...props} />
+  let snapshotButton = props.snapshot.enabled ? (
+    <MenuButton onClick={props.snapshot.openModal}>
+      <SnapshotIcon width="24" height="24" />
+    </MenuButton>
+  ) : null
 
   return (
     <ResourceBarEndRoot>
+      {snapshotButton}
+
       <MenuButton
         ref={shortcutButton}
         onClick={() => toggleShortcutsDialog("click")}
@@ -286,6 +302,7 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
       />
       <ResourceBarShortcuts
         toggleShortcutsDialog={() => toggleShortcutsDialog("shortcut")}
+        snapshot={props.snapshot}
       />
     </ResourceBarEndRoot>
   )
@@ -293,9 +310,11 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
 
 export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   let isSnapshot = usePathBuilder().isSnapshot()
+  let snapshot = useSnapshotAction()
   let view = props.view
   let resourceBarEndProps = {
     isSnapshot,
+    snapshot,
     tiltCloudUsername: view.tiltCloudUsername ?? "",
     tiltCloudSchemeHost: view.tiltCloudSchemeHost ?? "",
     tiltCloudTeamID: view.tiltCloudTeamID ?? "",
