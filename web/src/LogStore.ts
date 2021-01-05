@@ -59,6 +59,8 @@ class StoredLine {
   }
 }
 
+type callback = () => void
+
 class LogStore {
   // Track which segments we've received from the server.
   checkpoint: number
@@ -68,6 +70,9 @@ class LogStore {
   // These are held in-memory so we can send them on snapshot, but
   // aren't used in rendering.
   segments: Proto.webviewLogSegment[]
+
+  // A map of segment indices to the line indices that they rendered.
+  segmentToLine: number[]
 
   // As segments are appended, we fold them into our internal line-by-line model
   // for rendering.
@@ -79,13 +84,27 @@ class LogStore {
   // We index all the warnings up-front by span id.
   warningIndex: { [key: string]: LogWarning[] }
 
+  updateCallbacks: callback[]
+
   constructor() {
     this.spans = {}
     this.segments = []
+    this.segmentToLine = []
     this.lines = []
     this.checkpoint = 0
     this.warningIndex = {}
     this.lineCache = {}
+    this.updateCallbacks = []
+  }
+
+  addUpdateListener(c: callback) {
+    if (!this.updateCallbacks.includes(c)) {
+      this.updateCallbacks.push(c)
+    }
+  }
+
+  removeUpdateListener(c: callback) {
+    this.updateCallbacks = this.updateCallbacks.filter((item) => item !== c)
   }
 
   warnings(spanId: string): LogWarning[] {
@@ -158,20 +177,26 @@ class LogStore {
         // If we don't have the span for this log, we can't meaningfully print it,
         // so just drop it. This means that there's a bug on the server, and
         // the best the client can do is fail gracefully.
+        this.segmentToLine.push(-1)
         return
       }
       let isStartingNewLine = false
       if (span.lastLineIndex === -1) {
         isStartingNewLine = true
+        this.segmentToLine.push(span.lastLineIndex)
       } else {
         let line = this.lines[span.lastLineIndex]
-        if (this.maybeOverwriteLine(candidate, span)) {
+        let overwriteIndex = this.maybeOverwriteLine(candidate, span)
+        if (overwriteIndex !== -1) {
+          this.segmentToLine.push(overwriteIndex)
           return
         } else if (line.isComplete() || !line.canContinueLine(candidate)) {
           isStartingNewLine = true
+          this.segmentToLine.push(this.lines.length)
         } else {
           line.text += candidate.text
           delete this.lineCache[span.lastLineIndex]
+          this.segmentToLine.push(span.lastLineIndex)
           return
         }
       }
@@ -185,14 +210,25 @@ class LogStore {
         this.lines.push(candidate)
       }
     })
+
+    window.requestAnimationFrame(() => {
+      // Make sure an exception in one callback doesn't affect the rest.
+      try {
+        this.updateCallbacks.forEach((c) => c())
+      } catch (e) {
+        window.requestAnimationFrame(() => {
+          throw e
+        })
+      }
+    })
   }
 
   // If this line has a progress id, see if we can overwrite a previous line.
-  // Return true if we were able to overwrite the line successfully.
-  private maybeOverwriteLine(candidate: StoredLine, span: LogSpan): boolean {
+  // Return the index of the line we were able to overwrite, or -1 otherwise.
+  private maybeOverwriteLine(candidate: StoredLine, span: LogSpan): number {
     let progressId = candidate.field(fieldNameProgressId)
     if (!progressId) {
-      return false
+      return -1
     }
 
     // Iterate backwards and figure out which line to overwrite.
@@ -208,7 +244,7 @@ class LogStore {
       // If we're outside the "progress" zone, we couldn't find it.
       let curProgressId = cur.field(fieldNameProgressId)
       if (!curProgressId) {
-        return false
+        return -1
       }
 
       if (progressId !== curProgressId) {
@@ -217,9 +253,9 @@ class LogStore {
 
       cur.text = candidate.text
       delete this.lineCache[i]
-      return true
+      return i
     }
-    return false
+    return -1
   }
 
   allLog(): LogLine[] {

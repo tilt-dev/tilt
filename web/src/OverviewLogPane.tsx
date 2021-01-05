@@ -106,6 +106,7 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     super(props)
 
     this.onScroll = this.onScroll.bind(this)
+    this.onLogUpdate = this.onLogUpdate.bind(this)
   }
 
   scrollCursorIntoView() {
@@ -114,9 +115,19 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
   }
 
+  onLogUpdate() {
+    if (!this.rootRef.current || !this.cursorRef.current) {
+      return
+    }
+
+    // TODO(nick): Make this more progressive instead of re-rendering every time.
+    this.renderFreshLogs()
+  }
+
   componentDidUpdate(prevProps: OverviewLogComponentProps) {
     if (prevProps.logStore !== this.props.logStore) {
-      // TODO(nick): setup/teardown logstore listeners.
+      prevProps.logStore.removeUpdateListener(this.onLogUpdate)
+      this.props.logStore.addUpdateListener(this.onLogUpdate)
     }
 
     if (prevProps.manifestName !== this.props.manifestName) {
@@ -142,15 +153,15 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     })
     this.renderFreshLogs()
 
-    // TODO(nick): setup logstore listeners
+    this.props.logStore.addUpdateListener(this.onLogUpdate)
   }
 
   componentWillUnmount() {
+    this.props.logStore.removeUpdateListener(this.onLogUpdate)
     window.removeEventListener("scroll", this.onScroll)
     if (this.autoscrollRafID) {
       cancelAnimationFrame(this.autoscrollRafID)
     }
-    // TODO(nick): teardown logstore listeners
   }
 
   onScroll() {
