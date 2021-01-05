@@ -14,6 +14,9 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
+var podLogHealthCheck = 15 * time.Second
+var podLogReconnectGap = 2 * time.Second
+
 const IstioInitContainerName = container.Name("istio-init")
 const IstioSidecarContainerName = container.Name("istio-proxy")
 
@@ -253,7 +256,7 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 		// If they have, reconnect to the log stream.
 		done := make(chan bool)
 		go func() {
-			ticker := m.newTicker(15 * time.Second)
+			ticker := m.newTicker(podLogHealthCheck)
 			for {
 				select {
 				case <-done:
@@ -261,12 +264,21 @@ func (m *PodLogManager) consumeLogs(watch PodLogWatch, st store.RStore) {
 
 				case <-ticker.C:
 					lastRead := reader.LastReadTime()
-					if lastRead.IsZero() || m.since(lastRead) < 15*time.Second {
+					if lastRead.IsZero() || m.since(lastRead) < podLogHealthCheck {
 						continue
 					}
 
 					retry = true
-					startReadTime = lastRead
+
+					// Start reading 2 seconds after the last read.
+					//
+					// In the common case (where we just haven't gotten any logs in the
+					// last 15 seconds), this will ensure we don't duplicate logs.
+					//
+					// In the uncommon case (where the Kuberentes log buffer exceeded 10MB
+					// and got rotated), this will create a 2 second gap in the log, but
+					// we think this is acceptable to avoid the duplicate case.
+					startReadTime = lastRead.Add(podLogReconnectGap)
 					cancel()
 					return
 				}
