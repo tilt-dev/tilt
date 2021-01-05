@@ -38,13 +38,17 @@ const blink = keyframes`
 let LogEnd = styled.div`
   animation: ${blink} 1s infinite;
   animation-timing-function: ease;
-  padding-topt: ${SizeUnit(0.25)};
+  padding-top: ${SizeUnit(0.25)};
   padding-left: ${SizeUnit(0.625)};
 `
 
 let anser = new Anser()
 
-function newLineEl(line: LogLine, isContextChange: boolean): Element {
+function newLineEl(
+  line: LogLine,
+  isContextChange: boolean,
+  showManifestPrefix: boolean
+): Element {
   let text = line.text
   let level = line.level
   let buildEvent = line.buildEvent
@@ -65,6 +69,19 @@ function newLineEl(line: LogLine, isContextChange: boolean): Element {
   }
   let span = document.createElement("span")
   span.classList.add(...classes)
+
+  if (showManifestPrefix) {
+    let prefix = document.createElement("span")
+    let name = line.manifestName
+    if (!name) {
+      name = "(global)"
+    }
+    prefix.title = name
+    prefix.className = "logLinePrefix"
+    prefix.innerHTML = anser.escapeForHtml(name)
+    span.appendChild(prefix)
+  }
+
   let code = document.createElement("code")
   code.classList.add("LogPaneLine-content")
   code.innerHTML = anser.linkify(
@@ -88,7 +105,7 @@ function newLineEl(line: LogLine, isContextChange: boolean): Element {
 // This means that we can't use other react components (like styled-components)
 // and have to use plain css + HTML.
 class OverviewLogComponent extends Component<OverviewLogComponentProps> {
-  private autoscroll: boolean = false
+  private autoscroll: boolean = true
 
   // The element containing all the log lines.
   private rootRef: React.RefObject<any> = React.createRef()
@@ -96,11 +113,15 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   // The blinking cursor at the end fo the component.
   private cursorRef: React.RefObject<HTMLParagraphElement> = React.createRef()
 
-  // Track the scrollY of the root element to see if the user is scrolling upwards.
-  private scrollY: number = -1
+  // Track the scrollTop of the root element to see if the user is scrolling upwards.
+  private scrollTop: number = -1
 
   // Timer for tracking autoscroll.
   private autoscrollRafID: number | null = null
+
+  private logCheckpoint: number = 0
+
+  private elByStoredLineIndex: { [key: number]: Element } = {}
 
   constructor(props: OverviewLogComponentProps) {
     super(props)
@@ -120,8 +141,7 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    // TODO(nick): Make this more progressive instead of re-rendering every time.
-    this.renderFreshLogs()
+    this.incrementalRender()
   }
 
   componentDidUpdate(prevProps: OverviewLogComponentProps) {
@@ -131,34 +151,48 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
 
     if (prevProps.manifestName !== this.props.manifestName) {
+      this.resetRender()
       this.autoscroll = true
-      this.scrollY = -1
+      this.scrollTop = -1
       if (this.props.pathBuilder.isSnapshot()) {
         this.autoscroll = false
       }
 
-      this.renderFreshLogs()
+      this.incrementalRender()
     } else if (prevProps.logStore !== this.props.logStore) {
-      this.renderFreshLogs()
+      this.resetRender()
+      this.incrementalRender()
     }
   }
 
   componentDidMount() {
+    let rootEl = this.rootRef.current
+    if (!rootEl) {
+      return
+    }
+
     if (this.props.pathBuilder.isSnapshot()) {
       this.autoscroll = false
     }
 
-    window.addEventListener("scroll", this.onScroll, {
+    rootEl.addEventListener("scroll", this.onScroll, {
       passive: true,
     })
-    this.renderFreshLogs()
+    this.resetRender()
+    this.incrementalRender()
 
     this.props.logStore.addUpdateListener(this.onLogUpdate)
   }
 
   componentWillUnmount() {
     this.props.logStore.removeUpdateListener(this.onLogUpdate)
-    window.removeEventListener("scroll", this.onScroll)
+
+    let rootEl = this.rootRef.current
+    if (!rootEl) {
+      return
+    }
+    rootEl.removeEventListener("scroll", this.onScroll)
+
     if (this.autoscrollRafID) {
       cancelAnimationFrame(this.autoscrollRafID)
     }
@@ -170,31 +204,31 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    let scrollY = rootEl.scrollY
-    let oldScrollY = this.scrollY
+    let scrollTop = rootEl.scrollTop
+    let oldScrollTop = this.scrollTop
     let autoscroll = this.autoscroll
 
-    this.scrollY = scrollY
-    if (oldScrollY === -1 || oldScrollY === scrollY) {
+    this.scrollTop = scrollTop
+    if (oldScrollTop === -1 || oldScrollTop === scrollTop) {
       return
     }
 
     // If we're scrolled horizontally, cancel the autoscroll.
-    if (rootEl.scrollX > 0) {
+    if (rootEl.scrollLeft > 0) {
       this.autoscroll = false
       return
     }
 
     // If we're autoscrolling, and the user scrolled up,
     // cancel the autoscroll.
-    if (autoscroll && scrollY < oldScrollY) {
+    if (autoscroll && scrollTop < oldScrollTop) {
       this.autoscroll = false
       return
     }
 
     // If we're not autoscrolling, and the user scrolled down,
     // we may have to re-engage the autoscroll.
-    if (!autoscroll && scrollY > oldScrollY) {
+    if (!autoscroll && scrollTop > oldScrollTop) {
       this.maybeEngageAutoscroll()
     }
   }
@@ -218,51 +252,75 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
   // Compute whether we should auto-scroll from the state of the DOM.
   // This forces a layout, so should be used sparingly.
-  private computeAutoScroll() {
+  private computeAutoScroll(): boolean {
     let rootEl = this.rootRef.current
     if (!rootEl) {
-      return
+      return true
     }
 
     // Always auto-scroll when we're recovering from a loading screen.
-    if (!this.cursorRef.current) {
+    let cursorEl = this.cursorRef.current
+    if (!cursorEl) {
       return true
     }
 
     // Never auto-scroll if we're horizontally scrolled.
-    if (rootEl.scrollX) {
+    if (rootEl.scrollLeft) {
       return false
     }
 
     let lastElInView =
-      this.cursorRef.current.getBoundingClientRect().bottom < window.innerHeight
+      cursorEl.getBoundingClientRect().bottom <
+      rootEl.getBoundingClientRect().bottom
     return lastElInView
   }
 
-  // Re-render all the logs from scratch.
-  renderFreshLogs() {
+  resetRender() {
+    let root = this.rootRef.current
+    let cursor = this.cursorRef.current
+    if (root) {
+      while (root.firstChild != cursor) {
+        root.removeChild(root.firstChild)
+      }
+    }
+
+    this.elByStoredLineIndex = {}
+    this.logCheckpoint = 0
+  }
+
+  // Render new logs that have come in since the current checkpoint.
+  incrementalRender() {
     let root = this.rootRef.current
     let cursor = this.cursorRef.current
     let mn = this.props.manifestName
     let logStore = this.props.logStore
 
-    let lines = mn ? logStore.manifestLog(mn) : logStore.allLog()
-
-    while (root.firstChild != cursor) {
-      root.removeChild(root.firstChild)
-    }
+    let showManifestName = !mn
+    let patch = mn
+      ? logStore.manifestLogPatchSet(mn, this.logCheckpoint)
+      : logStore.allLogPatchSet(this.logCheckpoint)
+    let lines = patch.lines
+    this.logCheckpoint = patch.checkpoint
 
     let lastManifestName = ""
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i]
       let isContextChange = i > 0 && line.manifestName !== lastManifestName
-      let lineEl = newLineEl(line, false)
-      root.insertBefore(lineEl, cursor)
+      let lineEl = newLineEl(line, isContextChange, showManifestName)
+      let existingLineEl = this.elByStoredLineIndex[line.storedLineIndex]
+      if (existingLineEl) {
+        root.replaceChild(lineEl, existingLineEl)
+      } else {
+        root.insertBefore(lineEl, cursor)
+      }
+      this.elByStoredLineIndex[line.storedLineIndex] = lineEl
 
       lastManifestName = line.manifestName
     }
 
-    this.scrollCursorIntoView()
+    if (this.autoscroll) {
+      this.scrollCursorIntoView()
+    }
   }
 
   render() {

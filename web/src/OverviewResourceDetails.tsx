@@ -35,7 +35,7 @@ export default function OverviewResourceDetails(
         <div>links</div>
         <div>copy pod</div>
       </ActionBar>
-      <OverviewLogPane manifestName={name} />
+      <OverviewLogPane manifestName={props.name} />
     </OverviewResourceDetailsRoot>
   )
 }
