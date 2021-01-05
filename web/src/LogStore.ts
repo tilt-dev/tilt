@@ -6,7 +6,7 @@
 
 import React, { useContext } from "react"
 import { isBuildSpanId } from "./logs"
-import { LogLine } from "./types"
+import { LogLine, LogPatchSet } from "./types"
 
 // Firestore doesn't properly handle maps with keys equal to the empty string, so
 // we normalize all empty span ids to '_' client-side.
@@ -67,8 +67,8 @@ class LogStore {
 
   spans: { [key: string]: LogSpan }
 
-  // These are held in-memory so we can send them on snapshot, but
-  // aren't used in rendering.
+  // These are held in-memory so we can send them on snapshot, and are
+  // also used to help with incremental log rendering.
   segments: Proto.webviewLogSegment[]
 
   // A map of segment indices to the line indices that they rendered.
@@ -259,7 +259,11 @@ class LogStore {
   }
 
   allLog(): LogLine[] {
-    return this.logHelper(this.spans)
+    return this.logHelper(this.spans, 0).lines
+  }
+
+  allLogPatchSet(checkpoint: number): LogPatchSet {
+    return this.logHelper(this.spans, checkpoint)
   }
 
   spanLog(spanIds: string[]): LogLine[] {
@@ -272,7 +276,7 @@ class LogStore {
       }
     })
 
-    return this.logHelper(spans)
+    return this.logHelper(spans, 0).lines
   }
 
   spansForManifest(mn: string): { [key: string]: LogSpan } {
@@ -367,15 +371,28 @@ class LogStore {
       }
     }
 
-    return this.logHelper(spans)
+    return this.logHelper(spans, 0).lines
   }
 
   manifestLog(mn: string): LogLine[] {
     let spans = this.spansForManifest(mn)
-    return this.logHelper(spans)
+    return this.logHelper(spans, 0).lines
   }
 
-  logHelper(spansToLog: { [key: string]: LogSpan }): LogLine[] {
+  manifestLogPatchSet(mn: string, checkpoint: number): LogPatchSet {
+    let spans = this.spansForManifest(mn)
+    return this.logHelper(spans, checkpoint)
+  }
+
+  // Return all the logs for the given options.
+  //
+  // spansToLog: Filtering by an arbitrary set of spans.
+  // checkpoint: Continuation from an earlier checkpoint, only returning lines updated
+  //   since that checkpoint. Pass 0 to return all logs.
+  logHelper(
+    spansToLog: { [key: string]: LogSpan },
+    checkpoint: number
+  ): LogPatchSet {
     let result: LogLine[] = []
 
     // We want to print the log line-by-line, but we don't actually store the logs
@@ -415,11 +432,35 @@ class LogStore {
       }
 
       if (earliestStartIndex === -1) {
-        return []
+        return { lines: [], checkpoint: checkpoint }
       }
 
       startIndex = earliestStartIndex
       lastIndex = latestEndIndex
+    }
+
+    // Only look at segments that have come in since the last checkpoint.
+    let incremental = checkpoint > 0
+    let linesToLog: { [key: number]: boolean } = {}
+    if (incremental) {
+      let earliestStartIndex = -1
+      for (let i = checkpoint; i < this.segments.length; i++) {
+        let segment = this.segments[i]
+        let span = spansToLog[segment.spanId || defaultSpanId]
+        if (!span) {
+          continue
+        }
+
+        let lineIndex = this.segmentToLine[i]
+        if (earliestStartIndex === -1 || lineIndex < earliestStartIndex) {
+          earliestStartIndex = lineIndex
+        }
+        linesToLog[lineIndex] = true
+      }
+
+      if (earliestStartIndex !== -1 && earliestStartIndex > startIndex) {
+        startIndex = earliestStartIndex
+      }
     }
 
     for (let i = startIndex; i <= lastIndex; i++) {
@@ -427,6 +468,10 @@ class LogStore {
       let spanId = storedLine.spanId
       let span = spansToLog[spanId]
       if (!span) {
+        continue
+      }
+
+      if (incremental && !linesToLog[i]) {
         continue
       }
 
@@ -443,6 +488,7 @@ class LogStore {
           manifestName: span.manifestName,
           buildEvent: storedLine.fields?.buildEvent,
           spanId: spanId,
+          storedLineIndex: i,
         }
 
         this.lineCache[i] = line
@@ -451,7 +497,10 @@ class LogStore {
       result.push(line)
     }
 
-    return result
+    return {
+      lines: result,
+      checkpoint: this.segments.length,
+    }
   }
 }
 

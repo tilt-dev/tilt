@@ -13,6 +13,7 @@ export function logLinesFromString(
       manifestName: manifestName ?? "",
       level: "INFO",
       spanId: "",
+      storedLineIndex: 0,
     }
   })
 }

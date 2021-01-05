@@ -19,7 +19,7 @@ function logPane(lines: LogLine[]) {
 
 function line(manifestName: string, text: string, level?: string): LogLine {
   level = level || "INFO"
-  return { manifestName, text, level, spanId: manifestName }
+  return { manifestName, text, level, spanId: manifestName, storedLineIndex: 0 }
 }
 
 function threeResources() {

@@ -298,4 +298,93 @@ describe("LogStore", () => {
       "build 1\npod 1"
     )
   })
+
+  it("handles incremental logs", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: {
+        "": {},
+        "build:1": { manifestName: "fe" },
+      },
+      segments: [
+        newManifestSegment("build:1", "build 1\n"),
+        newManifestSegment("build:1", "build 2\n"),
+        newManifestSegment("build:1", "build 3\n"),
+        newGlobalSegment("global line 1\n"),
+      ],
+      fromCheckpoint: 0,
+      toCheckpoint: 4,
+    })
+
+    let patch = logs.manifestLogPatchSet("fe", 0)
+    expect(logLinesToString(patch.lines, false)).toEqual(
+      "build 1\nbuild 2\nbuild 3"
+    )
+
+    logs.append({
+      spans: {
+        "": {},
+        "build:1": { manifestName: "fe" },
+      },
+      segments: [
+        newGlobalSegment("global line 2\n"),
+        newManifestSegment("build:1", "build 4\n"),
+        newManifestSegment("build:1", "build 5\n"),
+        newManifestSegment("build:1", "build 6\n"),
+      ],
+      fromCheckpoint: 4,
+      toCheckpoint: 8,
+    })
+
+    let patch3 = logs.manifestLogPatchSet("fe", patch.checkpoint)
+    expect(logLinesToString(patch3.lines, false)).toEqual(
+      "build 4\nbuild 5\nbuild 6"
+    )
+  })
+
+  it("handles incremental logs continuation", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: {
+        "": {},
+        "build:1": { manifestName: "fe" },
+      },
+      segments: [
+        newManifestSegment("build:1", "build 1\n"),
+        newManifestSegment("build:1", "build 2\n"),
+        newManifestSegment("build:1", "build ..."),
+        newGlobalSegment("global line 1\n"),
+      ],
+      fromCheckpoint: 0,
+      toCheckpoint: 4,
+    })
+
+    let patch = logs.manifestLogPatchSet("fe", 0)
+    expect(logLinesToString(patch.lines, false)).toEqual(
+      "build 1\nbuild 2\nbuild ..."
+    )
+
+    let patch2 = logs.manifestLogPatchSet("fe", patch.checkpoint)
+    expect(patch2.lines).toEqual([])
+
+    logs.append({
+      spans: {
+        "": {},
+        "build:1": { manifestName: "fe" },
+      },
+      segments: [
+        newGlobalSegment("global line 2\n"),
+        newManifestSegment("build:1", "... 3\n"),
+        newManifestSegment("build:1", "build 4\n"),
+        newManifestSegment("build:1", "build 5\n"),
+      ],
+      fromCheckpoint: 4,
+      toCheckpoint: 8,
+    })
+
+    let patch3 = logs.manifestLogPatchSet("fe", patch.checkpoint)
+    expect(logLinesToString(patch3.lines, false)).toEqual(
+      "build ...... 3\nbuild 4\nbuild 5"
+    )
+  })
 })
