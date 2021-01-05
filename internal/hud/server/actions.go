@@ -16,3 +16,10 @@ type SetTiltfileArgsAction struct {
 }
 
 func (SetTiltfileArgsAction) Action() {}
+
+type ManifestOverrideAction struct {
+	ManifestNames []model.ManifestName
+	Overrides     model.Overrides
+}
+
+func (ManifestOverrideAction) Action() {}

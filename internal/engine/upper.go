@@ -181,6 +181,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleMetricsModeAction(state, action)
 	case metrics.MetricsDashboardAction:
 		handleMetricsDashboardAction(state, action)
+	case server.ManifestOverrideAction:
+		handleManifestOverrideAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -880,4 +882,22 @@ func handleMetricsModeAction(state *store.EngineState, action metrics.MetricsMod
 
 func handleMetricsDashboardAction(state *store.EngineState, action metrics.MetricsDashboardAction) {
 	state.MetricsServing.GrafanaHost = action.GrafanaHost
+}
+
+func handleManifestOverrideAction(state *store.EngineState, action server.ManifestOverrideAction) {
+	// TODO(maia): in this implementation, overrides do NOT persist across Tiltfile loads
+	//   (i.e. the next Tiltfile load will wipe out the override we just put in place).
+	//   If we want to keep this functionality, the next step is to store the set of overrides
+	//   on the engine state, and whenever we load the manifest from the Tiltfile, apply
+	//   any necessary overrides.
+	for _, mName := range action.ManifestNames {
+		mt, ok := state.ManifestTargets[mName]
+		if !ok {
+			panic("well fuck, couldn't find manifest: " + mName)
+		}
+		if action.Overrides.TriggerMode != nil {
+			mt.Manifest.TriggerMode = *action.Overrides.TriggerMode
+		}
+	}
+
 }

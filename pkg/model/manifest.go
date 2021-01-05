@@ -21,6 +21,14 @@ import (
 type ManifestName string
 type ManifestNameSet map[ManifestName]bool
 
+func ManifestNames(names []string) []ManifestName {
+	mNames := make([]ManifestName, len(names))
+	for i, name := range names {
+		mNames[i] = ManifestName(name)
+	}
+	return mNames
+}
+
 const TiltfileManifestName = ManifestName("(Tiltfile)")
 
 func (m ManifestName) String() string         { return string(m) }
@@ -39,7 +47,7 @@ type Manifest struct {
 
 	// How updates are triggered:
 	// - automatically, when we detect a change
-	// - manually, when the user tells us to
+	// - manually, only when the user tells us to
 	TriggerMode TriggerMode
 
 	// The resource in this manifest will not be built until all of its dependencies have been
