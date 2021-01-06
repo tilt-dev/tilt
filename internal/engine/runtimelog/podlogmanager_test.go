@@ -301,7 +301,7 @@ func TestLogReconnection(t *testing.T) {
 	f.AssertOutputContains("goodbye world!")
 
 	// Make sure the start time was adjusted for when the last read happened.
-	assert.Equal(t, lastRead, f.kClient.LastPodLogStartTime)
+	assert.Equal(t, lastRead.Add(podLogReconnectGap), f.kClient.LastPodLogStartTime)
 }
 
 func TestInitContainerLogs(t *testing.T) {
