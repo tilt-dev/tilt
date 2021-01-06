@@ -7,7 +7,7 @@ import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { SidebarItemBox } from "./SidebarItemView"
-import { SidebarPinButton } from "./SidebarPin"
+import { SidebarPinButton, SidebarPinContextProvider } from "./SidebarPin"
 import SidebarResources, { SidebarListSection } from "./SidebarResources"
 import { twoResourceView } from "./testdata"
 import { ResourceView } from "./types"
@@ -49,12 +49,14 @@ describe("SidebarResources", () => {
     const root = mount(
       <MemoryRouter>
         <LocalStorageContextProvider tiltfileKey={"test"}>
-          <SidebarResources
-            items={items}
-            selected={""}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
+          <SidebarPinContextProvider>
+            <SidebarResources
+              items={items}
+              selected={""}
+              resourceView={ResourceView.Log}
+              pathBuilder={pathBuilder}
+            />
+          </SidebarPinContextProvider>
         </LocalStorageContextProvider>
       </MemoryRouter>
     )
@@ -83,12 +85,14 @@ describe("SidebarResources", () => {
     const root = mount(
       <MemoryRouter>
         <LocalStorageContextProvider tiltfileKey={"test"}>
-          <SidebarResources
-            items={items}
-            selected={""}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
+          <SidebarPinContextProvider>
+            <SidebarResources
+              items={items}
+              selected={""}
+              resourceView={ResourceView.Log}
+              pathBuilder={pathBuilder}
+            />
+          </SidebarPinContextProvider>
         </LocalStorageContextProvider>
       </MemoryRouter>
     )
@@ -106,12 +110,14 @@ describe("SidebarResources", () => {
     const root = mount(
       <MemoryRouter>
         <LocalStorageContextProvider tiltfileKey={"test"}>
-          <SidebarResources
-            items={items}
-            selected={""}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
+          <SidebarPinContextProvider>
+            <SidebarResources
+              items={items}
+              selected={""}
+              resourceView={ResourceView.Log}
+              pathBuilder={pathBuilder}
+            />
+          </SidebarPinContextProvider>
         </LocalStorageContextProvider>
       </MemoryRouter>
     )

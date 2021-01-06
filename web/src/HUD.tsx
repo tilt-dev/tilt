@@ -33,6 +33,7 @@ import ShareSnapshotModal from "./ShareSnapshotModal"
 import Sidebar from "./Sidebar"
 import SidebarAccount from "./SidebarAccount"
 import SidebarItem from "./SidebarItem"
+import { SidebarPinContextProvider } from "./SidebarPin"
 import SidebarResources from "./SidebarResources"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
@@ -311,6 +312,24 @@ class HUD extends Component<HudProps, HudState> {
     if (matchOverview) {
       return (
         <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
+          <SidebarPinContextProvider>
+            <div className={hudClasses.join(" ")}>
+              <AnalyticsNudge needsNudge={needsNudge} />
+              <SocketBar state={this.state.socketState} />
+              {fatalErrorModal}
+              {errorModal}
+              {shareSnapshotModal}
+
+              {this.renderOverviewSwitch()}
+            </div>
+          </SidebarPinContextProvider>
+        </LocalStorageContextProvider>
+      )
+    }
+
+    return (
+      <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
+        <SidebarPinContextProvider>
           <div className={hudClasses.join(" ")}>
             <AnalyticsNudge needsNudge={needsNudge} />
             <SocketBar state={this.state.socketState} />
@@ -318,32 +337,18 @@ class HUD extends Component<HudProps, HudState> {
             {errorModal}
             {shareSnapshotModal}
 
-            {this.renderOverviewSwitch()}
+            {this.renderSidebarSwitch()}
+            {statusbar}
+
+            <HUDLayout
+              header={this.renderHUDHeader()}
+              isSidebarClosed={!!this.state.isSidebarClosed}
+              isTwoLevelHeader={isTwoLevelHeader}
+            >
+              {this.renderMainPaneSwitch()}
+            </HUDLayout>
           </div>
-        </LocalStorageContextProvider>
-      )
-    }
-
-    return (
-      <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
-        <div className={hudClasses.join(" ")}>
-          <AnalyticsNudge needsNudge={needsNudge} />
-          <SocketBar state={this.state.socketState} />
-          {fatalErrorModal}
-          {errorModal}
-          {shareSnapshotModal}
-
-          {this.renderSidebarSwitch()}
-          {statusbar}
-
-          <HUDLayout
-            header={this.renderHUDHeader()}
-            isSidebarClosed={!!this.state.isSidebarClosed}
-            isTwoLevelHeader={isTwoLevelHeader}
-          >
-            {this.renderMainPaneSwitch()}
-          </HUDLayout>
-        </div>
+        </SidebarPinContextProvider>
       </LocalStorageContextProvider>
     )
   }

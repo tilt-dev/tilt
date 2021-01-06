@@ -1,4 +1,4 @@
-import React, { PureComponent, useContext } from "react"
+import React, { PureComponent } from "react"
 import styled from "styled-components"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
@@ -7,7 +7,7 @@ import SidebarItemView, {
   triggerUpdate,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { sidebarPinContext, SidebarPinContextProvider } from "./SidebarPin"
+import { useSidebarPin } from "./SidebarPin"
 import { Color, FontSize, SizeUnit, Width } from "./style-helpers"
 import { ResourceView } from "./types"
 
@@ -53,21 +53,10 @@ type SidebarProps = {
   selected: string
   resourceView: ResourceView
   pathBuilder: PathBuilder
-  initialPinnedItemsForTesting?: string[]
-}
-
-function SidebarResources(props: SidebarProps) {
-  return (
-    <SidebarPinContextProvider
-      initialValueForTesting={props.initialPinnedItemsForTesting}
-    >
-      <PureSidebarResources {...props} />
-    </SidebarPinContextProvider>
-  )
 }
 
 function PinnedItems(props: SidebarProps) {
-  let ctx = useContext(sidebarPinContext)
+  let ctx = useSidebarPin()
   let pinnedItems = ctx.pinnedResources?.flatMap((r) =>
     props.items
       .filter((i) => i.name === r)
@@ -91,7 +80,7 @@ function PinnedItems(props: SidebarProps) {
 
 // note: this is a PureComponent but we're not currently getting much value out of its pureness
 // https://app.clubhouse.io/windmill/story/9949/web-purecomponent-optimizations-seem-to-not-be-working
-class PureSidebarResources extends PureComponent<SidebarProps> {
+export class SidebarResources extends PureComponent<SidebarProps> {
   constructor(props: SidebarProps) {
     super(props)
     this.triggerSelected = this.triggerSelected.bind(this)
