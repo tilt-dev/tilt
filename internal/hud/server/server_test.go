@@ -270,7 +270,7 @@ func TestHandleOverrideReturnsErrorForBadManifest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleOverride)
+	handler := http.HandlerFunc(f.serv.HandleOverrideTriggerMode)
 
 	handler.ServeHTTP(rr, req)
 
@@ -286,14 +286,14 @@ func TestHandleOverrideReturnsErrorForBadManifest(t *testing.T) {
 func TestHandleOverrideNonPost(t *testing.T) {
 	f := newTestFixture(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/api/override", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/override/trigger_mode", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleOverride)
+	handler := http.HandlerFunc(f.serv.HandleOverrideTriggerMode)
 
 	handler.ServeHTTP(rr, req)
 
@@ -308,14 +308,14 @@ func TestHandleOverrideMalformedPayload(t *testing.T) {
 	f := newTestFixture(t)
 
 	var jsonStr = []byte(`{"manifest_names":`)
-	req, err := http.NewRequest(http.MethodPost, "/api/override", bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest(http.MethodPost, "/api/override/trigger_mode", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleOverride)
+	handler := http.HandlerFunc(f.serv.HandleOverrideTriggerMode)
 
 	handler.ServeHTTP(rr, req)
 
@@ -339,7 +339,7 @@ func TestHandleOverrideDispatchesEvent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleOverride)
+	handler := http.HandlerFunc(f.serv.HandleOverrideTriggerMode)
 
 	handler.ServeHTTP(rr, req)
 
@@ -348,15 +348,17 @@ func TestHandleOverrideDispatchesEvent(t *testing.T) {
 			status, http.StatusOK)
 	}
 
-	a := store.WaitForAction(t, reflect.TypeOf(server.ManifestOverrideAction{}), f.getActions)
-	action, ok := a.(server.ManifestOverrideAction)
+	a := store.WaitForAction(t, reflect.TypeOf(server.OverrideTriggerModeAction{}), f.getActions)
+	action, ok := a.(server.OverrideTriggerModeAction)
 	if !ok {
-		t.Fatalf("Action was not of type 'ManifestOverrideAction': %+v", action)
+		t.Fatalf("Action was not of type 'OverrideTriggerModeAction': %+v", action)
 	}
 
-	require.Equal(t, []model.ManifestName{"foo", "bar"}, action.ManifestNames)
-	require.NotNil(t, action.Overrides.TriggerMode)
-	require.Equal(t, model.TriggerModeManualAfterInitial, *action.Overrides.TriggerMode)
+	expected := server.OverrideTriggerModeAction{
+		ManifestNames: []model.ManifestName{"foo", "bar"},
+		TriggerMode:   model.TriggerModeManualAfterInitial,
+	}
+	assert.Equal(t, expected, action)
 }
 
 func TestHandleNewSnapshot(t *testing.T) {

@@ -49,10 +49,9 @@ type triggerPayload struct {
 	BuildReason   model.BuildReason `json:"build_reason"`
 }
 
-type overridePayload struct {
+type overrideTriggerModePayload struct {
 	ManifestNames []string `json:"manifest_names"`
-	TriggerMode   *int     `json:"trigger_mode"`
-	// TODO: other overrideable fields (e.g. tags)
+	TriggerMode   int      `json:"trigger_mode"`
 }
 
 type actionPayload struct {
@@ -95,7 +94,7 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/metrics_opt", s.HandleMetricsOpt)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
-	r.HandleFunc("/api/override", s.HandleOverride)
+	r.HandleFunc("/api/override/trigger_mode", s.HandleOverrideTriggerMode)
 	r.HandleFunc("/api/action", s.DispatchAction).Methods("POST")
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
 	// this endpoint is only used for testing snapshots in development
@@ -327,13 +326,13 @@ func SendToTriggerQueue(st store.RStore, name string, buildReason model.BuildRea
 	return nil
 }
 
-func (s *HeadsUpServer) HandleOverride(w http.ResponseWriter, req *http.Request) {
+func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
 		return
 	}
 
-	var payload overridePayload
+	var payload overrideTriggerModePayload
 
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&payload)
@@ -347,16 +346,9 @@ func (s *HeadsUpServer) HandleOverride(w http.ResponseWriter, req *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	var tm *model.TriggerMode
-	if payload.TriggerMode != nil {
-		mode := model.TriggerMode(*payload.TriggerMode)
-		tm = &mode
-	}
-	s.store.Dispatch(ManifestOverrideAction{
+	s.store.Dispatch(OverrideTriggerModeAction{
 		ManifestNames: model.ManifestNames(payload.ManifestNames),
-		Overrides: model.Overrides{
-			TriggerMode: tm,
-		},
+		TriggerMode:   model.TriggerMode(payload.TriggerMode),
 	})
 }
 

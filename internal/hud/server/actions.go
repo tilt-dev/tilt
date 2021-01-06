@@ -17,9 +17,10 @@ type SetTiltfileArgsAction struct {
 
 func (SetTiltfileArgsAction) Action() {}
 
-type ManifestOverrideAction struct {
+// TODO: a way to clear an override
+type OverrideTriggerModeAction struct {
 	ManifestNames []model.ManifestName
-	Overrides     model.Overrides
+	TriggerMode   model.TriggerMode
 }
 
-func (ManifestOverrideAction) Action() {}
+func (OverrideTriggerModeAction) Action() {}
