@@ -12,6 +12,8 @@ type OverviewLogComponentProps = {
   manifestName: string
   pathBuilder: PathBuilder
   logStore: LogStore
+  hideBuildLog?: boolean
+  hideRunLog?: boolean
 }
 
 let LogPaneRoot = styled.section`
@@ -153,7 +155,11 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       this.props.logStore.addUpdateListener(this.onLogUpdate)
     }
 
-    if (prevProps.manifestName !== this.props.manifestName) {
+    if (
+      prevProps.manifestName !== this.props.manifestName ||
+      prevProps.hideBuildLog !== this.props.hideBuildLog ||
+      prevProps.hideRunLog !== this.props.hideRunLog
+    ) {
       this.resetRender()
       this.autoscroll = true
       this.scrollTop = -1
@@ -302,7 +308,16 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     let patch = mn
       ? logStore.manifestLogPatchSet(mn, this.logCheckpoint)
       : logStore.allLogPatchSet(this.logCheckpoint)
-    let lines = patch.lines
+
+    let lines = patch.lines.filter((line) => {
+      if (this.props.hideBuildLog && line.spanId.indexOf("build:") === 0) {
+        return false
+      }
+      if (this.props.hideRunLog && line.spanId.indexOf("build:") !== 0) {
+        return false
+      }
+      return true
+    })
     this.logCheckpoint = patch.checkpoint
 
     let lastManifestName = ""
@@ -339,9 +354,11 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
 type OverviewLogPaneProps = {
   manifestName: string
+  hideBuildLog?: boolean
+  hideRunLog?: boolean
 }
 
-export default function OverviewLogPane(props: { manifestName: string }) {
+export default function OverviewLogPane(props: OverviewLogPaneProps) {
   let pathBuilder = usePathBuilder()
   let logStore = useLogStore()
   return (
@@ -349,6 +366,8 @@ export default function OverviewLogPane(props: { manifestName: string }) {
       manifestName={props.manifestName}
       pathBuilder={pathBuilder}
       logStore={logStore}
+      hideBuildLog={props.hideBuildLog}
+      hideRunLog={props.hideRunLog}
     />
   )
 }

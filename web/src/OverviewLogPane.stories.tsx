@@ -51,12 +51,6 @@ export default {
       </MemoryRouter>
     ),
   ],
-  argTypes: {
-    layer1: { control: { type: "number", min: 0, max: 100 } },
-    layer2: { control: { type: "number", min: 0, max: 100 } },
-    layer3: { control: { type: "number", min: 0, max: 100 } },
-    layer4: { control: { type: "number", min: 0, max: 100 } },
-  },
 }
 
 export const ThreeLines = () => {
@@ -167,6 +161,12 @@ ProgressLines.args = {
   layer3: 30,
   layer4: 20,
 }
+ProgressLines.argTypes = {
+  layer1: { control: { type: "number", min: 0, max: 100 } },
+  layer2: { control: { type: "number", min: 0, max: 100 } },
+  layer3: { control: { type: "number", min: 0, max: 100 } },
+  layer4: { control: { type: "number", min: 0, max: 100 } },
+}
 
 class ForeverLogComponent extends Component {
   logStore = new LogStore()
@@ -201,4 +201,50 @@ class ForeverLogComponent extends Component {
 
 export const ForeverLog = () => {
   return <ForeverLogComponent />
+}
+
+export const BuildLogAndRunLog = (args: any) => {
+  let logStore = new LogStore()
+  let segments = []
+  for (let i = 0; i < 10; i++) {
+    segments.push({
+      spanId: "build:1",
+      text: `Vigoda build line ${i}\n`,
+      time: new Date().toString(),
+    })
+  }
+  for (let i = 0; i < 10; i++) {
+    segments.push({
+      spanId: "pod:1",
+      text: `Vigoda pod line ${i}\n`,
+      time: new Date().toString(),
+    })
+  }
+  logStore.append({
+    spans: {
+      "build:1": { manifestName: "vigoda_1" },
+      "pod:1": { manifestName: "vigoda_1" },
+    },
+    segments: segments,
+  })
+
+  return (
+    <LogStoreProvider value={logStore}>
+      <OverviewLogPane
+        manifestName={"vigoda_1"}
+        hideBuildLog={args.hideBuildLog}
+        hideRunLog={args.hideRunLog}
+      />
+    </LogStoreProvider>
+  )
+}
+
+BuildLogAndRunLog.args = {
+  hideBuildLog: false,
+  hideRunLog: false,
+}
+
+BuildLogAndRunLog.argTypes = {
+  hideBuildLog: { control: { type: "boolean" } },
+  hideRunLog: { control: { type: "boolean" } },
 }
