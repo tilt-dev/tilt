@@ -1,7 +1,7 @@
 import { combinedStatus, warnings } from "./status"
 import { oneResource } from "./testdata"
 import { zeroTime } from "./time"
-import { ResourceStatus, RuntimeStatus } from "./types"
+import { ResourceStatus, RuntimeStatus, UpdateStatus } from "./types"
 
 function emptyResource() {
   let res = oneResource()
@@ -21,7 +21,7 @@ describe("combinedStatus", () => {
   it("building when current build", () => {
     const ts = Date.now().toLocaleString()
     let res = emptyResource()
-    res.currentBuild = { startTime: ts }
+    res.updateStatus = UpdateStatus.InProgress
     res.runtimeStatus = RuntimeStatus.Ok
     expect(combinedStatus(res)).toBe(ResourceStatus.Building)
   })
@@ -29,7 +29,7 @@ describe("combinedStatus", () => {
   it("healthy when runtime ok", () => {
     const ts = Date.now().toLocaleString()
     let res = emptyResource()
-    res.buildHistory = [{ startTime: ts }]
+    res.updateStatus = UpdateStatus.Ok
     res.runtimeStatus = RuntimeStatus.Ok
     expect(combinedStatus(res)).toBe(ResourceStatus.Healthy)
   })
@@ -37,7 +37,7 @@ describe("combinedStatus", () => {
   it("unhealthy when runtime error", () => {
     const ts = Date.now().toLocaleString()
     let res = emptyResource()
-    res.buildHistory = [{ startTime: ts }]
+    res.updateStatus = UpdateStatus.Ok
     res.runtimeStatus = RuntimeStatus.Error
     expect(combinedStatus(res)).toBe(ResourceStatus.Unhealthy)
   })
@@ -45,7 +45,7 @@ describe("combinedStatus", () => {
   it("unhealthy when last build error", () => {
     const ts = Date.now().toLocaleString()
     let res = emptyResource()
-    res.buildHistory = [{ startTime: ts, error: "error" }]
+    res.updateStatus = UpdateStatus.Error
     res.runtimeStatus = RuntimeStatus.Ok
     expect(combinedStatus(res)).toBe(ResourceStatus.Unhealthy)
   })
@@ -53,7 +53,7 @@ describe("combinedStatus", () => {
   it("building when runtime status error, but also building", () => {
     const ts = Date.now().toLocaleString()
     let res = emptyResource()
-    res.currentBuild = { startTime: ts }
+    res.updateStatus = UpdateStatus.InProgress
     res.runtimeStatus = RuntimeStatus.Error
     expect(combinedStatus(res)).toBe(ResourceStatus.Building)
   })
@@ -69,7 +69,7 @@ describe("combinedStatus", () => {
   it("warning when container restarts", () => {
     const ts = Date.now().toLocaleString()
     let res = emptyResource()
-    res.buildHistory = [{ startTime: ts }]
+    res.updateStatus = UpdateStatus.Ok
     res.runtimeStatus = RuntimeStatus.Ok
     if (!res.k8sResourceInfo) throw new Error("missing k8s info")
     res.k8sResourceInfo.podRestarts = 1
@@ -79,6 +79,7 @@ describe("combinedStatus", () => {
 
   it("none when n/a runtime status and no builds", () => {
     let res = emptyResource()
+    res.updateStatus = UpdateStatus.None
     res.runtimeStatus = RuntimeStatus.NotApplicable
     expect(combinedStatus(res)).toBe(ResourceStatus.None)
   })
@@ -87,7 +88,7 @@ describe("combinedStatus", () => {
     const ts = Date.now().toLocaleString()
     let res = emptyResource()
     res.runtimeStatus = RuntimeStatus.NotApplicable
-    res.buildHistory = [{ startTime: ts }]
+    res.updateStatus = UpdateStatus.Ok
     expect(combinedStatus(res)).toBe(ResourceStatus.Healthy)
   })
 
@@ -95,7 +96,7 @@ describe("combinedStatus", () => {
     const ts = Date.now().toLocaleString()
     let res = emptyResource()
     res.runtimeStatus = RuntimeStatus.NotApplicable
-    res.buildHistory = [{ startTime: ts, error: "error" }]
+    res.updateStatus = UpdateStatus.Error
     expect(combinedStatus(res)).toBe(ResourceStatus.Unhealthy)
   })
 })

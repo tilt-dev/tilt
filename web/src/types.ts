@@ -21,11 +21,23 @@ export enum TriggerMode {
 }
 
 // what is the status of the resource in the cluster
+// Copied from pkg/model
 export enum RuntimeStatus {
   Ok = "ok",
   Pending = "pending",
   Error = "error",
   NotApplicable = "not_applicable",
+}
+
+// what is the status of the update
+// Copied from pkg/model
+export enum UpdateStatus {
+  Ok = "ok",
+  Pending = "pending",
+  InProgress = "in_progress",
+  Error = "error",
+  NotApplicable = "not_applicable",
+  None = "none",
 }
 
 // What is the status of the resource with respect to Tilt

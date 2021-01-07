@@ -28,6 +28,15 @@ func (t ManifestTarget) Status() model.TargetStatus {
 	return t.State
 }
 
+func (mt *ManifestTarget) UpdateStatus() model.UpdateStatus {
+	m := mt.Manifest
+	if m.IsLocal() && m.LocalTarget().UpdateCmd.Empty() {
+		return model.UpdateStatusNotApplicable
+	}
+
+	return mt.State.UpdateStatus(m.TriggerMode)
+}
+
 var _ model.Target = &ManifestTarget{}
 
 func (t *ManifestTarget) Facets(secrets model.SecretSet) []model.Facet {

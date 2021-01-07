@@ -404,6 +404,9 @@
         "runtime_status": {
           "type": "string"
         },
+        "update_status": {
+          "type": "string"
+        },
         "is_tiltfile": {
           "type": "boolean",
           "format": "boolean"

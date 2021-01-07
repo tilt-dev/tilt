@@ -33,6 +33,7 @@ func TestWriteSnapshotTo(t *testing.T) {
           "finishTime": "0001-01-01T00:00:00Z"
         },
         "runtimeStatus": "not_applicable",
+        "updateStatus": "pending",
         "isTiltfile": true
       }
     ],

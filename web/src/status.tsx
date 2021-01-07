@@ -1,33 +1,25 @@
-import { isZeroTime } from "./time"
-import { ResourceStatus, RuntimeStatus, TriggerMode } from "./types"
+import { ResourceStatus, RuntimeStatus, UpdateStatus } from "./types"
 
 type Resource = Proto.webviewResource
 
 function buildStatus(res: Resource): ResourceStatus {
-  let currentBuild = res.currentBuild
-  let hasCurrentBuild = Boolean(
-    currentBuild && !isZeroTime(currentBuild.startTime)
-  )
-  let hasPendingBuild =
-    !isZeroTime(res.pendingBuildSince) &&
-    res.triggerMode === TriggerMode.TriggerModeAuto
-  let buildHistory = res.buildHistory || []
-  let lastBuild = buildHistory[0]
-  let lastBuildError = lastBuild ? lastBuild.error : ""
-  let hasWarnings = buildWarnings(res).length > 0
-
-  if (hasCurrentBuild) {
+  if (res.updateStatus == UpdateStatus.InProgress) {
     return ResourceStatus.Building
-  } else if (hasPendingBuild) {
+  } else if (res.updateStatus == UpdateStatus.Pending) {
     return ResourceStatus.Pending
-  } else if (lastBuildError) {
-    return ResourceStatus.Unhealthy
-  } else if (hasWarnings) {
-    return ResourceStatus.Warning
-  } else if (!lastBuild) {
+  } else if (
+    res.updateStatus == UpdateStatus.NotApplicable ||
+    res.updateStatus == UpdateStatus.None
+  ) {
     return ResourceStatus.None
+  } else if (res.updateStatus == UpdateStatus.Error) {
+    return ResourceStatus.Unhealthy
+  } else if (buildWarnings(res).length > 0) {
+    return ResourceStatus.Warning
+  } else if (res.updateStatus == UpdateStatus.Ok) {
+    return ResourceStatus.Healthy
   }
-  return ResourceStatus.Healthy
+  return ResourceStatus.None
 }
 
 function runtimeStatus(res: Resource): ResourceStatus {

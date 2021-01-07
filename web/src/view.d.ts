@@ -76,6 +76,7 @@ declare namespace Proto {
     yamlResourceInfo?: webviewYAMLResourceInfo;
     localResourceInfo?: webviewLocalResourceInfo;
     runtimeStatus?: string;
+    updateStatus?: string;
     isTiltfile?: boolean;
     specs?: webviewTargetSpec[];
     showBuildStatus?: boolean;

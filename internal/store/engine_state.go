@@ -667,6 +667,32 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 	return ok, earliest
 }
 
+func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) model.UpdateStatus {
+	currentBuild := ms.CurrentBuild
+	hasPendingChanges, _ := ms.HasPendingChanges()
+	lastBuild := ms.LastBuild()
+	lastBuildError := lastBuild.Error != nil
+	hasPendingBuild := false
+	if ms.TriggerReason != 0 {
+		hasPendingBuild = true
+	} else if triggerMode == model.TriggerModeAuto && hasPendingChanges {
+		hasPendingBuild = true
+	} else if triggerMode.AutoInitial() && currentBuild.Empty() && lastBuild.Empty() {
+		hasPendingBuild = true
+	}
+
+	if !currentBuild.Empty() {
+		return model.UpdateStatusInProgress
+	} else if hasPendingBuild {
+		return model.UpdateStatusPending
+	} else if lastBuildError {
+		return model.UpdateStatusError
+	} else if !lastBuild.Empty() {
+		return model.UpdateStatusOK
+	}
+	return model.UpdateStatusNone
+}
+
 var _ model.TargetStatus = &ManifestState{}
 
 func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {

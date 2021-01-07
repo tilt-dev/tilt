@@ -32,6 +32,13 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 			"LocalTargetBuildAndDeployer requires exactly one LocalTarget (got %d)", len(targets))
 	}
 
+	targ := targets[0]
+	if targ.UpdateCmd.Empty() {
+		// Even if a LocalResource has no update command, we push it through the build-and-deploy
+		// pipeline so that it gets all the appropriate logs.
+		return bd.successfulBuildResult(targ), nil
+	}
+
 	startTime := time.Now()
 	defer func() {
 		analytics.Get(ctx).Timer("build.local", time.Since(startTime), map[string]string{
@@ -39,7 +46,6 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 		})
 	}()
 
-	targ := targets[0]
 	err = bd.run(ctx, targ.UpdateCmd)
 	if err != nil {
 		// (Never fall back from the LocalTargetBaD, none of our other BaDs can handle this target)
@@ -95,10 +101,6 @@ func (bd *LocalTargetBuildAndDeployer) extract(specs []model.TargetSpec) []model
 }
 
 func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) error {
-	if len(c.Argv) == 0 {
-		return nil
-	}
-
 	l := logger.Get(ctx)
 	writer := l.Writer(logger.InfoLvl)
 	cmd := exec.CommandContext(ctx, c.Argv[0], c.Argv[1:]...)
