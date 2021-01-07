@@ -1,11 +1,14 @@
 import React from "react"
 import styled from "styled-components"
-import { ReactComponent as AllServicesSvg } from "./assets/svg/all-services.svg"
+import { ReactComponent as GridDividerAllSvg } from "./assets/svg/grid-divider-all.svg"
+import { ReactComponent as GridDividerPinSvg } from "./assets/svg/grid-divider-pin.svg"
 import OverviewGrid from "./OverviewGrid"
+import { OverviewItem } from "./OverviewItemView"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewStatusBar from "./OverviewStatusBar"
 import OverviewTabBar from "./OverviewTabBar"
-import { Color, Font, SizeUnit } from "./style-helpers"
+import { useSidebarPin } from "./SidebarPin"
+import { Color, Font } from "./style-helpers"
 
 type OverviewPaneProps = {
   view: Proto.webviewView
@@ -19,48 +22,63 @@ let OverviewPaneRoot = styled.div`
   background-color: ${Color.grayDark};
 `
 
-let AllServicesDividerRoot = styled.div`
+let ServicesDividerRoot = styled.div`
   display: flex;
   width: 100%;
   align-items: center;
 `
 
-let AllServicesDashLeft = styled.div`
-  width: ${SizeUnit(0.5)};
-  height: 0;
-  border-bottom: 1px dashed ${Color.grayLight};
-`
-
-let AllServicesDashRight = styled.div`
-  flex-grow: 1;
-  height: 0;
-  border-bottom: 1px dashed ${Color.grayLight};
-`
-
-let AllServicesLabel = styled.div`
+let ServicesLabel = styled.div`
   font: ${Font.sansSerif};
   color: ${Color.blue};
   margin: 12px;
 `
 
+let ServicesContainer = styled.div`
+  flex-grow: 1;
+  flex-shrink: 1;
+  overflow: auto;
+`
+
+function PinnedServicesDivider() {
+  return (
+    <ServicesDividerRoot>
+      <GridDividerPinSvg style={{ marginLeft: "28px" }} />
+      <ServicesLabel>Pinned Resources</ServicesLabel>
+    </ServicesDividerRoot>
+  )
+}
+
 function AllServicesDivider() {
   return (
-    <AllServicesDividerRoot>
-      <AllServicesDashLeft />
-      <AllServicesSvg style={{ marginLeft: "12px" }} />
-      <AllServicesLabel>All services</AllServicesLabel>
-      <AllServicesDashRight />
-    </AllServicesDividerRoot>
+    <ServicesDividerRoot>
+      <GridDividerAllSvg style={{ marginLeft: "28px" }} />
+      <ServicesLabel>All Resources</ServicesLabel>
+    </ServicesDividerRoot>
   )
 }
 
 export default function OverviewPane(props: OverviewPaneProps) {
+  let pinContext = useSidebarPin()
+  let resources = props.view.resources || []
+  let allItems = resources.map((res) => new OverviewItem(res))
+  let pinnedItems = allItems.filter((item) =>
+    pinContext.pinnedResources.includes(item.name)
+  )
+  let pinnedDivider = pinnedItems.length ? <PinnedServicesDivider /> : null
+  let pinnedGrid = pinnedItems.length ? (
+    <OverviewGrid items={pinnedItems} />
+  ) : null
   return (
     <OverviewPaneRoot>
       <OverviewTabBar />
       <OverviewResourceBar view={props.view} />
-      <AllServicesDivider />
-      <OverviewGrid {...props} />
+      <ServicesContainer>
+        {pinnedDivider}
+        {pinnedGrid}
+        <AllServicesDivider />
+        <OverviewGrid items={allItems} />
+      </ServicesContainer>
       <OverviewStatusBar build={props.view.runningTiltBuild} />
     </OverviewPaneRoot>
   )
