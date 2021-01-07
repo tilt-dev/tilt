@@ -291,11 +291,22 @@ func TestHandleOverrideTriggerModeMalformedPayload(t *testing.T) {
 	store.AssertNoActionOfType(t, reflect.TypeOf(server.OverrideTriggerModeAction{}), f.getActions)
 }
 
+func TestHandleOverrideTriggerModeInvalidTriggerMode(t *testing.T) {
+	f := newTestFixture(t).withDummyManifests("foo")
+
+	payload := `{"manifest_names":["foo"], "trigger_mode": 12345}`
+	status, respBody := f.makeReq("/api/override/trigger_mode", f.serv.HandleOverrideTriggerMode, http.MethodPost, payload)
+
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "invalid trigger mode: 12345")
+	store.AssertNoActionOfType(t, reflect.TypeOf(server.OverrideTriggerModeAction{}), f.getActions)
+}
+
 func TestHandleOverrideTriggerModeDispatchesEvent(t *testing.T) {
 	f := newTestFixture(t).withDummyManifests("foo", "bar")
 
-	payload := fmt.Sprintf(fmt.Sprintf(`{"manifest_names":["foo", "bar"], "trigger_mode": %d}`,
-		model.TriggerModeManualAfterInitial))
+	payload := fmt.Sprintf(`{"manifest_names":["foo", "bar"], "trigger_mode": %d}`,
+		model.TriggerModeManualAfterInitial)
 	status, _ := f.makeReq("/api/override/trigger_mode", f.serv.HandleOverrideTriggerMode, http.MethodPost, payload)
 
 	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")

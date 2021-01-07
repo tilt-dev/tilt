@@ -347,6 +347,11 @@ func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *ht
 		return
 	}
 
+	if !model.ValidTriggerMode(model.TriggerMode(payload.TriggerMode)) {
+		http.Error(w, fmt.Sprintf("invalid trigger mode: %d", payload.TriggerMode), http.StatusBadRequest)
+		return
+	}
+
 	s.store.Dispatch(OverrideTriggerModeAction{
 		ManifestNames: model.ManifestNames(payload.ManifestNames),
 		TriggerMode:   model.TriggerMode(payload.TriggerMode),

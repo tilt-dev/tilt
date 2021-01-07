@@ -182,7 +182,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case metrics.MetricsDashboardAction:
 		handleMetricsDashboardAction(state, action)
 	case server.OverrideTriggerModeAction:
-		handleManifestOverrideAction(state, action)
+		handleOverrideTriggerModeAction(ctx, state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -884,18 +884,27 @@ func handleMetricsDashboardAction(state *store.EngineState, action metrics.Metri
 	state.MetricsServing.GrafanaHost = action.GrafanaHost
 }
 
-func handleManifestOverrideAction(state *store.EngineState, action server.OverrideTriggerModeAction) {
+func handleOverrideTriggerModeAction(ctx context.Context, state *store.EngineState,
+	action server.OverrideTriggerModeAction) {
 	// TODO(maia): in this implementation, overrides do NOT persist across Tiltfile loads
 	//   (i.e. the next Tiltfile load will wipe out the override we just put in place).
 	//   If we want to keep this functionality, the next step is to store the set of overrides
 	//   on the engine state, and whenever we load the manifest from the Tiltfile, apply
 	//   any necessary overrides.
+
+	// We validate trigger mode when we receive a request, so this should never happen
+	if !model.ValidTriggerMode(action.TriggerMode) {
+		logger.Get(ctx).Errorf("Error overriding trigger mode: invalid trigger mode %d", action.TriggerMode)
+		return
+	}
+
 	for _, mName := range action.ManifestNames {
 		mt, ok := state.ManifestTargets[mName]
 		if !ok {
-			panic("well fuck, couldn't find manifest: " + mName)
+			// We validate manifest names when we receive a request, so this should never happen
+			logger.Get(ctx).Errorf("Error overriding trigger mode: no such manifest %q", mName)
+			return
 		}
 		mt.Manifest.TriggerMode = action.TriggerMode
 	}
-
 }

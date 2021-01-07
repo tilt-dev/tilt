@@ -3611,6 +3611,73 @@ func TestMetricsModeAction(t *testing.T) {
 	})
 }
 
+func TestOverrideTriggerModeEvent(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := f.newManifest("foo")
+	f.Start([]model.Manifest{manifest})
+
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "foo", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
+	})
+
+	f.upper.store.Dispatch(server.OverrideTriggerModeAction{
+		ManifestNames: []model.ManifestName{"foo"},
+		TriggerMode:   model.TriggerModeManualAfterInitial,
+	})
+
+	f.WaitUntilManifest("triggerMode updated", "foo", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeManualAfterInitial
+	})
+
+	err := f.Stop()
+	require.NoError(t, err)
+}
+
+func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := f.newManifest("foo")
+	f.Start([]model.Manifest{manifest})
+
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "foo", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
+	})
+
+	f.upper.store.Dispatch(server.OverrideTriggerModeAction{
+		ManifestNames: []model.ManifestName{"bar"},
+		TriggerMode:   model.TriggerModeManualAfterInitial,
+	})
+
+	f.log.WaitUntilContains("no such manifest", time.Millisecond*100)
+
+	err := f.Stop()
+	require.NoError(t, err)
+}
+
+func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	manifest := f.newManifest("foo")
+	f.Start([]model.Manifest{manifest})
+
+	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "foo", func(mt store.ManifestTarget) bool {
+		return mt.Manifest.TriggerMode == model.TriggerModeAuto
+	})
+
+	f.upper.store.Dispatch(server.OverrideTriggerModeAction{
+		ManifestNames: []model.ManifestName{"fooo"},
+		TriggerMode:   12345,
+	})
+
+	f.log.WaitUntilContains("invalid trigger mode", time.Millisecond*100)
+	err := f.Stop()
+	require.NoError(t, err)
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
