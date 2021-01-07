@@ -38,10 +38,7 @@ func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	f := newTestFixture(t)
 
 	status, _ := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodPost, "[]")
-	if status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
 }
 
 func TestHandleAnalyticsRecordsIncr(t *testing.T) {
@@ -50,10 +47,7 @@ func TestHandleAnalyticsRecordsIncr(t *testing.T) {
 	payload := `[{"verb": "incr", "name": "foo", "tags": {}}]`
 
 	status, _ := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodPost, payload)
-	if status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
 
 	f.assertIncrement("foo", 1)
 }
@@ -63,11 +57,8 @@ func TestHandleAnalyticsNonPost(t *testing.T) {
 
 	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodGet, "")
 
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "must be POST request")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "must be POST request")
 }
 
 func TestHandleAnalyticsMalformedPayload(t *testing.T) {
@@ -76,11 +67,8 @@ func TestHandleAnalyticsMalformedPayload(t *testing.T) {
 	payload := `[{"Verb": ]`
 	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodPost, payload)
 
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "error parsing JSON")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "error parsing JSON")
 }
 
 func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
@@ -89,11 +77,8 @@ func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	payload := `[{"verb": "count", "name": "foo", "tags": {}}]`
 	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodPost, payload)
 
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "only incr verbs are supported")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "only incr verbs are supported")
 }
 
 func TestHandleAnalyticsOptIn(t *testing.T) {
@@ -107,10 +92,7 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 	payload := `{"opt": "opt-in"}`
 	status, _ := f.makeReq("/api/analytics", f.serv.HandleAnalyticsOpt, http.MethodPost, payload)
 
-	if status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
 
 	action := store.WaitForAction(t, reflect.TypeOf(store.AnalyticsUserOptAction{}), f.getActions)
 	assert.Equal(t, store.AnalyticsUserOptAction{Opt: analytics.OptIn}, action)
@@ -127,11 +109,8 @@ func TestHandleAnalyticsOptNonPost(t *testing.T) {
 	f := newTestFixture(t)
 	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalyticsOpt, http.MethodGet, "")
 
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "must be POST request")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "must be POST request")
 }
 
 func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
@@ -140,11 +119,8 @@ func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
 	payload := `{"opt":`
 	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalyticsOpt, http.MethodPost, payload)
 
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "error parsing JSON")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "error parsing JSON")
 }
 
 func TestHandleTriggerNoManifestWithName(t *testing.T) {
@@ -155,11 +131,8 @@ func TestHandleTriggerNoManifestWithName(t *testing.T) {
 
 	// Expect SendToTriggerQueue to fail: make sure we reply to the HTTP request
 	// with an error when this happens
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "no manifest found with name")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "no manifest found with name")
 }
 
 func TestHandleTriggerTooManyManifestNames(t *testing.T) {
@@ -168,11 +141,8 @@ func TestHandleTriggerTooManyManifestNames(t *testing.T) {
 	payload := `{"manifest_names":["foo", "bar"]}`
 	status, respBody := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "currently supports exactly one manifest name, got 2")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "currently supports exactly one manifest name, got 2")
 }
 
 func TestHandleTriggerNonPost(t *testing.T) {
@@ -180,11 +150,8 @@ func TestHandleTriggerNonPost(t *testing.T) {
 
 	status, respBody := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodGet, "")
 
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "must be POST request")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "must be POST request")
 }
 
 func TestHandleTriggerMalformedPayload(t *testing.T) {
@@ -193,11 +160,8 @@ func TestHandleTriggerMalformedPayload(t *testing.T) {
 	payload := `{"manifest_names":`
 	status, respBody := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
-	if status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, respBody, "error parsing JSON")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "error parsing JSON")
 }
 
 func TestHandleTriggerTiltfileOK(t *testing.T) {
@@ -206,10 +170,7 @@ func TestHandleTriggerTiltfileOK(t *testing.T) {
 	payload := fmt.Sprintf(`{"manifest_names":["%s"]}`, model.TiltfileManifestName)
 	status, _ := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
-	if status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
 }
 
 func TestSendToTriggerQueue_manualManifest(t *testing.T) {
