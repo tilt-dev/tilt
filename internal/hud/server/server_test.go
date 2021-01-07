@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -36,19 +37,8 @@ import (
 func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`[]`)
-	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleAnalytics)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
+	status, _ := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodPost, "[]")
+	if status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
@@ -57,19 +47,10 @@ func TestHandleAnalyticsEmptyRequest(t *testing.T) {
 func TestHandleAnalyticsRecordsIncr(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`[{"verb": "incr", "name": "foo", "tags": {}}]`)
-	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `[{"verb": "incr", "name": "foo", "tags": {}}]`
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleAnalytics)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
+	status, _ := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodPost, payload)
+	if status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
@@ -80,63 +61,39 @@ func TestHandleAnalyticsRecordsIncr(t *testing.T) {
 func TestHandleAnalyticsNonPost(t *testing.T) {
 	f := newTestFixture(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/api/analytics", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodGet, "")
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleAnalytics)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
+	assert.Contains(t, respBody, "must be POST request")
 }
 
 func TestHandleAnalyticsMalformedPayload(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`[{"Verb": ]`)
-	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `[{"Verb": ]`
+	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleAnalytics)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
+	assert.Contains(t, respBody, "error parsing JSON")
 }
 
 func TestHandleAnalyticsErrorsIfNotIncr(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`[{"verb": "count", "name": "foo", "tags": {}}]`)
-	req, err := http.NewRequest(http.MethodPost, "/api/analytics", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `[{"verb": "count", "name": "foo", "tags": {}}]`
+	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalytics, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleAnalytics)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
+	assert.Contains(t, respBody, "only incr verbs are supported")
 }
 
 func TestHandleAnalyticsOptIn(t *testing.T) {
@@ -147,19 +104,10 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var jsonStr = []byte(`{"opt": "opt-in"}`)
-	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `{"opt": "opt-in"}`
+	status, _ := f.makeReq("/api/analytics", f.serv.HandleAnalyticsOpt, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleAnalyticsOpt)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
+	if status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
@@ -177,151 +125,88 @@ func TestHandleAnalyticsOptIn(t *testing.T) {
 
 func TestHandleAnalyticsOptNonPost(t *testing.T) {
 	f := newTestFixture(t)
+	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalyticsOpt, http.MethodGet, "")
 
-	req, err := http.NewRequest(http.MethodGet, "/api/analytics_opt", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleAnalyticsOpt)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
+	assert.Contains(t, respBody, "must be POST request")
 }
 
 func TestHandleAnalyticsOptMalformedPayload(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"opt":`)
-	req, err := http.NewRequest(http.MethodPost, "/api/analytics_opt", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `{"opt":`
+	status, respBody := f.makeReq("/api/analytics", f.serv.HandleAnalyticsOpt, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleAnalyticsOpt)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
+	assert.Contains(t, respBody, "error parsing JSON")
 }
 
-func TestHandleTriggerReturnsError(t *testing.T) {
+func TestHandleTriggerNoManifestWithName(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"manifest_names":["foo"]}`)
-	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleTrigger)
-
-	handler.ServeHTTP(rr, req)
+	payload := `{"manifest_names":["foo"]}`
+	status, respBody := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
 	// Expect SendToTriggerQueue to fail: make sure we reply to the HTTP request
 	// with an error when this happens
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
-	assert.Contains(t, rr.Body.String(), "no manifest found with name")
+	assert.Contains(t, respBody, "no manifest found with name")
 }
 
 func TestHandleTriggerTooManyManifestNames(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"manifest_names":["foo", "bar"]}`)
-	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `{"manifest_names":["foo", "bar"]}`
+	status, respBody := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleTrigger)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
-	assert.Contains(t, rr.Body.String(), "currently supports exactly one manifest name, got 2")
+	assert.Contains(t, respBody, "currently supports exactly one manifest name, got 2")
 }
 
 func TestHandleTriggerNonPost(t *testing.T) {
 	f := newTestFixture(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/api/trigger", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	status, respBody := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodGet, "")
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleTrigger)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
-	assert.Contains(t, rr.Body.String(), "must be POST request")
+	assert.Contains(t, respBody, "must be POST request")
 }
 
 func TestHandleTriggerMalformedPayload(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"manifest_names":`)
-	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `{"manifest_names":`
+	status, respBody := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleTrigger)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
 	}
-	assert.Contains(t, rr.Body.String(), "error parsing JSON")
+	assert.Contains(t, respBody, "error parsing JSON")
 }
 
 func TestHandleTriggerTiltfileOK(t *testing.T) {
 	f := newTestFixture(t)
 
 	payload := fmt.Sprintf(`{"manifest_names":["%s"]}`, model.TiltfileManifestName)
-	var jsonStr = []byte(payload)
-	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	status, _ := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleTrigger)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
+	if status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
@@ -531,6 +416,24 @@ func newTestFixture(t *testing.T) *serverFixture {
 		snapshotHTTP: snapshotHTTP,
 		up:           up,
 	}
+}
+
+func (f *serverFixture) makeReq(endpoint string, handler http.HandlerFunc,
+	method, body string) (statusCode int, respBody string) {
+	var reader io.Reader
+	if method == http.MethodPost {
+		reader = bytes.NewBuffer([]byte(body))
+	}
+	req, err := http.NewRequest(method, endpoint, reader)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	return rr.Code, rr.Body.String()
 }
 
 type fakeHTTPClient struct {
