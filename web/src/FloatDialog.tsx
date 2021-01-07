@@ -46,6 +46,10 @@ let CloseButton = styled.button`
   border-radius: 32px 32px;
   padding: 0;
 
+  svg {
+    fill: ${Color.grayDark};
+  }
+
   &:hover,
   &:active {
     background-color: ${Color.grayLightest};
