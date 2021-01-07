@@ -344,6 +344,7 @@ func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *ht
 	err = checkManifestsExist(s.store, payload.ManifestNames)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	s.store.Dispatch(OverrideTriggerModeAction{

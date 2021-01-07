@@ -259,94 +259,46 @@ func TestSendToTriggerQueue_noManifestWithName(t *testing.T) {
 	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 }
 
-func TestHandleOverrideReturnsErrorForBadManifest(t *testing.T) {
+func TestHandleOverrideTriggerModeReturnsErrorForBadManifest(t *testing.T) {
 	f := newTestFixture(t).withDummyManifests("foo", "baz")
 
-	var jsonStr = []byte(`{"manifest_names":["foo", "bar", "baz"]}`)
-	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `{"manifest_names":["foo", "bar", "baz"]}`
+	status, respBody := f.makeReq("/api/override/trigger_mode", f.serv.HandleOverrideTriggerMode, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleOverrideTriggerMode)
-
-	handler.ServeHTTP(rr, req)
-
-	// Expect SendToTriggerQueue to fail: make sure we reply to the HTTP request
-	// with an error when this happens
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, rr.Body.String(), "no manifest found with name 'bar'")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "no manifest found with name 'bar'")
+	store.AssertNoActionOfType(t, reflect.TypeOf(server.OverrideTriggerModeAction{}), f.getActions)
 }
 
-func TestHandleOverrideNonPost(t *testing.T) {
+func TestHandleOverrideTriggerModeNonPost(t *testing.T) {
 	f := newTestFixture(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/api/override/trigger_mode", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	status, respBody := f.makeReq("/api/override/trigger_mode", f.serv.HandleOverrideTriggerMode, http.MethodGet, "")
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleOverrideTriggerMode)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, rr.Body.String(), "must be POST request")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "must be POST request")
+	store.AssertNoActionOfType(t, reflect.TypeOf(server.OverrideTriggerModeAction{}), f.getActions)
 }
 
-func TestHandleOverrideMalformedPayload(t *testing.T) {
+func TestHandleOverrideTriggerModeMalformedPayload(t *testing.T) {
 	f := newTestFixture(t)
 
-	var jsonStr = []byte(`{"manifest_names":`)
-	req, err := http.NewRequest(http.MethodPost, "/api/override/trigger_mode", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	payload := `{"manifest_names":`
+	status, respBody := f.makeReq("/api/override/trigger_mode", f.serv.HandleOverrideTriggerMode, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleOverrideTriggerMode)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-	assert.Contains(t, rr.Body.String(), "error parsing JSON")
+	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
+	require.Contains(t, respBody, "error parsing JSON")
+	store.AssertNoActionOfType(t, reflect.TypeOf(server.OverrideTriggerModeAction{}), f.getActions)
 }
 
-func TestHandleOverrideDispatchesEvent(t *testing.T) {
+func TestHandleOverrideTriggerModeDispatchesEvent(t *testing.T) {
 	f := newTestFixture(t).withDummyManifests("foo", "bar")
 
 	payload := fmt.Sprintf(fmt.Sprintf(`{"manifest_names":["foo", "bar"], "trigger_mode": %d}`,
 		model.TriggerModeManualAfterInitial))
-	var jsonStr = []byte(payload)
-	req, err := http.NewRequest(http.MethodPost, "/api/trigger", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	status, _ := f.makeReq("/api/override/trigger_mode", f.serv.HandleOverrideTriggerMode, http.MethodPost, payload)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleOverrideTriggerMode)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
 
 	a := store.WaitForAction(t, reflect.TypeOf(server.OverrideTriggerModeAction{}), f.getActions)
 	action, ok := a.(server.OverrideTriggerModeAction)
