@@ -18,6 +18,18 @@ export default {
   ],
 }
 
-export const Vigoda = () => (
-  <OverviewResourceDetails view={oneResource()} name="vigoda" />
-)
+export const FullBar = () => {
+  let res = oneResource()
+  res.endpointLinks = [
+    { url: "http://localhost:4001" },
+    { url: "http://localhost:4002" },
+  ]
+  res.podID = "my-pod-deadbeef"
+  return <OverviewResourceDetails resource={res} />
+}
+export const EmptyBar = () => {
+  let res = oneResource()
+  res.endpointLinks = []
+  res.podID = ""
+  return <OverviewResourceDetails resource={res} />
+}

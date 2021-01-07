@@ -5,7 +5,7 @@ import "./LogPane.scss"
 import "./LogPaneLine.scss"
 import LogStore, { useLogStore } from "./LogStore"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
-import { SizeUnit } from "./style-helpers"
+import { Color, SizeUnit } from "./style-helpers"
 import { LogLine } from "./types"
 
 type OverviewLogComponentProps = {
@@ -17,8 +17,8 @@ type OverviewLogComponentProps = {
 }
 
 let LogPaneRoot = styled.section`
-  padding-top: ${SizeUnit(0.5)};
-  padding-bottom: ${SizeUnit(0.5)};
+  padding: ${SizeUnit(0.25)} 0;
+  background-color: ${Color.grayDarkest};
   width: 100%;
   height: 100%;
   overflow-y: auto;

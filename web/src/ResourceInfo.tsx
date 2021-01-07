@@ -4,6 +4,7 @@ import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as SnapshotSvg } from "./assets/svg/snapshot.svg"
+import { displayURL } from "./links"
 import ResourceInfoKeyboardShortcuts from "./ResourceInfoKeyboardShortcuts"
 import * as s from "./style-helpers"
 import { SnapshotHighlight } from "./types"
@@ -213,13 +214,6 @@ class ResourceInfo extends PureComponent<HUDHeaderProps> {
       </Root>
     )
   }
-}
-
-function displayURL(li: Link): string {
-  let url = li.url?.replace(/^(http:\/\/)/, "")
-  url = url?.replace(/^(https:\/\/)/, "")
-  url = url?.replace(/^(www\.)/, "")
-  return url || ""
 }
 
 export default ResourceInfo

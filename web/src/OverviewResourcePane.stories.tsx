@@ -27,6 +27,18 @@ export const TenResources = () => (
   <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
 )
 
+export const FullResourceBar = () => {
+  let view = tenResourceView()
+  let res = view.resources[1]
+  res.endpointLinks = [
+    { url: "http://localhost:4001" },
+    { url: "http://localhost:4002" },
+    { url: "http://localhost:4003" },
+  ]
+  res.podID = "my-pod-deadbeef"
+  return <OverviewResourcePane name={"vigoda_1"} view={view} />
+}
+
 export const TenResourcesWithLogStore = () => {
   let logStore = new LogStore()
   let segments = []

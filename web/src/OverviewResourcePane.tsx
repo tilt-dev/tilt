@@ -33,9 +33,10 @@ let Main = styled.div`
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let resources = props.view?.resources || []
   let name = props.name
+  let r: Proto.webviewResource | undefined
   if (name !== "" && name != ResourceName.all) {
-    let r = resources.find((r) => r.name === name)
-    if (r === undefined) {
+    r = resources.find((r) => r.name === name)
+    if (!r) {
       return <NotFound location={{ pathname: `/r/${name}/overview` }} />
     }
   }
@@ -46,7 +47,7 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
       <OverviewResourceBar {...props} />
       <Main>
         <OverviewResourceSidebar {...props} />
-        <OverviewResourceDetails {...props} />
+        <OverviewResourceDetails resource={r} />
       </Main>
       <OverviewStatusBar build={props.view.runningTiltBuild} />
     </OverviewResourcePaneRoot>
