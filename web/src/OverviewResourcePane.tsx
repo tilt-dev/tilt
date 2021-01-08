@@ -25,7 +25,8 @@ let OverviewResourcePaneRoot = styled.div`
 let Main = styled.div`
   display: flex;
   width: 100%;
-  flex: 1 1 auto;
+  // In Safari, flex-basis "auto" squishes OverviewTabBar + OverviewResourceBar
+  flex: 1 1 100%;
   overflow: hidden;
 `
 
