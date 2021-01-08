@@ -272,6 +272,31 @@ k8s_yaml(yaml)
 	assert.Contains(t, f.out.String(), " → kind: Deployment")
 }
 
+func TestCustomBuildBat(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+custom_build('gcr.io/foo', command='unix build', command_bat='windows build', deps=[])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+
+	args := "unix build"
+	if runtime.GOOS == "windows" {
+		args = "windows build"
+	}
+	f.assertNextManifest("foo",
+		cb(
+			image("gcr.io/foo"),
+			cmd(args, f.Path()),
+		),
+		deployment("foo"))
+}
+
 func TestLocalQuiet(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

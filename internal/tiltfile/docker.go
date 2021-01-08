@@ -263,7 +263,7 @@ func (s *tiltfileState) parseOnly(val starlark.Value) ([]string, error) {
 
 func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef string
-	var commandVal, commandBatVal starlark.Value
+	var commandVal, commandBat, commandBatVal starlark.Value
 	deps := value.NewLocalPathListUnpacker(thread)
 	var tag string
 	var disablePush bool
@@ -288,6 +288,10 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"container_args?", &containerArgsVal,
 		"command_bat_val", &commandBatVal,
 		"outputs_image_ref_to", &outputsImageRefTo,
+
+		// This is a crappy fix for https://github.com/tilt-dev/tilt/issues/4061
+		// so that we don't break things.
+		"command_bat", &commandBat,
 	)
 	if err != nil {
 		return nil, err
@@ -322,7 +326,11 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
 	}
 
-	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBatVal)
+	if commandBat == nil {
+		commandBat = commandBatVal
+	}
+
+	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 2 (command): %v", err)
 	} else if command.Empty() {
