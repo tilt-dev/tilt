@@ -30,7 +30,6 @@ export default function OverviewResourceSidebar(
 
   return (
     <OverviewResourceSidebarRoot>
-      <div>12/16 up</div>
       <SidebarResources
         items={items}
         selected={selected}

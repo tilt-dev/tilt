@@ -11,6 +11,7 @@ import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { ReactComponent as MaximizeSvg } from "./assets/svg/maximize.svg"
+import { displayURL } from "./links"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarTriggerButton from "./SidebarTriggerButton"
@@ -350,11 +351,11 @@ let detailsRow = css`
   font: inherit;
   color: inherit;
   margin: 8px 0 8px ${Width.statusIcon + Width.statusIconMarginRight}px;
-  transition: color 300ms ease;
+  transition: color ${AnimDuration.default} ease;
 
   & .fillStd {
     fill: ${Color.gray7};
-    transition: fill 300ms ease;
+    transition: fill ${AnimDuration.default} ease;
   }
   &:hover {
     color: ${Color.blue};
@@ -375,13 +376,6 @@ let Copy = styled.button`
 let ShowDetailsBox = styled(Link)`
   ${detailsRow}
 `
-
-function displayURL(li: Proto.webviewLink): string {
-  let url = li.url?.replace(/^(http:\/\/)/, "")
-  url = url?.replace(/^(https:\/\/)/, "")
-  url = url?.replace(/^(www\.)/, "")
-  return url || ""
-}
 
 async function copyTextToClipboard(text: string, cb: () => void) {
   await navigator.clipboard.writeText(text)
