@@ -251,12 +251,9 @@ print(result4)
 print(result5)
 `)
 
-	model, err := f.ExecFile("Tiltfile")
+	_, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 	assert.Equal(t, "False\nTrue\nTrue\nTrue\nFalse\n", f.PrintOutput())
-
-	readState := io.MustState(model)
-	assert.Equal(t, f.JoinPath("foo", "foo", "Tiltfile"), readState.Paths[2])
 }
 
 func TestPermissionDenied(t *testing.T) {

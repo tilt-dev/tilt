@@ -8,7 +8,6 @@ import (
 
 	"go.starlark.net/starlark"
 
-	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 )
@@ -177,23 +176,12 @@ func exists(t *starlark.Thread, path string) (starlark.Value, error) {
 	absPath := starkit.AbsPath(t, path)
 
 	_, err := os.Stat(absPath)
-	if os.IsNotExist(err) {
-		err := io.RecordReadPath(t, io.WatchFileOnly, absPath)
-		if err != nil {
-			return nil, err
-		}
-
-		return starlark.Bool(false), nil
-	} else if err != nil {
-		// Return false on error (e.g., permission denied errors),
-		// for consistency with the python version, but don't watch.
-		return starlark.Bool(false), nil
-	}
-
-	err = io.RecordReadPath(t, io.WatchFileOnly, absPath)
 	if err != nil {
-		return nil, err
+		// Return false on error (either not found errors or permission denied
+		// errors), for consistency with the python version.
+		return starlark.Bool(false), nil
 	}
+
 	return starlark.Bool(true), nil
 }
 
