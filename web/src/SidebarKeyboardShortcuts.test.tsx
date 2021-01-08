@@ -6,6 +6,7 @@ import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { twoResourceView } from "./testdata"
+import { ResourceView } from "./types"
 
 var fakeHistory: any
 const pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -25,6 +26,7 @@ const shortcuts = (items: SidebarItem[], selected: string) => {
         items={items}
         selected={selected}
         pathBuilder={pathBuilder}
+        resourceView={ResourceView.Log}
         onTrigger={() => {
           triggered = true
         }}

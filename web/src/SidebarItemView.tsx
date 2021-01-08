@@ -253,7 +253,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
     case ResourceView.Facets:
       link += "/facets"
       break
-    case ResourceView.Overview:
+    case ResourceView.OverviewDetail:
       link += "/overview"
       break
   }

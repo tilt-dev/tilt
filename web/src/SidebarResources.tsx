@@ -9,7 +9,7 @@ import SidebarItemView, {
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { sidebarPinContext, SidebarPinContextProvider } from "./SidebarPin"
 import { Color, FontSize, SizeUnit, Width } from "./style-helpers"
-import { ResourceView } from "./types"
+import { ResourceName, ResourceView } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
@@ -106,10 +106,12 @@ class PureSidebarResources extends PureComponent<SidebarProps> {
   render() {
     let pb = this.props.pathBuilder
 
-    let allLink =
-      this.props.resourceView === ResourceView.Alerts
-        ? pb.path("/alerts")
-        : pb.path("/")
+    let allLink = pb.path("/")
+    if (this.props.resourceView === ResourceView.Alerts) {
+      allLink = pb.path("/alerts")
+    } else if (this.props.resourceView === ResourceView.OverviewDetail) {
+      allLink = pb.path(`/r/${ResourceName.all}/overview`)
+    }
 
     let totalAlerts = this.props.items
       .map((i) => i.buildAlertCount + i.runtimeAlertCount)
@@ -127,7 +129,9 @@ class PureSidebarResources extends PureComponent<SidebarProps> {
 
     let nothingSelected = !this.props.selected
     let isOverviewClass =
-      this.props.resourceView === ResourceView.Overview ? "isOverview" : ""
+      this.props.resourceView === ResourceView.OverviewDetail
+        ? "isOverview"
+        : ""
 
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
@@ -147,6 +151,7 @@ class PureSidebarResources extends PureComponent<SidebarProps> {
           items={this.props.items}
           pathBuilder={this.props.pathBuilder}
           onTrigger={this.triggerSelected}
+          resourceView={this.props.resourceView}
         />
       </SidebarResourcesRoot>
     )

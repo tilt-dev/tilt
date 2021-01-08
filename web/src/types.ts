@@ -11,7 +11,9 @@ export enum ResourceView {
   Facets,
   Trace,
   Metrics,
-  Overview,
+
+  // The detail view in the Grid-based UI.
+  OverviewDetail,
 }
 
 export enum TriggerMode {
@@ -111,4 +113,9 @@ export type LogTraceNav = {
   current: LogTrace
   prev?: LogTrace
   next?: LogTrace
+}
+
+export enum ResourceName {
+  tiltfile = "(Tiltfile)",
+  all = "(all)",
 }

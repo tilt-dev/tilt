@@ -3,7 +3,7 @@ import styled from "styled-components"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
-import { ResourceView } from "./types"
+import { ResourceName, ResourceView } from "./types"
 
 type OverviewResourceSidebarProps = {
   name: string
@@ -23,14 +23,18 @@ export default function OverviewResourceSidebar(
   let pathBuilder = usePathBuilder()
   let resources = props.view.resources || []
   let items = resources.map((res) => new SidebarItem(res))
+  let selected = props.name
+  if (props.name === ResourceName.all) {
+    selected = ""
+  }
 
   return (
     <OverviewResourceSidebarRoot>
       <div>12/16 up</div>
       <SidebarResources
         items={items}
-        selected={props.name}
-        resourceView={ResourceView.Overview}
+        selected={selected}
+        resourceView={ResourceView.OverviewDetail}
         pathBuilder={pathBuilder}
       />
     </OverviewResourceSidebarRoot>
