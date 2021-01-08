@@ -95,6 +95,7 @@ export default function FloatDialog(props: props) {
       anchorEl={props.anchorEl}
       anchorOrigin={anchorOrigin}
       transformOrigin={transformOrigin}
+      disableScrollLock={true}
     >
       <TitleBar>
         {titleEl}
