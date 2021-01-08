@@ -51,6 +51,38 @@ export const TenResourcesWithLogStore = () => {
   )
 }
 
+export const TenResourcesWithBuildLogAndPodLog = () => {
+  let logStore = new LogStore()
+  let segments = []
+  for (let i = 0; i < 10; i++) {
+    segments.push({
+      spanId: "build:1",
+      text: `Vigoda build line ${i}\n`,
+      time: new Date().toString(),
+    })
+  }
+  for (let i = 0; i < 10; i++) {
+    segments.push({
+      spanId: "pod:1",
+      text: `Vigoda pod line ${i}\n`,
+      time: new Date().toString(),
+    })
+  }
+  logStore.append({
+    spans: {
+      "build:1": { manifestName: "vigoda_1" },
+      "pod:1": { manifestName: "vigoda_1" },
+    },
+    segments: segments,
+  })
+
+  return (
+    <LogStoreProvider value={logStore}>
+      <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+    </LogStoreProvider>
+  )
+}
+
 export const OneHundredResources = () => (
   <OverviewResourcePane name={"vigoda_1"} view={nResourceView(100)} />
 )
