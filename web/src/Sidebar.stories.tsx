@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import Sidebar from "./Sidebar"
 import SidebarItem from "./SidebarItem"
+import { SidebarPinMemoryProvider } from "./SidebarPin"
 import SidebarResources from "./SidebarResources"
 import {
   oneResourceNoAlerts,
@@ -20,16 +21,14 @@ function twoItemSidebar() {
   )
   items[0].name = "snapshot-frontend-binary-long-name"
   return (
-    <MemoryRouter initialEntries={["/"]}>
-      <Sidebar isClosed={false} toggleSidebar={() => {}}>
-        <SidebarResources
-          items={items}
-          selected=""
-          resourceView={ResourceView.Log}
-          pathBuilder={pathBuilder}
-        />
-      </Sidebar>
-    </MemoryRouter>
+    <Sidebar isClosed={false} toggleSidebar={() => {}}>
+      <SidebarResources
+        items={items}
+        selected=""
+        resourceView={ResourceView.Log}
+        pathBuilder={pathBuilder}
+      />
+    </Sidebar>
   )
 }
 
@@ -39,16 +38,14 @@ function twoItemSidebarClosed() {
   )
   items[0].name = "snapshot-frontend-binary-long-name"
   return (
-    <MemoryRouter initialEntries={["/"]}>
-      <Sidebar isClosed={true} toggleSidebar={() => {}}>
-        <SidebarResources
-          items={items}
-          selected=""
-          resourceView={ResourceView.Log}
-          pathBuilder={pathBuilder}
-        />
-      </Sidebar>
-    </MemoryRouter>
+    <Sidebar isClosed={true} toggleSidebar={() => {}}>
+      <SidebarResources
+        items={items}
+        selected=""
+        resourceView={ResourceView.Log}
+        pathBuilder={pathBuilder}
+      />
+    </Sidebar>
   )
 }
 
@@ -58,17 +55,16 @@ function twoItemSidebarOnePinned() {
   )
   items[0].name = "snapshot-frontend-binary-long-name"
   return (
-    <MemoryRouter initialEntries={["/"]}>
+    <SidebarPinMemoryProvider initialValueForTesting={[items[1].name]}>
       <Sidebar isClosed={false} toggleSidebar={() => {}}>
         <SidebarResources
           items={items}
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          initialPinnedItemsForTesting={[items[1].name]}
         />
       </Sidebar>
-    </MemoryRouter>
+    </SidebarPinMemoryProvider>
   )
 }
 
@@ -81,16 +77,14 @@ function oneItemWithTrigger() {
     return item
   })
   return (
-    <MemoryRouter initialEntries={["/"]}>
-      <Sidebar isClosed={false} toggleSidebar={() => {}}>
-        <SidebarResources
-          items={items}
-          selected=""
-          resourceView={ResourceView.Log}
-          pathBuilder={pathBuilder}
-        />
-      </Sidebar>
-    </MemoryRouter>
+    <Sidebar isClosed={false} toggleSidebar={() => {}}>
+      <SidebarResources
+        items={items}
+        selected=""
+        resourceView={ResourceView.Log}
+        pathBuilder={pathBuilder}
+      />
+    </Sidebar>
   )
 }
 
@@ -108,21 +102,28 @@ function oneItemWithStatus(status: ResourceStatus) {
   }
   let items = [item]
   return (
-    <MemoryRouter initialEntries={["/"]}>
-      <Sidebar isClosed={false} toggleSidebar={() => {}}>
-        <SidebarResources
-          items={items}
-          selected=""
-          resourceView={ResourceView.Log}
-          pathBuilder={pathBuilder}
-        />
-      </Sidebar>
-    </MemoryRouter>
+    <Sidebar isClosed={false} toggleSidebar={() => {}}>
+      <SidebarResources
+        items={items}
+        selected=""
+        resourceView={ResourceView.Log}
+        pathBuilder={pathBuilder}
+      />
+    </Sidebar>
   )
 }
 
 export default {
   title: "Sidebar",
+  decorators: [
+    (Story: any) => (
+      <MemoryRouter initialEntries={["/"]}>
+        <SidebarPinMemoryProvider>
+          <Story />
+        </SidebarPinMemoryProvider>
+      </MemoryRouter>
+    ),
+  ],
 }
 
 export const TwoItems = twoItemSidebar

@@ -1,6 +1,7 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewResourceDetails from "./OverviewResourceDetails"
+import { SidebarPinMemoryProvider } from "./SidebarPin"
 import { oneResource } from "./testdata"
 
 type Resource = Proto.webviewResource
@@ -10,9 +11,11 @@ export default {
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
-        <div style={{ margin: "-1rem", height: "80vh" }}>
-          <Story />
-        </div>
+        <SidebarPinMemoryProvider>
+          <div style={{ margin: "-1rem", height: "80vh" }}>
+            <Story />
+          </div>
+        </SidebarPinMemoryProvider>
       </MemoryRouter>
     ),
   ],

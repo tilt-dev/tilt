@@ -7,7 +7,7 @@ import React, {
 import styled from "styled-components"
 import { incr } from "./analytics"
 import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin.svg"
-import { localStorageContext } from "./LocalStorage"
+import { useLocalStorageContext } from "./LocalStorage"
 import { SidebarItemRoot } from "./SidebarItem"
 import { AnimDuration, Color, Width } from "./style-helpers"
 
@@ -60,16 +60,48 @@ type SidebarPinContext = {
   unpinResource: (name: string) => void
 }
 
-export const sidebarPinContext = React.createContext<SidebarPinContext>({
+const sidebarPinContext = React.createContext<SidebarPinContext>({
   pinnedResources: [],
   pinResource: (s) => {},
   unpinResource: (s) => {},
 })
 
+export function useSidebarPin(): SidebarPinContext {
+  return useContext(sidebarPinContext)
+}
+
+export function SidebarPinMemoryProvider(
+  props: PropsWithChildren<{ initialValueForTesting?: string[] }>
+) {
+  const [pinnedResources, setPinnedResources] = useState<Array<string>>(
+    props.initialValueForTesting || []
+  )
+
+  function pinResource(name: string) {
+    setPinnedResources((prevState) => {
+      return prevState.includes(name) ? prevState : [...prevState, name]
+    })
+  }
+
+  function unpinResource(name: string) {
+    setPinnedResources((prevState) => {
+      return prevState.filter((s) => s !== name)
+    })
+  }
+
+  return (
+    <sidebarPinContext.Provider
+      value={{ pinnedResources, pinResource, unpinResource }}
+    >
+      {props.children}
+    </sidebarPinContext.Provider>
+  )
+}
+
 export function SidebarPinContextProvider(
   props: PropsWithChildren<{ initialValueForTesting?: string[] }>
 ) {
-  let lsc = useContext(localStorageContext)
+  let lsc = useLocalStorageContext()
 
   const [pinnedResources, setPinnedResources] = useState<Array<string>>(
     () =>
@@ -123,7 +155,7 @@ export function SidebarPinContextProvider(
 }
 
 export function SidebarPinButton(props: { resourceName: string }): JSX.Element {
-  let ctx = useContext(sidebarPinContext)
+  let ctx = useSidebarPin()
   let isPinned =
     ctx.pinnedResources && ctx.pinnedResources.includes(props.resourceName)
 
