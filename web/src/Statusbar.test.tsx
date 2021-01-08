@@ -35,6 +35,7 @@ describe("StatusBar", () => {
     let items = twoResourceView().resources.map((res: any) => {
       res.currentBuild = {}
       res.pendingBuildSince = ""
+      res.updateStatus = "error"
       return new StatusItem(res)
     })
     let statusbar = mount(
@@ -59,6 +60,7 @@ describe("StatusBar", () => {
     let items = twoResourceView().resources.map((res: any) => {
       res.currentBuild = {}
       res.pendingBuildSince = ""
+      res.updateStatus = "ok"
       return new StatusItem(res)
     })
     const tree = renderer
@@ -82,6 +84,7 @@ describe("StatusBar", () => {
     let view = twoResourceView()
     view.resources.forEach((res: any) => {
       res.buildHistory[0].error = ""
+      res.updateStatus = "ok"
     })
 
     let items = view.resources.map((res: any) => new StatusItem(res))
@@ -106,6 +109,7 @@ describe("StatusBar", () => {
     let view = twoResourceView()
     view.resources.forEach((res: any) => {
       res.buildHistory[0].error = ""
+      res.updateStatus = "ok"
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
     let statusbar = mount(
@@ -130,6 +134,7 @@ describe("StatusBar", () => {
     let view = twoResourceView()
     view.resources.forEach((res: any) => {
       res.buildHistory[0].error = ""
+      res.updateStatus = "ok"
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
     let suggestedVersion = "10.0.0"
@@ -178,6 +183,7 @@ describe("StatusBar", () => {
     let view = twoResourceView()
     view.resources.forEach((res: any) => {
       res.buildHistory[0].error = ""
+      res.updateStatus = "ok"
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
     let suggestedVersion = "10.0.0"
@@ -203,6 +209,7 @@ describe("StatusBar", () => {
     let view = twoResourceView()
     view.resources.forEach((res: any) => {
       res.buildHistory[0].error = ""
+      res.updateStatus = "ok"
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
     let suggestedVersion = "10.0.0"

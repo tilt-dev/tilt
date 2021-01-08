@@ -41,6 +41,7 @@ describe("sidebar", () => {
     let items = twoResourceView().resources.map((res: Resource) => {
       let history = res.buildHistory ?? []
       history[0].error = "error!"
+      res.updateStatus = "error"
       return new SidebarItem(res)
     })
     const tree = renderer
@@ -64,6 +65,7 @@ describe("sidebar", () => {
       let res = oneResource()
       res.name = `resource${d}`
       res.lastDeployTime = new Date(Date.now() - d * 1000).toISOString()
+      res.updateStatus = "ok"
       return new SidebarItem(res)
     })
 
@@ -87,6 +89,7 @@ describe("sidebar", () => {
     let items = twoResourceView().resources.map((res: any) => {
       // currently building, no completed builds
       res.lastDeployTime = "0001-01-01T00:00:00Z"
+      res.updateStatus = "in_progress"
       return new SidebarItem(res)
     })
     const tree = renderer

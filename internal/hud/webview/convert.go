@@ -205,6 +205,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 			pltfb,
 		},
 		RuntimeStatus: string(model.RuntimeStatusNotApplicable),
+		UpdateStatus:  string(s.TiltfileState.UpdateStatus(model.TriggerModeAuto)),
 	}
 	start, err := timeToProto(ctfb.StartTime)
 	if err != nil {
@@ -223,6 +224,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 }
 
 func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) error {
+	r.UpdateStatus = string(mt.UpdateStatus())
 	r.RuntimeStatus = string(model.RuntimeStatusNotApplicable)
 
 	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {

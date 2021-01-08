@@ -85,7 +85,7 @@ exports[`StatusBar does not render an upgrade badge when runningVersion is dev 1
   >
     <p>
       <strong>
-        0
+        2
       </strong>
       /
       2
@@ -189,7 +189,7 @@ exports[`StatusBar does not render an upgrade badge when there is no latestVersi
   >
     <p>
       <strong>
-        0
+        2
       </strong>
       /
       2
@@ -293,7 +293,7 @@ exports[`StatusBar renders an upgrade badge when the version is out of date 1`] 
   >
     <p>
       <strong>
-        0
+        2
       </strong>
       /
       2
@@ -431,7 +431,7 @@ exports[`StatusBar renders two items all ok snapshot 1`] = `
   >
     <p>
       <strong>
-        0
+        2
       </strong>
       /
       2
@@ -461,7 +461,7 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
       className="Statusbar-errWarnPanel-child"
     >
       <svg
-        className="Statusbar-errWarnPanel-icon Statusbar-errWarnPanel-icon--error"
+        className="Statusbar-errWarnPanel-icon "
       >
         error.svg
       </svg>
@@ -469,7 +469,7 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
         <span
           className="Statusbar-errWarnPanel-count Statusbar-errWarnPanel-count--error"
         >
-          2
+          0
         </span>
          
         <a
@@ -535,7 +535,7 @@ exports[`StatusBar renders two items both errors snapshot 1`] = `
   >
     <p>
       <strong>
-        0
+        2
       </strong>
       /
       2

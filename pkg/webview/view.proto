@@ -90,8 +90,8 @@ message YAMLResourceInfo {
 }
 
 message LocalResourceInfo {
-     int64 pid = 1;
-     bool is_test = 2;
+  int64 pid = 1;
+  bool is_test = 2;
 }
 
 message Facet {
@@ -137,6 +137,7 @@ message Resource {
   YAMLResourceInfo yaml_resource_info = 16;
   LocalResourceInfo local_resource_info = 17;
   string runtime_status = 18;
+  string update_status = 29;
   bool is_tiltfile = 19;
   repeated TargetSpec specs = 27;
   bool show_build_status = 20;
@@ -158,6 +159,8 @@ message Resource {
 
   repeated Facet facets = 24;
   bool queued = 25;
+
+  // NEXT ID: 30
 }
 
 message TiltBuild {

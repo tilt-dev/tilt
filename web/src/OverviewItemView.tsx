@@ -247,6 +247,8 @@ function buildStatusText(item: OverviewItem): string {
     return "Pending"
   } else if (buildStatus === ResourceStatus.Building) {
     return "Updating…"
+  } else if (buildStatus === ResourceStatus.None) {
+    return "No update status"
   } else if (buildStatus === ResourceStatus.Unhealthy) {
     return "Update error"
   } else if (buildStatus === ResourceStatus.Healthy) {

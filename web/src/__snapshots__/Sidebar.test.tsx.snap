@@ -120,14 +120,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: success"
               >
                 <span>
                    
@@ -136,7 +136,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Completed in 12s, with issues
               </div>
             </div>
           </a>
@@ -212,14 +212,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: success"
               >
                 <span>
                    
@@ -228,7 +228,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Completed in 12s, with issues
               </div>
             </div>
           </a>
@@ -304,14 +304,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: success"
               >
                 <span>
                    
@@ -320,7 +320,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Completed in 12s, with issues
               </div>
             </div>
           </a>
@@ -396,14 +396,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: success"
               >
                 <span>
                    
@@ -412,7 +412,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Completed in 12s, with issues
               </div>
             </div>
           </a>
@@ -488,14 +488,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: success"
               >
                 <span>
                    
@@ -504,7 +504,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Completed in 12s, with issues
               </div>
             </div>
           </a>
@@ -580,14 +580,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: success"
               >
                 <span>
                    
@@ -596,7 +596,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Completed in 12s, with issues
               </div>
             </div>
           </a>
@@ -672,14 +672,14 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: success"
               >
                 <span>
                    
@@ -688,7 +688,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Completed in 12s, with issues
               </div>
             </div>
           </a>
@@ -875,23 +875,25 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isUnhealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: error"
               >
-                <span>
-                   
-                </span>
+                <svg
+                  fill="#ffffff"
+                >
+                  error.svg
+                </svg>
               </div>
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Update error
               </div>
             </div>
           </a>
@@ -967,23 +969,25 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz HrTde isUnhealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
                 onMouseOver={[Function]}
                 onTouchEnd={[Function]}
                 onTouchStart={[Function]}
-                title="Update: in progress"
+                title="Update: error"
               >
-                <span>
-                   
-                </span>
+                <svg
+                  fill="#ffffff"
+                >
+                  error.svg
+                </svg>
               </div>
               <div
                 className="sc-iqHYGH dWLKtY"
               >
-                Updating…
+                Update error
               </div>
             </div>
           </a>
