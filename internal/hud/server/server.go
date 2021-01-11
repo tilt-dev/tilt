@@ -49,6 +49,11 @@ type triggerPayload struct {
 	BuildReason   model.BuildReason `json:"build_reason"`
 }
 
+type overrideTriggerModePayload struct {
+	ManifestNames []string `json:"manifest_names"`
+	TriggerMode   int      `json:"trigger_mode"`
+}
+
 type actionPayload struct {
 	Type            string             `json:"type"`
 	ManifestName    model.ManifestName `json:"manifest_name"`
@@ -89,6 +94,7 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/metrics_opt", s.HandleMetricsOpt)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
+	r.HandleFunc("/api/override/trigger_mode", s.HandleOverrideTriggerMode)
 	r.HandleFunc("/api/action", s.DispatchAction).Methods("POST")
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
 	// this endpoint is only used for testing snapshots in development
@@ -311,16 +317,45 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 func SendToTriggerQueue(st store.RStore, name string, buildReason model.BuildReason) error {
 	mName := model.ManifestName(name)
 
-	state := st.RLockState()
-	_, ok := state.ManifestState(mName)
-	st.RUnlockState()
-
-	if !ok {
-		return fmt.Errorf("no manifest found with name '%s'", mName)
+	err := checkManifestsExist(st, []string{name})
+	if err != nil {
+		return err
 	}
 
 	st.Dispatch(AppendToTriggerQueueAction{Name: mName, Reason: buildReason})
 	return nil
+}
+
+func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "must be POST request", http.StatusBadRequest)
+		return
+	}
+
+	var payload overrideTriggerModePayload
+
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	err = checkManifestsExist(s.store, payload.ManifestNames)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !model.ValidTriggerMode(model.TriggerMode(payload.TriggerMode)) {
+		http.Error(w, fmt.Sprintf("invalid trigger mode: %d", payload.TriggerMode), http.StatusBadRequest)
+		return
+	}
+
+	s.store.Dispatch(OverrideTriggerModeAction{
+		ManifestNames: model.ManifestNames(payload.ManifestNames),
+		TriggerMode:   model.TriggerMode(payload.TriggerMode),
+	})
 }
 
 /* -- SNAPSHOT: SENDING SNAPSHOT TO SERVER -- */
@@ -411,4 +446,15 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 
 func (s *HeadsUpServer) userStartedTiltCloudRegistration(w http.ResponseWriter, req *http.Request) {
 	s.store.Dispatch(store.UserStartedTiltCloudRegistrationAction{})
+}
+
+func checkManifestsExist(st store.RStore, mNames []string) error {
+	state := st.RLockState()
+	defer st.RUnlockState()
+	for _, mName := range mNames {
+		if _, ok := state.ManifestState(model.ManifestName(mName)); !ok {
+			return fmt.Errorf("no manifest found with name '%s'", mName)
+		}
+	}
+	return nil
 }

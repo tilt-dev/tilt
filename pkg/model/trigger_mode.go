@@ -18,6 +18,15 @@ const (
 	TriggerModeManualIncludingInitial TriggerMode = iota
 )
 
+var TriggerModes = map[TriggerMode]bool{
+	TriggerModeAuto:                   true,
+	TriggerModeManualAfterInitial:     true,
+	TriggerModeManualIncludingInitial: true,
+}
+
+func ValidTriggerMode(tm TriggerMode) bool {
+	return TriggerModes[tm]
+}
 func (t TriggerMode) AutoOnChange() bool {
 	return t == TriggerModeAuto
 }
