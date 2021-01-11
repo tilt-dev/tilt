@@ -14,6 +14,8 @@ type view = {
   featureFlags?: { [featureFlag: string]: boolean }
   tiltfileKey?: string
   runningTiltBuild?: Proto.webviewTiltBuild
+  suggestedTiltVersion?: string
+  versionSettings?: Proto.webviewVersionSettings
 }
 
 let runningTiltBuild = {

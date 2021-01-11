@@ -29,3 +29,11 @@ export const TenResources = () => (
 export const OneHundredResources = () => (
   <OverviewResourceBar view={nResourceView(100)} />
 )
+
+export const UpgradeAvailable = () => {
+  let view = twoResourceView()
+  view.suggestedTiltVersion = "0.18.1"
+  view.runningTiltBuild = { version: "0.18.0", dev: false }
+  view.versionSettings = { checkUpdates: true }
+  return <OverviewResourceBar view={view} />
+}

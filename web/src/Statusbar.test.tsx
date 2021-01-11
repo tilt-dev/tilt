@@ -9,7 +9,7 @@ type TiltBuild = Proto.webviewTiltBuild
 
 describe("StatusBar", () => {
   let runningBuild: TiltBuild = {
-    version: "v0.8.1",
+    version: "0.8.1",
     date: "1970-01-01",
     dev: false,
   }

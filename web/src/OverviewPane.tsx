@@ -5,7 +5,6 @@ import { ReactComponent as GridDividerPinSvg } from "./assets/svg/grid-divider-p
 import OverviewGrid from "./OverviewGrid"
 import { OverviewItem } from "./OverviewItemView"
 import OverviewResourceBar from "./OverviewResourceBar"
-import OverviewStatusBar from "./OverviewStatusBar"
 import OverviewTabBar from "./OverviewTabBar"
 import { useSidebarPin } from "./SidebarPin"
 import { Color, Font } from "./style-helpers"
@@ -79,7 +78,6 @@ export default function OverviewPane(props: OverviewPaneProps) {
         <AllServicesDivider />
         <OverviewGrid items={allItems} />
       </ServicesContainer>
-      <OverviewStatusBar build={props.view.runningTiltBuild} />
     </OverviewPaneRoot>
   )
 }
