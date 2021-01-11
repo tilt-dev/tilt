@@ -894,7 +894,7 @@ func handleOverrideTriggerModeAction(ctx context.Context, state *store.EngineSta
 
 	// We validate trigger mode when we receive a request, so this should never happen
 	if !model.ValidTriggerMode(action.TriggerMode) {
-		logger.Get(ctx).Errorf("Error overriding trigger mode: invalid trigger mode %d", action.TriggerMode)
+		logger.Get(ctx).Errorf("INTERNAL ERROR overriding trigger mode: invalid trigger mode %d", action.TriggerMode)
 		return
 	}
 
@@ -902,7 +902,7 @@ func handleOverrideTriggerModeAction(ctx context.Context, state *store.EngineSta
 		mt, ok := state.ManifestTargets[mName]
 		if !ok {
 			// We validate manifest names when we receive a request, so this should never happen
-			logger.Get(ctx).Errorf("Error overriding trigger mode: no such manifest %q", mName)
+			logger.Get(ctx).Errorf("INTERNAL ERROR overriding trigger mode: no such manifest %q", mName)
 			return
 		}
 		mt.Manifest.TriggerMode = action.TriggerMode
