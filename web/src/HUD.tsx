@@ -1,7 +1,7 @@
 import { History, UnregisterCallback } from "history"
 import * as _ from "lodash"
 import React, { Component } from "react"
-import { matchPath } from "react-router"
+import { matchPath, useHistory } from "react-router"
 import { Route, RouteComponentProps, Switch } from "react-router-dom"
 import AlertPane from "./AlertPane"
 import { combinedAlerts } from "./alerts"
@@ -16,6 +16,7 @@ import HeroScreen from "./HeroScreen"
 import "./HUD.scss"
 import HUDLayout from "./HUDLayout"
 import HudState from "./HudState"
+import { InterfaceVersion, useInterfaceVersion } from "./InterfaceVersion"
 import K8sViewPane from "./K8sViewPane"
 import { LocalStorageContextProvider } from "./LocalStorage"
 import LogPane from "./LogPane"
@@ -52,11 +53,12 @@ import {
 
 type HudProps = {
   history: History
+  interfaceVersion: InterfaceVersion
 }
 
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
-class HUD extends Component<HudProps, HudState> {
+export default class HUD extends Component<HudProps, HudState> {
   // The root of the HUD view, without the slash.
   private pathBuilder: PathBuilder
   private controller: AppController
@@ -72,6 +74,10 @@ class HUD extends Component<HudProps, HudState> {
     this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
     this.unlisten = this.history.listen((location: any, action: string) => {
+      if (this.maybeRedirectToNewUI(location)) {
+        return
+      }
+
       let tags: any = { type: pathToTag(location.pathname) }
       if (action === "PUSH" && location?.state?.action) {
         tags.action = location.state.action
@@ -129,6 +135,19 @@ class HUD extends Component<HudProps, HudState> {
     } else {
       this.controller.createNewSocket()
     }
+
+    this.maybeRedirectToNewUI(location)
+  }
+
+  maybeRedirectToNewUI(location: any): boolean {
+    if (
+      location.pathname === "/" &&
+      this.props.interfaceVersion.isNewDefault()
+    ) {
+      this.history.push(this.pathBuilder.path("/overview"))
+      return true
+    }
+    return false
   }
 
   componentWillUnmount() {
@@ -778,4 +797,8 @@ class HUD extends Component<HudProps, HudState> {
   }
 }
 
-export default HUD
+export function HUDFromContext(props: React.PropsWithChildren<{}>) {
+  let history = useHistory()
+  let interfaceVersion = useInterfaceVersion()
+  return <HUD history={history} interfaceVersion={interfaceVersion} />
+}

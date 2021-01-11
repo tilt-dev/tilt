@@ -291,10 +291,6 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
   }
 
   let toggleUpdateDialog = (action: string) => {
-    if (!props.showUpdate) {
-      return null
-    }
-
     if (!updateDialogOpen) {
       incr("ui.web.menu", { type: "update", action: action })
     }
@@ -314,7 +310,6 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
   return (
     <ResourceBarEndRoot>
       <MenuButton
-        className={props.showUpdate ? "is-enabled" : "is-disabled"}
         style={{ height: "24px", alignItems: "flex-end" }}
         ref={updateButton}
         onClick={() => toggleUpdateDialog("click")}
@@ -359,6 +354,7 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
         onClose={() => toggleUpdateDialog("close")}
         showUpdate={props.showUpdate}
         suggestedVersion={props.suggestedVersion}
+        isNewInterface={true}
       />
       <ResourceBarShortcuts
         toggleShortcutsDialog={() => toggleShortcutsDialog("shortcut")}
