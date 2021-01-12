@@ -5,6 +5,7 @@ import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
+import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import FloatDialog from "./FloatDialog"
 import { usePathBuilder } from "./PathBuilder"
 import ShortcutsDialog from "./ShortcutsDialog"
@@ -12,6 +13,7 @@ import { SnapshotAction, useSnapshotAction } from "./snapshot"
 import { combinedStatus } from "./status"
 import { AnimDuration, Color, SizeUnit } from "./style-helpers"
 import { ResourceStatus } from "./types"
+import UpdateDialog, { showUpdate } from "./UpdateDialog"
 
 type OverviewResourceBarProps = {
   view: Proto.webviewView
@@ -167,14 +169,33 @@ let MenuButton = styled.button`
   transition: color ${AnimDuration.default} ease;
   margin-right: ${SizeUnit(0.75)};
 
-  & svg,
-  & path {
+  & .fillStd {
     fill: ${Color.blue};
     transition: fill ${AnimDuration.default} ease;
   }
-  &:hover svg,
-  &:hover path {
+  &:hover .fillStd {
     fill: ${Color.blueLight};
+  }
+  & .fillBg {
+    fill: ${Color.grayDarker};
+  }
+
+  &.is-disabled {
+    mouse-events: none;
+    cursor: default;
+  }
+`
+
+let UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
+  position: absolute;
+  top: 0;
+  left: -4px;
+  display: none;
+  width: 10px;
+  height: 10px;
+
+  ${MenuButton}.is-enabled & {
+    display: block;
   }
 `
 
@@ -225,19 +246,27 @@ type ResourceBarEndProps = {
   tiltCloudTeamID: string
   tiltCloudTeamName: string
   snapshot: SnapshotAction
+  showUpdate: boolean
+  suggestedVersion: string | null | undefined
+  runningBuild: Proto.webviewTiltBuild | undefined
 }
 
 function ResourceBarEnd(props: ResourceBarEndProps) {
   const shortcutButton = useRef(null as any)
   const accountButton = useRef(null as any)
+  const updateButton = useRef(null as any)
   const [shortcutsDialogAnchor, setShortcutsDialogAnchor] = useState(
     null as Element | null
   )
   const [accountMenuAnchor, setAccountMenuAnchor] = useState(
     null as Element | null
   )
+  const [updateDialogAnchor, setUpdateDialogAnchor] = useState(
+    null as Element | null
+  )
   const shortcutsDialogOpen = !!shortcutsDialogAnchor
   const accountMenuOpen = !!accountMenuAnchor
+  const updateDialogOpen = !!updateDialogAnchor
   let isSnapshot = props.isSnapshot
   if (isSnapshot) {
     return null
@@ -261,6 +290,19 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
     )
   }
 
+  let toggleUpdateDialog = (action: string) => {
+    if (!props.showUpdate) {
+      return null
+    }
+
+    if (!updateDialogOpen) {
+      incr("ui.web.menu", { type: "update", action: action })
+    }
+    setUpdateDialogAnchor(
+      updateDialogOpen ? null : (updateButton.current as Element)
+    )
+  }
+
   let accountMenuHeader = <AccountMenuHeader {...props} />
   let accountMenuContent = <AccountMenuContent {...props} />
   let snapshotButton = props.snapshot.enabled ? (
@@ -271,6 +313,17 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
 
   return (
     <ResourceBarEndRoot>
+      <MenuButton
+        className={props.showUpdate ? "is-enabled" : "is-disabled"}
+        style={{ height: "24px", alignItems: "flex-end" }}
+        ref={updateButton}
+        onClick={() => toggleUpdateDialog("click")}
+      >
+        <div>v{props.runningBuild?.version || "?"}</div>
+
+        {props.showUpdate ? <UpdateAvailableFloatIcon /> : null}
+      </MenuButton>
+
       {snapshotButton}
 
       <MenuButton
@@ -300,6 +353,13 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
         anchorEl={shortcutsDialogAnchor}
         onClose={() => toggleShortcutsDialog("close")}
       />
+      <UpdateDialog
+        open={updateDialogOpen}
+        anchorEl={updateDialogAnchor}
+        onClose={() => toggleUpdateDialog("close")}
+        showUpdate={props.showUpdate}
+        suggestedVersion={props.suggestedVersion}
+      />
       <ResourceBarShortcuts
         toggleShortcutsDialog={() => toggleShortcutsDialog("shortcut")}
         snapshot={props.snapshot}
@@ -312,9 +372,14 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   let isSnapshot = usePathBuilder().isSnapshot()
   let snapshot = useSnapshotAction()
   let view = props.view
+  let runningBuild = view?.runningTiltBuild
+  let suggestedVersion = view?.suggestedTiltVersion
   let resourceBarEndProps = {
     isSnapshot,
     snapshot,
+    showUpdate: showUpdate(view),
+    suggestedVersion,
+    runningBuild,
     tiltCloudUsername: view.tiltCloudUsername ?? "",
     tiltCloudSchemeHost: view.tiltCloudSchemeHost ?? "",
     tiltCloudTeamID: view.tiltCloudTeamID ?? "",

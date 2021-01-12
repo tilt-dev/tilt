@@ -1,5 +1,6 @@
 import React, { PureComponent, ReactElement } from "react"
 import { Link } from "react-router-dom"
+import styled from "styled-components"
 import { ReactComponent as ErrorSvg } from "./assets/svg/error.svg"
 import { ReactComponent as LogoSvg } from "./assets/svg/logo.svg"
 import { ReactComponent as UpdateAvailableSvg } from "./assets/svg/update-available.svg"
@@ -8,10 +9,21 @@ import { combinedStatusMessage } from "./combinedStatusMessage"
 import mostRecentBuildToDisplay from "./mostRecentBuild"
 import { combinedStatus, warnings } from "./status"
 import "./Statusbar.scss"
+import { Color } from "./style-helpers"
 import { ResourceStatus } from "./types"
+import { showUpdate } from "./UpdateDialog"
 
 type Build = Proto.webviewBuildRecord
 type TiltBuild = Proto.webviewTiltBuild
+
+let UpdateIcon = styled(UpdateAvailableSvg)`
+  .fillStd {
+    fill: ${Color.grayDarker};
+  }
+  .fillBg {
+    fill: ${Color.white};
+  }
+`
 
 class StatusItem {
   public warningCount: number = 0
@@ -127,17 +139,15 @@ class Statusbar extends PureComponent<StatusBarProps> {
   tiltPanel(
     runningBuild: TiltBuild | null | undefined,
     suggestedVersion: string | null | undefined,
-    shouldCheckVersion: boolean
+    checkUpdates: boolean
   ) {
     let content: ReactElement = <LogoSvg className="Statusbar-logo" />
-    if (
-      shouldCheckVersion &&
-      suggestedVersion &&
-      runningBuild &&
-      runningBuild.version &&
-      !runningBuild.dev &&
-      runningBuild.version !== suggestedVersion
-    ) {
+    let shouldShowUpdate = showUpdate({
+      runningTiltBuild: runningBuild || {},
+      suggestedTiltVersion: suggestedVersion || "",
+      versionSettings: { checkUpdates },
+    })
+    if (shouldShowUpdate) {
       content = (
         <a
           href="https://docs.tilt.dev/upgrade.html"
@@ -154,10 +164,10 @@ class Statusbar extends PureComponent<StatusBarProps> {
               ✨
             </span>
             <br />
-            (You're running v{runningBuild.version})
+            (You're running v{runningBuild?.version || "Unknown"})
           </p>
           {content}
-          <UpdateAvailableSvg />
+          <UpdateIcon className={"Statusbar-tiltPanel-updateIcon"} />
         </a>
       )
     }

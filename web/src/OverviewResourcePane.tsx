@@ -4,7 +4,6 @@ import NotFound from "./NotFound"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
-import OverviewStatusBar from "./OverviewStatusBar"
 import OverviewTabBar from "./OverviewTabBar"
 import { Color } from "./style-helpers"
 import { ResourceName } from "./types"
@@ -49,7 +48,6 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
         <OverviewResourceSidebar {...props} />
         <OverviewResourceDetails resource={r} />
       </Main>
-      <OverviewStatusBar build={props.view.runningTiltBuild} />
     </OverviewResourcePaneRoot>
   )
 }

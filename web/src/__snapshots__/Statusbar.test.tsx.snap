@@ -330,7 +330,7 @@ exports[`StatusBar renders an upgrade badge when the version is out of date 1`] 
         </span>
         <br />
         (You're running v
-        v0.8.1
+        0.8.1
         )
       </p>
       <svg
@@ -338,7 +338,9 @@ exports[`StatusBar renders an upgrade badge when the version is out of date 1`] 
       >
         logo.svg
       </svg>
-      <svg>
+      <svg
+        className="sc-jSgupP gfjeNH Statusbar-tiltPanel-updateIcon"
+      >
         update-available.svg
       </svg>
     </a>
