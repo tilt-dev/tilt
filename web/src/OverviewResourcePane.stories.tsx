@@ -66,6 +66,35 @@ export const TenResourcesWithLogStore = () => {
   )
 }
 
+export const TenResourcesWithLongLogLines = () => {
+  let logStore = new LogStore()
+  let segments = []
+  for (let i = 0; i < 100; i++) {
+    let text = []
+    for (let j = 0; j < 10; j++) {
+      text.push(`Vigoda build line ${i}`)
+    }
+
+    segments.push({
+      spanId: "build:1",
+      text: text.join(", ") + "\n",
+      time: new Date().toString(),
+    })
+  }
+  logStore.append({
+    spans: {
+      "build:1": { manifestName: "vigoda_1" },
+    },
+    segments: segments,
+  })
+
+  return (
+    <LogStoreProvider value={logStore}>
+      <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+    </LogStoreProvider>
+  )
+}
+
 export const TenResourcesWithBuildLogAndPodLog = () => {
   let logStore = new LogStore()
   let segments = []

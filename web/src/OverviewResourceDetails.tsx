@@ -15,6 +15,7 @@ type OverviewResourceDetailsProps = {
 let OverviewResourceDetailsRoot = styled.div`
   display: flex;
   flex-grow: 1;
+  flex-shrink: 1;
   flex-direction: column;
 `
 

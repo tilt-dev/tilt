@@ -13,8 +13,11 @@ type OverviewResourceSidebarProps = {
 let OverviewResourceSidebarRoot = styled.div`
   display: flex;
   flex-direction: column;
-  width: 380px;
+  flex-basis: 336px;
+  flex-shrink: 0;
+  flex-grow: 0;
   height: 100%;
+  width: 336px;
 `
 
 export default function OverviewResourceSidebar(
