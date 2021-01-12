@@ -26,17 +26,18 @@ declare global {
 }
 
 const fakeHistory = createMemoryHistory()
+const interfaceVersion = { isNewDefault: () => false, toggleDefault: () => {} }
 const emptyHUD = () => {
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <HUD history={fakeHistory} />
+      <HUD history={fakeHistory} interfaceVersion={interfaceVersion} />
     </MemoryRouter>
   )
 }
 const HUDAtPath = (path: string) => {
   return (
     <MemoryRouter initialEntries={[path]}>
-      <HUD history={fakeHistory} />
+      <HUD history={fakeHistory} interfaceVersion={interfaceVersion} />
     </MemoryRouter>
   )
 }
@@ -185,7 +186,7 @@ it("renders number of errors in tabnav when no resource is selected", () => {
 it("renders the number of errors a resource has in tabnav when a resource is selected", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/r/vigoda"]}>
-      <HUD history={fakeHistory} />
+      <HUD history={fakeHistory} interfaceVersion={interfaceVersion} />
     </MemoryRouter>
   )
   const hud = root.find(HUD)
