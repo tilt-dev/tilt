@@ -36,6 +36,7 @@ func populateExecCmd(c *exec.Cmd, cmd model.Cmd, l logger.Logger) {
 	c.Dir = cmd.Dir
 	// env from command definition takes precedence over parent env (exec.Cmd takes last in case of dupes)
 	execEnv := os.Environ()
+	execEnv = logger.PrepareEnv(l, execEnv)
 	execEnv = append(execEnv, cmd.Env...)
-	c.Env = logger.PrepareEnv(l, execEnv)
+	c.Env = execEnv
 }
