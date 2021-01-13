@@ -11,7 +11,7 @@ import { usePathBuilder } from "./PathBuilder"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotAction, useSnapshotAction } from "./snapshot"
 import { combinedStatus } from "./status"
-import { AnimDuration, Color, SizeUnit } from "./style-helpers"
+import { AnimDuration, Color, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceStatus } from "./types"
 import UpdateDialog, { showUpdate } from "./UpdateDialog"
 
@@ -23,15 +23,15 @@ let OverviewResourceBarRoot = styled.div`
   display: flex;
   width: 100%;
   border-bottom: 1px dotted ${Color.grayLight};
-  justify-content: space-between;
-  align-items: center;
+  justify-content: center;
+  align-items: stretch;
 `
 
 let ResourceBarEndRoot = styled.div`
   flex-shrink: 1;
   width: 50%;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-end;
 `
 
@@ -158,6 +158,8 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
 
 let MenuButton = styled.button`
   display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   align-items: center;
   border: 0;
   cursor: pointer;
@@ -165,7 +167,8 @@ let MenuButton = styled.button`
   position: relative;
   color: ${Color.blue};
   transition: color ${AnimDuration.default} ease;
-  margin-right: ${SizeUnit(0.75)};
+  margin: 2px ${SizeUnit(0.75)} 2px 0;
+  padding-bottom: 14px;
 
   & .fillStd {
     fill: ${Color.blue};
@@ -181,6 +184,21 @@ let MenuButton = styled.button`
   &.is-disabled {
     mouse-events: none;
     cursor: default;
+  }
+`
+
+let MenuButtonLabel = styled.div`
+  position: absolute;
+  bottom: 0;
+  opacity: 0;
+  transition: opacity ${AnimDuration.default} ease;
+  font-size: ${FontSize.smallester};
+  margin-top: 4px;
+  width: 300%;
+
+  ${MenuButton}:hover &,
+  ${MenuButton}[data-open="true"] & {
+    opacity: 1;
   }
 `
 
@@ -302,19 +320,23 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
   let snapshotButton = props.snapshot.enabled ? (
     <MenuButton onClick={props.snapshot.openModal}>
       <SnapshotIcon width="24" height="24" />
+      <MenuButtonLabel>{"Create Snapshot"}</MenuButtonLabel>
     </MenuButton>
   ) : null
 
   return (
     <ResourceBarEndRoot>
       <MenuButton
-        style={{ height: "24px", alignItems: "flex-end" }}
         ref={updateButton}
         onClick={() => toggleUpdateDialog("click")}
+        data-open={updateDialogOpen}
       >
         <div>v{props.runningBuild?.version || "?"}</div>
 
         {props.showUpdate ? <UpdateAvailableFloatIcon /> : null}
+        <MenuButtonLabel>
+          {props.showUpdate ? "New Version Available" : "Version Settings"}
+        </MenuButtonLabel>
       </MenuButton>
 
       {snapshotButton}
@@ -322,14 +344,18 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
       <MenuButton
         ref={shortcutButton}
         onClick={() => toggleShortcutsDialog("click")}
+        data-open={shortcutsDialogOpen}
       >
         <HelpIcon width="24" height="24" />
+        <MenuButtonLabel>{"Help"}</MenuButtonLabel>
       </MenuButton>
       <MenuButton
         ref={accountButton}
         onClick={() => toggleAccountMenu("click")}
+        data-open={accountMenuOpen}
       >
         <AccountIcon width="24" height="24" />
+        <MenuButtonLabel>{"Account"}</MenuButtonLabel>
       </MenuButton>
 
       <FloatDialog
