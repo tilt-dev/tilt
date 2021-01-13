@@ -64,19 +64,19 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"cmd?", &updateCmdVal,
-		"env?", &updateEnv,
 		"deps?", &deps,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"ignore?", &ignoresVal,
 		"auto_init?", &autoInit,
 		"serve_cmd?", &serveCmdVal,
-		"serve_env?", &serveEnv,
 		"cmd_bat?", &updateCmdBatVal,
 		"serve_cmd_bat?", &serveCmdBatVal,
 		"allow_parallel?", &allowParallel,
 		"links?", &links,
 		"tags?", &tagsVal,
+		"env?", &updateEnv,
+		"serve_env?", &serveEnv,
 	); err != nil {
 		return nil, err
 	}
