@@ -222,4 +222,3 @@ func (e *processExecer) killProcess(ctx context.Context, c *exec.Cmd, processExi
 		return
 	}
 }
-
