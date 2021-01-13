@@ -53,6 +53,9 @@ function resourceTypeLabel(res: Resource): string {
     } else if (spec.type === TargetType.DockerCompose) {
       return "Docker Compose Service"
     } else if (spec.type === TargetType.Local) {
+      if (res.localResourceInfo && !!res.localResourceInfo.isTest) {
+        return "Test [local]"
+      }
       return "Local Script"
     }
   }
@@ -63,6 +66,7 @@ export class OverviewItem {
   name: string
   resourceTypeLabel: string
   isTiltfile: boolean
+  isTest: boolean
   buildStatus: ResourceStatus
   buildAlertCount: number
   runtimeStatus: ResourceStatus
@@ -88,6 +92,8 @@ export class OverviewItem {
 
     this.name = res.name ?? ""
     this.isTiltfile = !!res.isTiltfile
+    this.isTest =
+      (res.localResourceInfo && !!res.localResourceInfo.isTest) || false
     this.buildStatus = buildStatus(res)
     this.buildAlertCount = buildAlerts(res, null).length
     this.runtimeStatus = runtimeStatus(res)
