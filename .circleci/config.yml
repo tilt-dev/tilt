@@ -157,6 +157,8 @@ jobs:
     steps:
       - setup_remote_docker:
           version: 19.03.12
+      - slack/status:
+          mentions: "nick"
       - checkout
       - gcp-cli/install
       - gcp-cli/initialize
