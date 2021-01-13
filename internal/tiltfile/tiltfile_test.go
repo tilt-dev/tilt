@@ -279,7 +279,7 @@ func TestLocalEnv(t *testing.T) {
 	// contrived example to ensure that the environment is correctly passed to local -- an env var is echoed back out
 	// which then gets passed as an ignore so that it's visible in the load result for assertion
 	f.file("Tiltfile", `
-ignore = str(local('echo $FOO', env={'FOO': 'bar'})).rstrip('\n')
+ignore = str(local('echo $FOO', command_bat='echo %FOO%', env={'FOO': 'bar'})).rstrip('\n')
 watch_settings(ignore=ignore)
 `)
 
