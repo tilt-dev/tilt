@@ -1,3 +1,5 @@
+// Package localexec provides constructs for uniform execution of local processes,
+// specifically conversion from model.Cmd to exec.Cmd.
 package localexec
 
 import (
@@ -34,7 +36,8 @@ func ExecCmdContext(ctx context.Context, cmd model.Cmd) *exec.Cmd {
 
 func populateExecCmd(c *exec.Cmd, cmd model.Cmd, l logger.Logger) {
 	c.Dir = cmd.Dir
-	// env from command definition takes precedence over parent env (exec.Cmd takes last in case of dupes)
+	// env precedence: parent process (i.e. tilt) -> logger -> command
+	// dupes are left for Go stdlib to handle (API guarantees last wins)
 	execEnv := os.Environ()
 	execEnv = logger.PrepareEnv(l, execEnv)
 	execEnv = append(execEnv, cmd.Env...)
