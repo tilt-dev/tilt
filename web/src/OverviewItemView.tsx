@@ -321,6 +321,24 @@ let OverviewItemDetailsRoot = styled.div`
   display: flex;
   min-width: 330px;
   box-sizing: border-box;
+
+  &.isBuilding::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    width: 100%;
+    top: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      225deg,
+      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)},
+      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)} 1px,
+      ${ColorRGBA(Color.black, 0)} 1px,
+      ${ColorRGBA(Color.black, 0)} 6px
+    );
+    background-size: 200% 200%;
+    animation: ${barberpole} 8s linear infinite;
+  }
 `
 
 let OverviewItemDetailsBox = styled.div`
@@ -430,8 +448,13 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
 
   let pathBuilder = usePathBuilder()
   let width = props.width || 330
+  let isBuildingClass =
+    item.buildStatus === ResourceStatus.Building ? "isBuilding" : ""
   return (
-    <OverviewItemDetailsRoot style={{ width: width + "px" }}>
+    <OverviewItemDetailsRoot
+      style={{ width: width + "px" }}
+      className={isBuildingClass}
+    >
       <OverviewItemDetailsBox>
         {endpoints}
         {copy}
@@ -487,13 +510,8 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
 
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
-
   return (
-    <OverviewItemRoot
-      key={item.name}
-      className={`${isBuildingClass}`}
-      onClick={handleClick}
-    >
+    <OverviewItemRoot key={item.name} onClick={handleClick}>
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <OverviewItemRuntimeBox>
           <SidebarIcon
