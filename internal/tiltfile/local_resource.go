@@ -37,6 +37,7 @@ type localResource struct {
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var updateCmdVal, updateCmdBatVal, serveCmdVal, serveCmdBatVal starlark.Value
+	var updateEnv, serveEnv value.StringStringMap
 	var triggerMode triggerMode
 
 	deps := value.NewLocalPathListUnpacker(thread)
@@ -63,12 +64,14 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"cmd?", &updateCmdVal,
+		"env?", &updateEnv,
 		"deps?", &deps,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"ignore?", &ignoresVal,
 		"auto_init?", &autoInit,
 		"serve_cmd?", &serveCmdVal,
+		"serve_env?", &serveEnv,
 		"cmd_bat?", &updateCmdBatVal,
 		"serve_cmd_bat?", &serveCmdBatVal,
 		"allow_parallel?", &allowParallel,
@@ -94,11 +97,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	updateCmd, err := value.ValueGroupToCmdHelper(thread, updateCmdVal, updateCmdBatVal)
+	updateCmd, err := value.ValueGroupToCmdHelper(thread, updateCmdVal, updateCmdBatVal, updateEnv)
 	if err != nil {
 		return nil, err
 	}
-	serveCmd, err := value.ValueGroupToCmdHelper(thread, serveCmdVal, serveCmdBatVal)
+	serveCmd, err := value.ValueGroupToCmdHelper(thread, serveCmdVal, serveCmdBatVal, serveEnv)
 	if err != nil {
 		return nil, err
 	}

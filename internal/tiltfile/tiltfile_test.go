@@ -272,6 +272,22 @@ k8s_yaml(yaml)
 	assert.Contains(t, f.out.String(), " → kind: Deployment")
 }
 
+func TestLocalEnv(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	// contrived example to ensure that the environment is correctly passed to local -- an env var is echoed back out
+	// which then gets passed as an ignore so that it's visible in the load result for assertion
+	f.file("Tiltfile", `
+ignore = str(local('echo $FOO', env={'FOO': 'bar'})).rstrip('\n')
+watch_settings(ignore=ignore)
+`)
+
+	f.load()
+
+	assert.Equal(t, []string{"bar"}, f.loadResult.WatchSettings.Ignores[0].Patterns)
+}
+
 func TestCustomBuildBat(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -770,7 +786,7 @@ local_resource('foo', 'echo hi', links=%s)
 			f.load()
 			f.assertNextManifest("foo",
 				localResourceLinks(c.expected),
-				localTarget(updateCmd(f.Path(), "echo hi")),
+				localTarget(updateCmd(f.Path(), "echo hi", nil)),
 			)
 		})
 
@@ -4214,7 +4230,7 @@ local_resource("test", "echo hi", deps=["foo/bar", "foo/a.txt"])
 	f.assertNumManifests(1)
 	path1 := "foo/bar"
 	path2 := "foo/a.txt"
-	m := f.assertNextManifest("test", localTarget(updateCmd(f.Path(), "echo hi"), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
+	m := f.assertNextManifest("test", localTarget(updateCmd(f.Path(), "echo hi", nil), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
 
 	lt := m.LocalTarget()
 	f.assertRepos([]string{f.Path()}, lt.LocalRepos())
@@ -4233,7 +4249,7 @@ local_resource("test", serve_cmd="sleep 1000")
 	f.load()
 
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", localTarget(serveCmd(f.Path(), "sleep 1000")))
+	f.assertNextManifest("test", localTarget(serveCmd(f.Path(), "sleep 1000", nil)))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 }
@@ -4249,7 +4265,10 @@ local_resource("test", cmd="echo hi", serve_cmd="sleep 1000")
 	f.load()
 
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", localTarget(updateCmd(f.Path(), "echo hi"), serveCmd(f.Path(), "sleep 1000")))
+	f.assertNextManifest("test", localTarget(
+		updateCmd(f.Path(), "echo hi", nil),
+		serveCmd(f.Path(), "sleep 1000", nil),
+	))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 }
@@ -4275,7 +4294,7 @@ local_resource("test", ["echo", "hi"])
 
 	f.load()
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", localTarget(updateCmdArray(f.Path(), "echo", "hi")))
+	f.assertNextManifest("test", localTarget(updateCmdArray(f.Path(), []string{"echo", "hi"}, nil)))
 }
 
 func TestLocalResourceServeCmdArray(t *testing.T) {
@@ -4288,7 +4307,7 @@ local_resource("test", serve_cmd=["echo", "hi"])
 
 	f.load()
 	f.assertNumManifests(1)
-	f.assertNextManifest("test", localTarget(serveCmdArray(f.Path(), "echo", "hi")))
+	f.assertNextManifest("test", localTarget(serveCmdArray(f.Path(), []string{"echo", "hi"}, nil)))
 }
 
 func TestLocalResourceWorkdir(t *testing.T) {
@@ -4312,7 +4331,7 @@ local_resource("toplvl-local", "echo hello world", deps=["foo/baz", "foo/a.txt"]
 
 	f.assertNumManifests(2)
 	mNested := f.assertNextManifest("nested-local",
-		localTarget(updateCmd(f.JoinPath("nested"), "echo nested"),
+		localTarget(updateCmd(f.JoinPath("nested"), "echo nested", nil),
 			deps("nested/foo/bar", "nested/more_nested/repo")))
 
 	ltNested := mNested.LocalTarget()
@@ -4321,7 +4340,7 @@ local_resource("toplvl-local", "echo hello world", deps=["foo/baz", "foo/a.txt"]
 		f.JoinPath("nested/more_nested/repo"),
 	}, ltNested.LocalRepos())
 
-	mTop := f.assertNextManifest("toplvl-local", localTarget(updateCmd(f.Path(), "echo hello world"), deps("foo/baz", "foo/a.txt")))
+	mTop := f.assertNextManifest("toplvl-local", localTarget(updateCmd(f.Path(), "echo hello world", nil), deps("foo/baz", "foo/a.txt")))
 	ltTop := mTop.LocalTarget()
 	f.assertRepos([]string{
 		f.JoinPath("foo/baz"),
@@ -4362,6 +4381,38 @@ local_resource("test", "echo hi", deps=["foo"], ignore=["**/*.a", "foo/bar.d"])
 		require.NoError(t, err)
 		require.Equal(t, tc.expectMatch, matches, tc.path)
 	}
+}
+
+func TestLocalResourceUpdateCmdEnv(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", "echo hi", env={"KEY1": "value1", "KEY2": "value2"}, serve_cmd="sleep 1000")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		updateCmd(f.Path(), "echo hi", []string{"KEY1=value1", "KEY2=value2"}),
+		serveCmd(f.Path(), "sleep 1000", nil),
+	))
+}
+
+func TestLocalResourceServeCmdEnv(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", "echo hi", serve_cmd="sleep 1000", serve_env={"KEY1": "value1", "KEY2": "value2"})
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		updateCmd(f.Path(), "echo hi", nil),
+		serveCmd(f.Path(), "sleep 1000", []string{"KEY1=value1", "KEY2=value2"}),
+	))
 }
 
 func TestCustomBuildStoresTiltfilePath(t *testing.T) {
@@ -5712,6 +5763,8 @@ type funcOpt func(*testing.T, model.Manifest) bool
 
 // assert functions and helpers
 func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{}) model.Manifest {
+	f.t.Helper()
+
 	if len(f.loadResult.Manifests) == 0 {
 		f.t.Fatalf("no more manifests; trying to find %q (did you call `f.load`?)", name)
 	}
@@ -6326,24 +6379,24 @@ type updateCmdHelper struct {
 	cmd model.Cmd
 }
 
-func updateCmd(dir string, cmd string) updateCmdHelper {
-	return updateCmdHelper{cmd: model.ToHostCmdInDir(cmd, dir)}
+func updateCmd(dir string, cmd string, env []string) updateCmdHelper {
+	return updateCmdHelper{cmd: model.ToHostCmdInDirWithEnv(cmd, dir, env)}
 }
 
-func updateCmdArray(dir string, cmd ...string) updateCmdHelper {
-	return updateCmdHelper{cmd: model.Cmd{Argv: cmd, Dir: dir}}
+func updateCmdArray(dir string, argv []string, env []string) updateCmdHelper {
+	return updateCmdHelper{cmd: model.Cmd{Argv: argv, Dir: dir, Env: env}}
 }
 
 type serveCmdHelper struct {
 	cmd model.Cmd
 }
 
-func serveCmd(dir string, cmd string) serveCmdHelper {
-	return serveCmdHelper{cmd: model.ToHostCmdInDir(cmd, dir)}
+func serveCmd(dir string, cmd string, env []string) serveCmdHelper {
+	return serveCmdHelper{cmd: model.ToHostCmdInDirWithEnv(cmd, dir, env)}
 }
 
-func serveCmdArray(dir string, cmd ...string) serveCmdHelper {
-	return serveCmdHelper{model.Cmd{Argv: cmd, Dir: dir}}
+func serveCmdArray(dir string, argv []string, env []string) serveCmdHelper {
+	return serveCmdHelper{model.Cmd{Argv: argv, Dir: dir, Env: env}}
 }
 
 type localTargetHelper struct {

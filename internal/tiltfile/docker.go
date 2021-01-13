@@ -194,7 +194,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	entrypointCmd, err := value.ValueToUnixCmd(thread, entrypoint)
+	entrypointCmd, err := value.ValueToUnixCmd(thread, entrypoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +312,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	entrypointCmd, err := value.ValueToUnixCmd(thread, entrypoint)
+	entrypointCmd, err := value.ValueToUnixCmd(thread, entrypoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		commandBat = commandBatVal
 	}
 
-	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat)
+	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 2 (command): %v", err)
 	} else if command.Empty() {
