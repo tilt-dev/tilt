@@ -23,15 +23,8 @@ let OverviewResourceBarRoot = styled.div`
   display: flex;
   width: 100%;
   border-bottom: 1px dotted ${Color.grayLight};
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-`
-
-let ResourceBarStart = styled.div`
-  display: flex;
-  margin-left: 32px;
-  flex-shrink: 1;
-  width: 50%;
 `
 
 let ResourceBarEndRoot = styled.div`
@@ -44,12 +37,9 @@ let ResourceBarEndRoot = styled.div`
 
 let ResourceBarStatusRoot = styled.div`
   display: flex;
-  color: ${Color.white};
-  background-color: ${Color.gray};
   display: flex;
   border-radius: 4px;
 
-  justify-content: center;
   align-items: center;
   flex-grow: 0;
   white-space: nowrap;
@@ -105,9 +95,14 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
   let healthyStatusCount = 0
   let unhealthyStatusCount = 0
   let pendingStatusCount = 0
+  let warningCount = 0
   statuses.forEach((status) => {
     switch (status) {
       case ResourceStatus.Warning:
+        allStatusCount++
+        healthyStatusCount++
+        warningCount++
+        break
       case ResourceStatus.Healthy:
         allStatusCount++
         healthyStatusCount++
@@ -128,7 +123,6 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
   })
 
   // Summarize the statuses
-  let msg = `...${healthyStatusCount}/${allStatusCount} up`
   let greenSquareCount = boxCount(healthyStatusCount, allStatusCount)
   let redSquareCount = boxCount(unhealthyStatusCount, allStatusCount)
   let graySquareCount = boxCount(pendingStatusCount, allStatusCount)
@@ -150,10 +144,14 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
     boxes.push(<GraySquare key={i} style={style} />)
   }
 
+  let summaryMsg =
+    `${healthyStatusCount}/${allStatusCount} up ` +
+    `| ${unhealthyStatusCount} error${unhealthyStatusCount != 1 ? "s" : ""} ` +
+    `| ${warningCount} warning${warningCount != 1 ? "s" : ""}`
   return (
     <ResourceBarStatusRoot>
       {boxes}
-      <div style={extraMargin}>{msg}</div>
+      <div style={{ marginLeft: "16px" }}>{summaryMsg}</div>
     </ResourceBarStatusRoot>
   )
 }
@@ -384,7 +382,6 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
 
   return (
     <OverviewResourceBarRoot>
-      <ResourceBarStart>&nbsp;</ResourceBarStart>
       <ResourceBarStatus view={props.view} />
       <ResourceBarEnd {...resourceBarEndProps} />
     </OverviewResourceBarRoot>
