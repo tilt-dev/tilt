@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
@@ -67,7 +67,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, logOutpu
 		return "", err
 	}
 
-	c := local.ExecCmd(cmd, logger.Get(ctx))
+	c := localexec.ExecCmd(cmd, logger.Get(ctx))
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
 	c.Stdout = stdout

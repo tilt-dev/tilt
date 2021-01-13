@@ -8,7 +8,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -103,7 +103,7 @@ func (bd *LocalTargetBuildAndDeployer) extract(specs []model.TargetSpec) []model
 func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) error {
 	l := logger.Get(ctx)
 	writer := l.Writer(logger.InfoLvl)
-	cmd := local.ExecCmdContext(ctx, c)
+	cmd := localexec.ExecCmdContext(ctx, c)
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 

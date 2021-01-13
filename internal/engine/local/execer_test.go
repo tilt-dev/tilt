@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -153,7 +154,7 @@ func TestExecCmd(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := ExecCmd(tc.cmd, l)
+			c := localexec.ExecCmd(tc.cmd, l)
 			assertCommandEqual(t, tc.cmd, c)
 		})
 	}
@@ -167,7 +168,7 @@ func TestExecCmdContext(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := ExecCmdContext(ctx, tc.cmd)
+			c := localexec.ExecCmdContext(ctx, tc.cmd)
 			assertCommandEqual(t, tc.cmd, c)
 		})
 	}
