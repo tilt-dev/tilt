@@ -2,6 +2,7 @@ import React from "react"
 import styled from "styled-components"
 import { ReactComponent as GridDividerAllSvg } from "./assets/svg/grid-divider-all.svg"
 import { ReactComponent as GridDividerPinSvg } from "./assets/svg/grid-divider-pin.svg"
+import { ReactComponent as GridDividerTestSvg } from "./assets/svg/grid-divider-test.svg"
 import OverviewGrid from "./OverviewGrid"
 import { OverviewItem } from "./OverviewItemView"
 import OverviewResourceBar from "./OverviewResourceBar"
@@ -48,7 +49,7 @@ function PinnedServicesDivider() {
   )
 }
 
-function AllServicesDivider() {
+function AllResourcesDivider() {
   return (
     <ServicesDividerRoot>
       <GridDividerAllSvg style={{ marginLeft: "28px" }} />
@@ -57,17 +58,37 @@ function AllServicesDivider() {
   )
 }
 
+function TestsDivider() {
+  return (
+    <ServicesDividerRoot>
+      <GridDividerTestSvg style={{ marginLeft: "28px" }} />
+      <ServicesLabel>Tests</ServicesLabel>
+    </ServicesDividerRoot>
+  )
+}
+
 export default function OverviewPane(props: OverviewPaneProps) {
   let pinContext = useSidebarPin()
   let resources = props.view.resources || []
   let allItems = resources.map((res) => new OverviewItem(res))
+  let allResources = allItems.filter(
+    (item) =>
+      // NOTE(maia): this is gross naming, but until we have better nouns:
+      //  "all resources" = everything but tests
+      // (This is bad because in the backend, tests are also "resources", but  ¯\_(ツ)_/¯ )
+      !item.isTest
+  )
   let pinnedItems = allItems.filter((item) =>
     pinContext.pinnedResources.includes(item.name)
   )
+
   let pinnedDivider = pinnedItems.length ? <PinnedServicesDivider /> : null
   let pinnedGrid = pinnedItems.length ? (
     <OverviewGrid items={pinnedItems} />
   ) : null
+  let testItems = allItems.filter((item) => item.isTest)
+  let testDivider = testItems.length ? <TestsDivider /> : null
+  let testGrid = testItems.length ? <OverviewGrid items={testItems} /> : null
   return (
     <OverviewPaneRoot>
       <OverviewTabBar />
@@ -75,8 +96,10 @@ export default function OverviewPane(props: OverviewPaneProps) {
       <ServicesContainer>
         {pinnedDivider}
         {pinnedGrid}
-        <AllServicesDivider />
-        <OverviewGrid items={allItems} />
+        <AllResourcesDivider />
+        <OverviewGrid items={allResources} />
+        {testDivider}
+        {testGrid}
       </ServicesContainer>
     </OverviewPaneRoot>
   )
