@@ -19,7 +19,7 @@ test("test-foo", "echo hi")
 
 	f.load()
 
-	foo := f.assertNextManifest("test-foo", localTarget(updateCmd(f.Path(), "echo hi")))
+	foo := f.assertNextManifest("test-foo", localTarget(updateCmd(f.Path(), "echo hi", nil)))
 	assert.True(t, foo.LocalTarget().IsTest, "should be flagged as test manifest")
 }
 
@@ -39,7 +39,7 @@ t = test("test-foo", "echo hi",
 	f.load()
 
 	foo := f.assertNextManifest("test-foo", localTarget(
-		updateCmd(f.Path(), "echo hi"),
+		updateCmd(f.Path(), "echo hi", nil),
 		deps("a.txt", "b.txt")))
 	assert.True(t, foo.LocalTarget().IsTest, "should be flagged as test manifest")
 	assert.Equal(t, []string{"beep", "boop"}, foo.LocalTarget().Tags)

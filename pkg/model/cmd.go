@@ -9,6 +9,7 @@ import (
 type Cmd struct {
 	Argv []string
 	Dir  string
+	Env  []string
 }
 
 func (c Cmd) IsShellStandardForm() bool {
@@ -89,6 +90,12 @@ func ToHostCmd(cmd string) Cmd {
 func ToHostCmdInDir(cmd string, dir string) Cmd {
 	c := ToHostCmd(cmd)
 	c.Dir = dir
+	return c
+}
+
+func ToHostCmdInDirWithEnv(cmd string, dir string, env []string) Cmd {
+	c := ToHostCmdInDir(cmd, dir)
+	c.Env = env
 	return c
 }
 

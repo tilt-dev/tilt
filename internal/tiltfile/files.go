@@ -11,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -26,6 +28,7 @@ const localLogPrefix = " → "
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var commandValue, commandBatValue starlark.Value
+	var commandEnv value.StringStringMap
 	quiet := false
 	echoOff := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -33,12 +36,13 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		"quiet?", &quiet,
 		"command_bat", &commandBatValue,
 		"echo_off", &echoOff,
+		"env", &commandEnv,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	cmd, err := value.ValueGroupToCmdHelper(thread, commandValue, commandBatValue)
+	cmd, err := value.ValueGroupToCmdHelper(thread, commandValue, commandBatValue, commandEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +51,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		s.logger.Infof("local: %s", cmd)
 	}
 
-	out, err := s.execLocalCmd(thread, exec.Command(cmd.Argv[0], cmd.Argv[1:]...), !quiet)
+	out, err := s.execLocalCmd(thread, cmd, !quiet)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +59,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 	return tiltfile_io.NewBlob(out, fmt.Sprintf("local: %s", cmd)), nil
 }
 
-func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput bool) (string, error) {
+func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, logOutput bool) (string, error) {
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)
 	ctx, err := starkit.ContextFromThread(t)
@@ -63,11 +67,11 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, c *exec.Cmd, logOutput 
 		return "", err
 	}
 
+	c := localexec.ExecCmd(cmd, logger.Get(ctx))
+
 	// TODO(nick): Should this also inject any docker.Env overrides?
-	c.Dir = starkit.AbsWorkingDir(t)
 	c.Stdout = stdout
 	c.Stderr = stderr
-	c.Env = logger.DefaultEnv(ctx)
 
 	if logOutput {
 		logOutput := logger.NewMutexWriter(logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl))
@@ -113,15 +117,15 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	cmd := []string{"kustomize", "build", relKustomizePath}
+	cmd := model.Cmd{Argv: []string{"kustomize", "build", relKustomizePath}, Dir: starkit.AbsWorkingDir(thread)}
 
-	_, err = exec.LookPath(cmd[0])
+	_, err = exec.LookPath(cmd.Argv[0])
 	if err != nil {
-		s.logger.Infof("Falling back to `kubectl kustomize` since `%s` was not found in PATH", cmd[0])
-		cmd = []string{"kubectl", "kustomize", relKustomizePath}
+		s.logger.Infof("Falling back to `kubectl kustomize` since `%s` was not found in PATH", cmd.Argv[0])
+		cmd.Argv = []string{"kubectl", "kustomize", relKustomizePath}
 	}
 
-	yaml, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
+	yaml, err := s.execLocalCmd(thread, cmd, false)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +229,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	s.logger.Infof("Running: %s", cmd)
 
-	stdout, err := s.execLocalCmd(thread, exec.Command(cmd[0], cmd[1:]...), false)
+	stdout, err := s.execLocalCmd(thread, model.Cmd{Argv: cmd, Dir: starkit.AbsWorkingDir(thread)}, false)
 	if err != nil {
 		return nil, err
 	}

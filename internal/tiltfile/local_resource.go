@@ -37,6 +37,7 @@ type localResource struct {
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
 	var updateCmdVal, updateCmdBatVal, serveCmdVal, serveCmdBatVal starlark.Value
+	var updateEnv, serveEnv value.StringStringMap
 	var triggerMode triggerMode
 
 	deps := value.NewLocalPathListUnpacker(thread)
@@ -74,6 +75,8 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"allow_parallel?", &allowParallel,
 		"links?", &links,
 		"tags?", &tagsVal,
+		"env?", &updateEnv,
+		"serve_env?", &serveEnv,
 	); err != nil {
 		return nil, err
 	}
@@ -94,11 +97,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	updateCmd, err := value.ValueGroupToCmdHelper(thread, updateCmdVal, updateCmdBatVal)
+	updateCmd, err := value.ValueGroupToCmdHelper(thread, updateCmdVal, updateCmdBatVal, updateEnv)
 	if err != nil {
 		return nil, err
 	}
-	serveCmd, err := value.ValueGroupToCmdHelper(thread, serveCmdVal, serveCmdBatVal)
+	serveCmd, err := value.ValueGroupToCmdHelper(thread, serveCmdVal, serveCmdBatVal, serveEnv)
 	if err != nil {
 		return nil, err
 	}

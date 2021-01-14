@@ -6,11 +6,18 @@ import (
 	"strings"
 )
 
-// A set of environment variables to make sure that
-// subprocesses log correctly.
+// DefaultEnv returns a set of strings in the form of "key=value"
+// based on the current process' environment with additional entries
+// to improve subprocess log output.
 func DefaultEnv(ctx context.Context) []string {
-	supportsColor := Get(ctx).SupportsColor()
-	env := os.Environ()
+	return PrepareEnv(Get(ctx), os.Environ())
+}
+
+// PrepareEnv returns a set of strings in the form of "key=value"
+// based on a provided set of strings in the same format with additional
+// entries to improve subprocess log output.
+func PrepareEnv(l Logger, env []string) []string {
+	supportsColor := l.SupportsColor()
 	hasLines := false
 	hasColumns := false
 	hasForceColor := false

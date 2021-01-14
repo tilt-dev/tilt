@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/procutil"
@@ -144,14 +145,12 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	defer close(statusCh)
 
 	logger.Get(ctx).Infof("Running serve cmd: %s", cmd.String())
-	c := exec.Command(cmd.Argv[0], cmd.Argv[1:]...)
+	c := localexec.ExecCmd(cmd, logger.Get(ctx))
 
 	c.SysProcAttr = &syscall.SysProcAttr{}
 	procutil.SetOptNewProcessGroup(c.SysProcAttr)
 	c.Stderr = w
 	c.Stdout = w
-	c.Dir = cmd.Dir
-	c.Env = logger.DefaultEnv(ctx)
 
 	err := c.Start()
 	if err != nil {
