@@ -50,6 +50,7 @@ export enum FontSize {
   default = "20px",
   small = "16px",
   smallest = "13px",
+  smallester = "10px",
 }
 
 let unit = 32
