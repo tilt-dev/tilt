@@ -21,6 +21,16 @@ export default {
   ],
 }
 
+export const OverflowTextBar = () => {
+  let res = oneResource()
+  res.endpointLinks = [
+    { url: "http://my-pod-grafana-long-service-name-deadbeef:4001" },
+    { url: "http://my-pod-grafana-long-service-name-deadbeef:4002" },
+  ]
+  res.podID = "my-pod-grafana-long-service-name-deadbeef"
+  return <OverviewResourceDetails resource={res} />
+}
+
 export const FullBar = () => {
   let res = oneResource()
   res.endpointLinks = [
@@ -30,6 +40,7 @@ export const FullBar = () => {
   res.podID = "my-pod-deadbeef"
   return <OverviewResourceDetails resource={res} />
 }
+
 export const EmptyBar = () => {
   let res = oneResource()
   res.endpointLinks = []
