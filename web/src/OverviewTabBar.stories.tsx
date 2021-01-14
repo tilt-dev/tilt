@@ -8,9 +8,8 @@ export default {
   title: "OverviewTabBar",
   decorators: [
     (Story: any, context: any) => {
-      let url = context.args.url || "/overview"
       return (
-        <MemoryRouter initialEntries={[url]}>
+        <MemoryRouter initialEntries={["/"]}>
           <div style={{ margin: "-1rem" }}>
             <Story />
           </div>
@@ -20,13 +19,12 @@ export default {
   ],
 }
 
-export const NoTabs = () => <OverviewTabBar />
-export const InferOneTab = () => <OverviewTabBar />
-InferOneTab.args = { url: "/r/vigoda/overview" }
+export const NoTabs = () => <OverviewTabBar selectedTab={""} />
+export const InferOneTab = () => <OverviewTabBar selectedTab={"vigoda"} />
 
 export const TwoTabs = () => {
   let tabs = ["vigoda", "snack"]
-  return <OverviewTabBar tabsForTesting={tabs} />
+  return <OverviewTabBar selectedTab={""} tabsForTesting={tabs} />
 }
 
 export const TenTabs = () => {
@@ -42,11 +40,10 @@ export const TenTabs = () => {
     "vigoda_9",
     "vigoda_10",
   ]
-  return <OverviewTabBar tabsForTesting={tabs} />
+  return <OverviewTabBar selectedTab={"vigoda_2"} tabsForTesting={tabs} />
 }
-TenTabs.args = { url: "/r/vigoda_2/overview" }
 
 export const LongTabName = () => {
   let tabs = ["extremely-long-tab-name-yes-this-is-very-long"]
-  return <OverviewTabBar tabsForTesting={tabs} />
+  return <OverviewTabBar selectedTab={""} tabsForTesting={tabs} />
 }

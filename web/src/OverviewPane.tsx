@@ -70,7 +70,7 @@ export default function OverviewPane(props: OverviewPaneProps) {
   ) : null
   return (
     <OverviewPaneRoot>
-      <OverviewTabBar />
+      <OverviewTabBar selectedTab={""} />
       <OverviewResourceBar view={props.view} />
       <ServicesContainer>
         {pinnedDivider}

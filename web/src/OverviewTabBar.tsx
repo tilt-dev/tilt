@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react"
-import { matchPath } from "react-router"
 import { Link, useHistory } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
@@ -16,6 +15,7 @@ import {
 } from "./style-helpers"
 
 type OverviewTabBarProps = {
+  selectedTab: string
   tabsForTesting?: string[]
 }
 
@@ -111,15 +111,7 @@ let CloseButton = styled.button`
 export default function OverviewTabBar(props: OverviewTabBarProps) {
   let lsc = useLocalStorageContext()
   let history = useHistory()
-  let matchTab = matchPath(String(history.location.pathname), {
-    path: "/r/:name/overview",
-  })
-
-  // The tab that's currently selected.
-  // Inferred from the current browser location.
-  // If empty, that means we're on a non-tab page, like the overview page.
-  let matchParams: any = matchTab?.params
-  let selectedTab = matchParams?.name || ""
+  let selectedTab = props.selectedTab
 
   // The list of tabs open. A tab name should never appear twice in the list.
   const [tabs, setTabs] = useState<Array<string>>(

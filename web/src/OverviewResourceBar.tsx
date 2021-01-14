@@ -23,7 +23,7 @@ let OverviewResourceBarRoot = styled.div`
   display: flex;
   width: 100%;
   border-bottom: 1px dotted ${Color.grayLight};
-  justify-content: center;
+  justify-content: space-between;
   align-items: stretch;
 `
 
