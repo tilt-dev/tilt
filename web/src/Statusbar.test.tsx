@@ -159,6 +159,7 @@ describe("StatusBar", () => {
     let view = twoResourceView()
     view.resources.forEach((res: any) => {
       res.buildHistory[0].error = ""
+      res.updateStatus = "ok"
     })
     let items = view.resources.map((res: any) => new StatusItem(res))
     let suggestedVersion = ""

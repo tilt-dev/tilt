@@ -9,6 +9,7 @@ function emptyResource() {
   res.buildHistory = []
   res.pendingBuildSince = zeroTime
   res.runtimeStatus = "pending"
+  res.updateStatus = "none"
   return res
 }
 
