@@ -63,6 +63,13 @@ async function copyTextToClipboard(text: string, cb: () => void) {
   cb()
 }
 
+let TruncateText = styled.div`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 250px;
+`
+
 function CopyButton(props: CopyButtonProps) {
   let [showCopySuccess, setShowCopySuccess] = useState(false)
 
@@ -85,7 +92,9 @@ function CopyButton(props: CopyButtonProps) {
   return (
     <CopyButtonRoot onClick={copyClick}>
       {icon}
-      <div style={{ marginLeft: "8px" }}>Copy Pod ID</div>
+      <TruncateText style={{ marginLeft: "8px" }}>
+        {props.podId} Pod ID
+      </TruncateText>
     </CopyButtonRoot>
   )
 }
@@ -139,7 +148,7 @@ function ActionBar(props: ActionBarProps) {
         target={ep.url}
         key={ep.url}
       >
-        {ep.name || displayURL(ep)}
+        <TruncateText>{ep.name || displayURL(ep)}</TruncateText>
       </Endpoint>
     )
   })

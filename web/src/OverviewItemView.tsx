@@ -401,6 +401,13 @@ let ShowDetailsBox = styled(Link)`
   ${detailsRow}
 `
 
+let DetailText = styled.div`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: 10px;
+`
+
 async function copyTextToClipboard(text: string, cb: () => void) {
   await navigator.clipboard.writeText(text)
   cb()
@@ -419,7 +426,7 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
         key={ep.url}
       >
         <LinkSvg />
-        <div style={{ marginLeft: "10px" }}>{ep.name || displayURL(ep)}</div>
+        <DetailText>{ep.name || displayURL(ep)}</DetailText>
       </Endpoint>
     )
   })
@@ -447,7 +454,9 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
     copy = (
       <Copy onClick={copyClick}>
         {icon}
-        <div style={{ marginLeft: "8px" }}>Copy Pod ID</div>
+        <DetailText style={{ marginLeft: "8px" }}>
+          {item.podId} Pod ID
+        </DetailText>
       </Copy>
     )
   }
@@ -467,7 +476,7 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
         <ShowDetailsBox to={pathBuilder.path(link)}>
           <MaximizeSvg />
 
-          <div style={{ marginLeft: "8px" }}>Show details</div>
+          <DetailText>Show details</DetailText>
         </ShowDetailsBox>
         <BuildBox item={props.item} />
       </OverviewItemDetailsBox>

@@ -123,3 +123,13 @@ export const CompleteDetails = () => {
   item.podId = "my-pod-deadbeef"
   return <OverviewItemDetails item={item} />
 }
+
+export const LongDetails = () => {
+  let item = new OverviewItem(oneResourceNoAlerts())
+  item.endpoints = [
+    { url: "http://my-pod-grafana-long-service-name-deadbeef:4001" },
+    { url: "http://my-pod-grafana-long-service-name-deadbeef:4002" },
+  ]
+  item.podId = "my-pod-grafana-long-service-name-deadbeef"
+  return <OverviewItemDetails item={item} />
+}
