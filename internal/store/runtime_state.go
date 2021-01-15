@@ -39,16 +39,31 @@ type LocalRuntimeState struct {
 	HasSucceededAtLeastOnce bool
 	PID                     int
 	SpanID                  model.LogSpanID
+
+	readinessProbeSuccessful bool
 }
 
 func (LocalRuntimeState) RuntimeState() {}
 
 var _ RuntimeState = LocalRuntimeState{}
 
+func NewLocalRuntimeState(m model.Manifest) LocalRuntimeState {
+	// TODO(milas): make initial readiness probe state conditional based on existence of probe
+	state := LocalRuntimeState{
+		readinessProbeSuccessful: true,
+	}
+	return state
+}
+
 func (l LocalRuntimeState) RuntimeStatus() model.RuntimeStatus {
+	if l.Ready() {
+		return model.RuntimeStatusOK
+	}
+
 	switch l.State {
 	case model.ProcessStateRunning:
-		return model.RuntimeStatusOK
+		// process is running but not ready
+		return model.RuntimeStatusPending
 	case model.ProcessStateTerminated:
 		return model.RuntimeStatusError
 	default:
@@ -66,6 +81,13 @@ func (l LocalRuntimeState) RuntimeStatusError() error {
 
 func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
 	return l.HasSucceededAtLeastOnce
+}
+
+func (l LocalRuntimeState) Ready() bool {
+	if l.State == model.ProcessStateRunning {
+		return l.readinessProbeSuccessful
+	}
+	return false
 }
 
 type K8sRuntimeState struct {
