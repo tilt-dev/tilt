@@ -163,12 +163,12 @@ func processStatuses(
 		if !stillHasSameProcNum() {
 			continue
 		}
-		runtimeStatus := sm.status.ToRuntime()
-		if runtimeStatus != "" {
+		procState := sm.status.ToProcessState()
+		if procState != "" {
 			// TODO(matt) when we get an error, the dot is red in the web ui, but green in the TUI
 			st.Dispatch(LocalServeStatusAction{
 				ManifestName: manifestName,
-				Status:       runtimeStatus,
+				State:        procState,
 				PID:          sm.pid,
 				SpanID:       sm.spanID,
 			})
@@ -247,12 +247,14 @@ const (
 	Error   status = iota
 )
 
-func (s status) ToRuntime() model.RuntimeStatus {
+func (s status) ToProcessState() model.ProcessState {
 	switch s {
 	case Running:
-		return model.RuntimeStatusOK
+		return model.ProcessStateRunning
+	case Done:
+		return model.ProcessStateTerminated
 	case Error:
-		return model.RuntimeStatusError
+		return model.ProcessStateTerminated
 	default:
 		return ""
 	}

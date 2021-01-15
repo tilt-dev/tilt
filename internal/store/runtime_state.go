@@ -35,7 +35,7 @@ type RuntimeState interface {
 }
 
 type LocalRuntimeState struct {
-	Status                  model.RuntimeStatus
+	State                   model.ProcessState
 	HasSucceededAtLeastOnce bool
 	PID                     int
 	SpanID                  model.LogSpanID
@@ -43,8 +43,17 @@ type LocalRuntimeState struct {
 
 func (LocalRuntimeState) RuntimeState() {}
 
+var _ RuntimeState = LocalRuntimeState{}
+
 func (l LocalRuntimeState) RuntimeStatus() model.RuntimeStatus {
-	return l.Status
+	switch l.State {
+	case model.ProcessStateRunning:
+		return model.RuntimeStatusOK
+	case model.ProcessStateTerminated:
+		return model.RuntimeStatusError
+	default:
+		return model.RuntimeStatusUnknown
+	}
 }
 
 func (l LocalRuntimeState) RuntimeStatusError() error {
@@ -58,8 +67,6 @@ func (l LocalRuntimeState) RuntimeStatusError() error {
 func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
 	return l.HasSucceededAtLeastOnce
 }
-
-var _ RuntimeState = LocalRuntimeState{}
 
 type K8sRuntimeState struct {
 	// The ancestor that we match pods against to associate them with this manifest.
