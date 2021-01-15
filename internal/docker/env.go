@@ -73,15 +73,10 @@ func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) LocalEnv {
 	return LocalEnv(result)
 }
 
-func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient k8s.MinikubeClient, localRegistry container.Registry) ClusterEnv {
+func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient k8s.MinikubeClient) ClusterEnv {
 	result := Env{}
 
-	// If we're using Docker runtime, we may want to use the in-cluster Docker socket,
-	// if available. Note that if a local registry is present, it takes precedence over
-	// the in-cluster Docker (i.e. by default, we would rather build images with the
-	// local Docker daemon and push to the local registry than build images with the
-	// in-cluster Docker daemon).
-	if runtime == container.RuntimeDocker && localRegistry.Empty() {
+	if runtime == container.RuntimeDocker {
 		if env == k8s.EnvMinikube {
 			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
 			envMap, err := minikubeClient.DockerEnv(ctx)

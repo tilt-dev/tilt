@@ -3686,7 +3686,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	k8sContextExt := k8scontext.NewExtension("fake-context", env)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
-	tfl := tiltfile.ProvideTiltfileLoader(ctx, ta, kCli, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", feature.MainDefaults, env)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", feature.MainDefaults, env)
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)

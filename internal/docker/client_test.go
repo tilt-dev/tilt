@@ -91,13 +91,11 @@ func TestSupported(t *testing.T) {
 }
 
 type provideEnvTestCase struct {
-	name            string
 	env             k8s.Env
 	runtime         container.Runtime
 	minikubeV       string
 	osEnv           map[string]string
 	mkEnv           map[string]string
-	withLocalReg    bool
 	expectedCluster Env
 	expectedLocal   Env
 }
@@ -111,10 +109,9 @@ func TestProvideEnv(t *testing.T) {
 	}
 
 	cases := []provideEnvTestCase{
-		{name: "no-op"},
+		{},
 		{
-			name: "use env in local and cluster clients even if unknown env",
-			env:  k8s.EnvUnknown,
+			env: k8s.EnvUnknown,
 			osEnv: map[string]string{
 				"DOCKER_TLS_VERIFY":  "1",
 				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
@@ -135,8 +132,108 @@ func TestProvideEnv(t *testing.T) {
 			},
 		},
 		{
-			name: "add scheme to host when overlaying env vals",
-			env:  k8s.EnvUnknown,
+			env:             k8s.EnvMicroK8s,
+			runtime:         container.RuntimeDocker,
+			expectedCluster: Env{Host: microK8sDockerHost},
+			expectedLocal:   Env{},
+		},
+		{
+			env:     k8s.EnvMicroK8s,
+			runtime: container.RuntimeCrio,
+		},
+		{
+			env:     k8s.EnvMinikube,
+			runtime: container.RuntimeDocker,
+			mkEnv: map[string]string{
+				"DOCKER_TLS_VERIFY":  "1",
+				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
+				"DOCKER_API_VERSION": "1.35",
+			},
+			expectedCluster: Env{
+				TLSVerify:     "1",
+				Host:          "tcp://192.168.99.100:2376",
+				CertPath:      "/home/nick/.minikube/certs",
+				APIVersion:    "1.35",
+				IsOldMinikube: true,
+			},
+		},
+		{
+			env:       k8s.EnvMinikube,
+			runtime:   container.RuntimeDocker,
+			minikubeV: "1.8.2",
+			mkEnv: map[string]string{
+				"DOCKER_TLS_VERIFY":  "1",
+				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
+				"DOCKER_API_VERSION": "1.35",
+			},
+			expectedCluster: Env{
+				TLSVerify:  "1",
+				Host:       "tcp://192.168.99.100:2376",
+				CertPath:   "/home/nick/.minikube/certs",
+				APIVersion: "1.35",
+			},
+		},
+		{
+			env:     k8s.EnvMinikube,
+			runtime: container.RuntimeDocker,
+			mkEnv: map[string]string{
+				"DOCKER_TLS_VERIFY":  "1",
+				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
+				"DOCKER_API_VERSION": "1.35",
+			},
+			osEnv: map[string]string{
+				"DOCKER_HOST": "tcp://registry.local:80",
+			},
+			expectedCluster: Env{
+				Host: "tcp://registry.local:80",
+			},
+			expectedLocal: Env{
+				Host: "tcp://registry.local:80",
+			},
+		},
+		{
+			// Test the case where the user has already run
+			// eval $(minikube docker-env)
+			env:     k8s.EnvMinikube,
+			runtime: container.RuntimeDocker,
+			mkEnv: map[string]string{
+				"DOCKER_TLS_VERIFY": "1",
+				"DOCKER_HOST":       "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":  "/home/nick/.minikube/certs",
+			},
+			osEnv: map[string]string{
+				"DOCKER_TLS_VERIFY": "1",
+				"DOCKER_HOST":       "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":  "/home/nick/.minikube/certs",
+			},
+			expectedCluster: Env{
+				TLSVerify:     "1",
+				Host:          "tcp://192.168.99.100:2376",
+				CertPath:      "/home/nick/.minikube/certs",
+				IsOldMinikube: true,
+			},
+			expectedLocal: Env{
+				TLSVerify:     "1",
+				Host:          "tcp://192.168.99.100:2376",
+				CertPath:      "/home/nick/.minikube/certs",
+				IsOldMinikube: true,
+			},
+		},
+		{
+			env:     k8s.EnvMinikube,
+			runtime: container.RuntimeCrio,
+			mkEnv: map[string]string{
+				"DOCKER_TLS_VERIFY":  "1",
+				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
+				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
+				"DOCKER_API_VERSION": "1.35",
+			},
+		},
+		{
+			env: k8s.EnvUnknown,
 			osEnv: map[string]string{
 				"DOCKER_TLS_VERIFY":  "1",
 				"DOCKER_HOST":        "localhost:2376",
@@ -156,154 +253,10 @@ func TestProvideEnv(t *testing.T) {
 				APIVersion: "1.35",
 			},
 		},
-		{
-			name:            "microk8s + docker runtime uses in-cluster docker",
-			env:             k8s.EnvMicroK8s,
-			runtime:         container.RuntimeDocker,
-			expectedCluster: Env{Host: microK8sDockerHost},
-			expectedLocal:   Env{},
-		},
-		{
-			name:            "microk8s prefers local registry over cluster client",
-			env:             k8s.EnvMicroK8s,
-			runtime:         container.RuntimeDocker,
-			withLocalReg:    true,
-			expectedCluster: Env{},
-		},
-		{
-			name:    "no cluster client for microk8s + crio",
-			env:     k8s.EnvMicroK8s,
-			runtime: container.RuntimeCrio,
-		},
-		{
-			name:    "minikube + docker uses in-cluster docker",
-			env:     k8s.EnvMinikube,
-			runtime: container.RuntimeDocker,
-			mkEnv: map[string]string{
-				"DOCKER_TLS_VERIFY":  "1",
-				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
-				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
-				"DOCKER_API_VERSION": "1.35",
-			},
-			expectedCluster: Env{
-				TLSVerify:     "1",
-				Host:          "tcp://192.168.99.100:2376",
-				CertPath:      "/home/nick/.minikube/certs",
-				APIVersion:    "1.35",
-				IsOldMinikube: true,
-			},
-		},
-		{
-			name:    "minikube prefers local registry over cluster client",
-			env:     k8s.EnvMinikube,
-			runtime: container.RuntimeDocker,
-			mkEnv: map[string]string{
-				"DOCKER_TLS_VERIFY":  "1",
-				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
-				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
-				"DOCKER_API_VERSION": "1.35",
-			},
-			withLocalReg:    true,
-			expectedCluster: Env{},
-		},
-		{
-			name:    "no cluster client for minikube + crio",
-			env:     k8s.EnvMinikube,
-			runtime: container.RuntimeCrio,
-			mkEnv: map[string]string{
-				"DOCKER_TLS_VERIFY":  "1",
-				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
-				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
-				"DOCKER_API_VERSION": "1.35",
-			},
-		},
-
-		{
-			name:      "minikube (new version) + docker uses in-cluster docker",
-			env:       k8s.EnvMinikube,
-			runtime:   container.RuntimeDocker,
-			minikubeV: "1.8.2",
-			mkEnv: map[string]string{
-				"DOCKER_TLS_VERIFY":  "1",
-				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
-				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
-				"DOCKER_API_VERSION": "1.35",
-			},
-			expectedCluster: Env{
-				TLSVerify:     "1",
-				Host:          "tcp://192.168.99.100:2376",
-				CertPath:      "/home/nick/.minikube/certs",
-				APIVersion:    "1.35",
-				IsOldMinikube: false, // make sure version is parsed correctly, such that we know that this is not an old minikube version
-			},
-		},
-		{
-			name:    "local env vars override minikube vars",
-			env:     k8s.EnvMinikube,
-			runtime: container.RuntimeDocker,
-			mkEnv: map[string]string{
-				"DOCKER_TLS_VERIFY":  "1",
-				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
-				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
-				"DOCKER_API_VERSION": "1.35",
-			},
-			osEnv: map[string]string{
-				"DOCKER_HOST": "tcp://registry.local:80",
-			},
-			expectedCluster: Env{
-				Host: "tcp://registry.local:80",
-			},
-			expectedLocal: Env{
-				Host: "tcp://registry.local:80",
-			},
-		},
-		{
-			name:    "minikube crio still overlays local env into cluster client",
-			env:     k8s.EnvMinikube,
-			runtime: container.RuntimeCrio,
-			osEnv: map[string]string{
-				"DOCKER_HOST": "tcp://registry.local:80",
-			},
-			expectedCluster: Env{
-				Host: "tcp://registry.local:80",
-			},
-			expectedLocal: Env{
-				Host: "tcp://registry.local:80",
-			},
-		},
-		{
-			// Test the case where the user has already run
-			// eval $(minikube docker-env)
-			name:    "user already ran minikube docker eval",
-			env:     k8s.EnvMinikube,
-			runtime: container.RuntimeDocker,
-			mkEnv: map[string]string{
-				"DOCKER_TLS_VERIFY": "1",
-				"DOCKER_HOST":       "tcp://192.168.99.100:2376",
-				"DOCKER_CERT_PATH":  "/home/nick/.minikube/certs",
-			},
-			osEnv: map[string]string{
-				"DOCKER_TLS_VERIFY": "1",
-				"DOCKER_HOST":       "tcp://192.168.99.100:2376",
-				"DOCKER_CERT_PATH":  "/home/nick/.minikube/certs",
-			},
-			expectedCluster: Env{
-				TLSVerify:     "1",
-				Host:          "tcp://192.168.99.100:2376",
-				CertPath:      "/home/nick/.minikube/certs",
-				IsOldMinikube: true,
-			},
-			expectedLocal: Env{
-				TLSVerify:     "1",
-				Host:          "tcp://192.168.99.100:2376",
-				CertPath:      "/home/nick/.minikube/certs",
-				IsOldMinikube: true,
-			},
-		},
 	}
 
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
+	for i, c := range cases {
+		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
 			origEnv := map[string]string{}
 			for _, k := range envVars {
 				origEnv[k] = os.Getenv(k)
@@ -321,17 +274,12 @@ func TestProvideEnv(t *testing.T) {
 				minikubeV = "1.3.0" // an Old version
 			}
 
-			var reg container.Registry
-			if c.withLocalReg {
-				reg = container.Registry{Host: "some-local-registry"}
-			}
-
 			mkClient := k8s.FakeMinikube{DockerEnvMap: c.mkEnv, FakeVersion: minikubeV}
-			cluster := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient, reg)
-			assert.Equal(t, c.expectedCluster, Env(cluster), "expected cluster env")
+			cluster := ProvideClusterEnv(context.Background(), c.env, c.runtime, mkClient)
+			assert.Equal(t, c.expectedCluster, Env(cluster))
 
 			local := ProvideLocalEnv(context.Background(), cluster)
-			assert.Equal(t, c.expectedLocal, Env(local), "expected local env")
+			assert.Equal(t, c.expectedLocal, Env(local))
 		})
 	}
 }

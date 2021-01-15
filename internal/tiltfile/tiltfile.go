@@ -12,8 +12,6 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
-	"github.com/tilt-dev/tilt/internal/container"
-
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -108,7 +106,6 @@ func (tfl *FakeTiltfileLoader) PassedUserConfigState() model.UserConfigState {
 }
 
 func ProvideTiltfileLoader(
-	ctx context.Context,
 	analytics *analytics.TiltAnalytics,
 	kCli k8s.Client,
 	k8sContextExt k8scontext.Extension,
@@ -128,7 +125,6 @@ func ProvideTiltfileLoader(
 		webHost:       webHost,
 		fDefaults:     fDefaults,
 		env:           env,
-		localRegistry: kCli.LocalRegistry(ctx),
 	}
 }
 
@@ -143,7 +139,6 @@ type tiltfileLoader struct {
 	configExt     *config.Extension
 	fDefaults     feature.Defaults
 	env           k8s.Env
-	localRegistry container.Registry
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -181,7 +176,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	tlr.Tiltignore = tiltignore
 
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, tfl.versionExt, tfl.configExt, tfl.localRegistry, feature.FromDefaults(tfl.fDefaults))
+	localRegistry := tfl.kCli.LocalRegistry(ctx)
+
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.k8sContextExt, tfl.versionExt, tfl.configExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(absFilename, userConfigState)
 

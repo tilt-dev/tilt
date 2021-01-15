@@ -221,10 +221,6 @@ func ProvideK8sClient(
 	return c
 }
 
-func ProvideLocalRegistry(ctx context.Context, cli Client) container.Registry {
-	return cli.LocalRegistry(ctx)
-}
-
 func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	status := service.Status
 
