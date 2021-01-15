@@ -28,7 +28,7 @@ export const OverflowTextBar = () => {
     { url: "http://my-pod-grafana-long-service-name-deadbeef:4002" },
   ]
   res.podID = "my-pod-grafana-long-service-name-deadbeef"
-  return <OverviewResourceDetails resource={res} />
+  return <OverviewResourceDetails resource={res} name={"vigoda"} />
 }
 
 export const FullBar = () => {
