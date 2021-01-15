@@ -26,10 +26,7 @@ function assertContainerWithResources(
 
 function assertContainerDNE(root: ReactWrapper, className: string) {
   let sel = ".resources-container." + className
-  let resourceContainer = root.find(sel)
-  if (resourceContainer.length != 0) {
-    throw "FAILURE: expected elem " + sel + " not to exist, but it does"
-  }
+  expect(root.find(sel)).toHaveLength(0)
 }
 
 it("renders all resources if no pinned and no tests", () => {
