@@ -72,6 +72,7 @@ function newLineEl(
     classes.push("is-buildEvent-fallback")
   }
   let span = document.createElement("span")
+  span.setAttribute("data-sl-index", String(line.storedLineIndex))
   span.classList.add(...classes)
 
   if (showManifestPrefix) {
@@ -100,6 +101,46 @@ function newLineEl(
   return span
 }
 
+// An index of lines such that lets us find:
+// - The next line
+// - The previous line
+// - The line by stored line index.
+type LineHashListEntry = {
+  prev?: LineHashListEntry | null
+  next?: LineHashListEntry | null
+  line: LogLine
+  el?: Element
+}
+
+let CursorEntry = {} as LineHashListEntry
+
+class LineHashList {
+  private last: LineHashListEntry | null = null
+  private byStoredLineIndex: { [key: number]: LineHashListEntry } = {}
+
+  lookup(line: LogLine): LineHashListEntry | null {
+    return this.byStoredLineIndex[line.storedLineIndex]
+  }
+
+  append(line: LogLine) {
+    let existing = this.byStoredLineIndex[line.storedLineIndex]
+    if (existing) {
+      existing.line = line
+    } else {
+      let last = this.last
+      let newEntry = { prev: last, line: line }
+      this.byStoredLineIndex[line.storedLineIndex] = newEntry
+      if (last) {
+        last.next = newEntry
+      }
+      this.last = newEntry
+    }
+  }
+}
+
+// The number of lines to render at a time.
+export const renderWindow = 250
+
 // React is not a great system for rendering logs.
 // React has to build a virtual DOM, diffs the virtual DOM, and does
 // spot updates of the actual DOM.
@@ -126,15 +167,25 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   // Timer for tracking autoscroll.
   autoscrollRafId: number | null = null
 
+  // Timer for tracking render
+  renderBufferRafId: number | null = null
+
+  // Lines to render at the end of the pane.
+  forwardBuffer: LogLine[] = []
+
+  // Lines to render at the start of the pane.
+  backwardBuffer: LogLine[] = []
+
   private logCheckpoint: number = 0
 
-  private elByStoredLineIndex: { [key: number]: Element } = {}
+  private lineHashList: LineHashList = new LineHashList()
 
   constructor(props: OverviewLogComponentProps) {
     super(props)
 
     this.onScroll = this.onScroll.bind(this)
     this.onLogUpdate = this.onLogUpdate.bind(this)
+    this.renderBuffer = this.renderBuffer.bind(this)
   }
 
   scrollCursorIntoView() {
@@ -148,7 +199,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    this.incrementalRender()
+    this.readLogsFromLogStore()
   }
 
   componentDidUpdate(prevProps: OverviewLogComponentProps) {
@@ -169,10 +220,10 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
         this.autoscroll = false
       }
 
-      this.incrementalRender()
+      this.readLogsFromLogStore()
     } else if (prevProps.logStore !== this.props.logStore) {
       this.resetRender()
-      this.incrementalRender()
+      this.readLogsFromLogStore()
     }
   }
 
@@ -190,7 +241,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       passive: true,
     })
     this.resetRender()
-    this.incrementalRender()
+    this.readLogsFromLogStore()
 
     this.props.logStore.addUpdateListener(this.onLogUpdate)
   }
@@ -295,21 +346,23 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       }
     }
 
-    this.elByStoredLineIndex = {}
+    this.lineHashList = new LineHashList()
     this.logCheckpoint = 0
+    if (this.renderBufferRafId) {
+      this.props.raf.cancelAnimationFrame(this.renderBufferRafId)
+      this.renderBufferRafId = 0
+    }
   }
 
   // Render new logs that have come in since the current checkpoint.
-  incrementalRender() {
-    let root = this.rootRef.current
-    let cursor = this.cursorRef.current
+  readLogsFromLogStore() {
     let mn = this.props.manifestName
     let logStore = this.props.logStore
+    let startCheckpoint = this.logCheckpoint
 
-    let showManifestName = !mn
     let patch = mn
-      ? logStore.manifestLogPatchSet(mn, this.logCheckpoint)
-      : logStore.allLogPatchSet(this.logCheckpoint)
+      ? logStore.manifestLogPatchSet(mn, startCheckpoint)
+      : logStore.allLogPatchSet(startCheckpoint)
 
     let lines = patch.lines.filter((line) => {
       if (this.props.hideBuildLog && line.spanId.indexOf("build:") === 0) {
@@ -320,26 +373,140 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       }
       return true
     })
+
     this.logCheckpoint = patch.checkpoint
+    lines.forEach((line) => this.lineHashList.append(line))
 
-    let lastManifestName = ""
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i]
-      let isContextChange = i > 0 && line.manifestName !== lastManifestName
-      let lineEl = newLineEl(line, isContextChange, showManifestName)
-      let existingLineEl = this.elByStoredLineIndex[line.storedLineIndex]
-      if (existingLineEl) {
-        root.replaceChild(lineEl, existingLineEl)
-      } else {
-        root.insertBefore(lineEl, cursor)
-      }
-      this.elByStoredLineIndex[line.storedLineIndex] = lineEl
+    if (startCheckpoint) {
+      // If this is an incremental render, put the lines in the forward buffer.
+      lines.forEach((line) => {
+        this.forwardBuffer.push(line)
+      })
+    } else {
+      // If this is the first render, put the lines in the backward buffer, so
+      // that the last lines get rendered first.
+      lines.forEach((line) => {
+        this.backwardBuffer.push(line)
+      })
+    }
 
-      lastManifestName = line.manifestName
+    // Schedule a render job if there's not one already scheduled.
+    if (this.renderBufferRafId) return
+    this.renderBufferRafId = this.props.raf.requestAnimationFrame(
+      this.renderBuffer
+    )
+  }
+
+  // We have two render buffers:
+  // - a buffer of newer logs that we haven't rendered yet.
+  // - a buffer of older logs that we haven't rendered yet.
+  // First, process the newer logs.
+  // If we're out of new logs to render, go back through the old logs.
+  //
+  // Each invocation of this method renders up to 2x renderWindow logs.
+  // If there are still logs left to render, it yields the thread and schedules
+  // another render.
+  renderBuffer() {
+    this.renderBufferRafId = 0
+
+    let root = this.rootRef.current
+    let cursor = this.cursorRef.current
+    if (!root || !cursor) {
+      return
+    }
+
+    // If there are no lines in either buffer, we're done.
+    if (!this.backwardBuffer.length && !this.forwardBuffer.length) {
+      return
+    }
+
+    // Render the lines in the forward buffer first.
+    let forwardLines = this.forwardBuffer.slice(0, renderWindow)
+    this.forwardBuffer = this.forwardBuffer.slice(renderWindow)
+    for (let i = 0; i < forwardLines.length; i++) {
+      let line = forwardLines[i]
+      this.renderLineHelper(line)
+    }
+
+    // Render the lines in the backward buffer next.
+    let backwardStart = Math.max(0, this.backwardBuffer.length - renderWindow)
+    let backwardLines = this.backwardBuffer.slice(backwardStart)
+    this.backwardBuffer = this.backwardBuffer.slice(0, backwardStart)
+
+    for (let i = backwardLines.length - 1; i >= 0; i--) {
+      let line = backwardLines[i]
+      this.renderLineHelper(line)
     }
 
     if (this.autoscroll) {
       this.scrollCursorIntoView()
+    }
+
+    if (this.forwardBuffer.length || this.backwardBuffer.length) {
+      this.renderBufferRafId = this.props.raf.requestAnimationFrame(
+        this.renderBuffer
+      )
+    }
+  }
+
+  // Helper function for rendering lines. Returns true if the line was
+  // successfully rendered.
+  //
+  // If the line has already been rendered, replace the rendered line.
+  //
+  // If it hasn't been rendered, but the next line has, put it before the next line.
+  //
+  // If it hasn't been rendered, but the previous line has, put it after the previous line.
+  //
+  // Otherwise, iterate through the lines until we find a place to put it.
+  renderLineHelper(line: LogLine) {
+    let entry = this.lineHashList.lookup(line)
+    if (!entry) {
+      // If the entry has been removed from the hash list for some reason,
+      // just ignore it.
+      return
+    }
+
+    let mn = this.props.manifestName
+    let showManifestName = !mn
+    let prevManifestName = entry.prev?.line.manifestName || ""
+    let isContextChange = !!entry.prev && prevManifestName !== line.manifestName
+    let lineEl = newLineEl(entry.line, isContextChange, showManifestName)
+
+    let root = this.rootRef.current
+    let existingLineEl = entry.el
+    if (existingLineEl) {
+      root.replaceChild(lineEl, existingLineEl)
+      entry.el = lineEl
+      return
+    }
+
+    let nextEl = entry.next?.el
+    if (nextEl) {
+      root.insertBefore(lineEl, nextEl)
+      entry.el = lineEl
+      return
+    }
+
+    let prevEl = entry.prev?.el
+    if (prevEl) {
+      root.insertBefore(lineEl, prevEl.nextSibling)
+      entry.el = lineEl
+      return
+    }
+
+    // In the worst case scenario, we iterate through all lines to find a suitable place.
+    let cursor = this.cursorRef.current
+    for (let i = 0; i < root.children.length; i++) {
+      let child = root.children[i]
+      if (
+        child == cursor ||
+        Number(child.getAttribute("data-sl-index")) > line.storedLineIndex
+      ) {
+        root.insertBefore(lineEl, child)
+        entry.el = lineEl
+        return
+      }
     }
   }
 

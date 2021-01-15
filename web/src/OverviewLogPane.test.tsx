@@ -1,5 +1,5 @@
 import { mount } from "enzyme"
-import { OverviewLogComponent } from "./OverviewLogPane"
+import { OverviewLogComponent, renderWindow } from "./OverviewLogPane"
 import {
   BuildLogAndRunLog,
   ManyLines,
@@ -8,6 +8,7 @@ import {
   ThreeLinesAllLog,
 } from "./OverviewLogPane.stories"
 import { newFakeRaf, RafProvider, SyncRafProvider } from "./raf"
+import { appendLines } from "./testlogs"
 
 let logPaneMount = (pane: any) => {
   return mount(<SyncRafProvider>{pane}</SyncRafProvider>)
@@ -75,4 +76,94 @@ it("engages autoscrolls on scroll down", () => {
 
   fakeRaf.invoke(component.autoscrollRafId as number)
   expect(component.autoscroll).toEqual(true)
+})
+
+it("renders bottom logs first", () => {
+  let fakeRaf = newFakeRaf()
+  let lineCount = 2 * renderWindow
+  let root = mount(
+    <RafProvider value={fakeRaf}>
+      <ManyLines count={lineCount} />
+    </RafProvider>
+  )
+
+  // Make sure no logs have been rendered yet.
+  let rootEl = root.getDOMNode()
+  let lineEls = () => rootEl.querySelectorAll(".LogPaneLine")
+  let component = root
+    .find(OverviewLogComponent)
+    .instance() as OverviewLogComponent
+  expect(component.renderBufferRafId).toBeGreaterThan(0)
+  expect(component.backwardBuffer.length).toEqual(lineCount)
+  expect(lineEls().length).toEqual(0)
+
+  // Invoke the RAF callback, and make sure that only a window's
+  // worth of logs have been rendered.
+  fakeRaf.invoke(component.renderBufferRafId as number)
+  expect(component.backwardBuffer.length).toEqual(lineCount - renderWindow)
+  expect(lineEls().length).toEqual(renderWindow)
+  expect(lineEls()[0].innerHTML).toEqual(
+    expect.stringContaining(">line 250\n<")
+  )
+
+  // Invoke the RAF callback again, and make sure the remaining logs
+  // were rendered.
+  fakeRaf.invoke(component.renderBufferRafId as number)
+  expect(component.backwardBuffer.length).toEqual(0)
+  expect(lineEls().length).toEqual(lineCount)
+  expect(lineEls()[0].innerHTML).toEqual(expect.stringContaining(">line 0\n<"))
+
+  // rendering is complete.
+  expect(component.renderBufferRafId).toEqual(0)
+})
+
+it("renders new logs first", () => {
+  let fakeRaf = newFakeRaf()
+  let initLineCount = 2 * renderWindow
+  let root = mount(
+    <RafProvider value={fakeRaf}>
+      <ManyLines count={initLineCount} />
+    </RafProvider>
+  )
+
+  let rootEl = root.getDOMNode()
+  let lineEls = () => rootEl.querySelectorAll(".LogPaneLine")
+  let component = root
+    .find(OverviewLogComponent)
+    .instance() as OverviewLogComponent
+  expect(component.renderBufferRafId).toBeGreaterThan(0)
+  expect(component.backwardBuffer.length).toEqual(initLineCount)
+  expect(lineEls().length).toEqual(0)
+
+  // append new lines on top of the lines we already have.
+  let newLineCount = 1.5 * renderWindow
+  let lines = []
+  for (let i = 0; i < newLineCount; i++) {
+    lines.push(`incremental line ${i}\n`)
+  }
+  appendLines(component.props.logStore, "fe", ...lines)
+  component.onLogUpdate()
+  expect(component.forwardBuffer.length).toEqual(newLineCount)
+  expect(component.backwardBuffer.length).toEqual(initLineCount)
+
+  // Invoke the RAF callback, and make sure that new logs were rendered
+  // and old logs were rendered.
+  fakeRaf.invoke(component.renderBufferRafId as number)
+  expect(component.forwardBuffer.length).toEqual(newLineCount - renderWindow)
+  expect(component.backwardBuffer.length).toEqual(initLineCount - renderWindow)
+  expect(lineEls().length).toEqual(renderWindow * 2)
+  expect(lineEls()[0].innerHTML).toEqual(
+    expect.stringContaining(">line 250\n<")
+  )
+  expect(lineEls()[lineEls().length - 1].innerHTML).toEqual(
+    expect.stringContaining(">incremental line 249\n<")
+  )
+
+  // Invoke the RAF callback again, and make sure that new logs were rendered further up
+  // and old logs were rendered further down.
+  fakeRaf.invoke(component.renderBufferRafId as number)
+  expect(lineEls()[0].innerHTML).toEqual(expect.stringContaining(">line 0\n<"))
+  expect(lineEls()[lineEls().length - 1].innerHTML).toEqual(
+    expect.stringContaining(">incremental line 374\n<")
+  )
 })

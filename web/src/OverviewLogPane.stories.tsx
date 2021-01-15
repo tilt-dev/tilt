@@ -2,36 +2,7 @@ import React, { Component, useEffect, useState } from "react"
 import { MemoryRouter } from "react-router"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewLogPane from "./OverviewLogPane"
-
-function now() {
-  return new Date().toString()
-}
-
-type Line = string | { text: string; fields?: any }
-
-function appendLines(logStore: LogStore, name: string, ...lines: Line[]) {
-  let fromCheckpoint = logStore.checkpoint
-  let toCheckpoint = fromCheckpoint + lines.length
-
-  let spans = {} as any
-  let spanId = name || "_"
-  spans[spanId] = { manifestName: name }
-
-  let segments = []
-  for (let line of lines) {
-    let obj = { time: now(), spanId: spanId, text: "" } as any
-    if (typeof line == "string") {
-      obj.text = line
-    } else {
-      for (let key in line) {
-        obj[key] = (line as any)[key]
-      }
-    }
-    segments.push(obj)
-  }
-
-  logStore.append({ spans, segments, fromCheckpoint, toCheckpoint })
-}
+import { appendLines } from "./testlogs"
 
 export default {
   title: "OverviewLogPane",
@@ -79,7 +50,7 @@ export const ManyLines = (args: any) => {
   for (let i = 0; i < args.count; i++) {
     lines.push(`line ${i}\n`)
   }
-  appendLines(logStore, "fe", ...lines)
+  appendLines(logStore, "fe", lines)
   return (
     <LogStoreProvider value={logStore}>
       <OverviewLogPane manifestName="fe" />
@@ -192,7 +163,7 @@ class ForeverLogComponent extends Component<ForeverLogProps> {
     for (let i = 0; i < count; i++) {
       lines.push({ text: `Line #${this.lineCount++}\n` })
     }
-    appendLines(this.logStore, "fe", ...lines)
+    appendLines(this.logStore, "fe", lines)
   }
 
   componentDidMount() {
