@@ -73,10 +73,10 @@ export const ThreeLinesAllLog = () => {
   )
 }
 
-export const OneThousandLines = () => {
+export const ManyLines = (args: any) => {
   let logStore = new LogStore()
   let lines = []
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < args.count; i++) {
     lines.push(`line ${i}\n`)
   }
   appendLines(logStore, "fe", ...lines)
@@ -85,6 +85,12 @@ export const OneThousandLines = () => {
       <OverviewLogPane manifestName="fe" />
     </LogStoreProvider>
   )
+}
+ManyLines.args = {
+  count: 1000,
+}
+ManyLines.argTypes = {
+  count: { control: { type: "number" } },
 }
 
 export const StyledLines = () => {
@@ -168,21 +174,32 @@ ProgressLines.argTypes = {
   layer4: { control: { type: "number", min: 0, max: 100 } },
 }
 
-class ForeverLogComponent extends Component {
+type ForeverLogProps = {
+  // Starting lines in the component.
+  startCount: number
+
+  // Incremental lines on each timer tick.
+  incCount: number
+}
+
+class ForeverLogComponent extends Component<ForeverLogProps> {
   logStore = new LogStore()
   lineCount = 0
   timer: any
 
+  appendLines(count: number) {
+    let lines = []
+    for (let i = 0; i < count; i++) {
+      lines.push({ text: `Line #${this.lineCount++}\n` })
+    }
+    appendLines(this.logStore, "fe", ...lines)
+  }
+
   componentDidMount() {
+    this.appendLines(this.props.startCount)
+
     this.timer = setInterval(() => {
-      let lines = [
-        { text: `Line #${this.lineCount++}\n` },
-        { text: `Line #${this.lineCount++}\n` },
-        { text: `Line #${this.lineCount++}\n` },
-        { text: `Line #${this.lineCount++}\n` },
-        { text: `Line #${this.lineCount++}\n` },
-      ]
-      appendLines(this.logStore, "fe", ...lines)
+      this.appendLines(this.props.incCount)
     }, 1000)
   }
 
@@ -199,8 +216,16 @@ class ForeverLogComponent extends Component {
   }
 }
 
-export const ForeverLog = () => {
-  return <ForeverLogComponent />
+export const ForeverLog = (args: ForeverLogProps) => {
+  return <ForeverLogComponent {...args} />
+}
+ForeverLog.args = {
+  startCount: 1000,
+  incCount: 5,
+}
+ForeverLog.argTypes = {
+  startCount: { control: { type: "number" } },
+  incCount: { control: { type: "number" } },
 }
 
 export const BuildLogAndRunLog = (args: any) => {
