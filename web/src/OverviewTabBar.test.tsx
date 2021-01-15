@@ -6,7 +6,10 @@ import OverviewTabBar, { HomeTab, Tab } from "./OverviewTabBar"
 it("infers tab from url", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/r/vigoda/overview"]}>
-      <OverviewTabBar tabsForTesting={["vigoda", "snack"]} />
+      <OverviewTabBar
+        selectedTab="vigoda"
+        tabsForTesting={["vigoda", "snack"]}
+      />
     </MemoryRouter>
   )
 

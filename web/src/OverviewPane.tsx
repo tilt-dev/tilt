@@ -91,7 +91,7 @@ export default function OverviewPane(props: OverviewPaneProps) {
   let testGrid = testItems.length ? <OverviewGrid items={testItems} /> : null
   return (
     <OverviewPaneRoot>
-      <OverviewTabBar />
+      <OverviewTabBar selectedTab={""} />
       <OverviewResourceBar view={props.view} />
       <ServicesContainer>
         {pinnedDivider}

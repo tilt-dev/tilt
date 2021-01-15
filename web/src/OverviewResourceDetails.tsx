@@ -7,9 +7,11 @@ import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
 import OverviewLogPane from "./OverviewLogPane"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { ResourceName } from "./types"
 
 type OverviewResourceDetailsProps = {
   resource?: Proto.webviewResource
+  name: string
 }
 
 let OverviewResourceDetailsRoot = styled.div`
@@ -173,17 +175,32 @@ function ActionBar(props: ActionBarProps) {
   )
 }
 
+let NotFound = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: ${Color.grayDarkest};
+`
+
 export default function OverviewResourceDetails(
   props: OverviewResourceDetailsProps
 ) {
-  let resource = props.resource
+  let { name, resource } = props
   let manifestName = resource?.name || ""
   let endpoints = resource?.endpointLinks || []
   let podId = resource?.podID || ""
+  let all = name === "" || name === ResourceName.all
+  let notFound = !all && !manifestName
   return (
     <OverviewResourceDetailsRoot>
       <ActionBar podId={podId} endpoints={endpoints} />
-      <OverviewLogPane manifestName={manifestName} />
+      {notFound ? (
+        <NotFound>No resource '{name}'</NotFound>
+      ) : (
+        <OverviewLogPane manifestName={manifestName} />
+      )}
     </OverviewResourceDetailsRoot>
   )
 }

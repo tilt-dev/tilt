@@ -1,6 +1,5 @@
 import React from "react"
 import styled from "styled-components"
-import NotFound from "./NotFound"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
@@ -34,20 +33,24 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let resources = props.view?.resources || []
   let name = props.name
   let r: Proto.webviewResource | undefined
-  if (name !== "" && name != ResourceName.all) {
+  let all = name === "" || name === ResourceName.all
+  if (!all) {
     r = resources.find((r) => r.name === name)
-    if (!r) {
-      return <NotFound location={{ pathname: `/r/${name}/overview` }} />
-    }
+  }
+  let selectedTab = ""
+  if (all) {
+    selectedTab = ResourceName.all
+  } else if (r?.name) {
+    selectedTab = r.name
   }
 
   return (
     <OverviewResourcePaneRoot>
-      <OverviewTabBar />
+      <OverviewTabBar selectedTab={selectedTab} />
       <OverviewResourceBar {...props} />
       <Main>
         <OverviewResourceSidebar {...props} />
-        <OverviewResourceDetails resource={r} />
+        <OverviewResourceDetails resource={r} name={name} />
       </Main>
     </OverviewResourcePaneRoot>
   )

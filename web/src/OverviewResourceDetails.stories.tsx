@@ -38,12 +38,12 @@ export const FullBar = () => {
     { url: "http://localhost:4002" },
   ]
   res.podID = "my-pod-deadbeef"
-  return <OverviewResourceDetails resource={res} />
+  return <OverviewResourceDetails resource={res} name={"vigoda"} />
 }
 
 export const EmptyBar = () => {
   let res = oneResource()
   res.endpointLinks = []
   res.podID = ""
-  return <OverviewResourceDetails resource={res} />
+  return <OverviewResourceDetails resource={res} name={"vigoda"} />
 }
