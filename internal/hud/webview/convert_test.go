@@ -278,14 +278,14 @@ func TestLocalResource(t *testing.T) {
 
 	state := newState([]model.Manifest{m})
 	state.ManifestTargets[m.Name].State.RuntimeState = store.LocalRuntimeState{
-		Status: model.RuntimeStatusNotApplicable,
+		State: model.ProcessStateRunning,
 	}
 	v := stateToProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.Resources))
 	r := v.Resources[1]
 	assert.Equal(t, "test", r.Name)
-	assert.Equal(t, model.RuntimeStatusNotApplicable, model.RuntimeStatus(r.RuntimeStatus))
+	assert.Equal(t, model.RuntimeStatusOK, model.RuntimeStatus(r.RuntimeStatus))
 	require.Len(t, r.Specs, 1)
 	spec := r.Specs[0]
 	require.Equal(t, proto_webview.TargetType_TARGET_TYPE_LOCAL, spec.Type)

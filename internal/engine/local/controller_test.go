@@ -30,18 +30,18 @@ func TestUpdate(t *testing.T) {
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "true", ".", t1)
 	f.step()
-	f.assertStatus("foo", model.RuntimeStatusOK, 1)
+	f.assertStatus("foo", model.ProcessStateRunning, 1)
 
 	t2 := time.Unix(2, 0)
 	f.resource("foo", "false", ".", t2)
 	f.step()
-	f.assertStatus("foo", model.RuntimeStatusOK, 2)
+	f.assertStatus("foo", model.ProcessStateRunning, 2)
 	f.assertNoAction("error for cancel", func(action store.Action) bool {
 		a, ok := action.(LocalServeStatusAction)
 		if !ok {
 			return false
 		}
-		return a.ManifestName == "foo" && a.Status == model.RuntimeStatusError
+		return a.ManifestName == "foo" && a.State == model.ProcessStateTerminated
 	})
 	f.fe.RequireNoKnownProcess(t, "true")
 	f.assertLogMessage("foo", "Starting cmd false")
@@ -55,7 +55,7 @@ func TestServe(t *testing.T) {
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "sleep 60", "testdir", t1)
 	f.step()
-	f.assertStatus("foo", model.RuntimeStatusOK, 1)
+	f.assertStatus("foo", model.ProcessStateRunning, 1)
 
 	require.Equal(t, "testdir", f.fe.processes["sleep 60"].workdir)
 
@@ -69,13 +69,13 @@ func TestFailure(t *testing.T) {
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "true", ".", t1)
 	f.step()
-	f.assertStatus("foo", model.RuntimeStatusOK, 1)
+	f.assertStatus("foo", model.ProcessStateRunning, 1)
 	f.assertLogMessage("foo", "Starting cmd true")
 
 	err := f.fe.stop("true", 5)
 	require.NoError(t, err)
 
-	f.assertStatus("foo", model.RuntimeStatusError, 1)
+	f.assertStatus("foo", model.ProcessStateTerminated, 1)
 	f.assertLogMessage("foo", "cmd true exited with code 5")
 }
 
@@ -197,13 +197,13 @@ func (f *fixture) assertNoAction(msg string, pred func(action store.Action) bool
 	}
 }
 
-func (f *fixture) assertStatus(name string, status model.RuntimeStatus, sequenceNum int) {
+func (f *fixture) assertStatus(name string, status model.ProcessState, sequenceNum int) {
 	msg := fmt.Sprintf("didn't find name %s, status %v, sequence %d", name, status, sequenceNum)
 	pred := func(action store.Action) bool {
 		stAction, ok := action.(LocalServeStatusAction)
 		if !ok ||
 			stAction.ManifestName != model.ManifestName(name) ||
-			stAction.Status != status {
+			stAction.State != status {
 			return false
 		}
 		return true

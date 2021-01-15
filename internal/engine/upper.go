@@ -461,7 +461,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if mt.Manifest.IsLocal() {
 		lrs := ms.LocalRuntimeState()
-		lrs.Status = model.RuntimeStatusNotApplicable
 		if err == nil {
 			lrs.HasSucceededAtLeastOnce = true
 		}
@@ -771,7 +770,7 @@ func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState,
 	}
 
 	lrs := ms.LocalRuntimeState()
-	lrs.Status = action.Status
+	lrs.State = action.State
 	lrs.PID = action.PID
 	lrs.SpanID = action.SpanID
 	ms.RuntimeState = lrs
