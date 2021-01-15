@@ -40,39 +40,43 @@ let ServicesContainer = styled.div`
   overflow: auto;
 `
 
-function PinnedResources(items: OverviewItem[]) {
-  return items?.length ? (
-    <div className={"resources-container pinned"}>
+type ResourceProps = {
+  items: OverviewItem[]
+}
+
+export function PinnedResources(props: ResourceProps) {
+  return props.items?.length ? (
+    <React.Fragment>
       <ServicesDividerRoot className={"ServicesDivider pinned"}>
         <GridDividerPinSvg style={{ marginLeft: "28px" }} />
         <ServicesLabel>Pinned Resources</ServicesLabel>
       </ServicesDividerRoot>
-      <OverviewGrid items={items} />
-    </div>
+      <OverviewGrid items={props.items} />
+    </React.Fragment>
   ) : null
 }
 
-function AllResources(items: OverviewItem[]) {
-  return items?.length ? (
-    <div className={"resources-container all"}>
+export function AllResources(props: ResourceProps) {
+  return props.items?.length ? (
+    <React.Fragment>
       <ServicesDividerRoot className={"ServicesDivider all"}>
         <GridDividerAllSvg style={{ marginLeft: "28px" }} />
         <ServicesLabel>All Resources</ServicesLabel>
       </ServicesDividerRoot>
-      <OverviewGrid items={items} />
-    </div>
+      <OverviewGrid items={props.items} />
+    </React.Fragment>
   ) : null
 }
 
-function TestResources(items: OverviewItem[]) {
-  return items?.length ? (
-    <div className={"resources-container tests"}>
+export function TestResources(props: ResourceProps) {
+  return props.items?.length ? (
+    <React.Fragment>
       <ServicesDividerRoot className={"ServicesDivider tests"}>
         <GridDividerTestSvg style={{ marginLeft: "28px" }} />
         <ServicesLabel>All Resources</ServicesLabel>
       </ServicesDividerRoot>
-      <OverviewGrid items={items} />
-    </div>
+      <OverviewGrid items={props.items} />
+    </React.Fragment>
   ) : null
 }
 
@@ -97,9 +101,9 @@ export default function OverviewPane(props: OverviewPaneProps) {
       <OverviewTabBar />
       <OverviewResourceBar view={props.view} />
       <ServicesContainer>
-        {PinnedResources(pinnedItems)}
-        {AllResources(allResources)}
-        {TestResources(testItems)}
+        <PinnedResources items={pinnedItems} />
+        <AllResources items={allResources} />
+        <TestResources items={testItems} />
       </ServicesContainer>
     </OverviewPaneRoot>
   )

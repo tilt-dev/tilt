@@ -3,17 +3,20 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
 import OverviewItemView from "./OverviewItemView"
-import OverviewPane from "./OverviewPane"
+import OverviewPane, {
+  AllResources,
+  PinnedResources,
+  TestResources,
+} from "./OverviewPane"
 import { TwoResources } from "./OverviewPane.stories"
 import { SidebarPinContextProvider } from "./SidebarPin"
 import { oneResourceTest, twoResourceView } from "./testdata"
 
 function assertContainerWithResources(
   root: ReactWrapper,
-  className: string,
-  names: string[]
+  sel: any,
+  names: string[] // pass empty list to assert that there are no resource cards in the container
 ) {
-  let sel = ".resources-container." + className
   let resourceContainer = root.find(sel)
   expect(resourceContainer).toHaveLength(1)
 
@@ -24,19 +27,14 @@ function assertContainerWithResources(
   }
 }
 
-function assertContainerDNE(root: ReactWrapper, className: string) {
-  let sel = ".resources-container." + className
-  expect(root.find(sel)).toHaveLength(0)
-}
-
 it("renders all resources if no pinned and no tests", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>{TwoResources()}</MemoryRouter>
   )
 
-  assertContainerDNE(root, "pinned")
-  assertContainerWithResources(root, "all", ["vigoda", "snack"])
-  assertContainerDNE(root, "tests")
+  assertContainerWithResources(root, PinnedResources, [])
+  assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
+  assertContainerWithResources(root, TestResources, [])
 })
 
 it("renders pinned resources", () => {
@@ -53,10 +51,9 @@ it("renders pinned resources", () => {
     </MemoryRouter>
   )
 
-  assertContainerWithResources(root, "pinned", ["snack"])
-
-  assertContainerWithResources(root, "all", ["vigoda", "snack"])
-  assertContainerDNE(root, "tests")
+  assertContainerWithResources(root, PinnedResources, ["snack"])
+  assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
+  assertContainerWithResources(root, TestResources, [])
 })
 
 it("renders test resources separate from all resources", () => {
@@ -69,7 +66,7 @@ it("renders test resources separate from all resources", () => {
     </MemoryRouter>
   )
 
-  assertContainerDNE(root, "pinned")
-  assertContainerWithResources(root, "all", ["vigoda", "snack"])
-  assertContainerWithResources(root, "tests", ["boop"])
+  assertContainerWithResources(root, PinnedResources, [])
+  assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
+  assertContainerWithResources(root, TestResources, ["boop"])
 })
