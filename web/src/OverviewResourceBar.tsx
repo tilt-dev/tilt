@@ -403,6 +403,7 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
         open={shortcutsDialogOpen}
         anchorEl={shortcutsDialogAnchor}
         onClose={() => toggleShortcutsDialog("close")}
+        isOverview={true}
       />
       <MetricsDialog
         open={metricsDialogOpen}
