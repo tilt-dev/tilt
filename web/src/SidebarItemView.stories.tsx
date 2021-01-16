@@ -6,6 +6,7 @@ import SidebarItemView, {
   SidebarItemAll,
   SidebarItemViewProps,
 } from "./SidebarItemView"
+import { LegacyNavProvider } from "./TabNav"
 import { oneResourceNoAlerts } from "./testdata"
 import {
   ResourceName,
@@ -20,7 +21,9 @@ let pathBuilder = PathBuilder.forTesting("localhost", "/")
 function ItemWrapper(props: { children: React.ReactNode }) {
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <div style={{ width: "336px", margin: "100px" }}>{props.children}</div>
+      <LegacyNavProvider resourceView={ResourceView.Log}>
+        <div style={{ width: "336px", margin: "100px" }}>{props.children}</div>
+      </LegacyNavProvider>
     </MemoryRouter>
   )
 }
@@ -136,7 +139,7 @@ export const Tiltfile = () =>
 export const AllItemSelected = () => {
   return (
     <ItemWrapper>
-      <SidebarItemAll nothingSelected={true} totalAlerts={1} allLink={"/"} />
+      <SidebarItemAll nothingSelected={true} totalAlerts={1} />
     </ItemWrapper>
   )
 }
@@ -144,7 +147,7 @@ export const AllItemSelected = () => {
 export const AllItemUnselected = () => {
   return (
     <ItemWrapper>
-      <SidebarItemAll nothingSelected={false} totalAlerts={1} allLink={"/"} />
+      <SidebarItemAll nothingSelected={false} totalAlerts={1} />
     </ItemWrapper>
   )
 }

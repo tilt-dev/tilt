@@ -1,6 +1,8 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewTabBar from "./OverviewTabBar"
+import { OverviewNavProvider } from "./TabNav"
+import { ResourceView } from "./types"
 
 type Resource = Proto.webviewResource
 
@@ -24,7 +26,11 @@ export const InferOneTab = () => <OverviewTabBar selectedTab={"vigoda"} />
 
 export const TwoTabs = () => {
   let tabs = ["vigoda", "snack"]
-  return <OverviewTabBar selectedTab={""} tabsForTesting={tabs} />
+  return (
+    <OverviewNavProvider resourceView={ResourceView.Grid} tabsForTesting={tabs}>
+      <OverviewTabBar selectedTab={""} />
+    </OverviewNavProvider>
+  )
 }
 
 export const TenTabs = () => {
@@ -40,10 +46,19 @@ export const TenTabs = () => {
     "vigoda_9",
     "vigoda_10",
   ]
-  return <OverviewTabBar selectedTab={"vigoda_2"} tabsForTesting={tabs} />
+  return (
+    <OverviewNavProvider resourceView={ResourceView.Grid} tabsForTesting={tabs}>
+      <OverviewTabBar selectedTab={"vigoda_2"} />
+    </OverviewNavProvider>
+  )
 }
 
 export const LongTabName = () => {
   let tabs = ["extremely-long-tab-name-yes-this-is-very-long"]
-  return <OverviewTabBar selectedTab={""} tabsForTesting={tabs} />
+
+  return (
+    <OverviewNavProvider resourceView={ResourceView.Grid} tabsForTesting={tabs}>
+      <OverviewTabBar selectedTab={""} />
+    </OverviewNavProvider>
+  )
 }
