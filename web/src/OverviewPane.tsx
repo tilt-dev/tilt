@@ -47,7 +47,7 @@ type ResourceProps = {
 export function PinnedResources(props: ResourceProps) {
   return props.items?.length ? (
     <React.Fragment>
-      <ServicesDividerRoot className={"ServicesDivider pinned"}>
+      <ServicesDividerRoot>
         <GridDividerPinSvg style={{ marginLeft: "28px" }} />
         <ServicesLabel>Pinned Resources</ServicesLabel>
       </ServicesDividerRoot>
@@ -59,7 +59,7 @@ export function PinnedResources(props: ResourceProps) {
 export function AllResources(props: ResourceProps) {
   return props.items?.length ? (
     <React.Fragment>
-      <ServicesDividerRoot className={"ServicesDivider all"}>
+      <ServicesDividerRoot>
         <GridDividerAllSvg style={{ marginLeft: "28px" }} />
         <ServicesLabel>All Resources</ServicesLabel>
       </ServicesDividerRoot>
@@ -71,7 +71,7 @@ export function AllResources(props: ResourceProps) {
 export function TestResources(props: ResourceProps) {
   return props.items?.length ? (
     <React.Fragment>
-      <ServicesDividerRoot className={"ServicesDivider tests"}>
+      <ServicesDividerRoot>
         <GridDividerTestSvg style={{ marginLeft: "28px" }} />
         <ServicesLabel>All Resources</ServicesLabel>
       </ServicesDividerRoot>
