@@ -135,17 +135,17 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
   for (let i = 0; i < greenSquareCount; i++) {
     let style =
       boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<GreenSquare key={i} style={style} />)
+    boxes.push(<GreenSquare key={"green-" + i} style={style} />)
   }
   for (let i = 0; i < redSquareCount; i++) {
     let style =
       boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<RedSquare key={i} style={style} />)
+    boxes.push(<RedSquare key={"red-" + i} style={style} />)
   }
   for (let i = 0; i < graySquareCount; i++) {
     let style =
       boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<GraySquare key={i} style={style} />)
+    boxes.push(<GraySquare key={"gray-" + i} style={style} />)
   }
 
   let summaryMsg =
