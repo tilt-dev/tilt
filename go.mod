@@ -26,11 +26,13 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/gdamore/tcell v1.1.3
 	github.com/ghodss/yaml v1.0.0
+	github.com/go-errors/errors v1.1.1 // indirect
+	github.com/go-openapi/spec v0.20.1 // indirect
+	github.com/go-openapi/swag v0.19.13 // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.2
-	github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf // indirect
 	github.com/google/uuid v1.1.2
 	github.com/google/wire v0.3.0
 	github.com/gorilla/mux v1.7.4
@@ -43,7 +45,6 @@ require (
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/json-iterator/go v1.1.10
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/mattn/go-colorable v0.1.4
 	github.com/mattn/go-isatty v0.0.10
@@ -53,7 +54,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/moby/buildkit v0.7.1-0.20200925001807-2b6cccb9b3e9
 	github.com/modern-go/reflect2 v1.0.1
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
@@ -75,16 +75,17 @@ require (
 	go.opencensus.io v0.22.4
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20200615180055-61b64bc45990
+	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+	golang.org/x/text v0.3.5 // indirect
 	google.golang.org/genproto v0.0.0-20200527145253-8367513e4ece
 	google.golang.org/grpc v1.29.1
-	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/dancannon/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
-	gopkg.in/yaml.v2 v2.3.0
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	helm.sh/helm/v3 v3.4.1
 	k8s.io/api v0.20.0
 	k8s.io/apimachinery v0.20.0
@@ -92,7 +93,7 @@ require (
 	k8s.io/client-go v0.20.0
 	k8s.io/klog/v2 v2.4.0
 	k8s.io/kubectl v0.20.0
-	sigs.k8s.io/kustomize v2.0.3+incompatible
+	sigs.k8s.io/kustomize/api v0.7.2
 	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
 )

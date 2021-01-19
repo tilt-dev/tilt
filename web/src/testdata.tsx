@@ -273,36 +273,6 @@ function oneResourceUnrecognizedError(): Resource {
   return resource
 }
 
-function oneResourceTest(): Resource {
-  const ts = new Date(Date.now()).toISOString()
-  const resource = {
-    name: "boop",
-    lastDeployTime: ts,
-    buildHistory: [
-      {
-        startTime: ts,
-        finishTime: ts,
-        updateTypes: ["UPDATE_TYPE_LOCAL"],
-        spanId: "build:1",
-      },
-    ],
-    localResourceInfo: {
-      pid: "0",
-      isTest: true,
-    },
-    runtimeStatus: "not_applicable",
-    updateStatus: "ok",
-    specs: [
-      {
-        id: "local:boop",
-        type: "TARGET_TYPE_LOCAL",
-        hasLiveUpdate: false,
-      },
-    ],
-  }
-  return resource
-}
-
 function oneResourceView(): view {
   return { resources: [oneResource()], tiltfileKey: "test", runningTiltBuild }
 }
@@ -4433,7 +4403,6 @@ export {
   oneResourceImagePullBackOff,
   oneResourceErrImgPull,
   oneResourceUnrecognizedError,
-  oneResourceTest,
   logPaneDOM,
   unnamedEndpointLink,
   namedEndpointLink,
