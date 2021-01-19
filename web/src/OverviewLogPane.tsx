@@ -5,6 +5,7 @@ import "./LogPane.scss"
 import "./LogPaneLine.scss"
 import LogStore, { useLogStore } from "./LogStore"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
+import { RafContext, useRaf } from "./raf"
 import { Color, SizeUnit } from "./style-helpers"
 import { LogLine } from "./types"
 
@@ -12,6 +13,7 @@ type OverviewLogComponentProps = {
   manifestName: string
   pathBuilder: PathBuilder
   logStore: LogStore
+  raf: RafContext
   hideBuildLog?: boolean
   hideRunLog?: boolean
 }
@@ -109,20 +111,20 @@ function newLineEl(
 //
 // This means that we can't use other react components (like styled-components)
 // and have to use plain css + HTML.
-class OverviewLogComponent extends Component<OverviewLogComponentProps> {
-  private autoscroll: boolean = true
+export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
+  autoscroll: boolean = true
 
   // The element containing all the log lines.
-  private rootRef: React.RefObject<any> = React.createRef()
+  rootRef: React.RefObject<any> = React.createRef()
 
   // The blinking cursor at the end fo the component.
   private cursorRef: React.RefObject<HTMLParagraphElement> = React.createRef()
 
   // Track the scrollTop of the root element to see if the user is scrolling upwards.
-  private scrollTop: number = -1
+  scrollTop: number = -1
 
   // Timer for tracking autoscroll.
-  private autoscrollRafID: number | null = null
+  autoscrollRafId: number | null = null
 
   private logCheckpoint: number = 0
 
@@ -202,8 +204,8 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
     rootEl.removeEventListener("scroll", this.onScroll)
 
-    if (this.autoscrollRafID) {
-      cancelAnimationFrame(this.autoscrollRafID)
+    if (this.autoscrollRafId) {
+      this.props.raf.cancelAnimationFrame(this.autoscrollRafId)
     }
   }
 
@@ -247,11 +249,11 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    if (this.autoscrollRafID) {
-      cancelAnimationFrame(this.autoscrollRafID)
+    if (this.autoscrollRafId) {
+      this.props.raf.cancelAnimationFrame(this.autoscrollRafId)
     }
 
-    this.autoscrollRafID = requestAnimationFrame(() => {
+    this.autoscrollRafId = this.props.raf.requestAnimationFrame(() => {
       let autoscroll = this.computeAutoScroll()
       if (autoscroll) {
         this.autoscroll = true
@@ -279,7 +281,7 @@ class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
 
     let lastElInView =
-      cursorEl.getBoundingClientRect().bottom <
+      cursorEl.getBoundingClientRect().bottom <=
       rootEl.getBoundingClientRect().bottom
     return lastElInView
   }
@@ -361,11 +363,13 @@ type OverviewLogPaneProps = {
 export default function OverviewLogPane(props: OverviewLogPaneProps) {
   let pathBuilder = usePathBuilder()
   let logStore = useLogStore()
+  let raf = useRaf()
   return (
     <OverviewLogComponent
       manifestName={props.manifestName}
       pathBuilder={pathBuilder}
       logStore={logStore}
+      raf={raf}
       hideBuildLog={props.hideBuildLog}
       hideRunLog={props.hideRunLog}
     />
