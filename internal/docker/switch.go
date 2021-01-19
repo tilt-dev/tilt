@@ -17,24 +17,34 @@ import (
 // Docker instance and one that lives in our K8s cluster.
 
 type switchCli struct {
-	localCli   LocalClient
-	clusterCli ClusterClient
-	orc        model.Orchestrator
-	mu         sync.Mutex
+	localCli       LocalClient
+	clusterCli     ClusterClient
+	orc            model.Orchestrator
+	localRegExists bool
+	mu             sync.Mutex
 }
 
-func ProvideSwitchCli(clusterCli ClusterClient, localCli LocalClient) *switchCli {
+func ProvideSwitchCli(clusterCli ClusterClient, localCli LocalClient, localReg container.Registry) *switchCli {
 	return &switchCli{
-		localCli:   localCli,
-		clusterCli: clusterCli,
-		orc:        model.OrchestratorK8s,
+		localCli:       localCli,
+		clusterCli:     clusterCli,
+		orc:            model.OrchestratorK8s,
+		localRegExists: !localReg.Empty(),
 	}
 }
 
 func (c *switchCli) client() Client {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.orc == model.OrchestratorK8s {
+
+	// Use the cluster client if:
+	// - user is orchestrating via k8s (i.e. there is a cluster to have a client), AND
+	// - either:
+	//     - there is no local registry configured (if there is, we generally prefer
+	//       using the local client and pushing to the local reg.), OR
+	//     - there IS a local registry configured, but no valid local client
+	if c.orc == model.OrchestratorK8s &&
+		(!c.localRegExists || c.localCli.CheckConnected() != nil) {
 		return c.clusterCli
 	}
 	return c.localCli
