@@ -71,9 +71,9 @@ status of running services, errors, logs, and more.
 
 **Questions and feedback:** Join [the Kubernetes slack](http://slack.k8s.io) and
  find us in the [#tilt](https://kubernetes.slack.com/messages/CESBL84MV/)
- channel. Or [file an issue](https://github.com/tilt-dev/tilt/issues).
+ channel. Or [file an issue](https://github.com/tilt-dev/tilt/issues). For code snippets of Tiltfile functionality shared by the Tilt community, check out [Tilt Extensions](https://github.com/tilt-dev/tilt-extensions).
 
-**Contribute:** Check out our [contribution](CONTRIBUTING.md) guidelines.
+**Contribute:** Check out our [guidelines](CONTRIBUTING.md) to contribute to Tilt's source code. To extend the capabilities of Tilt via new Tiltfile functionality, read more about [Extensions](https://docs.tilt.dev/extensions.html). 
 
 **Follow along:** [@tilt_dev](https://twitter.com/tilt_dev) on Twitter. Updates
 and announcements on the [Tilt blog](https://blog.tilt.dev).
