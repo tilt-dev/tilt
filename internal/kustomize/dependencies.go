@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tilt-dev/tilt/internal/ospath"
+
 	yaml "gopkg.in/yaml.v2"
 	"sigs.k8s.io/kustomize/api/konfig"
 	"sigs.k8s.io/kustomize/api/types"
@@ -83,17 +85,23 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 		return nil, fmt.Errorf("Failed to read kustomization file under %s:\n"+strings.Join(errs, "\n"), dir)
 	}
 
-	for _, base := range content.Bases {
-		baseDeps, err := dependenciesForKustomization(filepath.Join(dir, base))
-		if err != nil {
-			return nil, err
-		}
+	paths := append([]string{}, content.Bases...)
+	paths = append(paths, content.Resources...)
 
-		deps = append(deps, baseDeps...)
+	for _, p := range paths {
+		abs := filepath.Join(dir, p)
+		if ospath.IsDir(abs) {
+			curDeps, err := dependenciesForKustomization(filepath.Join(dir, p))
+			if err != nil {
+				return nil, err
+			}
+			deps = append(deps, curDeps...)
+		} else {
+			deps = append(deps, abs)
+		}
 	}
 
 	deps = append(deps, path)
-	deps = append(deps, joinPaths(dir, content.Resources)...)
 	for _, patch := range content.Patches {
 		if patch.Path != "" {
 			deps = append(deps, filepath.Join(dir, patch.Path))
