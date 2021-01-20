@@ -105,6 +105,13 @@ replace (
 	// https://github.com/evanphx/json-patch/issues/98
 	// so that we can pull it in correctly
 	github.com/evanphx/json-patch => github.com/tilt-dev/json-patch/v4 v4.8.1 // indirect
+
+	// Workaround for https://github.com/kubernetes-sigs/kustomize/issues/3262
+	// Kustomize depends on go-openapi/spec, which made a backwards-incompatible
+	// change: https://github.com/go-openapi/spec/commit/55f43acfece4ec21dd910b355e80e15d35960aa9
+	// kubectl pulls in an old version of kustomize, which pulls in an old version of go-openapi, with which the new kustomize is incompatible
+	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.3
+
 	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
