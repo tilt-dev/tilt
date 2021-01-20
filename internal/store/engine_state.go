@@ -491,7 +491,7 @@ func newManifestState(m model.Manifest) *ManifestState {
 	if m.IsK8s() {
 		ms.RuntimeState = NewK8sRuntimeState(m)
 	} else if m.IsLocal() {
-		ms.RuntimeState = LocalRuntimeState{}
+		ms.RuntimeState = NewLocalRuntimeState(m)
 	}
 
 	// For historical reasons, DC state is initialized differently.
