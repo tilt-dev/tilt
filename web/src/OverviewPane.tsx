@@ -73,7 +73,7 @@ export function TestResources(props: ResourceProps) {
     <React.Fragment>
       <ServicesDividerRoot>
         <GridDividerTestSvg style={{ marginLeft: "28px" }} />
-        <ServicesLabel>All Resources</ServicesLabel>
+        <ServicesLabel>Tests</ServicesLabel>
       </ServicesDividerRoot>
       <OverviewGrid items={props.items} />
     </React.Fragment>
