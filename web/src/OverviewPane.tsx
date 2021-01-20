@@ -40,31 +40,44 @@ let ServicesContainer = styled.div`
   overflow: auto;
 `
 
-function PinnedServicesDivider() {
-  return (
-    <ServicesDividerRoot>
-      <GridDividerPinSvg style={{ marginLeft: "28px" }} />
-      <ServicesLabel>Pinned Resources</ServicesLabel>
-    </ServicesDividerRoot>
-  )
+type ResourceProps = {
+  items: OverviewItem[]
 }
 
-function AllResourcesDivider() {
-  return (
-    <ServicesDividerRoot>
-      <GridDividerAllSvg style={{ marginLeft: "28px" }} />
-      <ServicesLabel>All Resources</ServicesLabel>
-    </ServicesDividerRoot>
-  )
+export function PinnedResources(props: ResourceProps) {
+  return props.items?.length ? (
+    <React.Fragment>
+      <ServicesDividerRoot>
+        <GridDividerPinSvg style={{ marginLeft: "28px" }} />
+        <ServicesLabel>Pinned Resources</ServicesLabel>
+      </ServicesDividerRoot>
+      <OverviewGrid items={props.items} />
+    </React.Fragment>
+  ) : null
 }
 
-function TestsDivider() {
-  return (
-    <ServicesDividerRoot>
-      <GridDividerTestSvg style={{ marginLeft: "28px" }} />
-      <ServicesLabel>Tests</ServicesLabel>
-    </ServicesDividerRoot>
-  )
+export function AllResources(props: ResourceProps) {
+  return props.items?.length ? (
+    <React.Fragment>
+      <ServicesDividerRoot>
+        <GridDividerAllSvg style={{ marginLeft: "28px" }} />
+        <ServicesLabel>All Resources</ServicesLabel>
+      </ServicesDividerRoot>
+      <OverviewGrid items={props.items} />
+    </React.Fragment>
+  ) : null
+}
+
+export function TestResources(props: ResourceProps) {
+  return props.items?.length ? (
+    <React.Fragment>
+      <ServicesDividerRoot>
+        <GridDividerTestSvg style={{ marginLeft: "28px" }} />
+        <ServicesLabel>All Resources</ServicesLabel>
+      </ServicesDividerRoot>
+      <OverviewGrid items={props.items} />
+    </React.Fragment>
+  ) : null
 }
 
 export default function OverviewPane(props: OverviewPaneProps) {
@@ -81,25 +94,16 @@ export default function OverviewPane(props: OverviewPaneProps) {
   let pinnedItems = allItems.filter((item) =>
     pinContext.pinnedResources.includes(item.name)
   )
-
-  let pinnedDivider = pinnedItems.length ? <PinnedServicesDivider /> : null
-  let pinnedGrid = pinnedItems.length ? (
-    <OverviewGrid items={pinnedItems} />
-  ) : null
   let testItems = allItems.filter((item) => item.isTest)
-  let testDivider = testItems.length ? <TestsDivider /> : null
-  let testGrid = testItems.length ? <OverviewGrid items={testItems} /> : null
+
   return (
     <OverviewPaneRoot>
       <OverviewTabBar selectedTab={""} />
       <OverviewResourceBar view={props.view} />
       <ServicesContainer>
-        {pinnedDivider}
-        {pinnedGrid}
-        <AllResourcesDivider />
-        <OverviewGrid items={allResources} />
-        {testDivider}
-        {testGrid}
+        <PinnedResources items={pinnedItems} />
+        <AllResources items={allResources} />
+        <TestResources items={testItems} />
       </ServicesContainer>
     </OverviewPaneRoot>
   )
