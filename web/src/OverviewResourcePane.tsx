@@ -5,6 +5,7 @@ import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import OverviewTabBar from "./OverviewTabBar"
 import { Color } from "./style-helpers"
+import { useTabNav } from "./TabNav"
 import { ResourceName } from "./types"
 
 type OverviewResourcePaneProps = {
@@ -30,6 +31,7 @@ let Main = styled.div`
 `
 
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
+  let nav = useTabNav()
   let resources = props.view?.resources || []
   let name = props.name
   let r: Proto.webviewResource | undefined

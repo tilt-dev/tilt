@@ -1,5 +1,4 @@
 import React from "react"
-import { Link } from "react-router-dom"
 import TimeAgo from "react-timeago"
 import styled, { keyframes } from "styled-components"
 import { incr } from "./analytics"
@@ -18,9 +17,10 @@ import {
   SizeUnit,
   Width,
 } from "./style-helpers"
+import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { ResourceStatus, ResourceView } from "./types"
+import { ResourceName, ResourceStatus, ResourceView } from "./types"
 
 const barberpole = keyframes`
   100% {
@@ -28,7 +28,7 @@ const barberpole = keyframes`
   }
 `
 
-export let SidebarItemBox = styled(Link)`
+export let SidebarItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
@@ -44,6 +44,7 @@ export let SidebarItemBox = styled(Link)`
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
   margin-right: ${SizeUnit(0.5)};
+  cursor: pointer;
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -117,15 +118,16 @@ let SidebarItemText = styled.div`
 type SidebarItemAllProps = {
   nothingSelected: boolean
   totalAlerts: number
-  allLink: string
 }
 
 export function SidebarItemAll(props: SidebarItemAllProps) {
+  let nav = useTabNav()
   return (
     <SidebarItemAllRoot>
       <SidebarItemAllBox
         className={props.nothingSelected ? "isSelected" : ""}
-        to={props.allLink}
+        onClick={() => nav.clickResource(ResourceName.all)}
+        onDoubleClick={() => nav.doubleClickResource(ResourceName.all)}
       >
         <SidebarIcon
           status={ResourceStatus.None}
@@ -246,20 +248,8 @@ function buildTooltipText(status: ResourceStatus): string {
 }
 
 export default function SidebarItemView(props: SidebarItemViewProps) {
+  let nav = useTabNav()
   let item = props.item
-  let link = `/r/${item.name}`
-  switch (props.resourceView) {
-    case ResourceView.Alerts:
-      link += "/alerts"
-      break
-    case ResourceView.Facets:
-      link += "/facets"
-      break
-    case ResourceView.OverviewDetail:
-      link += "/overview"
-      break
-  }
-
   let formatter = timeAgoFormatter
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
   let hasBuilt = item.lastBuild !== null
@@ -284,7 +274,8 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
       )}
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
-        to={props.pathBuilder.path(link)}
+        onClick={() => nav.clickResource(item.name)}
+        onDoubleClick={() => nav.doubleClickResource(item.name)}
         data-name={item.name}
       >
         <SidebarItemRuntimeBox>

@@ -9,7 +9,7 @@ import SidebarItemView, {
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { useSidebarPin } from "./SidebarPin"
 import { Color, FontSize, SizeUnit, Width } from "./style-helpers"
-import { ResourceName, ResourceView } from "./types"
+import { ResourceView } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
@@ -60,15 +60,16 @@ function PinnedItems(props: SidebarProps) {
   let pinnedItems = ctx.pinnedResources?.flatMap((r) =>
     props.items
       .filter((i) => i.name === r)
-      .map((i) =>
-        SidebarItemView({
-          item: i,
-          selected: props.selected === i.name,
-          renderPin: false,
-          pathBuilder: props.pathBuilder,
-          resourceView: props.resourceView,
-        })
-      )
+      .map((i) => (
+        <SidebarItemView
+          key={"sidebarItemPinned-" + i.name}
+          item={i}
+          selected={props.selected === i.name}
+          renderPin={false}
+          pathBuilder={props.pathBuilder}
+          resourceView={props.resourceView}
+        />
+      ))
   )
 
   if (!pinnedItems?.length) {
@@ -94,27 +95,20 @@ export class SidebarResources extends PureComponent<SidebarProps> {
 
   render() {
     let pb = this.props.pathBuilder
-
-    let allLink = pb.path("/")
-    if (this.props.resourceView === ResourceView.Alerts) {
-      allLink = pb.path("/alerts")
-    } else if (this.props.resourceView === ResourceView.OverviewDetail) {
-      allLink = pb.path(`/r/${ResourceName.all}/overview`)
-    }
-
     let totalAlerts = this.props.items
       .map((i) => i.buildAlertCount + i.runtimeAlertCount)
       .reduce((sum, current) => sum + current, 0)
 
-    let listItems = this.props.items.map((item) =>
-      SidebarItemView({
-        item: item,
-        selected: this.props.selected === item.name,
-        renderPin: true,
-        pathBuilder: this.props.pathBuilder,
-        resourceView: this.props.resourceView,
-      })
-    )
+    let listItems = this.props.items.map((item) => (
+      <SidebarItemView
+        key={"sidebarItem-" + item.name}
+        item={item}
+        selected={this.props.selected == item.name}
+        renderPin={true}
+        pathBuilder={this.props.pathBuilder}
+        resourceView={this.props.resourceView}
+      />
+    ))
 
     let nothingSelected = !this.props.selected
     let isOverviewClass =
@@ -128,7 +122,6 @@ export class SidebarResources extends PureComponent<SidebarProps> {
           <SidebarListSection name="">
             <SidebarItemAll
               nothingSelected={nothingSelected}
-              allLink={allLink}
               totalAlerts={totalAlerts}
             />
           </SidebarListSection>

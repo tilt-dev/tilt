@@ -14,6 +14,9 @@ export enum ResourceView {
 
   // The detail view in the Grid-based UI.
   OverviewDetail,
+
+  // The grid UI
+  Grid,
 }
 
 export enum TriggerMode {

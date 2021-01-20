@@ -39,6 +39,7 @@ import SidebarResources from "./SidebarResources"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
 import Statusbar, { StatusItem } from "./Statusbar"
+import { LegacyNavProvider, OverviewNavProvider } from "./TabNav"
 import TestAggregateData from "./TestAggregateData"
 import { traceNav } from "./trace"
 import {
@@ -315,32 +316,54 @@ export default class HUD extends Component<HudProps, HudState> {
       hudClasses.push("is-snapshot")
     }
 
-    let matchTrace = matchPath(String(this.props.history.location.pathname), {
+    let pathname = String(this.props.history.location.pathname)
+    let matchTrace = matchPath(pathname, {
       path: this.path("/r/:name/trace/:span"),
     })
     let matchTraceParams: any = matchTrace?.params
     let isTwoLevelHeader = !!matchTraceParams?.span
-    let matchOverview =
-      matchPath(String(this.props.history.location.pathname), {
-        path: this.path("/overview"),
+    let matchGrid = matchPath(pathname, {
+      path: this.path("/overview"),
+    })
+    let matchOverviewDetail = matchPath(pathname, {
+      path: this.path("/r/:name/overview"),
+    })
+    let matchOverview = matchGrid || matchOverviewDetail
+    let matchAlerts =
+      matchPath(pathname, {
+        path: this.path("/alerts"),
       }) ||
-      matchPath(String(this.props.history.location.pathname), {
-        path: this.path("/r/:name/overview"),
+      matchPath(pathname, {
+        path: this.path("/r/:name/alerts"),
       })
+    let matchFacets = matchPath(pathname, {
+      path: this.path("/r/:name/facets"),
+    })
+    let resourceView = matchFacets
+      ? ResourceView.Facets
+      : matchAlerts
+      ? ResourceView.Alerts
+      : matchOverviewDetail
+      ? ResourceView.OverviewDetail
+      : matchGrid
+      ? ResourceView.Grid
+      : ResourceView.Log
 
     if (matchOverview) {
       return (
         <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
           <SidebarPinContextProvider>
-            <div className={hudClasses.join(" ")}>
-              <AnalyticsNudge needsNudge={needsNudge} />
-              <SocketBar state={this.state.socketState} />
-              {fatalErrorModal}
-              {errorModal}
-              {shareSnapshotModal}
+            <OverviewNavProvider resourceView={resourceView}>
+              <div className={hudClasses.join(" ")}>
+                <AnalyticsNudge needsNudge={needsNudge} />
+                <SocketBar state={this.state.socketState} />
+                {fatalErrorModal}
+                {errorModal}
+                {shareSnapshotModal}
 
-              {this.renderOverviewSwitch()}
-            </div>
+                {this.renderOverviewSwitch()}
+              </div>
+            </OverviewNavProvider>
           </SidebarPinContextProvider>
         </LocalStorageContextProvider>
       )
@@ -349,24 +372,26 @@ export default class HUD extends Component<HudProps, HudState> {
     return (
       <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
         <SidebarPinContextProvider>
-          <div className={hudClasses.join(" ")}>
-            <AnalyticsNudge needsNudge={needsNudge} />
-            <SocketBar state={this.state.socketState} />
-            {fatalErrorModal}
-            {errorModal}
-            {shareSnapshotModal}
+          <LegacyNavProvider resourceView={resourceView}>
+            <div className={hudClasses.join(" ")}>
+              <AnalyticsNudge needsNudge={needsNudge} />
+              <SocketBar state={this.state.socketState} />
+              {fatalErrorModal}
+              {errorModal}
+              {shareSnapshotModal}
 
-            {this.renderSidebarSwitch()}
-            {statusbar}
+              {this.renderSidebarSwitch()}
+              {statusbar}
 
-            <HUDLayout
-              header={this.renderHUDHeader()}
-              isSidebarClosed={!!this.state.isSidebarClosed}
-              isTwoLevelHeader={isTwoLevelHeader}
-            >
-              {this.renderMainPaneSwitch()}
-            </HUDLayout>
-          </div>
+              <HUDLayout
+                header={this.renderHUDHeader()}
+                isSidebarClosed={!!this.state.isSidebarClosed}
+                isTwoLevelHeader={isTwoLevelHeader}
+              >
+                {this.renderMainPaneSwitch()}
+              </HUDLayout>
+            </div>
+          </LegacyNavProvider>
         </SidebarPinContextProvider>
       </LocalStorageContextProvider>
     )

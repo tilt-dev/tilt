@@ -19,10 +19,10 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         <li
           className="sc-bdfBwQ sc-kEjbxe krceUN bmYsyG"
         >
-          <a
-            className="sc-iBPRYJ sc-fubCfw jkXthm hDyxGh isSelected"
-            href="/"
+          <div
+            className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-gsTCUz HrTde isNone"
@@ -36,7 +36,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               All
             </div>
-          </a>
+          </div>
         </li>
       </ul>
     </div>
@@ -63,11 +63,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource4"
-            href="/r/resource4"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -139,7 +139,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 Completed in 12s, with issues
               </div>
             </div>
-          </a>
+          </div>
         </li>
         <li
           className="sc-bdfBwQ krceUN  isBuilding"
@@ -155,11 +155,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource9"
-            href="/r/resource9"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -231,7 +231,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 Completed in 12s, with issues
               </div>
             </div>
-          </a>
+          </div>
         </li>
         <li
           className="sc-bdfBwQ krceUN  isBuilding"
@@ -247,11 +247,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource19"
-            href="/r/resource19"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -323,7 +323,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 Completed in 12s, with issues
               </div>
             </div>
-          </a>
+          </div>
         </li>
         <li
           className="sc-bdfBwQ krceUN  isBuilding"
@@ -339,11 +339,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource29"
-            href="/r/resource29"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -415,7 +415,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 Completed in 12s, with issues
               </div>
             </div>
-          </a>
+          </div>
         </li>
         <li
           className="sc-bdfBwQ krceUN  isBuilding"
@@ -431,11 +431,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource39"
-            href="/r/resource39"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -507,7 +507,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 Completed in 12s, with issues
               </div>
             </div>
-          </a>
+          </div>
         </li>
         <li
           className="sc-bdfBwQ krceUN  isBuilding"
@@ -523,11 +523,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource49"
-            href="/r/resource49"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -599,7 +599,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 Completed in 12s, with issues
               </div>
             </div>
-          </a>
+          </div>
         </li>
         <li
           className="sc-bdfBwQ krceUN  isBuilding"
@@ -615,11 +615,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource54"
-            href="/r/resource54"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -691,7 +691,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 Completed in 12s, with issues
               </div>
             </div>
-          </a>
+          </div>
         </li>
       </ul>
     </div>
@@ -719,10 +719,10 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
         <li
           className="sc-bdfBwQ sc-kEjbxe krceUN bmYsyG"
         >
-          <a
-            className="sc-iBPRYJ sc-fubCfw jkXthm hDyxGh isSelected"
-            href="/"
+          <div
+            className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-gsTCUz HrTde isNone"
@@ -736,7 +736,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
             >
               All
             </div>
-          </a>
+          </div>
         </li>
       </ul>
     </div>
@@ -774,10 +774,10 @@ exports[`sidebar renders list of resources 1`] = `
         <li
           className="sc-bdfBwQ sc-kEjbxe krceUN bmYsyG"
         >
-          <a
-            className="sc-iBPRYJ sc-fubCfw jkXthm hDyxGh isSelected"
-            href="/"
+          <div
+            className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-gsTCUz HrTde isNone"
@@ -791,7 +791,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               All
             </div>
-          </a>
+          </div>
         </li>
       </ul>
     </div>
@@ -818,11 +818,11 @@ exports[`sidebar renders list of resources 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="vigoda"
-            href="/r/vigoda"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -896,7 +896,7 @@ exports[`sidebar renders list of resources 1`] = `
                 Update error
               </div>
             </div>
-          </a>
+          </div>
         </li>
         <li
           className="sc-bdfBwQ krceUN  isBuilding"
@@ -912,11 +912,11 @@ exports[`sidebar renders list of resources 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="snack"
-            href="/r/snack"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -990,7 +990,7 @@ exports[`sidebar renders list of resources 1`] = `
                 Update error
               </div>
             </div>
-          </a>
+          </div>
         </li>
       </ul>
     </div>
@@ -1018,10 +1018,10 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         <li
           className="sc-bdfBwQ sc-kEjbxe krceUN bmYsyG"
         >
-          <a
-            className="sc-iBPRYJ sc-fubCfw jkXthm hDyxGh isSelected"
-            href="/"
+          <div
+            className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-gsTCUz HrTde isNone"
@@ -1035,7 +1035,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               All
             </div>
-          </a>
+          </div>
         </li>
       </ul>
     </div>
@@ -1062,11 +1062,11 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="vigoda"
-            href="/r/vigoda"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -1133,7 +1133,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 Updating…
               </div>
             </div>
-          </a>
+          </div>
         </li>
         <li
           className="sc-bdfBwQ krceUN  isBuilding"
@@ -1149,11 +1149,11 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               pin.svg
             </svg>
           </button>
-          <a
-            className="sc-iBPRYJ jkXthm  isBuilding"
+          <div
+            className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="snack"
-            href="/r/snack"
             onClick={[Function]}
+            onDoubleClick={[Function]}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -1220,7 +1220,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 Updating…
               </div>
             </div>
-          </a>
+          </div>
         </li>
       </ul>
     </div>
