@@ -36,18 +36,15 @@ func (c *downCmd) register() *cobra.Command {
 		Long: `
 Deletes resources specified in the Tiltfile
 
+Specify additional flags and arguments to control which resources are deleted.
+
 Namespaces are not deleted by default. Use --delete-namespaces to change that.
 
-There are two types of args:
-1) Tilt flags, listed below, which are handled entirely by Tilt.
-2) Tiltfile args, which can be anything, and are potentially accessed by config.parse in your Tiltfile.
+Kubernetes resources with the annotation 'tilt.dev/down-policy: keep' are not deleted.
 
-By default:
-1) Tiltfile args are interpreted as the list of services to delete, e.g. tilt down frontend backend.
-2) Running with no Tiltfile args deletes all services defined in the Tiltfile
-
-This default behavior does not apply if the Tiltfile uses config.parse or config.set_enabled_resources.
-In that case, see https://tilt.dev/user_config.html and/or comments in your Tiltfile
+For more complex cases, the Tiltfile has APIs to add additional flags and arguments to the Tilt CLI.
+These arguments can be scripted to define custom subsets of resources to delete.
+See https://docs.tilt.dev/tiltfile_config.html for examples.
 `,
 	}
 
