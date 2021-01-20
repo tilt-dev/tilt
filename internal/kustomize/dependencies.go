@@ -28,8 +28,8 @@ import (
 	"strings"
 
 	yaml "gopkg.in/yaml.v2"
-	"sigs.k8s.io/kustomize/pkg/constants"
-	"sigs.k8s.io/kustomize/pkg/types"
+	"sigs.k8s.io/kustomize/api/konfig"
+	"sigs.k8s.io/kustomize/api/types"
 )
 
 // Mostly taken from the [kustomize source code](https://github.com/kubernetes-sigs/kustomize/blob/ee68a9c450bc884b0d657fb7e3d62eb1ac59d14f/pkg/target/kusttarget.go#L97) itself.
@@ -37,7 +37,7 @@ func loadKustFile(dir string) ([]byte, string, error) {
 	var content []byte
 	var path string
 	match := 0
-	for _, kf := range constants.KustomizationFileNames {
+	for _, kf := range konfig.RecognizedKustomizationFileNames() {
 		p := filepath.Join(dir, kf)
 		c, err := ioutil.ReadFile(p)
 		if err == nil {
@@ -51,7 +51,7 @@ func loadKustFile(dir string) ([]byte, string, error) {
 	case 0:
 		return nil, "", fmt.Errorf(
 			"unable to find one of %v in directory '%s'",
-			constants.KustomizationFileNames, dir)
+			konfig.RecognizedKustomizationFileNames(), dir)
 	case 1:
 		return content, path, nil
 	default:
@@ -72,8 +72,6 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	buf = types.DealWithDeprecatedFields(buf)
 
 	content := types.Kustomization{}
 	if err := yaml.Unmarshal(buf, &content); err != nil {
@@ -96,6 +94,11 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 
 	deps = append(deps, path)
 	deps = append(deps, joinPaths(dir, content.Resources)...)
+	for _, patch := range content.Patches {
+		if patch.Path != "" {
+			deps = append(deps, filepath.Join(dir, patch.Path))
+		}
+	}
 	for _, patch := range content.PatchesStrategicMerge {
 		deps = append(deps, filepath.Join(dir, string(patch)))
 	}

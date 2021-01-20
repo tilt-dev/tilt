@@ -130,6 +130,32 @@ namePrefix: prod-`
 	f.assertDeps(expected)
 }
 
+// patches was deprecated and then re-added with a different meaning
+// https://github.com/tilt-dev/tilt/issues/4081
+func TestPatches(t *testing.T) {
+	f := newKustomizeFixture(t)
+	kustomizeFile := `# Example configuration for the webserver
+# at https://github.com/monopole/hello
+commonLabels:
+  app: my-hello
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - configMap.yaml
+
+patches:
+  - path: patch.yaml
+    target:
+      kind: Deployment
+      name: foo
+`
+	f.writeRootKustomize(kustomizeFile)
+
+	expected := []string{"kustomization.yaml", "deployment.yaml", "service.yaml", "configMap.yaml", "patch.yaml"}
+	f.assertDeps(expected)
+}
+
 type kustomizeFixture struct {
 	t       *testing.T
 	tempdir *tempdir.TempDirFixture
