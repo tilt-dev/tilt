@@ -34,6 +34,8 @@ type RuntimeState interface {
 	RuntimeStatusError() error
 }
 
+type ProbeState int
+
 type LocalRuntimeState struct {
 	State                   model.ProcessState
 	HasSucceededAtLeastOnce bool
@@ -48,9 +50,11 @@ func (LocalRuntimeState) RuntimeState() {}
 var _ RuntimeState = LocalRuntimeState{}
 
 func NewLocalRuntimeState(m model.Manifest) LocalRuntimeState {
-	// TODO(milas): make initial readiness probe state conditional based on existence of probe
+	// targets with a readiness probe are failing by default (until probe passes)
+	// while targets without a readiness probe start off and perpetually stay successful
+	initialReadinessState := m.LocalTarget().ReadinessProbe == nil
 	state := LocalRuntimeState{
-		readinessProbeSuccessful: true,
+		readinessProbeSuccessful: initialReadinessState,
 	}
 	return state
 }
@@ -88,6 +92,10 @@ func (l LocalRuntimeState) Ready() bool {
 		return l.readinessProbeSuccessful
 	}
 	return false
+}
+
+func (l *LocalRuntimeState) SetReadinessProbeState(success bool) {
+	l.readinessProbeSuccessful = success
 }
 
 type K8sRuntimeState struct {

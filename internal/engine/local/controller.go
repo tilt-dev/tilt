@@ -3,8 +3,13 @@ package local
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 	"time"
+
+	"github.com/tilt-dev/probe/pkg/probe"
+	"github.com/tilt-dev/probe/pkg/prober"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -13,9 +18,10 @@ import (
 )
 
 type Controller struct {
-	execer    Execer
-	procs     map[model.ManifestName]*currentProcess
-	procCount int
+	execer       Execer
+	procs        map[model.ManifestName]*currentProcess
+	procCount    int
+	probeManager probeManager
 }
 
 var _ store.Subscriber = &Controller{}
@@ -25,6 +31,8 @@ func NewController(execer Execer) *Controller {
 	return &Controller{
 		execer: execer,
 		procs:  make(map[model.ManifestName]*currentProcess),
+		// TODO: inject with wire
+		probeManager: prober.NewManager(),
 	}
 }
 
@@ -49,9 +57,10 @@ func (c *Controller) determineServeSpecs(ctx context.Context, st store.RStore) [
 			continue
 		}
 		r = append(r, ServeSpec{
-			mt.Manifest.Name,
-			lt.ServeCmd,
-			mt.State.LastSuccessfulDeployTime,
+			ManifestName:   mt.Manifest.Name,
+			ServeCmd:       lt.ServeCmd,
+			TriggerTime:    mt.State.LastSuccessfulDeployTime,
+			ReadinessProbe: lt.ReadinessProbe,
 		})
 	}
 
@@ -107,6 +116,9 @@ func (c *Controller) stop(name model.ManifestName) {
 	proc := c.procs[name]
 	// change the process's current number so that any further events received by the existing process will be considered out of date
 	proc.incrProcNum()
+	if proc.probeWorker != nil {
+		proc.probeWorker.Stop()
+	}
 	if proc.cancelFunc == nil {
 		return
 	}
@@ -152,6 +164,41 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 
 	spanID := SpanIDForServeLog(proc.procNum)
 	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
+
+	if spec.ReadinessProbe != nil {
+		statusChangeFunc := processReadinessProbeUpdate(ctx, st, spec.ManifestName, proc.stillHasSameProcNum())
+		probeWorker, err := probeWorkerFromSpec(
+			c.probeManager,
+			spec.ReadinessProbe,
+			probe.WorkerOnStatusChange(statusChangeFunc))
+		if err != nil {
+			logger.Get(ctx).Warnf("invalid readiness probe: %v", err)
+		} else {
+			proc.probeWorker = probeWorker
+			go proc.probeWorker.Run(ctx)
+		}
+	}
+}
+
+func processReadinessProbeUpdate(
+	ctx context.Context,
+	st store.RStore,
+	manifestName model.ManifestName,
+	stillHasSameProcNum func() bool) probe.StatusChangedFunc {
+	return func(status prober.Result, output string) {
+		if !stillHasSameProcNum() {
+			return
+		}
+		if status != prober.Success && output != "" {
+			w := logger.Get(ctx).Writer(logger.DebugLvl)
+			_, _ = io.WriteString(w, output)
+		}
+		ready := status == prober.Success || status == prober.Warning
+		st.Dispatch(LocalServeReadinessProbeAction{
+			ManifestName: manifestName,
+			Ready:        ready,
+		})
+	}
 }
 
 func processStatuses(
@@ -184,7 +231,8 @@ type currentProcess struct {
 	procNum    int
 	cancelFunc context.CancelFunc
 	// closed when the process finishes executing, intentionally or not
-	doneCh chan struct{}
+	doneCh      chan struct{}
+	probeWorker *probe.Worker
 
 	mu sync.Mutex
 }
@@ -227,9 +275,10 @@ func SpanIDForServeLog(procNum int) logstore.SpanID {
 
 // ServeSpec describes what Runner should be running
 type ServeSpec struct {
-	ManifestName model.ManifestName
-	ServeCmd     model.Cmd
-	TriggerTime  time.Time // TriggerTime is how Runner knows to restart; if it's newer than the TriggerTime of the currently running command, then Runner should restart it
+	ManifestName   model.ManifestName
+	ServeCmd       model.Cmd
+	TriggerTime    time.Time // TriggerTime is how Runner knows to restart; if it's newer than the TriggerTime of the currently running command, then Runner should restart it
+	ReadinessProbe *v1.Probe
 }
 
 type statusAndMetadata struct {
