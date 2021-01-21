@@ -126,8 +126,11 @@ export function SidebarItemAll(props: SidebarItemAllProps) {
     <SidebarItemAllRoot>
       <SidebarItemAllBox
         className={props.nothingSelected ? "isSelected" : ""}
-        onClick={() => nav.clickResource(ResourceName.all)}
-        onDoubleClick={() => nav.doubleClickResource(ResourceName.all)}
+        tabIndex={-1}
+        role="button"
+        onClick={(e) =>
+          nav.openResource(ResourceName.all, { newTab: e.ctrlKey || e.metaKey })
+        }
       >
         <SidebarIcon
           status={ResourceStatus.None}
@@ -274,8 +277,11 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
       )}
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
-        onClick={() => nav.clickResource(item.name)}
-        onDoubleClick={() => nav.doubleClickResource(item.name)}
+        tabIndex={-1}
+        role="button"
+        onClick={(e) =>
+          nav.openResource(item.name, { newTab: e.ctrlKey || e.metaKey })
+        }
         data-name={item.name}
       >
         <SidebarItemRuntimeBox>
