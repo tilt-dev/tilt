@@ -91,9 +91,56 @@ const GraySquare = styled(StatusSquare)`
   background-color: ${Color.grayLightest};
 `
 
-function ResourceBarStatus(props: ResourceBarStatusProps) {
-  // Count the statuses.
-  let resources = props.view.resources || []
+type ResourceGroupStatusProps = {
+  counts: StatusCounts
+  healthyLabel: string
+  unhealthyLabel: string
+  warningLabel: string
+}
+
+function ResourceGroupStatus(props: ResourceGroupStatusProps) {
+  let greenSquareCount = boxCount(props.counts.healthy, props.counts.total)
+  let redSquareCount = boxCount(props.counts.unhealthy, props.counts.total)
+  let graySquareCount = boxCount(props.counts.pending, props.counts.total)
+  let boxes = []
+  let extraMargin = { marginLeft: "3px" }
+  for (let i = 0; i < greenSquareCount; i++) {
+    let style =
+      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
+    boxes.push(<GreenSquare key={"green-" + i} style={style} />)
+  }
+  for (let i = 0; i < redSquareCount; i++) {
+    let style =
+      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
+    boxes.push(<RedSquare key={"red-" + i} style={style} />)
+  }
+  for (let i = 0; i < graySquareCount; i++) {
+    let style =
+      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
+    boxes.push(<GraySquare key={"gray-" + i} style={style} />)
+  }
+
+  let summaryMsg =
+    `${props.counts.healthy}/${props.counts.total} ${props.healthyLabel} ` +
+    `| ${props.counts.unhealthy} ${props.unhealthyLabel}${props.counts.total != 1 ? "s" : ""} ` +
+    `| ${props.counts.warning} ${props.warningLabel}${props.counts.warning != 1 ? "s" : ""}`
+  return (
+    <ResourceBarStatusRoot>
+      {boxes}
+      <div style={{ marginLeft: "16px" }}>{summaryMsg}</div>
+    </ResourceBarStatusRoot>
+  )
+}
+
+type StatusCounts = {
+  total: number
+  healthy: number
+  unhealthy: number
+  pending: number
+  warning: number
+}
+
+function statusCounts(resources: Proto.webviewResource[]): StatusCounts {
   let statuses = resources.map((res) => combinedStatus(res))
   let allStatusCount = 0
   let healthyStatusCount = 0
@@ -126,38 +173,26 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
     }
   })
 
-  // Summarize the statuses
-  let greenSquareCount = boxCount(healthyStatusCount, allStatusCount)
-  let redSquareCount = boxCount(unhealthyStatusCount, allStatusCount)
-  let graySquareCount = boxCount(pendingStatusCount, allStatusCount)
-  let boxes = []
-  let extraMargin = { marginLeft: "3px" }
-  for (let i = 0; i < greenSquareCount; i++) {
-    let style =
-      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<GreenSquare key={"green-" + i} style={style} />)
+  return {
+    total: allStatusCount,
+    healthy: healthyStatusCount,
+    unhealthy: unhealthyStatusCount,
+    pending: pendingStatusCount,
+    warning: warningCount,
   }
-  for (let i = 0; i < redSquareCount; i++) {
-    let style =
-      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<RedSquare key={"red-" + i} style={style} />)
-  }
-  for (let i = 0; i < graySquareCount; i++) {
-    let style =
-      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<GraySquare key={"gray-" + i} style={style} />)
-  }
+}
 
-  let summaryMsg =
-    `${healthyStatusCount}/${allStatusCount} up ` +
-    `| ${unhealthyStatusCount} error${unhealthyStatusCount != 1 ? "s" : ""} ` +
-    `| ${warningCount} warning${warningCount != 1 ? "s" : ""}`
-  return (
-    <ResourceBarStatusRoot>
-      {boxes}
-      <div style={{ marginLeft: "16px" }}>{summaryMsg}</div>
-    </ResourceBarStatusRoot>
-  )
+function ResourceBarStatus(props: ResourceBarStatusProps) {
+  // Count the statuses.
+  let resources = props.view.resources || []
+  let counts = statusCounts(resources)
+
+  return <ResourceGroupStatus
+    counts={counts}
+    healthyLabel={"ok"}
+    unhealthyLabel={"error"}
+    warningLabel={"warning"}
+  />
 }
 
 export let MenuButton = styled.button`
