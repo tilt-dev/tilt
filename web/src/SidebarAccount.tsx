@@ -184,6 +184,7 @@ function SidebarAccount(props: SidebarAccountProps) {
           open={shortcutsDialogOpen}
           anchorEl={shortcutsDialogAnchor}
           onClose={() => toggleShortcutsDialog("close")}
+          isOverview={false}
         />
         <SidebarAccountShortcuts
           toggleShortcutsDialog={() => toggleShortcutsDialog("shortcut")}

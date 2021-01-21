@@ -5,7 +5,6 @@ import { ButtonMixin } from "./ButtonMixin"
 let ButtonInputRoot = styled.input`
   ${ButtonMixin}
   border: 0;
-  width: 100%;
 `
 
 type ButtonLinkProps = {

@@ -25,15 +25,14 @@ let TitleBar = styled.div`
 `
 
 let Title = styled.div`
-  font-family: ${Font.sansSerif};
-  font-weight: 500;
-  font-size: 15px;
-  line-height: 18px;
+  font-family: ${Font.monospace};
+  font-size: ${FontSize.small};
+  line-height: 17px;
 `
 
-let HR = styled.hr`
+export let HR = styled.hr`
   border-top: 1px dashed ${Color.grayLight};
-  margin: 16px -20px;
+  margin: 16px -20px 24px -20px;
 `
 
 let CloseButton = styled.button`
@@ -58,7 +57,7 @@ let CloseButton = styled.button`
 
 let Content = styled.div`
   font: ${Font.monospace};
-  font-size: ${FontSize.default};
+  font-size: ${FontSize.small};
   line-height: 28px;
 `
 
