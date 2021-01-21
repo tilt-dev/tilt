@@ -1,17 +1,8 @@
 import moment from "moment"
-import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { buildStatus, runtimeStatus } from "./status"
-import { SizeUnit } from "./style-helpers"
 import { timeDiff } from "./time"
 import { ResourceStatus, TriggerMode } from "./types"
-
-export const SidebarItemRoot = styled.li`
-  & + & {
-    margin-top: ${SizeUnit(0.35)};
-  }
-  display: flex;
-`
 
 type Resource = Proto.webviewResource
 type Build = Proto.webviewBuildRecord

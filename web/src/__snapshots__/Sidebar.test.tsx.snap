@@ -17,7 +17,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-fFubgz lggJRB"
       >
         <li
-          className="sc-bdfBwQ sc-kEjbxe krceUN bmYsyG"
+          className="sc-gKsewC sc-kEjbxe eWwnQD bmYsyG"
         >
           <div
             className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
@@ -26,7 +26,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-gsTCUz HrTde isNone"
+              className="sc-bdfBwQ jvkcBC isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -51,7 +51,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-fFubgz lggJRB"
       >
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -59,7 +59,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -76,7 +76,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -110,7 +110,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -122,7 +122,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -144,7 +144,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -152,7 +152,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -169,7 +169,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -203,7 +203,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -215,7 +215,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -237,7 +237,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -245,7 +245,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -262,7 +262,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -296,7 +296,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -308,7 +308,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -330,7 +330,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -338,7 +338,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -355,7 +355,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -389,7 +389,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -401,7 +401,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -423,7 +423,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -431,7 +431,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -448,7 +448,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -482,7 +482,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -494,7 +494,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -516,7 +516,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -524,7 +524,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -541,7 +541,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -575,7 +575,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -587,7 +587,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -609,7 +609,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -617,7 +617,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -634,7 +634,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -668,7 +668,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -680,7 +680,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -725,7 +725,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
         className="sc-fFubgz lggJRB"
       >
         <li
-          className="sc-bdfBwQ sc-kEjbxe krceUN bmYsyG"
+          className="sc-gKsewC sc-kEjbxe eWwnQD bmYsyG"
         >
           <div
             className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
@@ -734,7 +734,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-gsTCUz HrTde isNone"
+              className="sc-bdfBwQ jvkcBC isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -781,7 +781,7 @@ exports[`sidebar renders list of resources 1`] = `
         className="sc-fFubgz lggJRB"
       >
         <li
-          className="sc-bdfBwQ sc-kEjbxe krceUN bmYsyG"
+          className="sc-gKsewC sc-kEjbxe eWwnQD bmYsyG"
         >
           <div
             className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
@@ -790,7 +790,7 @@ exports[`sidebar renders list of resources 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-gsTCUz HrTde isNone"
+              className="sc-bdfBwQ jvkcBC isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -815,7 +815,7 @@ exports[`sidebar renders list of resources 1`] = `
         className="sc-fFubgz lggJRB"
       >
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -823,7 +823,7 @@ exports[`sidebar renders list of resources 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -840,7 +840,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -874,7 +874,7 @@ exports[`sidebar renders list of resources 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -886,7 +886,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isUnhealthy"
+                className="sc-bdfBwQ jvkcBC isUnhealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -910,7 +910,7 @@ exports[`sidebar renders list of resources 1`] = `
           </div>
         </li>
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -918,7 +918,7 @@ exports[`sidebar renders list of resources 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -935,7 +935,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -969,7 +969,7 @@ exports[`sidebar renders list of resources 1`] = `
                 </time>
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -981,7 +981,7 @@ exports[`sidebar renders list of resources 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isUnhealthy"
+                className="sc-bdfBwQ jvkcBC isUnhealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1028,7 +1028,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         className="sc-fFubgz lggJRB"
       >
         <li
-          className="sc-bdfBwQ sc-kEjbxe krceUN bmYsyG"
+          className="sc-gKsewC sc-kEjbxe eWwnQD bmYsyG"
         >
           <div
             className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
@@ -1037,7 +1037,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-gsTCUz HrTde isNone"
+              className="sc-bdfBwQ jvkcBC isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -1062,7 +1062,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         className="sc-fFubgz lggJRB"
       >
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -1070,7 +1070,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -1087,7 +1087,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1116,7 +1116,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 —
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -1128,7 +1128,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-bdfBwQ jvkcBC isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1150,7 +1150,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           </div>
         </li>
         <li
-          className="sc-bdfBwQ krceUN  isBuilding"
+          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
         >
           <button
             className="sc-dlfnbm begUcN"
@@ -1158,7 +1158,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             title="Pin to Top"
           >
             <svg
-              className="sc-eCssSg dhJhcf"
+              className="sc-eCssSg eisvUy"
             >
               pin.svg
             </svg>
@@ -1175,7 +1175,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-bdfBwQ jvkcBC isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1204,7 +1204,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 —
               </span>
               <button
-                className="sc-gKsewC ljQRUE SidebarTriggerButton 
+                className="sc-jSgupP gdBoFx SidebarTriggerButton 
           "
                 disabled={true}
                 onClick={[Function]}
@@ -1216,7 +1216,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-bdfBwQ jvkcBC isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
