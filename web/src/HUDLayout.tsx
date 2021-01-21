@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect } from "react"
 import styled from "styled-components"
 import * as s from "./style-helpers"
 
@@ -98,6 +98,12 @@ export default function HUDLayout(props: HUDLayoutProps) {
   if (props.isTwoLevelHeader) {
     classes.push("is-twoLevelHeader")
   }
+
+  // Set the default styles for the HTML element scrollbars.
+  useEffect(() => {
+    document.documentElement.style.overflow = ""
+  })
+
   return (
     <Root className={classes.join(" ")}>
       <Header>{props.header}</Header>

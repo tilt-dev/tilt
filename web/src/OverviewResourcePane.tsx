@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect } from "react"
 import styled from "styled-components"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
@@ -45,6 +45,12 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   } else if (r?.name) {
     selectedTab = r.name
   }
+
+  // Hide the HTML element scrollbars, since this pane does all scrolling internally.
+  // TODO(nick): Remove this when the old UI is deleted.
+  useEffect(() => {
+    document.documentElement.style.overflow = "hidden"
+  })
 
   return (
     <OverviewResourcePaneRoot>
