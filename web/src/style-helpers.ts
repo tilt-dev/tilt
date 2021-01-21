@@ -74,7 +74,6 @@ export enum Width {
   badge = unit * 0.6,
   secondaryNavItem = unit * 5,
   sidebarTriggerButton = unit,
-  sidebarPinButton = unit * 0.75,
   sidebar = unit * 10.5, // Sync with constants.scss > $sidebar-width
   sidebarCollapsed = unit,
   statusbar = unit * 1.5, // sync with constants.scss > $statusbar-height

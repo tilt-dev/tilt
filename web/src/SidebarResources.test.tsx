@@ -29,9 +29,9 @@ function clickPin(
   root: ReactWrapper<any, React.Component["state"], React.Component>,
   name: string
 ) {
-  let pinButton = root.find(SidebarPinButton).find({ resourceName: name })
-  expect(pinButton).toHaveLength(1)
-  pinButton.simulate("click")
+  let pinButtons = root.find(SidebarPinButton).find({ resourceName: name })
+  expect(pinButtons.length).toBeGreaterThan(0)
+  pinButtons.at(0).simulate("click")
 }
 
 describe("SidebarResources", () => {

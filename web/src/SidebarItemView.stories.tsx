@@ -91,7 +91,6 @@ function itemView(...options: optionFn[]) {
   let props = {
     item: item,
     selected: false,
-    renderPin: true,
     resourceView: ResourceView.Log,
     pathBuilder: pathBuilder,
   }
