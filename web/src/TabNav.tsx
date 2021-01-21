@@ -14,10 +14,7 @@ export type TabNav = {
   selectedTab: string
 
   // Behavior when you click on a link to a resource.
-  clickResource(name: string): void
-
-  // Behavior when you double click on a link to a resource.
-  doubleClickResource(name: string): void
+  openResource(name: string, options?: { newTab: boolean }): void
 
   // Behavior when you close a tab.
   closeTab(name: string): void
@@ -29,8 +26,7 @@ export type TabNav = {
 const tabNavContext = React.createContext<TabNav>({
   tabs: [],
   selectedTab: "",
-  clickResource: (name: string) => {},
-  doubleClickResource: (name: string) => {},
+  openResource: (name: string, options?: { newTab: boolean }) => {},
   ensureSelectedTab: () => {},
   closeTab: (name: string) => {},
 })
@@ -78,8 +74,7 @@ export function LegacyNavProvider(
   let tabNav = {
     tabs: [],
     selectedTab: "",
-    clickResource: nav,
-    doubleClickResource: nav,
+    openResource: nav,
     ensureSelectedTab: () => {},
     closeTab: () => {},
   }
@@ -94,7 +89,7 @@ export function LegacyNavProvider(
 // 1. When you single click a resource on the left sidebar,
 //    it changes the current tab to the new resource.
 //
-// 2. When you double click a resource on the left sidebar,
+// 2. When you ctrl-click a resource on the left sidebar,
 //    it opens a new tab, and brings the new tab into focus.
 //
 // 3. When you close a tab that is currently selected, the view toggles to the tab on the right
@@ -103,7 +98,7 @@ export function LegacyNavProvider(
 //
 // 5. When you open a resource as a new tab (from *resource detail tab view*)
 // a) Click on any resource from left sidebar to change logs on right side accordingly
-// b) Double click on any resource to open that as a new tab on the immediate right
+// b) Ctrl-click on any resource to open that as a new tab on the immediate right
 //   of current tab
 // c) (OR, if the resource is already open in a tab, then view toggles to that open tab)
 //
@@ -181,9 +176,9 @@ export function OverviewNavProvider(
     history.push(newUrl)
   }
 
-  let nav = (name: string, openNew: boolean) => {
+  let openResource = (name: string, options?: { newTab: boolean }) => {
     name = name || ResourceName.all
-
+    let openNew = options?.newTab || false
     let url = pb.path(`/r/${name}/overview`)
     let tabs = tabState.tabs
     let newTabs
@@ -194,7 +189,7 @@ export function OverviewNavProvider(
       newTabs = tabs
     } else if (selectedIndex !== -1) {
       // We're navigating from an existing tab. Replace the current tab (on
-      // single-click) or open a new tab to the right of the current tab (on double click).
+      // single-click) or open a new tab to the right of the current tab (on ctrl-click).
       // (case 1, 2, 5a, 5b above)
       let start = tabs
         .slice(0, openNew ? selectedIndex + 1 : selectedIndex)
@@ -211,17 +206,12 @@ export function OverviewNavProvider(
     history.push(url)
   }
 
-  let clickResource = (name: string) => nav(name, false)
-
-  let doubleClickResource = (name: string) => nav(name, true)
-
   let tabNav = {
     tabs,
     selectedTab,
     ensureSelectedTab,
     closeTab,
-    clickResource,
-    doubleClickResource,
+    openResource,
   }
   return (
     <tabNavContext.Provider value={tabNav}>{children}</tabNavContext.Provider>

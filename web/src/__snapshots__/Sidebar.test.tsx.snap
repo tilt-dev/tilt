@@ -22,7 +22,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           <div
             className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-gsTCUz HrTde isNone"
@@ -67,7 +68,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource4"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -159,7 +161,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource9"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -251,7 +254,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource19"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -343,7 +347,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource29"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -435,7 +440,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource39"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -527,7 +533,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource49"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -619,7 +626,8 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="resource54"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -722,7 +730,8 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
           <div
             className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-gsTCUz HrTde isNone"
@@ -777,7 +786,8 @@ exports[`sidebar renders list of resources 1`] = `
           <div
             className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-gsTCUz HrTde isNone"
@@ -822,7 +832,8 @@ exports[`sidebar renders list of resources 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -916,7 +927,8 @@ exports[`sidebar renders list of resources 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="snack"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -1021,7 +1033,8 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           <div
             className="sc-iBPRYJ sc-fubCfw epmLcA hDyxGh isSelected"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-gsTCUz HrTde isNone"
@@ -1066,7 +1079,8 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
@@ -1153,7 +1167,8 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             className="sc-iBPRYJ epmLcA  isBuilding"
             data-name="snack"
             onClick={[Function]}
-            onDoubleClick={[Function]}
+            role="button"
+            tabIndex={-1}
           >
             <div
               className="sc-pFZIQ jNegfI"
