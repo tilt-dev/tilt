@@ -353,7 +353,7 @@ export default class HUD extends Component<HudProps, HudState> {
       return (
         <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
           <SidebarPinContextProvider>
-            <OverviewNavProvider resourceView={resourceView}>
+            <OverviewNavProvider>
               <div className={hudClasses.join(" ")}>
                 <AnalyticsNudge needsNudge={needsNudge} />
                 <SocketBar state={this.state.socketState} />
