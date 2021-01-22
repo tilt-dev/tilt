@@ -8,6 +8,7 @@ import SidebarItem from "./SidebarItem"
 import { triggerUpdate } from "./SidebarItemView"
 import SidebarResources from "./SidebarResources"
 import SidebarTriggerButton, {
+  SidebarTriggerButtonRoot,
   TriggerButtonTooltip,
 } from "./SidebarTriggerButton"
 import { oneResource, twoResourceView } from "./testdata"
@@ -21,8 +22,9 @@ let expectClickable = (button: any, expected: boolean) => {
   expect(button.hasClass("clickable")).toEqual(expected)
   expect(button.prop("disabled")).toEqual(!expected)
 }
-let expectClickMe = (button: any, expected: boolean) => {
-  expect(button.hasClass("clickMe")).toEqual(expected)
+let expectManualTriggerIcon = (button: any, expected: boolean) => {
+  let icon = expected ? "trigger-button-manual.svg" : "trigger-button.svg"
+  expect(button.getDOMNode().innerHTML).toContain(icon)
 }
 let expectIsSelected = (button: any, expected: boolean) => {
   expect(button.hasClass("isSelected")).toEqual(expected)
@@ -55,7 +57,7 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find("button.SidebarTriggerButton")
+    let element = root.find(SidebarTriggerButtonRoot)
     expect(element).toHaveLength(1)
 
     let preventDefaulted = false
@@ -95,7 +97,7 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find("button.SidebarTriggerButton")
+    let element = root.find(SidebarTriggerButtonRoot)
     expect(element).toHaveLength(1)
     element.simulate("click")
 
@@ -118,7 +120,9 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find("button.SidebarTriggerButton")
+    let element = root.find(SidebarTriggerButtonRoot)
+    expectManualTriggerIcon(element, true)
+
     expect(element).toHaveLength(1)
     element.simulate("click")
 
@@ -152,19 +156,19 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find("button.SidebarTriggerButton")
+    let buttons = root.find(SidebarTriggerButtonRoot)
     expect(buttons).toHaveLength(2)
 
     let b0 = buttons.at(0) // Manual resource with pending changes
     let b1 = buttons.at(1) // Manual resource, no pending changes
 
     expectClickable(b0, true)
-    expectClickMe(b0, true)
+    expectManualTriggerIcon(b0, true)
     expectIsQueued(b0, false)
-    expectWithTooltip(b0, TriggerButtonTooltip.ManualResourcePendingChanges)
+    expectWithTooltip(b0, TriggerButtonTooltip.NeedsManualTrigger)
 
     expectClickable(b1, true)
-    expectClickMe(b1, false)
+    expectManualTriggerIcon(b1, false)
     expectIsQueued(b1, false)
     expectWithTooltip(b1, TriggerButtonTooltip.ClickToForce)
   })
@@ -191,7 +195,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find("button.SidebarTriggerButton")
+    let buttons = root.find(SidebarTriggerButtonRoot)
     expect(buttons).toHaveLength(2)
 
     expectIsSelected(buttons.at(0), true) // Selected resource
@@ -225,18 +229,18 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find("button.SidebarTriggerButton")
+    let buttons = root.find(SidebarTriggerButtonRoot)
     expect(buttons).toHaveLength(2)
     let b0 = buttons.at(0) // Automatic resource with pending changes
     let b1 = buttons.at(1) // Automatic resource, no pending changes
 
     expectClickable(b0, false)
-    expectClickMe(b0, false)
+    expectManualTriggerIcon(b0, false)
     expectIsQueued(b0, false)
     expectWithTooltip(b0, TriggerButtonTooltip.UpdateInProgOrPending)
 
     expectClickable(b1, true)
-    expectClickMe(b1, false)
+    expectManualTriggerIcon(b1, false)
     expectIsQueued(b1, false)
     expectWithTooltip(b1, TriggerButtonTooltip.ClickToForce)
   })
@@ -256,11 +260,11 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find("button.SidebarTriggerButton")
+    let button = root.find(SidebarTriggerButtonRoot)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
-    expectClickMe(button, false)
+    expectManualTriggerIcon(button, false)
     expectIsQueued(button, false)
     expectWithTooltip(button, TriggerButtonTooltip.UpdateInProgOrPending)
   })
@@ -285,11 +289,11 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find("button.SidebarTriggerButton")
+    let button = root.find(SidebarTriggerButtonRoot)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
-    expectClickMe(button, false)
+    expectManualTriggerIcon(button, false)
     expectIsQueued(button, false)
     expectWithTooltip(button, TriggerButtonTooltip.UpdateInProgOrPending)
   })
@@ -311,11 +315,11 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find("button.SidebarTriggerButton")
+    let button = root.find(SidebarTriggerButtonRoot)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
-    expectClickMe(button, false)
+    expectManualTriggerIcon(button, false)
     expectIsQueued(button, true)
     expectWithTooltip(button, TriggerButtonTooltip.AlreadyQueued)
   })
@@ -339,11 +343,11 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find("button.SidebarTriggerButton")
+    let button = root.find(SidebarTriggerButtonRoot)
     expect(button).toHaveLength(1)
 
     expectClickable(button, true)
-    expectClickMe(button, false)
+    expectManualTriggerIcon(button, false)
     expectIsQueued(button, false)
     expectWithTooltip(button, TriggerButtonTooltip.ClickToForce)
   })
@@ -369,11 +373,11 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find("button.SidebarTriggerButton")
+    let button = root.find(SidebarTriggerButtonRoot)
     expect(button).toHaveLength(1)
 
     expectClickable(button, true)
-    expectClickMe(button, false)
+    expectManualTriggerIcon(button, false)
     expectIsQueued(button, false)
   })
 })
