@@ -1,18 +1,21 @@
 import React, { useState } from "react"
+import { useHistory } from "react-router"
 import styled from "styled-components"
 import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
+import { FilterLevel, FilterSet } from "./logfilters"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 type OverviewActionBarProps = {
   resource?: Proto.webviewResource
+  filterSet: FilterSet
 }
 
-let CopyButtonRoot = styled.button`
+let ButtonRoot = styled.button`
   font-family: ${Font.sansSerif};
   display: flex;
   align-items: center;
@@ -29,15 +32,34 @@ let CopyButtonRoot = styled.button`
     border-color ${AnimDuration.default} ease;
   color: ${Color.gray7};
 
+  &.isEnabled {
+    background: ${Color.gray7};
+    color: ${Color.grayDark};
+    border-color: ${Color.grayDarker};
+  }
+  &.isEnabled.isRadio {
+    pointer-events: none;
+  }
+
   & .fillStd {
     fill: ${Color.gray7};
     transition: fill ${AnimDuration.default} ease;
   }
+  &.isEnabled .fillStd {
+    fill: ${Color.grayDark};
+  }
+
   &:active,
   &:focus {
     outline: none;
     border-color: ${Color.grayLightest};
   }
+  &.isEnabled:active,
+  &.isEnabled:focus {
+    outline: none;
+    border-color: ${Color.grayDarkest};
+  }
+
   &:hover {
     color: ${Color.blue};
     border-color: ${Color.blue};
@@ -45,7 +67,60 @@ let CopyButtonRoot = styled.button`
   &:hover .fillStd {
     fill: ${Color.blue};
   }
+  &.isEnabled:hover {
+    color: ${Color.blueDark};
+    border-color: ${Color.blueDark};
+  }
+  &.isEnabled:hover .fillStd {
+    fill: ${Color.blue};
+  }
 `
+
+type FilterRadioButtonProps = {
+  // The level that this button toggles.
+  level: FilterLevel
+
+  // The current filter set.
+  filterSet: FilterSet
+}
+
+function FilterRadioButton(props: FilterRadioButtonProps) {
+  let level = props.level
+  let text = "All Logs"
+  if (level === FilterLevel.warn) {
+    text = "Warnings"
+  } else if (level === FilterLevel.error) {
+    text = "Errors"
+  }
+  let isEnabled = level === props.filterSet.level
+
+  // isRadio indicates that clicking the button again won't turn it off,
+  // behaving like a radio button.
+  let className = "isRadio"
+  if (isEnabled) {
+    className += " isEnabled"
+  }
+
+  let history = useHistory()
+  let l = history.location
+  let onClick = () => {
+    let search = new URLSearchParams(l.search)
+    search.set("level", level)
+    history.push({
+      pathname: l.pathname,
+      search: search.toString(),
+    })
+  }
+  return (
+    <ButtonRoot
+      style={{ marginRight: "16px" }}
+      className={className}
+      onClick={onClick}
+    >
+      {text}
+    </ButtonRoot>
+  )
+}
 
 type CopyButtonProps = {
   podId: string
@@ -83,22 +158,32 @@ function CopyButton(props: CopyButtonProps) {
   )
 
   return (
-    <CopyButtonRoot onClick={copyClick}>
+    <ButtonRoot onClick={copyClick}>
       {icon}
       <TruncateText style={{ marginLeft: "8px" }}>
         {props.podId} Pod ID
       </TruncateText>
-    </CopyButtonRoot>
+    </ButtonRoot>
   )
 }
 
 let ActionBarRoot = styled.div`
+  background-color: ${Color.grayDarkest};
+`
+
+let ActionBarTopRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
-  background-color: ${Color.grayDarkest};
   border-bottom: 1px solid ${Color.grayLighter};
+  padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
+`
+
+let ActionBarBottomRow = styled.div`
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid ${Color.grayLighter};
+  padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
 `
 
 type ActionBarProps = {
@@ -137,7 +222,7 @@ function openEndpointUrl(url: string) {
 }
 
 export default function OverviewActionBar(props: OverviewActionBarProps) {
-  let { resource } = props
+  let { resource, filterSet } = props
   let manifestName = resource?.name || ""
   let endpoints = resource?.endpointLinks || []
   let podId = resource?.podID || ""
@@ -145,7 +230,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
   let endpointEls: any = []
   endpoints.forEach((ep, i) => {
     if (i !== 0) {
-      endpointEls.push(<span>,&nbsp;</span>)
+      endpointEls.push(<span key={`spacer-${i}`}>,&nbsp;</span>)
     }
     endpointEls.push(
       <Endpoint
@@ -161,21 +246,43 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
   })
 
   let copyButton = podId ? <CopyButton podId={podId} /> : <div>&nbsp;</div>
+
+  let topRow =
+    endpointEls.length || podId ? (
+      <ActionBarTopRow key="top">
+        {endpointEls.length ? (
+          <EndpointSet>
+            <EndpointIcon />
+            {endpointEls}
+          </EndpointSet>
+        ) : (
+          <EndpointSet />
+        )}
+        {copyButton}
+        <OverviewActionBarKeyboardShortcuts
+          endpoints={endpoints}
+          openEndpointUrl={openEndpointUrl}
+        />
+      </ActionBarTopRow>
+    ) : null
+
   return (
     <ActionBarRoot>
-      {endpointEls.length ? (
-        <EndpointSet>
-          <EndpointIcon />
-          {endpointEls}
-        </EndpointSet>
-      ) : (
-        <EndpointSet />
-      )}
-      {copyButton}
-      <OverviewActionBarKeyboardShortcuts
-        endpoints={endpoints}
-        openEndpointUrl={openEndpointUrl}
-      />
+      {topRow}
+      <ActionBarBottomRow>
+        <FilterRadioButton
+          level={FilterLevel.all}
+          filterSet={props.filterSet}
+        />
+        <FilterRadioButton
+          level={FilterLevel.warn}
+          filterSet={props.filterSet}
+        />
+        <FilterRadioButton
+          level={FilterLevel.error}
+          filterSet={props.filterSet}
+        />
+      </ActionBarBottomRow>
     </ActionBarRoot>
   )
 }
