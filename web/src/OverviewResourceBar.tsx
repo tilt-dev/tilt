@@ -101,6 +101,9 @@ type ResourceGroupStatusProps = {
 }
 
 function ResourceGroupStatus(props: ResourceGroupStatusProps) {
+  if (props.counts.total === 0) {
+    return null
+  }
   let greenSquareCount = boxCount(props.counts.healthy, props.counts.total)
   let redSquareCount = boxCount(props.counts.unhealthy, props.counts.total)
   let graySquareCount = boxCount(props.counts.pending, props.counts.total)
