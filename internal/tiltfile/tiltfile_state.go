@@ -332,6 +332,11 @@ const (
 
 	// other functions
 	setTeamN = "set_team"
+
+	probeN           = "probe"
+	execActionN      = "exec_action"
+	httpGetActionN   = "http_get_action"
+	tcpSocketActionN = "tcp_socket_action"
 )
 
 type triggerMode int
@@ -496,6 +501,10 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{disableFeatureN, s.disableFeature},
 		{disableSnapshotsN, s.disableSnapshots},
 		{setTeamN, s.setTeam},
+		{probeN, s.probe},
+		{execActionN, s.execAction},
+		{httpGetActionN, s.httpGetAction},
+		{tcpSocketActionN, s.tcpSocketAction},
 	} {
 		err := e.AddBuiltin(b.name, b.builtin)
 		if err != nil {
@@ -1472,7 +1481,8 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 			WithAllowParallel(r.allowParallel).
 			WithLinks(r.links).
 			WithTags(r.tags).
-			WithIsTest(r.isTest)
+			WithIsTest(r.isTest).
+			WithReadinessProbe(r.readinessProbe)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
 			mds = append(mds, model.ManifestName(md))

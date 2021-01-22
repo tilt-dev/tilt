@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
@@ -32,6 +33,8 @@ type localResource struct {
 	// for use in testing mvp
 	tags   []string
 	isTest bool
+
+	readinessProbe *v1.Probe
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -39,6 +42,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var updateCmdVal, updateCmdBatVal, serveCmdVal, serveCmdBatVal starlark.Value
 	var updateEnv, serveEnv value.StringStringMap
 	var triggerMode triggerMode
+	var readinessProbe probe
 
 	deps := value.NewLocalPathListUnpacker(thread)
 
@@ -77,6 +81,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"tags?", &tagsVal,
 		"env?", &updateEnv,
 		"serve_env?", &serveEnv,
+		"readiness_probe?", &readinessProbe,
 	); err != nil {
 		return nil, err
 	}
@@ -111,20 +116,21 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	res := localResource{
-		name:          name,
-		updateCmd:     updateCmd,
-		serveCmd:      serveCmd,
-		threadDir:     filepath.Dir(starkit.CurrentExecPath(thread)),
-		deps:          deps.Value,
-		triggerMode:   triggerMode,
-		autoInit:      autoInit,
-		repos:         repos,
-		resourceDeps:  resourceDeps,
-		ignores:       ignores,
-		allowParallel: allowParallel,
-		links:         links.Links,
-		tags:          tags,
-		isTest:        isTest,
+		name:           name,
+		updateCmd:      updateCmd,
+		serveCmd:       serveCmd,
+		threadDir:      filepath.Dir(starkit.CurrentExecPath(thread)),
+		deps:           deps.Value,
+		triggerMode:    triggerMode,
+		autoInit:       autoInit,
+		repos:          repos,
+		resourceDeps:   resourceDeps,
+		ignores:        ignores,
+		allowParallel:  allowParallel,
+		links:          links.Links,
+		tags:           tags,
+		isTest:         isTest,
+		readinessProbe: readinessProbe.spec,
 	}
 
 	//check for duplicate resources by name and throw error if found

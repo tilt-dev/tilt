@@ -50,13 +50,35 @@ type PathMaker interface {
 	MakeLocalPath(relPath string) string
 }
 
+type StringSequence []string
+
+func (s *StringSequence) Unpack(v starlark.Value) error {
+	if v == nil {
+		*s = nil
+		return nil
+	}
+	seq, ok := v.(starlark.Sequence)
+	if !ok {
+		return fmt.Errorf("'%v' is a %T, not a sequence", v, v)
+	}
+	out, err := SequenceToStringSlice(seq)
+	if err != nil {
+		return err
+	}
+	*s = out
+	return nil
+}
+
 func SequenceToStringSlice(seq starlark.Sequence) ([]string, error) {
 	if seq == nil {
 		return nil, nil
 	}
 	it := seq.Iterate()
 	defer it.Done()
-	var ret []string
+	// NOTE(milas): this is pedantic but ensures that an empty slice (rather than nil) is
+	//				returned; in Go semantics it's almost never important as they behave
+	//				identically, but is done for precision for Starlark interop where None != []
+	ret := make([]string, 0, seq.Len())
 	var v starlark.Value
 	for it.Next(&v) {
 		s, ok := v.(starlark.String)
@@ -144,4 +166,20 @@ func envTuples(env map[string]string) ([]string, error) {
 	// for example
 	sort.Strings(kv)
 	return kv, nil
+}
+
+// Int32Value is a convenience wrapper for int32.
+type Int32Value int32
+
+func (i *Int32Value) Unpack(v starlark.Value) error {
+	if v == nil {
+		// AsInt32 does not handle None
+		return fmt.Errorf("got %s, want int", starlark.None.Type())
+	}
+	x, err := starlark.AsInt32(v)
+	if err != nil {
+		return err
+	}
+	*i = Int32Value(x)
+	return nil
 }
