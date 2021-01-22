@@ -1,5 +1,7 @@
 import React from "react"
+import { useHistory } from "react-router-dom"
 import styled from "styled-components"
+import { filterSetFromLocation } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import OverviewLogPane from "./OverviewLogPane"
 import { Color } from "./style-helpers"
@@ -33,13 +35,16 @@ export default function OverviewResourceDetails(
   let manifestName = resource?.name || ""
   let all = name === "" || name === ResourceName.all
   let notFound = !all && !manifestName
+  let history = useHistory()
+  let filterSet = filterSetFromLocation(history.location)
+
   return (
     <OverviewResourceDetailsRoot>
       <OverviewActionBar resource={resource} />
       {notFound ? (
         <NotFound>No resource '{name}'</NotFound>
       ) : (
-        <OverviewLogPane manifestName={manifestName} />
+        <OverviewLogPane manifestName={manifestName} filterSet={filterSet} />
       )}
     </OverviewResourceDetailsRoot>
   )

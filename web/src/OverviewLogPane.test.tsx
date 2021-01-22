@@ -1,4 +1,5 @@
 import { mount } from "enzyme"
+import { FilterLevel, FilterSource } from "./logfilters"
 import { OverviewLogComponent, renderWindow } from "./OverviewLogPane"
 import {
   BuildLogAndRunLog,
@@ -33,12 +34,14 @@ it("escapes html and linkifies", () => {
   expect(el.querySelectorAll(".LogPaneLine button")).toHaveLength(0)
 })
 
-it("hides build logs", () => {
+it("filters by source", () => {
   let root = logPaneMount(<BuildLogAndRunLog />)
   let el = root.getDOMNode()
   expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(20)
 
-  let root2 = logPaneMount(<BuildLogAndRunLog hideBuildLog={true} />)
+  let root2 = logPaneMount(
+    <BuildLogAndRunLog level="" source={FilterSource.runtime} />
+  )
   let el2 = root2.getDOMNode()
   expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(10)
   expect(el2.innerHTML).toEqual(expect.stringContaining("Vigoda pod line"))
@@ -46,11 +49,45 @@ it("hides build logs", () => {
     expect.not.stringContaining("Vigoda build line")
   )
 
-  let root3 = logPaneMount(<BuildLogAndRunLog hideRunLog={true} />)
+  let root3 = logPaneMount(
+    <BuildLogAndRunLog level="" source={FilterSource.build} />
+  )
   let el3 = root3.getDOMNode()
   expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(10)
   expect(el3.innerHTML).toEqual(expect.not.stringContaining("Vigoda pod line"))
   expect(el3.innerHTML).toEqual(expect.stringContaining("Vigoda build line"))
+})
+
+it("filters by level", () => {
+  let root = logPaneMount(<BuildLogAndRunLog />)
+  let el = root.getDOMNode()
+  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(20)
+
+  let root2 = logPaneMount(
+    <BuildLogAndRunLog level={FilterLevel.warn} source="" />
+  )
+  let el2 = root2.getDOMNode()
+  expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(2)
+  expect(el2.innerHTML).toEqual(
+    expect.stringContaining("Vigoda pod warning line")
+  )
+  expect(el2.innerHTML).toEqual(expect.not.stringContaining("Vigoda pod line"))
+  expect(el2.innerHTML).toEqual(
+    expect.not.stringContaining("Vigoda pod error line")
+  )
+
+  let root3 = logPaneMount(
+    <BuildLogAndRunLog level={FilterLevel.error} source="" />
+  )
+  let el3 = root3.getDOMNode()
+  expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(2)
+  expect(el3.innerHTML).toEqual(
+    expect.not.stringContaining("Vigoda pod warning line")
+  )
+  expect(el3.innerHTML).toEqual(expect.not.stringContaining("Vigoda pod line"))
+  expect(el3.innerHTML).toEqual(
+    expect.stringContaining("Vigoda pod error line")
+  )
 })
 
 it("engages autoscrolls on scroll down", () => {
