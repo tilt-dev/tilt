@@ -1,13 +1,13 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
-import OverviewResourceDetails from "./OverviewResourceDetails"
+import OverviewActionBar from "./OverviewActionBar"
 import { SidebarPinMemoryProvider } from "./SidebarPin"
 import { oneResource } from "./testdata"
 
 type Resource = Proto.webviewResource
 
 export default {
-  title: "OverviewResourceDetails",
+  title: "OverviewActionBar",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
@@ -28,7 +28,7 @@ export const OverflowTextBar = () => {
     { url: "http://my-pod-grafana-long-service-name-deadbeef:4002" },
   ]
   res.podID = "my-pod-grafana-long-service-name-deadbeef"
-  return <OverviewResourceDetails resource={res} name={"vigoda"} />
+  return <OverviewActionBar resource={res} />
 }
 
 export const FullBar = () => {
@@ -38,12 +38,12 @@ export const FullBar = () => {
     { url: "http://localhost:4002" },
   ]
   res.podID = "my-pod-deadbeef"
-  return <OverviewResourceDetails resource={res} name={"vigoda"} />
+  return <OverviewActionBar resource={res} />
 }
 
 export const EmptyBar = () => {
   let res = oneResource()
   res.endpointLinks = []
   res.podID = ""
-  return <OverviewResourceDetails resource={res} name={"vigoda"} />
+  return <OverviewActionBar resource={res} />
 }
