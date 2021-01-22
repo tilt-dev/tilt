@@ -93,6 +93,7 @@ let SidebarItemRuntimeBox = styled.div`
   border-bottom: 1px solid ${Color.grayLighter};
   box-sizing: border-box;
   transition: border-color ${AnimDuration.default} linear;
+  overflow: hidden;
 
   .isSelected & {
     border-bottom-color: ${Color.grayLightest};
