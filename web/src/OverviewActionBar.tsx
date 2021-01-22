@@ -5,6 +5,7 @@ import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
+import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 type OverviewActionBarProps = {
@@ -126,6 +127,15 @@ let EndpointIcon = styled(LinkSvg)`
   margin-right: ${SizeUnit(0.25)};
 `
 
+// TODO(nick): Put this in a global React Context object with
+// other page-level stuffs
+function openEndpointUrl(url: string) {
+  // We deliberately don't use rel=noopener. These are trusted tabs, and we want
+  // to have a persistent link to them (so that clicking on the same link opens
+  // the same tab).
+  window.open(url, url)
+}
+
 export default function OverviewActionBar(props: OverviewActionBarProps) {
   let { resource } = props
   let manifestName = resource?.name || ""
@@ -162,6 +172,10 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         <EndpointSet />
       )}
       {copyButton}
+      <OverviewActionBarKeyboardShortcuts
+        endpoints={endpoints}
+        openEndpointUrl={openEndpointUrl}
+      />
     </ActionBarRoot>
   )
 }
