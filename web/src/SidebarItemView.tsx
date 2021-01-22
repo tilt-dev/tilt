@@ -4,8 +4,9 @@ import styled, { keyframes } from "styled-components"
 import { incr } from "./analytics"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
-import SidebarItem, { SidebarItemRoot } from "./SidebarItem"
-import { SidebarPinButton, SidebarPinButtonSpacer } from "./SidebarPin"
+import SidebarItem from "./SidebarItem"
+import { SidebarPinButtonSpacer } from "./SidebarPin"
+import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import {
   AnimDuration,
@@ -21,6 +22,13 @@ import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { ResourceName, ResourceStatus, ResourceView } from "./types"
+
+const SidebarItemRoot = styled.li`
+  & + & {
+    margin-top: ${SizeUnit(0.35)};
+  }
+  display: flex;
+`
 
 const barberpole = keyframes`
   100% {
@@ -268,7 +276,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   return (
     <SidebarItemRoot
       key={item.name}
-      className={`${isSelectedClass} ${isBuildingClass}`}
+      className={`u-showPinOnHover ${isSelectedClass} ${isBuildingClass}`}
     >
       {renderPin ? (
         <SidebarPinButton resourceName={item.name} />
