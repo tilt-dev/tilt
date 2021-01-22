@@ -4,8 +4,8 @@ import styled, { keyframes } from "styled-components"
 import { incr } from "./analytics"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
-import SidebarItem from "./SidebarItem"
-import SidebarPinButton from "./SidebarPinButton"
+import SidebarItem, { SidebarItemRoot } from "./SidebarItem"
+import { SidebarPinButton, SidebarPinButtonSpacer } from "./SidebarPin"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import {
   AnimDuration,
@@ -15,18 +15,12 @@ import {
   Font,
   FontSize,
   SizeUnit,
+  Width,
 } from "./style-helpers"
 import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { ResourceName, ResourceStatus, ResourceView } from "./types"
-
-const SidebarItemRoot = styled.li`
-  & + & {
-    margin-top: ${SizeUnit(0.35)};
-  }
-  display: flex;
-`
 
 const barberpole = keyframes`
   100% {
@@ -49,7 +43,7 @@ export let SidebarItemBox = styled.div`
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
-  margin: 0 ${SizeUnit(0.5)};
+  margin-right: ${SizeUnit(0.5)};
   cursor: pointer;
 
   &:hover {
@@ -93,7 +87,6 @@ let SidebarItemRuntimeBox = styled.div`
   border-bottom: 1px solid ${Color.grayLighter};
   box-sizing: border-box;
   transition: border-color ${AnimDuration.default} linear;
-  overflow: hidden;
 
   .isSelected & {
     border-bottom-color: ${Color.grayLightest};
@@ -108,6 +101,7 @@ let SidebarItemBuildBox = styled.div`
 `
 
 let SidebarItemAllRoot = styled(SidebarItemRoot)`
+  margin-left: ${Width.sidebarPinButton}px;
   text-transform: uppercase;
 `
 
@@ -132,11 +126,8 @@ export function SidebarItemAll(props: SidebarItemAllProps) {
     <SidebarItemAllRoot>
       <SidebarItemAllBox
         className={props.nothingSelected ? "isSelected" : ""}
-        tabIndex={-1}
-        role="button"
-        onClick={(e) =>
-          nav.openResource(ResourceName.all, { newTab: e.ctrlKey || e.metaKey })
-        }
+        onClick={() => nav.clickResource(ResourceName.all)}
+        onDoubleClick={() => nav.doubleClickResource(ResourceName.all)}
       >
         <SidebarIcon
           status={ResourceStatus.None}
@@ -196,6 +187,7 @@ export function triggerUpdate(name: string, action: string) {
 export type SidebarItemViewProps = {
   item: SidebarItem
   selected: boolean
+  renderPin: boolean
   resourceView: ResourceView
   pathBuilder: PathBuilder
 }
@@ -268,19 +260,22 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   let isSelectedClass = isSelected ? "isSelected" : ""
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
+  let renderPin = props.renderPin
 
   return (
     <SidebarItemRoot
       key={item.name}
-      className={`u-showPinOnHover ${isSelectedClass} ${isBuildingClass}`}
+      className={`${isSelectedClass} ${isBuildingClass}`}
     >
+      {renderPin ? (
+        <SidebarPinButton resourceName={item.name} />
+      ) : (
+        <SidebarPinButtonSpacer />
+      )}
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
-        tabIndex={-1}
-        role="button"
-        onClick={(e) =>
-          nav.openResource(item.name, { newTab: e.ctrlKey || e.metaKey })
-        }
+        onClick={() => nav.clickResource(item.name)}
+        onDoubleClick={() => nav.doubleClickResource(item.name)}
         data-name={item.name}
       >
         <SidebarItemRuntimeBox>
@@ -311,7 +306,6 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
             alertCount={item.buildAlertCount}
           />
           <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
-          <SidebarPinButton resourceName={item.name} />
         </SidebarItemBuildBox>
       </SidebarItemBox>
     </SidebarItemRoot>

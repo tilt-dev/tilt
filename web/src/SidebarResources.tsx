@@ -8,7 +8,7 @@ import SidebarItemView, {
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { useSidebarPin } from "./SidebarPin"
-import { Color, FontSize, SizeUnit } from "./style-helpers"
+import { Color, FontSize, SizeUnit, Width } from "./style-helpers"
 import { ResourceView } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
@@ -24,7 +24,7 @@ let SidebarList = styled.div``
 
 let SidebarListSectionName = styled.div`
   margin-top: ${SizeUnit(0.5)};
-  margin-left: ${SizeUnit(0.5)};
+  margin-left: ${Width.sidebarPinButton}px;
   text-transform: uppercase;
   color: ${Color.grayLight};
   font-size: ${FontSize.small};
@@ -65,6 +65,7 @@ function PinnedItems(props: SidebarProps) {
           key={"sidebarItemPinned-" + i.name}
           item={i}
           selected={props.selected === i.name}
+          renderPin={false}
           pathBuilder={props.pathBuilder}
           resourceView={props.resourceView}
         />
@@ -103,6 +104,7 @@ export class SidebarResources extends PureComponent<SidebarProps> {
         key={"sidebarItem-" + item.name}
         item={item}
         selected={this.props.selected == item.name}
+        renderPin={true}
         pathBuilder={this.props.pathBuilder}
         resourceView={this.props.resourceView}
       />

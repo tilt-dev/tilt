@@ -26,9 +26,3 @@ local_resource(
   'cd .. && make test-js',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
-
-local_resource(
-  'update-snapshots',
-  'CI=true yarn test -u',
-  auto_init=False,
-  trigger_mode=TRIGGER_MODE_MANUAL)

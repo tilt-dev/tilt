@@ -14,7 +14,6 @@ import { ReactComponent as MaximizeSvg } from "./assets/svg/maximize.svg"
 import { displayURL } from "./links"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
-import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { buildStatus, runtimeStatus } from "./status"
 import {
@@ -303,14 +302,8 @@ function buildTooltipText(status: ResourceStatus): string {
   }
 }
 
-type BuildBoxProps = {
-  item: OverviewItem
-  isDetailsBox: boolean
-}
-
-function BuildBox(props: BuildBoxProps) {
-  let { item, isDetailsBox } = props
-
+function BuildBox(props: { item: OverviewItem }) {
+  let item = props.item
   return (
     <OverviewItemBuildBox>
       <SidebarIcon
@@ -321,8 +314,6 @@ function BuildBox(props: BuildBoxProps) {
       <OverviewItemText style={{ margin: "8px 0px" }}>
         {buildStatusText(item)}
       </OverviewItemText>
-
-      <SidebarPinButton resourceName={item.name} persistShow={isDetailsBox} />
     </OverviewItemBuildBox>
   )
 }
@@ -487,7 +478,7 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
 
           <DetailText>Show details</DetailText>
         </ShowDetailsBox>
-        <BuildBox item={props.item} isDetailsBox={true} />
+        <BuildBox item={props.item} />
       </OverviewItemDetailsBox>
     </OverviewItemDetailsRoot>
   )
@@ -535,11 +526,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
   return (
-    <OverviewItemRoot
-      key={item.name}
-      onClick={handleClick}
-      className="u-showPinOnHover"
-    >
+    <OverviewItemRoot key={item.name} onClick={handleClick}>
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <OverviewItemRuntimeBox>
           <SidebarIcon
@@ -569,7 +556,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
             </InnerRuntimeBox>
           </RuntimeBoxStack>
         </OverviewItemRuntimeBox>
-        <BuildBox item={item} isDetailsBox={false} />
+        <BuildBox item={item} />
       </OverviewItemBox>
 
       <Popover

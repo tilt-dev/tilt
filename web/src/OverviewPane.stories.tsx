@@ -12,9 +12,7 @@ export default {
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
         <div style={{ margin: "-1rem", height: "80vh" }}>
-          <SidebarPinMemoryProvider>
-            <Story />
-          </SidebarPinMemoryProvider>
+          <Story />
         </div>
       </MemoryRouter>
     ),

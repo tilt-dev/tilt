@@ -62,15 +62,6 @@ function withManualTrigger(): optionFn {
   }
 }
 
-function withQueuedTrigger(): optionFn {
-  return (props: OverviewItemViewProps) => {
-    let item = props.item
-    item.triggerMode = TriggerMode.TriggerModeManualIncludingInitial
-    item.hasPendingChanges = true
-    item.queued = true
-  }
-}
-
 function itemView(...options: optionFn[]) {
   let item = new OverviewItem(oneResourceNoAlerts())
   let props = {
@@ -109,9 +100,6 @@ export const OneItemNone = () => itemView(withStatus(ResourceStatus.None))
 
 export const OneItemTrigger = () =>
   itemView(withStatus(ResourceStatus.Pending), withManualTrigger())
-
-export const OneItemQueuedTrigger = () =>
-  itemView(withStatus(ResourceStatus.Pending), withQueuedTrigger())
 
 export const OneItemLongName = () =>
   itemView(withName("longnamelongnameverylongname"))
