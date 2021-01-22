@@ -4,10 +4,8 @@ import React, {
   useEffect,
   useState,
 } from "react"
-import styled from "styled-components"
 import { incr } from "./analytics"
 import { useLocalStorageContext } from "./LocalStorage"
-import { Width } from "./style-helpers"
 
 type SidebarPinContext = {
   pinnedResources: string[]
@@ -108,7 +106,3 @@ export function SidebarPinContextProvider(
     </sidebarPinContext.Provider>
   )
 }
-
-export const SidebarPinButtonSpacer = styled.div`
-  width: ${Width.sidebarPinButton}px;
-`

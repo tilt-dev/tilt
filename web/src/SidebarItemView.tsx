@@ -5,7 +5,6 @@ import { incr } from "./analytics"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
-import { SidebarPinButtonSpacer } from "./SidebarPin"
 import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import {
@@ -16,7 +15,6 @@ import {
   Font,
   FontSize,
   SizeUnit,
-  Width,
 } from "./style-helpers"
 import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
@@ -51,7 +49,7 @@ export let SidebarItemBox = styled.div`
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
-  margin-right: ${SizeUnit(0.5)};
+  margin: 0 ${SizeUnit(0.5)};
   cursor: pointer;
 
   &:hover {
@@ -109,7 +107,6 @@ let SidebarItemBuildBox = styled.div`
 `
 
 let SidebarItemAllRoot = styled(SidebarItemRoot)`
-  margin-left: ${Width.sidebarPinButton}px;
   text-transform: uppercase;
 `
 
@@ -198,7 +195,6 @@ export function triggerUpdate(name: string, action: string) {
 export type SidebarItemViewProps = {
   item: SidebarItem
   selected: boolean
-  renderPin: boolean
   resourceView: ResourceView
   pathBuilder: PathBuilder
 }
@@ -271,18 +267,12 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   let isSelectedClass = isSelected ? "isSelected" : ""
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
-  let renderPin = props.renderPin
 
   return (
     <SidebarItemRoot
       key={item.name}
       className={`u-showPinOnHover ${isSelectedClass} ${isBuildingClass}`}
     >
-      {renderPin ? (
-        <SidebarPinButton resourceName={item.name} />
-      ) : (
-        <SidebarPinButtonSpacer />
-      )}
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
         tabIndex={-1}
@@ -320,6 +310,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
             alertCount={item.buildAlertCount}
           />
           <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
+          <SidebarPinButton resourceName={item.name} />
         </SidebarItemBuildBox>
       </SidebarItemBox>
     </SidebarItemRoot>
