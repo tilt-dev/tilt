@@ -141,33 +141,6 @@ it("does re-render the sidebar when the resource list changes", async () => {
   expect(sidebarLinks).toHaveLength(2)
 })
 
-it("shows test data in sidebar if test resources present", async () => {
-  const root = mount(emptyHUD())
-  const hud = root.find(HUD)
-
-  let resourceView = oneResourceView()
-  resourceView.resources[0].localResourceInfo = { isTest: true } // make it a test resource
-  hud.setState({ view: resourceView })
-
-  let sidebar = root.find("section.Sidebar")
-  let testAggData = sidebar.find("section.TestAggregateData")
-  expect(testAggData).toHaveLength(1)
-  let numTests = testAggData.find("span.numTests")
-  expect(numTests.text()).toEqual("1")
-})
-
-it("doesn't render test data in sidebar if no tests", async () => {
-  const root = mount(emptyHUD())
-  const hud = root.find(HUD)
-
-  let resourceView = oneResourceView()
-  hud.setState({ view: resourceView })
-
-  let sidebar = root.find("section.Sidebar")
-  let testAggData = sidebar.find("section.TestAggregateData")
-  expect(testAggData).toHaveLength(0)
-})
-
 it("renders tab nav", () => {
   const root = mount(emptyHUD())
   const hud = root.find(HUD)
