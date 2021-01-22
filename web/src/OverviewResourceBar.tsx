@@ -16,6 +16,7 @@ import { combinedStatus } from "./status"
 import { AnimDuration, Color, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceStatus, TargetType } from "./types"
 import UpdateDialog, { showUpdate } from "./UpdateDialog"
+import _ from "lodash"
 
 type MetricsServing = Proto.webviewMetricsServing
 
@@ -93,6 +94,7 @@ const GraySquare = styled(StatusSquare)`
 
 type ResourceGroupStatusProps = {
   counts: StatusCounts
+  label: string
   healthyLabel: string
   unhealthyLabel: string
   warningLabel: string
@@ -122,10 +124,11 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
 
   let summaryMsg =
     `${props.counts.healthy}/${props.counts.total} ${props.healthyLabel} ` +
-    `| ${props.counts.unhealthy} ${props.unhealthyLabel}${props.counts.total != 1 ? "s" : ""} ` +
+    `| ${props.counts.unhealthy} ${props.unhealthyLabel}${props.counts.unhealthy != 1 ? "s" : ""} ` +
     `| ${props.counts.warning} ${props.warningLabel}${props.counts.warning != 1 ? "s" : ""}`
   return (
     <ResourceBarStatusRoot>
+      <div>{props.label}</div>
       {boxes}
       <div style={{ marginLeft: "16px" }}>{summaryMsg}</div>
     </ResourceBarStatusRoot>
@@ -185,14 +188,26 @@ function statusCounts(resources: Proto.webviewResource[]): StatusCounts {
 function ResourceBarStatus(props: ResourceBarStatusProps) {
   // Count the statuses.
   let resources = props.view.resources || []
-  let counts = statusCounts(resources)
 
-  return <ResourceGroupStatus
-    counts={counts}
-    healthyLabel={"ok"}
-    unhealthyLabel={"error"}
-    warningLabel={"warning"}
-  />
+  let [testResources, otherResources] =
+    _.partition<Proto.webviewResource>(resources, r => r.localResourceInfo && r.localResourceInfo.isTest)
+
+  return <>
+    <ResourceGroupStatus
+      counts={statusCounts(otherResources)}
+      label={"Resources"}
+      healthyLabel={"ok"}
+      unhealthyLabel={"error"}
+      warningLabel={"warning"}
+    />
+    <ResourceGroupStatus
+      counts={statusCounts(testResources)}
+      label={"Tests"}
+      healthyLabel={"ok"}
+      unhealthyLabel={"error"}
+      warningLabel={"warning"}
+    />
+  </>
 }
 
 export let MenuButton = styled.button`
