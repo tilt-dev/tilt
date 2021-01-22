@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
@@ -62,6 +64,60 @@ func TestServe(t *testing.T) {
 	f.assertLogMessage("foo", "Starting cmd sleep 60")
 }
 
+func TestServeReadinessProbe(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+
+	c := model.ToHostCmdInDir("sleep 60", "testdir")
+	localTarget := model.NewLocalTarget("foo", model.Cmd{}, c, nil)
+	localTarget.ReadinessProbe = &v1.Probe{
+		TimeoutSeconds: 5,
+		Handler: v1.Handler{
+			Exec: &v1.ExecAction{Command: []string{"sleep", "15"}},
+		},
+	}
+
+	f.resourceFromTarget("foo", localTarget, t1)
+	f.step()
+	f.assertAction("did not find readiness probe action", func(action store.Action) bool {
+		probeAction, ok := action.(LocalServeReadinessProbeAction)
+		if !ok ||
+			probeAction.ManifestName != "foo" ||
+			probeAction.Ready != true {
+			return false
+		}
+		return true
+	})
+
+	assert.Equal(t, "sleep", f.fpm.execName)
+	assert.Equal(t, []string{"15"}, f.fpm.execArgs)
+	assert.GreaterOrEqual(t, f.fpm.ProbeCount(), 1)
+}
+
+func TestServeReadinessProbeInvalidSpec(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+
+	c := model.ToHostCmdInDir("sleep 60", "testdir")
+	localTarget := model.NewLocalTarget("foo", model.Cmd{}, c, nil)
+	localTarget.ReadinessProbe = &v1.Probe{
+		// probe spec populated but missing handler
+		Handler: v1.Handler{},
+	}
+
+	f.resourceFromTarget("foo", localTarget, t1)
+	f.step()
+
+	f.assertStatus("foo", model.ProcessStateRunning, 1)
+
+	f.assertLogMessage("foo", "Invalid readiness probe: unsupported probe type")
+	assert.Equal(t, 0, f.fpm.ProbeCount())
+}
+
 func TestFailure(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
@@ -113,6 +169,7 @@ type fixture struct {
 	st     *store.TestingStore
 	state  store.EngineState
 	fe     *FakeExecer
+	fpm    *FakeProberManager
 	c      *Controller
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -125,6 +182,7 @@ func newFixture(t *testing.T) *fixture {
 	ctx = logger.WithLogger(ctx, l)
 
 	fe := NewFakeExecer()
+	fpm := NewFakeProberManager()
 
 	return &fixture{
 		t:  t,
@@ -133,7 +191,8 @@ func newFixture(t *testing.T) *fixture {
 			ManifestTargets: make(map[model.ManifestName]*store.ManifestTarget),
 		},
 		fe:     fe,
-		c:      NewController(fe),
+		fpm:    fpm,
+		c:      NewController(fe, fpm),
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -144,13 +203,17 @@ func (f *fixture) teardown() {
 }
 
 func (f *fixture) resource(name string, cmd string, workdir string, lastDeploy time.Time) {
-	n := model.ManifestName(name)
 	c := model.ToHostCmd(cmd)
 	c.Dir = workdir
+	localTarget := model.NewLocalTarget(model.TargetName(name), model.Cmd{}, c, nil)
+	f.resourceFromTarget(name, localTarget, lastDeploy)
+}
+
+func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastDeploy time.Time) {
+	n := model.ManifestName(name)
 	m := model.Manifest{
 		Name: n,
-	}.WithDeployTarget(model.NewLocalTarget(
-		model.TargetName(name), model.Cmd{}, c, nil))
+	}.WithDeployTarget(target)
 	f.state.UpsertManifestTarget(&store.ManifestTarget{
 		Manifest: m,
 		State: &store.ManifestState{

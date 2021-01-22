@@ -21,18 +21,17 @@ type Controller struct {
 	execer       Execer
 	procs        map[model.ManifestName]*currentProcess
 	procCount    int
-	probeManager probeManager
+	probeManager ProberManager
 }
 
 var _ store.Subscriber = &Controller{}
 var _ store.TearDowner = &Controller{}
 
-func NewController(execer Execer) *Controller {
+func NewController(execer Execer, manager ProberManager) *Controller {
 	return &Controller{
-		execer: execer,
-		procs:  make(map[model.ManifestName]*currentProcess),
-		// TODO: inject with wire
-		probeManager: prober.NewManager(),
+		execer:       execer,
+		procs:        make(map[model.ManifestName]*currentProcess),
+		probeManager: manager,
 	}
 }
 
@@ -172,7 +171,7 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 			spec.ReadinessProbe,
 			probe.WorkerOnStatusChange(statusChangeFunc))
 		if err != nil {
-			logger.Get(ctx).Warnf("invalid readiness probe: %v", err)
+			logger.Get(ctx).Warnf("Invalid readiness probe: %v", err)
 		} else {
 			proc.probeWorker = probeWorker
 			go proc.probeWorker.Run(ctx)

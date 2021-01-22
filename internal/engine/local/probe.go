@@ -18,13 +18,17 @@ import (
 
 var ErrUnsupportedProbeType = errors.New("unsupported probe type")
 
-type probeManager interface {
+func ProvideProberManager() ProberManager {
+	return prober.NewManager()
+}
+
+type ProberManager interface {
 	HTTPGet(u *url.URL, headers http.Header) prober.ProberFunc
 	TCPSocket(host string, port int) prober.ProberFunc
 	Exec(name string, args ...string) prober.ProberFunc
 }
 
-func probeWorkerFromSpec(manager probeManager, probeSpec *v1.Probe, opts ...probe.WorkerOption) (*probe.Worker, error) {
+func probeWorkerFromSpec(manager ProberManager, probeSpec *v1.Probe, opts ...probe.WorkerOption) (*probe.Worker, error) {
 	probeFunc, err := proberFromSpec(manager, probeSpec)
 	if err != nil {
 		return nil, err
@@ -51,7 +55,7 @@ func probeWorkerFromSpec(manager probeManager, probeSpec *v1.Probe, opts ...prob
 	return w, nil
 }
 
-func proberFromSpec(manager probeManager, probeSpec *v1.Probe) (prober.Prober, error) {
+func proberFromSpec(manager ProberManager, probeSpec *v1.Probe) (prober.Prober, error) {
 	if probeSpec == nil {
 		return nil, nil
 	} else if probeSpec.Exec != nil {

@@ -1,58 +1,21 @@
 package local
 
 import (
-	"context"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tilt-dev/probe/pkg/prober"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type mockProbeManager struct {
-	httpURL     *url.URL
-	httpHeaders http.Header
-
-	tcpHost string
-	tcpPort int
-
-	execName string
-	execArgs []string
-}
-
-func (m *mockProbeManager) HTTPGet(u *url.URL, headers http.Header) prober.ProberFunc {
-	m.httpURL = u
-	m.httpHeaders = headers
-	return noopProbe
-}
-
-func (m *mockProbeManager) TCPSocket(host string, port int) prober.ProberFunc {
-	m.tcpHost = host
-	m.tcpPort = port
-	return noopProbe
-}
-
-func (m *mockProbeManager) Exec(name string, args ...string) prober.ProberFunc {
-	m.execName = name
-	m.execArgs = args
-	return noopProbe
-}
-
-func noopProbe(_ context.Context) (prober.Result, string, error) {
-	return prober.Unknown, "", nil
-}
-
 func TestProbeFromSpecUnsupported(t *testing.T) {
 	// empty probe spec
 	probeSpec := &v1.Probe{}
-	p, err := proberFromSpec(&mockProbeManager{}, probeSpec)
+	p, err := proberFromSpec(&FakeProberManager{}, probeSpec)
 	assert.Nil(t, p)
 	assert.ErrorIs(t, err, ErrUnsupportedProbeType)
 }
@@ -80,7 +43,7 @@ func TestProbeFromSpecTCP(t *testing.T) {
 					},
 				},
 			}
-			manager := &mockProbeManager{}
+			manager := &FakeProberManager{}
 			p, err := proberFromSpec(manager, probeSpec)
 			if tc.expectedErr != "" {
 				require.EqualError(t, err, tc.expectedErr)
@@ -142,7 +105,7 @@ func TestProbeFromSpecHTTP(t *testing.T) {
 					HTTPGet: tc.httpGet,
 				},
 			}
-			manager := &mockProbeManager{}
+			manager := &FakeProberManager{}
 			p, err := proberFromSpec(manager, probeSpec)
 			if tc.expectedErr != "" {
 				require.EqualError(t, err, tc.expectedErr)
@@ -180,7 +143,7 @@ func TestProbeFromSpecExec(t *testing.T) {
 					},
 				},
 			}
-			manager := &mockProbeManager{}
+			manager := &FakeProberManager{}
 			p, err := proberFromSpec(manager, probeSpec)
 			assert.Nil(t, err)
 			assert.NotNil(t, p)
