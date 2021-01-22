@@ -40,7 +40,6 @@ import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
 import Statusbar, { StatusItem } from "./Statusbar"
 import { LegacyNavProvider, OverviewNavProvider } from "./TabNav"
-import TestAggregateData from "./TestAggregateData"
 import { traceNav } from "./trace"
 import {
   LogLine,
@@ -590,7 +589,6 @@ export default class HUD extends Component<HudProps, HudState> {
             resourceView={t}
             pathBuilder={this.pathBuilder}
           />
-          <TestAggregateData items={sidebarItems} />
         </Sidebar>
       )
     }
