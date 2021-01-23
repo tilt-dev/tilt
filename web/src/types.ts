@@ -88,6 +88,12 @@ export type Snapshot = {
   snapshotHighlight?: SnapshotHighlight | null
 }
 
+export enum LogLevel {
+  INFO = "INFO",
+  WARN = "WARN",
+  ERROR = "ERROR",
+}
+
 // A plaintext representation of a line of the log,
 // with metadata to render it in isolation.
 //
