@@ -1,4 +1,9 @@
-import React, { useState } from "react"
+import Menu from "@material-ui/core/Menu"
+import MenuItem from "@material-ui/core/MenuItem"
+import { PopoverOrigin } from "@material-ui/core/Popover"
+import { makeStyles } from "@material-ui/core/styles"
+import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
+import React, { useRef, useState } from "react"
 import { useHistory } from "react-router"
 import styled from "styled-components"
 import { incr } from "./analytics"
@@ -6,13 +11,98 @@ import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
-import { FilterLevel, FilterSet } from "./logfilters"
+import { FilterLevel, FilterSet, FilterSource } from "./logfilters"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 type OverviewActionBarProps = {
   resource?: Proto.webviewResource
   filterSet: FilterSet
+}
+
+type FilterSourceMenuProps = {
+  id: string
+  open: boolean
+  anchorEl: Element | null
+  onClose: () => void
+
+  // The level button that this menu belongs to.
+  level: FilterLevel
+
+  // The current filter set.
+  filterSet: FilterSet
+}
+
+let useMenuStyles = makeStyles((theme) => ({
+  root: {
+    fontFamily: Font.sansSerif,
+    fontSize: FontSize.smallest,
+  },
+}))
+
+// Menu to filter logs by source (e.g., build-only, runtime-only).
+function FilterSourceMenu(props: FilterSourceMenuProps) {
+  let { id, anchorEl, level, open, filterSet, onClose } = props
+
+  let classes = useMenuStyles()
+  let history = useHistory()
+  let l = history.location
+  let onClick = (e: any) => {
+    let source = e.currentTarget.getAttribute("data-filter")
+    let search = new URLSearchParams(l.search)
+    search.set("source", source)
+    search.set("level", level)
+    history.push({
+      pathname: l.pathname,
+      search: search.toString(),
+    })
+    onClose()
+  }
+
+  let anchorOrigin: PopoverOrigin = {
+    vertical: "bottom",
+    horizontal: "right",
+  }
+  let transformOrigin: PopoverOrigin = {
+    vertical: "top",
+    horizontal: "right",
+  }
+
+  return (
+    <Menu
+      id={id}
+      anchorEl={anchorEl}
+      open={open}
+      onClose={onClose}
+      disableScrollLock={true}
+      keepMounted={true}
+      anchorOrigin={anchorOrigin}
+      transformOrigin={transformOrigin}
+      getContentAnchorEl={null}
+    >
+      <MenuItem
+        data-filter={FilterSource.all}
+        classes={classes}
+        onClick={onClick}
+      >
+        All Sources
+      </MenuItem>
+      <MenuItem
+        data-filter={FilterSource.build}
+        classes={classes}
+        onClick={onClick}
+      >
+        Build Only
+      </MenuItem>
+      <MenuItem
+        data-filter={FilterSource.runtime}
+        classes={classes}
+        onClick={onClick}
+      >
+        Runtime Only
+      </MenuItem>
+    </Menu>
+  )
 }
 
 let ButtonRoot = styled.button`
@@ -76,6 +166,22 @@ let ButtonRoot = styled.button`
   }
 `
 
+let ButtonPill = styled.div`
+  display: flex;
+`
+
+export let ButtonLeftPill = styled(ButtonRoot)`
+  border-radius: 4px 0 0 4px;
+  border-right: 0;
+
+  &:hover + button {
+    border-left-color: ${Color.blue};
+  }
+`
+export let ButtonRightPill = styled(ButtonRoot)`
+  border-radius: 0 4px 4px 0;
+`
+
 type FilterRadioButtonProps = {
   // The level that this button toggles.
   level: FilterLevel
@@ -84,21 +190,40 @@ type FilterRadioButtonProps = {
   filterSet: FilterSet
 }
 
-function FilterRadioButton(props: FilterRadioButtonProps) {
-  let level = props.level
-  let text = "All Logs"
+export function FilterRadioButton(props: FilterRadioButtonProps) {
+  let { level, filterSet } = props
+  let leftText = "All Levels"
   if (level === FilterLevel.warn) {
-    text = "Warnings"
+    leftText = "Warnings"
   } else if (level === FilterLevel.error) {
-    text = "Errors"
+    leftText = "Errors"
   }
+
   let isEnabled = level === props.filterSet.level
+  let rightText = (
+    <ExpandMoreIcon
+      style={{ width: "16px", height: "16px" }}
+      key="right-text"
+    />
+  )
+  let rightStyle = { paddingLeft: "4px", paddingRight: "4px" } as any
+  if (isEnabled) {
+    if (filterSet.source == FilterSource.build) {
+      rightText = <span key="right-text">Build</span>
+      rightStyle = null
+    } else if (filterSet.source == FilterSource.runtime) {
+      rightText = <span key="right-text">Runtime</span>
+      rightStyle = null
+    }
+  }
 
   // isRadio indicates that clicking the button again won't turn it off,
   // behaving like a radio button.
-  let className = "isRadio"
+  let leftClassName = "isRadio"
+  let rightClassName = ""
   if (isEnabled) {
-    className += " isEnabled"
+    leftClassName += " isEnabled"
+    rightClassName += " isEnabled"
   }
 
   let history = useHistory()
@@ -106,19 +231,41 @@ function FilterRadioButton(props: FilterRadioButtonProps) {
   let onClick = () => {
     let search = new URLSearchParams(l.search)
     search.set("level", level)
+    search.set("source", "")
     history.push({
       pathname: l.pathname,
       search: search.toString(),
     })
   }
+
+  let rightPillRef = useRef(null as any)
+  let [sourceMenuAnchor, setSourceMenuAnchor] = useState(null)
+  let onMenuOpen = (e: any) => {
+    setSourceMenuAnchor(e.currentTarget)
+  }
+  let sourceMenuOpen = !!sourceMenuAnchor
+
   return (
-    <ButtonRoot
-      style={{ marginRight: "16px" }}
-      className={className}
-      onClick={onClick}
-    >
-      {text}
-    </ButtonRoot>
+    <ButtonPill style={{ marginRight: SizeUnit(0.5) }}>
+      <ButtonLeftPill className={leftClassName} onClick={onClick}>
+        {leftText}
+      </ButtonLeftPill>
+      <ButtonRightPill
+        style={rightStyle}
+        className={rightClassName}
+        onClick={onMenuOpen}
+      >
+        {rightText}
+      </ButtonRightPill>
+      <FilterSourceMenu
+        id={`filterSource-${level}`}
+        open={sourceMenuOpen}
+        anchorEl={sourceMenuAnchor}
+        filterSet={filterSet}
+        level={level}
+        onClose={() => setSourceMenuAnchor(null)}
+      />
+    </ButtonPill>
   )
 }
 
@@ -171,7 +318,7 @@ let ActionBarRoot = styled.div`
   background-color: ${Color.grayDarkest};
 `
 
-let ActionBarTopRow = styled.div`
+export let ActionBarTopRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -198,7 +345,7 @@ let EndpointSet = styled.div`
   font-size: ${FontSize.small};
 `
 
-let Endpoint = styled.a`
+export let Endpoint = styled.a`
   color: ${Color.gray7};
   transition: color ${AnimDuration.default} ease;
 
@@ -275,11 +422,11 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
           filterSet={props.filterSet}
         />
         <FilterRadioButton
-          level={FilterLevel.warn}
+          level={FilterLevel.error}
           filterSet={props.filterSet}
         />
         <FilterRadioButton
-          level={FilterLevel.error}
+          level={FilterLevel.warn}
           filterSet={props.filterSet}
         />
       </ActionBarBottomRow>
