@@ -28,10 +28,11 @@ func TestProbeFromSpecTCP(t *testing.T) {
 	}
 	cases := []tc{
 		{"localhost", intstr.FromInt(8080), ""},
-		{"localhost", intstr.IntOrString{}, "invalid port number: 0"},
-		{"localhost", intstr.FromString("http"), "invalid port number: http"},
-		{"localhost", intstr.FromInt(-1), "invalid port number: -1"},
-		{"localhost", intstr.FromInt(65536), "invalid port number: 65536"},
+		{"localhost", intstr.IntOrString{}, "port number out of range: 0"},
+		{"localhost", intstr.FromString("http"), `invalid port number: "http"`},
+		{"localhost", intstr.FromInt(-1), "port number out of range: -1"},
+		{"localhost", intstr.FromInt(65536), "port number out of range: 65536"},
+		{"localhost", intstr.FromString("1234"), ""},
 		{"", intstr.FromInt(22), ""},
 	}
 	for i, tc := range cases {
@@ -56,6 +57,7 @@ func TestProbeFromSpecTCP(t *testing.T) {
 				} else {
 					assert.Equal(t, "localhost", manager.tcpHost)
 				}
+				// IntValue does implicit conversion for strings that are valid ints
 				assert.Equal(t, tc.port.IntValue(), manager.tcpPort)
 			}
 		})
@@ -80,7 +82,7 @@ func TestProbeFromSpecHTTP(t *testing.T) {
 				Host: "localhost",
 				Port: intstr.FromInt(-1),
 			},
-			"invalid port number: -1",
+			"port number out of range: -1",
 		},
 		{
 			&v1.HTTPGetAction{
