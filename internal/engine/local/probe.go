@@ -104,11 +104,14 @@ func extractURL(httpGet *v1.HTTPGetAction) (*url.URL, error) {
 // (note: this implementation is substantially simplified from K8s - it does not handle "named" ports nor implicit
 //  string conversion, as these are not relevant concerns here)
 func extractPort(v intstr.IntOrString) (int, error) {
-	var port int
+	port := -1
 	if v.Type == intstr.Int {
 		port = v.IntValue()
 	}
 	if port <= 0 || port > 65535 {
+		// this will handle both intstr.Int values that are out of range as well
+		// as intstr.String values (which aren't supported); the raw value of the
+		// parameter will be included in the error message
 		return 0, fmt.Errorf("invalid port number: %s", v.String())
 	}
 	return port, nil
