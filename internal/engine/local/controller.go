@@ -18,20 +18,20 @@ import (
 )
 
 type Controller struct {
-	execer       Execer
-	procs        map[model.ManifestName]*currentProcess
-	procCount    int
-	probeManager ProberManager
+	execer        Execer
+	procs         map[model.ManifestName]*currentProcess
+	procCount     int
+	proberManager ProberManager
 }
 
 var _ store.Subscriber = &Controller{}
 var _ store.TearDowner = &Controller{}
 
-func NewController(execer Execer, manager ProberManager) *Controller {
+func NewController(execer Execer, proberManager ProberManager) *Controller {
 	return &Controller{
-		execer:       execer,
-		procs:        make(map[model.ManifestName]*currentProcess),
-		probeManager: manager,
+		execer:        execer,
+		procs:         make(map[model.ManifestName]*currentProcess),
+		proberManager: proberManager,
 	}
 }
 
@@ -167,7 +167,7 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	if spec.ReadinessProbe != nil {
 		statusChangeFunc := processReadinessProbeUpdate(ctx, st, spec.ManifestName, proc.stillHasSameProcNum())
 		probeWorker, err := probeWorkerFromSpec(
-			c.probeManager,
+			c.proberManager,
 			spec.ReadinessProbe,
 			probe.WorkerOnStatusChange(statusChangeFunc))
 		if err != nil {
