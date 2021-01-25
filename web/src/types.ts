@@ -140,3 +140,8 @@ export enum ResourceName {
   tiltfile = "(Tiltfile)",
   all = "(all)",
 }
+
+export type ResourceFilters = {
+  showServices: boolean // TODO: namessss
+  showTests: boolean
+}

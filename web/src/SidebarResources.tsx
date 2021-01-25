@@ -1,5 +1,6 @@
-import React, { PureComponent } from "react"
+import React from "react"
 import styled from "styled-components"
+import { SidebarResourceFilter } from "./OverviewResourceSidebarTypeFilter"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -9,7 +10,7 @@ import SidebarItemView, {
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { useSidebarPin } from "./SidebarPin"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
-import { ResourceView } from "./types"
+import { ResourceFilters, ResourceView } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
@@ -55,6 +56,13 @@ type SidebarProps = {
   pathBuilder: PathBuilder
 }
 
+type SidebarState = ResourceFilters
+
+let defaultFilters: ResourceFilters = {
+  showServices: true,
+  showTests: true,
+}
+
 function PinnedItems(props: SidebarProps) {
   let ctx = useSidebarPin()
   let pinnedItems = ctx.pinnedResources?.flatMap((r) =>
@@ -80,10 +88,16 @@ function PinnedItems(props: SidebarProps) {
 
 // note: this is a PureComponent but we're not currently getting much value out of its pureness
 // https://app.clubhouse.io/windmill/story/9949/web-purecomponent-optimizations-seem-to-not-be-working
-export class SidebarResources extends PureComponent<SidebarProps> {
+export class SidebarResources extends React.Component<
+  SidebarProps,
+  SidebarState
+> {
   constructor(props: SidebarProps) {
     super(props)
     this.triggerSelected = this.triggerSelected.bind(this)
+    this.toggleShowServices = this.toggleShowServices.bind(this)
+    this.toggleShowTests = this.toggleShowTests.bind(this)
+    this.state = defaultFilters
   }
 
   triggerSelected(action: string) {
@@ -92,13 +106,38 @@ export class SidebarResources extends PureComponent<SidebarProps> {
     }
   }
 
+  toggleShowServices() {
+    this.setState((prevState: ResourceFilters) => {
+      return {
+        showServices: !prevState.showServices,
+      }
+    })
+  }
+
+  toggleShowTests() {
+    this.setState((prevState: ResourceFilters) => {
+      return {
+        showTests: !prevState.showTests,
+      }
+    })
+  }
+
   render() {
     let pb = this.props.pathBuilder
-    let totalAlerts = this.props.items
+    let totalAlerts = this.props.items // Open Q: do we include alert totals for hidden elems?
       .map((i) => i.buildAlertCount + i.runtimeAlertCount)
       .reduce((sum, current) => sum + current, 0)
 
-    let listItems = this.props.items.map((item) => (
+    // TODO: what do we do when we filter out the selected item? Pinned item(s)?
+    //       and what effect does this have on keyboard shortcuts? :(
+    let filteredItems = this.props.items.filter(
+      (item) =>
+        (!item.isTest && this.state.showServices) ||
+        (item.isTest && this.state.showTests) ||
+        item.isTiltfile
+    )
+
+    let listItems = filteredItems.map((item) => (
       <SidebarItemView
         key={"sidebarItem-" + item.name}
         item={item}
@@ -117,6 +156,11 @@ export class SidebarResources extends PureComponent<SidebarProps> {
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
+          <SidebarResourceFilter
+            curState={this.state}
+            toggleShowServices={this.toggleShowServices}
+            toggleShowTests={this.toggleShowTests}
+          />
           <SidebarListSection name="">
             <SidebarItemAll
               nothingSelected={nothingSelected}
@@ -128,7 +172,7 @@ export class SidebarResources extends PureComponent<SidebarProps> {
         </SidebarList>
         <SidebarKeyboardShortcuts
           selected={this.props.selected}
-          items={this.props.items}
+          items={filteredItems}
           pathBuilder={this.props.pathBuilder}
           onTrigger={this.triggerSelected}
           resourceView={this.props.resourceView}
