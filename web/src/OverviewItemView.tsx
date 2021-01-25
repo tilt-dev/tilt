@@ -28,6 +28,7 @@ import {
 } from "./style-helpers"
 import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
+import { TriggerModeToggle } from "./TriggerModeToggle"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
 export const OverviewItemRoot = styled.li`
@@ -241,6 +242,26 @@ export function triggerUpdate(name: string, action: string) {
       console.log(response)
     }
   })
+}
+
+export function toggleTriggerMode(name: string, mode: TriggerMode) {
+  // TODO: what to pass to incr?
+  // incr("ui.web.overrideTriggerMode", { action })
+
+  let url = `//${window.location.host}/api/override/trigger_mode`
+
+  fetch(url, {
+    method: "post",
+    body: JSON.stringify({
+      manifest_names: [name],
+      trigger_mode: mode,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.log(response)
+    }
+  })
+  console.log("u triggered: " + name + " --> mode: " + mode)
 }
 
 export type OverviewItemViewProps = {
@@ -525,6 +546,8 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
 
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
+  let onModeToggle = toggleTriggerMode.bind(null, item.name)
+
   return (
     <OverviewItemRoot key={item.name} onClick={handleClick}>
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
@@ -537,6 +560,12 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
           <RuntimeBoxStack style={{ margin: "8px 0px" }}>
             <InnerRuntimeBox>
               <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
+              {item.isTest ? (
+                <TriggerModeToggle
+                  triggerMode={item.triggerMode}
+                  onModeToggle={onModeToggle}
+                />
+              ) : null}
               <OverviewItemTimeAgo>
                 {hasSuccessfullyDeployed ? timeAgo : "—"}
               </OverviewItemTimeAgo>
