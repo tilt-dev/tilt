@@ -1,5 +1,6 @@
 import React, { useEffect } from "react"
 import styled from "styled-components"
+import { ReactComponent as GridDividerAlertsSvg } from "./assets/svg/grid-divider-alerts.svg"
 import { ReactComponent as GridDividerAllSvg } from "./assets/svg/grid-divider-all.svg"
 import { ReactComponent as GridDividerPinSvg } from "./assets/svg/grid-divider-pin.svg"
 import { ReactComponent as GridDividerTestSvg } from "./assets/svg/grid-divider-test.svg"
@@ -56,6 +57,18 @@ export function PinnedResources(props: ResourceProps) {
   ) : null
 }
 
+export function AlertResources(props: ResourceProps) {
+  return props.items?.length ? (
+    <React.Fragment>
+      <ServicesDividerRoot>
+        <GridDividerAlertsSvg style={{ marginLeft: "28px" }} />
+        <ServicesLabel>Alerts</ServicesLabel>
+      </ServicesDividerRoot>
+      <OverviewGrid items={props.items} />
+    </React.Fragment>
+  ) : null
+}
+
 export function AllResources(props: ResourceProps) {
   return props.items?.length ? (
     <React.Fragment>
@@ -95,6 +108,9 @@ export default function OverviewPane(props: OverviewPaneProps) {
     pinContext.pinnedResources.includes(item.name)
   )
   let testItems = allItems.filter((item) => item.isTest)
+  let alertItems = allItems.filter(
+    (item) => item.buildAlertCount + item.runtimeAlertCount > 0
+  )
 
   // Hide the HTML element scrollbars, since this pane does all scrolling internally.
   // TODO(nick): Remove this when the old UI is deleted.
@@ -108,6 +124,7 @@ export default function OverviewPane(props: OverviewPaneProps) {
       <OverviewResourceBar view={props.view} />
       <ServicesContainer>
         <PinnedResources items={pinnedItems} />
+        <AlertResources items={alertItems} />
         <AllResources items={allResources} />
         <TestResources items={testItems} />
       </ServicesContainer>

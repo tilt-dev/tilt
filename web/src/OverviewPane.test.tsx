@@ -4,13 +4,19 @@ import { MemoryRouter } from "react-router"
 import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
 import OverviewItemView from "./OverviewItemView"
 import OverviewPane, {
+  AlertResources,
   AllResources,
   PinnedResources,
   TestResources,
 } from "./OverviewPane"
 import { TwoResources } from "./OverviewPane.stories"
 import { SidebarPinContextProvider } from "./SidebarPin"
-import { oneResourceTest, twoResourceView } from "./testdata"
+import {
+  oneResourceBuilding,
+  oneResourceNoAlerts,
+  oneResourceTest,
+  twoResourceView,
+} from "./testdata"
 
 function assertContainerWithResources(
   root: ReactWrapper,
@@ -69,4 +75,30 @@ it("renders test resources separate from all resources", () => {
   assertContainerWithResources(root, PinnedResources, [])
   assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
   assertContainerWithResources(root, TestResources, ["boop"])
+})
+
+it("renders errors and warnings", () => {
+  let view = twoResourceView()
+  let foo = oneResourceNoAlerts()
+  foo.name = "foo"
+  view.resources.push(foo)
+  let bar = oneResourceBuilding()[0]
+  bar.name = "bar"
+  view.resources.push(bar)
+
+  const root = mount(
+    <MemoryRouter initialEntries={["/"]}>
+      {<OverviewPane view={view} />}
+    </MemoryRouter>
+  )
+
+  assertContainerWithResources(root, PinnedResources, [])
+  assertContainerWithResources(root, AlertResources, ["vigoda", "snack"])
+  assertContainerWithResources(root, AllResources, [
+    "vigoda",
+    "snack",
+    "foo",
+    "bar",
+  ])
+  assertContainerWithResources(root, TestResources, [])
 })
