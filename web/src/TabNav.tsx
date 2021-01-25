@@ -86,26 +86,19 @@ export function LegacyNavProvider(
 
 // New Overview semantics:
 //
-// 1. When you single click a resource on the left sidebar,
+// Any resource supports two navigation operations: "activate" and
+// "activate-new-tab".  The exact input bindings are user-agent OS-specific, but
+// without loss of generality, treat them as "click" and "ctrl/command-click"
+//
+// 1) When you activate or activate-new-tab a resource on the left sidebar that's already open,
 //    it changes the current tab to the new resource.
 //
-// 2. When you ctrl-click a resource on the left sidebar,
-//    it opens a new tab, and brings the new tab into focus.
+// 2) Otherwise, when you select a resource on the left sidebar,
+//    a) activate opens it in the current tab,
+//    b) activate-new-tab opens it in a new tab on the immediate right of current tab
+//       (or at the far-right if you're on the grid)
 //
 // 3. When you close a tab that is currently selected, the view toggles to the tab on the right
-//
-// 4. When there is only one tab remaining, and you close it, then the overview grid page opens
-//
-// 5. When you open a resource as a new tab (from *resource detail tab view*)
-// a) Click on any resource from left sidebar to change logs on right side accordingly
-// b) Ctrl-click on any resource to open that as a new tab on the immediate right
-//   of current tab
-// c) (OR, if the resource is already open in a tab, then view toggles to that open tab)
-//
-// 6. When you open resource in new tab (from *overview grid page*)
-// a) Click on a resource card to open preview of that resource inline
-// b) Click on "Show details" within card preview, to open that resrouce in the tab view
-// c) This new tab opens on the absolute right of all other tabs.
 export function OverviewNavProvider(
   props: React.PropsWithChildren<{
     tabsForTesting?: string[]
@@ -184,13 +177,14 @@ export function OverviewNavProvider(
     let newTabs
     let selectedIndex = tabs.indexOf(selectedTab)
     let includes = tabs.includes(name)
-    if (openNew && includes) {
-      // If we're opening a new tab, but the tab already exists, just toggle that tab (case 5c above)
+    if (includes) {
+      // If we're opening a new tab, but the tab already exists, just toggle that tab
+      // (case 1 above)
       newTabs = tabs
     } else if (selectedIndex !== -1) {
       // We're navigating from an existing tab. Replace the current tab (on
       // single-click) or open a new tab to the right of the current tab (on ctrl-click).
-      // (case 1, 2, 5a, 5b above)
+      // (case 2a, 2b above)
       let start = tabs
         .slice(0, openNew ? selectedIndex + 1 : selectedIndex)
         .filter((tab) => tab !== name)
@@ -198,7 +192,7 @@ export function OverviewNavProvider(
       newTabs = start.concat([name]).concat(end)
     } else {
       // Append to absolute right of the tab list if not included.
-      // (case 6 above)
+      // (case 2c above)
       newTabs = includes ? tabs : tabs.concat([name])
     }
 
