@@ -190,6 +190,7 @@ func processReadinessProbeUpdate(
 		}
 		if status != prober.Success && output != "" {
 			w := logger.Get(ctx).Writer(logger.VerboseLvl)
+			// TODO(milas): improve output to distinguish from process stdout/stderr logs
 			_, _ = io.WriteString(w, output)
 		}
 		ready := status == prober.Success || status == prober.Warning
