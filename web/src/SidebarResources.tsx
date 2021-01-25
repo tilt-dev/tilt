@@ -129,7 +129,6 @@ export class SidebarResources extends PureComponent<SidebarProps> {
         <SidebarKeyboardShortcuts
           selected={this.props.selected}
           items={this.props.items}
-          pathBuilder={this.props.pathBuilder}
           onTrigger={this.triggerSelected}
           resourceView={this.props.resourceView}
         />

@@ -135,7 +135,9 @@ export function SidebarItemAll(props: SidebarItemAllProps) {
         tabIndex={-1}
         role="button"
         onClick={(e) =>
-          nav.openResource(ResourceName.all, { newTab: e.ctrlKey || e.metaKey })
+          nav.openResource(ResourceName.all, {
+            newTab: (e.ctrlKey || e.metaKey) && !e.shiftKey,
+          })
         }
       >
         <SidebarIcon
@@ -279,7 +281,9 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
         tabIndex={-1}
         role="button"
         onClick={(e) =>
-          nav.openResource(item.name, { newTab: e.ctrlKey || e.metaKey })
+          nav.openResource(item.name, {
+            newTab: (e.ctrlKey || e.metaKey) && !e.shiftKey,
+          })
         }
         data-name={item.name}
       >

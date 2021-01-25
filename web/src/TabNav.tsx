@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react"
-import { useHistory } from "react-router-dom"
+import { matchPath, useHistory } from "react-router-dom"
 import { useLocalStorageContext } from "./LocalStorage"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceName, ResourceView } from "./types"
@@ -11,7 +11,13 @@ import { ResourceName, ResourceView } from "./types"
 // shared by multiple components.
 export type TabNav = {
   tabs: string[]
+
+  // The currently selected tab. This is guaranteed to exist in the tab list.
   selectedTab: string
+
+  // Tab provided from the user URL. This is not guaranteed to exist,
+  // and needs additional validation before it becomes the selected tab.
+  candidateTab: string
 
   // Behavior when you click on a link to a resource.
   openResource(name: string, options?: { newTab: boolean }): void
@@ -26,6 +32,7 @@ export type TabNav = {
 const tabNavContext = React.createContext<TabNav>({
   tabs: [],
   selectedTab: "",
+  candidateTab: "",
   openResource: (name: string, options?: { newTab: boolean }) => {},
   ensureSelectedTab: () => {},
   closeTab: (name: string) => {},
@@ -36,6 +43,7 @@ export function useTabNav(): TabNav {
 }
 
 export let TabNavContextConsumer = tabNavContext.Consumer
+export let TabNavContextProvider = tabNavContext.Provider
 
 // In the legacy UI, there are no tabs at all.
 // We only need to make sure we're opening the right link.
@@ -74,6 +82,7 @@ export function LegacyNavProvider(
   let tabNav = {
     tabs: [],
     selectedTab: "",
+    candidateTab: "",
     openResource: nav,
     ensureSelectedTab: () => {},
     closeTab: () => {},
@@ -82,6 +91,12 @@ export function LegacyNavProvider(
   return (
     <tabNavContext.Provider value={tabNav}>{children}</tabNavContext.Provider>
   )
+}
+
+type OverviewTabNavState = {
+  tabs: string[]
+  candidateTab: string
+  selectedTab: string
 }
 
 // New Overview semantics:
@@ -102,6 +117,7 @@ export function LegacyNavProvider(
 export function OverviewNavProvider(
   props: React.PropsWithChildren<{
     tabsForTesting?: string[]
+    candidateTabForTesting?: string
   }>
 ) {
   let { children } = props
@@ -110,15 +126,20 @@ export function OverviewNavProvider(
   let pb = usePathBuilder()
 
   // The list of tabs open. A tab name should never appear twice in the list.
-  const [tabState, setTabState] = useState<{
-    tabs: string[]
-    selectedTab: string
-  }>(() => {
+  const [tabState, setTabState] = useState<OverviewTabNavState>(() => {
     let tabs = props.tabsForTesting ?? lsc.get<Array<string>>("tabs") ?? []
-    return { tabs, selectedTab: "" }
+    let pathname = String(history.location.pathname)
+    let matchResource = matchPath(history.location.pathname, {
+      path: pb.path("/r/:name"),
+    })
+
+    let candidateTab =
+      props.candidateTabForTesting || (matchResource?.params as any)?.name || ""
+    return { tabs, candidateTab, selectedTab: "" }
   })
   let tabs = tabState.tabs
   let selectedTab = tabState.selectedTab
+  let candidateTab = tabState.candidateTab || ""
 
   useEffect(() => {
     lsc.set("tabs", tabs)
@@ -136,6 +157,7 @@ export function OverviewNavProvider(
 
     setTabState({
       tabs: tabs.includes(name) ? tabs : tabs.concat([name]),
+      candidateTab: "",
       selectedTab: name,
     })
   }
@@ -145,7 +167,7 @@ export function OverviewNavProvider(
   function closeTab(name: string) {
     let newTabs = tabs.filter((t) => t !== name)
     if (name !== selectedTab) {
-      setTabState({ tabs: newTabs, selectedTab: name })
+      setTabState({ tabs: newTabs, candidateTab: "", selectedTab: name })
       return
     }
 
@@ -165,7 +187,11 @@ export function OverviewNavProvider(
     // Ideally, we'd use a reducer to set tab state, but we
     // would need to synchronize it with the history state changes.
     // We can revisit this if we see weird behavior.
-    setTabState({ tabs: newTabs, selectedTab: newSelectedTab })
+    setTabState({
+      tabs: newTabs,
+      candidateTab: "",
+      selectedTab: newSelectedTab,
+    })
     history.push(newUrl)
   }
 
@@ -196,12 +222,17 @@ export function OverviewNavProvider(
       newTabs = includes ? tabs : tabs.concat([name])
     }
 
-    setTabState({ tabs: newTabs, selectedTab: name })
+    setTabState({
+      tabs: newTabs,
+      candidateTab: "",
+      selectedTab: name,
+    })
     history.push(url)
   }
 
   let tabNav = {
     tabs,
+    candidateTab,
     selectedTab,
     ensureSelectedTab,
     closeTab,

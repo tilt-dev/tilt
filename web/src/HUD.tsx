@@ -413,10 +413,7 @@ export default class HUD extends Component<HudProps, HudState> {
               <Route
                 path={this.path("/r/:name/overview")}
                 render={(props: RouteComponentProps<any>) => (
-                  <OverviewResourcePane
-                    name={props.match.params?.name || ""}
-                    view={this.state.view}
-                  />
+                  <OverviewResourcePane view={this.state.view} />
                 )}
               />
               <Route render={() => <OverviewPane view={this.state.view} />} />
