@@ -74,7 +74,15 @@ func proberFromSpec(manager ProberManager, probeSpec *v1.Probe) (prober.Prober, 
 		if err != nil {
 			return nil, err
 		}
-		return manager.TCPSocket(probeSpec.TCPSocket.Host, port), nil
+		host := probeSpec.TCPSocket.Host
+		if host == "" {
+			// K8s defaults to pod IP; since this is a local resource,
+			// localhost is a sane default to somewhat mimic that
+			// behavior and reduce the amount of boilerplate to define
+			// a probe in most cases
+			host = "localhost"
+		}
+		return manager.TCPSocket(host, port), nil
 	}
 
 	return nil, ErrUnsupportedProbeType
@@ -93,12 +101,18 @@ func extractURL(httpGet *v1.HTTPGetAction) (*url.URL, error) {
 	}
 	u.Scheme = strings.ToLower(string(httpGet.Scheme))
 	if u.Scheme == "" {
+		// same default as K8s (plain http)
 		u.Scheme = "http"
 	}
-	if httpGet.Host == "" {
-		return nil, errors.New("no host specified")
+	host := httpGet.Host
+	if host == "" {
+		// K8s defaults to pod IP; since this is a local resource,
+		// localhost is a sane default to somewhat mimic that
+		// behavior and reduce the amount of boilerplate to define
+		// a probe in most cases
+		host = "localhost"
 	}
-	u.Host = net.JoinHostPort(httpGet.Host, strconv.Itoa(port))
+	u.Host = net.JoinHostPort(host, strconv.Itoa(port))
 	return u, nil
 }
 

@@ -32,6 +32,7 @@ func TestProbeFromSpecTCP(t *testing.T) {
 		{"localhost", intstr.FromString("http"), "invalid port number: http"},
 		{"localhost", intstr.FromInt(-1), "invalid port number: -1"},
 		{"localhost", intstr.FromInt(65536), "invalid port number: 65536"},
+		{"", intstr.FromInt(22), ""},
 	}
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("[%d] %s:%s", i, tc.host, tc.port.String()), func(t *testing.T) {
@@ -50,7 +51,11 @@ func TestProbeFromSpecTCP(t *testing.T) {
 			} else {
 				assert.Nil(t, err)
 				assert.NotNil(t, p)
-				assert.Equal(t, tc.host, manager.tcpHost)
+				if tc.host != "" {
+					assert.Equal(t, tc.host, manager.tcpHost)
+				} else {
+					assert.Equal(t, "localhost", manager.tcpHost)
+				}
 				assert.Equal(t, tc.port.IntValue(), manager.tcpPort)
 			}
 		})
@@ -65,7 +70,7 @@ func TestProbeFromSpecHTTP(t *testing.T) {
 	cases := []tc{
 		{
 			&v1.HTTPGetAction{
-				Host: "localhost",
+				Host: "",
 				Port: intstr.FromInt(80),
 			},
 			"",
@@ -113,7 +118,11 @@ func TestProbeFromSpecHTTP(t *testing.T) {
 				assert.Nil(t, err)
 				assert.NotNil(t, p)
 				u := manager.httpURL
-				assert.Equal(t, tc.httpGet.Host, u.Hostname())
+				if tc.httpGet.Host != "" {
+					assert.Equal(t, tc.httpGet.Host, u.Hostname())
+				} else {
+					assert.Equal(t, "localhost", u.Hostname())
+				}
 				assert.Equal(t, strconv.Itoa(tc.httpGet.Port.IntValue()), u.Port())
 				if tc.httpGet.Scheme != "" {
 					assert.Equal(t, strings.ToLower(string(tc.httpGet.Scheme)), u.Scheme)
