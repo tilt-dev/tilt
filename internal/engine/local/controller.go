@@ -169,7 +169,7 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 		probeWorker, err := probeWorkerFromSpec(
 			c.proberManager,
 			spec.ReadinessProbe,
-			probe.WorkerOnStatusChange(statusChangeFunc))
+			statusChangeFunc)
 		if err != nil {
 			logger.Get(ctx).Warnf("Invalid readiness probe: %v", err)
 		} else {

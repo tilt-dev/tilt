@@ -28,12 +28,13 @@ type ProberManager interface {
 	Exec(name string, args ...string) prober.ProberFunc
 }
 
-func probeWorkerFromSpec(manager ProberManager, probeSpec *v1.Probe, opts ...probe.WorkerOption) (*probe.Worker, error) {
+func probeWorkerFromSpec(manager ProberManager, probeSpec *v1.Probe, changedFunc probe.StatusChangedFunc) (*probe.Worker, error) {
 	probeFunc, err := proberFromSpec(manager, probeSpec)
 	if err != nil {
 		return nil, err
 	}
 
+	var opts []probe.WorkerOption
 	if probeSpec.InitialDelaySeconds >= 0 {
 		opts = append(opts, probe.WorkerInitialDelay(time.Duration(probeSpec.InitialDelaySeconds)*time.Second))
 	}
@@ -50,6 +51,8 @@ func probeWorkerFromSpec(manager ProberManager, probeSpec *v1.Probe, opts ...pro
 	if probeSpec.FailureThreshold > 0 {
 		opts = append(opts, probe.WorkerFailureThreshold(int(probeSpec.FailureThreshold)))
 	}
+
+	opts = append(opts, probe.WorkerOnStatusChange(changedFunc))
 
 	w := probe.NewWorker(probeFunc, opts...)
 	return w, nil
