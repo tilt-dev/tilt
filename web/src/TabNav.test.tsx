@@ -55,7 +55,7 @@ it("changes selected tab on click existing resource", () => {
   expect(f.nav.selectedTab).toEqual("res1")
 
   act(() => f.nav.openResource("res3"))
-  expect(f.nav.tabs).toEqual(["res3", "res2"])
+  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
   expect(f.nav.selectedTab).toEqual("res3")
 })
 
