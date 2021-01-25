@@ -245,8 +245,7 @@ export function triggerUpdate(name: string, action: string) {
 }
 
 export function toggleTriggerMode(name: string, mode: TriggerMode) {
-  // TODO: what to pass to incr?
-  // incr("ui.web.overrideTriggerMode", { action })
+  incr("ui.web.toggleTriggerMode", { to_mode: mode.toString() })
 
   let url = `//${window.location.host}/api/override/trigger_mode`
 
@@ -261,7 +260,6 @@ export function toggleTriggerMode(name: string, mode: TriggerMode) {
       console.log(response)
     }
   })
-  console.log("u triggered: " + name + " --> mode: " + mode)
 }
 
 export type OverviewItemViewProps = {

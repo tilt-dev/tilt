@@ -27,11 +27,16 @@ type TriggerModeToggleProps = {
   // TODO: is set from UI? (bool)
 }
 
+export const ToggleTriggerModeTooltip = {
+  EnableAuto: "Click to enable auto mode",
+  DisableAuto: "Click to disable auto mode",
+}
+
 const titleText = (isManual: boolean): string => {
   if (isManual) {
-    return "Click to enable auto-run"
+    return ToggleTriggerModeTooltip.EnableAuto
   } else {
-    return "Click to disable auto-run"
+    return ToggleTriggerModeTooltip.DisableAuto
   }
 }
 

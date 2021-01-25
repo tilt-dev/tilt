@@ -2,81 +2,32 @@ import { mount } from "enzyme"
 import fetchMock from "jest-fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { expectIncr } from "./analytics_test_helpers"
+import { toggleTriggerMode } from "./OverviewItemView"
 import OverviewPane from "./OverviewPane"
-import PathBuilder from "./PathBuilder"
 import {
   oneResourceTest,
   oneResourceTestWithName,
   twoResourceView,
 } from "./testdata"
-import { TriggerModeToggle, TriggerModeToggleStyle } from "./TriggerModeToggle"
+import {
+  ToggleTriggerModeTooltip,
+  TriggerModeToggle,
+  TriggerModeToggleStyle,
+} from "./TriggerModeToggle"
 import { TriggerMode } from "./types"
 
-type Resource = Proto.webviewResource
-
-let pathBuilder = PathBuilder.forTesting("localhost", "/")
-
-let expectClickable = (button: any, expected: boolean) => {
-  expect(button.hasClass("clickable")).toEqual(expected)
-  expect(button.prop("disabled")).toEqual(!expected)
+let expectToggleToAuto = function (mode: TriggerMode) {
+  expect(mode).toEqual(TriggerMode.TriggerModeAuto)
 }
-let expectClickMe = (button: any, expected: boolean) => {
-  expect(button.hasClass("clickMe")).toEqual(expected)
-}
-let expectIsSelected = (button: any, expected: boolean) => {
-  expect(button.hasClass("isSelected")).toEqual(expected)
-}
-let expectIsQueued = (button: any, expected: boolean) => {
-  expect(button.hasClass("isQueued")).toEqual(expected)
-}
-let expectWithTooltip = (button: any, expected: string) => {
-  expect(button.prop("title")).toEqual(expected)
+let expectToggleToManual = function (mode: TriggerMode) {
+  expect(mode).toEqual(TriggerMode.TriggerModeManualAfterInitial)
 }
 
 describe("SidebarTriggerButton", () => {
   beforeEach(() => {
     fetchMock.resetMocks()
   })
-
-  // it("POSTs to endpoint when clicked", () => {
-  //   fetchMock.mockResponse(JSON.stringify({}))
-  //
-  //   const root = mount(
-  //     <SidebarTriggerButton
-  //       isTiltfile={false}
-  //       isSelected={true}
-  //       triggerMode={TriggerMode.TriggerModeManualAfterInitial}
-  //       hasBuilt={true}
-  //       isBuilding={false}
-  //       hasPendingChanges={false}
-  //       isQueued={false}
-  //       onTrigger={() => triggerUpdate("doggos", "click")}
-  //     />
-  //   )
-  //
-  //   let element = root.find("button.SidebarTriggerButton")
-  //   expect(element).toHaveLength(1)
-  //
-  //   let preventDefaulted = false
-  //   element.simulate("click", {
-  //     preventDefault: () => {
-  //       preventDefaulted = true
-  //     },
-  //   })
-  //   expect(preventDefaulted).toEqual(true)
-  //
-  //   expect(fetchMock.mock.calls.length).toEqual(2)
-  //   expectIncr(0, "ui.web.triggerResource", { action: "click" })
-  //
-  //   expect(fetchMock.mock.calls[1][0]).toEqual("//localhost/api/trigger")
-  //   expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
-  //   expect(fetchMock.mock.calls[1][1]?.body).toEqual(
-  //     JSON.stringify({
-  //       manifest_names: ["doggos"],
-  //       build_reason: 16 /* BuildReasonFlagTriggerWeb */,
-  //     })
-  //   )
-  // }
 
   it("shows toggle button only for test cards", () => {
     let view = twoResourceView()
@@ -114,13 +65,101 @@ describe("SidebarTriggerButton", () => {
     expect(toggles).toHaveLength(3)
 
     for (let i = 0; i < toggles.length; i++) {
-      let themeProvider = toggles.at(i).parent()
+      let button = toggles.at(i)
+      let themeProvider = button.parent()
       let isManual = themeProvider.props().theme.isManualTriggerMode
       if (i == 0) {
+        // Toggle button for a resource with TriggerModeAuto
+        expect(button.prop("title")).toEqual(
+          ToggleTriggerModeTooltip.DisableAuto
+        )
         expect(isManual).toBeFalsy()
       } else {
+        // Toggle button for a resource with TriggerModeManual...
+        expect(button.prop("title")).toEqual(
+          ToggleTriggerModeTooltip.EnableAuto
+        )
         expect(isManual).toBeTruthy()
       }
     }
+  })
+
+  it("POSTs to endpoint when clicked", () => {
+    fetchMock.mockResponse(JSON.stringify({}))
+
+    let toggleFoobar = toggleTriggerMode.bind(null, "foobar")
+    const root = mount(
+      <TriggerModeToggle
+        triggerMode={TriggerMode.TriggerModeAuto}
+        onModeToggle={toggleFoobar}
+      />
+    )
+
+    let element = root.find(TriggerModeToggle)
+    expect(element).toHaveLength(1)
+
+    let preventDefaulted = false
+    element.simulate("click", {
+      preventDefault: () => {
+        preventDefaulted = true
+      },
+    })
+    expect(preventDefaulted).toEqual(true)
+
+    expect(fetchMock.mock.calls.length).toEqual(2) // 1 call to analytics, one to /override
+    expectIncr(0, "ui.web.toggleTriggerMode", { to_mode: "1" })
+
+    expect(fetchMock.mock.calls[1][0]).toEqual(
+      "//localhost/api/override/trigger_mode"
+    )
+    expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
+    expect(fetchMock.mock.calls[1][1]?.body).toEqual(
+      JSON.stringify({
+        manifest_names: ["foobar"],
+        trigger_mode: 1,
+      })
+    )
+  })
+
+  it("toggles auto to manual", () => {
+    const root = mount(
+      <TriggerModeToggle
+        triggerMode={TriggerMode.TriggerModeAuto}
+        onModeToggle={expectToggleToManual}
+      />
+    )
+
+    let element = root.find(TriggerModeToggle)
+    expect(element).toHaveLength(1)
+
+    element.simulate("click")
+  })
+
+  it("toggles manualAfterInitial to auto", () => {
+    const root = mount(
+      <TriggerModeToggle
+        triggerMode={TriggerMode.TriggerModeManualAfterInitial}
+        onModeToggle={expectToggleToAuto}
+      />
+    )
+
+    let element = root.find(TriggerModeToggle)
+    expect(element).toHaveLength(1)
+
+    element.simulate("click")
+  })
+
+  it("toggles manualIncludingInitial to auto", () => {
+    const root = mount(
+      <TriggerModeToggle
+        triggerMode={TriggerMode.TriggerModeManualIncludingInitial}
+        onModeToggle={expectToggleToAuto}
+      />
+    )
+
+    let element = root.find(TriggerModeToggle)
+    expect(element).toHaveLength(1)
+
+    element.simulate("click")
   })
 })
