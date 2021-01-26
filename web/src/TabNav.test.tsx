@@ -4,6 +4,7 @@ import React from "react"
 import { act } from "react-dom/test-utils"
 import { Router } from "react-router"
 import { OverviewNavProvider, TabNav, TabNavContextConsumer } from "./TabNav"
+import { ResourceName } from "./types"
 
 type Fixture = { nav: TabNav; root: ReactWrapper; history: MemoryHistory }
 
@@ -131,7 +132,7 @@ it("navigates to home on closing last tab when closing", () => {
   expect(f.nav.selectedTab).toEqual("res1")
 
   act(() => f.nav.closeTab("res1"))
-  expect(f.nav.tabs).toEqual([])
+  expect(f.nav.tabs).toEqual([ResourceName.all])
   expect(f.nav.selectedTab).toEqual("")
   expect(f.history.location.pathname).toEqual("/overview")
 })

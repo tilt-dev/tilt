@@ -99,6 +99,13 @@ type OverviewTabNavState = {
   selectedTab: string
 }
 
+function addAllTabIfEmpty(tabs: string[]): string[] {
+  if (!tabs.length) {
+    return [ResourceName.all]
+  }
+  return tabs
+}
+
 // New Overview semantics:
 //
 // Any resource supports two navigation operations: "activate" and
@@ -135,7 +142,11 @@ export function OverviewNavProvider(
 
     let candidateTab =
       props.candidateTabForTesting || (matchResource?.params as any)?.name || ""
-    return { tabs, candidateTab, selectedTab: "" }
+    return {
+      tabs: addAllTabIfEmpty(tabs),
+      candidateTab: candidateTab,
+      selectedTab: "",
+    }
   })
   let tabs = tabState.tabs
   let selectedTab = tabState.selectedTab
@@ -167,7 +178,11 @@ export function OverviewNavProvider(
   function closeTab(name: string) {
     let newTabs = tabs.filter((t) => t !== name)
     if (name !== selectedTab) {
-      setTabState({ tabs: newTabs, candidateTab: "", selectedTab: name })
+      setTabState({
+        tabs: addAllTabIfEmpty(newTabs),
+        candidateTab: "",
+        selectedTab: name,
+      })
       return
     }
 
@@ -188,7 +203,7 @@ export function OverviewNavProvider(
     // would need to synchronize it with the history state changes.
     // We can revisit this if we see weird behavior.
     setTabState({
-      tabs: newTabs,
+      tabs: addAllTabIfEmpty(newTabs),
       candidateTab: "",
       selectedTab: newSelectedTab,
     })

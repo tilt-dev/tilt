@@ -137,7 +137,7 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
 
   let tabEls = tabs.map((name) => {
     let href = `/r/${name}/overview`
-    let text = name
+    let text = name === ResourceName.all ? "All Resources" : name
     let isSelectedTab = false
     if (selectedTab === name) {
       isSelectedTab = true
