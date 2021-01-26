@@ -26,7 +26,8 @@ func TestStringSequence(t *testing.T) {
 	}
 	tcs := []tc{
 		{nil, nil, ""},
-		{stringSeq(), []string{}, ""},
+		{stringSeq(), nil, ""},
+		{starlark.NewList([]starlark.Value{}), nil, ""},
 		{stringSeq("abc123", "def456"), []string{"abc123", "def456"}, ""},
 		{starlark.NewList([]starlark.Value{starlark.MakeInt(35)}), nil, "'35' is a starlark.Int, not a string"},
 	}
@@ -49,6 +50,21 @@ func TestStringSequence(t *testing.T) {
 					require.EqualError(t, err, tc.err)
 				} else {
 					assert.Equal(t, tc.expected, []string(v))
+					// test the round-trip (note: we have to test with iterators as direct
+					// equality can't be guaranteed due to difference in semantics around
+					// empty vs nil slices)
+					expectedSeq := tc.input.(starlark.Sequence)
+					actualSeq := v.Sequence()
+					if assert.Equal(t, expectedSeq.Len(), actualSeq.Len()) {
+						expectedIt := expectedSeq.Iterate()
+						actualIt := v.Sequence().Iterate()
+						var expectedVal starlark.Value
+						for expectedIt.Next(&expectedVal) {
+							var actualVal starlark.Value
+							require.True(t, actualIt.Next(&actualVal))
+							assert.Equal(t, expectedVal, actualVal)
+						}
+					}
 				}
 			}
 		})
@@ -66,7 +82,8 @@ func TestInt32Value_Unpack(t *testing.T) {
 		{starlark.MakeInt(0), 0, ""},
 		{starlark.MakeInt(-123), -123, ""},
 		{starlark.MakeInt(456), 456, ""},
-		{starlark.MakeInt64(math.MaxInt32 + 1), 0, "2147483648 out of range"},
+		{starlark.MakeInt64(math.MaxInt32 + 1), 0, "value out of range for int32: 2147483648"},
+		{starlark.MakeInt64(math.MinInt32 - 1), 0, "value out of range for int32: -2147483649"},
 	}
 	for _, tc := range tcs {
 		var name string
@@ -77,12 +94,12 @@ func TestInt32Value_Unpack(t *testing.T) {
 		}
 
 		t.Run(name, func(t *testing.T) {
-			var v Int32Value
+			var v Int32
 			err := v.Unpack(tc.input)
 			if tc.err != "" {
 				require.EqualError(t, err, tc.err)
 			} else {
-				assert.Equal(t, tc.expected, int32(v))
+				assert.Equal(t, tc.expected, v.Int32())
 			}
 		})
 	}

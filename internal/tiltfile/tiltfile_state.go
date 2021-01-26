@@ -14,6 +14,7 @@ import (
 
 	links "github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
+	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -207,6 +208,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 		links.NewExtension(),
 		print.NewExtension(),
+		probe.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -332,11 +334,6 @@ const (
 
 	// other functions
 	setTeamN = "set_team"
-
-	probeN           = "probe"
-	execActionN      = "exec_action"
-	httpGetActionN   = "http_get_action"
-	tcpSocketActionN = "tcp_socket_action"
 )
 
 type triggerMode int
@@ -501,10 +498,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{disableFeatureN, s.disableFeature},
 		{disableSnapshotsN, s.disableSnapshots},
 		{setTeamN, s.setTeam},
-		{probeN, s.probe},
-		{execActionN, s.execAction},
-		{httpGetActionN, s.httpGetAction},
-		{tcpSocketActionN, s.tcpSocketAction},
 	} {
 		err := e.AddBuiltin(b.name, b.builtin)
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
+	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
@@ -42,7 +43,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var updateCmdVal, updateCmdBatVal, serveCmdVal, serveCmdBatVal starlark.Value
 	var updateEnv, serveEnv value.StringStringMap
 	var triggerMode triggerMode
-	var readinessProbe probe
+	var readinessProbe probe.Probe
 
 	deps := value.NewLocalPathListUnpacker(thread)
 
@@ -130,10 +131,10 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		links:          links.Links,
 		tags:           tags,
 		isTest:         isTest,
-		readinessProbe: readinessProbe.spec,
+		readinessProbe: readinessProbe.Spec(),
 	}
 
-	//check for duplicate resources by name and throw error if found
+	// check for duplicate resources by name and throw error if found
 	for _, elem := range s.localResources {
 		if elem.name == res.name {
 			return starlark.None, fmt.Errorf("Local resource %s has been defined multiple times", res.name)
