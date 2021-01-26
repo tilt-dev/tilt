@@ -370,6 +370,11 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
     let { source, level } = this.props.filterSet
     let lines = patch.lines.filter((line) => {
+      if (line.buildEvent) {
+        // Always leave in build event logs.
+        // This makes it easier to see which logs belong to which builds.
+        return true
+      }
       if (
         source === FilterSource.runtime &&
         line.spanId.indexOf("build:") === 0
