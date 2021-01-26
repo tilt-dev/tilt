@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 )
 
@@ -23,6 +25,8 @@ type LocalTarget struct {
 	// For testing MVP
 	Tags   []string // eventually we might want tags to be more widespread -- stored on manifest maybe?
 	IsTest bool     // does this target represent a Test?
+
+	ReadinessProbe *v1.Probe
 }
 
 var _ TargetSpec = LocalTarget{}

@@ -311,7 +311,7 @@ github.com/imdario/mergo
 github.com/inconshreveable/mousetrap
 # github.com/jinzhu/gorm v1.9.12
 ## explicit
-# github.com/jonboulle/clockwork v0.1.0
+# github.com/jonboulle/clockwork v0.2.2
 ## explicit
 github.com/jonboulle/clockwork
 # github.com/josharian/intern v1.0.0
@@ -457,7 +457,7 @@ github.com/spf13/cobra/doc
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.6.1
+# github.com/stretchr/testify v1.7.0
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
@@ -494,6 +494,10 @@ github.com/tilt-dev/go-get/internal/web
 # github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 ## explicit
 github.com/tilt-dev/localregistry-go
+# github.com/tilt-dev/probe v0.1.0
+## explicit
+github.com/tilt-dev/probe/pkg/probe
+github.com/tilt-dev/probe/pkg/prober
 # github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 ## explicit
 github.com/tilt-dev/wmclient/pkg/analytics
@@ -1111,7 +1115,7 @@ k8s.io/kubectl/pkg/util/openapi/validation
 k8s.io/kubectl/pkg/util/templates
 k8s.io/kubectl/pkg/util/term
 k8s.io/kubectl/pkg/validation
-# k8s.io/utils v0.0.0-20201110183641-67b214c5f920
+# k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 k8s.io/utils/buffer
 k8s.io/utils/exec
 k8s.io/utils/integer
@@ -1174,7 +1178,7 @@ sigs.k8s.io/yaml
 vbom.ml/util/sortorder
 # github.com/Azure/go-autorest => github.com/Azure/go-autorest v14.2.0+incompatible
 # github.com/evanphx/json-patch => github.com/tilt-dev/json-patch/v4 v4.8.1
+# github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.3
 # go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 # golang.org/x/sys => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
-# github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.3
