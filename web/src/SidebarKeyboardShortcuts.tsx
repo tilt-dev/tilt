@@ -1,15 +1,12 @@
-import { History } from "history"
 import React, { Component } from "react"
-import { useHistory } from "react-router"
-import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
+import { TabNav, useTabNav } from "./TabNav"
 import { ResourceName, ResourceView } from "./types"
 
 type Props = {
   items: SidebarItem[]
   selected: string
-  pathBuilder: PathBuilder
-  history: History
+  tabNav: TabNav
   resourceView: ResourceView
   onTrigger: (action: string) => void
 }
@@ -32,19 +29,19 @@ class SidebarKeyboardShortcuts extends Component<Props> {
   }
 
   onKeydown(e: KeyboardEvent) {
-    if (e.shiftKey || e.metaKey || e.altKey || e.ctrlKey || e.isComposing) {
+    if (e.shiftKey || e.altKey || e.isComposing) {
       return
     }
 
     let items = this.props.items
-    let selected = this.props.selected || ""
-    let pathBuilder = this.props.pathBuilder
-    let history = this.props.history
+    let selected = this.props.selected || ResourceName.all
     switch (e.key) {
       case "j":
       case "k":
         // An array of sidebar items, plus one at the beginning for 'All'
-        let names = [""].concat(items.map((item) => item.name))
+        let names = [ResourceName.all as string].concat(
+          items.map((item) => item.name)
+        )
         let index = names.indexOf(selected)
         let dir = e.key === "j" ? 1 : -1
         let targetIndex = index + dir
@@ -53,17 +50,14 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         }
 
         let name = names[targetIndex]
-        let path = name ? pathBuilder.path(`/r/${name}`) : pathBuilder.path("/")
-        if (this.props.resourceView === ResourceView.OverviewDetail) {
-          path = name
-            ? pathBuilder.path(`/r/${name}/overview`)
-            : pathBuilder.path(`/r/${ResourceName.all}/overview`)
-        }
-        history.push(path, { action: "shortcut" })
+        this.props.tabNav.openResource(name, { newTab: e.metaKey || e.ctrlKey })
         e.preventDefault()
         break
 
       case "r":
+        if (e.metaKey || e.ctrlKey) {
+          return
+        }
         this.props.onTrigger("shortcut")
         e.preventDefault()
         break
@@ -78,12 +72,11 @@ class SidebarKeyboardShortcuts extends Component<Props> {
 type PublicProps = {
   items: SidebarItem[]
   selected: string
-  pathBuilder: PathBuilder
   onTrigger: (action: string) => void
   resourceView: ResourceView
 }
 
 export default function (props: PublicProps) {
-  let history = useHistory()
-  return <SidebarKeyboardShortcuts {...props} history={history} />
+  let tabNav = useTabNav()
+  return <SidebarKeyboardShortcuts {...props} tabNav={tabNav} />
 }

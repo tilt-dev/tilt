@@ -275,7 +275,9 @@ git push origin v0.x.y
 ```
 
 CircleCI will automatically start building your release, and notify the
-#notify-circleci slack channel when it's done.
+#notify-circleci slack channel when it's done. The releaser generates a release on
+at https://github.com/tilt-dev/tilt/releases, with a Changelog prepopulated automatically.
+(Give it a few moments. It appears as a tag first, before turning into a full release.)
 
 ### Version numbers
 For pre-v1.0:

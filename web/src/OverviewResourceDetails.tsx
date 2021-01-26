@@ -1,5 +1,6 @@
 import React from "react"
 import styled from "styled-components"
+import { useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import OverviewLogPane from "./OverviewLogPane"
 import { Color } from "./style-helpers"
@@ -33,13 +34,15 @@ export default function OverviewResourceDetails(
   let manifestName = resource?.name || ""
   let all = name === "" || name === ResourceName.all
   let notFound = !all && !manifestName
+  let filterSet = useFilterSet()
+
   return (
     <OverviewResourceDetailsRoot>
-      <OverviewActionBar resource={resource} />
+      <OverviewActionBar resource={resource} filterSet={filterSet} />
       {notFound ? (
         <NotFound>No resource '{name}'</NotFound>
       ) : (
-        <OverviewLogPane manifestName={manifestName} />
+        <OverviewLogPane manifestName={manifestName} filterSet={filterSet} />
       )}
     </OverviewResourceDetailsRoot>
   )

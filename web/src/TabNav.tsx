@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react"
-import { useHistory } from "react-router-dom"
+import { matchPath, useHistory } from "react-router-dom"
 import { useLocalStorageContext } from "./LocalStorage"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceName, ResourceView } from "./types"
@@ -11,7 +11,13 @@ import { ResourceName, ResourceView } from "./types"
 // shared by multiple components.
 export type TabNav = {
   tabs: string[]
+
+  // The currently selected tab. This is guaranteed to exist in the tab list.
   selectedTab: string
+
+  // Tab provided from the user URL. This is not guaranteed to exist,
+  // and needs additional validation before it becomes the selected tab.
+  candidateTab: string
 
   // Behavior when you click on a link to a resource.
   openResource(name: string, options?: { newTab: boolean }): void
@@ -26,6 +32,7 @@ export type TabNav = {
 const tabNavContext = React.createContext<TabNav>({
   tabs: [],
   selectedTab: "",
+  candidateTab: "",
   openResource: (name: string, options?: { newTab: boolean }) => {},
   ensureSelectedTab: () => {},
   closeTab: (name: string) => {},
@@ -36,6 +43,7 @@ export function useTabNav(): TabNav {
 }
 
 export let TabNavContextConsumer = tabNavContext.Consumer
+export let TabNavContextProvider = tabNavContext.Provider
 
 // In the legacy UI, there are no tabs at all.
 // We only need to make sure we're opening the right link.
@@ -74,6 +82,7 @@ export function LegacyNavProvider(
   let tabNav = {
     tabs: [],
     selectedTab: "",
+    candidateTab: "",
     openResource: nav,
     ensureSelectedTab: () => {},
     closeTab: () => {},
@@ -84,31 +93,31 @@ export function LegacyNavProvider(
   )
 }
 
+type OverviewTabNavState = {
+  tabs: string[]
+  candidateTab: string
+  selectedTab: string
+}
+
 // New Overview semantics:
 //
-// 1. When you single click a resource on the left sidebar,
+// Any resource supports two navigation operations: "activate" and
+// "activate-new-tab".  The exact input bindings are user-agent OS-specific, but
+// without loss of generality, treat them as "click" and "ctrl/command-click"
+//
+// 1) When you activate or activate-new-tab a resource on the left sidebar that's already open,
 //    it changes the current tab to the new resource.
 //
-// 2. When you ctrl-click a resource on the left sidebar,
-//    it opens a new tab, and brings the new tab into focus.
+// 2) Otherwise, when you select a resource on the left sidebar,
+//    a) activate opens it in the current tab,
+//    b) activate-new-tab opens it in a new tab on the immediate right of current tab
+//       (or at the far-right if you're on the grid)
 //
 // 3. When you close a tab that is currently selected, the view toggles to the tab on the right
-//
-// 4. When there is only one tab remaining, and you close it, then the overview grid page opens
-//
-// 5. When you open a resource as a new tab (from *resource detail tab view*)
-// a) Click on any resource from left sidebar to change logs on right side accordingly
-// b) Ctrl-click on any resource to open that as a new tab on the immediate right
-//   of current tab
-// c) (OR, if the resource is already open in a tab, then view toggles to that open tab)
-//
-// 6. When you open resource in new tab (from *overview grid page*)
-// a) Click on a resource card to open preview of that resource inline
-// b) Click on "Show details" within card preview, to open that resrouce in the tab view
-// c) This new tab opens on the absolute right of all other tabs.
 export function OverviewNavProvider(
   props: React.PropsWithChildren<{
     tabsForTesting?: string[]
+    candidateTabForTesting?: string
   }>
 ) {
   let { children } = props
@@ -117,15 +126,20 @@ export function OverviewNavProvider(
   let pb = usePathBuilder()
 
   // The list of tabs open. A tab name should never appear twice in the list.
-  const [tabState, setTabState] = useState<{
-    tabs: string[]
-    selectedTab: string
-  }>(() => {
+  const [tabState, setTabState] = useState<OverviewTabNavState>(() => {
     let tabs = props.tabsForTesting ?? lsc.get<Array<string>>("tabs") ?? []
-    return { tabs, selectedTab: "" }
+    let pathname = String(history.location.pathname)
+    let matchResource = matchPath(history.location.pathname, {
+      path: pb.path("/r/:name"),
+    })
+
+    let candidateTab =
+      props.candidateTabForTesting || (matchResource?.params as any)?.name || ""
+    return { tabs, candidateTab, selectedTab: "" }
   })
   let tabs = tabState.tabs
   let selectedTab = tabState.selectedTab
+  let candidateTab = tabState.candidateTab || ""
 
   useEffect(() => {
     lsc.set("tabs", tabs)
@@ -143,6 +157,7 @@ export function OverviewNavProvider(
 
     setTabState({
       tabs: tabs.includes(name) ? tabs : tabs.concat([name]),
+      candidateTab: "",
       selectedTab: name,
     })
   }
@@ -152,7 +167,7 @@ export function OverviewNavProvider(
   function closeTab(name: string) {
     let newTabs = tabs.filter((t) => t !== name)
     if (name !== selectedTab) {
-      setTabState({ tabs: newTabs, selectedTab: name })
+      setTabState({ tabs: newTabs, candidateTab: "", selectedTab: name })
       return
     }
 
@@ -172,7 +187,11 @@ export function OverviewNavProvider(
     // Ideally, we'd use a reducer to set tab state, but we
     // would need to synchronize it with the history state changes.
     // We can revisit this if we see weird behavior.
-    setTabState({ tabs: newTabs, selectedTab: newSelectedTab })
+    setTabState({
+      tabs: newTabs,
+      candidateTab: "",
+      selectedTab: newSelectedTab,
+    })
     history.push(newUrl)
   }
 
@@ -184,13 +203,14 @@ export function OverviewNavProvider(
     let newTabs
     let selectedIndex = tabs.indexOf(selectedTab)
     let includes = tabs.includes(name)
-    if (openNew && includes) {
-      // If we're opening a new tab, but the tab already exists, just toggle that tab (case 5c above)
+    if (includes) {
+      // If we're opening a new tab, but the tab already exists, just toggle that tab
+      // (case 1 above)
       newTabs = tabs
     } else if (selectedIndex !== -1) {
       // We're navigating from an existing tab. Replace the current tab (on
       // single-click) or open a new tab to the right of the current tab (on ctrl-click).
-      // (case 1, 2, 5a, 5b above)
+      // (case 2a, 2b above)
       let start = tabs
         .slice(0, openNew ? selectedIndex + 1 : selectedIndex)
         .filter((tab) => tab !== name)
@@ -198,16 +218,21 @@ export function OverviewNavProvider(
       newTabs = start.concat([name]).concat(end)
     } else {
       // Append to absolute right of the tab list if not included.
-      // (case 6 above)
+      // (case 2c above)
       newTabs = includes ? tabs : tabs.concat([name])
     }
 
-    setTabState({ tabs: newTabs, selectedTab: name })
+    setTabState({
+      tabs: newTabs,
+      candidateTab: "",
+      selectedTab: name,
+    })
     history.push(url)
   }
 
   let tabNav = {
     tabs,
+    candidateTab,
     selectedTab,
     ensureSelectedTab,
     closeTab,
