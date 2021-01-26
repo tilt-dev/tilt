@@ -167,7 +167,7 @@ export let OverviewItemBox = styled.div`
 
 let OverviewItemRuntimeBox = styled.div`
   display: flex;
-  align-items: top;
+  align-items: stretch;
   transition: border-color ${AnimDuration.default} linear;
 `
 
@@ -185,7 +185,7 @@ let InnerRuntimeBox = styled.div`
 
 let OverviewItemBuildBox = styled.div`
   display: flex;
-  align-items: center;
+  align-items: stretch;
   flex-shrink: 1;
   border-top: 1px solid ${Color.grayLighter};
 `

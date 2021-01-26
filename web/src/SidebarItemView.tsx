@@ -88,7 +88,7 @@ let SidebarItemAllBox = styled(SidebarItemBox)`
 
 let SidebarItemRuntimeBox = styled.div`
   display: flex;
-  align-items: center;
+  align-items: stretch;
   height: ${SizeUnit(1)};
   border-bottom: 1px solid ${Color.grayLighter};
   box-sizing: border-box;
@@ -102,7 +102,7 @@ let SidebarItemRuntimeBox = styled.div`
 
 let SidebarItemBuildBox = styled.div`
   display: flex;
-  align-items: center;
+  align-items: stretch;
   flex-shrink: 1;
   height: ${SizeUnit(0.875)};
 `
@@ -175,6 +175,8 @@ let SidebarItemName = (props: { name: string }) => {
 
 let SidebarItemTimeAgo = styled.span`
   opacity: ${ColorAlpha.almostOpaque};
+  display: flex;
+  align-items: center;
 `
 
 export function triggerUpdate(name: string, action: string) {
