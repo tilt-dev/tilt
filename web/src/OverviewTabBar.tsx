@@ -111,6 +111,7 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
   let nav = useTabNav()
   let tabs = nav.tabs
   let selectedTab = props.selectedTab
+  let candidateTab = nav.candidateTab
 
   // There are two bits of state to determine the selected tab:
   //
@@ -122,7 +123,7 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
   // ok for this simple case.
   useEffect(() => {
     nav.ensureSelectedTab(selectedTab)
-  }, [selectedTab, nav.selectedTab])
+  }, [selectedTab, nav.candidateTab])
 
   let onClose = (e: any, name: string) => {
     e.stopPropagation()

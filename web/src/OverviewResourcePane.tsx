@@ -9,7 +9,6 @@ import { useTabNav } from "./TabNav"
 import { ResourceName } from "./types"
 
 type OverviewResourcePaneProps = {
-  name: string
   view: Proto.webviewView
 }
 
@@ -33,7 +32,7 @@ let Main = styled.div`
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let nav = useTabNav()
   let resources = props.view?.resources || []
-  let name = props.name
+  let name = nav.candidateTab || nav.selectedTab || ""
   let r: Proto.webviewResource | undefined
   let all = name === "" || name === ResourceName.all
   if (!all) {
@@ -57,7 +56,7 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
       <OverviewTabBar selectedTab={selectedTab} />
       <OverviewResourceBar {...props} />
       <Main>
-        <OverviewResourceSidebar {...props} />
+        <OverviewResourceSidebar {...props} name={name} />
         <OverviewResourceDetails resource={r} name={name} />
       </Main>
     </OverviewResourcePaneRoot>

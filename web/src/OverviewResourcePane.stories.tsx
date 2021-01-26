@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { SidebarPinMemoryProvider } from "./SidebarPin"
+import { OverviewNavProvider } from "./TabNav"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type Resource = Proto.webviewResource
@@ -23,11 +24,15 @@ export default {
 }
 
 export const TwoResources = () => (
-  <OverviewResourcePane name={"vigoda"} view={twoResourceView()} />
+  <OverviewNavProvider candidateTabForTesting={"vigoda"}>
+    <OverviewResourcePane view={twoResourceView()} />
+  </OverviewNavProvider>
 )
 
 export const TenResources = () => (
-  <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+  <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
+    <OverviewResourcePane view={tenResourceView()} />
+  </OverviewNavProvider>
 )
 
 export const FullResourceBar = () => {
@@ -39,7 +44,11 @@ export const FullResourceBar = () => {
     { url: "http://localhost:4003" },
   ]
   res.podID = "my-pod-deadbeef"
-  return <OverviewResourcePane name={"vigoda_1"} view={view} />
+  return (
+    <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
+      <OverviewResourcePane view={view} />
+    </OverviewNavProvider>
+  )
 }
 
 export const TenResourcesWithLogStore = () => {
@@ -61,7 +70,9 @@ export const TenResourcesWithLogStore = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+      <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
+        <OverviewResourcePane view={tenResourceView()} />
+      </OverviewNavProvider>
     </LogStoreProvider>
   )
 }
@@ -90,7 +101,9 @@ export const TenResourcesWithLongLogLines = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+      <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
+        <OverviewResourcePane view={tenResourceView()} />
+      </OverviewNavProvider>
     </LogStoreProvider>
   )
 }
@@ -122,15 +135,21 @@ export const TenResourcesWithBuildLogAndPodLog = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+      <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
+        <OverviewResourcePane view={tenResourceView()} />
+      </OverviewNavProvider>
     </LogStoreProvider>
   )
 }
 
 export const OneHundredResources = () => (
-  <OverviewResourcePane name={"vigoda_1"} view={nResourceView(100)} />
+  <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
+    <OverviewResourcePane view={nResourceView(100)} />
+  </OverviewNavProvider>
 )
 
 export const NotFound = () => (
-  <OverviewResourcePane name={"does-not-exist"} view={twoResourceView()} />
+  <OverviewNavProvider candidateTabForTesting={"does-not-exist"}>
+    <OverviewResourcePane view={twoResourceView()} />
+  </OverviewNavProvider>
 )
