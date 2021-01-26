@@ -576,7 +576,6 @@ export default class HUD extends Component<HudProps, HudState> {
       let name = props.match.params.name
       return (
         <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
-          {/* sidebarResourceFilterProviderBlah */}
           <SidebarAccount
             tiltCloudUsername={tiltCloudUsername}
             tiltCloudSchemeHost={tiltCloudSchemeHost}

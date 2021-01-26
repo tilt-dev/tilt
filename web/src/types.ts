@@ -141,7 +141,7 @@ export enum ResourceName {
   all = "(all)",
 }
 
-export type ResourceFilters = {
-  showServices: boolean // TODO: namessss
+export type SidebarOptions = {
+  showResources: boolean // TODO: namessss
   showTests: boolean
 }
