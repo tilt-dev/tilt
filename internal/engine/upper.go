@@ -463,8 +463,9 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if mt.Manifest.IsLocal() {
 		lrs := ms.LocalRuntimeState()
-		if err == nil {
-			lrs.HasSucceededAtLeastOnce = true
+		if err == nil && mt.Manifest.LocalTarget().ReadinessProbe == nil {
+			// only update the succeeded time if there's no readiness probe
+			lrs.LastReadyOrSucceededTime = time.Now()
 		}
 		ms.RuntimeState = lrs
 	}

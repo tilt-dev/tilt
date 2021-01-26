@@ -37,11 +37,10 @@ type RuntimeState interface {
 type ProbeState int
 
 type LocalRuntimeState struct {
-	State                   model.ProcessState
-	HasSucceededAtLeastOnce bool
-	PID                     int
-	SpanID                  model.LogSpanID
-	LastReadyTime           time.Time
+	State                    model.ProcessState
+	PID                      int
+	SpanID                   model.LogSpanID
+	LastReadyOrSucceededTime time.Time
 
 	readinessProbeSuccessful bool
 }
@@ -54,9 +53,9 @@ func NewLocalRuntimeState(m model.Manifest) LocalRuntimeState {
 	var state LocalRuntimeState
 	if m.LocalTarget().ReadinessProbe == nil {
 		// targets with a readiness probe are failing by default (until probe passes)
-		// while targets without a readiness probe start off and perpetually stay ready
+		// while targets without a readiness probe are initialized to success to
+		// prevent the process from never appearing as ready
 		state.readinessProbeSuccessful = true
-		state.LastReadyTime = time.Now()
 	}
 	return state
 }
@@ -86,7 +85,7 @@ func (l LocalRuntimeState) RuntimeStatusError() error {
 }
 
 func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
-	return l.HasSucceededAtLeastOnce && !l.LastReadyTime.IsZero()
+	return !l.LastReadyOrSucceededTime.IsZero()
 }
 
 func (l LocalRuntimeState) Ready() bool {
@@ -98,7 +97,7 @@ func (l LocalRuntimeState) Ready() bool {
 
 func (l *LocalRuntimeState) SetReadinessProbeState(success bool) {
 	if success {
-		l.LastReadyTime = time.Now()
+		l.LastReadyOrSucceededTime = time.Now()
 	}
 	l.readinessProbeSuccessful = success
 }

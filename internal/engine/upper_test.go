@@ -4089,6 +4089,7 @@ func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeploy
 // the completed build.
 // using `nextCallComplete` will ensure you block until the EngineState reflects the completed build.
 func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
+	f.t.Helper()
 	msg := "timed out waiting for BuildAndDeployCall"
 	if len(msgAndArgs) > 0 {
 		format := msgAndArgs[0].(string)
