@@ -4,10 +4,13 @@ import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
 import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
+import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
+import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as MetricsIcon } from "./assets/svg/metrics.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
+import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import FloatDialog from "./FloatDialog"
 import MetricsDialog from "./MetricsDialog"
 import { usePathBuilder } from "./PathBuilder"
@@ -52,6 +55,14 @@ let ResourceBarStatusRoot = styled.div`
   font-size: ${FontSize.smallester};
   align-items: center;
   color: ${Color.grayLightest};
+
+  .fillStd {
+    fill: ${Color.grayLighter};
+  }
+
+  & + & {
+    margin-left: ${SizeUnit(1)};
+  }
 `
 
 let ResourceBarStatusLabel = styled.p`
@@ -64,18 +75,39 @@ let ResourceBarStatusSummaryList = styled.ul`
   ${mixinResetListStyle}
 `
 let ResourceBarStatusSummaryItem = styled.li`
+  display: flex;
+  align-items: center;
+
   & + & {
     margin-left: ${SizeUnit(0.25)};
     border-left: 1px solid ${Color.grayLighter};
     padding-left: ${SizeUnit(0.25)};
   }
+  &.hasErr {
+    color: ${Color.red};
+    .fillStd {
+      fill: ${Color.red};
+    }
+  }
+  &.hasWarn {
+    color: ${Color.yellow};
+    .fillStd {
+      fill: ${Color.yellow};
+    }
+  }
+  &.hasTotalHealthy {
+    color: ${Color.green};
+    .fillStd {
+      fill: ${Color.green};
+    }
+  }
 `
 
-let ResourceBarStatusSummarySlash = styled.span`
-  padding-left: 2px;
-  padding-right: 2px;
+let ResourceBarStatusSummaryItemCount = styled.span`
+  font-weight: strong;
+  padding-left: 4px;
+  padding-right: 4px;
 `
-
 type ResourceBarStatusProps = {
   view: Proto.webviewView
 }
@@ -96,16 +128,38 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
     <ResourceBarStatusRoot>
       <ResourceBarStatusLabel>{props.label}</ResourceBarStatusLabel>
       <ResourceBarStatusSummaryList>
-        <ResourceBarStatusSummaryItem>
-          <strong>{props.counts.unhealthy}</strong> {props.unhealthyLabel}
+        <ResourceBarStatusSummaryItem
+          className={props.counts.unhealthy >= 1 ? "hasErr" : ""}
+        >
+          <CloseSvg width="11" />
+          <ResourceBarStatusSummaryItemCount>
+            {props.counts.unhealthy}
+          </ResourceBarStatusSummaryItemCount>{" "}
+          {props.unhealthyLabel}
         </ResourceBarStatusSummaryItem>
-        <ResourceBarStatusSummaryItem>
-          <strong>{props.counts.warning}</strong> {props.warningLabel}
+        <ResourceBarStatusSummaryItem
+          className={props.counts.warning >= 1 ? "hasWarn" : ""}
+        >
+          <WarningSvg width="7" />
+          <ResourceBarStatusSummaryItemCount>
+            {props.counts.warning}
+          </ResourceBarStatusSummaryItemCount>{" "}
+          {props.warningLabel}
         </ResourceBarStatusSummaryItem>
-        <ResourceBarStatusSummaryItem>
-          <strong>{props.counts.healthy}</strong>
-          <ResourceBarStatusSummarySlash>/</ResourceBarStatusSummarySlash>
-          <strong>{props.counts.total}</strong> {props.healthyLabel}
+        <ResourceBarStatusSummaryItem
+          className={
+            props.counts.healthy === props.counts.total ? "hasTotalHealthy" : ""
+          }
+        >
+          <CheckmarkSmallSvg />
+          <ResourceBarStatusSummaryItemCount>
+            {props.counts.healthy}
+          </ResourceBarStatusSummaryItemCount>
+          /
+          <ResourceBarStatusSummaryItemCount>
+            {props.counts.total}
+          </ResourceBarStatusSummaryItemCount>{" "}
+          {props.healthyLabel}
         </ResourceBarStatusSummaryItem>
       </ResourceBarStatusSummaryList>
     </ResourceBarStatusRoot>
