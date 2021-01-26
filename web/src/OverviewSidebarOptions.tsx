@@ -3,11 +3,7 @@ import styled from "styled-components"
 import { SidebarOptions } from "./types"
 
 const SidebarOptionsSetterStyle = styled.div`
-  display: none;
-
-  .isOverview & {
-    display: flex;
-  }
+  display: flex;
 `
 
 type SidebarResourceTypeFilterProps = {

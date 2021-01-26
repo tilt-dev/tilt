@@ -126,6 +126,8 @@ export class SidebarResources extends React.Component<
       .map((i) => i.buildAlertCount + i.runtimeAlertCount)
       .reduce((sum, current) => sum + current, 0)
 
+    let testsPresent = this.props.items.some((item) => item.isTest)
+
     // TODO: what do we do when we filter out the selected item? Pinned item(s)?
     //       and what effect does this have on keyboard shortcuts? :(
     let filteredItems = this.props.items.filter(
@@ -154,11 +156,13 @@ export class SidebarResources extends React.Component<
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
-          <SidebarOptionsSetter
-            curState={this.state}
-            toggleShowResources={this.toggleShowResources}
-            toggleShowTests={this.toggleShowTests}
-          />
+          {testsPresent ? (
+            <SidebarOptionsSetter
+              curState={this.state}
+              toggleShowResources={this.toggleShowResources}
+              toggleShowTests={this.toggleShowTests}
+            /> // TODO: if this vanishes because no tests present, reset it to show everything
+          ) : null}
           <SidebarListSection name="">
             <SidebarItemAll
               nothingSelected={nothingSelected}

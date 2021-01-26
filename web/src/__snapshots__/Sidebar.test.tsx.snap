@@ -7,38 +7,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
   <div
     className="sc-hBEYos"
   >
-    <div
-      className="sc-bdfBwQ kKvbdK"
-    >
-      <div>
-        <input
-          checked={true}
-          id="resources"
-          name="resources"
-          onChange={[Function]}
-          type="checkbox"
-        />
-        <label
-          htmlFor="resources"
-        >
-          Resources
-        </label>
-      </div>
-      <div>
-        <input
-          checked={true}
-          id="tests"
-          name="tests"
-          onChange={[Function]}
-          type="checkbox"
-        />
-        <label
-          htmlFor="tests"
-        >
-          Tests
-        </label>
-      </div>
-    </div>
     <div>
       <div
         className="sc-fodVxV fYwBSU"
@@ -803,38 +771,6 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
   <div
     className="sc-hBEYos"
   >
-    <div
-      className="sc-bdfBwQ kKvbdK"
-    >
-      <div>
-        <input
-          checked={true}
-          id="resources"
-          name="resources"
-          onChange={[Function]}
-          type="checkbox"
-        />
-        <label
-          htmlFor="resources"
-        >
-          Resources
-        </label>
-      </div>
-      <div>
-        <input
-          checked={true}
-          id="tests"
-          name="tests"
-          onChange={[Function]}
-          type="checkbox"
-        />
-        <label
-          htmlFor="tests"
-        >
-          Tests
-        </label>
-      </div>
-    </div>
     <div>
       <div
         className="sc-fodVxV fYwBSU"
@@ -891,38 +827,6 @@ exports[`sidebar renders list of resources 1`] = `
   <div
     className="sc-hBEYos"
   >
-    <div
-      className="sc-bdfBwQ kKvbdK"
-    >
-      <div>
-        <input
-          checked={true}
-          id="resources"
-          name="resources"
-          onChange={[Function]}
-          type="checkbox"
-        />
-        <label
-          htmlFor="resources"
-        >
-          Resources
-        </label>
-      </div>
-      <div>
-        <input
-          checked={true}
-          id="tests"
-          name="tests"
-          onChange={[Function]}
-          type="checkbox"
-        />
-        <label
-          htmlFor="tests"
-        >
-          Tests
-        </label>
-      </div>
-    </div>
     <div>
       <div
         className="sc-fodVxV fYwBSU"
@@ -1186,38 +1090,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
   <div
     className="sc-hBEYos"
   >
-    <div
-      className="sc-bdfBwQ kKvbdK"
-    >
-      <div>
-        <input
-          checked={true}
-          id="resources"
-          name="resources"
-          onChange={[Function]}
-          type="checkbox"
-        />
-        <label
-          htmlFor="resources"
-        >
-          Resources
-        </label>
-      </div>
-      <div>
-        <input
-          checked={true}
-          id="tests"
-          name="tests"
-          onChange={[Function]}
-          type="checkbox"
-        />
-        <label
-          htmlFor="tests"
-        >
-          Tests
-        </label>
-      </div>
-    </div>
     <div>
       <div
         className="sc-fodVxV fYwBSU"
