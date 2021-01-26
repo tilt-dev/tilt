@@ -1,37 +1,10 @@
 import React, { Component, useEffect, useState } from "react"
 import { MemoryRouter } from "react-router"
+import { FilterLevel, FilterSource } from "./logfilters"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewLogPane from "./OverviewLogPane"
-
-function now() {
-  return new Date().toString()
-}
-
-type Line = string | { text: string; fields?: any }
-
-function appendLines(logStore: LogStore, name: string, ...lines: Line[]) {
-  let fromCheckpoint = logStore.checkpoint
-  let toCheckpoint = fromCheckpoint + lines.length
-
-  let spans = {} as any
-  let spanId = name || "_"
-  spans[spanId] = { manifestName: name }
-
-  let segments = []
-  for (let line of lines) {
-    let obj = { time: now(), spanId: spanId, text: "" } as any
-    if (typeof line == "string") {
-      obj.text = line
-    } else {
-      for (let key in line) {
-        obj[key] = (line as any)[key]
-      }
-    }
-    segments.push(obj)
-  }
-
-  logStore.append({ spans, segments, fromCheckpoint, toCheckpoint })
-}
+import { appendLines } from "./testlogs"
+import { LogLevel } from "./types"
 
 export default {
   title: "OverviewLogPane",
@@ -53,12 +26,14 @@ export default {
   ],
 }
 
+let defaultFilter = { source: FilterSource.all, level: FilterLevel.all }
+
 export const ThreeLines = () => {
   let logStore = new LogStore()
   appendLines(logStore, "fe", "line 1\n", "line2\n", "line3\n")
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewLogPane manifestName="fe" />
+      <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
     </LogStoreProvider>
   )
 }
@@ -68,7 +43,7 @@ export const ThreeLinesAllLog = () => {
   appendLines(logStore, "", "line 1\n", "line2\n", "line3\n")
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewLogPane manifestName="" />
+      <OverviewLogPane manifestName="" filterSet={defaultFilter} />
     </LogStoreProvider>
   )
 }
@@ -79,10 +54,10 @@ export const ManyLines = (args: any) => {
   for (let i = 0; i < args.count; i++) {
     lines.push(`line ${i}\n`)
   }
-  appendLines(logStore, "fe", ...lines)
+  appendLines(logStore, "fe", lines)
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewLogPane manifestName="fe" />
+      <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
     </LogStoreProvider>
   )
 }
@@ -111,7 +86,7 @@ export const StyledLines = () => {
   appendLines(logStore, "fe", ...lines)
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewLogPane manifestName="fe" />
+      <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
     </LogStoreProvider>
   )
 }
@@ -127,7 +102,7 @@ export const BuildEventLines = () => {
   appendLines(logStore, "fe", ...lines)
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewLogPane manifestName="fe" />
+      <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
     </LogStoreProvider>
   )
 }
@@ -156,7 +131,7 @@ export const ProgressLines = (args: any) => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewLogPane manifestName="fe" />
+      <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
     </LogStoreProvider>
   )
 }
@@ -192,7 +167,7 @@ class ForeverLogComponent extends Component<ForeverLogProps> {
     for (let i = 0; i < count; i++) {
       lines.push({ text: `Line #${this.lineCount++}\n` })
     }
-    appendLines(this.logStore, "fe", ...lines)
+    appendLines(this.logStore, "fe", lines)
   }
 
   componentDidMount() {
@@ -210,7 +185,7 @@ class ForeverLogComponent extends Component<ForeverLogProps> {
   render() {
     return (
       <LogStoreProvider value={this.logStore}>
-        <OverviewLogPane manifestName="fe" />
+        <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
       </LogStoreProvider>
     )
   }
@@ -232,17 +207,37 @@ export const BuildLogAndRunLog = (args: any) => {
   let logStore = new LogStore()
   let segments = []
   for (let i = 0; i < 10; i++) {
+    let level = ""
+    let lineType = "build"
+    if (i === 5) {
+      level = LogLevel.WARN
+      lineType = "build warning"
+    } else if (i === 9) {
+      level = LogLevel.ERROR
+      lineType = "build error"
+    }
     segments.push({
       spanId: "build:1",
-      text: `Vigoda build line ${i}\n`,
+      text: `Vigoda ${lineType} line ${i}\n`,
       time: new Date().toString(),
+      level,
     })
   }
   for (let i = 0; i < 10; i++) {
+    let level = ""
+    let lineType = "pod"
+    if (i === 5) {
+      level = LogLevel.WARN
+      lineType = "pod warning"
+    } else if (i === 9) {
+      level = LogLevel.ERROR
+      lineType = "pod error"
+    }
     segments.push({
       spanId: "pod:1",
-      text: `Vigoda pod line ${i}\n`,
+      text: `Vigoda ${lineType} line ${i}\n`,
       time: new Date().toString(),
+      level,
     })
   }
   logStore.append({
@@ -257,19 +252,28 @@ export const BuildLogAndRunLog = (args: any) => {
     <LogStoreProvider value={logStore}>
       <OverviewLogPane
         manifestName={"vigoda_1"}
-        hideBuildLog={args.hideBuildLog}
-        hideRunLog={args.hideRunLog}
+        filterSet={{ source: args.source, level: args.level }}
       />
     </LogStoreProvider>
   )
 }
 
 BuildLogAndRunLog.args = {
-  hideBuildLog: false,
-  hideRunLog: false,
+  source: "",
+  level: "",
 }
 
 BuildLogAndRunLog.argTypes = {
-  hideBuildLog: { control: { type: "boolean" } },
-  hideRunLog: { control: { type: "boolean" } },
+  source: {
+    control: {
+      type: "select",
+      options: [FilterSource.all, FilterSource.build, FilterSource.runtime],
+    },
+  },
+  level: {
+    control: {
+      type: "select",
+      options: [FilterLevel.all, FilterLevel.warn, FilterLevel.error],
+    },
+  },
 }

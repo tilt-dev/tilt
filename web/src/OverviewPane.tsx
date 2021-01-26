@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect } from "react"
 import styled from "styled-components"
 import { ReactComponent as GridDividerAllSvg } from "./assets/svg/grid-divider-all.svg"
 import { ReactComponent as GridDividerPinSvg } from "./assets/svg/grid-divider-pin.svg"
@@ -73,7 +73,7 @@ export function TestResources(props: ResourceProps) {
     <React.Fragment>
       <ServicesDividerRoot>
         <GridDividerTestSvg style={{ marginLeft: "28px" }} />
-        <ServicesLabel>All Resources</ServicesLabel>
+        <ServicesLabel>Tests</ServicesLabel>
       </ServicesDividerRoot>
       <OverviewGrid items={props.items} />
     </React.Fragment>
@@ -95,6 +95,12 @@ export default function OverviewPane(props: OverviewPaneProps) {
     pinContext.pinnedResources.includes(item.name)
   )
   let testItems = allItems.filter((item) => item.isTest)
+
+  // Hide the HTML element scrollbars, since this pane does all scrolling internally.
+  // TODO(nick): Remove this when the old UI is deleted.
+  useEffect(() => {
+    document.documentElement.style.overflow = "hidden"
+  })
 
   return (
     <OverviewPaneRoot>

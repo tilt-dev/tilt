@@ -277,9 +277,9 @@ func TestLocalResource(t *testing.T) {
 	}.WithDeployTarget(lt)
 
 	state := newState([]model.Manifest{m})
-	state.ManifestTargets[m.Name].State.RuntimeState = store.LocalRuntimeState{
-		State: model.ProcessStateRunning,
-	}
+	lrs := store.NewLocalRuntimeState(m)
+	lrs.State = model.ProcessStateRunning
+	state.ManifestTargets[m.Name].State.RuntimeState = lrs
 	v := stateToProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.Resources))

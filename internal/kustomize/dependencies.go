@@ -27,9 +27,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tilt-dev/tilt/internal/ospath"
+
 	yaml "gopkg.in/yaml.v2"
-	"sigs.k8s.io/kustomize/pkg/constants"
-	"sigs.k8s.io/kustomize/pkg/types"
+	"sigs.k8s.io/kustomize/api/konfig"
+	"sigs.k8s.io/kustomize/api/types"
 )
 
 // Mostly taken from the [kustomize source code](https://github.com/kubernetes-sigs/kustomize/blob/ee68a9c450bc884b0d657fb7e3d62eb1ac59d14f/pkg/target/kusttarget.go#L97) itself.
@@ -37,7 +39,7 @@ func loadKustFile(dir string) ([]byte, string, error) {
 	var content []byte
 	var path string
 	match := 0
-	for _, kf := range constants.KustomizationFileNames {
+	for _, kf := range konfig.RecognizedKustomizationFileNames() {
 		p := filepath.Join(dir, kf)
 		c, err := ioutil.ReadFile(p)
 		if err == nil {
@@ -51,7 +53,7 @@ func loadKustFile(dir string) ([]byte, string, error) {
 	case 0:
 		return nil, "", fmt.Errorf(
 			"unable to find one of %v in directory '%s'",
-			constants.KustomizationFileNames, dir)
+			konfig.RecognizedKustomizationFileNames(), dir)
 	case 1:
 		return content, path, nil
 	default:
@@ -73,8 +75,6 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 		return nil, err
 	}
 
-	buf = types.DealWithDeprecatedFields(buf)
-
 	content := types.Kustomization{}
 	if err := yaml.Unmarshal(buf, &content); err != nil {
 		return nil, err
@@ -85,17 +85,28 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 		return nil, fmt.Errorf("Failed to read kustomization file under %s:\n"+strings.Join(errs, "\n"), dir)
 	}
 
-	for _, base := range content.Bases {
-		baseDeps, err := dependenciesForKustomization(filepath.Join(dir, base))
-		if err != nil {
-			return nil, err
-		}
+	paths := append([]string{}, content.Bases...)
+	paths = append(paths, content.Resources...)
 
-		deps = append(deps, baseDeps...)
+	for _, p := range paths {
+		abs := filepath.Join(dir, p)
+		if ospath.IsDir(abs) {
+			curDeps, err := dependenciesForKustomization(filepath.Join(dir, p))
+			if err != nil {
+				return nil, err
+			}
+			deps = append(deps, curDeps...)
+		} else {
+			deps = append(deps, abs)
+		}
 	}
 
 	deps = append(deps, path)
-	deps = append(deps, joinPaths(dir, content.Resources)...)
+	for _, patch := range content.Patches {
+		if patch.Path != "" {
+			deps = append(deps, filepath.Join(dir, patch.Path))
+		}
+	}
 	for _, patch := range content.PatchesStrategicMerge {
 		deps = append(deps, filepath.Join(dir, string(patch)))
 	}

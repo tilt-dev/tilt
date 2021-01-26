@@ -14,6 +14,9 @@ export enum ResourceView {
 
   // The detail view in the Grid-based UI.
   OverviewDetail,
+
+  // The grid UI
+  Grid,
 }
 
 export enum TriggerMode {
@@ -83,6 +86,12 @@ export type Snapshot = {
   isSidebarClosed: boolean
   path?: string
   snapshotHighlight?: SnapshotHighlight | null
+}
+
+export enum LogLevel {
+  INFO = "INFO",
+  WARN = "WARN",
+  ERROR = "ERROR",
 }
 
 // A plaintext representation of a line of the log,

@@ -1,22 +1,21 @@
-import React, { useEffect, useState } from "react"
-import { Link, useHistory } from "react-router-dom"
+import React, { useEffect } from "react"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
-import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
-import { useLocalStorageContext } from "./LocalStorage"
+import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
 import {
   AnimDuration,
   Color,
-  ColorAlpha,
   ColorRGBA,
   Font,
   FontSize,
   SizeUnit,
 } from "./style-helpers"
+import { useTabNav } from "./TabNav"
+import { ResourceName } from "./types"
 
 type OverviewTabBarProps = {
   selectedTab: string
-  tabsForTesting?: string[]
 }
 
 let OverviewTabBarRoot = styled.div`
@@ -28,6 +27,7 @@ let OverviewTabBarRoot = styled.div`
   background-color: ${Color.grayDarkest};
   border-bottom: 1px solid ${Color.grayLight};
   align-items: stretch;
+  flex-shrink: 0;
 `
 
 export let Tab = styled(Link)`
@@ -83,11 +83,14 @@ export let HomeTab = styled(Link)`
   background-color: transparent;
   display: flex;
   align-items: center;
-  opacity: ${ColorAlpha.almostOpaque};
-  transition: opacity ${AnimDuration.short} ease;
 
-  &:hover {
-    opacity: 1;
+  & .fillStd {
+    transition: fill ${AnimDuration.short} ease;
+    fill: ${Color.grayLightest};
+  }
+  &:hover .fillStd,
+  &.isSelected .fillStd {
+    fill: ${Color.gray7};
   }
 `
 
@@ -109,70 +112,32 @@ let CloseButton = styled.button`
 `
 
 export default function OverviewTabBar(props: OverviewTabBarProps) {
-  let lsc = useLocalStorageContext()
-  let history = useHistory()
+  let nav = useTabNav()
+  let tabs = nav.tabs
   let selectedTab = props.selectedTab
+  let candidateTab = nav.candidateTab
 
-  // The list of tabs open. A tab name should never appear twice in the list.
-  const [tabs, setTabs] = useState<Array<string>>(
-    () => props.tabsForTesting ?? lsc.get<Array<string>>("tabs") ?? []
-  )
-
+  // There are two bits of state to determine the selected tab:
+  //
+  // 1) If the user navigates to a url, we need to pull the candidate tab name from the URL.
+  // 2) Then we need to look at the Tilt state to see if that resource exists.
+  //
+  // If the resource exists, then we select that tab. We need propagate it back
+  // up to the context provider. This creates weird data flow, but is probably
+  // ok for this simple case.
   useEffect(() => {
-    lsc.set("tabs", tabs)
-  }, [tabs, lsc])
-
-  // Ensures the tab is in the tab list.
-  function ensureOpenTab(name: string) {
-    if (!name) {
-      return
-    }
-
-    setTabs((prevState) => {
-      if (prevState.includes(name)) {
-        return prevState
-      }
-
-      return [name].concat(prevState)
-    })
-  }
-
-  useEffect(() => {
-    ensureOpenTab(selectedTab)
-  }, [tabs, selectedTab])
-
-  // Deletes the resource in the tab list.
-  // If we're deleting the current tab, navigate to the next reasonable tab.
-  function closeTab(name: string) {
-    let newState = (prevState: string[]) => {
-      return prevState.filter((t) => t !== name)
-    }
-    if (name !== selectedTab) {
-      setTabs(newState)
-      return
-    }
-
-    let index = tabs.indexOf(name)
-    let desired = `/overview`
-    if (index + 1 < tabs.length) {
-      desired = `/r/${tabs[index + 1]}/overview`
-    } else if (index - 1 >= 0) {
-      desired = `/r/${tabs[index - 1]}/overview`
-    }
-
-    setTabs(newState)
-    history.push(desired)
-  }
+    nav.ensureSelectedTab(selectedTab)
+  }, [selectedTab, nav.candidateTab])
 
   let onClose = (e: any, name: string) => {
     e.stopPropagation()
     e.preventDefault()
-    closeTab(name)
+    nav.closeTab(name)
   }
 
   let tabEls = tabs.map((name) => {
     let href = `/r/${name}/overview`
-    let text = name
+    let text = name === ResourceName.all ? "All Resources" : name
     let isSelectedTab = false
     if (selectedTab === name) {
       isSelectedTab = true
@@ -186,8 +151,12 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
       </Tab>
     )
   })
+
+  let isSelectedHome = !selectedTab || selectedTab === ResourceName.all
+  let homeTabClasses = isSelectedHome ? "isSelected" : ""
+
   tabEls.unshift(
-    <HomeTab key="logo" to={"/overview"} className={selectedTab}>
+    <HomeTab key="logo" to={"/overview"} className={homeTabClasses}>
       <LogoWordmarkSvg width="57px" />
     </HomeTab>
   )

@@ -1,14 +1,14 @@
-import React from "react"
+import React, { useEffect } from "react"
 import styled from "styled-components"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import OverviewTabBar from "./OverviewTabBar"
 import { Color } from "./style-helpers"
+import { useTabNav } from "./TabNav"
 import { ResourceName } from "./types"
 
 type OverviewResourcePaneProps = {
-  name: string
   view: Proto.webviewView
 }
 
@@ -30,8 +30,9 @@ let Main = styled.div`
 `
 
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
+  let nav = useTabNav()
   let resources = props.view?.resources || []
-  let name = props.name
+  let name = nav.candidateTab || nav.selectedTab || ""
   let r: Proto.webviewResource | undefined
   let all = name === "" || name === ResourceName.all
   if (!all) {
@@ -44,12 +45,18 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     selectedTab = r.name
   }
 
+  // Hide the HTML element scrollbars, since this pane does all scrolling internally.
+  // TODO(nick): Remove this when the old UI is deleted.
+  useEffect(() => {
+    document.documentElement.style.overflow = "hidden"
+  })
+
   return (
     <OverviewResourcePaneRoot>
       <OverviewTabBar selectedTab={selectedTab} />
       <OverviewResourceBar {...props} />
       <Main>
-        <OverviewResourceSidebar {...props} />
+        <OverviewResourceSidebar {...props} name={name} />
         <OverviewResourceDetails resource={r} name={name} />
       </Main>
     </OverviewResourcePaneRoot>

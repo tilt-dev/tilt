@@ -14,6 +14,7 @@ import { ReactComponent as MaximizeSvg } from "./assets/svg/maximize.svg"
 import { displayURL } from "./links"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
+import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { buildStatus, runtimeStatus } from "./status"
 import {
@@ -167,7 +168,7 @@ export let OverviewItemBox = styled.div`
 
 let OverviewItemRuntimeBox = styled.div`
   display: flex;
-  align-items: top;
+  align-items: stretch;
   transition: border-color ${AnimDuration.default} linear;
 `
 
@@ -185,7 +186,7 @@ let InnerRuntimeBox = styled.div`
 
 let OverviewItemBuildBox = styled.div`
   display: flex;
-  align-items: center;
+  align-items: stretch;
   flex-shrink: 1;
   border-top: 1px solid ${Color.grayLighter};
 `
@@ -321,8 +322,14 @@ function buildTooltipText(status: ResourceStatus): string {
   }
 }
 
-function BuildBox(props: { item: OverviewItem }) {
-  let item = props.item
+type BuildBoxProps = {
+  item: OverviewItem
+  isDetailsBox: boolean
+}
+
+function BuildBox(props: BuildBoxProps) {
+  let { item, isDetailsBox } = props
+
   return (
     <OverviewItemBuildBox>
       <SidebarIcon
@@ -333,6 +340,8 @@ function BuildBox(props: { item: OverviewItem }) {
       <OverviewItemText style={{ margin: "8px 0px" }}>
         {buildStatusText(item)}
       </OverviewItemText>
+
+      <SidebarPinButton resourceName={item.name} persistShow={isDetailsBox} />
     </OverviewItemBuildBox>
   )
 }
@@ -497,7 +506,7 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
 
           <DetailText>Show details</DetailText>
         </ShowDetailsBox>
-        <BuildBox item={props.item} />
+        <BuildBox item={props.item} isDetailsBox={true} />
       </OverviewItemDetailsBox>
     </OverviewItemDetailsRoot>
   )
@@ -547,7 +556,11 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
   let onModeToggle = toggleTriggerMode.bind(null, item.name)
 
   return (
-    <OverviewItemRoot key={item.name} onClick={handleClick}>
+    <OverviewItemRoot
+      key={item.name}
+      onClick={handleClick}
+      className="u-showPinOnHover"
+    >
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <OverviewItemRuntimeBox>
           <SidebarIcon
@@ -583,7 +596,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
             </InnerRuntimeBox>
           </RuntimeBoxStack>
         </OverviewItemRuntimeBox>
-        <BuildBox item={item} />
+        <BuildBox item={item} isDetailsBox={false} />
       </OverviewItemBox>
 
       <Popover

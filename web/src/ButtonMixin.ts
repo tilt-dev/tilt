@@ -1,23 +1,17 @@
 import { css } from "styled-components"
-import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { AnimDuration, Color, Font, FontSize } from "./style-helpers"
 
 export const ButtonMixin = css`
-  display: flex;
-  font-family: ${Font.sansSerif};
-  font-size: ${FontSize.small};
+  display: inline-block;
+  font-family: ${Font.monospace};
+  font-size: ${FontSize.default};
   text-decoration: none;
   background-color: ${Color.blue};
   color: ${Color.white};
-  align-items: center;
-  justify-content: center;
-  border-radius: ${SizeUnit(0.15)};
-  padding-left: ${SizeUnit(0.75)};
-  padding-right: ${SizeUnit(0.75)};
-  padding-top: ${SizeUnit(0.5)};
-  padding-bottom: ${SizeUnit(0.5)};
-  line-height: 1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  line-height: 21px;
   cursor: pointer;
-  max-width: ${SizeUnit(10)}; // Beyond which it looks less and less button-like
   transition: background-color ${AnimDuration.default} ease;
 
   &:hover {

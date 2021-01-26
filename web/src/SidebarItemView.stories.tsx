@@ -6,6 +6,7 @@ import SidebarItemView, {
   SidebarItemAll,
   SidebarItemViewProps,
 } from "./SidebarItemView"
+import { LegacyNavProvider } from "./TabNav"
 import { oneResourceNoAlerts } from "./testdata"
 import {
   ResourceName,
@@ -20,7 +21,9 @@ let pathBuilder = PathBuilder.forTesting("localhost", "/")
 function ItemWrapper(props: { children: React.ReactNode }) {
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <div style={{ width: "336px", margin: "100px" }}>{props.children}</div>
+      <LegacyNavProvider resourceView={ResourceView.Log}>
+        <div style={{ width: "336px", margin: "100px" }}>{props.children}</div>
+      </LegacyNavProvider>
     </MemoryRouter>
   )
 }
@@ -77,9 +80,20 @@ function withManualTrigger(): optionFn {
   }
 }
 
-function withSelected(v: boolean): optionFn {
+function withQueuedTrigger(): optionFn {
   return (props: SidebarItemViewProps) => {
-    props.selected = v
+    let item = props.item
+    item.triggerMode = TriggerMode.TriggerModeManualIncludingInitial
+    item.hasPendingChanges = true
+    item.queued = true
+  }
+}
+
+type Args = { selected: boolean }
+
+function withArgs(args: Args): optionFn {
+  return (props: SidebarItemViewProps) => {
+    props.selected = args.selected
   }
 }
 
@@ -88,7 +102,6 @@ function itemView(...options: optionFn[]) {
   let props = {
     item: item,
     selected: false,
-    renderPin: true,
     resourceView: ResourceView.Log,
     pathBuilder: pathBuilder,
   }
@@ -102,33 +115,47 @@ function itemView(...options: optionFn[]) {
 
 export default {
   title: "SidebarItemView",
+  args: { selected: false },
 }
 
-export const OneItemBuilding = () =>
-  itemView(withStatus(ResourceStatus.Building))
+export const OneItemBuilding = (args: Args) =>
+  itemView(withArgs(args), withStatus(ResourceStatus.Building))
 
-export const OneItemPending = () => itemView(withStatus(ResourceStatus.Pending))
+export const OneItemPending = (args: Args) =>
+  itemView(withArgs(args), withStatus(ResourceStatus.Pending))
 
-export const OneItemHealthy = () => itemView(withStatus(ResourceStatus.Healthy))
+export const OneItemHealthy = (args: Args) =>
+  itemView(withArgs(args), withStatus(ResourceStatus.Healthy))
 
-export const OneItemHealthySelected = () =>
-  itemView(withStatus(ResourceStatus.Healthy), withSelected(true))
+export const OneItemUnhealthy = (args: Args) =>
+  itemView(withArgs(args), withStatus(ResourceStatus.Unhealthy))
 
-export const OneItemUnhealthy = () =>
-  itemView(withStatus(ResourceStatus.Unhealthy))
+export const OneItemWarning = (args: Args) =>
+  itemView(withArgs(args), withStatus(ResourceStatus.Warning))
 
-export const OneItemWarning = () => itemView(withStatus(ResourceStatus.Warning))
+export const OneItemNone = (args: Args) =>
+  itemView(withArgs(args), withStatus(ResourceStatus.None))
 
-export const OneItemNone = () => itemView(withStatus(ResourceStatus.None))
-
-export const OneItemTrigger = () =>
-  itemView(withStatus(ResourceStatus.Pending), withManualTrigger())
-
-export const OneItemLongName = () =>
-  itemView(withName("longnamelongnameverylongname"))
-
-export const Tiltfile = () =>
+export const OneItemTrigger = (args: Args) =>
   itemView(
+    withArgs(args),
+    withStatus(ResourceStatus.Pending),
+    withManualTrigger()
+  )
+
+export const OneItemQueuedTrigger = (args: Args) =>
+  itemView(
+    withArgs(args),
+    withStatus(ResourceStatus.Pending),
+    withQueuedTrigger()
+  )
+
+export const OneItemLongName = (args: Args) =>
+  itemView(withArgs(args), withName("longnamelongnameverylongname"))
+
+export const Tiltfile = (args: Args) =>
+  itemView(
+    withArgs(args),
     withName(ResourceName.tiltfile),
     withBuildStatusOnly(ResourceStatus.Healthy)
   )
@@ -136,7 +163,7 @@ export const Tiltfile = () =>
 export const AllItemSelected = () => {
   return (
     <ItemWrapper>
-      <SidebarItemAll nothingSelected={true} totalAlerts={1} allLink={"/"} />
+      <SidebarItemAll nothingSelected={true} totalAlerts={1} />
     </ItemWrapper>
   )
 }
@@ -144,7 +171,7 @@ export const AllItemSelected = () => {
 export const AllItemUnselected = () => {
   return (
     <ItemWrapper>
-      <SidebarItemAll nothingSelected={false} totalAlerts={1} allLink={"/"} />
+      <SidebarItemAll nothingSelected={false} totalAlerts={1} />
     </ItemWrapper>
   )
 }

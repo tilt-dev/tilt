@@ -2,9 +2,10 @@ package kustomize
 
 import (
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 )
@@ -80,8 +81,12 @@ patchesJson6902:
 func TestRecursive(t *testing.T) {
 	f := newKustomizeFixture(t)
 
+	// these used to be only specified under "bases", but now that's deprecated and "resources"
+	// that purpose. for now, test both.
+	// https://github.com/tilt-dev/tilt/blob/15d0c94ccc08230d3a528b14cb0a3455b947d13c/vendor/sigs.k8s.io/kustomize/api/types/kustomization.go#L102
 	kustomize := `bases:
 - ./dev
+resources:
 - ./staging
 - ./production
 
@@ -130,6 +135,32 @@ namePrefix: prod-`
 	f.assertDeps(expected)
 }
 
+// patches was deprecated and then re-added with a different meaning
+// https://github.com/tilt-dev/tilt/issues/4081
+func TestPatches(t *testing.T) {
+	f := newKustomizeFixture(t)
+	kustomizeFile := `# Example configuration for the webserver
+# at https://github.com/monopole/hello
+commonLabels:
+  app: my-hello
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - configMap.yaml
+
+patches:
+  - path: patch.yaml
+    target:
+      kind: Deployment
+      name: foo
+`
+	f.writeRootKustomize(kustomizeFile)
+
+	expected := []string{"kustomization.yaml", "deployment.yaml", "service.yaml", "configMap.yaml", "patch.yaml"}
+	f.assertDeps(expected)
+}
+
 type kustomizeFixture struct {
 	t       *testing.T
 	tempdir *tempdir.TempDirFixture
@@ -169,9 +200,7 @@ func (f *kustomizeFixture) assertDeps(expected []string) {
 
 	actual := f.getDeps()
 
-	if !reflect.DeepEqual(actual, fullExpected) {
-		f.t.Errorf("Expected \n%v\n to equal \n%v\n", actual, fullExpected)
-	}
+	require.ElementsMatch(f.t, fullExpected, actual)
 }
 
 func (f *kustomizeFixture) assertErrorContains(expected string) {

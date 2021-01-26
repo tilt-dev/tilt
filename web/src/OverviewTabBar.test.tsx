@@ -2,14 +2,18 @@ import { mount } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewTabBar, { HomeTab, Tab } from "./OverviewTabBar"
+import { OverviewNavProvider, TabNavContextConsumer } from "./TabNav"
 
-it("infers tab from url", () => {
+it("propagate selected tab", () => {
+  let capturedNav: any = null
   const root = mount(
     <MemoryRouter initialEntries={["/r/vigoda/overview"]}>
-      <OverviewTabBar
-        selectedTab="vigoda"
-        tabsForTesting={["vigoda", "snack"]}
-      />
+      <OverviewNavProvider tabsForTesting={["vigoda", "snack"]}>
+        <OverviewTabBar selectedTab="vigoda" />
+        <TabNavContextConsumer>
+          {(nav) => void (capturedNav = nav)}
+        </TabNavContextConsumer>
+      </OverviewNavProvider>
     </MemoryRouter>
   )
 
@@ -22,4 +26,6 @@ it("infers tab from url", () => {
     "/r/vigoda/overview",
     "/r/snack/overview",
   ])
+
+  expect(capturedNav?.selectedTab).toEqual("vigoda")
 })

@@ -31,6 +31,8 @@ go run -mod=vendor ./cmd/tilt/main.go dump cli-docs --dir="$ROOT/docs/cli"
 cd "$ROOT"
 sed -i -E "s/asdf install tilt .*/asdf install tilt $VERSION/" docs/install.md
 sed -i -E "s/asdf global tilt .*/asdf global tilt $VERSION/" docs/install.md
+sed -i -E "s/asdf install tilt .*/asdf install tilt $VERSION/" docs/upgrade.md
+sed -i -E "s/asdf global tilt .*/asdf global tilt $VERSION/" docs/upgrade.md
 
 # the sed pattern doesn't need to match the whole string.
 SED_VERSION_PATTERN="[0-9]+\.[0-9]+\.[0-9]+"

@@ -5,6 +5,7 @@ import ReactDOM from "react-dom"
 import ReactModal from "react-modal"
 import { MemoryRouter } from "react-router"
 import HUD from "./HUD"
+import SidebarItemView, { SidebarItemAll } from "./SidebarItemView"
 import SocketBar from "./SocketBar"
 import {
   oneResourceNoAlerts,
@@ -127,40 +128,17 @@ it("does re-render the sidebar when the resource list changes", async () => {
 
   let resourceView = oneResourceView()
   hud.setState({ view: resourceView })
-  let sidebarLinks = root.find(".Sidebar-resources Link")
-  expect(sidebarLinks).toHaveLength(2)
+
+  let sidebarLinks = root.find(SidebarItemView)
+  expect(sidebarLinks).toHaveLength(1)
+
+  let allLink = root.find(SidebarItemAll)
+  expect(allLink).toHaveLength(1)
 
   let newResourceView = twoResourceView()
   hud.setState({ view: newResourceView })
-  sidebarLinks = root.find(".Sidebar-resources Link")
-  expect(sidebarLinks).toHaveLength(3)
-})
-
-it("shows test data in sidebar if test resources present", async () => {
-  const root = mount(emptyHUD())
-  const hud = root.find(HUD)
-
-  let resourceView = oneResourceView()
-  resourceView.resources[0].localResourceInfo = { isTest: true } // make it a test resource
-  hud.setState({ view: resourceView })
-
-  let sidebar = root.find("section.Sidebar")
-  let testAggData = sidebar.find("section.TestAggregateData")
-  expect(testAggData).toHaveLength(1)
-  let numTests = testAggData.find("span.numTests")
-  expect(numTests.text()).toEqual("1")
-})
-
-it("doesn't render test data in sidebar if no tests", async () => {
-  const root = mount(emptyHUD())
-  const hud = root.find(HUD)
-
-  let resourceView = oneResourceView()
-  hud.setState({ view: resourceView })
-
-  let sidebar = root.find("section.Sidebar")
-  let testAggData = sidebar.find("section.TestAggregateData")
-  expect(testAggData).toHaveLength(0)
+  sidebarLinks = root.find(SidebarItemView)
+  expect(sidebarLinks).toHaveLength(2)
 })
 
 it("renders tab nav", () => {
