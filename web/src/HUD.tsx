@@ -349,10 +349,12 @@ export default class HUD extends Component<HudProps, HudState> {
       : ResourceView.Log
 
     if (matchOverview) {
+      let validateTab = (name: string) =>
+        resources.some((res) => res.name === name)
       return (
         <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
           <SidebarPinContextProvider>
-            <OverviewNavProvider>
+            <OverviewNavProvider validateTab={validateTab}>
               <div className={hudClasses.join(" ")}>
                 <AnalyticsNudge needsNudge={needsNudge} />
                 <SocketBar state={this.state.socketState} />
