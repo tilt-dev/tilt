@@ -1,7 +1,7 @@
 import Collapse from "@material-ui/core/Collapse"
 import Popover from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import TimeAgo from "react-timeago"
 import styled, { css, keyframes } from "styled-components"
@@ -303,6 +303,51 @@ function buildTooltipText(status: ResourceStatus): string {
   }
 }
 
+type RuntimeBoxProps = {
+  item: OverviewItem
+}
+
+function RuntimeBox(props: RuntimeBoxProps) {
+  let { item } = props
+
+  let formatter = timeAgoFormatter
+  let hasBuilt = item.lastBuild !== null
+  let building = !isZeroTime(item.currentBuildStartTime)
+  let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+  let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
+  let onTrigger = triggerUpdate.bind(null, item.name)
+  return (
+    <OverviewItemRuntimeBox>
+      <SidebarIcon
+        tooltipText={runtimeTooltipText(item.runtimeStatus)}
+        status={item.runtimeStatus}
+        alertCount={item.runtimeAlertCount}
+      />
+      <RuntimeBoxStack style={{ margin: "8px 0px" }}>
+        <InnerRuntimeBox>
+          <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
+          <OverviewItemTimeAgo>
+            {hasSuccessfullyDeployed ? timeAgo : "—"}
+          </OverviewItemTimeAgo>
+          <SidebarTriggerButton
+            isTiltfile={item.isTiltfile}
+            isSelected={false}
+            hasPendingChanges={item.hasPendingChanges}
+            hasBuilt={hasBuilt}
+            isBuilding={building}
+            triggerMode={item.triggerMode}
+            isQueued={item.queued}
+            onTrigger={onTrigger}
+          />
+        </InnerRuntimeBox>
+        <InnerRuntimeBox>
+          <OverviewItemName name={item.name} />
+        </InnerRuntimeBox>
+      </RuntimeBoxStack>
+    </OverviewItemRuntimeBox>
+  )
+}
+
 type BuildBoxProps = {
   item: OverviewItem
   isDetailsBox: boolean
@@ -329,13 +374,15 @@ function BuildBox(props: BuildBoxProps) {
 
 type OverviewItemDetailsProps = {
   item: OverviewItem
-  width?: number
+  width: number
+  height: number
 }
 
 let OverviewItemDetailsRoot = styled.div`
   display: flex;
   min-width: 330px;
   box-sizing: border-box;
+  transition: height 200ms ease;
 
   &.isBuilding::after {
     content: "";
@@ -364,12 +411,11 @@ let OverviewItemDetailsBox = styled.div`
   overflow: hidden;
   width: 100%;
   border: 1px solid ${Color.grayLighter};
-  border-top: 0;
   position: relative;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
   box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.51);
-  border-radius: 0 0 8px 8px;
+  border-radius: 8px;
 `
 
 let OverviewItemDetailsLinkBox = styled.div`
@@ -435,8 +481,10 @@ async function copyTextToClipboard(text: string, cb: () => void) {
   cb()
 }
 
+// OverviewItemDetails is a clone of the OverviewItemView, positioned
+// with a popover over the original OverviewItemDetails
 export function OverviewItemDetails(props: OverviewItemDetailsProps) {
-  let item = props.item
+  let { item, width, height } = props
   let link = `/r/${item.name}/overview`
   let endpoints = item.endpoints.map((ep) => {
     return (
@@ -484,15 +532,27 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
   }
 
   let pathBuilder = usePathBuilder()
-  let width = props.width || 330
   let isBuildingClass =
     item.buildStatus === ResourceStatus.Building ? "isBuilding" : ""
+  let ref = useRef(null as any)
+
+  // Simulate an 'expansion' animation by modifying the height post-render.
+  useEffect(() => {
+    if (ref.current && height) {
+      ref.current.style.height = ref.current.firstChild.scrollHeight + "px"
+    }
+  }, [height])
+
+  let widthStyle = width ? width + "px" : "auto"
+  let heightStyle = height ? height + "px" : "auto"
   return (
     <OverviewItemDetailsRoot
-      style={{ width: width + "px" }}
+      ref={ref}
+      style={{ width: widthStyle, height: heightStyle }}
       className={isBuildingClass}
     >
       <OverviewItemDetailsBox>
+        <RuntimeBox item={item} />
         <OverviewItemDetailsLinkBox>
           {endpoints}
           {copy}
@@ -523,32 +583,32 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
   let [anchorSpec, setAnchorSpec] = useState({
     element: null as Element | null,
     width: 330,
+    height: 0,
   })
   let handleClick = (event: any) => {
     let currentTarget = event.currentTarget
-    let buildBox = currentTarget.querySelector(`${OverviewItemBuildBox}`)
+    let rect = currentTarget.getBoundingClientRect()
     setAnchorSpec({
-      element: buildBox,
-      width: currentTarget.getBoundingClientRect().width,
+      element: currentTarget,
+      width: rect.width,
+      height: rect.height,
     })
   }
   let handleClose = (e: any) => {
     e.stopPropagation()
-    setAnchorSpec({ element: null, width: anchorSpec.width })
+    setAnchorSpec({
+      element: null,
+      width: anchorSpec.width,
+      height: anchorSpec.height,
+    })
   }
 
   let open = Boolean(anchorSpec.element)
   let popoverId = open ? "item-open-popover" : undefined
 
   let item = props.item
-  let formatter = timeAgoFormatter
-  let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
-  let hasBuilt = item.lastBuild !== null
-  let building = !isZeroTime(item.currentBuildStartTime)
-  let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
-
+  let building = item.buildStatus === ResourceStatus.Building
   let isBuildingClass = building ? "isBuilding" : ""
-  let onTrigger = triggerUpdate.bind(null, item.name)
   return (
     <OverviewItemRoot
       key={item.name}
@@ -556,34 +616,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
       className="u-showPinOnHover"
     >
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
-        <OverviewItemRuntimeBox>
-          <SidebarIcon
-            tooltipText={runtimeTooltipText(item.runtimeStatus)}
-            status={item.runtimeStatus}
-            alertCount={item.runtimeAlertCount}
-          />
-          <RuntimeBoxStack style={{ margin: "8px 0px" }}>
-            <InnerRuntimeBox>
-              <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
-              <OverviewItemTimeAgo>
-                {hasSuccessfullyDeployed ? timeAgo : "—"}
-              </OverviewItemTimeAgo>
-              <SidebarTriggerButton
-                isTiltfile={item.isTiltfile}
-                isSelected={false}
-                hasPendingChanges={item.hasPendingChanges}
-                hasBuilt={hasBuilt}
-                isBuilding={building}
-                triggerMode={item.triggerMode}
-                isQueued={item.queued}
-                onTrigger={onTrigger}
-              />
-            </InnerRuntimeBox>
-            <InnerRuntimeBox>
-              <OverviewItemName name={item.name} />
-            </InnerRuntimeBox>
-          </RuntimeBoxStack>
-        </OverviewItemRuntimeBox>
+        <RuntimeBox item={item} />
         <BuildBox item={item} isDetailsBox={false} />
       </OverviewItemBox>
 
@@ -604,7 +637,11 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
           horizontal: "center",
         }}
       >
-        <OverviewItemDetails item={item} width={anchorSpec.width} />
+        <OverviewItemDetails
+          item={item}
+          width={anchorSpec.width}
+          height={anchorSpec.height}
+        />
       </Popover>
     </OverviewItemRoot>
   )

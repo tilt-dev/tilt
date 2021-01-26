@@ -123,7 +123,7 @@ export const MinimumDetails = () => {
   let item = new OverviewItem(oneResourceNoAlerts())
   item.endpoints = []
   item.podId = ""
-  return <OverviewItemDetails item={item} />
+  return <OverviewItemDetails item={item} width={330} height={0} />
 }
 
 export const CompleteDetails = () => {
@@ -133,7 +133,7 @@ export const CompleteDetails = () => {
     { url: "http://localhost:4002" },
   ]
   item.podId = "my-pod-deadbeef"
-  return <OverviewItemDetails item={item} />
+  return <OverviewItemDetails item={item} width={330} height={0} />
 }
 
 export const LongDetails = () => {
@@ -143,5 +143,5 @@ export const LongDetails = () => {
     { url: "http://my-pod-grafana-long-service-name-deadbeef:4002" },
   ]
   item.podId = "my-pod-grafana-long-service-name-deadbeef"
-  return <OverviewItemDetails item={item} />
+  return <OverviewItemDetails item={item} width={330} height={0} />
 }
