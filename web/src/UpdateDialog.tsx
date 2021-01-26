@@ -92,17 +92,17 @@ export default function UpdateDialog(props: props) {
       : "Tilt Interface Setting"
   let interfaceSwitch = (
     <GreenSwitch
-      checked={isNewDefault}
+      checked={!isNewDefault}
       onChange={interfaceVersion.toggleDefault}
     />
   )
   let label = isWrongInterface ? (
     <div>
-      Preview Tilt's new interface (
+      Go back to Tilt’s old interface (
       <Link to={pathBuilder.path("/")}>Refresh</Link>)
     </div>
   ) : (
-    <div>Preview Tilt's new interface</div>
+    <div>Go back to Tilt’s old interface</div>
   )
   return (
     <FloatDialog id="update" title={title} {...props}>
