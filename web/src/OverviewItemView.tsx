@@ -372,6 +372,14 @@ let OverviewItemDetailsBox = styled.div`
   border-radius: 0 0 8px 8px;
 `
 
+let OverviewItemDetailsLinkBox = styled.div`
+  margin-left: ${Width.statusIcon - 1}px;
+  border-left: 1px solid ${Color.grayLighter};
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+`
+
 let detailsRow = css`
   outline: none !important;
   display: flex;
@@ -383,8 +391,9 @@ let detailsRow = css`
   text-decoration: none;
   font: inherit;
   color: inherit;
-  margin: 8px 0 8px ${Width.statusIcon + Width.statusIconMarginRight}px;
+  margin: 8px 0 8px ${Width.statusIconMarginRight}px;
   transition: color ${AnimDuration.default} ease;
+  padding-right: ${Width.statusIcon}px;
 
   & .fillStd {
     fill: ${Color.gray7};
@@ -415,6 +424,10 @@ let DetailText = styled.div`
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-left: 10px;
+`
+
+let DetailTextBold = styled(DetailText)`
+  font-weight: 700;
 `
 
 async function copyTextToClipboard(text: string, cb: () => void) {
@@ -480,13 +493,15 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
       className={isBuildingClass}
     >
       <OverviewItemDetailsBox>
-        {endpoints}
-        {copy}
-        <ShowDetailsBox to={pathBuilder.path(link)}>
-          <MaximizeSvg />
+        <OverviewItemDetailsLinkBox>
+          {endpoints}
+          {copy}
+          <ShowDetailsBox to={pathBuilder.path(link)}>
+            <MaximizeSvg />
 
-          <DetailText>Show details</DetailText>
-        </ShowDetailsBox>
+            <DetailTextBold>Show details</DetailTextBold>
+          </ShowDetailsBox>
+        </OverviewItemDetailsLinkBox>
         <BuildBox item={props.item} isDetailsBox={true} />
       </OverviewItemDetailsBox>
     </OverviewItemDetailsRoot>
