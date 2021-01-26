@@ -5,7 +5,7 @@ import { matchPath, useHistory } from "react-router"
 import { Route, RouteComponentProps, Switch } from "react-router-dom"
 import AlertPane from "./AlertPane"
 import { combinedAlerts } from "./alerts"
-import { incr, pathToTag } from "./analytics"
+import { incr, navigationToTags } from "./analytics"
 import AnalyticsNudge from "./AnalyticsNudge"
 import AppController from "./AppController"
 import ErrorModal from "./ErrorModal"
@@ -78,10 +78,7 @@ export default class HUD extends Component<HudProps, HudState> {
         return
       }
 
-      let tags: any = { type: pathToTag(location.pathname) }
-      if (action === "PUSH" && location?.state?.action) {
-        tags.action = location.state.action
-      }
+      let tags = navigationToTags(location, action)
       incr("ui.web.navigation", tags)
 
       this.handleClearHighlight()
