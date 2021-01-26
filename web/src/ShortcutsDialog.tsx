@@ -81,7 +81,7 @@ export default function ShortcutsDialog(props: props) {
           </Shortcut>
         </React.Fragment>
       )}
-      <Shortcut label="Create Snapshot">
+      <Shortcut label="Make Snapshot">
         <ShortcutBox>s</ShortcutBox>
       </Shortcut>
       <Shortcut label="Help">
