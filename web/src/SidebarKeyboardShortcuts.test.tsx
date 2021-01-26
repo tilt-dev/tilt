@@ -15,11 +15,10 @@ const shortcuts = (items: SidebarItem[], selected: string) => {
   let tabNav = {
     tabs: [],
     selectedTab: "",
-    candidateTab: "",
+    invalidTab: "",
     openResource: (name: string, options?: { newTab: boolean }) => {
       opened = name
     },
-    ensureSelectedTab: () => {},
     closeTab: (name: string) => {},
   }
   opened = null

@@ -32,7 +32,7 @@ let Main = styled.div`
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let nav = useTabNav()
   let resources = props.view?.resources || []
-  let name = nav.candidateTab || nav.selectedTab || ""
+  let name = nav.invalidTab || nav.selectedTab || ""
   let r: Proto.webviewResource | undefined
   let all = name === "" || name === ResourceName.all
   if (!all) {

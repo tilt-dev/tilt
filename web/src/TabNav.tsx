@@ -15,26 +15,22 @@ export type TabNav = {
   // The currently selected tab. This is guaranteed to exist in the tab list.
   selectedTab: string
 
-  // Tab provided from the user URL. This is not guaranteed to exist,
-  // and needs additional validation before it becomes the selected tab.
-  candidateTab: string
+  // Tab provided from the user URL that didn't exist.
+  // Different parts of the UI might display this error differently.
+  invalidTab: string
 
   // Behavior when you click on a link to a resource.
   openResource(name: string, options?: { newTab: boolean }): void
 
   // Behavior when you close a tab.
   closeTab(name: string): void
-
-  // Make sure the given tab is open and selected.
-  ensureSelectedTab(name: string): void
 }
 
 const tabNavContext = React.createContext<TabNav>({
   tabs: [],
   selectedTab: "",
-  candidateTab: "",
+  invalidTab: "",
   openResource: (name: string, options?: { newTab: boolean }) => {},
-  ensureSelectedTab: () => {},
   closeTab: (name: string) => {},
 })
 
@@ -82,21 +78,14 @@ export function LegacyNavProvider(
   let tabNav = {
     tabs: [],
     selectedTab: "",
-    candidateTab: "",
+    invalidTab: "",
     openResource: nav,
-    ensureSelectedTab: () => {},
     closeTab: () => {},
   }
 
   return (
     <tabNavContext.Provider value={tabNav}>{children}</tabNavContext.Provider>
   )
-}
-
-type OverviewTabNavState = {
-  tabs: string[]
-  candidateTab: string
-  selectedTab: string
 }
 
 function addAllTabIfEmpty(tabs: string[]): string[] {
@@ -123,66 +112,50 @@ function addAllTabIfEmpty(tabs: string[]): string[] {
 // 3. When you close a tab that is currently selected, the view toggles to the tab on the right
 export function OverviewNavProvider(
   props: React.PropsWithChildren<{
+    validateTab: (name: string) => boolean
     tabsForTesting?: string[]
-    candidateTabForTesting?: string
   }>
 ) {
-  let { children } = props
+  let { children, validateTab, tabsForTesting } = props
   let lsc = useLocalStorageContext()
   let history = useHistory()
   let pb = usePathBuilder()
+  let selectedTab = ""
+  let invalidTab = ""
+
+  let matchResource = matchPath(history.location.pathname, {
+    path: pb.path("/r/:name"),
+  })
+  let candidateTab = (matchResource?.params as any)?.name || ""
+  if (candidateTab && validateTab(candidateTab)) {
+    selectedTab = candidateTab
+  } else {
+    invalidTab = candidateTab
+  }
 
   // The list of tabs open. A tab name should never appear twice in the list.
-  const [tabState, setTabState] = useState<OverviewTabNavState>(() => {
-    let tabs = props.tabsForTesting ?? lsc.get<Array<string>>("tabs") ?? []
-    let pathname = String(history.location.pathname)
-    let matchResource = matchPath(history.location.pathname, {
-      path: pb.path("/r/:name"),
-    })
-
-    let candidateTab =
-      props.candidateTabForTesting || (matchResource?.params as any)?.name || ""
-    return {
-      tabs: addAllTabIfEmpty(tabs),
-      candidateTab: candidateTab,
-      selectedTab: "",
-    }
+  const [tabs, setTabs] = useState<string[]>(() => {
+    return addAllTabIfEmpty(
+      tabsForTesting ?? lsc.get<Array<string>>("tabs") ?? []
+    )
   })
-  let tabs = tabState.tabs
-  let selectedTab = tabState.selectedTab
-  let candidateTab = tabState.candidateTab || ""
+
+  useEffect(() => {
+    if (selectedTab && !tabs.includes(selectedTab)) {
+      setTabs(tabs.concat([selectedTab]))
+    }
+  }, [tabs, selectedTab])
 
   useEffect(() => {
     lsc.set("tabs", tabs)
   }, [tabs, lsc])
-
-  // Ensures the tab is in the tab list.
-  function ensureSelectedTab(name: string) {
-    if (!name) {
-      return
-    }
-
-    if (tabs.includes(name) && name == selectedTab) {
-      return
-    }
-
-    setTabState({
-      tabs: tabs.includes(name) ? tabs : tabs.concat([name]),
-      candidateTab: "",
-      selectedTab: name,
-    })
-  }
 
   // Deletes the resource in the tab list.
   // If we're deleting the current tab, navigate to the next reasonable tab.
   function closeTab(name: string) {
     let newTabs = tabs.filter((t) => t !== name)
     if (name !== selectedTab) {
-      setTabState({
-        tabs: addAllTabIfEmpty(newTabs),
-        candidateTab: "",
-        selectedTab: name,
-      })
+      setTabs(addAllTabIfEmpty(newTabs))
       return
     }
 
@@ -202,11 +175,7 @@ export function OverviewNavProvider(
     // Ideally, we'd use a reducer to set tab state, but we
     // would need to synchronize it with the history state changes.
     // We can revisit this if we see weird behavior.
-    setTabState({
-      tabs: addAllTabIfEmpty(newTabs),
-      candidateTab: "",
-      selectedTab: newSelectedTab,
-    })
+    setTabs(addAllTabIfEmpty(newTabs))
     history.push(newUrl)
   }
 
@@ -214,7 +183,6 @@ export function OverviewNavProvider(
     name = name || ResourceName.all
     let openNew = options?.newTab || false
     let url = pb.path(`/r/${name}/overview`)
-    let tabs = tabState.tabs
     let newTabs
     let selectedIndex = tabs.indexOf(selectedTab)
     let includes = tabs.includes(name)
@@ -237,19 +205,14 @@ export function OverviewNavProvider(
       newTabs = includes ? tabs : tabs.concat([name])
     }
 
-    setTabState({
-      tabs: newTabs,
-      candidateTab: "",
-      selectedTab: name,
-    })
+    setTabs(newTabs)
     history.push(url)
   }
 
   let tabNav = {
     tabs,
-    candidateTab,
+    invalidTab,
     selectedTab,
-    ensureSelectedTab,
     closeTab,
     openResource,
   }
