@@ -2,17 +2,17 @@ import React, { useEffect } from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
-import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark-gray.svg"
+import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
 import {
   AnimDuration,
   Color,
-  ColorAlpha,
   ColorRGBA,
   Font,
   FontSize,
   SizeUnit,
 } from "./style-helpers"
 import { useTabNav } from "./TabNav"
+import { ResourceName } from "./types"
 
 type OverviewTabBarProps = {
   selectedTab: string
@@ -27,6 +27,7 @@ let OverviewTabBarRoot = styled.div`
   background-color: ${Color.grayDarkest};
   border-bottom: 1px solid ${Color.grayLight};
   align-items: stretch;
+  flex-shrink: 0;
 `
 
 export let Tab = styled(Link)`
@@ -82,11 +83,14 @@ export let HomeTab = styled(Link)`
   background-color: transparent;
   display: flex;
   align-items: center;
-  opacity: ${ColorAlpha.almostOpaque};
-  transition: opacity ${AnimDuration.short} ease;
 
-  &:hover {
-    opacity: 1;
+  & .fillStd {
+    transition: fill ${AnimDuration.short} ease;
+    fill: ${Color.grayLightest};
+  }
+  &:hover .fillStd,
+  &.isSelected .fillStd {
+    fill: ${Color.gray7};
   }
 `
 
@@ -147,8 +151,12 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
       </Tab>
     )
   })
+
+  let isSelectedHome = !selectedTab || selectedTab === ResourceName.all
+  let homeTabClasses = isSelectedHome ? "isSelected" : ""
+
   tabEls.unshift(
-    <HomeTab key="logo" to={"/overview"} className={selectedTab}>
+    <HomeTab key="logo" to={"/overview"} className={homeTabClasses}>
       <LogoWordmarkSvg width="57px" />
     </HomeTab>
   )
