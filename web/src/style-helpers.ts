@@ -96,7 +96,6 @@ export enum AnimDuration {
   long = "0.6s",
 }
 
-
 export const mixinHideOnSmallScreen = `
 @media screen and (max-width: ${Width.smallScreen}px) {
   display: none;

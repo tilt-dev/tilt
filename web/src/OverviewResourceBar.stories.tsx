@@ -1,7 +1,12 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewResourceBar from "./OverviewResourceBar"
-import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
+import {
+  nResourceView,
+  oneResourceTest,
+  tenResourceView,
+  twoResourceView,
+} from "./testdata"
 import { UpdateStatus } from "./types"
 
 type Resource = Proto.webviewResource
@@ -44,5 +49,11 @@ export const UpgradeAvailable = () => {
   view.suggestedTiltVersion = "0.18.1"
   view.runningTiltBuild = { version: "0.18.0", dev: false }
   view.versionSettings = { checkUpdates: true }
+  return <OverviewResourceBar view={view} />
+}
+
+export const WithTests = () => {
+  let view = twoResourceView()
+  view.resources.push(oneResourceTest(), oneResourceTest())
   return <OverviewResourceBar view={view} />
 }
