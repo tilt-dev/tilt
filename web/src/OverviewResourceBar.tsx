@@ -1,4 +1,5 @@
 import React, { Component, useRef, useState } from "react"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
 import { incr } from "./analytics"
@@ -8,13 +9,14 @@ import { ReactComponent as MetricsIcon } from "./assets/svg/metrics.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import FloatDialog from "./FloatDialog"
+import { FilterLevel } from "./logfilters"
 import MetricsDialog from "./MetricsDialog"
 import { usePathBuilder } from "./PathBuilder"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotAction, useSnapshotAction } from "./snapshot"
 import { combinedStatus } from "./status"
 import { AnimDuration, Color, FontSize, SizeUnit } from "./style-helpers"
-import { ResourceStatus, TargetType } from "./types"
+import { ResourceName, ResourceStatus, TargetType } from "./types"
 import UpdateDialog, { showUpdate } from "./UpdateDialog"
 
 type MetricsServing = Proto.webviewMetricsServing
@@ -93,6 +95,7 @@ const GraySquare = styled(StatusSquare)`
 
 function ResourceBarStatus(props: ResourceBarStatusProps) {
   // Count the statuses.
+  let pb = usePathBuilder()
   let resources = props.view.resources || []
   let statuses = resources.map((res) => combinedStatus(res))
   let allStatusCount = 0
@@ -148,14 +151,28 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
     boxes.push(<GraySquare key={"gray-" + i} style={style} />)
   }
 
-  let summaryMsg =
-    `${healthyStatusCount}/${allStatusCount} up ` +
-    `| ${unhealthyStatusCount} error${unhealthyStatusCount != 1 ? "s" : ""} ` +
-    `| ${warningCount} warning${warningCount != 1 ? "s" : ""}`
+  let errorLink = pb.path(
+    `/r/${ResourceName.all}/overview?level=${FilterLevel.error}`
+  )
+  let warnLink = pb.path(
+    `/r/${ResourceName.all}/overview?level=${FilterLevel.warn}`
+  )
+  let summary = (
+    <div style={{ marginLeft: "16px" }} key="summary">
+      <span>{`${healthyStatusCount}/${allStatusCount} up |`}&nbsp;</span>
+      <Link to={errorLink}>{`${unhealthyStatusCount} error${
+        unhealthyStatusCount != 1 ? "s" : ""
+      }`}</Link>
+      <span>&nbsp;|&nbsp;</span>
+      <Link to={warnLink}>{`${warningCount} warning${
+        warningCount != 1 ? "s" : ""
+      }`}</Link>
+    </div>
+  )
   return (
     <ResourceBarStatusRoot>
       {boxes}
-      <div style={{ marginLeft: "16px" }}>{summaryMsg}</div>
+      {summary}
     </ResourceBarStatusRoot>
   )
 }
