@@ -45,63 +45,9 @@ type fixture struct {
 	tiltArgs      []string
 }
 
-func copyDir(src string, dest string) error {
-	absSrc, err := filepath.Abs(src)
-	if err != nil {
-		return fmt.Errorf("could not get absolute path for src dir: %v", err)
-	}
-	absDest, err := filepath.Abs(dest)
-	if err != nil {
-		return fmt.Errorf("could not get absolute path for dest dir: %v", err)
-	}
-	return filepath.Walk(absSrc, func(srcPath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if srcPath == absSrc {
-			return nil
-		}
-		if !strings.HasPrefix(srcPath, absSrc) {
-			return fmt.Errorf("invalid src path: %s", srcPath)
-		}
-		destPath := strings.Replace(srcPath, absSrc, absDest, 1)
-		if info.IsDir() {
-			return os.Mkdir(destPath, info.Mode())
-		} else {
-			srcData, err := ioutil.ReadFile(srcPath)
-			if err != nil {
-				return fmt.Errorf("failed to read src file %q: %v", srcPath, err)
-			}
-			if err := ioutil.WriteFile(destPath, srcData, info.Mode()); err != nil {
-				return fmt.Errorf("failed to write dest file %q: %v", destPath, err)
-			}
-		}
-		return nil
-	})
-}
-
-func newFixture(t *testing.T, resourceDir string) *fixture {
-	t.Helper()
-
-	// copy the test resources to a temporary directory that's automatically cleaned up
-	// to avoid tests interacting with local repo source
-	// NOTE(milas): this can be simplified somewhat to use t.TempDir() once on Go 1.15+
-	resourceDir = filepath.Join(packageDir, resourceDir)
-	testDir, err := ioutil.TempDir("", filepath.Base(resourceDir))
-	if err != nil {
-		t.Fatalf("could not create temp dir: %v", err)
-	}
-	t.Logf("Using temporary directory for test: %q", testDir)
-	t.Cleanup(func() {
-		if err := os.RemoveAll(testDir); err != nil {
-			t.Logf("failed to clean up tempdir %q: %v", testDir, err)
-		}
-	})
-	if err := copyDir(resourceDir, testDir); err != nil {
-		t.Fatalf("failed to copy test resources to temp directory: %v", err)
-	}
-
-	err = os.Chdir(testDir)
+func newFixture(t *testing.T, dir string) *fixture {
+	dir = filepath.Join(packageDir, dir)
+	err := os.Chdir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +60,7 @@ func newFixture(t *testing.T, resourceDir string) *fixture {
 		t:             t,
 		ctx:           ctx,
 		cancel:        cancel,
-		dir:           testDir,
+		dir:           dir,
 		logs:          bufsync.NewThreadSafeBuffer(),
 		originalFiles: make(map[string]string),
 		tilt:          client,

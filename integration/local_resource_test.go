@@ -20,6 +20,11 @@ func TestLocalResource(t *testing.T) {
 	f := newFixture(t, "local_resource")
 	defer f.TearDown()
 
+	t.Cleanup(func() {
+		_ = os.Remove(f.testDirPath(cleanupTxt))
+		_ = os.Remove(f.testDirPath("probe-success"))
+	})
+
 	f.TiltWatch()
 
 	const barServeLogMessage = "Running serve cmd: ./hello.sh bar"
