@@ -5670,6 +5670,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 
 // Default load. Fails if there are any warnings.
 func (f *fixture) load(args ...string) {
+	f.t.Helper()
 	f.loadAllowWarnings(args...)
 	if len(f.warnings) != 0 {
 		f.t.Fatalf("Unexpected warnings. Actual: %s", f.warnings)
@@ -5679,6 +5680,7 @@ func (f *fixture) load(args ...string) {
 // Load the manifests, expecting warnings.
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(args ...string) {
+	f.t.Helper()
 	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), model.NewUserConfigState(args))
 	err := tlr.Error
 	if err != nil {
@@ -5994,6 +5996,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				case depsHelper:
 					deps := f.JoinPaths(matcher.deps)
 					assert.ElementsMatch(f.t, deps, lt.Dependencies())
+				case readinessProbeHelper:
+					assert.EqualValues(f.t, matcher.probeSpec, lt.ReadinessProbe)
 				default:
 					f.t.Fatalf("unknown matcher for local target %T", matcher)
 				}
@@ -6397,6 +6401,10 @@ func serveCmd(dir string, cmd string, env []string) serveCmdHelper {
 
 func serveCmdArray(dir string, argv []string, env []string) serveCmdHelper {
 	return serveCmdHelper{model.Cmd{Argv: argv, Dir: dir, Env: env}}
+}
+
+type readinessProbeHelper struct {
+	probeSpec *v1.Probe
 }
 
 type localTargetHelper struct {
