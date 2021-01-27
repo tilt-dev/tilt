@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -69,12 +71,24 @@ func (d *TiltDriver) Up(args []string, out io.Writer) (*TiltUpResponse, error) {
 		"--web-mode=prod",
 	}
 
-	// make an effort to pick a random free port so that integration tests can be run
-	// easily even if there's already a running Tilt instance on the default port
-	if l, err := net.Listen("tcp", ""); err == nil {
-		port := l.Addr().(*net.TCPAddr).Port
-		_ = l.Close()
-		mandatoryArgs = append(mandatoryArgs, fmt.Sprintf("--port=%d", port))
+	// make an effort to pick a random free port if one wasn't explicitly specified
+	// so that integration tests can be run easily even if there's already a running
+	// Tilt instance on the default port
+	var port int
+	hasPortArg := false
+	for _, arg := range args {
+		if strings.HasPrefix("--port=", arg) {
+			hasPortArg = true
+			port, _ = strconv.Atoi(strings.SplitN(arg, "=", 2)[1])
+			break
+		}
+	}
+	if !hasPortArg {
+		if l, err := net.Listen("tcp", ""); err == nil {
+			port = l.Addr().(*net.TCPAddr).Port
+			_ = l.Close()
+			mandatoryArgs = append(mandatoryArgs, fmt.Sprintf("--port=%d", port))
+		}
 	}
 
 	cmd := d.cmd(append(mandatoryArgs, args...), out)
@@ -87,6 +101,7 @@ func (d *TiltDriver) Up(args []string, out io.Writer) (*TiltUpResponse, error) {
 	response := &TiltUpResponse{
 		done:    ch,
 		process: cmd.Process,
+		port:    port,
 	}
 	go func() {
 		err := cmd.Wait()
@@ -111,6 +126,7 @@ type TiltUpResponse struct {
 	mu   sync.Mutex
 
 	process *os.Process
+	port    int
 }
 
 func (r *TiltUpResponse) Done() <-chan struct{} {
