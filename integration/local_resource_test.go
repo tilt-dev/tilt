@@ -28,13 +28,13 @@ func TestLocalResource(t *testing.T) {
 	f.TiltWatch()
 
 	const barServeLogMessage = "Running serve cmd: ./hello.sh bar"
-	const readinessProbeSuccessMessage = `"[readiness probe] fake probe success message"`
+	const readinessProbeSuccessMessage = `[readiness probe] fake probe success message`
 
 	require.NoError(t, f.logs.WaitUntilContains("hello! foo #1", 5*time.Second))
 
 	// write a sentinel file for the probe to find and change its result
 	require.NoError(t, ioutil.WriteFile(f.testDirPath("probe-success"), nil, 0777))
-	require.NoError(t, f.logs.WaitUntilContains("[readiness probe] fake probe success message", 5*time.Second))
+	require.NoError(t, f.logs.WaitUntilContains(readinessProbeSuccessMessage, 5*time.Second))
 
 	// wait for second resource to start and then ensure that the order in the logs is as expected
 	require.NoError(t, f.logs.WaitUntilContains(barServeLogMessage, 5*time.Second))
