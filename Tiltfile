@@ -1,3 +1,4 @@
+allow_k8s_contexts('kind-kind')
 username = str(local('whoami')).rstrip('\n')
 experimental_analytics_report({'user.name': username})
 analytics_settings(enable=True)
@@ -57,3 +58,7 @@ go_vendor()
 yarn_install()
 jest("web")
 web_lint()
+
+
+test('beep', 'echo beep', trigger_mode=TRIGGER_MODE_MANUAL)
+test('boop', 'echo boop', trigger_mode=TRIGGER_MODE_MANUAL)

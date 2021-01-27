@@ -23,16 +23,29 @@ export default {
   ],
 }
 
+function OverviewResourcePaneHarness(props: {
+  name: string
+  view: Proto.webviewView
+}) {
+  let { name, view } = props
+  let entry = name ? `/r/${props.name}/overview` : `/overview`
+  let resources = view?.resources || []
+  let validateTab = (name: string) => resources.some((res) => res.name == name)
+  return (
+    <MemoryRouter initialEntries={[entry]}>
+      <OverviewNavProvider validateTab={validateTab}>
+        <OverviewResourcePane view={view} />
+      </OverviewNavProvider>
+    </MemoryRouter>
+  )
+}
+
 export const TwoResources = () => (
-  <OverviewNavProvider candidateTabForTesting={"vigoda"}>
-    <OverviewResourcePane view={twoResourceView()} />
-  </OverviewNavProvider>
+  <OverviewResourcePaneHarness name={"vigoda"} view={twoResourceView()} />
 )
 
 export const TenResources = () => (
-  <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
-    <OverviewResourcePane view={tenResourceView()} />
-  </OverviewNavProvider>
+  <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
 )
 
 export const FullResourceBar = () => {
@@ -44,11 +57,7 @@ export const FullResourceBar = () => {
     { url: "http://localhost:4003" },
   ]
   res.podID = "my-pod-deadbeef"
-  return (
-    <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
-      <OverviewResourcePane view={view} />
-    </OverviewNavProvider>
-  )
+  return <OverviewResourcePaneHarness name="vigoda_1" view={view} />
 }
 
 export const TenResourcesWithLogStore = () => {
@@ -70,9 +79,7 @@ export const TenResourcesWithLogStore = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
-        <OverviewResourcePane view={tenResourceView()} />
-      </OverviewNavProvider>
+      <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
     </LogStoreProvider>
   )
 }
@@ -101,9 +108,7 @@ export const TenResourcesWithLongLogLines = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
-        <OverviewResourcePane view={tenResourceView()} />
-      </OverviewNavProvider>
+      <OverviewResourcePaneHarness name={"vigoda_1"} view={tenResourceView()} />
     </LogStoreProvider>
   )
 }
@@ -135,21 +140,15 @@ export const TenResourcesWithBuildLogAndPodLog = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
-        <OverviewResourcePane view={tenResourceView()} />
-      </OverviewNavProvider>
+      <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
     </LogStoreProvider>
   )
 }
 
 export const OneHundredResources = () => (
-  <OverviewNavProvider candidateTabForTesting={"vigoda_1"}>
-    <OverviewResourcePane view={nResourceView(100)} />
-  </OverviewNavProvider>
+  <OverviewResourcePaneHarness name="vigoda_1" view={nResourceView(100)} />
 )
 
 export const NotFound = () => (
-  <OverviewNavProvider candidateTabForTesting={"does-not-exist"}>
-    <OverviewResourcePane view={twoResourceView()} />
-  </OverviewNavProvider>
+  <OverviewResourcePaneHarness name="does-not-exist" view={twoResourceView()} />
 )

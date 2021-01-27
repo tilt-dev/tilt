@@ -1,22 +1,26 @@
 import React from "react"
 import styled, { ThemeProvider } from "styled-components"
-import "./SidebarTriggerButton.scss"
-import { Width } from "./style-helpers"
+import { SizeUnit, Width } from "./style-helpers"
 import { TriggerMode } from "./types"
 
 let TriggerModeToggleStyle = styled.button`
-  background-position: center center;
+  position: absolute;
+  right: ${SizeUnit(1)};
+  bottom: ${SizeUnit(1)};
   background-color: ${(props) =>
     props.theme.isManualTriggerMode ? "violet" : "green"};
-  /* -webkit-mask: url("assets/svg/trigger-button.svg") no-repeat 50% 50%;
-  mask: url("assets/svg/trigger-button.svg") no-repeat 50% 50%; */
+  width: ${SizeUnit(1)};
+  height: ${SizeUnit(1)};
+
+  /* 
+  background-position: center center;
   border: 0 none;
   width: ${Width.sidebarTriggerButton}px;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 0; */
 
   cursor: pointer;
 `

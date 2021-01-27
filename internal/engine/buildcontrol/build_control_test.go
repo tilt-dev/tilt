@@ -78,7 +78,9 @@ func TestK8sDependsOnLocal(t *testing.T) {
 		StartTime:  time.Now(),
 		FinishTime: time.Now(),
 	})
-	local1.State.RuntimeState = store.LocalRuntimeState{HasSucceededAtLeastOnce: true}
+	lrs := local1.State.LocalRuntimeState()
+	lrs.LastReadyOrSucceededTime = time.Now()
+	local1.State.RuntimeState = lrs
 
 	f.assertNextTargetToBuild("k8s1")
 	k8s1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}

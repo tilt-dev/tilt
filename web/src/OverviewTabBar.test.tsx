@@ -8,7 +8,10 @@ it("propagate selected tab", () => {
   let capturedNav: any = null
   const root = mount(
     <MemoryRouter initialEntries={["/r/vigoda/overview"]}>
-      <OverviewNavProvider tabsForTesting={["vigoda", "snack"]}>
+      <OverviewNavProvider
+        tabsForTesting={["vigoda", "snack"]}
+        validateTab={() => true}
+      >
         <OverviewTabBar selectedTab="vigoda" />
         <TabNavContextConsumer>
           {(nav) => void (capturedNav = nav)}

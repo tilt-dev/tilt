@@ -21,7 +21,7 @@ export function InterfaceVersionProvider(props: PropsWithChildren<{}>) {
   let pathBuilder = usePathBuilder()
   let history = useHistory()
   let [isNew, setNew] = useState((): boolean => {
-    return Cookies.get("tilt-interface-version") === "overview"
+    return Cookies.get("tilt-interface-version") !== "legacy"
   })
 
   let isNewDefault = () => isNew
@@ -29,7 +29,7 @@ export function InterfaceVersionProvider(props: PropsWithChildren<{}>) {
     let newDefault = !isNew
     setNew(newDefault)
 
-    Cookies.set("tilt-interface-version", newDefault ? "overview" : "")
+    Cookies.set("tilt-interface-version", newDefault ? "" : "legacy")
   }
 
   return (

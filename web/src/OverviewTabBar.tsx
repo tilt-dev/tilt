@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"
+import React from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
@@ -115,19 +115,6 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
   let nav = useTabNav()
   let tabs = nav.tabs
   let selectedTab = props.selectedTab
-  let candidateTab = nav.candidateTab
-
-  // There are two bits of state to determine the selected tab:
-  //
-  // 1) If the user navigates to a url, we need to pull the candidate tab name from the URL.
-  // 2) Then we need to look at the Tilt state to see if that resource exists.
-  //
-  // If the resource exists, then we select that tab. We need propagate it back
-  // up to the context provider. This creates weird data flow, but is probably
-  // ok for this simple case.
-  useEffect(() => {
-    nav.ensureSelectedTab(selectedTab)
-  }, [selectedTab, nav.candidateTab])
 
   let onClose = (e: any, name: string) => {
     e.stopPropagation()
@@ -152,7 +139,7 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
     )
   })
 
-  let isSelectedHome = !selectedTab || selectedTab === ResourceName.all
+  let isSelectedHome = !selectedTab
   let homeTabClasses = isSelectedHome ? "isSelected" : ""
 
   tabEls.unshift(
