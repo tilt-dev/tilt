@@ -3,6 +3,7 @@ package integration
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"sync"
@@ -67,6 +68,15 @@ func (d *TiltDriver) Up(args []string, out io.Writer) (*TiltUpResponse, error) {
 		// Even if we're on a debug build, don't start a debug webserver
 		"--web-mode=prod",
 	}
+
+	// make an effort to pick a random free port so that integration tests can be run
+	// easily even if there's already a running Tilt instance on the default port
+	if l, err := net.Listen("tcp", ""); err == nil {
+		port := l.Addr().(*net.TCPAddr).Port
+		_ = l.Close()
+		mandatoryArgs = append(mandatoryArgs, fmt.Sprintf("--port=%d", port))
+	}
+
 	cmd := d.cmd(append(mandatoryArgs, args...), out)
 	err := cmd.Start()
 	if err != nil {
