@@ -1,9 +1,11 @@
 package local
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -188,10 +190,18 @@ func processReadinessProbeUpdate(
 		if !stillHasSameProcNum() {
 			return
 		}
-		if status != prober.Success && output != "" {
+		if output != "" {
 			w := logger.Get(ctx).Writer(logger.VerboseLvl)
-			// TODO(milas): improve output to distinguish from process stdout/stderr logs
-			_, _ = io.WriteString(w, output)
+
+			var logMessage strings.Builder
+			s := bufio.NewScanner(strings.NewReader(output))
+			for s.Scan() {
+				logMessage.WriteString("[readiness probe] ")
+				logMessage.WriteString(s.Text())
+				logMessage.WriteRune('\n')
+			}
+
+			_, _ = io.WriteString(w, logMessage.String())
 		}
 		ready := status == prober.Success || status == prober.Warning
 		st.Dispatch(LocalServeReadinessProbeAction{
