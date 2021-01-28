@@ -171,11 +171,10 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 			logger.Get(ctx).Warnf("Invalid readiness probe: %v", err)
 		} else {
 			proc.probeWorker = probeWorker
-			go proc.probeWorker.Run(ctx)
 		}
 	}
 
-	go processStatuses(statusCh, st, spec.ManifestName, proc)
+	go processStatuses(ctx, statusCh, st, spec.ManifestName, proc)
 
 	spanID := SpanIDForServeLog(proc.procNum)
 	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
@@ -212,11 +211,13 @@ func processReadinessProbeUpdate(
 }
 
 func processStatuses(
+	ctx context.Context,
 	statusCh chan statusAndMetadata,
 	st store.RStore,
 	manifestName model.ManifestName,
 	proc *currentProcess) {
 
+	var initProbeWorker sync.Once
 	stillHasSameProcNum := proc.stillHasSameProcNum()
 
 	for sm := range statusCh {
@@ -229,6 +230,9 @@ func processStatuses(
 			runtimeStatus = model.RuntimeStatusError
 		} else if sm.status == Running {
 			if proc.probeWorker != nil {
+				initProbeWorker.Do(func() {
+					go proc.probeWorker.Run(ctx)
+				})
 				runtimeStatus = model.RuntimeStatusPending
 			} else {
 				runtimeStatus = model.RuntimeStatusOK
