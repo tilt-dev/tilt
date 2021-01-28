@@ -1,5 +1,6 @@
 import React, { useEffect } from "react"
 import styled from "styled-components"
+import { Alert, combinedAlerts } from "./alerts"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
@@ -45,6 +46,13 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     selectedTab = r.name
   }
 
+  let alerts: Alert[] = []
+  if (r) {
+    alerts = combinedAlerts(r, null)
+  } else if (all) {
+    resources.forEach((r) => alerts.push(...combinedAlerts(r, null)))
+  }
+
   // Hide the HTML element scrollbars, since this pane does all scrolling internally.
   // TODO(nick): Remove this when the old UI is deleted.
   useEffect(() => {
@@ -57,7 +65,7 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
       <OverviewResourceBar {...props} />
       <Main>
         <OverviewResourceSidebar {...props} name={name} />
-        <OverviewResourceDetails resource={r} name={name} />
+        <OverviewResourceDetails resource={r} name={name} alerts={alerts} />
       </Main>
     </OverviewResourcePaneRoot>
   )

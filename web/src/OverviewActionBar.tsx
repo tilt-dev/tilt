@@ -6,6 +6,7 @@ import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import React, { useRef, useState } from "react"
 import { useHistory } from "react-router"
 import styled from "styled-components"
+import { Alert } from "./alerts"
 import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
@@ -16,7 +17,13 @@ import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShort
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 type OverviewActionBarProps = {
+  // The current resource. May be null if there is no resource.
   resource?: Proto.webviewResource
+
+  // All the alerts for the current resource.
+  alerts?: Alert[]
+
+  // The current log filter.
   filterSet: FilterSet
 }
 
@@ -31,6 +38,9 @@ type FilterSourceMenuProps = {
 
   // The current filter set.
   filterSet: FilterSet
+
+  // The alerts for the current resource.
+  alerts?: Alert[]
 }
 
 let useMenuStyles = makeStyles((theme) => ({
@@ -43,6 +53,7 @@ let useMenuStyles = makeStyles((theme) => ({
 // Menu to filter logs by source (e.g., build-only, runtime-only).
 function FilterSourceMenu(props: FilterSourceMenuProps) {
   let { id, anchorEl, level, open, filterSet, onClose } = props
+  let alerts = props.alerts || []
 
   let classes = useMenuStyles()
   let history = useHistory()
@@ -68,6 +79,29 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
     horizontal: "right",
   }
 
+  let allCount: null | number = null
+  let buildCount: null | number = null
+  let runtimeCount: null | number = null
+  if (level != FilterLevel.all) {
+    allCount = alerts.reduce(
+      (acc, alert) => (alert.level == level ? acc + 1 : acc),
+      0
+    )
+    buildCount = alerts.reduce(
+      (acc, alert) =>
+        alert.level == level && alert.source == FilterSource.build
+          ? acc + 1
+          : acc,
+      0
+    )
+    runtimeCount = alerts.reduce(
+      (acc, alert) =>
+        alert.level == level && alert.source == FilterSource.runtime
+          ? acc + 1
+          : acc,
+      0
+    )
+  }
   return (
     <Menu
       id={id}
@@ -85,21 +119,21 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
         classes={classes}
         onClick={onClick}
       >
-        All Sources
+        All Sources{allCount === null ? "" : ` (${allCount})`}
       </MenuItem>
       <MenuItem
         data-filter={FilterSource.build}
         classes={classes}
         onClick={onClick}
       >
-        Build Only
+        Build Only{buildCount === null ? "" : ` (${buildCount})`}
       </MenuItem>
       <MenuItem
         data-filter={FilterSource.runtime}
         classes={classes}
         onClick={onClick}
       >
-        Runtime Only
+        Runtime Only{runtimeCount === null ? "" : ` (${runtimeCount})`}
       </MenuItem>
     </Menu>
   )
@@ -188,15 +222,23 @@ type FilterRadioButtonProps = {
 
   // The current filter set.
   filterSet: FilterSet
+
+  // All the alerts for the current resource.
+  alerts?: Alert[]
 }
 
 export function FilterRadioButton(props: FilterRadioButtonProps) {
   let { level, filterSet } = props
+  let alerts = props.alerts || []
   let leftText = "All Levels"
+  let count = alerts.reduce(
+    (acc, alert) => (alert.level == level ? acc + 1 : acc),
+    0
+  )
   if (level === FilterLevel.warn) {
-    leftText = "Warnings"
+    leftText = `Warnings (${count})`
   } else if (level === FilterLevel.error) {
-    leftText = "Errors"
+    leftText = `Errors (${count})`
   }
 
   let isEnabled = level === props.filterSet.level
@@ -263,6 +305,7 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
         anchorEl={sourceMenuAnchor}
         filterSet={filterSet}
         level={level}
+        alerts={alerts}
         onClose={() => setSourceMenuAnchor(null)}
       />
     </ButtonPill>
@@ -369,7 +412,7 @@ function openEndpointUrl(url: string) {
 }
 
 export default function OverviewActionBar(props: OverviewActionBarProps) {
-  let { resource, filterSet } = props
+  let { resource, filterSet, alerts } = props
   let manifestName = resource?.name || ""
   let endpoints = resource?.endpointLinks || []
   let podId = resource?.podID || ""
@@ -420,14 +463,17 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         <FilterRadioButton
           level={FilterLevel.all}
           filterSet={props.filterSet}
+          alerts={alerts}
         />
         <FilterRadioButton
           level={FilterLevel.error}
           filterSet={props.filterSet}
+          alerts={alerts}
         />
         <FilterRadioButton
           level={FilterLevel.warn}
           filterSet={props.filterSet}
+          alerts={alerts}
         />
       </ActionBarBottomRow>
     </ActionBarRoot>
