@@ -169,9 +169,14 @@ func TestBuildControllerLocalResource(t *testing.T) {
 	defer f.TearDown()
 
 	dep := f.JoinPath("stuff.json")
-	manifest := manifestbuilder.New(f, "yarn-add").
+	manifest := manifestbuilder.New(f, "local").
 		WithLocalResource("echo beep boop", []string{dep}).Build()
 	f.Start([]model.Manifest{manifest})
+
+	f.WaitUntilManifestState("local target manifest state initialized correctly", "local", func(ms store.ManifestState) bool {
+		lrs := ms.RuntimeState.(store.LocalRuntimeState)
+		return lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus() == ""
+	})
 
 	call := f.nextCall()
 	lt := manifest.LocalTarget()
@@ -179,8 +184,13 @@ func TestBuildControllerLocalResource(t *testing.T) {
 
 	f.fsWatcher.Events <- watch.NewFileEvent(dep)
 
-	call = f.nextCall()
+	call = f.nextCallComplete()
 	assert.Equal(t, lt, call.local())
+
+	f.WaitUntilManifestState("local target manifest state not updated", "local", func(ms store.ManifestState) bool {
+		lrs := ms.RuntimeState.(store.LocalRuntimeState)
+		return !lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus() == model.RuntimeStatusNotApplicable
+	})
 
 	err := f.Stop()
 	assert.NoError(t, err)
