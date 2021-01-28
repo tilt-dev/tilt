@@ -222,7 +222,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	tlr.UpdateSettings = us
 
 	duration := time.Since(start)
-	s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
+	if tlr.Error == nil {
+		s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
+	}
 	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration)
 	reportTiltfileExecMetrics(ctx, duration, err != nil)
 
