@@ -134,8 +134,8 @@ it("doesn't show SidebarOptionSetter if no tests present", () => {
   let optSetter = sidebar.find(SidebarOptionsSetter)
   expect(optSetter).toHaveLength(0)
 })
+
 // TODO:
 //   - hide/show a type doesn't affect pinned
-//   - checkboxes for tests/resources don't show when no tests present
 //   - if test present; hide/show tests/resources; and then test removed (e.g. commented
 //     out of tiltfile) then we hide the check boxes AND ALSO reset filters to show everything
