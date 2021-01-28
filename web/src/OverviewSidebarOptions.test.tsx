@@ -112,6 +112,28 @@ it("hides resources and tests when both unchecked", () => {
   assertSidebarItemsAndOptions(root, ["(Tiltfile)"], false, false)
 })
 
+it("doesn't show SidebarOptionSetter if no tests present", () => {
+  let items = [tiltfileResource(), oneResource()].map((r) => new SidebarItem(r))
+  const root = mount(
+    <MemoryRouter>
+      <LocalStorageContextProvider tiltfileKey={"test"}>
+        <SidebarPinContextProvider>
+          <SidebarResources
+            items={items}
+            selected={""}
+            resourceView={ResourceView.Log}
+            pathBuilder={pathBuilder}
+          />
+        </SidebarPinContextProvider>
+      </LocalStorageContextProvider>
+    </MemoryRouter>
+  )
+  let sidebar = root.find(SidebarResources)
+  expect(sidebar).toHaveLength(1)
+
+  let optSetter = sidebar.find(SidebarOptionsSetter)
+  expect(optSetter).toHaveLength(0)
+})
 // TODO:
 //   - hide/show a type doesn't affect pinned
 //   - checkboxes for tests/resources don't show when no tests present
