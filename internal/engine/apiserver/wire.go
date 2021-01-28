@@ -6,4 +6,6 @@ import (
 
 var WireSet = wire.NewSet(
 	NewController,
+	NewTiltServerOptions,
+	NewTiltClientset,
 )

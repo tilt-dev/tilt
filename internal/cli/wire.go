@@ -24,6 +24,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/apiserver"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
@@ -76,6 +77,7 @@ var BaseWireSet = wire.NewSet(
 
 	ProvideDeferredExporter,
 	metrics.WireSet,
+	apiserver.WireSet,
 	user.WireSet,
 	dockercompose.NewDockerComposeClient,
 

@@ -1,7 +1,9 @@
 local_resource(
   'storybook',
   serve_cmd='yarn run storybook -- --ci',
-  links=['http://localhost:9009'])
+  links=['http://localhost:9009'],
+  auto_init=False,
+  trigger_mode=TRIGGER_MODE_MANUAL)
 
 local_resource(
   'prettier',

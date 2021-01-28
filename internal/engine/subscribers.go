@@ -3,6 +3,7 @@ package engine
 import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/apiserver"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
@@ -48,6 +49,7 @@ func ProvideSubscribers(
 	ec *exit.Controller,
 	mc *metrics.Controller,
 	mmc *metrics.ModeController,
+	ac *apiserver.Controller,
 ) []store.Subscriber {
 	return []store.Subscriber{
 		hud,
@@ -76,5 +78,6 @@ func ProvideSubscribers(
 		ec,
 		mc,
 		mmc,
+		ac,
 	}
 }
