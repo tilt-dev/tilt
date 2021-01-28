@@ -127,9 +127,8 @@ var BaseWireSet = wire.NewSet(
 	provideWebURL,
 	provideWebPort,
 	provideWebHost,
-	server.ProvideHeadsUpServer,
+	server.WireSet,
 	provideAssetServer,
-	server.ProvideHeadsUpServerController,
 
 	tracer.NewSpanCollector,
 	wire.Bind(new(sdktrace.SpanProcessor), new(*tracer.SpanCollector)),
