@@ -463,9 +463,17 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if mt.Manifest.IsLocal() {
 		lrs := ms.LocalRuntimeState()
-		if err == nil && mt.Manifest.LocalTarget().ReadinessProbe == nil {
-			// only update the succeeded time if there's no readiness probe
-			lrs.LastReadyOrSucceededTime = time.Now()
+		if err == nil {
+			lt := mt.Manifest.LocalTarget()
+			if lt.ReadinessProbe == nil {
+				// only update the succeeded time if there's no readiness probe
+				lrs.LastReadyOrSucceededTime = time.Now()
+			}
+			if lt.ServeCmd.Empty() {
+				// local resources without a serve command are jobs that run and
+				// terminate; so there's no real runtime status
+				lrs.Status = model.RuntimeStatusNotApplicable
+			}
 		}
 		ms.RuntimeState = lrs
 	}
@@ -767,13 +775,19 @@ func handleSetTiltfileArgsAction(state *store.EngineState, action server.SetTilt
 }
 
 func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState, action local.LocalServeStatusAction) {
-	ms, ok := state.ManifestState(action.ManifestName)
+	mt, ok := state.ManifestTargets[action.ManifestName]
 	if !ok {
 		logger.Get(ctx).Infof("got runtime status information for unknown local resource %s", action.ManifestName)
 	}
+	ms := mt.State
 
 	lrs := ms.LocalRuntimeState()
-	lrs.State = action.State
+
+	if action.Status == model.RuntimeStatusError {
+		lrs.Ready = false
+	}
+
+	lrs.Status = action.Status
 	lrs.PID = action.PID
 	lrs.SpanID = action.SpanID
 	ms.RuntimeState = lrs
@@ -786,7 +800,17 @@ func handleLocalServeReadinessProbeAction(ctx context.Context, state *store.Engi
 	}
 
 	lrs := ms.LocalRuntimeState()
-	lrs.SetReadinessProbeState(action.Ready)
+	lrs.Ready = action.Ready
+	if action.Ready {
+		lrs.LastReadyOrSucceededTime = time.Now()
+		if lrs.Status == "" || lrs.Status == model.RuntimeStatusPending {
+			// only transition to OK if currently pending AND ready
+			lrs.Status = model.RuntimeStatusOK
+		}
+	} else if lrs.Status == "" || lrs.Status == model.RuntimeStatusOK {
+		// only transition to pending if currently OK and NOT ready
+		lrs.Status = model.RuntimeStatusPending
+	}
 	ms.RuntimeState = lrs
 }
 

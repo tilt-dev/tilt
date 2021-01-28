@@ -37,43 +37,19 @@ type RuntimeState interface {
 type ProbeState int
 
 type LocalRuntimeState struct {
-	State                    model.ProcessState
+	Status                   model.RuntimeStatus
 	PID                      int
 	SpanID                   model.LogSpanID
 	LastReadyOrSucceededTime time.Time
-
-	readinessProbeSuccessful bool
+	Ready                    bool
 }
-
-func (LocalRuntimeState) RuntimeState() {}
 
 var _ RuntimeState = LocalRuntimeState{}
 
-func NewLocalRuntimeState(m model.Manifest) LocalRuntimeState {
-	var state LocalRuntimeState
-	if m.LocalTarget().ReadinessProbe == nil {
-		// targets with a readiness probe are failing by default (until probe passes)
-		// while targets without a readiness probe are initialized to success to
-		// prevent the process from never appearing as ready
-		state.readinessProbeSuccessful = true
-	}
-	return state
-}
+func (LocalRuntimeState) RuntimeState() {}
 
 func (l LocalRuntimeState) RuntimeStatus() model.RuntimeStatus {
-	if l.Ready() {
-		return model.RuntimeStatusOK
-	}
-
-	switch l.State {
-	case model.ProcessStateRunning:
-		// process is running but not ready
-		return model.RuntimeStatusPending
-	case model.ProcessStateTerminated:
-		return model.RuntimeStatusError
-	default:
-		return model.RuntimeStatusUnknown
-	}
+	return l.Status
 }
 
 func (l LocalRuntimeState) RuntimeStatusError() error {
@@ -86,20 +62,6 @@ func (l LocalRuntimeState) RuntimeStatusError() error {
 
 func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
 	return !l.LastReadyOrSucceededTime.IsZero()
-}
-
-func (l LocalRuntimeState) Ready() bool {
-	if l.State == model.ProcessStateRunning {
-		return l.readinessProbeSuccessful
-	}
-	return false
-}
-
-func (l *LocalRuntimeState) SetReadinessProbeState(success bool) {
-	if success {
-		l.LastReadyOrSucceededTime = time.Now()
-	}
-	l.readinessProbeSuccessful = success
 }
 
 type K8sRuntimeState struct {
