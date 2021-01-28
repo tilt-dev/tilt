@@ -1,6 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import { SidebarOptionsSetter } from "./OverviewSidebarOptions"
+import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -157,7 +157,7 @@ export class SidebarResources extends React.Component<
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
           {testsPresent ? (
-            <SidebarOptionsSetter
+            <OverviewSidebarOptions
               curState={this.state}
               toggleShowResources={this.toggleShowResources}
               toggleShowTests={this.toggleShowTests}

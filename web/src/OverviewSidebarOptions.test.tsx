@@ -2,7 +2,7 @@ import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import { LocalStorageContextProvider } from "./LocalStorage"
-import { SidebarOptionsSetter } from "./OverviewSidebarOptions"
+import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView from "./SidebarItemView"
@@ -29,7 +29,7 @@ function assertSidebarItemsAndOptions(
     expect(items.at(i).props().item.name).toEqual(names[i])
   }
 
-  let optSetter = sidebar.find(SidebarOptionsSetter)
+  let optSetter = sidebar.find(OverviewSidebarOptions)
   expect(optSetter).toHaveLength(1)
   expect(optSetter.find("input#resources").props().checked).toEqual(
     expectShowResources
@@ -131,7 +131,7 @@ it("doesn't show SidebarOptionSetter if no tests present", () => {
   let sidebar = root.find(SidebarResources)
   expect(sidebar).toHaveLength(1)
 
-  let optSetter = sidebar.find(SidebarOptionsSetter)
+  let optSetter = sidebar.find(OverviewSidebarOptions)
   expect(optSetter).toHaveLength(0)
 })
 

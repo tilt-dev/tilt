@@ -2,21 +2,21 @@ import React from "react"
 import styled from "styled-components"
 import { SidebarOptions } from "./types"
 
-const SidebarOptionsSetterStyle = styled.div`
+const OverviewSidebarOptionsRoot = styled.div`
   display: flex;
 `
 
-type SidebarResourceTypeFilterProps = {
+type OverviewSidebarOptionsProps = {
   curState: SidebarOptions
   toggleShowResources: () => void
   toggleShowTests: () => void
 }
 
-export function SidebarOptionsSetter(
-  props: SidebarResourceTypeFilterProps
+export function OverviewSidebarOptions(
+  props: OverviewSidebarOptionsProps
 ): JSX.Element {
   return (
-    <SidebarOptionsSetterStyle>
+    <OverviewSidebarOptionsRoot>
       <div>
         <input
           type="checkbox"
@@ -37,6 +37,6 @@ export function SidebarOptionsSetter(
         />
         <label htmlFor="tests">Tests</label>
       </div>
-    </SidebarOptionsSetterStyle>
+    </OverviewSidebarOptionsRoot>
   )
 }
