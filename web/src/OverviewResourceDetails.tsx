@@ -1,5 +1,6 @@
 import React from "react"
 import styled from "styled-components"
+import { Alert } from "./alerts"
 import { useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import OverviewLogPane from "./OverviewLogPane"
@@ -8,6 +9,7 @@ import { ResourceName } from "./types"
 
 type OverviewResourceDetailsProps = {
   resource?: Proto.webviewResource
+  alerts?: Alert[]
   name: string
 }
 
@@ -30,7 +32,7 @@ let NotFound = styled.div`
 export default function OverviewResourceDetails(
   props: OverviewResourceDetailsProps
 ) {
-  let { name, resource } = props
+  let { name, resource, alerts } = props
   let manifestName = resource?.name || ""
   let all = name === "" || name === ResourceName.all
   let notFound = !all && !manifestName
@@ -38,7 +40,11 @@ export default function OverviewResourceDetails(
 
   return (
     <OverviewResourceDetailsRoot>
-      <OverviewActionBar resource={resource} filterSet={filterSet} />
+      <OverviewActionBar
+        resource={resource}
+        filterSet={filterSet}
+        alerts={alerts}
+      />
       {notFound ? (
         <NotFound>No resource '{name}'</NotFound>
       ) : (

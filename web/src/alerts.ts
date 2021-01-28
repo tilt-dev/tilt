@@ -1,4 +1,5 @@
 import { podStatusIsCrash, podStatusIsError } from "./constants"
+import { FilterLevel, FilterSource } from "./logfilters"
 import { logLinesToString } from "./logs"
 import LogStore from "./LogStore"
 
@@ -6,7 +7,13 @@ type Resource = Proto.webviewResource
 type K8sResourceInfo = Proto.webviewK8sResourceInfo
 
 export type Alert = {
+  // TODO(nick): alertType is largely obsolete now that we have
+  // source and level
   alertType: string
+
+  source: FilterSource
+  level: FilterLevel
+
   header: string
   msg: string
   timestamp: string
@@ -106,6 +113,8 @@ function podStatusIsErrAlert(resource: Resource): Alert {
     msg: msg,
     timestamp: rInfo.podCreationTime ?? "",
     resourceName: resource.name ?? "",
+    level: FilterLevel.error,
+    source: FilterSource.runtime,
   }
 }
 function podRestartAlert(r: Resource): Alert {
@@ -141,6 +150,8 @@ function podRestartAlert(r: Resource): Alert {
     timestamp: rInfo.podCreationTime ?? "",
     resourceName: r.name ?? "",
     dismissHandler: dismissHandler,
+    level: FilterLevel.warn,
+    source: FilterSource.runtime,
   }
 }
 function crashRebuildAlert(r: Resource): Alert {
@@ -152,6 +163,8 @@ function crashRebuildAlert(r: Resource): Alert {
     msg: msg,
     timestamp: rInfo.podCreationTime ?? "",
     resourceName: r.name ?? "",
+    level: FilterLevel.error,
+    source: FilterSource.runtime,
   }
 }
 function buildFailedAlert(
@@ -171,6 +184,8 @@ function buildFailedAlert(
     msg: msg,
     timestamp: history[0].finishTime ?? "",
     resourceName: resource.name ?? "",
+    level: FilterLevel.error,
+    source: FilterSource.build,
   }
 }
 
@@ -190,6 +205,8 @@ function buildWarningsAlerts(resource: Resource): Alert[] {
         msg: w,
         timestamp: history[0].finishTime ?? "",
         resourceName: resource.name ?? "",
+        level: FilterLevel.warn,
+        source: FilterSource.build,
       })
     })
   }

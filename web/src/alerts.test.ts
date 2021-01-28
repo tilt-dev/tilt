@@ -7,6 +7,7 @@ import {
   PodStatusErrorType,
   WarningErrorType,
 } from "./alerts"
+import { FilterLevel, FilterSource } from "./logfilters"
 import LogStore from "./LogStore"
 import { TriggerMode } from "./types"
 
@@ -34,6 +35,8 @@ describe("combinedAlerts", () => {
         timestamp: "",
         header: "",
         resourceName: "snack",
+        level: FilterLevel.error,
+        source: FilterSource.runtime,
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -55,6 +58,8 @@ describe("combinedAlerts", () => {
         timestamp: "",
         header: "Restarts: 1",
         resourceName: "snack",
+        level: FilterLevel.warn,
+        source: FilterSource.runtime,
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -82,6 +87,8 @@ describe("combinedAlerts", () => {
         timestamp: "10:00AM",
         header: "Build error",
         resourceName: "snack",
+        level: FilterLevel.error,
+        source: FilterSource.build,
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -110,6 +117,8 @@ describe("combinedAlerts", () => {
         timestamp: "10:00AM",
         header: "Pod crashed",
         resourceName: "snack",
+        level: FilterLevel.error,
+        source: FilterSource.runtime,
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -135,6 +144,8 @@ describe("combinedAlerts", () => {
         timestamp: "10:00am",
         header: "snack",
         resourceName: "snack",
+        level: FilterLevel.warn,
+        source: FilterSource.build,
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -173,6 +184,8 @@ describe("combinedAlerts", () => {
         timestamp: "10:00AM",
         header: "Restarts: 1",
         resourceName: "snack",
+        level: FilterLevel.warn,
+        source: FilterSource.runtime,
       },
       {
         alertType: BuildFailedErrorType,
@@ -180,6 +193,8 @@ describe("combinedAlerts", () => {
         timestamp: "10:00AM",
         header: "Build error",
         resourceName: "snack",
+        level: FilterLevel.error,
+        source: FilterSource.build,
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -209,6 +224,8 @@ describe("combinedAlerts", () => {
         timestamp: "",
         header: "Pod crashed",
         resourceName: "snack",
+        level: FilterLevel.error,
+        source: FilterSource.runtime,
       },
       {
         alertType: BuildFailedErrorType,
@@ -216,6 +233,8 @@ describe("combinedAlerts", () => {
         timestamp: "10:00am",
         header: "Build error",
         resourceName: "snack",
+        level: FilterLevel.error,
+        source: FilterSource.build,
       },
       {
         alertType: WarningErrorType,
@@ -223,6 +242,8 @@ describe("combinedAlerts", () => {
         timestamp: "10:00am",
         header: "snack",
         resourceName: "snack",
+        level: FilterLevel.warn,
+        source: FilterSource.build,
       },
     ]
     expect(actual).toEqual(expectedAlerts)
@@ -260,6 +281,8 @@ it("DC Resource: should show a warning alert using the first build history", () 
       timestamp: "10:00am",
       header: "vigoda",
       resourceName: "vigoda",
+      level: FilterLevel.warn,
+      source: FilterSource.build,
     },
   ]
   expect(actual).toEqual(expectedAlerts)
@@ -285,6 +308,8 @@ it("DC resource: should show a warning alert using the first build history", () 
       timestamp: "10:00am",
       header: "vigoda",
       resourceName: "vigoda",
+      level: FilterLevel.warn,
+      source: FilterSource.build,
     },
   ]
   expect(actual).toEqual(expectedAlerts)
@@ -314,6 +339,8 @@ it("DC Resource has build failed alert using first build history info ", () => {
       timestamp: "10:00am",
       header: "Build error",
       resourceName: "vigoda",
+      level: FilterLevel.error,
+      source: FilterSource.build,
     },
   ]
   expect(actual).toEqual(expectedAlerts)
@@ -364,6 +391,8 @@ it("renders a build error for both a K8s resource and DC resource ", () => {
       timestamp: "10:00am",
       header: "Build error",
       resourceName: "vigoda",
+      level: FilterLevel.error,
+      source: FilterSource.build,
     },
     {
       alertType: BuildFailedErrorType,
@@ -371,6 +400,8 @@ it("renders a build error for both a K8s resource and DC resource ", () => {
       timestamp: "10:00am",
       header: "Build error",
       resourceName: "snack",
+      level: FilterLevel.error,
+      source: FilterSource.build,
     },
   ]
   expect(actual).toEqual(expectedAlerts)

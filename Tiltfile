@@ -1,3 +1,4 @@
+allow_k8s_contexts('kind-kind')
 username = str(local('whoami')).rstrip('\n')
 experimental_analytics_report({'user.name': username})
 analytics_settings(enable=True)

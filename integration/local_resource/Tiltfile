@@ -1,2 +1,11 @@
-local_resource('foo', serve_cmd='./hello.sh foo')
-local_resource('bar', serve_cmd='./hello.sh bar')
+p = probe(initial_delay_secs=0,
+          timeout_secs=1,
+          period_secs=1,
+          success_threshold=1,
+          failure_threshold=1,
+          exec=exec_action(command=['./probe.sh']))
+
+local_resource('foo', serve_cmd='./hello.sh foo', readiness_probe=p)
+
+local_resource('bar', serve_cmd='./hello.sh bar',
+               resource_deps=['foo'])

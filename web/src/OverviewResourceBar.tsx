@@ -1,20 +1,33 @@
 import React, { Component, useRef, useState } from "react"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
 import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
+import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
+import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as MetricsIcon } from "./assets/svg/metrics.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
+import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import FloatDialog from "./FloatDialog"
+import { FilterLevel } from "./logfilters"
 import MetricsDialog from "./MetricsDialog"
 import { usePathBuilder } from "./PathBuilder"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotAction, useSnapshotAction } from "./snapshot"
 import { combinedStatus } from "./status"
-import { AnimDuration, Color, FontSize, SizeUnit } from "./style-helpers"
-import { ResourceStatus, TargetType } from "./types"
+import {
+  AnimDuration,
+  Color,
+  Font,
+  FontSize,
+  mixinResetButtonStyle,
+  mixinResetListStyle,
+  SizeUnit,
+} from "./style-helpers"
+import { ResourceName, ResourceStatus, TargetType } from "./types"
 import UpdateDialog, { showUpdate } from "./UpdateDialog"
 
 type MetricsServing = Proto.webviewMetricsServing
@@ -25,15 +38,12 @@ type OverviewResourceBarProps = {
 
 let OverviewResourceBarRoot = styled.div`
   display: flex;
-  width: 100%;
-  border-bottom: 1px dotted ${Color.grayLight};
-  justify-content: space-between;
   align-items: stretch;
+  padding-left: ${SizeUnit(1)};
 `
 
 let ResourceBarEndRoot = styled.div`
-  flex-shrink: 1;
-  width: 50%;
+  flex-grow: 1;
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
@@ -41,59 +51,145 @@ let ResourceBarEndRoot = styled.div`
 
 let ResourceBarStatusRoot = styled.div`
   display: flex;
-  display: flex;
-  border-radius: 4px;
-
+  font-family: ${Font.sansSerif};
+  font-size: ${FontSize.smallester};
   align-items: center;
-  flex-grow: 0;
-  white-space: nowrap;
-  margin: 8px;
-  padding: 4px 16px;
+  color: ${Color.grayLightest};
+
+  .fillStd {
+    fill: ${Color.grayLighter};
+  }
+
+  & + & {
+    margin-left: ${SizeUnit(1.5)};
+  }
 `
 
+let ResourceBarStatusLabel = styled.p`
+  text-transform: uppercase;
+  margin-right: ${SizeUnit(0.5)};
+`
+
+let ResourceBarStatusSummaryList = styled.ul`
+  display: flex;
+  ${mixinResetListStyle}
+`
+let ResourceBarStatusSummaryItem = styled.li`
+  display: flex;
+  align-items: center;
+
+  & + & {
+    margin-left: ${SizeUnit(0.25)};
+    border-left: 1px solid ${Color.grayLighter};
+    padding-left: ${SizeUnit(0.25)};
+  }
+  &.is-highlightError {
+    color: ${Color.red};
+    .fillStd {
+      fill: ${Color.red};
+    }
+  }
+  &.is-highlightWarning {
+    color: ${Color.yellow};
+    .fillStd {
+      fill: ${Color.yellow};
+    }
+  }
+  &.is-highlightHealthy {
+    color: ${Color.green};
+    .fillStd {
+      fill: ${Color.green};
+    }
+  }
+`
+
+let ResourceBarStatusSummaryItemCount = styled.span`
+  font-weight: strong;
+  padding-left: 4px;
+  padding-right: 4px;
+`
 type ResourceBarStatusProps = {
   view: Proto.webviewView
 }
 
-// If there are more than 20 resources,
-// use a scale of 1 box = 5%, displaying at least
-// one box if count is non-zero.
-function boxCount(count: number, total: number): number {
-  if (total <= 20) {
-    return count
-  }
-
-  if (count === 0) {
-    return 0
-  }
-
-  let pct = count / total
-  if (pct <= 0.05) {
-    return 1
-  }
-  return 20 * pct
+type ResourceGroupStatusProps = {
+  counts: StatusCounts
+  label: string
+  healthyLabel: string
+  unhealthyLabel: string
+  warningLabel: string
 }
 
-const StatusSquare = styled.div`
-  width: 8px;
-  height: 8px;
-  margin: 0 1px;
-  transition: background-color 300ms ease;
-`
+function ResourceGroupStatus(props: ResourceGroupStatusProps) {
+  if (props.counts.total === 0) {
+    return null
+  }
+  let pb = usePathBuilder()
 
-const GreenSquare = styled(StatusSquare)`
-  background-color: ${Color.green};
-`
-const RedSquare = styled(StatusSquare)`
-  background-color: ${Color.red};
-`
-const GraySquare = styled(StatusSquare)`
-  background-color: ${Color.grayLightest};
-`
+  let errorLink = pb.path(
+    `/r/${ResourceName.all}/overview?level=${FilterLevel.error}`
+  )
+  let warnLink = pb.path(
+    `/r/${ResourceName.all}/overview?level=${FilterLevel.warn}`
+  )
 
-function ResourceBarStatus(props: ResourceBarStatusProps) {
-  // Count the statuses.
-  let resources = props.view.resources || []
+  return (
+    <ResourceBarStatusRoot>
+      <ResourceBarStatusLabel>{props.label}</ResourceBarStatusLabel>
+      <ResourceBarStatusSummaryList>
+        <ResourceBarStatusSummaryItem
+          className={props.counts.unhealthy >= 1 ? "is-highlightError" : ""}
+        >
+          <CloseSvg width="11" />
+          <Link to={errorLink}>
+            <ResourceBarStatusSummaryItemCount>
+              {props.counts.unhealthy}
+            </ResourceBarStatusSummaryItemCount>{" "}
+            {props.unhealthyLabel}
+          </Link>
+        </ResourceBarStatusSummaryItem>
+        <ResourceBarStatusSummaryItem
+          className={props.counts.warning >= 1 ? "is-highlightWarning" : ""}
+        >
+          <WarningSvg width="7" />
+          <Link to={warnLink}>
+            <ResourceBarStatusSummaryItemCount>
+              {props.counts.warning}
+            </ResourceBarStatusSummaryItemCount>{" "}
+            {props.warningLabel}
+          </Link>
+        </ResourceBarStatusSummaryItem>
+        <ResourceBarStatusSummaryItem
+          className={
+            props.counts.healthy === props.counts.total
+              ? "is-highlightHealthy"
+              : ""
+          }
+        >
+          <CheckmarkSmallSvg />
+          <ResourceBarStatusSummaryItemCount>
+            {props.counts.healthy}
+          </ResourceBarStatusSummaryItemCount>
+          /
+          <ResourceBarStatusSummaryItemCount>
+            {props.counts.total}
+          </ResourceBarStatusSummaryItemCount>{" "}
+          {props.healthyLabel}
+        </ResourceBarStatusSummaryItem>
+      </ResourceBarStatusSummaryList>
+    </ResourceBarStatusRoot>
+  )
+}
+
+type StatusCounts = {
+  total: number
+  healthy: number
+  unhealthy: number
+  pending: number
+  warning: number
+}
+
+function statusCounts(resources: Proto.webviewResource[]): StatusCounts {
   let statuses = resources.map((res) => combinedStatus(res))
   let allStatusCount = 0
   let healthyStatusCount = 0
@@ -126,53 +222,63 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
     }
   })
 
-  // Summarize the statuses
-  let greenSquareCount = boxCount(healthyStatusCount, allStatusCount)
-  let redSquareCount = boxCount(unhealthyStatusCount, allStatusCount)
-  let graySquareCount = boxCount(pendingStatusCount, allStatusCount)
-  let boxes = []
-  let extraMargin = { marginLeft: "3px" }
-  for (let i = 0; i < greenSquareCount; i++) {
-    let style =
-      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<GreenSquare key={"green-" + i} style={style} />)
+  return {
+    total: allStatusCount,
+    healthy: healthyStatusCount,
+    unhealthy: unhealthyStatusCount,
+    pending: pendingStatusCount,
+    warning: warningCount,
   }
-  for (let i = 0; i < redSquareCount; i++) {
-    let style =
-      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<RedSquare key={"red-" + i} style={style} />)
-  }
-  for (let i = 0; i < graySquareCount; i++) {
-    let style =
-      boxes.length % 4 === 0 && boxes.length > 0 ? extraMargin : undefined
-    boxes.push(<GraySquare key={"gray-" + i} style={style} />)
-  }
+}
 
-  let summaryMsg =
-    `${healthyStatusCount}/${allStatusCount} up ` +
-    `| ${unhealthyStatusCount} error${unhealthyStatusCount != 1 ? "s" : ""} ` +
-    `| ${warningCount} warning${warningCount != 1 ? "s" : ""}`
+function ResourceBarStatus(props: ResourceBarStatusProps) {
+  // Count the statuses.
+  let resources = props.view.resources || []
+
+  let testResources = new Array<Proto.webviewResource>()
+  let otherResources = new Array<Proto.webviewResource>()
+  resources.forEach((r) => {
+    if (r.localResourceInfo && r.localResourceInfo.isTest) {
+      testResources.push(r)
+    } else {
+      otherResources.push(r)
+    }
+  })
+
   return (
-    <ResourceBarStatusRoot>
-      {boxes}
-      <div style={{ marginLeft: "16px" }}>{summaryMsg}</div>
-    </ResourceBarStatusRoot>
+    <>
+      <ResourceGroupStatus
+        counts={statusCounts(otherResources)}
+        label={"Resources"}
+        healthyLabel={"healthy"}
+        unhealthyLabel={"err"}
+        warningLabel={"warn"}
+      />
+      <ResourceGroupStatus
+        counts={statusCounts(testResources)}
+        label={"Tests"}
+        healthyLabel={"pass"}
+        unhealthyLabel={"fail"}
+        warningLabel={"warn"}
+      />
+    </>
   )
 }
 
 export let MenuButton = styled.button`
+  ${mixinResetButtonStyle}
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
-  border: 0;
-  cursor: pointer;
-  background-color: transparent;
-  position: relative;
-  color: ${Color.blue};
   transition: color ${AnimDuration.default} ease;
-  margin: 2px ${SizeUnit(0.75)} 2px 0;
-  padding-bottom: 14px;
+  position: relative; // Anchor MenuButtonLabel, which shouldn't affect this element's width
+  padding-top: ${SizeUnit(0.5)};
+  padding-left: ${SizeUnit(0.5)};
+  padding-right: ${SizeUnit(0.5)};
+  padding-bottom: ${SizeUnit(0.5)};
+  font-size: ${FontSize.smallest};
+  color: ${Color.blue};
 
   & .fillStd {
     fill: ${Color.blue};
@@ -186,7 +292,7 @@ export let MenuButton = styled.button`
   }
 
   &.is-disabled {
-    mouse-events: none;
+    pointer-events: none;
     cursor: default;
   }
 `
@@ -194,11 +300,11 @@ export let MenuButton = styled.button`
 let MenuButtonLabel = styled.div`
   position: absolute;
   bottom: 0;
-  opacity: 0;
-  transition: opacity ${AnimDuration.default} ease;
   font-size: ${FontSize.smallester};
-  margin-top: 4px;
-  width: 300%;
+  color: ${Color.blueDark};
+  width: 200%;
+  transition: opacity ${AnimDuration.default} ease;
+  opacity: 0;
 
   ${MenuButton}:hover &,
   ${MenuButton}[data-open="true"] & {
@@ -207,14 +313,14 @@ let MenuButtonLabel = styled.div`
 `
 
 let UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
-  position: absolute;
-  top: 0;
-  left: -4px;
   display: none;
+  position: absolute;
+  top: 15px;
+  left: 5px;
   width: 10px;
   height: 10px;
 
-  ${MenuButton}.is-enabled & {
+  &.is-visible {
     display: block;
   }
 `
@@ -340,7 +446,7 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
   let snapshotButton = props.snapshot.enabled ? (
     <MenuButton onClick={props.snapshot.openModal}>
       <SnapshotIcon width="24" height="24" />
-      <MenuButtonLabel>Create Snapshot</MenuButtonLabel>
+      <MenuButtonLabel>Make Snapshot</MenuButtonLabel>
     </MenuButton>
   ) : null
 
@@ -364,9 +470,11 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
       >
         <div>v{props.runningBuild?.version || "?"}</div>
 
-        {props.showUpdate ? <UpdateAvailableFloatIcon /> : null}
+        <UpdateAvailableFloatIcon
+          className={props.showUpdate ? "is-visible" : ""}
+        />
         <MenuButtonLabel>
-          {props.showUpdate ? "New Version Available" : "Version Settings"}
+          {props.showUpdate ? "Update Available" : "Tilt Version"}
         </MenuButtonLabel>
       </MenuButton>
 

@@ -4,6 +4,7 @@
 
 .LogPaneLine {
   display: flex;
+  position: relative;
 
   &.is-highlighted {
     background-color: rgba($color-blue, $translucent);
@@ -20,6 +21,35 @@
   }
   &.is-buildEvent-fallback {
     background-color: $color-gray-darker;
+  }
+
+  &.is-startOfAlert {
+    margin-top: $spacing-unit * 1.5;
+  }
+  &.is-endOfAlert {
+    padding-bottom: $spacing-unit * 0.5;
+    margin-bottom: $spacing-unit * 0.5;
+    border-bottom: 1px solid $color-gray-darker;
+  }
+}
+
+.LogPaneLine-alertNav {
+  position: absolute;
+  display: block;
+  color: $color-gray-lightest;
+  position: absolute;
+  top: $spacing-unit * -1;
+  left: $spacing-unit * 0.5;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: color 300ms ease, border-color 300ms ease;
+  padding: 4px $spacing-unit * 0.25;
+  
+  &:hover {
+    color: $color-blue;
+    border-color: $color-blue;
   }
 }
 

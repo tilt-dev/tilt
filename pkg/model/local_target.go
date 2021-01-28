@@ -74,6 +74,11 @@ func (lt LocalTarget) WithTags(tags []string) LocalTarget {
 	return lt
 }
 
+func (lt LocalTarget) WithReadinessProbe(probeSpec *v1.Probe) LocalTarget {
+	lt.ReadinessProbe = probeSpec
+	return lt
+}
+
 func (lt LocalTarget) ID() TargetID {
 	return TargetID{
 		Name: lt.Name,

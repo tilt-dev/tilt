@@ -2,6 +2,7 @@ package value
 
 import (
 	"fmt"
+	"math"
 	"runtime"
 	"sort"
 
@@ -50,13 +51,41 @@ type PathMaker interface {
 	MakeLocalPath(relPath string) string
 }
 
+// StringSequence is a convenience type for dealing with string slices in Starlark.
+type StringSequence []string
+
+func (s StringSequence) Sequence() starlark.Sequence {
+	elems := make([]starlark.Value, 0, len(s))
+	for _, v := range s {
+		elems = append(elems, starlark.String(v))
+	}
+	return starlark.NewList(elems)
+}
+
+func (s *StringSequence) Unpack(v starlark.Value) error {
+	if v == nil {
+		*s = nil
+		return nil
+	}
+	seq, ok := v.(starlark.Sequence)
+	if !ok {
+		return fmt.Errorf("'%v' is a %T, not a sequence", v, v)
+	}
+	out, err := SequenceToStringSlice(seq)
+	if err != nil {
+		return err
+	}
+	*s = out
+	return nil
+}
+
 func SequenceToStringSlice(seq starlark.Sequence) ([]string, error) {
-	if seq == nil {
+	if seq == nil || seq.Len() == 0 {
 		return nil, nil
 	}
 	it := seq.Iterate()
 	defer it.Done()
-	var ret []string
+	ret := make([]string, 0, seq.Len())
 	var v starlark.Value
 	for it.Next(&v) {
 		s, ok := v.(starlark.String)
@@ -144,4 +173,45 @@ func envTuples(env map[string]string) ([]string, error) {
 	// for example
 	sort.Strings(kv)
 	return kv, nil
+}
+
+// Int32 is a convenience type for unpacking int32 bounded values.
+type Int32 struct {
+	starlark.Int
+}
+
+// Int32 returns the value as an int32.
+//
+// It will panic if the value cannot be accurate represented as an int32.
+func (i Int32) Int32() int32 {
+	v, err := starlarkIntAsInt32(i.Int)
+	if err != nil {
+		// bounds check should have happened during unpacking, so something
+		// is very wrong if we get here
+		panic(err)
+	}
+	return v
+}
+
+func (i *Int32) Unpack(v starlark.Value) error {
+	if v == nil {
+		return fmt.Errorf("got %s, want int", starlark.None.Type())
+	}
+	x, ok := v.(starlark.Int)
+	if !ok {
+		return fmt.Errorf("got %s, want int", v.Type())
+	}
+	if _, err := starlarkIntAsInt32(x); err != nil {
+		return err
+	}
+	i.Int = x
+	return nil
+}
+
+func starlarkIntAsInt32(v starlark.Int) (int32, error) {
+	x, ok := v.Int64()
+	if !ok || x < math.MinInt32 || x > math.MaxInt32 {
+		return 0, fmt.Errorf("value out of range for int32: %s", v.String())
+	}
+	return int32(x), nil
 }

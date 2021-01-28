@@ -1,5 +1,6 @@
-import React, { PureComponent } from "react"
+import React from "react"
 import styled from "styled-components"
+import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -9,7 +10,7 @@ import SidebarItemView, {
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { useSidebarPin } from "./SidebarPin"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
-import { ResourceView } from "./types"
+import { ResourceView, SidebarOptions } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
@@ -55,6 +56,13 @@ type SidebarProps = {
   pathBuilder: PathBuilder
 }
 
+type SidebarState = SidebarOptions
+
+let defaultFilters: SidebarOptions = {
+  showResources: true,
+  showTests: true,
+}
+
 function PinnedItems(props: SidebarProps) {
   let ctx = useSidebarPin()
   let pinnedItems = ctx.pinnedResources?.flatMap((r) =>
@@ -78,12 +86,16 @@ function PinnedItems(props: SidebarProps) {
   return <SidebarListSection name="Pinned">{pinnedItems}</SidebarListSection>
 }
 
-// note: this is a PureComponent but we're not currently getting much value out of its pureness
-// https://app.clubhouse.io/windmill/story/9949/web-purecomponent-optimizations-seem-to-not-be-working
-export class SidebarResources extends PureComponent<SidebarProps> {
+export class SidebarResources extends React.Component<
+  SidebarProps,
+  SidebarState
+> {
   constructor(props: SidebarProps) {
     super(props)
     this.triggerSelected = this.triggerSelected.bind(this)
+    this.toggleShowResources = this.toggleShowResources.bind(this)
+    this.toggleShowTests = this.toggleShowTests.bind(this)
+    this.state = defaultFilters
   }
 
   triggerSelected(action: string) {
@@ -92,13 +104,40 @@ export class SidebarResources extends PureComponent<SidebarProps> {
     }
   }
 
+  toggleShowResources() {
+    this.setState((prevState: SidebarOptions) => {
+      return {
+        showResources: !prevState.showResources,
+      }
+    })
+  }
+
+  toggleShowTests() {
+    this.setState((prevState: SidebarOptions) => {
+      return {
+        showTests: !prevState.showTests,
+      }
+    })
+  }
+
   render() {
     let pb = this.props.pathBuilder
-    let totalAlerts = this.props.items
+    let totalAlerts = this.props.items // Open Q: do we include alert totals for hidden elems?
       .map((i) => i.buildAlertCount + i.runtimeAlertCount)
       .reduce((sum, current) => sum + current, 0)
 
-    let listItems = this.props.items.map((item) => (
+    let testsPresent = this.props.items.some((item) => item.isTest)
+
+    // TODO: what do we do when we filter out the selected item? Pinned item(s)?
+    //       and what effect does this have on keyboard shortcuts? :(
+    let filteredItems = this.props.items.filter(
+      (item) =>
+        (!item.isTest && this.state.showResources) ||
+        (item.isTest && this.state.showTests) ||
+        item.isTiltfile
+    )
+
+    let listItems = filteredItems.map((item) => (
       <SidebarItemView
         key={"sidebarItem-" + item.name}
         item={item}
@@ -117,6 +156,13 @@ export class SidebarResources extends PureComponent<SidebarProps> {
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
+          {testsPresent ? (
+            <OverviewSidebarOptions
+              curState={this.state}
+              toggleShowResources={this.toggleShowResources}
+              toggleShowTests={this.toggleShowTests}
+            /> // TODO: if this vanishes because no tests present, reset it to show everything
+          ) : null}
           <SidebarListSection name="">
             <SidebarItemAll
               nothingSelected={nothingSelected}
@@ -128,7 +174,7 @@ export class SidebarResources extends PureComponent<SidebarProps> {
         </SidebarList>
         <SidebarKeyboardShortcuts
           selected={this.props.selected}
-          items={this.props.items}
+          items={filteredItems}
           onTrigger={this.triggerSelected}
           resourceView={this.props.resourceView}
         />

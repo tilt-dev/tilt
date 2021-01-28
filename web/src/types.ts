@@ -140,3 +140,8 @@ export enum ResourceName {
   tiltfile = "(Tiltfile)",
   all = "(all)",
 }
+
+export type SidebarOptions = {
+  showResources: boolean // TODO: namessss
+  showTests: boolean
+}

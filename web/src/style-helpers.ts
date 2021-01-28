@@ -84,11 +84,6 @@ export enum Width {
   statusIconMarginRight = 10,
 }
 
-export const mixinHideOnSmallScreen = `
-@media screen and (max-width: ${Width.smallScreen}px) {
-  display: none;
-}`
-
 export enum ZIndex {
   SidebarMenu = 2000,
   Sidebar = 1000,
@@ -100,3 +95,21 @@ export enum AnimDuration {
   default = "0.3s",
   long = "0.6s",
 }
+
+export const mixinHideOnSmallScreen = `
+@media screen and (max-width: ${Width.smallScreen}px) {
+  display: none;
+}`
+
+export const mixinResetListStyle = `
+  margin: 0;
+  list-style: none;
+`
+
+export const mixinResetButtonStyle = `
+  background-color: transparent;
+  border: 0 none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+`
