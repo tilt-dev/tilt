@@ -37,13 +37,12 @@ type OverviewResourceBarProps = {
 
 let OverviewResourceBarRoot = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: stretch;
   padding-left: ${SizeUnit(1)};
 `
 
 let ResourceBarEndRoot = styled.div`
-  flex-shrink: 1;
+  flex-grow: 1;
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
@@ -61,7 +60,7 @@ let ResourceBarStatusRoot = styled.div`
   }
 
   & + & {
-    margin-left: ${SizeUnit(1)};
+    margin-left: ${SizeUnit(1.5)};
   }
 `
 
