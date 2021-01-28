@@ -171,6 +171,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleSetTiltfileArgsAction(state, action)
 	case local.LocalServeStatusAction:
 		handleLocalServeStatusAction(ctx, state, action)
+	case local.LocalServeReadinessProbeAction:
+		handleLocalServeReadinessProbeAction(ctx, state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
 	case exit.Action:
@@ -461,8 +463,9 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	if mt.Manifest.IsLocal() {
 		lrs := ms.LocalRuntimeState()
-		if err == nil {
-			lrs.HasSucceededAtLeastOnce = true
+		if err == nil && mt.Manifest.LocalTarget().ReadinessProbe == nil {
+			// only update the succeeded time if there's no readiness probe
+			lrs.LastReadyOrSucceededTime = time.Now()
 		}
 		ms.RuntimeState = lrs
 	}
@@ -773,6 +776,17 @@ func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState,
 	lrs.State = action.State
 	lrs.PID = action.PID
 	lrs.SpanID = action.SpanID
+	ms.RuntimeState = lrs
+}
+
+func handleLocalServeReadinessProbeAction(ctx context.Context, state *store.EngineState, action local.LocalServeReadinessProbeAction) {
+	ms, ok := state.ManifestState(action.ManifestName)
+	if !ok {
+		logger.Get(ctx).Infof("got readiness probe information for unknown local resource %s", action.ManifestName)
+	}
+
+	lrs := ms.LocalRuntimeState()
+	lrs.SetReadinessProbeState(action.Ready)
 	ms.RuntimeState = lrs
 }
 

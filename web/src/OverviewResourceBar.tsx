@@ -1,5 +1,6 @@
 import _ from "lodash"
 import React, { Component, useRef, useState } from "react"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
 import { incr } from "./analytics"
@@ -12,6 +13,7 @@ import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import FloatDialog from "./FloatDialog"
+import { FilterLevel } from "./logfilters"
 import MetricsDialog from "./MetricsDialog"
 import { usePathBuilder } from "./PathBuilder"
 import ShortcutsDialog from "./ShortcutsDialog"
@@ -26,7 +28,7 @@ import {
   mixinResetListStyle,
   SizeUnit,
 } from "./style-helpers"
-import { ResourceStatus, TargetType } from "./types"
+import { ResourceName, ResourceStatus, TargetType } from "./types"
 import UpdateDialog, { showUpdate } from "./UpdateDialog"
 
 type MetricsServing = Proto.webviewMetricsServing
@@ -123,6 +125,15 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
   if (props.counts.total === 0) {
     return null
   }
+  let pb = usePathBuilder()
+
+  let errorLink = pb.path(
+    `/r/${ResourceName.all}/overview?level=${FilterLevel.error}`
+  )
+  let warnLink = pb.path(
+    `/r/${ResourceName.all}/overview?level=${FilterLevel.warn}`
+  )
+
   return (
     <ResourceBarStatusRoot>
       <ResourceBarStatusLabel>{props.label}</ResourceBarStatusLabel>
@@ -131,19 +142,23 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
           className={props.counts.unhealthy >= 1 ? "hasErr" : ""}
         >
           <CloseSvg width="11" />
-          <ResourceBarStatusSummaryItemCount>
-            {props.counts.unhealthy}
-          </ResourceBarStatusSummaryItemCount>{" "}
-          {props.unhealthyLabel}
+          <Link to={errorLink}>
+            <ResourceBarStatusSummaryItemCount>
+              {props.counts.unhealthy}
+            </ResourceBarStatusSummaryItemCount>{" "}
+            {props.unhealthyLabel}
+          </Link>
         </ResourceBarStatusSummaryItem>
         <ResourceBarStatusSummaryItem
           className={props.counts.warning >= 1 ? "hasWarn" : ""}
         >
           <WarningSvg width="7" />
-          <ResourceBarStatusSummaryItemCount>
-            {props.counts.warning}
-          </ResourceBarStatusSummaryItemCount>{" "}
-          {props.warningLabel}
+          <Link to={warnLink}>
+            <ResourceBarStatusSummaryItemCount>
+              {props.counts.warning}
+            </ResourceBarStatusSummaryItemCount>{" "}
+            {props.warningLabel}
+          </Link>
         </ResourceBarStatusSummaryItem>
         <ResourceBarStatusSummaryItem
           className={

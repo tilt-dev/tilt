@@ -26,7 +26,7 @@ export const InferOneTab = () => <OverviewTabBar selectedTab={"vigoda"} />
 export const TwoTabs = () => {
   let tabs = ["vigoda", "snack"]
   return (
-    <OverviewNavProvider tabsForTesting={tabs}>
+    <OverviewNavProvider tabsForTesting={tabs} validateTab={() => true}>
       <OverviewTabBar selectedTab={""} />
     </OverviewNavProvider>
   )
@@ -46,7 +46,7 @@ export const TenTabs = () => {
     "vigoda_10",
   ]
   return (
-    <OverviewNavProvider tabsForTesting={tabs}>
+    <OverviewNavProvider tabsForTesting={tabs} validateTab={() => true}>
       <OverviewTabBar selectedTab={"vigoda_2"} />
     </OverviewNavProvider>
   )
@@ -56,7 +56,7 @@ export const LongTabName = () => {
   let tabs = ["extremely-long-tab-name-yes-this-is-very-long"]
 
   return (
-    <OverviewNavProvider tabsForTesting={tabs}>
+    <OverviewNavProvider tabsForTesting={tabs} validateTab={() => true}>
       <OverviewTabBar selectedTab={""} />
     </OverviewNavProvider>
   )

@@ -7,7 +7,8 @@ import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { SidebarItemBox } from "./SidebarItemView"
-import { SidebarPinButton, SidebarPinContextProvider } from "./SidebarPin"
+import { SidebarPinContextProvider } from "./SidebarPin"
+import SidebarPinButton from "./SidebarPinButton"
 import SidebarResources, { SidebarListSection } from "./SidebarResources"
 import { twoResourceView } from "./testdata"
 import { ResourceView } from "./types"
@@ -28,9 +29,9 @@ function clickPin(
   root: ReactWrapper<any, React.Component["state"], React.Component>,
   name: string
 ) {
-  let pinButton = root.find(SidebarPinButton).find({ resourceName: name })
-  expect(pinButton).toHaveLength(1)
-  pinButton.simulate("click")
+  let pinButtons = root.find(SidebarPinButton).find({ resourceName: name })
+  expect(pinButtons.length).toBeGreaterThan(0)
+  pinButtons.at(0).simulate("click")
 }
 
 describe("SidebarResources", () => {

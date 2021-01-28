@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@material-ui/core": "^4.11.2",
+    "@material-ui/icons": "^4.11.2",
     "@testing-library/dom": "^7.24.5",
     "@types/history": "^4.7.2",
     "@types/js-cookie": "^2.2.2",

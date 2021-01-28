@@ -13,6 +13,7 @@ export enum Color {
 
   offWhite = "#eef1f1",
   gray7 = "#CCDADE",
+  gray6 = "#7095A0",
   grayLightest = "#93a1a1", // Solarized base1 (darkest content tone)
   grayLighter = "#2D4D55",
   grayLight = "#586e75", // Solarized base01
@@ -74,7 +75,6 @@ export enum Width {
   badge = unit * 0.6,
   secondaryNavItem = unit * 5,
   sidebarTriggerButton = unit,
-  sidebarPinButton = unit * 0.75,
   sidebar = unit * 10.5, // Sync with constants.scss > $sidebar-width
   sidebarCollapsed = unit,
   statusbar = unit * 1.5, // sync with constants.scss > $statusbar-height

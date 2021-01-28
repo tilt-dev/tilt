@@ -80,11 +80,14 @@ func (f *fixture) testDirPath(s string) string {
 }
 
 func (f *fixture) installTilt() {
+	f.t.Helper()
 	cmd := exec.CommandContext(f.ctx, "go", "install", "-mod", "vendor", "github.com/tilt-dev/tilt/cmd/tilt")
+	cmd.Dir = packageDir
 	f.runOrFail(cmd, "Building tilt")
 }
 
 func (f *fixture) runOrFail(cmd *exec.Cmd, msg string) {
+	f.t.Helper()
 	// Use Output() instead of Run() because that captures Stderr in the ExitError.
 	_, err := cmd.Output()
 	if err == nil {
@@ -241,7 +244,7 @@ func (f *fixture) StartTearDown() {
 func (f *fixture) KillProcs() {
 	if f.activeTiltUp != nil {
 		err := f.activeTiltUp.Kill()
-		if err != nil {
+		if err != nil && err.Error() != "os: process already finished" {
 			fmt.Printf("error killing tilt: %v\n", err)
 		}
 	}

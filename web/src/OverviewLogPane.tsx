@@ -1,21 +1,26 @@
 import Anser from "anser"
 import React, { Component } from "react"
 import styled, { keyframes } from "styled-components"
+import {
+  FilterLevel,
+  FilterSet,
+  filterSetsEqual,
+  FilterSource,
+} from "./logfilters"
 import "./LogPane.scss"
 import "./LogPaneLine.scss"
 import LogStore, { useLogStore } from "./LogStore"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
 import { RafContext, useRaf } from "./raf"
 import { Color, SizeUnit } from "./style-helpers"
-import { LogLine } from "./types"
+import { LogLevel, LogLine } from "./types"
 
 type OverviewLogComponentProps = {
   manifestName: string
   pathBuilder: PathBuilder
   logStore: LogStore
   raf: RafContext
-  hideBuildLog?: boolean
-  hideRunLog?: boolean
+  filterSet: FilterSet
 }
 
 let LogPaneRoot = styled.section`
@@ -210,8 +215,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
     if (
       prevProps.manifestName !== this.props.manifestName ||
-      prevProps.hideBuildLog !== this.props.hideBuildLog ||
-      prevProps.hideRunLog !== this.props.hideRunLog
+      !filterSetsEqual(prevProps.filterSet, this.props.filterSet)
     ) {
       this.resetRender()
       this.autoscroll = true
@@ -364,11 +368,29 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       ? logStore.manifestLogPatchSet(mn, startCheckpoint)
       : logStore.allLogPatchSet(startCheckpoint)
 
+    let { source, level } = this.props.filterSet
     let lines = patch.lines.filter((line) => {
-      if (this.props.hideBuildLog && line.spanId.indexOf("build:") === 0) {
+      if (line.buildEvent) {
+        // Always leave in build event logs.
+        // This makes it easier to see which logs belong to which builds.
+        return true
+      }
+      if (
+        source === FilterSource.runtime &&
+        line.spanId.indexOf("build:") === 0
+      ) {
         return false
       }
-      if (this.props.hideRunLog && line.spanId.indexOf("build:") !== 0) {
+      if (
+        source === FilterSource.build &&
+        line.spanId.indexOf("build:") !== 0
+      ) {
+        return false
+      }
+      if (level === FilterLevel.warn && line.level !== LogLevel.WARN) {
+        return false
+      }
+      if (level === FilterLevel.error && line.level !== LogLevel.ERROR) {
         return false
       }
       return true
@@ -523,8 +545,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
 type OverviewLogPaneProps = {
   manifestName: string
-  hideBuildLog?: boolean
-  hideRunLog?: boolean
+  filterSet: FilterSet
 }
 
 export default function OverviewLogPane(props: OverviewLogPaneProps) {
@@ -537,8 +558,7 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
       pathBuilder={pathBuilder}
       logStore={logStore}
       raf={raf}
-      hideBuildLog={props.hideBuildLog}
-      hideRunLog={props.hideRunLog}
+      filterSet={props.filterSet}
     />
   )
 }

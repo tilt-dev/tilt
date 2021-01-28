@@ -1,5 +1,6 @@
 import React, { useEffect } from "react"
 import styled from "styled-components"
+import { Alert, combinedAlerts } from "./alerts"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
@@ -9,7 +10,6 @@ import { useTabNav } from "./TabNav"
 import { ResourceName } from "./types"
 
 type OverviewResourcePaneProps = {
-  name: string
   view: Proto.webviewView
 }
 
@@ -33,7 +33,7 @@ let Main = styled.div`
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let nav = useTabNav()
   let resources = props.view?.resources || []
-  let name = props.name
+  let name = nav.invalidTab || nav.selectedTab || ""
   let r: Proto.webviewResource | undefined
   let all = name === "" || name === ResourceName.all
   if (!all) {
@@ -44,6 +44,13 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     selectedTab = ResourceName.all
   } else if (r?.name) {
     selectedTab = r.name
+  }
+
+  let alerts: Alert[] = []
+  if (r) {
+    alerts = combinedAlerts(r, null)
+  } else if (all) {
+    resources.forEach((r) => alerts.push(...combinedAlerts(r, null)))
   }
 
   // Hide the HTML element scrollbars, since this pane does all scrolling internally.
@@ -57,8 +64,8 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
       <OverviewTabBar selectedTab={selectedTab} />
       <OverviewResourceBar {...props} />
       <Main>
-        <OverviewResourceSidebar {...props} />
-        <OverviewResourceDetails resource={r} name={name} />
+        <OverviewResourceSidebar {...props} name={name} />
+        <OverviewResourceDetails resource={r} name={name} alerts={alerts} />
       </Main>
     </OverviewResourcePaneRoot>
   )

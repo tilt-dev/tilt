@@ -1,7 +1,9 @@
+import { FilterLevel, filterSetFromLocation, FilterSource } from "./logfilters"
+
 export type Tags = { [key: string]: string }
 
 // Fire and forget all analytics events
-const incr = (name: string, tags: Tags = {}): void => {
+export const incr = (name: string, tags: Tags = {}): void => {
   let url = `//${window.location.host}/api/analytics`
 
   fetch(url, {
@@ -10,7 +12,7 @@ const incr = (name: string, tags: Tags = {}): void => {
   })
 }
 
-const pathToTag = (path: string): string => {
+export const pathToTag = (path: string): string => {
   if (path.indexOf("/") === 0) {
     path = path.substring(1) // chop off the leading /
   }
@@ -58,4 +60,18 @@ const pathToTag = (path: string): string => {
   return "unknown"
 }
 
-export { incr, pathToTag }
+export let navigationToTags = (location: any, action: string): Tags => {
+  let tags: Tags = { type: pathToTag(location.pathname) }
+  if (action === "PUSH" && location.state?.action) {
+    tags.action = location.state.action
+  }
+
+  let filterSet = filterSetFromLocation(location)
+  if (filterSet.level != FilterLevel.all) {
+    tags.level = filterSet.level
+  }
+  if (filterSet.source != FilterSource.all) {
+    tags.source = filterSet.source
+  }
+  return tags
+}

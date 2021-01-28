@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { SidebarPinMemoryProvider } from "./SidebarPin"
+import { OverviewNavProvider } from "./TabNav"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type Resource = Proto.webviewResource
@@ -22,12 +23,29 @@ export default {
   ],
 }
 
+function OverviewResourcePaneHarness(props: {
+  name: string
+  view: Proto.webviewView
+}) {
+  let { name, view } = props
+  let entry = name ? `/r/${props.name}/overview` : `/overview`
+  let resources = view?.resources || []
+  let validateTab = (name: string) => resources.some((res) => res.name == name)
+  return (
+    <MemoryRouter initialEntries={[entry]}>
+      <OverviewNavProvider validateTab={validateTab}>
+        <OverviewResourcePane view={view} />
+      </OverviewNavProvider>
+    </MemoryRouter>
+  )
+}
+
 export const TwoResources = () => (
-  <OverviewResourcePane name={"vigoda"} view={twoResourceView()} />
+  <OverviewResourcePaneHarness name={"vigoda"} view={twoResourceView()} />
 )
 
 export const TenResources = () => (
-  <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+  <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
 )
 
 export const FullResourceBar = () => {
@@ -39,7 +57,7 @@ export const FullResourceBar = () => {
     { url: "http://localhost:4003" },
   ]
   res.podID = "my-pod-deadbeef"
-  return <OverviewResourcePane name={"vigoda_1"} view={view} />
+  return <OverviewResourcePaneHarness name="vigoda_1" view={view} />
 }
 
 export const TenResourcesWithLogStore = () => {
@@ -61,7 +79,7 @@ export const TenResourcesWithLogStore = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+      <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
     </LogStoreProvider>
   )
 }
@@ -90,7 +108,7 @@ export const TenResourcesWithLongLogLines = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+      <OverviewResourcePaneHarness name={"vigoda_1"} view={tenResourceView()} />
     </LogStoreProvider>
   )
 }
@@ -122,15 +140,15 @@ export const TenResourcesWithBuildLogAndPodLog = () => {
 
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewResourcePane name={"vigoda_1"} view={tenResourceView()} />
+      <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
     </LogStoreProvider>
   )
 }
 
 export const OneHundredResources = () => (
-  <OverviewResourcePane name={"vigoda_1"} view={nResourceView(100)} />
+  <OverviewResourcePaneHarness name="vigoda_1" view={nResourceView(100)} />
 )
 
 export const NotFound = () => (
-  <OverviewResourcePane name={"does-not-exist"} view={twoResourceView()} />
+  <OverviewResourcePaneHarness name="does-not-exist" view={twoResourceView()} />
 )
