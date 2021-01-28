@@ -801,12 +801,13 @@ func handleLocalServeReadinessProbeAction(ctx context.Context, state *store.Engi
 
 	lrs := ms.LocalRuntimeState()
 	lrs.Ready = action.Ready
-	lrs.LastReadyOrSucceededTime = time.Now()
-
-	if lrs.Ready && (lrs.Status == "" || lrs.Status == model.RuntimeStatusPending) {
-		// only transition to OK if currently pending AND ready
-		lrs.Status = model.RuntimeStatusOK
-	} else if !lrs.Ready && (lrs.Status == "" || lrs.Status == model.RuntimeStatusOK) {
+	if action.Ready {
+		lrs.LastReadyOrSucceededTime = time.Now()
+		if lrs.Status == "" || lrs.Status == model.RuntimeStatusPending {
+			// only transition to OK if currently pending AND ready
+			lrs.Status = model.RuntimeStatusOK
+		}
+	} else if lrs.Status == "" || lrs.Status == model.RuntimeStatusOK {
 		// only transition to pending if currently OK and NOT ready
 		lrs.Status = model.RuntimeStatusPending
 	}
