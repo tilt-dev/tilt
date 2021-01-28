@@ -226,7 +226,7 @@ func processStatuses(
 		}
 
 		var runtimeStatus model.RuntimeStatus
-		if sm.status == Done || sm.status == Error {
+		if sm.status == Error {
 			runtimeStatus = model.RuntimeStatusError
 		} else if sm.status == Running {
 			if proc.probeWorker != nil {
