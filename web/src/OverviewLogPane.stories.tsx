@@ -206,13 +206,13 @@ ForeverLog.argTypes = {
 export const BuildLogAndRunLog = (args: any) => {
   let logStore = new LogStore()
   let segments = []
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 20; i++) {
     let level = ""
     let lineType = "build"
-    if (i === 5) {
+    if (i === 15) {
       level = LogLevel.WARN
       lineType = "build warning"
-    } else if (i === 9) {
+    } else if (i === 19) {
       level = LogLevel.ERROR
       lineType = "build error"
     }
@@ -223,13 +223,13 @@ export const BuildLogAndRunLog = (args: any) => {
       level,
     })
   }
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 20; i++) {
     let level = ""
     let lineType = "pod"
-    if (i === 5) {
+    if (i === 15) {
       level = LogLevel.WARN
       lineType = "pod warning"
-    } else if (i === 9) {
+    } else if (i === 19) {
       level = LogLevel.ERROR
       lineType = "pod error"
     }

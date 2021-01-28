@@ -1,5 +1,6 @@
 import Anser from "anser"
 import React, { Component } from "react"
+import { useHistory } from "react-router"
 import styled, { keyframes } from "styled-components"
 import {
   FilterLevel,
@@ -15,12 +16,17 @@ import { RafContext, useRaf } from "./raf"
 import { Color, SizeUnit } from "./style-helpers"
 import { LogLevel, LogLine } from "./types"
 
+// The number of lines to display before an error.
+export const PROLOGUE_LENGTH = 5
+
 type OverviewLogComponentProps = {
   manifestName: string
   pathBuilder: PathBuilder
   logStore: LogStore
   raf: RafContext
   filterSet: FilterSet
+  history: any
+  scrollToStoredLineIndex: number | null
 }
 
 let LogPaneRoot = styled.section`
@@ -55,20 +61,18 @@ let anser = new Anser()
 
 function newLineEl(
   line: LogLine,
-  isContextChange: boolean,
-  showManifestPrefix: boolean
+  showManifestPrefix: boolean,
+  extraClasses: string[]
 ): Element {
   let text = line.text
   let level = line.level
   let buildEvent = line.buildEvent
   let classes = ["LogPaneLine"]
+  classes.push(...extraClasses)
   if (level === "WARN") {
     classes.push("is-warning")
   } else if (level === "ERROR") {
     classes.push("is-error")
-  }
-  if (isContextChange) {
-    classes.push("is-contextChange")
   }
   if (buildEvent === "init") {
     classes.push("is-buildEvent-init")
@@ -127,6 +131,10 @@ class LineHashList {
     return this.byStoredLineIndex[line.storedLineIndex]
   }
 
+  lookupByStoredLineIndex(storedLineIndex: number): LineHashListEntry | null {
+    return this.byStoredLineIndex[storedLineIndex]
+  }
+
   append(line: LogLine) {
     let existing = this.byStoredLineIndex[line.storedLineIndex]
     if (existing) {
@@ -159,6 +167,7 @@ export const renderWindow = 250
 // and have to use plain css + HTML.
 export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   autoscroll: boolean = true
+  needsScrollToLine: boolean = false
 
   // The element containing all the log lines.
   rootRef: React.RefObject<any> = React.createRef()
@@ -184,6 +193,10 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   private logCheckpoint: number = 0
 
   private lineHashList: LineHashList = new LineHashList()
+
+  // When we're displaying warnings or errors, we want to display the last
+  // N lines before the error. So we keep track of the last N lines for each span.
+  private prologuesBySpanId: { [key: string]: LogLine[] } = {}
 
   constructor(props: OverviewLogComponentProps) {
     super(props)
@@ -218,11 +231,13 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       !filterSetsEqual(prevProps.filterSet, this.props.filterSet)
     ) {
       this.resetRender()
-      this.autoscroll = true
-      this.scrollTop = -1
-      if (this.props.pathBuilder.isSnapshot()) {
-        this.autoscroll = false
+
+      if (typeof this.props.scrollToStoredLineIndex === "number") {
+        this.needsScrollToLine = true
       }
+      this.autoscroll =
+        !this.props.pathBuilder.isSnapshot() && !this.needsScrollToLine
+      this.scrollTop = -1
 
       this.readLogsFromLogStore()
     } else if (prevProps.logStore !== this.props.logStore) {
@@ -237,9 +252,11 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    if (this.props.pathBuilder.isSnapshot()) {
-      this.autoscroll = false
+    if (typeof this.props.scrollToStoredLineIndex == "number") {
+      this.needsScrollToLine = true
     }
+    this.autoscroll =
+      !this.props.pathBuilder.isSnapshot() && !this.needsScrollToLine
 
     rootEl.addEventListener("scroll", this.onScroll, {
       passive: true,
@@ -304,6 +321,10 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
+    if (this.needsScrollToLine) {
+      return
+    }
+
     if (this.autoscrollRafId) {
       this.props.raf.cancelAnimationFrame(this.autoscrollRafId)
     }
@@ -351,11 +372,65 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
 
     this.lineHashList = new LineHashList()
+    this.prologuesBySpanId = {}
     this.logCheckpoint = 0
     if (this.renderBufferRafId) {
       this.props.raf.cancelAnimationFrame(this.renderBufferRafId)
       this.renderBufferRafId = 0
     }
+  }
+
+  // If we have a level filter on, check if this line matches the level filter.
+  matchesLevelFilter(line: LogLine): boolean {
+    let level = this.props.filterSet.level
+    if (level === FilterLevel.warn && line.level !== LogLevel.WARN) {
+      return false
+    }
+    if (level === FilterLevel.error && line.level !== LogLevel.ERROR) {
+      return false
+    }
+    return true
+  }
+
+  // Check if this line matches the current filter.
+  matchesFilter(line: LogLine): boolean {
+    if (line.buildEvent) {
+      // Always leave in build event logs.
+      // This makes it easier to see which logs belong to which builds.
+      return true
+    }
+
+    let source = this.props.filterSet.source
+    if (
+      source === FilterSource.runtime &&
+      line.spanId.indexOf("build:") === 0
+    ) {
+      return false
+    }
+    if (source === FilterSource.build && line.spanId.indexOf("build:") !== 0) {
+      return false
+    }
+
+    return this.matchesLevelFilter(line)
+  }
+
+  // Index this line so that we can display prologues to errors.
+  trackPrologueLine(line: LogLine) {
+    if (!this.prologuesBySpanId[line.spanId]) {
+      this.prologuesBySpanId[line.spanId] = []
+    }
+    this.prologuesBySpanId[line.spanId].push(line)
+  }
+
+  // Gets the prologue for the given span, and clear the lines used for prologuing.
+  getAndClearPrologue(spanId: string): LogLine[] {
+    let lines = this.prologuesBySpanId[spanId]
+    if (!lines) {
+      return []
+    }
+
+    delete this.prologuesBySpanId[spanId]
+    return lines.slice(-PROLOGUE_LENGTH) // last N lines
   }
 
   // Render new logs that have come in since the current checkpoint.
@@ -369,31 +444,21 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       : logStore.allLogPatchSet(startCheckpoint)
 
     let { source, level } = this.props.filterSet
-    let lines = patch.lines.filter((line) => {
-      if (line.buildEvent) {
-        // Always leave in build event logs.
-        // This makes it easier to see which logs belong to which builds.
-        return true
+
+    let lines: LogLine[] = []
+    let shouldDisplayPrologues = this.props.filterSet.level !== FilterLevel.all
+
+    patch.lines.forEach((line) => {
+      let matches = this.matchesFilter(line)
+      if (matches) {
+        if (shouldDisplayPrologues) {
+          lines.push(...this.getAndClearPrologue(line.spanId))
+        }
+        lines.push(line)
+        return
+      } else if (shouldDisplayPrologues) {
+        this.trackPrologueLine(line)
       }
-      if (
-        source === FilterSource.runtime &&
-        line.spanId.indexOf("build:") === 0
-      ) {
-        return false
-      }
-      if (
-        source === FilterSource.build &&
-        line.spanId.indexOf("build:") !== 0
-      ) {
-        return false
-      }
-      if (level === FilterLevel.warn && line.level !== LogLevel.WARN) {
-        return false
-      }
-      if (level === FilterLevel.error && line.level !== LogLevel.ERROR) {
-        return false
-      }
-      return true
     })
 
     this.logCheckpoint = patch.checkpoint
@@ -464,11 +529,37 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       this.scrollCursorIntoView()
     }
 
+    if (this.needsScrollToLine) {
+      let entry = this.lineHashList.lookupByStoredLineIndex(
+        this.props.scrollToStoredLineIndex as number
+      )
+      if (entry?.el) {
+        entry.el.scrollIntoView({ block: "center" })
+        this.needsScrollToLine = false
+      }
+    }
+
     if (this.forwardBuffer.length || this.backwardBuffer.length) {
       this.renderBufferRafId = this.props.raf.requestAnimationFrame(
         this.renderBuffer
       )
     }
+  }
+
+  // Creates a DOM element with a permalink to an alert.
+  newAlertNavEl(line: LogLine) {
+    let div = document.createElement("button")
+    div.className = "LogPaneLine-alertNav"
+    div.innerHTML = "… (more) …"
+    div.onclick = (e) => {
+      let storedLineIndex = line.storedLineIndex
+      let history = this.props.history
+      history.push(
+        this.props.pathBuilder.path(`/r/${line.manifestName}/overview`),
+        { storedLineIndex }
+      )
+    }
+    return div
   }
 
   // Helper function for rendering lines. Returns true if the line was
@@ -489,11 +580,40 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
+    let shouldDisplayPrologues = this.props.filterSet.level !== FilterLevel.all
     let mn = this.props.manifestName
     let showManifestName = !mn
     let prevManifestName = entry.prev?.line.manifestName || ""
+
+    let extraClasses = []
     let isContextChange = !!entry.prev && prevManifestName !== line.manifestName
-    let lineEl = newLineEl(entry.line, isContextChange, showManifestName)
+    if (isContextChange) {
+      extraClasses.push("is-contextChange")
+    }
+
+    let isEndOfAlert =
+      shouldDisplayPrologues &&
+      this.matchesLevelFilter(line) &&
+      (!entry.next || entry.next?.line.level !== line.level)
+    if (isEndOfAlert) {
+      extraClasses.push("is-endOfAlert")
+    }
+
+    let isStartOfAlert =
+      shouldDisplayPrologues &&
+      !line.buildEvent &&
+      !this.matchesLevelFilter(line) &&
+      (!entry.prev ||
+        this.matchesLevelFilter(entry.prev.line) ||
+        entry.prev.line.buildEvent)
+    if (isStartOfAlert) {
+      extraClasses.push("is-startOfAlert")
+    }
+
+    let lineEl = newLineEl(entry.line, showManifestName, extraClasses)
+    if (isStartOfAlert) {
+      lineEl.appendChild(this.newAlertNavEl(entry.line))
+    }
 
     let root = this.rootRef.current
     let existingLineEl = entry.el
@@ -549,6 +669,7 @@ type OverviewLogPaneProps = {
 }
 
 export default function OverviewLogPane(props: OverviewLogPaneProps) {
+  let history = useHistory() as any
   let pathBuilder = usePathBuilder()
   let logStore = useLogStore()
   let raf = useRaf()
@@ -559,6 +680,8 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
       logStore={logStore}
       raf={raf}
       filterSet={props.filterSet}
+      history={history}
+      scrollToStoredLineIndex={history?.location?.state?.storedLineIndex}
     />
   )
 }

@@ -1,6 +1,10 @@
 import { mount } from "enzyme"
 import { FilterLevel, FilterSource } from "./logfilters"
-import { OverviewLogComponent, renderWindow } from "./OverviewLogPane"
+import {
+  OverviewLogComponent,
+  PROLOGUE_LENGTH,
+  renderWindow,
+} from "./OverviewLogPane"
 import {
   BuildLogAndRunLog,
   ManyLines,
@@ -37,13 +41,13 @@ it("escapes html and linkifies", () => {
 it("filters by source", () => {
   let root = logPaneMount(<BuildLogAndRunLog />)
   let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(20)
+  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(40)
 
   let root2 = logPaneMount(
     <BuildLogAndRunLog level="" source={FilterSource.runtime} />
   )
   let el2 = root2.getDOMNode()
-  expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(10)
+  expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(20)
   expect(el2.innerHTML).toEqual(expect.stringContaining("Vigoda pod line"))
   expect(el2.innerHTML).toEqual(
     expect.not.stringContaining("Vigoda build line")
@@ -53,26 +57,33 @@ it("filters by source", () => {
     <BuildLogAndRunLog level="" source={FilterSource.build} />
   )
   let el3 = root3.getDOMNode()
-  expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(10)
+  expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(20)
   expect(el3.innerHTML).toEqual(expect.not.stringContaining("Vigoda pod line"))
   expect(el3.innerHTML).toEqual(expect.stringContaining("Vigoda build line"))
 })
 
 it("filters by level", () => {
-  let root = logPaneMount(<BuildLogAndRunLog />)
+  let root = logPaneMount(<BuildLogAndRunLog source="" level="" />)
   let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(20)
+  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(40)
 
   let root2 = logPaneMount(
     <BuildLogAndRunLog level={FilterLevel.warn} source="" />
   )
   let el2 = root2.getDOMNode()
-  expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(2)
-  expect(el2.innerHTML).toEqual(
+  expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(
+    2 * (1 + PROLOGUE_LENGTH)
+  )
+
+  let alertEnds = el2.querySelectorAll(".is-endOfAlert")
+  let alertEnd = alertEnds[alertEnds.length - 1]
+  expect(alertEnd.innerHTML).toEqual(
     expect.stringContaining("Vigoda pod warning line")
   )
-  expect(el2.innerHTML).toEqual(expect.not.stringContaining("Vigoda pod line"))
-  expect(el2.innerHTML).toEqual(
+  expect(alertEnd.innerHTML).toEqual(
+    expect.not.stringContaining("Vigoda pod line")
+  )
+  expect(alertEnd.innerHTML).toEqual(
     expect.not.stringContaining("Vigoda pod error line")
   )
 
@@ -80,12 +91,19 @@ it("filters by level", () => {
     <BuildLogAndRunLog level={FilterLevel.error} source="" />
   )
   let el3 = root3.getDOMNode()
-  expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(2)
-  expect(el3.innerHTML).toEqual(
+  expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(
+    2 * (1 + PROLOGUE_LENGTH)
+  )
+
+  alertEnds = el3.querySelectorAll(".is-endOfAlert")
+  alertEnd = alertEnds[alertEnds.length - 1]
+  expect(alertEnd.innerHTML).toEqual(
     expect.not.stringContaining("Vigoda pod warning line")
   )
-  expect(el3.innerHTML).toEqual(expect.not.stringContaining("Vigoda pod line"))
-  expect(el3.innerHTML).toEqual(
+  expect(alertEnd.innerHTML).toEqual(
+    expect.not.stringContaining("Vigoda pod line")
+  )
+  expect(alertEnd.innerHTML).toEqual(
     expect.stringContaining("Vigoda pod error line")
   )
 })
