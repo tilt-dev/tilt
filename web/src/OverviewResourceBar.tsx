@@ -1,4 +1,3 @@
-import _ from "lodash"
 import React, { Component, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
@@ -234,10 +233,15 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
   // Count the statuses.
   let resources = props.view.resources || []
 
-  let [testResources, otherResources] = _.partition<Proto.webviewResource>(
-    resources,
-    (r) => r.localResourceInfo && r.localResourceInfo.isTest
-  )
+  let testResources = new Array<Proto.webviewResource>()
+  let otherResources = new Array<Proto.webviewResource>()
+  resources.forEach((r) => {
+    if (r.localResourceInfo && r.localResourceInfo.isTest) {
+      testResources.push(r)
+    } else {
+      otherResources.push(r)
+    }
+  })
 
   return (
     <>
