@@ -6,7 +6,7 @@ import (
 
 type LocalServeStatusAction struct {
 	ManifestName model.ManifestName
-	State        model.ProcessState
+	Status       model.RuntimeStatus
 	PID          int // 0 if there's no process running
 	SpanID       model.LogSpanID
 }

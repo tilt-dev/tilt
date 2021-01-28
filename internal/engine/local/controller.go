@@ -161,11 +161,6 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 
 	statusCh := make(chan statusAndMetadata)
 
-	go processStatuses(statusCh, st, spec.ManifestName, proc.stillHasSameProcNum())
-
-	spanID := SpanIDForServeLog(proc.procNum)
-	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
-
 	if spec.ReadinessProbe != nil {
 		statusChangeFunc := processReadinessProbeUpdate(ctx, st, spec.ManifestName, proc.stillHasSameProcNum())
 		probeWorker, err := probeWorkerFromSpec(
@@ -179,6 +174,11 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 			go proc.probeWorker.Run(ctx)
 		}
 	}
+
+	go processStatuses(statusCh, st, spec.ManifestName, proc)
+
+	spanID := SpanIDForServeLog(proc.procNum)
+	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
 }
 
 func processReadinessProbeUpdate(
@@ -215,17 +215,31 @@ func processStatuses(
 	statusCh chan statusAndMetadata,
 	st store.RStore,
 	manifestName model.ManifestName,
-	stillHasSameProcNum func() bool) {
+	proc *currentProcess) {
+
+	stillHasSameProcNum := proc.stillHasSameProcNum()
+
 	for sm := range statusCh {
-		if !stillHasSameProcNum() {
+		if !stillHasSameProcNum() || sm.status == Unknown {
 			continue
 		}
-		procState := sm.status.ToProcessState()
-		if procState != "" {
+
+		var runtimeStatus model.RuntimeStatus
+		if sm.status == Done || sm.status == Error {
+			runtimeStatus = model.RuntimeStatusError
+		} else if sm.status == Running {
+			if proc.probeWorker != nil {
+				runtimeStatus = model.RuntimeStatusPending
+			} else {
+				runtimeStatus = model.RuntimeStatusOK
+			}
+		}
+
+		if runtimeStatus != "" {
 			// TODO(matt) when we get an error, the dot is red in the web ui, but green in the TUI
 			st.Dispatch(LocalServeStatusAction{
 				ManifestName: manifestName,
-				State:        procState,
+				Status:       runtimeStatus,
 				PID:          sm.pid,
 				SpanID:       sm.spanID,
 			})
@@ -305,16 +319,3 @@ const (
 	Done    status = iota
 	Error   status = iota
 )
-
-func (s status) ToProcessState() model.ProcessState {
-	switch s {
-	case Running:
-		return model.ProcessStateRunning
-	case Done:
-		return model.ProcessStateTerminated
-	case Error:
-		return model.ProcessStateTerminated
-	default:
-		return ""
-	}
-}
