@@ -1,36 +1,40 @@
 import { fireEvent } from "@testing-library/dom"
 import { mount } from "enzyme"
 import React from "react"
-import { MemoryRouter, useHistory } from "react-router"
-import PathBuilder from "./PathBuilder"
+import { MemoryRouter } from "react-router"
 import SidebarItem from "./SidebarItem"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
+import { TabNavContextProvider } from "./TabNav"
 import { twoResourceView } from "./testdata"
 import { ResourceView } from "./types"
 
-var fakeHistory: any
-const pathBuilder = PathBuilder.forTesting("localhost", "/")
+var opened: any
 let component: any
 let triggered: any = false
 const shortcuts = (items: SidebarItem[], selected: string) => {
-  let CaptureHistory = () => {
-    fakeHistory = useHistory()
-    return <span />
+  let tabNav = {
+    tabs: [],
+    selectedTab: "",
+    invalidTab: "",
+    openResource: (name: string, options?: { newTab: boolean }) => {
+      opened = name
+    },
+    closeTab: (name: string) => {},
   }
-  triggered = false
+  opened = null
 
   component = mount(
     <MemoryRouter initialEntries={["/init"]}>
-      <CaptureHistory />
-      <SidebarKeyboardShortcuts
-        items={items}
-        selected={selected}
-        pathBuilder={pathBuilder}
-        resourceView={ResourceView.Log}
-        onTrigger={() => {
-          triggered = true
-        }}
-      />
+      <TabNavContextProvider value={tabNav}>
+        <SidebarKeyboardShortcuts
+          items={items}
+          selected={selected}
+          resourceView={ResourceView.Log}
+          onTrigger={() => {
+            triggered = true
+          }}
+        />
+      </TabNavContextProvider>
     </MemoryRouter>
   )
 }
@@ -46,28 +50,28 @@ it("navigates forwards", () => {
   let items = twoResourceView().resources.map((res) => new SidebarItem(res))
   shortcuts(items, "")
   fireEvent.keyDown(document.body, { key: "j" })
-  expect(fakeHistory.location.pathname).toEqual("/r/vigoda")
+  expect(opened).toEqual("vigoda")
 })
 
 it("navigates forwards no wrap", () => {
   let items = twoResourceView().resources.map((res) => new SidebarItem(res))
   shortcuts(items, "snack")
   fireEvent.keyDown(document.body, { key: "j" })
-  expect(fakeHistory.location.pathname).toEqual("/init")
+  expect(opened).toEqual(null)
 })
 
 it("navigates backwards", () => {
   let items = twoResourceView().resources.map((res) => new SidebarItem(res))
   shortcuts(items, "snack")
   fireEvent.keyDown(document.body, { key: "k" })
-  expect(fakeHistory.location.pathname).toEqual("/r/vigoda")
+  expect(opened).toEqual("vigoda")
 })
 
 it("navigates backwards no wrap", () => {
   let items = twoResourceView().resources.map((res) => new SidebarItem(res))
   let sks = shortcuts(items, "")
   fireEvent.keyDown(document.body, { key: "k" })
-  expect(fakeHistory.location.pathname).toEqual("/init")
+  expect(opened).toEqual(null)
 })
 
 it("triggers update", () => {

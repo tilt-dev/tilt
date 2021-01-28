@@ -3707,6 +3707,7 @@ type testFixture struct {
 	opter                      *tiltanalytics.FakeOpter
 	dp                         *dockerprune.DockerPruner
 	fe                         *local.FakeExecer
+	fpm                        *local.FakeProberManager
 	overrideMaxParallelUpdates int
 
 	onchangeCh chan bool
@@ -3765,7 +3766,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := local.NewFakeExecer()
-	lc := local.NewController(fe)
+	fpm := local.NewFakeProberManager()
+	lc := local.NewController(fe, fpm)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
@@ -3799,6 +3801,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		opter:          to,
 		dp:             dp,
 		fe:             fe,
+		fpm:            fpm,
 	}
 
 	ret.disableEnvAnalyticsOpt()
@@ -4086,6 +4089,7 @@ func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeploy
 // the completed build.
 // using `nextCallComplete` will ensure you block until the EngineState reflects the completed build.
 func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
+	f.t.Helper()
 	msg := "timed out waiting for BuildAndDeployCall"
 	if len(msgAndArgs) > 0 {
 		format := msgAndArgs[0].(string)

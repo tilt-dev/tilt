@@ -175,7 +175,6 @@ export class SidebarResources extends React.Component<
         <SidebarKeyboardShortcuts
           selected={this.props.selected}
           items={filteredItems}
-          pathBuilder={this.props.pathBuilder}
           onTrigger={this.triggerSelected}
           resourceView={this.props.resourceView}
         />

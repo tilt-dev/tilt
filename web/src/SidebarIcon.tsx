@@ -48,7 +48,6 @@ let SidebarIconRoot = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
   width: ${Width.statusIcon}px;
   margin-right: ${Width.statusIconMarginRight}px;
   transition: background-color ${AnimDuration.default} linear,

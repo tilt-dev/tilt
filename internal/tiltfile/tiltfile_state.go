@@ -14,6 +14,7 @@ import (
 
 	links "github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
+	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -207,6 +208,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
 		links.NewExtension(),
 		print.NewExtension(),
+		probe.NewExtension(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -1472,7 +1474,8 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 			WithAllowParallel(r.allowParallel).
 			WithLinks(r.links).
 			WithTags(r.tags).
-			WithIsTest(r.isTest)
+			WithIsTest(r.isTest).
+			WithReadinessProbe(r.readinessProbe)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
 			mds = append(mds, model.ManifestName(md))

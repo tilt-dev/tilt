@@ -12,3 +12,10 @@ type LocalServeStatusAction struct {
 }
 
 func (LocalServeStatusAction) Action() {}
+
+type LocalServeReadinessProbeAction struct {
+	ManifestName model.ManifestName
+	Ready        bool
+}
+
+func (LocalServeReadinessProbeAction) Action() {}

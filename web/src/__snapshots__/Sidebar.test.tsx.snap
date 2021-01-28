@@ -26,7 +26,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-gsTCUz HrTde isNone"
+              className="sc-gsTCUz ibUBzS isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -61,11 +61,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -89,7 +89,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:36:03.000Z"
@@ -115,11 +115,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -162,11 +162,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -190,7 +190,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:35:58.000Z"
@@ -216,11 +216,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -263,11 +263,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -291,7 +291,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:35:48.000Z"
@@ -317,11 +317,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -364,11 +364,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -392,7 +392,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:35:38.000Z"
@@ -418,11 +418,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -465,11 +465,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -493,7 +493,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:35:28.000Z"
@@ -519,11 +519,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -566,11 +566,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -594,7 +594,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:35:18.000Z"
@@ -620,11 +620,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -667,11 +667,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -695,7 +695,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:35:13.000Z"
@@ -721,11 +721,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -790,7 +790,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-gsTCUz HrTde isNone"
+              className="sc-gsTCUz ibUBzS isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -846,7 +846,7 @@ exports[`sidebar renders list of resources 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-gsTCUz HrTde isNone"
+              className="sc-gsTCUz ibUBzS isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -881,11 +881,11 @@ exports[`sidebar renders list of resources 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -909,7 +909,7 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:36:07.000Z"
@@ -935,11 +935,11 @@ exports[`sidebar renders list of resources 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isUnhealthy"
+                className="sc-gsTCUz ibUBzS isUnhealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -984,11 +984,11 @@ exports[`sidebar renders list of resources 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1012,7 +1012,7 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 <time
                   dateTime="2017-12-21T15:35:57.000Z"
@@ -1038,11 +1038,11 @@ exports[`sidebar renders list of resources 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isUnhealthy"
+                className="sc-gsTCUz ibUBzS isUnhealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1109,7 +1109,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-gsTCUz HrTde isNone"
+              className="sc-gsTCUz ibUBzS isNone"
             >
               <svg>
                 checkmark-small.svg
@@ -1144,11 +1144,11 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1172,7 +1172,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 —
               </span>
@@ -1193,11 +1193,11 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz ibUBzS isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1240,11 +1240,11 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ zCSeR"
+              className="sc-pFZIQ hFOCtJ"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isHealthy"
+                className="sc-gsTCUz ibUBzS isHealthy"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}
@@ -1268,7 +1268,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <span
-                className="sc-bqyKva kPKqMc"
+                className="sc-bqyKva dRecs"
               >
                 —
               </span>
@@ -1289,11 +1289,11 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               </button>
             </div>
             <div
-              className="sc-jrAGrp hzspIa"
+              className="sc-jrAGrp dUlMku"
             >
               <div
                 aria-describedby={null}
-                className="sc-gsTCUz HrTde isBuilding"
+                className="sc-gsTCUz ibUBzS isBuilding"
                 onBlur={[Function]}
                 onFocus={[Function]}
                 onMouseLeave={[Function]}

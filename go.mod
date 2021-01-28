@@ -42,7 +42,7 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/jinzhu/gorm v1.9.12 // indirect
-	github.com/jonboulle/clockwork v0.1.0
+	github.com/jonboulle/clockwork v0.2.2
 	github.com/json-iterator/go v1.1.10
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
@@ -62,13 +62,14 @@ require (
 	github.com/schollz/closestmatch v2.1.0+incompatible
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/theupdateframework/notary v0.6.1 // indirect
 	github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277
 	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 	github.com/tilt-dev/fsnotify v1.4.8-0.20200727200623-991e307aab7f
 	github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
+	github.com/tilt-dev/probe v0.1.0
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
