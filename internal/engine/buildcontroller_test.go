@@ -173,12 +173,7 @@ func TestBuildControllerLocalResource(t *testing.T) {
 		WithLocalResource("echo beep boop", []string{dep}).Build()
 	f.Start([]model.Manifest{manifest})
 
-	f.WaitUntilManifestState("local target manifest state initialized correctly", "local", func(ms store.ManifestState) bool {
-		lrs := ms.RuntimeState.(store.LocalRuntimeState)
-		return lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus() == ""
-	})
-
-	call := f.nextCall()
+	call := f.nextCallComplete()
 	lt := manifest.LocalTarget()
 	assert.Equal(t, lt, call.local())
 
