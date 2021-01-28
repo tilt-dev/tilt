@@ -83,19 +83,19 @@ let ResourceBarStatusSummaryItem = styled.li`
     border-left: 1px solid ${Color.grayLighter};
     padding-left: ${SizeUnit(0.25)};
   }
-  &.hasErr {
+  &.is-highlightError {
     color: ${Color.red};
     .fillStd {
       fill: ${Color.red};
     }
   }
-  &.hasWarn {
+  &.is-highlightWarning {
     color: ${Color.yellow};
     .fillStd {
       fill: ${Color.yellow};
     }
   }
-  &.hasTotalHealthy {
+  &.is-highlightHealthy {
     color: ${Color.green};
     .fillStd {
       fill: ${Color.green};
@@ -138,7 +138,7 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
       <ResourceBarStatusLabel>{props.label}</ResourceBarStatusLabel>
       <ResourceBarStatusSummaryList>
         <ResourceBarStatusSummaryItem
-          className={props.counts.unhealthy >= 1 ? "hasErr" : ""}
+          className={props.counts.unhealthy >= 1 ? "is-highlightError" : ""}
         >
           <CloseSvg width="11" />
           <Link to={errorLink}>
@@ -149,7 +149,7 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
           </Link>
         </ResourceBarStatusSummaryItem>
         <ResourceBarStatusSummaryItem
-          className={props.counts.warning >= 1 ? "hasWarn" : ""}
+          className={props.counts.warning >= 1 ? "is-highlightWarning" : ""}
         >
           <WarningSvg width="7" />
           <Link to={warnLink}>
@@ -161,7 +161,9 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
         </ResourceBarStatusSummaryItem>
         <ResourceBarStatusSummaryItem
           className={
-            props.counts.healthy === props.counts.total ? "hasTotalHealthy" : ""
+            props.counts.healthy === props.counts.total
+              ? "is-highlightHealthy"
+              : ""
           }
         >
           <CheckmarkSmallSvg />
@@ -311,12 +313,16 @@ let MenuButtonLabel = styled.div`
 `
 
 let UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
-  display: block;
+  display: none;
   position: absolute;
-  top: 8px;
+  top: 15px;
   left: 5px;
   width: 10px;
   height: 10px;
+
+  &.is-visible {
+    display: block;
+  }
 `
 
 type ResourceBarShortcutsProps = {
@@ -464,7 +470,9 @@ function ResourceBarEnd(props: ResourceBarEndProps) {
       >
         <div>v{props.runningBuild?.version || "?"}</div>
 
-        {props.showUpdate ? <UpdateAvailableFloatIcon /> : null}
+        <UpdateAvailableFloatIcon
+          className={props.showUpdate ? "is-visible" : ""}
+        />
         <MenuButtonLabel>
           {props.showUpdate ? "Update Available" : "Tilt Version"}
         </MenuButtonLabel>
