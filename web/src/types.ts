@@ -142,6 +142,10 @@ export enum ResourceName {
 }
 
 export type SidebarOptions = {
-  showResources: boolean // TODO: namessss
+  // Which cards to show in sidebar
+  showResources: boolean
   showTests: boolean
+
+  // Sorting options
+  alertsOnTop: boolean
 }
