@@ -70,15 +70,11 @@ describe("SidebarTriggerButton", () => {
       let isManual = themeProvider.props().theme.isManualTriggerMode
       if (i == 0) {
         // Toggle button for a resource with TriggerModeAuto
-        expect(button.prop("title")).toEqual(
-          ToggleTriggerModeTooltip.DisableAuto
-        )
+        expect(button.prop("title")).toEqual(ToggleTriggerModeTooltip.isManual)
         expect(isManual).toBeFalsy()
       } else {
         // Toggle button for a resource with TriggerModeManual...
-        expect(button.prop("title")).toEqual(
-          ToggleTriggerModeTooltip.EnableAuto
-        )
+        expect(button.prop("title")).toEqual(ToggleTriggerModeTooltip.isAuto)
         expect(isManual).toBeTruthy()
       }
     }

@@ -1,28 +1,23 @@
 import React from "react"
-import styled, { ThemeProvider } from "styled-components"
-import { SizeUnit, Width } from "./style-helpers"
+import styled from "styled-components"
+import { ReactComponent as AutoSvg } from "./assets/svg/auto.svg"
+import { Color, SizeUnit, mixinResetButtonStyle } from "./style-helpers"
 import { TriggerMode } from "./types"
 
 let TriggerModeToggleStyle = styled.button`
-  position: absolute;
-  right: ${SizeUnit(1)};
-  bottom: ${SizeUnit(1)};
-  background-color: ${(props) =>
-    props.theme.isManualTriggerMode ? "violet" : "green"};
   width: ${SizeUnit(1)};
   height: ${SizeUnit(1)};
 
-  /* 
-  background-position: center center;
-  border: 0 none;
-  width: ${Width.sidebarTriggerButton}px;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0; */
+  ${mixinResetButtonStyle}
 
-  cursor: pointer;
+  .fillStd {
+    fill: ${Color.blue};
+  }
+  &.is-manual {
+    .fillStd {
+      fill: ${Color.grayLight};
+    }
+  }
 `
 
 type TriggerModeToggleProps = {
@@ -32,15 +27,15 @@ type TriggerModeToggleProps = {
 }
 
 export const ToggleTriggerModeTooltip = {
-  EnableAuto: "Click to enable auto mode",
-  DisableAuto: "Click to disable auto mode",
+  isManual: "Auto OFF (file changes do not trigger updates)",
+  isAuto: "Auto ON (file changes trigger update)",
 }
 
 const titleText = (isManual: boolean): string => {
   if (isManual) {
-    return ToggleTriggerModeTooltip.EnableAuto
+    return ToggleTriggerModeTooltip.isManual
   } else {
-    return ToggleTriggerModeTooltip.DisableAuto
+    return ToggleTriggerModeTooltip.isAuto
   }
 }
 
@@ -60,16 +55,14 @@ function TriggerModeToggle(props: TriggerModeToggleProps) {
     props.onModeToggle(desiredMode)
   }
 
-  let theme = {
-    isManualTriggerMode: isManualTriggerMode,
-  }
   return (
-    <ThemeProvider theme={theme}>
-      <TriggerModeToggleStyle
-        onClick={onClick}
-        title={titleText(isManualTriggerMode)}
-      />
-    </ThemeProvider>
+    <TriggerModeToggleStyle
+      className={isManualTriggerMode ? "is-manual" : ""}
+      onClick={onClick}
+      title={titleText(isManualTriggerMode)}
+    >
+      <AutoSvg />
+    </TriggerModeToggleStyle>
   )
 }
 

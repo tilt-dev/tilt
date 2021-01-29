@@ -24,6 +24,7 @@ import {
   ColorRGBA,
   Font,
   FontSize,
+  overviewItemBorderRadius,
   SizeUnit,
   Width,
 } from "./style-helpers"
@@ -134,13 +135,13 @@ export let OverviewItemBox = styled.div`
     background-color ${AnimDuration.default} linear;
   overflow: hidden;
   border: 1px solid ${Color.grayLighter};
-  position: relative; // Anchor the .isBuilding::after psuedo-element
+  position: relative; // Anchor .isBuilding::after + OverviewItemActions
   flex-grow: 1;
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
   box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.51);
-  border-radius: 8px;
+  border-radius: ${overviewItemBorderRadius};
   padding: 0;
   align-items: stretch;
 
@@ -165,6 +166,13 @@ export let OverviewItemBox = styled.div`
     background-size: 200% 200%;
     animation: ${barberpole} 8s linear infinite;
   }
+`
+let OverviewItemActions = styled.div`
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
 `
 
 let OverviewItemRuntimeBox = styled.div`
@@ -195,7 +203,6 @@ let OverviewItemBuildBox = styled.div`
 let OverviewItemText = styled.div`
   display: flex;
   align-items: center;
-  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   opacity: ${ColorAlpha.almostOpaque};
@@ -226,6 +233,7 @@ let OverviewItemName = (props: { name: string }) => {
 
 let OverviewItemTimeAgo = styled.span`
   opacity: ${ColorAlpha.almostOpaque};
+  margin-right: ${SizeUnit(1.5)};
 `
 
 export function triggerUpdate(name: string, action: string) {
@@ -331,10 +339,12 @@ function RuntimeBox(props: RuntimeBoxProps) {
   let { item } = props
 
   let formatter = timeAgoFormatter
-  let hasBuilt = item.lastBuild !== null
-  let building = !isZeroTime(item.currentBuildStartTime)
   let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+
+  let building = !isZeroTime(item.currentBuildStartTime)
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
+  let hasBuilt = item.lastBuild !== null
+  let onModeToggle = toggleTriggerMode.bind(null, item.name)
   let onTrigger = triggerUpdate.bind(null, item.name)
 
   return (
@@ -347,24 +357,33 @@ function RuntimeBox(props: RuntimeBoxProps) {
       <RuntimeBoxStack style={{ margin: "8px 0px" }}>
         <InnerRuntimeBox>
           <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
+          <SidebarPinButton resourceName={item.name} />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>
-          <SidebarTriggerButton
-            isTiltfile={item.isTiltfile}
-            isSelected={false}
-            hasPendingChanges={item.hasPendingChanges}
-            hasBuilt={hasBuilt}
-            isBuilding={building}
-            triggerMode={item.triggerMode}
-            isQueued={item.queued}
-            onTrigger={onTrigger}
-          />
         </InnerRuntimeBox>
         <InnerRuntimeBox>
           <OverviewItemName name={item.name} />
         </InnerRuntimeBox>
       </RuntimeBoxStack>
+      <OverviewItemActions>
+        <SidebarTriggerButton
+          isTiltfile={item.isTiltfile}
+          isSelected={false}
+          hasPendingChanges={item.hasPendingChanges}
+          hasBuilt={hasBuilt}
+          isBuilding={building}
+          triggerMode={item.triggerMode}
+          isQueued={item.queued}
+          onTrigger={onTrigger}
+        />
+        {item.isTest && (
+          <TriggerModeToggle
+            triggerMode={item.triggerMode}
+            onModeToggle={onModeToggle}
+          />
+        )}
+      </OverviewItemActions>
     </OverviewItemRuntimeBox>
   )
 }
@@ -375,7 +394,7 @@ type BuildBoxProps = {
 }
 
 function BuildBox(props: BuildBoxProps) {
-  let { item, isDetailsBox } = props
+  let { item } = props
 
   return (
     <OverviewItemBuildBox>
@@ -387,8 +406,6 @@ function BuildBox(props: BuildBoxProps) {
       <OverviewItemText style={{ margin: "8px 0px" }}>
         {buildStatusText(item)}
       </OverviewItemText>
-
-      <SidebarPinButton resourceName={item.name} persistShow={isDetailsBox} />
     </OverviewItemBuildBox>
   )
 }
@@ -436,7 +453,7 @@ let OverviewItemDetailsBox = styled.div`
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
   box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.51);
-  border-radius: 8px;
+  border-radius: ${overviewItemBorderRadius};
 `
 
 let OverviewItemDetailsLinkBox = styled.div`
@@ -630,19 +647,13 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
   let item = props.item
   let building = item.buildStatus === ResourceStatus.Building
   let isBuildingClass = building ? "isBuilding" : ""
-  let onModeToggle = toggleTriggerMode.bind(null, item.name)
+
   return (
     <OverviewItemRoot
       key={item.name}
       onClick={handleClick}
       className="u-showPinOnHover"
     >
-      {item.isTest && (
-        <TriggerModeToggle
-          triggerMode={item.triggerMode}
-          onModeToggle={onModeToggle}
-        />
-      )}
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <RuntimeBox item={item} />
         <BuildBox item={item} isDetailsBox={false} />
