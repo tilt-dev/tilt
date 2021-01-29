@@ -4,6 +4,7 @@ import { ReactComponent as AutoSvg } from "./assets/svg/auto.svg"
 import {
   AnimDuration,
   Color,
+  ColorAlpha,
   mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
@@ -21,6 +22,8 @@ let TriggerModeToggleStyle = styled.button`
   }
   .strokeStd {
     stroke: ${Color.blue};
+    opacity: ${ColorAlpha.almostOpaque};
+    transition: stroke ${AnimDuration.short} linear;
   }
   .autoSvgToggleOn {
     fill: ${Color.blue};
