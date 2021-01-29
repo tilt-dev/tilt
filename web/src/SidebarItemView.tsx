@@ -19,7 +19,13 @@ import {
 import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { ResourceName, ResourceStatus, ResourceView } from "./types"
+import { TriggerModeToggle } from "./TriggerModeToggle"
+import {
+  ResourceName,
+  ResourceStatus,
+  ResourceView,
+  TriggerMode,
+} from "./types"
 
 const SidebarItemRoot = styled.li`
   & + & {
@@ -179,6 +185,14 @@ let SidebarItemTimeAgo = styled.span`
   align-items: center;
 `
 
+let SidebarItemActions = styled.div`
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+`
+
 export function triggerUpdate(name: string, action: string) {
   incr("ui.web.triggerResource", { action })
 
@@ -189,6 +203,24 @@ export function triggerUpdate(name: string, action: string) {
     body: JSON.stringify({
       manifest_names: [name],
       build_reason: 16 /* BuildReasonFlagTriggerWeb */,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.log(response)
+    }
+  })
+}
+
+export function toggleTriggerMode(name: string, mode: TriggerMode) {
+  incr("ui.web.toggleTriggerMode", { to_mode: mode.toString() })
+
+  let url = `//${window.location.host}/api/override/trigger_mode`
+
+  fetch(url, {
+    method: "post",
+    body: JSON.stringify({
+      manifest_names: [name],
+      trigger_mode: mode,
     }),
   }).then((response) => {
     if (!response.ok) {
@@ -272,6 +304,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   let isSelectedClass = isSelected ? "isSelected" : ""
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
+  let onModeToggle = toggleTriggerMode.bind(null, item.name)
 
   return (
     <SidebarItemRoot
@@ -296,9 +329,20 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
             alertCount={item.runtimeAlertCount}
           />
           <SidebarItemName name={item.name} />
+          <SidebarPinButton resourceName={item.name} />
           <SidebarItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </SidebarItemTimeAgo>
+        </SidebarItemRuntimeBox>
+        <SidebarItemBuildBox>
+          <SidebarIcon
+            tooltipText={buildTooltipText(item.buildStatus)}
+            status={item.buildStatus}
+            alertCount={item.buildAlertCount}
+          />
+          <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
+        </SidebarItemBuildBox>
+        <SidebarItemActions>
           <SidebarTriggerButton
             isTiltfile={item.isTiltfile}
             isSelected={isSelected}
@@ -309,16 +353,13 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
             isQueued={item.queued}
             onTrigger={onTrigger}
           />
-        </SidebarItemRuntimeBox>
-        <SidebarItemBuildBox>
-          <SidebarIcon
-            tooltipText={buildTooltipText(item.buildStatus)}
-            status={item.buildStatus}
-            alertCount={item.buildAlertCount}
-          />
-          <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
-          <SidebarPinButton resourceName={item.name} />
-        </SidebarItemBuildBox>
+          {item.isTest && (
+            <TriggerModeToggle
+              triggerMode={item.triggerMode}
+              onModeToggle={onModeToggle}
+            />
+          )}
+        </SidebarItemActions>
       </SidebarItemBox>
     </SidebarItemRoot>
   )

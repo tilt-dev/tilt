@@ -2,21 +2,26 @@ import React from "react"
 import styled from "styled-components"
 import { ReactComponent as TriggerButtonManualSvg } from "./assets/svg/trigger-button-manual.svg"
 import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
-import { AnimDuration, Color, Width } from "./style-helpers"
+import {
+  AnimDuration,
+  Color,
+  mixinResetButtonStyle,
+  overviewItemBorderRadius,
+  SizeUnit,
+} from "./style-helpers"
 import { TriggerMode } from "./types"
 
 export let SidebarTriggerButtonRoot = styled.button`
-  background-color: ${Color.gray};
-  border-radius: 50% 0 0 50%;
-  border: none;
-  width: ${Width.sidebarTriggerButton}px;
-  height: ${Width.sidebarTriggerButton}px;
+  width: ${SizeUnit(1)};
+  height: ${SizeUnit(1)};
+  ${mixinResetButtonStyle}
+
+  background-color: ${Color.grayLighter};
+  border-bottom-left-radius: ${overviewItemBorderRadius};
+  border-top-right-radius: ${overviewItemBorderRadius};
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  box-shadow: inset 0px 0px 8px rgba(0, 0, 0, 0.24);
-  margin: 0 0 0 6px;
   opacity: 0;
   pointer-events: none;
 
@@ -24,7 +29,6 @@ export let SidebarTriggerButtonRoot = styled.button`
     pointer-events: auto;
     cursor: pointer;
   }
-
   &.clickable,
   &.isQueued {
     opacity: 1;
