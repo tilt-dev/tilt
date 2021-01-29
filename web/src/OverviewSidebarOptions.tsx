@@ -20,7 +20,7 @@ type OverviewSidebarOptionsProps = {
   curState: SidebarOptions
   toggleShowResources: () => void
   toggleShowTests: () => void
-    toggleAlertsOnTop: () => void
+  toggleAlertsOnTop: () => void
 }
 
 export function OverviewSidebarOptions(
@@ -28,41 +28,41 @@ export function OverviewSidebarOptions(
 ): JSX.Element {
   return (
     <OverviewSidebarOptionsRoot>
-        <FilterOptions>
-      <div>
-        <input
-          type="checkbox"
-          id="resources"
-          name="resources"
-          checked={props.curState.showResources}
-          onChange={(evt) => props.toggleShowResources()}
-        />
-        <label htmlFor="resources">Resources</label>
-      </div>
-      <div>
-        <input
-          type="checkbox"
-          id="tests"
-          name="tests"
-          checked={props.curState.showTests}
-          onChange={(evt) => props.toggleShowTests()}
-        />
-        <label htmlFor="tests">Tests</label>
-      </div>
-        </FilterOptions>
+      <FilterOptions>
+        <div>
+          <input
+            type="checkbox"
+            id="resources"
+            name="resources"
+            checked={props.curState.showResources}
+            onChange={(evt) => props.toggleShowResources()}
+          />
+          <label htmlFor="resources">Resources</label>
+        </div>
+        <div>
+          <input
+            type="checkbox"
+            id="tests"
+            name="tests"
+            checked={props.curState.showTests}
+            onChange={(evt) => props.toggleShowTests()}
+          />
+          <label htmlFor="tests">Tests</label>
+        </div>
+      </FilterOptions>
 
-        <SortOptions>
-            <div>
-                <input
-                    type="checkbox"
-                    id="alertsOnTop"
-                    name="alertsOnTop"
-                    checked={props.curState.alertsOnTop}
-                    onChange={(evt) => props.toggleAlertsOnTop()}
-                />
-                <label htmlFor="alertsontop">Alerts On Top</label>
-            </div>
-        </SortOptions>
+      <SortOptions>
+        <div>
+          <input
+            type="checkbox"
+            id="alertsOnTop"
+            name="alertsOnTop"
+            checked={props.curState.alertsOnTop}
+            onChange={(evt) => props.toggleAlertsOnTop()}
+          />
+          <label htmlFor="alertsontop">Alerts On Top</label>
+        </div>
+      </SortOptions>
     </OverviewSidebarOptionsRoot>
   )
 }

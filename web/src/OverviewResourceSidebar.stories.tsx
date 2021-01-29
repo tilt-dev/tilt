@@ -11,7 +11,7 @@ import {
   tiltfileResource,
   twoResourceView,
 } from "./testdata"
-import {UpdateStatus} from "./types";
+import { UpdateStatus } from "./types"
 
 type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -56,17 +56,15 @@ export function TwoResourcesTwoTests() {
 }
 
 export function TestsWithErrors() {
-  let all: Resource[] = [
-    tiltfileResource(),
-  ]
+  let all: Resource[] = [tiltfileResource()]
   for (let i = 0; i < 8; i++) {
     let test = oneResourceTest()
     test.name = "test_" + i
     if (i % 2 === 0) {
-    if (!test.buildHistory) {
-      throw "unexpectedly empty buildHistory on test resource"
-    }
-    test.buildHistory[0].error = "egads!"
+      if (!test.buildHistory) {
+        throw "unexpectedly empty buildHistory on test resource"
+      }
+      test.buildHistory[0].error = "egads!"
       test.updateStatus = UpdateStatus.Error
     }
     all.push(test)
