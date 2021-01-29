@@ -148,8 +148,8 @@ func (e Extension) httpGetAction(thread *starlark.Thread, fn *starlark.Builtin, 
 	var port int
 	// TODO(milas): support headers
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
-		"host", &host,
 		"port", &port,
+		"host?", &host,
 		"scheme?", &scheme,
 		"path?", &path,
 	)
@@ -194,7 +194,10 @@ func (t TCPSocketAction) ValueOrNone() starlark.Value {
 func (e Extension) tcpSocketAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var host starlark.String
 	var port int
-	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "host", &host, "port", &port)
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
+		"port", &port,
+		"host?", &host,
+	)
 	if err != nil {
 		return nil, err
 	}
