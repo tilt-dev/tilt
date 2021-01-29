@@ -1,7 +1,12 @@
 import React from "react"
 import styled from "styled-components"
 import { ReactComponent as AutoSvg } from "./assets/svg/auto.svg"
-import { Color, SizeUnit, mixinResetButtonStyle } from "./style-helpers"
+import {
+  AnimDuration,
+  Color,
+  mixinResetButtonStyle,
+  SizeUnit,
+} from "./style-helpers"
 import { TriggerMode } from "./types"
 
 let TriggerModeToggleStyle = styled.button`
@@ -12,9 +17,26 @@ let TriggerModeToggleStyle = styled.button`
 
   .fillStd {
     fill: ${Color.blue};
+    transition: fill ${AnimDuration.short} linear;
   }
+  .strokeStd {
+    stroke: ${Color.blue};
+  }
+  .autoSvgToggleOn {
+    fill: ${Color.blue};
+  }
+
   &.is-manual {
     .fillStd {
+      fill: ${Color.grayLight};
+    }
+    .strokeStd {
+      stroke: ${Color.grayLight};
+    }
+    .autoSvgToggleOn {
+      fill: none;
+    }
+    .autoSvgToggleOff {
       fill: ${Color.grayLight};
     }
   }
