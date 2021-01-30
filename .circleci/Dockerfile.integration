@@ -34,7 +34,7 @@ RUN go get gotest.tools/gotestsum
 RUN apt update && apt install -y jq
 
 # install Kind (Kubernetes in Docker)
-RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/v0.8.0/kind-linux-amd64 \
+RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/v0.10.0/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /go/bin/kind
 
@@ -42,6 +42,6 @@ RUN apt update && apt install -y curl ca-certificates liblz4-tool rsync socat
 
 # install circleci helpers from
 # https://github.com/tilt-dev/kind-local/tree/master/.circleci
-COPY --from=tiltdev/circleci-kind:v1.2.0 /usr/local/bin/start-portforward-service.sh /usr/local/bin/
-COPY --from=tiltdev/circleci-kind:v1.2.0 /usr/local/bin/portforward.sh /usr/local/bin/
-COPY --from=tiltdev/circleci-kind:v1.2.0 /usr/local/bin/with-kind-cluster.sh /usr/local/bin/
+COPY --from=tiltdev/circleci-kind:v1.4.0 /usr/local/bin/start-portforward-service.sh /usr/local/bin/
+COPY --from=tiltdev/circleci-kind:v1.4.0 /usr/local/bin/portforward.sh /usr/local/bin/
+COPY --from=tiltdev/circleci-kind:v1.4.0 /usr/local/bin/with-kind-cluster.sh /usr/local/bin/

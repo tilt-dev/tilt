@@ -7,7 +7,7 @@
 #
 # Built with goreleaser.
 
-FROM tiltdev/circleci-kind:v1.2.0
+FROM tiltdev/circleci-kind:v1.4.0
 
 RUN apt update && apt install -y git
 
