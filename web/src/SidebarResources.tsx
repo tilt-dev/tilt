@@ -3,14 +3,14 @@ import styled from "styled-components"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, {
-  SidebarItemAll,
-  triggerUpdate,
+import SidebarItemView,{
+SidebarItemAll,
+triggerUpdate
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { useSidebarPin } from "./SidebarPin"
-import { Color, FontSize, SizeUnit } from "./style-helpers"
-import { ResourceView, SidebarOptions } from "./types"
+import { Color,FontSize,SizeUnit } from "./style-helpers"
+import { ResourceView,SidebarOptions } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
@@ -178,14 +178,6 @@ export class SidebarResources extends React.Component<
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
-          {testsPresent ? (
-            <OverviewSidebarOptions
-              curState={this.state}
-              toggleShowResources={this.toggleShowResources}
-              toggleShowTests={this.toggleShowTests}
-              toggleAlertsOnTop={this.toggleAlertsOnTop}
-            /> // TODO: if this vanishes because no tests present, reset it to show everything
-          ) : null}
           <SidebarListSection name="">
             <SidebarItemAll
               nothingSelected={nothingSelected}
@@ -193,6 +185,14 @@ export class SidebarResources extends React.Component<
             />
           </SidebarListSection>
           <PinnedItems {...this.props} />
+          {testsPresent && (
+            <OverviewSidebarOptions
+              curState={this.state}
+              toggleShowResources={this.toggleShowResources}
+              toggleShowTests={this.toggleShowTests}
+              toggleAlertsOnTop={this.toggleAlertsOnTop}
+            /> // TODO: if this vanishes because no tests present, reset it to show everything
+          )}
           <SidebarListSection name="resources">{listItems}</SidebarListSection>
         </SidebarList>
         <SidebarKeyboardShortcuts
