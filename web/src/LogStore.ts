@@ -111,22 +111,36 @@ class LogStore {
     return this.warningIndex[spanId] ?? []
   }
 
-  toLogList(): Proto.webviewLogList {
+  toLogList(maxSize: number | null | undefined): Proto.webviewLogList {
     let spans = {} as { [key: string]: Proto.webviewLogSpan }
-    for (let key in this.spans) {
-      spans[key] = { manifestName: this.spans[key].manifestName }
+
+    let size = 0
+    const segments = [] as Proto.webviewLogSegment[]
+    for (let i = this.segments.length - 1; i >= 0; i--) {
+      let segment = this.segments[i]
+      size += segment.text?.length || 0
+      if (maxSize && size > maxSize) {
+        break
+      }
+
+      let spanId = segment.spanId
+      if (spanId && !spans[spanId]) {
+        spans[spanId] = { manifestName: this.spans[spanId].manifestName }
+      }
+
+      segments.push({
+        spanId: spanId,
+        time: segment.time,
+        text: segment.text,
+        level: segment.level,
+        fields: segment.fields
+      })
     }
 
-    let segments = this.segments.map(
-      (segment): Proto.webviewLogSegment => {
-        let spanId = segment.spanId
-        let time = segment.time
-        let text = segment.text
-        let level = segment.level
-        let fields = segment.fields
-        return { spanId, time, text, level, fields }
-      }
-    )
+    // caller expects segments in chronological order
+    // (iteration here was done backwards for truncation)
+    segments.reverse()
+
     return {
       spans: spans,
       segments: segments,

@@ -426,4 +426,55 @@ describe("LogStore", () => {
       "build ...... 3\nbuild 4\nbuild 5"
     )
   })
+
+  it("truncates output for snapshots", () => {
+    let logs = new LogStore()
+
+    logs.append({
+      spans: {
+        "build:1": { manifestName: "fe" },
+      },
+      segments: [
+        newManifestSegment("build:1", "build 1\n"),
+      ],
+      fromCheckpoint: 0,
+      toCheckpoint: 1,
+    })
+
+    logs.append({
+      spans: {
+        "build:2": { manifestName: "be" },
+      },
+      segments: [
+        newManifestSegment("build:2", "build 2\n"),
+        newManifestSegment("build:2", "build 3\n"),
+      ],
+      fromCheckpoint: 1,
+      toCheckpoint: 3,
+    })
+
+    logs.append({
+      spans: {
+        "": {},
+      },
+      segments: [
+        newGlobalSegment("global line 1\n"),
+      ],
+      fromCheckpoint: 3,
+      toCheckpoint: 4,
+    })
+
+    const logList = logs.toLogList(28)
+    // log should be truncated
+    expect(logList.segments?.length).toEqual(2)
+    // order should be preserved
+    expect(logList.segments![0].text).toEqual("build 3\n")
+    expect(logList.segments![1].text).toEqual("global line 1\n")
+
+    // only spans referenced by segments in the truncated output should exist
+    const spans = logList.spans as { [key: string]: Proto.webviewLogSpan }
+    expect(Object.keys(spans).length).toEqual(2)
+    expect(spans["build:2"].manifestName).toEqual("be")
+    expect(spans["_"].manifestName).toEqual("")
+  })
 })
