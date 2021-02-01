@@ -56,6 +56,10 @@ type HudProps = {
   interfaceVersion: InterfaceVersion
 }
 
+// Snapshot logs are capped to 1MB (max upload size is 4MB; this ensures between the rest of state and JSON overhead
+// that the snapshot should still fit)
+const maxSnapshotLogSize = 1000 * 1000
+
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
 export default class HUD extends Component<HudProps, HudState> {
@@ -191,7 +195,7 @@ export default class HUD extends Component<HudProps, HudState> {
   snapshotFromState(state: HudState): Proto.webviewSnapshot {
     let view = _.cloneDeep(state.view ?? null)
     if (view && state.logStore) {
-      view.logList = state.logStore.toLogList()
+      view.logList = state.logStore.toLogList(maxSnapshotLogSize)
     }
     return {
       view: view,
