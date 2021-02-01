@@ -59,7 +59,17 @@ class StoredLine {
   }
 }
 
-type callback = () => void
+export enum LogUpdateAction {
+  append,
+  truncate,
+}
+
+export interface LogUpdateEvent {
+  action: LogUpdateAction
+  spans: { [key: string]: Proto.webviewLogSpan }
+}
+
+type callback = (e: LogUpdateEvent) => void
 
 class LogStore {
   // Track which segments we've received from the server.
@@ -179,61 +189,121 @@ class LogStore {
       }
     }
 
+    const modifiedSpans = {} as { [key: string]: Proto.webviewLogSpan }
     newSegments.forEach((newSegment) => {
-      // workaround firestore bug. see comments on defaultSpanId.
-      newSegment.spanId = newSegment.spanId || defaultSpanId
-      this.segments.push(newSegment)
-
-      let candidate = new StoredLine(newSegment)
-      let spanId = candidate.spanId
-      let span = this.spans[spanId]
-      if (!span) {
-        // If we don't have the span for this log, we can't meaningfully print it,
-        // so just drop it. This means that there's a bug on the server, and
-        // the best the client can do is fail gracefully.
-        this.segmentToLine.push(-1)
-        return
-      }
-      let isStartingNewLine = false
-      if (span.lastLineIndex === -1) {
-        isStartingNewLine = true
-        this.segmentToLine.push(this.lines.length)
-      } else {
-        let line = this.lines[span.lastLineIndex]
-        let overwriteIndex = this.maybeOverwriteLine(candidate, span)
-        if (overwriteIndex !== -1) {
-          this.segmentToLine.push(overwriteIndex)
-          return
-        } else if (line.isComplete() || !line.canContinueLine(candidate)) {
-          isStartingNewLine = true
-          this.segmentToLine.push(this.lines.length)
-        } else {
-          line.text += candidate.text
-          delete this.lineCache[span.lastLineIndex]
-          this.segmentToLine.push(span.lastLineIndex)
-          return
-        }
-      }
-
-      if (span.firstLineIndex === -1) {
-        span.firstLineIndex = this.lines.length
-      }
-
-      if (isStartingNewLine) {
-        span.lastLineIndex = this.lines.length
-        this.lines.push(candidate)
+      this.addSegment(newSegment)
+      const spanId = newSegment.spanId || defaultSpanId
+      modifiedSpans[spanId] = {
+        manifestName: this.spans[spanId].manifestName,
       }
     })
 
+    this.invokeUpdateCallbacks({
+      action: LogUpdateAction.append,
+      spans: modifiedSpans,
+    })
+  }
+
+  private invokeUpdateCallbacks(e: LogUpdateEvent) {
     window.requestAnimationFrame(() => {
       // Make sure an exception in one callback doesn't affect the rest.
       try {
-        this.updateCallbacks.forEach((c) => c())
+        this.updateCallbacks.forEach((c) => c(e))
       } catch (e) {
         window.requestAnimationFrame(() => {
           throw e
         })
       }
+    })
+  }
+
+  private addSegment(newSegment: Proto.webviewLogSegment) {
+    // workaround firestore bug. see comments on defaultSpanId.
+    newSegment.spanId = newSegment.spanId || defaultSpanId
+    this.segments.push(newSegment)
+
+    let candidate = new StoredLine(newSegment)
+    let spanId = candidate.spanId
+    let span = this.spans[spanId]
+    if (!span) {
+      // If we don't have the span for this log, we can't meaningfully print it,
+      // so just drop it. This means that there's a bug on the server, and
+      // the best the client can do is fail gracefully.
+      this.segmentToLine.push(-1)
+      return
+    }
+    let isStartingNewLine = false
+    if (span.lastLineIndex === -1) {
+      isStartingNewLine = true
+      this.segmentToLine.push(this.lines.length)
+    } else {
+      let line = this.lines[span.lastLineIndex]
+      let overwriteIndex = this.maybeOverwriteLine(candidate, span)
+      if (overwriteIndex !== -1) {
+        this.segmentToLine.push(overwriteIndex)
+        return
+      } else if (line.isComplete() || !line.canContinueLine(candidate)) {
+        isStartingNewLine = true
+        this.segmentToLine.push(this.lines.length)
+      } else {
+        line.text += candidate.text
+        delete this.lineCache[span.lastLineIndex]
+        this.segmentToLine.push(span.lastLineIndex)
+        return
+      }
+    }
+
+    if (span.firstLineIndex === -1) {
+      span.firstLineIndex = this.lines.length
+    }
+
+    if (isStartingNewLine) {
+      span.lastLineIndex = this.lines.length
+      this.lines.push(candidate)
+    }
+  }
+
+  // Remove spans from the LogStore, triggering a full rebuild of the line cache.
+  removeSpans(spanIds: string[]) {
+    if (spanIds.length === 0) {
+      return
+    }
+
+    this.lines = []
+    this.lineCache = []
+    this.segmentToLine = []
+    const spansToDelete = new Set(spanIds)
+    if (spansToDelete.has("")) {
+      spansToDelete.delete("")
+      spansToDelete.add(defaultSpanId)
+    }
+
+    const deletedSpans = {} as { [key: string]: Proto.webviewLogSpan }
+    for (const span of Object.values(this.spans)) {
+      const spanId = span.spanId
+      if (spansToDelete.has(spanId)) {
+        deletedSpans[spanId] = { manifestName: this.spans[spanId].manifestName }
+        delete this.spans[spanId]
+        delete this.warningIndex[spanId]
+      } else {
+        span.firstLineIndex = -1
+        span.lastLineIndex = -1
+      }
+    }
+
+    const currentSegments = this.segments
+    this.segments = []
+    for (const segment of currentSegments) {
+      const spanId = segment.spanId
+      if (spanId && !spansToDelete.has(spanId)) {
+        // re-add any non-deleted segments
+        this.addSegment(segment)
+      }
+    }
+
+    this.invokeUpdateCallbacks({
+      action: LogUpdateAction.truncate,
+      spans: deletedSpans,
     })
   }
 
@@ -293,15 +363,28 @@ class LogStore {
     return this.logHelper(spans, 0).lines
   }
 
+  allSpans(): { [key: string]: LogSpan } {
+    const result: { [key: string]: LogSpan } = {}
+    for (let spanId in this.spans) {
+      result[spanId] = { ...this.spans[spanId] }
+    }
+    return result
+  }
+
   spansForManifest(mn: string): { [key: string]: LogSpan } {
     let result: { [key: string]: LogSpan } = {}
     for (let spanId in this.spans) {
       let span = this.spans[spanId]
       if (span.manifestName === mn) {
-        result[spanId] = span
+        result[spanId] = { ...span }
       }
     }
     return result
+  }
+
+  getOrderedSpansIdsForManifest(mn: string): string[] {
+    const spans = this.spansForManifest(mn)
+    return this.sortedSpanIds(Object.keys(spans))
   }
 
   getOrderedBuildSpanIds(spanId: string): string[] {
@@ -311,7 +394,7 @@ class LogStore {
     }
 
     let manifestName = startSpan.manifestName
-    let spansById: { [key: string]: LogSpan } = {}
+    const spanIds: string[] = []
     for (let key in this.spans) {
       if (!isBuildSpanId(key)) {
         continue
@@ -322,18 +405,22 @@ class LogStore {
         continue
       }
 
-      spansById[key] = span
+      spanIds.push(key)
     }
 
-    return Object.keys(spansById).sort((a, b) => {
-      return spansById[a].firstLineIndex - spansById[b].firstLineIndex
-    })
+    return this.sortedSpanIds(spanIds)
   }
 
   getOrderedBuildSpans(spanId: string): LogSpan[] {
     return this.getOrderedBuildSpanIds(spanId).map(
       (spanId) => this.spans[spanId]
     )
+  }
+
+  private sortedSpanIds(spanIds: string[]): string[] {
+    return spanIds.sort((a, b) => {
+      return this.spans[a].firstLineIndex - this.spans[b].firstLineIndex
+    })
   }
 
   // Given a build span in the current manifest, find the next build span.

@@ -1,5 +1,6 @@
 import { mount } from "enzyme"
 import { FilterLevel, FilterSource } from "./logfilters"
+import { LogUpdateAction } from "./LogStore"
 import {
   OverviewLogComponent,
   PROLOGUE_LENGTH,
@@ -197,7 +198,10 @@ it("renders new logs first", () => {
     lines.push(`incremental line ${i}\n`)
   }
   appendLines(component.props.logStore, "fe", ...lines)
-  component.onLogUpdate()
+  component.onLogUpdate({
+    action: LogUpdateAction.append,
+    spans: { fe: { manifestName: "fe" } },
+  })
   expect(component.forwardBuffer.length).toEqual(newLineCount)
   expect(component.backwardBuffer.length).toEqual(initLineCount)
 

@@ -473,4 +473,36 @@ describe("LogStore", () => {
     expect(spans["build:2"].manifestName).toEqual("be")
     expect(spans["_"].manifestName).toEqual("")
   })
+
+  it("removes manifests", () => {
+    let logs = new LogStore()
+
+    logs.append({
+      spans: {
+        "build:1": { manifestName: "keep" },
+        "build:2": { manifestName: "purge" },
+        "": {},
+      },
+      segments: [
+        newGlobalSegment("global line 1\n"),
+        newManifestSegment("build:1", "start of line - "),
+        newManifestSegment("build:2", "build 2\n"),
+        newManifestSegment("build:1", "middle of line - "),
+        newManifestSegment("build:2", "build 3\n"),
+        newManifestSegment("build:1", "end of line\n"),
+      ],
+      fromCheckpoint: 0,
+      toCheckpoint: 4,
+    })
+
+    logs.removeSpans(["build:2"])
+    expect(logs.segments).toHaveLength(4)
+    expect(logs.segmentToLine).toHaveLength(4)
+    expect(Object.keys(logs.spans).sort()).toEqual(["_", "build:1"])
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual(
+      "global line 1\nkeep        ┊ start of line - middle of line - end of line"
+    )
+    expect(logLinesToString(logs.manifestLog("be"), false)).toEqual("")
+  })
 })

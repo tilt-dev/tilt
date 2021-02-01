@@ -10,7 +10,11 @@ import {
 } from "./logfilters"
 import "./LogPane.scss"
 import "./LogPaneLine.scss"
-import LogStore, { useLogStore } from "./LogStore"
+import LogStore, {
+  LogUpdateAction,
+  LogUpdateEvent,
+  useLogStore,
+} from "./LogStore"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
 import { RafContext, useRaf } from "./raf"
 import { Color, SizeUnit } from "./style-helpers"
@@ -212,12 +216,33 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
   }
 
-  onLogUpdate() {
+  onLogUpdate(e: LogUpdateEvent) {
     if (!this.rootRef.current || !this.cursorRef.current) {
       return
     }
 
-    this.readLogsFromLogStore()
+    let isAffectedByUpdate = false
+    if (this.props.manifestName === "") {
+      isAffectedByUpdate = true
+    } else {
+      for (const span of Object.values(e.spans)) {
+        if (span.manifestName == this.props.manifestName) {
+          isAffectedByUpdate = true
+          break
+        }
+      }
+    }
+
+    if (!isAffectedByUpdate) {
+      return
+    }
+
+    if (e.action == LogUpdateAction.append) {
+      this.readLogsFromLogStore()
+    } else if (e.action == LogUpdateAction.truncate) {
+      this.resetRender()
+      this.readLogsFromLogStore()
+    }
   }
 
   componentDidUpdate(prevProps: OverviewLogComponentProps) {

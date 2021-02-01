@@ -11,6 +11,7 @@ import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import ClearLogs from "./ClearLogs"
 import { displayURL } from "./links"
 import { FilterLevel, FilterSet, FilterSource } from "./logfilters"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
@@ -475,6 +476,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
           filterSet={props.filterSet}
           alerts={alerts}
         />
+        <ClearLogs resource={resource} alerts={alerts} />
       </ActionBarBottomRow>
     </ActionBarRoot>
   )
