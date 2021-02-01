@@ -79,6 +79,7 @@ export function OverviewSidebarOptions(
               checked={props.curState.showResources}
               onChange={(e) => props.toggleShowResources()}
               name="resources"
+              id="resources"
             />
           }
           label="Resources"
@@ -93,6 +94,7 @@ export function OverviewSidebarOptions(
               checked={props.curState.showTests}
               onChange={(e) => props.toggleShowTests()}
               name="tests"
+              id="tests"
             />
           }
           label="Tests"
