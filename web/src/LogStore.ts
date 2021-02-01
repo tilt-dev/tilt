@@ -133,7 +133,7 @@ class LogStore {
         time: segment.time,
         text: segment.text,
         level: segment.level,
-        fields: segment.fields
+        fields: segment.fields,
       })
     }
 

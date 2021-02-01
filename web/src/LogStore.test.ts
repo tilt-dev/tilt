@@ -434,9 +434,7 @@ describe("LogStore", () => {
       spans: {
         "build:1": { manifestName: "fe" },
       },
-      segments: [
-        newManifestSegment("build:1", "build 1\n"),
-      ],
+      segments: [newManifestSegment("build:1", "build 1\n")],
       fromCheckpoint: 0,
       toCheckpoint: 1,
     })
@@ -457,9 +455,7 @@ describe("LogStore", () => {
       spans: {
         "": {},
       },
-      segments: [
-        newGlobalSegment("global line 1\n"),
-      ],
+      segments: [newGlobalSegment("global line 1\n")],
       fromCheckpoint: 3,
       toCheckpoint: 4,
     })
