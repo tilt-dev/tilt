@@ -3,14 +3,14 @@ import styled from "styled-components"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView,{
-SidebarItemAll,
-triggerUpdate
+import SidebarItemView, {
+  SidebarItemAll,
+  triggerUpdate,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { useSidebarPin } from "./SidebarPin"
-import { Color,FontSize,SizeUnit } from "./style-helpers"
-import { ResourceView,SidebarOptions } from "./types"
+import { Color, FontSize, SizeUnit } from "./style-helpers"
+import { ResourceView, SidebarOptions } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
