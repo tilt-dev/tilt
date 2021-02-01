@@ -61,10 +61,7 @@ export function TestsWithErrors() {
     let test = oneResourceTest()
     test.name = "test_" + i
     if (i % 2 === 0) {
-      if (!test.buildHistory) {
-        throw "unexpectedly empty buildHistory on test resource"
-      }
-      test.buildHistory[0].error = "egads!"
+      test.buildHistory![0].error = "egads!"
       test.updateStatus = UpdateStatus.Error
     }
     all.push(test)
