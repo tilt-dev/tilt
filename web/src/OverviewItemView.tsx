@@ -1,11 +1,11 @@
 import Collapse from "@material-ui/core/Collapse"
 import Popover from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
-import React,{ useEffect,useRef,useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import TimeAgo from "react-timeago"
-import styled,{ css,keyframes } from "styled-components"
-import { buildAlerts,runtimeAlerts } from "./alerts"
+import styled, { css, keyframes } from "styled-components"
+import { buildAlerts, runtimeAlerts } from "./alerts"
 import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
@@ -16,22 +16,22 @@ import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
-import { buildStatus,runtimeStatus } from "./status"
+import { buildStatus, runtimeStatus } from "./status"
 import {
-AnimDuration,
-Color,
-ColorAlpha,
-ColorRGBA,
-Font,
-FontSize,
-overviewItemBorderRadius,
-SizeUnit,
-Width
+  AnimDuration,
+  Color,
+  ColorAlpha,
+  ColorRGBA,
+  Font,
+  FontSize,
+  overviewItemBorderRadius,
+  SizeUnit,
+  Width,
 } from "./style-helpers"
-import { formatBuildDuration,isZeroTime,timeDiff } from "./time"
+import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { TriggerModeToggle } from "./TriggerModeToggle"
-import { ResourceStatus,TargetType,TriggerMode } from "./types"
+import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
 export const OverviewItemRoot = styled.li`
   display: flex;
@@ -357,7 +357,10 @@ function RuntimeBox(props: RuntimeBoxProps) {
       <RuntimeBoxStack style={{ margin: "8px 0px" }}>
         <InnerRuntimeBox>
           <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
-          <SidebarPinButton resourceName={item.name} />
+          <SidebarPinButton
+            resourceName={item.name}
+            persistShow={isDetailsBox}
+          />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>

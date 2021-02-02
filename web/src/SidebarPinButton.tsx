@@ -30,7 +30,8 @@ let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
   opacity: 0;
 
   .u-showPinOnHover:hover &,
-  ${PinButton}:focus & {
+  ${PinButton}:focus &,
+  ${PinButton}.u-persistShow & {
     fill: ${Color.grayLight};
     opacity: 1;
   }
@@ -43,13 +44,14 @@ let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
 
 type SidebarPinButtonProps = {
   resourceName: string
+  persistShow?: boolean
 }
 
 export default function SidebarPinButton(
   props: SidebarPinButtonProps
 ): JSX.Element {
   let ctx = useSidebarPin()
-  let { resourceName } = props
+  let { resourceName, persistShow } = props
   let isPinned =
     ctx.pinnedResources && ctx.pinnedResources.includes(resourceName)
 
@@ -74,8 +76,12 @@ export default function SidebarPinButton(
     }
   }
 
+  let className = ""
+  if (persistShow) {
+    className = "u-persistShow"
+  }
   return (
-    <PinButton title={title} onClick={onClick}>
+    <PinButton title={title} onClick={onClick} className={className}>
       {icon}
     </PinButton>
   )
