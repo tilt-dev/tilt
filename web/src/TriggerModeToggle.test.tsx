@@ -69,11 +69,11 @@ describe("SidebarTriggerButton", () => {
       let isManual = button.hasClass("is-manual")
       if (i == 0) {
         // Toggle button for a resource with TriggerModeAuto
-        expect(button.prop("title")).toEqual(ToggleTriggerModeTooltip.isManual)
+        expect(button.prop("title")).toEqual(ToggleTriggerModeTooltip.isAuto)
         expect(isManual).toBeFalsy()
       } else {
         // Toggle button for a resource with TriggerModeManual...
-        expect(button.prop("title")).toEqual(ToggleTriggerModeTooltip.isAuto)
+        expect(button.prop("title")).toEqual(ToggleTriggerModeTooltip.isManual)
         expect(isManual).toBeTruthy()
       }
     }
