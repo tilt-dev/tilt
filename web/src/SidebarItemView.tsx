@@ -201,7 +201,7 @@ export function triggerUpdate(name: string, action: string) {
   fetch(url, {
     method: "post",
     body: JSON.stringify({
-      manifestNames: [name],
+      manifest_names: [name],
       build_reason: 16 /* BuildReasonFlagTriggerWeb */,
     }),
   }).then((response) => {
@@ -219,8 +219,8 @@ export function toggleTriggerMode(name: string, mode: TriggerMode) {
   fetch(url, {
     method: "post",
     body: JSON.stringify({
-      manifestNames: [name],
-      triggerMode: mode,
+      manifest_names: [name],
+      trigger_mode: mode,
     }),
   }).then((response) => {
     if (!response.ok) {

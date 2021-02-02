@@ -75,7 +75,7 @@ describe("SidebarTriggerButton", () => {
     expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
     expect(fetchMock.mock.calls[1][1]?.body).toEqual(
       JSON.stringify({
-        manifestNames: ["doggos"],
+        manifest_names: ["doggos"],
         build_reason: 16 /* BuildReasonFlagTriggerWeb */,
       })
     )
