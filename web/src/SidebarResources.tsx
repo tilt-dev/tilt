@@ -58,9 +58,10 @@ type SidebarProps = {
 
 type SidebarState = SidebarOptions
 
-let defaultFilters: SidebarOptions = {
+let defaultOptions: SidebarOptions = {
   showResources: true,
   showTests: true,
+  alertsOnTop: false,
 }
 
 function PinnedItems(props: SidebarProps) {
@@ -86,6 +87,14 @@ function PinnedItems(props: SidebarProps) {
   return <SidebarListSection name="Pinned">{pinnedItems}</SidebarListSection>
 }
 
+function hasAlerts(item: SidebarItem): boolean {
+  return item.buildAlertCount > 0 || item.runtimeAlertCount > 0
+}
+
+function sortByHasAlerts(itemA: SidebarItem, itemB: SidebarItem): number {
+  return Number(hasAlerts(itemB)) - Number(hasAlerts(itemA))
+}
+
 export class SidebarResources extends React.Component<
   SidebarProps,
   SidebarState
@@ -95,7 +104,8 @@ export class SidebarResources extends React.Component<
     this.triggerSelected = this.triggerSelected.bind(this)
     this.toggleShowResources = this.toggleShowResources.bind(this)
     this.toggleShowTests = this.toggleShowTests.bind(this)
-    this.state = defaultFilters
+    this.toggleAlertsOnTop = this.toggleAlertsOnTop.bind(this)
+    this.state = defaultOptions
   }
 
   triggerSelected(action: string) {
@@ -120,6 +130,14 @@ export class SidebarResources extends React.Component<
     })
   }
 
+  toggleAlertsOnTop() {
+    this.setState((prevState: SidebarOptions) => {
+      return {
+        alertsOnTop: !prevState.alertsOnTop,
+      }
+    })
+  }
+
   render() {
     let pb = this.props.pathBuilder
     let totalAlerts = this.props.items // Open Q: do we include alert totals for hidden elems?
@@ -136,6 +154,10 @@ export class SidebarResources extends React.Component<
         (item.isTest && this.state.showTests) ||
         item.isTiltfile
     )
+
+    if (this.state.alertsOnTop) {
+      filteredItems.sort(sortByHasAlerts)
+    }
 
     let listItems = filteredItems.map((item) => (
       <SidebarItemView
@@ -156,13 +178,6 @@ export class SidebarResources extends React.Component<
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
-          {testsPresent ? (
-            <OverviewSidebarOptions
-              curState={this.state}
-              toggleShowResources={this.toggleShowResources}
-              toggleShowTests={this.toggleShowTests}
-            /> // TODO: if this vanishes because no tests present, reset it to show everything
-          ) : null}
           <SidebarListSection name="">
             <SidebarItemAll
               nothingSelected={nothingSelected}
@@ -170,6 +185,14 @@ export class SidebarResources extends React.Component<
             />
           </SidebarListSection>
           <PinnedItems {...this.props} />
+          {testsPresent && (
+            <OverviewSidebarOptions
+              curState={this.state}
+              toggleShowResources={this.toggleShowResources}
+              toggleShowTests={this.toggleShowTests}
+              toggleAlertsOnTop={this.toggleAlertsOnTop}
+            /> // TODO: if this vanishes because no tests present, reset it to show everything
+          )}
           <SidebarListSection name="resources">{listItems}</SidebarListSection>
         </SidebarList>
         <SidebarKeyboardShortcuts

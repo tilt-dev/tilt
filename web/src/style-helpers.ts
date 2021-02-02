@@ -114,5 +114,6 @@ export const mixinResetButtonStyle = `
   border: 0 none;
   padding: 0;
   margin: 0;
+  font-family: inherit;
   cursor: pointer;
 `

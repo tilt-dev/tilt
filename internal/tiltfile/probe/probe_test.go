@@ -89,12 +89,37 @@ https
 	require.Contains(t, f.PrintOutput(), expectedOutput)
 }
 
+func TestProbeHTTPGetNoHost(t *testing.T) {
+	f := starkit.NewFixture(t, NewExtension())
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+p = probe(http_get=http_get_action(8888, scheme='https', path='/status'))
+
+print(p.http_get.host)
+print(p.http_get.port)
+print(p.http_get.scheme)
+print(p.http_get.path)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	expectedOutput := strings.TrimSpace(`
+8888
+https
+/status
+`)
+
+	require.Contains(t, f.PrintOutput(), expectedOutput)
+}
+
 func TestProbeTCP(t *testing.T) {
 	f := starkit.NewFixture(t, NewExtension())
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
-p = probe(tcp_socket=tcp_socket_action("localhost", 1234))
+p = probe(tcp_socket=tcp_socket_action(1234, "localhost"))
 
 print(p.tcp_socket.host)
 print(p.tcp_socket.port)
