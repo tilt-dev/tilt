@@ -2,25 +2,25 @@
 
 exports[`sidebar abbreviates durations under a minute 1`] = `
 <nav
-  className="sc-fodVxV kJmOlx Sidebar-resources "
+  className="sc-fFubgz enpase Sidebar-resources "
 >
   <div
-    className="sc-fFubgz"
+    className="sc-bkzZxe"
   >
     <div>
       <div
-        className="sc-bkzZxe eCuPxt"
+        className="sc-idOhPF iEogrZ"
       >
         
       </div>
       <ul
-        className="sc-idOhPF dIQKgz"
+        className="sc-dIUggk jcsQMg"
       >
         <li
-          className="sc-iBPRYJ sc-iqHYGH kMmBqX kVCtKt"
+          className="sc-iBPRYJ sc-crrsfI kMmBqX krEvoc"
         >
           <div
-            className="sc-fubCfw sc-pFZIQ bvFlzY gwLogO isSelected"
+            className="sc-fubCfw sc-pFZIQ hvgFEL gxbURj isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -33,7 +33,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </svg>
             </div>
             <div
-              className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
+              className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
             >
               All
             </div>
@@ -43,99 +43,103 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
     </div>
     <div>
       <div
-        className="sc-bkzZxe eCuPxt"
+        className="sc-idOhPF iEogrZ"
       >
         resources
       </div>
       <ul
-        className="sc-idOhPF dIQKgz"
+        className="sc-dIUggk jcsQMg"
       >
         <li
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="resource4"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="resource4"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="resource4"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    resource4
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  resource4
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:36:03.000Z"
-                  title="2017-12-21T15:36:03.000Z"
-                >
-                  &lt;5s ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: success"
-              >
-                <span>
-                   
+                  <time
+                    dateTime="2017-12-21T15:36:03.000Z"
+                    title="2017-12-21T15:36:03.000Z"
+                  >
+                    &lt;5s ago
+                  </time>
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Completed in 12s, with issues
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: success"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Completed in 12s, with issues
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -159,88 +163,92 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="resource9"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="resource9"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="resource9"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    resource9
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  resource9
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:35:58.000Z"
-                  title="2017-12-21T15:35:58.000Z"
-                >
-                  &lt;15s ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: success"
-              >
-                <span>
-                   
+                  <time
+                    dateTime="2017-12-21T15:35:58.000Z"
+                    title="2017-12-21T15:35:58.000Z"
+                  >
+                    &lt;15s ago
+                  </time>
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Completed in 12s, with issues
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: success"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Completed in 12s, with issues
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -264,88 +272,92 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="resource19"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="resource19"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="resource19"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    resource19
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  resource19
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:35:48.000Z"
-                  title="2017-12-21T15:35:48.000Z"
-                >
-                  &lt;30s ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: success"
-              >
-                <span>
-                   
+                  <time
+                    dateTime="2017-12-21T15:35:48.000Z"
+                    title="2017-12-21T15:35:48.000Z"
+                  >
+                    &lt;30s ago
+                  </time>
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Completed in 12s, with issues
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: success"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Completed in 12s, with issues
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -369,88 +381,92 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="resource29"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="resource29"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="resource29"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    resource29
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  resource29
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:35:38.000Z"
-                  title="2017-12-21T15:35:38.000Z"
-                >
-                  &lt;30s ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: success"
-              >
-                <span>
-                   
+                  <time
+                    dateTime="2017-12-21T15:35:38.000Z"
+                    title="2017-12-21T15:35:38.000Z"
+                  >
+                    &lt;30s ago
+                  </time>
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Completed in 12s, with issues
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: success"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Completed in 12s, with issues
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -474,88 +490,92 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="resource39"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="resource39"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="resource39"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    resource39
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  resource39
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:35:28.000Z"
-                  title="2017-12-21T15:35:28.000Z"
-                >
-                  &lt;45s ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: success"
-              >
-                <span>
-                   
+                  <time
+                    dateTime="2017-12-21T15:35:28.000Z"
+                    title="2017-12-21T15:35:28.000Z"
+                  >
+                    &lt;45s ago
+                  </time>
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Completed in 12s, with issues
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: success"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Completed in 12s, with issues
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -579,88 +599,92 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="resource49"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="resource49"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="resource49"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    resource49
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  resource49
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:35:18.000Z"
-                  title="2017-12-21T15:35:18.000Z"
-                >
-                  &lt;1m ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: success"
-              >
-                <span>
-                   
+                  <time
+                    dateTime="2017-12-21T15:35:18.000Z"
+                    title="2017-12-21T15:35:18.000Z"
+                  >
+                    &lt;1m ago
+                  </time>
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Completed in 12s, with issues
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: success"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Completed in 12s, with issues
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -684,88 +708,92 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="resource54"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="resource54"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="resource54"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    resource54
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  resource54
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:35:13.000Z"
-                  title="2017-12-21T15:35:13.000Z"
-                >
-                  &lt;1m ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: success"
-              >
-                <span>
-                   
+                  <time
+                    dateTime="2017-12-21T15:35:13.000Z"
+                    title="2017-12-21T15:35:13.000Z"
+                  >
+                    &lt;1m ago
+                  </time>
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Completed in 12s, with issues
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: success"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Completed in 12s, with issues
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -794,25 +822,25 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
 
 exports[`sidebar renders empty resource list without crashing 1`] = `
 <nav
-  className="sc-fodVxV kJmOlx Sidebar-resources "
+  className="sc-fFubgz enpase Sidebar-resources "
 >
   <div
-    className="sc-fFubgz"
+    className="sc-bkzZxe"
   >
     <div>
       <div
-        className="sc-bkzZxe eCuPxt"
+        className="sc-idOhPF iEogrZ"
       >
         
       </div>
       <ul
-        className="sc-idOhPF dIQKgz"
+        className="sc-dIUggk jcsQMg"
       >
         <li
-          className="sc-iBPRYJ sc-iqHYGH kMmBqX kVCtKt"
+          className="sc-iBPRYJ sc-crrsfI kMmBqX krEvoc"
         >
           <div
-            className="sc-fubCfw sc-pFZIQ bvFlzY gwLogO isSelected"
+            className="sc-fubCfw sc-pFZIQ hvgFEL gxbURj isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -825,7 +853,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
               </svg>
             </div>
             <div
-              className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
+              className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
             >
               All
             </div>
@@ -835,12 +863,12 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
     </div>
     <div>
       <div
-        className="sc-bkzZxe eCuPxt"
+        className="sc-idOhPF iEogrZ"
       >
         resources
       </div>
       <ul
-        className="sc-idOhPF dIQKgz"
+        className="sc-dIUggk jcsQMg"
       />
     </div>
   </div>
@@ -850,25 +878,25 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
 
 exports[`sidebar renders list of resources 1`] = `
 <nav
-  className="sc-fodVxV kJmOlx Sidebar-resources "
+  className="sc-fFubgz enpase Sidebar-resources "
 >
   <div
-    className="sc-fFubgz"
+    className="sc-bkzZxe"
   >
     <div>
       <div
-        className="sc-bkzZxe eCuPxt"
+        className="sc-idOhPF iEogrZ"
       >
         
       </div>
       <ul
-        className="sc-idOhPF dIQKgz"
+        className="sc-dIUggk jcsQMg"
       >
         <li
-          className="sc-iBPRYJ sc-iqHYGH kMmBqX kVCtKt"
+          className="sc-iBPRYJ sc-crrsfI kMmBqX krEvoc"
         >
           <div
-            className="sc-fubCfw sc-pFZIQ bvFlzY gwLogO isSelected"
+            className="sc-fubCfw sc-pFZIQ hvgFEL gxbURj isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -881,7 +909,7 @@ exports[`sidebar renders list of resources 1`] = `
               </svg>
             </div>
             <div
-              className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
+              className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
             >
               All
             </div>
@@ -891,101 +919,105 @@ exports[`sidebar renders list of resources 1`] = `
     </div>
     <div>
       <div
-        className="sc-bkzZxe eCuPxt"
+        className="sc-idOhPF iEogrZ"
       >
         resources
       </div>
       <ul
-        className="sc-idOhPF dIQKgz"
+        className="sc-dIUggk jcsQMg"
       >
         <li
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="vigoda"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="vigoda"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    vigoda
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  vigoda
+                  <time
+                    dateTime="2017-12-21T15:36:07.000Z"
+                    title="2017-12-21T15:36:07.000Z"
+                  >
+                    &lt;5s ago
+                  </time>
                 </span>
               </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:36:07.000Z"
-                  title="2017-12-21T15:36:07.000Z"
-                >
-                  &lt;5s ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isUnhealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: error"
+                className="sc-iqHYGH hLogfj"
               >
-                <svg
-                  fill="#ffffff"
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isUnhealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: error"
                 >
-                  error.svg
-                </svg>
-              </div>
-              <div
-                className="sc-crrsfI hlLyPJ"
-              >
-                Update error
+                  <svg
+                    fill="#ffffff"
+                  >
+                    error.svg
+                  </svg>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Update error
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -1009,90 +1041,94 @@ exports[`sidebar renders list of resources 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="snack"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="snack"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="snack"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    snack
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  snack
+                  <time
+                    dateTime="2017-12-21T15:35:57.000Z"
+                    title="2017-12-21T15:35:57.000Z"
+                  >
+                    &lt;15s ago
+                  </time>
                 </span>
               </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                <time
-                  dateTime="2017-12-21T15:35:57.000Z"
-                  title="2017-12-21T15:35:57.000Z"
-                >
-                  &lt;15s ago
-                </time>
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isUnhealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: error"
+                className="sc-iqHYGH hLogfj"
               >
-                <svg
-                  fill="#ffffff"
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isUnhealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: error"
                 >
-                  error.svg
-                </svg>
-              </div>
-              <div
-                className="sc-crrsfI hlLyPJ"
-              >
-                Update error
+                  <svg
+                    fill="#ffffff"
+                  >
+                    error.svg
+                  </svg>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Update error
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -1121,25 +1157,25 @@ exports[`sidebar renders list of resources 1`] = `
 
 exports[`sidebar renders resources that haven't been built yet 1`] = `
 <nav
-  className="sc-fodVxV kJmOlx Sidebar-resources "
+  className="sc-fFubgz enpase Sidebar-resources "
 >
   <div
-    className="sc-fFubgz"
+    className="sc-bkzZxe"
   >
     <div>
       <div
-        className="sc-bkzZxe eCuPxt"
+        className="sc-idOhPF iEogrZ"
       >
         
       </div>
       <ul
-        className="sc-idOhPF dIQKgz"
+        className="sc-dIUggk jcsQMg"
       >
         <li
-          className="sc-iBPRYJ sc-iqHYGH kMmBqX kVCtKt"
+          className="sc-iBPRYJ sc-crrsfI kMmBqX krEvoc"
         >
           <div
-            className="sc-fubCfw sc-pFZIQ bvFlzY gwLogO isSelected"
+            className="sc-fubCfw sc-pFZIQ hvgFEL gxbURj isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -1152,7 +1188,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               </svg>
             </div>
             <div
-              className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
+              className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
             >
               All
             </div>
@@ -1162,94 +1198,98 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
     </div>
     <div>
       <div
-        className="sc-bkzZxe eCuPxt"
+        className="sc-idOhPF iEogrZ"
       >
         resources
       </div>
       <ul
-        className="sc-idOhPF dIQKgz"
+        className="sc-dIUggk jcsQMg"
       >
         <li
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="vigoda"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="vigoda"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    vigoda
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  vigoda
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                —
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isBuilding"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: in progress"
-              >
-                <span>
-                   
+                  —
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Updating…
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isBuilding"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: in progress"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Updating…
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"
@@ -1273,83 +1313,87 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw bvFlzY  isBuilding"
+            className="sc-fubCfw hvgFEL  isBuilding"
             data-name="snack"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp xxzih"
+              className="sc-jrAGrp hPdrvT"
             >
               <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isHealthy"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Server: ready"
+                className="sc-kEjbxe eonECa"
               >
-                <span>
-                   
-                </span>
-              </div>
-              <div
-                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
-                title="snack"
-              >
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isHealthy"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Server: ready"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  title="snack"
+                >
+                  <span
+                    className="sc-kstrdz cYoIXh"
+                  >
+                    snack
+                  </span>
+                </div>
+                <button
+                  className="sc-dlfnbm hUCvcm"
+                  onClick={[Function]}
+                  title="Pin to Top"
+                >
+                  <svg
+                    className="sc-eCssSg doZCTl"
+                  >
+                    pin.svg
+                  </svg>
+                </button>
                 <span
-                  className="sc-bqyKva dfWnj"
+                  className="sc-hBEYos ekJwxg"
                 >
-                  snack
-                </span>
-              </div>
-              <button
-                className="sc-dlfnbm hUCvcm"
-                onClick={[Function]}
-                title="Pin to Top"
-              >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
-                </svg>
-              </button>
-              <span
-                className="sc-kstrdz hrCcGS"
-              >
-                —
-              </span>
-            </div>
-            <div
-              className="sc-kEjbxe kOSOFV"
-            >
-              <div
-                aria-describedby={null}
-                className="sc-gsTCUz ibUBzS isBuilding"
-                onBlur={[Function]}
-                onFocus={[Function]}
-                onMouseLeave={[Function]}
-                onMouseOver={[Function]}
-                onTouchEnd={[Function]}
-                onTouchStart={[Function]}
-                title="Update: in progress"
-              >
-                <span>
-                   
+                  —
                 </span>
               </div>
               <div
-                className="sc-crrsfI hlLyPJ"
+                className="sc-iqHYGH hLogfj"
               >
-                Updating…
+                <div
+                  aria-describedby={null}
+                  className="sc-gsTCUz ibUBzS isBuilding"
+                  onBlur={[Function]}
+                  onFocus={[Function]}
+                  onMouseLeave={[Function]}
+                  onMouseOver={[Function]}
+                  onTouchEnd={[Function]}
+                  onTouchStart={[Function]}
+                  title="Update: in progress"
+                >
+                  <span>
+                     
+                  </span>
+                </div>
+                <div
+                  className="sc-dQppl ffqbbn"
+                >
+                  Updating…
+                </div>
               </div>
             </div>
             <div
-              className="sc-hBEYos cHfSsm"
+              className="sc-fodVxV iuwQDb"
             >
               <button
                 className="sc-jSgupP escLvy"

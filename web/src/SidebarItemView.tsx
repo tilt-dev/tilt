@@ -1,6 +1,6 @@
 import React from "react"
 import TimeAgo from "react-timeago"
-import styled,{ keyframes } from "styled-components"
+import styled, { keyframes } from "styled-components"
 import { incr } from "./analytics"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
@@ -8,23 +8,24 @@ import SidebarItem from "./SidebarItem"
 import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import {
-AnimDuration,
-Color,
-ColorAlpha,
-ColorRGBA,
-Font,
-FontSize,
-SizeUnit
+  AnimDuration,
+  Color,
+  ColorAlpha,
+  ColorRGBA,
+  Font,
+  FontSize,
+  overviewItemBorderRadius,
+  SizeUnit,
 } from "./style-helpers"
 import { useTabNav } from "./TabNav"
-import { formatBuildDuration,isZeroTime } from "./time"
+import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { TriggerModeToggle } from "./TriggerModeToggle"
 import {
-ResourceName,
-ResourceStatus,
-ResourceView,
-TriggerMode
+  ResourceName,
+  ResourceStatus,
+  ResourceView,
+  TriggerMode,
 } from "./types"
 
 const SidebarItemRoot = styled.li`
@@ -44,10 +45,9 @@ export let SidebarItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
-  flex-direction: column;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
-  border-radius: 5px;
+  border-radius: ${overviewItemBorderRadius};
   overflow: hidden;
   border: 1px solid ${Color.grayLighter};
   position: relative; // Anchor the .isBuilding::after psuedo-element
@@ -57,6 +57,7 @@ export let SidebarItemBox = styled.div`
   font-family: ${Font.monospace};
   margin: 0 ${SizeUnit(0.5)};
   cursor: pointer;
+  width: 100%;
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -89,7 +90,13 @@ export let SidebarItemBox = styled.div`
 
 let SidebarItemAllBox = styled(SidebarItemBox)`
   flex-direction: row;
-  height: ${SizeUnit(1.0)};
+  height: ${SizeUnit(1.25)};
+`
+
+let SidebarItemInnerBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 `
 
 let SidebarItemRuntimeBox = styled.div`
@@ -110,7 +117,7 @@ let SidebarItemBuildBox = styled.div`
   display: flex;
   align-items: stretch;
   flex-shrink: 1;
-  height: ${SizeUnit(0.875)};
+  height: ${SizeUnit(1)};
 `
 
 let SidebarItemAllRoot = styled(SidebarItemRoot)`
@@ -182,13 +189,12 @@ let SidebarItemName = (props: { name: string }) => {
 let SidebarItemTimeAgo = styled.span`
   opacity: ${ColorAlpha.almostOpaque};
   display: flex;
+  justify-content: flex-end;
   align-items: center;
+  padding-right: ${SizeUnit(0.25)};
 `
 
 let SidebarItemActions = styled.div`
-  position: absolute;
-  right: 0;
-  top: 0;
   display: flex;
   flex-direction: column;
 `
@@ -322,26 +328,28 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
         }
         data-name={item.name}
       >
-        <SidebarItemRuntimeBox>
-          <SidebarIcon
-            tooltipText={runtimeTooltipText(item.runtimeStatus)}
-            status={item.runtimeStatus}
-            alertCount={item.runtimeAlertCount}
-          />
-          <SidebarItemName name={item.name} />
-          <SidebarPinButton resourceName={item.name} />
-          <SidebarItemTimeAgo>
-            {hasSuccessfullyDeployed ? timeAgo : "—"}
-          </SidebarItemTimeAgo>
-        </SidebarItemRuntimeBox>
-        <SidebarItemBuildBox>
-          <SidebarIcon
-            tooltipText={buildTooltipText(item.buildStatus)}
-            status={item.buildStatus}
-            alertCount={item.buildAlertCount}
-          />
-          <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
-        </SidebarItemBuildBox>
+        <SidebarItemInnerBox>
+          <SidebarItemRuntimeBox>
+            <SidebarIcon
+              tooltipText={runtimeTooltipText(item.runtimeStatus)}
+              status={item.runtimeStatus}
+              alertCount={item.runtimeAlertCount}
+            />
+            <SidebarItemName name={item.name} />
+            <SidebarPinButton resourceName={item.name} />
+            <SidebarItemTimeAgo>
+              {hasSuccessfullyDeployed ? timeAgo : "—"}
+            </SidebarItemTimeAgo>
+          </SidebarItemRuntimeBox>
+          <SidebarItemBuildBox>
+            <SidebarIcon
+              tooltipText={buildTooltipText(item.buildStatus)}
+              status={item.buildStatus}
+              alertCount={item.buildAlertCount}
+            />
+            <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
+          </SidebarItemBuildBox>
+        </SidebarItemInnerBox>
         <SidebarItemActions>
           <SidebarTriggerButton
             isTiltfile={item.isTiltfile}

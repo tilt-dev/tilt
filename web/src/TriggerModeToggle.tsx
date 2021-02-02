@@ -11,10 +11,9 @@ import {
 import { TriggerMode } from "./types"
 
 let TriggerModeToggleRoot = styled.button`
+  ${mixinResetButtonStyle}
   width: ${SizeUnit(1)};
   height: ${SizeUnit(1)};
-
-  ${mixinResetButtonStyle}
 
   .fillStd {
     fill: ${Color.blue};
