@@ -10,7 +10,7 @@ import {
 } from "./style-helpers"
 import { TriggerMode } from "./types"
 
-let TriggerModeToggleStyle = styled.button`
+let TriggerModeToggleRoot = styled.button`
   width: ${SizeUnit(1)};
   height: ${SizeUnit(1)};
 
@@ -25,7 +25,7 @@ let TriggerModeToggleStyle = styled.button`
     opacity: ${ColorAlpha.almostOpaque};
     transition: stroke ${AnimDuration.short} linear;
   }
-  .autoSvgToggleOn {
+  .autoSvg-ToggleOn {
     fill: ${Color.blue};
   }
 
@@ -36,7 +36,7 @@ let TriggerModeToggleStyle = styled.button`
     .strokeStd {
       stroke: ${Color.grayLight};
     }
-    .autoSvgToggleOn {
+    .autoSvg-ToggleOn {
       fill: none;
     }
     .autoSvgToggleOff {
@@ -81,14 +81,14 @@ function TriggerModeToggle(props: TriggerModeToggleProps) {
   }
 
   return (
-    <TriggerModeToggleStyle
+    <TriggerModeToggleRoot
       className={isManualTriggerMode ? "is-manual" : ""}
       onClick={onClick}
       title={titleText(isManualTriggerMode)}
     >
       <AutoSvg />
-    </TriggerModeToggleStyle>
+    </TriggerModeToggleRoot>
   )
 }
 
-export { TriggerModeToggle, TriggerModeToggleStyle }
+export { TriggerModeToggle, TriggerModeToggleRoot }

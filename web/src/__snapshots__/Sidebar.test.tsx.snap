@@ -2,25 +2,25 @@
 
 exports[`sidebar abbreviates durations under a minute 1`] = `
 <nav
-  className="sc-kstrdz cVJnKg Sidebar-resources "
+  className="sc-fodVxV kJmOlx Sidebar-resources "
 >
   <div
-    className="sc-hBEYos"
+    className="sc-fFubgz"
   >
     <div>
       <div
-        className="sc-fodVxV fYwBSU"
+        className="sc-bkzZxe eCuPxt"
       >
         
       </div>
       <ul
-        className="sc-fFubgz lggJRB"
+        className="sc-idOhPF dIQKgz"
       >
         <li
-          className="sc-gKsewC sc-kEjbxe eWwnQD dSHECE"
+          className="sc-iBPRYJ sc-iqHYGH kMmBqX kVCtKt"
         >
           <div
-            className="sc-iBPRYJ sc-fubCfw hHeOdt hDyxGh isSelected"
+            className="sc-fubCfw sc-pFZIQ bvFlzY gwLogO isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -33,7 +33,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </svg>
             </div>
             <div
-              className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+              className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
             >
               All
             </div>
@@ -43,25 +43,25 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
     </div>
     <div>
       <div
-        className="sc-fodVxV fYwBSU"
+        className="sc-bkzZxe eCuPxt"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz lggJRB"
+        className="sc-idOhPF dIQKgz"
       >
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="resource4"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -79,17 +79,28 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="resource4"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   resource4
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:36:03.000Z"
@@ -98,24 +109,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   &lt;5s ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -133,36 +129,44 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Completed in 12s, with issues
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
           </div>
         </li>
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="resource9"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -180,17 +184,28 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="resource9"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   resource9
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:35:58.000Z"
@@ -199,24 +214,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   &lt;15s ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -234,36 +234,44 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Completed in 12s, with issues
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
           </div>
         </li>
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="resource19"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -281,17 +289,28 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="resource19"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   resource19
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:35:48.000Z"
@@ -300,24 +319,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   &lt;30s ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -335,36 +339,44 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Completed in 12s, with issues
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
           </div>
         </li>
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="resource29"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -382,17 +394,28 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="resource29"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   resource29
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:35:38.000Z"
@@ -401,24 +424,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   &lt;30s ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -436,36 +444,44 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Completed in 12s, with issues
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
           </div>
         </li>
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="resource39"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -483,17 +499,28 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="resource39"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   resource39
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:35:28.000Z"
@@ -502,24 +529,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   &lt;45s ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -537,36 +549,44 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Completed in 12s, with issues
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
           </div>
         </li>
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="resource49"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -584,17 +604,28 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="resource49"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   resource49
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:35:18.000Z"
@@ -603,24 +634,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   &lt;1m ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -638,36 +654,44 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Completed in 12s, with issues
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
           </div>
         </li>
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="resource54"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -685,17 +709,28 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="resource54"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   resource54
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:35:13.000Z"
@@ -704,24 +739,9 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   &lt;1m ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -739,19 +759,27 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Completed in 12s, with issues
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
@@ -766,25 +794,25 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
 
 exports[`sidebar renders empty resource list without crashing 1`] = `
 <nav
-  className="sc-kstrdz cVJnKg Sidebar-resources "
+  className="sc-fodVxV kJmOlx Sidebar-resources "
 >
   <div
-    className="sc-hBEYos"
+    className="sc-fFubgz"
   >
     <div>
       <div
-        className="sc-fodVxV fYwBSU"
+        className="sc-bkzZxe eCuPxt"
       >
         
       </div>
       <ul
-        className="sc-fFubgz lggJRB"
+        className="sc-idOhPF dIQKgz"
       >
         <li
-          className="sc-gKsewC sc-kEjbxe eWwnQD dSHECE"
+          className="sc-iBPRYJ sc-iqHYGH kMmBqX kVCtKt"
         >
           <div
-            className="sc-iBPRYJ sc-fubCfw hHeOdt hDyxGh isSelected"
+            className="sc-fubCfw sc-pFZIQ bvFlzY gwLogO isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -797,7 +825,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
               </svg>
             </div>
             <div
-              className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+              className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
             >
               All
             </div>
@@ -807,12 +835,12 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
     </div>
     <div>
       <div
-        className="sc-fodVxV fYwBSU"
+        className="sc-bkzZxe eCuPxt"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz lggJRB"
+        className="sc-idOhPF dIQKgz"
       />
     </div>
   </div>
@@ -822,25 +850,25 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
 
 exports[`sidebar renders list of resources 1`] = `
 <nav
-  className="sc-kstrdz cVJnKg Sidebar-resources "
+  className="sc-fodVxV kJmOlx Sidebar-resources "
 >
   <div
-    className="sc-hBEYos"
+    className="sc-fFubgz"
   >
     <div>
       <div
-        className="sc-fodVxV fYwBSU"
+        className="sc-bkzZxe eCuPxt"
       >
         
       </div>
       <ul
-        className="sc-fFubgz lggJRB"
+        className="sc-idOhPF dIQKgz"
       >
         <li
-          className="sc-gKsewC sc-kEjbxe eWwnQD dSHECE"
+          className="sc-iBPRYJ sc-iqHYGH kMmBqX kVCtKt"
         >
           <div
-            className="sc-iBPRYJ sc-fubCfw hHeOdt hDyxGh isSelected"
+            className="sc-fubCfw sc-pFZIQ bvFlzY gwLogO isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -853,7 +881,7 @@ exports[`sidebar renders list of resources 1`] = `
               </svg>
             </div>
             <div
-              className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+              className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
             >
               All
             </div>
@@ -863,25 +891,25 @@ exports[`sidebar renders list of resources 1`] = `
     </div>
     <div>
       <div
-        className="sc-fodVxV fYwBSU"
+        className="sc-bkzZxe eCuPxt"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz lggJRB"
+        className="sc-idOhPF dIQKgz"
       >
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -899,17 +927,28 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="vigoda"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   vigoda
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:36:07.000Z"
@@ -918,24 +957,9 @@ exports[`sidebar renders list of resources 1`] = `
                   &lt;5s ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -955,36 +979,44 @@ exports[`sidebar renders list of resources 1`] = `
                 </svg>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Update error
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
           </div>
         </li>
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="snack"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -1002,17 +1034,28 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="snack"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   snack
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 <time
                   dateTime="2017-12-21T15:35:57.000Z"
@@ -1021,24 +1064,9 @@ exports[`sidebar renders list of resources 1`] = `
                   &lt;15s ago
                 </time>
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -1058,19 +1086,27 @@ exports[`sidebar renders list of resources 1`] = `
                 </svg>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Update error
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
@@ -1085,25 +1121,25 @@ exports[`sidebar renders list of resources 1`] = `
 
 exports[`sidebar renders resources that haven't been built yet 1`] = `
 <nav
-  className="sc-kstrdz cVJnKg Sidebar-resources "
+  className="sc-fodVxV kJmOlx Sidebar-resources "
 >
   <div
-    className="sc-hBEYos"
+    className="sc-fFubgz"
   >
     <div>
       <div
-        className="sc-fodVxV fYwBSU"
+        className="sc-bkzZxe eCuPxt"
       >
         
       </div>
       <ul
-        className="sc-fFubgz lggJRB"
+        className="sc-idOhPF dIQKgz"
       >
         <li
-          className="sc-gKsewC sc-kEjbxe eWwnQD dSHECE"
+          className="sc-iBPRYJ sc-iqHYGH kMmBqX kVCtKt"
         >
           <div
-            className="sc-iBPRYJ sc-fubCfw hHeOdt hDyxGh isSelected"
+            className="sc-fubCfw sc-pFZIQ bvFlzY gwLogO isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -1116,7 +1152,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               </svg>
             </div>
             <div
-              className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+              className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
             >
               All
             </div>
@@ -1126,25 +1162,25 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
     </div>
     <div>
       <div
-        className="sc-fodVxV fYwBSU"
+        className="sc-bkzZxe eCuPxt"
       >
         resources
       </div>
       <ul
-        className="sc-fFubgz lggJRB"
+        className="sc-idOhPF dIQKgz"
       >
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -1162,38 +1198,34 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="vigoda"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   vigoda
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 —
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -1211,36 +1243,44 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Updating…
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>
           </div>
         </li>
         <li
-          className="sc-gKsewC eWwnQD u-showPinOnHover  isBuilding"
+          className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-iBPRYJ hHeOdt  isBuilding"
+            className="sc-fubCfw bvFlzY  isBuilding"
             data-name="snack"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-pFZIQ hFOCtJ"
+              className="sc-jrAGrp xxzih"
             >
               <div
                 aria-describedby={null}
@@ -1258,38 +1298,34 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH sc-crrsfI dWLKtY fACPxI"
+                className="sc-crrsfI sc-dQppl hlLyPJ hTuLaO"
                 title="snack"
               >
                 <span
-                  className="sc-dQppl dMras"
+                  className="sc-bqyKva dfWnj"
                 >
                   snack
                 </span>
               </div>
+              <button
+                className="sc-dlfnbm cdWqOj"
+                onClick={[Function]}
+                title="Pin to Top"
+              >
+                <svg
+                  className="sc-eCssSg dDxTRp"
+                >
+                  pin.svg
+                </svg>
+              </button>
               <span
-                className="sc-bqyKva dRecs"
+                className="sc-kstrdz hrCcGS"
               >
                 —
               </span>
-              <button
-                className="sc-jSgupP dqshtn"
-                disabled={true}
-                onClick={[Function]}
-                style={
-                  Object {
-                    "padding": "0 0 0 2px",
-                  }
-                }
-                title="Cannot trigger an update while resource is updating or update is pending."
-              >
-                <svg>
-                  trigger-button.svg
-                </svg>
-              </button>
             </div>
             <div
-              className="sc-jrAGrp dUlMku"
+              className="sc-kEjbxe kOSOFV"
             >
               <div
                 aria-describedby={null}
@@ -1307,19 +1343,27 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH dWLKtY"
+                className="sc-crrsfI hlLyPJ"
               >
                 Updating…
               </div>
+            </div>
+            <div
+              className="sc-hBEYos cHfSsm"
+            >
               <button
-                className="sc-dlfnbm fJbKOk"
+                className="sc-jSgupP dzXYfI"
+                disabled={true}
                 onClick={[Function]}
-                title="Pin to Top"
+                style={
+                  Object {
+                    "padding": "0 0 0 2px",
+                  }
+                }
+                title="Cannot trigger an update while resource is updating or update is pending."
               >
-                <svg
-                  className="sc-eCssSg doZCTl"
-                >
-                  pin.svg
+                <svg>
+                  trigger-button.svg
                 </svg>
               </button>
             </div>

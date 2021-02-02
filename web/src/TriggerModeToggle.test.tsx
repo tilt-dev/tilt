@@ -13,7 +13,7 @@ import {
 import {
   ToggleTriggerModeTooltip,
   TriggerModeToggle,
-  TriggerModeToggleStyle,
+  TriggerModeToggleRoot,
 } from "./TriggerModeToggle"
 import { TriggerMode } from "./types"
 
@@ -61,7 +61,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let toggles = root.find(TriggerModeToggleStyle)
+    let toggles = root.find(TriggerModeToggleRoot)
     expect(toggles).toHaveLength(3)
 
     for (let i = 0; i < toggles.length; i++) {
@@ -103,16 +103,14 @@ describe("SidebarTriggerButton", () => {
     expect(preventDefaulted).toEqual(true)
 
     expect(fetchMock.mock.calls.length).toEqual(2) // 1 call to analytics, one to /override
-    expectIncr(0, "ui.web.toggleTriggerMode", { to_mode: "1" })
+    expectIncr(0, "ui.web.toggleTriggerMode", { toMode: "1" })
 
-    expect(fetchMock.mock.calls[1][0]).toEqual(
-      "//localhost/api/override/trigger_mode"
-    )
+    expect(fetchMock.mock.calls[1][0]).toEqual("/api/override/trigger_mode")
     expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
     expect(fetchMock.mock.calls[1][1]?.body).toEqual(
       JSON.stringify({
-        manifest_names: ["foobar"],
-        trigger_mode: 1,
+        manifestNames: ["foobar"],
+        triggerMode: 1,
       })
     )
   })
