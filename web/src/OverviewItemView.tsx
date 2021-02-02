@@ -357,10 +357,7 @@ function RuntimeBox(props: RuntimeBoxProps) {
       <RuntimeBoxStack style={{ margin: "8px 0px" }}>
         <InnerRuntimeBox>
           <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
-          <SidebarPinButton
-            resourceName={item.name}
-            persistShow={isDetailsBox}
-          />
+          <SidebarPinButton resourceName={item.name} />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>
