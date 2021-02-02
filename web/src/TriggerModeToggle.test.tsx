@@ -66,8 +66,7 @@ describe("SidebarTriggerButton", () => {
 
     for (let i = 0; i < toggles.length; i++) {
       let button = toggles.at(i)
-      let themeProvider = button.parent()
-      let isManual = themeProvider.props().theme.isManualTriggerMode
+      let isManual = button.hasClass("is-manual")
       if (i == 0) {
         // Toggle button for a resource with TriggerModeAuto
         expect(button.prop("title")).toEqual(ToggleTriggerModeTooltip.isManual)
