@@ -20,7 +20,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ sc-crrsfI kMmBqX krEvoc"
         >
           <div
-            className="sc-fubCfw sc-pFZIQ hvgFEL gxbURj isSelected"
+            className="sc-fubCfw sc-dQppl htTwiz dBgviy isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -33,7 +33,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+              className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
             >
               All
             </div>
@@ -54,17 +54,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="resource4"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -82,11 +82,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="resource4"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     resource4
                   </span>
@@ -103,7 +103,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:36:03.000Z"
@@ -114,7 +114,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -132,7 +132,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Completed in 12s, with issues
                 </div>
@@ -163,17 +163,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="resource9"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -191,11 +191,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="resource9"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     resource9
                   </span>
@@ -212,7 +212,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:35:58.000Z"
@@ -223,7 +223,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -241,7 +241,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Completed in 12s, with issues
                 </div>
@@ -272,17 +272,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="resource19"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -300,11 +300,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="resource19"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     resource19
                   </span>
@@ -321,7 +321,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:35:48.000Z"
@@ -332,7 +332,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -350,7 +350,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Completed in 12s, with issues
                 </div>
@@ -381,17 +381,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="resource29"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -409,11 +409,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="resource29"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     resource29
                   </span>
@@ -430,7 +430,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:35:38.000Z"
@@ -441,7 +441,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -459,7 +459,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Completed in 12s, with issues
                 </div>
@@ -490,17 +490,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="resource39"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -518,11 +518,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="resource39"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     resource39
                   </span>
@@ -539,7 +539,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:35:28.000Z"
@@ -550,7 +550,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -568,7 +568,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Completed in 12s, with issues
                 </div>
@@ -599,17 +599,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="resource49"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -627,11 +627,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="resource49"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     resource49
                   </span>
@@ -648,7 +648,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:35:18.000Z"
@@ -659,7 +659,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -677,7 +677,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Completed in 12s, with issues
                 </div>
@@ -708,17 +708,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="resource54"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -736,11 +736,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="resource54"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     resource54
                   </span>
@@ -757,7 +757,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:35:13.000Z"
@@ -768,7 +768,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -786,7 +786,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Completed in 12s, with issues
                 </div>
@@ -840,7 +840,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
           className="sc-iBPRYJ sc-crrsfI kMmBqX krEvoc"
         >
           <div
-            className="sc-fubCfw sc-pFZIQ hvgFEL gxbURj isSelected"
+            className="sc-fubCfw sc-dQppl htTwiz dBgviy isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -853,7 +853,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+              className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
             >
               All
             </div>
@@ -896,7 +896,7 @@ exports[`sidebar renders list of resources 1`] = `
           className="sc-iBPRYJ sc-crrsfI kMmBqX krEvoc"
         >
           <div
-            className="sc-fubCfw sc-pFZIQ hvgFEL gxbURj isSelected"
+            className="sc-fubCfw sc-dQppl htTwiz dBgviy isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -909,7 +909,7 @@ exports[`sidebar renders list of resources 1`] = `
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+              className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
             >
               All
             </div>
@@ -930,17 +930,17 @@ exports[`sidebar renders list of resources 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -958,11 +958,11 @@ exports[`sidebar renders list of resources 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="vigoda"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     vigoda
                   </span>
@@ -979,7 +979,7 @@ exports[`sidebar renders list of resources 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:36:07.000Z"
@@ -990,7 +990,7 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -1010,7 +1010,7 @@ exports[`sidebar renders list of resources 1`] = `
                   </svg>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Update error
                 </div>
@@ -1041,17 +1041,17 @@ exports[`sidebar renders list of resources 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="snack"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -1069,11 +1069,11 @@ exports[`sidebar renders list of resources 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="snack"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     snack
                   </span>
@@ -1090,7 +1090,7 @@ exports[`sidebar renders list of resources 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   <time
                     dateTime="2017-12-21T15:35:57.000Z"
@@ -1101,7 +1101,7 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -1121,7 +1121,7 @@ exports[`sidebar renders list of resources 1`] = `
                   </svg>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Update error
                 </div>
@@ -1175,7 +1175,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           className="sc-iBPRYJ sc-crrsfI kMmBqX krEvoc"
         >
           <div
-            className="sc-fubCfw sc-pFZIQ hvgFEL gxbURj isSelected"
+            className="sc-fubCfw sc-dQppl htTwiz dBgviy isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
@@ -1188,7 +1188,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+              className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
             >
               All
             </div>
@@ -1209,17 +1209,17 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -1237,11 +1237,11 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="vigoda"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     vigoda
                   </span>
@@ -1258,13 +1258,13 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   —
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -1282,7 +1282,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Updating…
                 </div>
@@ -1313,17 +1313,17 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           className="sc-iBPRYJ kMmBqX u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-fubCfw hvgFEL  isBuilding"
+            className="sc-fubCfw htTwiz  isBuilding"
             data-name="snack"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-jrAGrp hPdrvT"
+              className="sc-pFZIQ jtPfXf"
             >
               <div
-                className="sc-kEjbxe eonECa"
+                className="sc-jrAGrp gsFFSQ"
               >
                 <div
                   aria-describedby={null}
@@ -1341,11 +1341,11 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-bqyKva ffqbbn bgFtBl"
+                  className="sc-iqHYGH sc-bqyKva cHCqfV bgFtBl"
                   title="snack"
                 >
                   <span
-                    className="sc-kstrdz cYoIXh"
+                    className="sc-kstrdz crBnSl"
                   >
                     snack
                   </span>
@@ -1362,13 +1362,13 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </svg>
                 </button>
                 <span
-                  className="sc-hBEYos ekJwxg"
+                  className="sc-hBEYos kXyNpy"
                 >
                   —
                 </span>
               </div>
               <div
-                className="sc-iqHYGH hLogfj"
+                className="sc-kEjbxe gZCFNz"
               >
                 <div
                   aria-describedby={null}
@@ -1386,7 +1386,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl ffqbbn"
+                  className="sc-iqHYGH cHCqfV"
                 >
                   Updating…
                 </div>

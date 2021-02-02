@@ -126,24 +126,27 @@ const barberpole = keyframes`
   }
 `
 
+// Flexbox (column) containing:
+// - `OverviewItemRuntimeBox` - (row) with runtime info, pin, trigger, trigger mode
+// - `OverviewItemBuildBox` - (row) with build status, text
 export let OverviewItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
+  align-items: stretch;
+  flex-grow: 1;
   flex-direction: column;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
   overflow: hidden;
   border: 1px solid ${Color.grayLighter};
   position: relative; // Anchor .isBuilding::after + OverviewItemActions
-  flex-grow: 1;
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
   box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.51);
   border-radius: ${overviewItemBorderRadius};
   padding: 0;
-  align-items: stretch;
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -168,9 +171,14 @@ export let OverviewItemBox = styled.div`
   }
 `
 
+// Flexbox (row) containing:
+// - StatusIcon - imported component
+// - `RuntimeBoxStack` - (column) with 2 `InnerRuntimeBox` (row) with type, name, pin, timeago, etc
+// - `OverviewItemActions` - (column) with trigger, trigger mode
 let OverviewItemRuntimeBox = styled.div`
   display: flex;
   align-items: stretch;
+  flex-grow: 1;
   transition: border-color ${AnimDuration.default} linear;
 `
 
@@ -178,6 +186,7 @@ let RuntimeBoxStack = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  flex-shrink: 1;
 `
 
 let InnerRuntimeBox = styled.div`
@@ -203,7 +212,6 @@ let OverviewItemText = styled.div`
   white-space: nowrap;
   overflow: hidden;
   opacity: ${ColorAlpha.almostOpaque};
-  line-height: normal;
 `
 
 let OverviewItemNameRoot = styled(OverviewItemText)`
@@ -211,6 +219,9 @@ let OverviewItemNameRoot = styled(OverviewItemText)`
   font-family: ${Font.sansSerif};
   font-weight: 600;
   z-index: 1; // Appear above the .isBuilding gradient
+  // TODO: Allow flex-grow: 1 to work with text truncation
+  // For now, a hack that sacrifices some width but ensures truncation:
+  max-width: 240px;
 `
 
 let OverviewItemNameTruncate = styled.span`

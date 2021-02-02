@@ -41,6 +41,9 @@ const barberpole = keyframes`
   }
 `
 
+// Flexbox (row) containing:
+// - `SidebarItemInnerBox` - (column) with runtime + build boxes
+// - `SidebarItemActions` - (column) with trigger + trigger mode
 export let SidebarItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
@@ -51,13 +54,11 @@ export let SidebarItemBox = styled.div`
   overflow: hidden;
   border: 1px solid ${Color.grayLighter};
   position: relative; // Anchor the .isBuilding::after psuedo-element
-  flex-grow: 1;
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
   margin: 0 ${SizeUnit(0.5)};
   cursor: pointer;
-  width: 100%;
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -88,11 +89,9 @@ export let SidebarItemBox = styled.div`
   }
 `
 
-let SidebarItemAllBox = styled(SidebarItemBox)`
-  flex-direction: row;
-  height: ${SizeUnit(1.25)};
-`
-
+// Flexbox (column) containing:
+// - `SidebarItemRuntimeBox` - (row) with runtime status, name, pin, timeago
+// - `SidebarItemBuildBox` - (row) with build status, text
 let SidebarItemInnerBox = styled.div`
   display: flex;
   flex-direction: column;
@@ -106,7 +105,6 @@ let SidebarItemRuntimeBox = styled.div`
   border-bottom: 1px solid ${Color.grayLighter};
   box-sizing: border-box;
   transition: border-color ${AnimDuration.default} linear;
-  overflow: hidden;
 
   .isSelected & {
     border-bottom-color: ${Color.grayLightest};
@@ -116,22 +114,27 @@ let SidebarItemRuntimeBox = styled.div`
 let SidebarItemBuildBox = styled.div`
   display: flex;
   align-items: stretch;
-  flex-shrink: 1;
   height: ${SizeUnit(1)};
-`
-
-let SidebarItemAllRoot = styled(SidebarItemRoot)`
-  text-transform: uppercase;
 `
 
 let SidebarItemText = styled.div`
   display: flex;
   align-items: center;
-  flex: 1;
+  flex-grow: 1;
   white-space: nowrap;
   overflow: hidden;
   opacity: ${ColorAlpha.almostOpaque};
-  line-height: normal;
+  // TODO: Allow flex-grow: 1 to work with text truncation
+  // For now, a hack that sacrifices some width but ensures truncation:
+  max-width: 140px;
+`
+
+let SidebarItemAllRoot = styled(SidebarItemRoot)`
+  text-transform: uppercase;
+`
+let SidebarItemAllBox = styled(SidebarItemBox)`
+  flex-direction: row;
+  height: ${SizeUnit(1.25)};
 `
 
 type SidebarItemAllProps = {
@@ -172,6 +175,7 @@ let SidebarItemNameRoot = styled(SidebarItemText)`
 `
 
 let SidebarItemNameTruncate = styled.span`
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `
@@ -191,6 +195,8 @@ let SidebarItemTimeAgo = styled.span`
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  text-align: right;
+  white-space: nowrap;
   padding-right: ${SizeUnit(0.25)};
 `
 
