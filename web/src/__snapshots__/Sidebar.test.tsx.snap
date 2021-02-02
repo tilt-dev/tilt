@@ -89,12 +89,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -138,7 +138,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -194,12 +194,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -243,7 +243,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -299,12 +299,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -348,7 +348,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -404,12 +404,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -453,7 +453,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -509,12 +509,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -558,7 +558,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -614,12 +614,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -663,7 +663,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -719,12 +719,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -768,7 +768,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -937,12 +937,12 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -988,7 +988,7 @@ exports[`sidebar renders list of resources 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -1044,12 +1044,12 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -1095,7 +1095,7 @@ exports[`sidebar renders list of resources 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -1208,12 +1208,12 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -1252,7 +1252,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -1308,12 +1308,12 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                 </span>
               </div>
               <button
-                className="sc-dlfnbm cdWqOj"
+                className="sc-dlfnbm hUCvcm"
                 onClick={[Function]}
                 title="Pin to Top"
               >
                 <svg
-                  className="sc-eCssSg dDxTRp"
+                  className="sc-eCssSg doZCTl"
                 >
                   pin.svg
                 </svg>
@@ -1352,7 +1352,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
               className="sc-hBEYos cHfSsm"
             >
               <button
-                className="sc-jSgupP dzXYfI"
+                className="sc-jSgupP escLvy"
                 disabled={true}
                 onClick={[Function]}
                 style={
