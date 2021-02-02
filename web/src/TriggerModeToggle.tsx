@@ -25,7 +25,7 @@ let TriggerModeToggleRoot = styled.button`
     opacity: ${ColorAlpha.almostOpaque};
     transition: stroke ${AnimDuration.short} linear;
   }
-  .autoSvg-ToggleOn {
+  .autoSvg-toggleOn {
     fill: ${Color.blue};
   }
 
@@ -36,10 +36,10 @@ let TriggerModeToggleRoot = styled.button`
     .strokeStd {
       stroke: ${Color.grayLight};
     }
-    .autoSvg-ToggleOn {
+    .autoSvg-toggleOn {
       fill: none;
     }
-    .autoSvgToggleOff {
+    .autoSvg-toggleOff {
       fill: ${Color.grayLight};
     }
   }
