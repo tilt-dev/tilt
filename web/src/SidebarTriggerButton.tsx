@@ -12,10 +12,9 @@ import {
 import { TriggerMode } from "./types"
 
 export let SidebarTriggerButtonRoot = styled.button`
+  ${mixinResetButtonStyle}
   width: ${SizeUnit(1)};
   height: ${SizeUnit(1)};
-  ${mixinResetButtonStyle}
-
   background-color: ${Color.grayLighter};
   border-bottom-left-radius: ${overviewItemBorderRadius};
   border-top-right-radius: ${overviewItemBorderRadius};

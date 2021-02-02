@@ -167,13 +167,6 @@ export let OverviewItemBox = styled.div`
     animation: ${barberpole} 8s linear infinite;
   }
 `
-let OverviewItemActions = styled.div`
-  position: absolute;
-  right: 0;
-  top: 0;
-  display: flex;
-  flex-direction: column;
-`
 
 let OverviewItemRuntimeBox = styled.div`
   display: flex;
@@ -190,7 +183,11 @@ let RuntimeBoxStack = styled.div`
 let InnerRuntimeBox = styled.div`
   display: flex;
   align-items: center;
-  margin: 2px 0;
+`
+
+let OverviewItemActions = styled.div`
+  display: flex;
+  flex-direction: column;
 `
 
 let OverviewItemBuildBox = styled.div`
@@ -233,7 +230,9 @@ let OverviewItemName = (props: { name: string }) => {
 
 let OverviewItemTimeAgo = styled.span`
   opacity: ${ColorAlpha.almostOpaque};
-  margin-right: ${SizeUnit(1.5)};
+  margin-right: ${SizeUnit(0.5)};
+  flex-grow: 1;
+  text-align: right;
 `
 
 export function triggerUpdate(name: string, action: string) {
