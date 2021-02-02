@@ -335,6 +335,7 @@ func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *ht
 	var payload overrideTriggerModePayload
 
 	decoder := json.NewDecoder(req.Body)
+	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&payload)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)

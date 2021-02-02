@@ -273,10 +273,10 @@ function oneResourceUnrecognizedError(): Resource {
   return resource
 }
 
-function oneResourceTest(): Resource {
+function oneResourceTestWithName(name: string): Resource {
   const ts = new Date(Date.now()).toISOString()
   const resource = {
-    name: "boop",
+    name: name,
     lastDeployTime: ts,
     buildHistory: [
       {
@@ -301,6 +301,10 @@ function oneResourceTest(): Resource {
     ],
   }
   return resource
+}
+
+function oneResourceTest(): Resource {
+  return oneResourceTestWithName("boop")
 }
 
 function oneResourceView(): view {
@@ -4434,6 +4438,7 @@ export {
   oneResourceErrImgPull,
   oneResourceUnrecognizedError,
   oneResourceTest,
+  oneResourceTestWithName,
   logPaneDOM,
   unnamedEndpointLink,
   namedEndpointLink,

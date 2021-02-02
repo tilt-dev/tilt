@@ -58,5 +58,3 @@ go_vendor()
 yarn_install()
 jest("web")
 web_lint()
-
-test("beep", "echo beep")

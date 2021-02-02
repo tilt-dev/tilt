@@ -2,16 +2,15 @@ import React from "react"
 import styled from "styled-components"
 import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin.svg"
 import { useSidebarPin } from "./SidebarPin"
-import { AnimDuration, Color } from "./style-helpers"
+import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 
 let PinButton = styled.button`
+  ${mixinResetButtonStyle}
   display: flex;
-  cursor: pointer;
   padding: 0;
   background-color: transparent;
-  border: 0 none;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   margin-right: 5px;
 `
 
@@ -80,7 +79,6 @@ export default function SidebarPinButton(
   if (persistShow) {
     className = "u-persistShow"
   }
-
   return (
     <PinButton title={title} onClick={onClick} className={className}>
       {icon}

@@ -24,11 +24,13 @@ import {
   ColorRGBA,
   Font,
   FontSize,
+  overviewItemBorderRadius,
   SizeUnit,
   Width,
 } from "./style-helpers"
 import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
+import { TriggerModeToggle } from "./TriggerModeToggle"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
 export const OverviewItemRoot = styled.li`
@@ -37,6 +39,7 @@ export const OverviewItemRoot = styled.li`
   width: calc((100% - 3 * ${SizeUnit(0.75)} - 2 * ${SizeUnit(1)}) / 4);
   box-sizing: border-box;
   margin: 0 0 ${SizeUnit(0.75)} ${SizeUnit(0.75)};
+  position: relative; // Anchor Trigger Mode button
 `
 
 type Resource = Proto.webviewResource
@@ -123,24 +126,27 @@ const barberpole = keyframes`
   }
 `
 
+// Flexbox (column) containing:
+// - `OverviewItemRuntimeBox` - (row) with runtime info, pin, trigger, trigger mode
+// - `OverviewItemBuildBox` - (row) with build status, text
 export let OverviewItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
+  align-items: stretch;
+  flex-grow: 1;
   flex-direction: column;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
   overflow: hidden;
   border: 1px solid ${Color.grayLighter};
-  position: relative; // Anchor the .isBuilding::after psuedo-element
-  flex-grow: 1;
+  position: relative; // Anchor .isBuilding::after + OverviewItemActions
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
   box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.51);
-  border-radius: 8px;
+  border-radius: ${overviewItemBorderRadius};
   padding: 0;
-  align-items: stretch;
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -165,9 +171,14 @@ export let OverviewItemBox = styled.div`
   }
 `
 
+// Flexbox (row) containing:
+// - StatusIcon - imported component
+// - `RuntimeBoxStack` - (column) with 2 `InnerRuntimeBox` (row) with type, name, pin, timeago, etc
+// - `OverviewItemActions` - (column) with trigger, trigger mode
 let OverviewItemRuntimeBox = styled.div`
   display: flex;
   align-items: stretch;
+  flex-grow: 1;
   transition: border-color ${AnimDuration.default} linear;
 `
 
@@ -175,12 +186,17 @@ let RuntimeBoxStack = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  flex-shrink: 1;
 `
 
 let InnerRuntimeBox = styled.div`
   display: flex;
   align-items: center;
-  margin: 2px 0;
+`
+
+let OverviewItemActions = styled.div`
+  display: flex;
+  flex-direction: column;
 `
 
 let OverviewItemBuildBox = styled.div`
@@ -193,11 +209,9 @@ let OverviewItemBuildBox = styled.div`
 let OverviewItemText = styled.div`
   display: flex;
   align-items: center;
-  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   opacity: ${ColorAlpha.almostOpaque};
-  line-height: normal;
 `
 
 let OverviewItemNameRoot = styled(OverviewItemText)`
@@ -205,6 +219,9 @@ let OverviewItemNameRoot = styled(OverviewItemText)`
   font-family: ${Font.sansSerif};
   font-weight: 600;
   z-index: 1; // Appear above the .isBuilding gradient
+  // TODO: Allow flex-grow: 1 to work with text truncation
+  // For now, a hack that sacrifices some width but ensures truncation:
+  max-width: 240px;
 `
 
 let OverviewItemNameTruncate = styled.span`
@@ -224,6 +241,9 @@ let OverviewItemName = (props: { name: string }) => {
 
 let OverviewItemTimeAgo = styled.span`
   opacity: ${ColorAlpha.almostOpaque};
+  margin-right: ${SizeUnit(0.5)};
+  flex-grow: 1;
+  text-align: right;
 `
 
 export function triggerUpdate(name: string, action: string) {
@@ -236,6 +256,24 @@ export function triggerUpdate(name: string, action: string) {
     body: JSON.stringify({
       manifest_names: [name],
       build_reason: 16 /* BuildReasonFlagTriggerWeb */,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.log(response)
+    }
+  })
+}
+
+export function toggleTriggerMode(name: string, mode: TriggerMode) {
+  incr("ui.web.toggleTriggerMode", { toMode: mode.toString() })
+
+  let url = "/api/override/trigger_mode"
+
+  fetch(url, {
+    method: "post",
+    body: JSON.stringify({
+      manifest_names: [name],
+      trigger_mode: mode,
     }),
   }).then((response) => {
     if (!response.ok) {
@@ -311,11 +349,14 @@ function RuntimeBox(props: RuntimeBoxProps) {
   let { item } = props
 
   let formatter = timeAgoFormatter
-  let hasBuilt = item.lastBuild !== null
-  let building = !isZeroTime(item.currentBuildStartTime)
   let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+
+  let building = !isZeroTime(item.currentBuildStartTime)
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
+  let hasBuilt = item.lastBuild !== null
+  let onModeToggle = toggleTriggerMode.bind(null, item.name)
   let onTrigger = triggerUpdate.bind(null, item.name)
+
   return (
     <OverviewItemRuntimeBox>
       <SidebarIcon
@@ -326,24 +367,33 @@ function RuntimeBox(props: RuntimeBoxProps) {
       <RuntimeBoxStack style={{ margin: "8px 0px" }}>
         <InnerRuntimeBox>
           <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
+          <SidebarPinButton resourceName={item.name} />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>
-          <SidebarTriggerButton
-            isTiltfile={item.isTiltfile}
-            isSelected={false}
-            hasPendingChanges={item.hasPendingChanges}
-            hasBuilt={hasBuilt}
-            isBuilding={building}
-            triggerMode={item.triggerMode}
-            isQueued={item.queued}
-            onTrigger={onTrigger}
-          />
         </InnerRuntimeBox>
         <InnerRuntimeBox>
           <OverviewItemName name={item.name} />
         </InnerRuntimeBox>
       </RuntimeBoxStack>
+      <OverviewItemActions>
+        <SidebarTriggerButton
+          isTiltfile={item.isTiltfile}
+          isSelected={false}
+          hasPendingChanges={item.hasPendingChanges}
+          hasBuilt={hasBuilt}
+          isBuilding={building}
+          triggerMode={item.triggerMode}
+          isQueued={item.queued}
+          onTrigger={onTrigger}
+        />
+        {item.isTest && (
+          <TriggerModeToggle
+            triggerMode={item.triggerMode}
+            onModeToggle={onModeToggle}
+          />
+        )}
+      </OverviewItemActions>
     </OverviewItemRuntimeBox>
   )
 }
@@ -354,7 +404,7 @@ type BuildBoxProps = {
 }
 
 function BuildBox(props: BuildBoxProps) {
-  let { item, isDetailsBox } = props
+  let { item } = props
 
   return (
     <OverviewItemBuildBox>
@@ -366,8 +416,6 @@ function BuildBox(props: BuildBoxProps) {
       <OverviewItemText style={{ margin: "8px 0px" }}>
         {buildStatusText(item)}
       </OverviewItemText>
-
-      <SidebarPinButton resourceName={item.name} persistShow={isDetailsBox} />
     </OverviewItemBuildBox>
   )
 }
@@ -415,7 +463,7 @@ let OverviewItemDetailsBox = styled.div`
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
   box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.51);
-  border-radius: 8px;
+  border-radius: ${overviewItemBorderRadius};
 `
 
 let OverviewItemDetailsLinkBox = styled.div`
@@ -609,6 +657,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
   let item = props.item
   let building = item.buildStatus === ResourceStatus.Building
   let isBuildingClass = building ? "isBuilding" : ""
+
   return (
     <OverviewItemRoot
       key={item.name}

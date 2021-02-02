@@ -14,12 +14,19 @@ import {
   ColorRGBA,
   Font,
   FontSize,
+  overviewItemBorderRadius,
   SizeUnit,
 } from "./style-helpers"
 import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { ResourceName, ResourceStatus, ResourceView } from "./types"
+import { TriggerModeToggle } from "./TriggerModeToggle"
+import {
+  ResourceName,
+  ResourceStatus,
+  ResourceView,
+  TriggerMode,
+} from "./types"
 
 const SidebarItemRoot = styled.li`
   & + & {
@@ -34,18 +41,19 @@ const barberpole = keyframes`
   }
 `
 
+// Flexbox (row) containing:
+// - `SidebarItemInnerBox` - (column) with runtime + build boxes
+// - `SidebarItemActions` - (column) with trigger + trigger mode
 export let SidebarItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
-  flex-direction: column;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
-  border-radius: 5px;
+  border-radius: ${overviewItemBorderRadius};
   overflow: hidden;
   border: 1px solid ${Color.grayLighter};
   position: relative; // Anchor the .isBuilding::after psuedo-element
-  flex-grow: 1;
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
@@ -81,9 +89,13 @@ export let SidebarItemBox = styled.div`
   }
 `
 
-let SidebarItemAllBox = styled(SidebarItemBox)`
-  flex-direction: row;
-  height: ${SizeUnit(1.0)};
+// Flexbox (column) containing:
+// - `SidebarItemRuntimeBox` - (row) with runtime status, name, pin, timeago
+// - `SidebarItemBuildBox` - (row) with build status, text
+let SidebarItemInnerBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 `
 
 let SidebarItemRuntimeBox = styled.div`
@@ -93,7 +105,6 @@ let SidebarItemRuntimeBox = styled.div`
   border-bottom: 1px solid ${Color.grayLighter};
   box-sizing: border-box;
   transition: border-color ${AnimDuration.default} linear;
-  overflow: hidden;
 
   .isSelected & {
     border-bottom-color: ${Color.grayLightest};
@@ -103,22 +114,27 @@ let SidebarItemRuntimeBox = styled.div`
 let SidebarItemBuildBox = styled.div`
   display: flex;
   align-items: stretch;
-  flex-shrink: 1;
-  height: ${SizeUnit(0.875)};
-`
-
-let SidebarItemAllRoot = styled(SidebarItemRoot)`
-  text-transform: uppercase;
+  height: ${SizeUnit(1)};
 `
 
 let SidebarItemText = styled.div`
   display: flex;
   align-items: center;
-  flex: 1;
+  flex-grow: 1;
   white-space: nowrap;
   overflow: hidden;
   opacity: ${ColorAlpha.almostOpaque};
-  line-height: normal;
+  // TODO: Allow flex-grow: 1 to work with text truncation
+  // For now, a hack that sacrifices some width but ensures truncation:
+  max-width: 140px;
+`
+
+let SidebarItemAllRoot = styled(SidebarItemRoot)`
+  text-transform: uppercase;
+`
+let SidebarItemAllBox = styled(SidebarItemBox)`
+  flex-direction: row;
+  height: ${SizeUnit(1.25)};
 `
 
 type SidebarItemAllProps = {
@@ -159,6 +175,7 @@ let SidebarItemNameRoot = styled(SidebarItemText)`
 `
 
 let SidebarItemNameTruncate = styled.span`
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `
@@ -176,7 +193,16 @@ let SidebarItemName = (props: { name: string }) => {
 let SidebarItemTimeAgo = styled.span`
   opacity: ${ColorAlpha.almostOpaque};
   display: flex;
+  justify-content: flex-end;
   align-items: center;
+  text-align: right;
+  white-space: nowrap;
+  padding-right: ${SizeUnit(0.25)};
+`
+
+let SidebarItemActions = styled.div`
+  display: flex;
+  flex-direction: column;
 `
 
 export function triggerUpdate(name: string, action: string) {
@@ -189,6 +215,24 @@ export function triggerUpdate(name: string, action: string) {
     body: JSON.stringify({
       manifest_names: [name],
       build_reason: 16 /* BuildReasonFlagTriggerWeb */,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.log(response)
+    }
+  })
+}
+
+export function toggleTriggerMode(name: string, mode: TriggerMode) {
+  incr("ui.web.toggleTriggerMode", { toMode: mode.toString() })
+
+  let url = "/api/override/trigger_mode"
+
+  fetch(url, {
+    method: "post",
+    body: JSON.stringify({
+      manifest_names: [name],
+      trigger_mode: mode,
     }),
   }).then((response) => {
     if (!response.ok) {
@@ -272,6 +316,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   let isSelectedClass = isSelected ? "isSelected" : ""
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
+  let onModeToggle = toggleTriggerMode.bind(null, item.name)
 
   return (
     <SidebarItemRoot
@@ -289,16 +334,29 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
         }
         data-name={item.name}
       >
-        <SidebarItemRuntimeBox>
-          <SidebarIcon
-            tooltipText={runtimeTooltipText(item.runtimeStatus)}
-            status={item.runtimeStatus}
-            alertCount={item.runtimeAlertCount}
-          />
-          <SidebarItemName name={item.name} />
-          <SidebarItemTimeAgo>
-            {hasSuccessfullyDeployed ? timeAgo : "—"}
-          </SidebarItemTimeAgo>
+        <SidebarItemInnerBox>
+          <SidebarItemRuntimeBox>
+            <SidebarIcon
+              tooltipText={runtimeTooltipText(item.runtimeStatus)}
+              status={item.runtimeStatus}
+              alertCount={item.runtimeAlertCount}
+            />
+            <SidebarItemName name={item.name} />
+            <SidebarPinButton resourceName={item.name} />
+            <SidebarItemTimeAgo>
+              {hasSuccessfullyDeployed ? timeAgo : "—"}
+            </SidebarItemTimeAgo>
+          </SidebarItemRuntimeBox>
+          <SidebarItemBuildBox>
+            <SidebarIcon
+              tooltipText={buildTooltipText(item.buildStatus)}
+              status={item.buildStatus}
+              alertCount={item.buildAlertCount}
+            />
+            <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
+          </SidebarItemBuildBox>
+        </SidebarItemInnerBox>
+        <SidebarItemActions>
           <SidebarTriggerButton
             isTiltfile={item.isTiltfile}
             isSelected={isSelected}
@@ -309,16 +367,13 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
             isQueued={item.queued}
             onTrigger={onTrigger}
           />
-        </SidebarItemRuntimeBox>
-        <SidebarItemBuildBox>
-          <SidebarIcon
-            tooltipText={buildTooltipText(item.buildStatus)}
-            status={item.buildStatus}
-            alertCount={item.buildAlertCount}
-          />
-          <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
-          <SidebarPinButton resourceName={item.name} />
-        </SidebarItemBuildBox>
+          {item.isTest && (
+            <TriggerModeToggle
+              triggerMode={item.triggerMode}
+              onModeToggle={onModeToggle}
+            />
+          )}
+        </SidebarItemActions>
       </SidebarItemBox>
     </SidebarItemRoot>
   )

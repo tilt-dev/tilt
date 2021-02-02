@@ -84,7 +84,10 @@ export enum Width {
   statusIconMarginRight = 10,
 }
 
+export const overviewItemBorderRadius = "6px"
+
 export enum ZIndex {
+  OverviewItemActions = 2000,
   SidebarMenu = 2000,
   Sidebar = 1000,
   HUDHeader = 500,
