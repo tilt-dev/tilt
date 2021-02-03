@@ -1,7 +1,7 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
+import { makeKey, tiltfileKeyContext } from "./LocalStorage"
 import OverviewItemView from "./OverviewItemView"
 import OverviewPane, {
   AllResources,
@@ -45,9 +45,9 @@ it("renders pinned resources", () => {
 
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>
-      <LocalStorageContextProvider tiltfileKey={"test"}>
+      <tiltfileKeyContext.Provider value="test">
         <SidebarPinContextProvider>{TwoResources()}</SidebarPinContextProvider>
-      </LocalStorageContextProvider>
+      </tiltfileKeyContext.Provider>
     </MemoryRouter>
   )
 

@@ -3,7 +3,7 @@ import fetchMock from "jest-fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import { expectIncr } from "./analytics_test_helpers"
-import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
+import { makeKey, tiltfileKeyContext } from "./LocalStorage"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { SidebarItemBox } from "./SidebarItemView"
@@ -49,7 +49,7 @@ describe("SidebarResources", () => {
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
-        <LocalStorageContextProvider tiltfileKey={"test"}>
+        <tiltfileKeyContext.Provider value="test">
           <SidebarPinContextProvider>
             <SidebarResources
               items={items}
@@ -58,7 +58,7 @@ describe("SidebarResources", () => {
               pathBuilder={pathBuilder}
             />
           </SidebarPinContextProvider>
-        </LocalStorageContextProvider>
+        </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
 
@@ -85,7 +85,7 @@ describe("SidebarResources", () => {
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
-        <LocalStorageContextProvider tiltfileKey={"test"}>
+        <tiltfileKeyContext.Provider value="test">
           <SidebarPinContextProvider>
             <SidebarResources
               items={items}
@@ -94,7 +94,7 @@ describe("SidebarResources", () => {
               pathBuilder={pathBuilder}
             />
           </SidebarPinContextProvider>
-        </LocalStorageContextProvider>
+        </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
 
@@ -110,7 +110,7 @@ describe("SidebarResources", () => {
 
     const root = mount(
       <MemoryRouter>
-        <LocalStorageContextProvider tiltfileKey={"test"}>
+        <tiltfileKeyContext.Provider value="test">
           <SidebarPinContextProvider>
             <SidebarResources
               items={items}
@@ -119,7 +119,7 @@ describe("SidebarResources", () => {
               pathBuilder={pathBuilder}
             />
           </SidebarPinContextProvider>
-        </LocalStorageContextProvider>
+        </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
 

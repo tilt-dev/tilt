@@ -1,23 +1,6 @@
 import { mount } from "enzyme"
 import React from "react"
-import {
-  localStorageContext,
-  LocalStorageContext,
-  LocalStorageContextProvider,
-  makeKey,
-} from "./LocalStorage"
-
-function lscp(f: (lsc: LocalStorageContext) => any) {
-  return mount(
-    <LocalStorageContextProvider tiltfileKey={"test"}>
-      {
-        <localStorageContext.Consumer>
-          {(ctx) => f(ctx)}
-        </localStorageContext.Consumer>
-      }
-    </LocalStorageContextProvider>
-  )
-}
+import { makeKey, tiltfileKeyContext, usePersistentState } from "./LocalStorage"
 
 describe("localStorageContext", () => {
   afterEach(() => {
@@ -25,10 +8,22 @@ describe("localStorageContext", () => {
   })
 
   it("stores data to local storage", () => {
-    lscp((ctx) => {
-      ctx.set("test-key", "test-write-value")
+    function ValueSetter() {
+      const [value, setValue] = usePersistentState<string>(
+        "test-key",
+        "initial"
+      )
+      if (value !== "test-write-value") {
+        setValue("test-write-value")
+      }
       return null
-    })
+    }
+
+    mount(
+      <tiltfileKeyContext.Provider value={"test"}>
+        <ValueSetter />
+      </tiltfileKeyContext.Provider>
+    )
 
     expect(localStorage.getItem(makeKey("test", "test-key"))).toEqual(
       JSON.stringify("test-write-value")
@@ -41,9 +36,18 @@ describe("localStorageContext", () => {
       JSON.stringify("test-read-value")
     )
 
-    let root = lscp((ctx) => {
-      return <p>{ctx.get<string>("test-key")}</p>
-    })
+    function ValueGetter() {
+      const [value, setValue] = usePersistentState<string>(
+        "test-key",
+        "initial"
+      )
+      return <p>{value}</p>
+    }
+    let root = mount(
+      <tiltfileKeyContext.Provider value="test">
+        <ValueGetter />
+      </tiltfileKeyContext.Provider>
+    )
 
     expect(root.find("p").text()).toEqual("test-read-value")
   })

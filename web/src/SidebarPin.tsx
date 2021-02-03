@@ -5,7 +5,7 @@ import React, {
   useState,
 } from "react"
 import { incr } from "./analytics"
-import { useLocalStorageContext } from "./LocalStorage"
+import { usePersistentState } from "./LocalStorage"
 
 type SidebarPinContext = {
   pinnedResources: string[]
@@ -54,13 +54,9 @@ export function SidebarPinMemoryProvider(
 export function SidebarPinContextProvider(
   props: PropsWithChildren<{ initialValueForTesting?: string[] }>
 ) {
-  let lsc = useLocalStorageContext()
-
-  const [pinnedResources, setPinnedResources] = useState<Array<string>>(
-    () =>
-      props.initialValueForTesting ??
-      lsc.get<Array<string>>("pinned-resources") ??
-      []
+  let [pinnedResources, setPinnedResources] = usePersistentState<string[]>(
+    "pinned-resources",
+    props.initialValueForTesting ?? []
   )
 
   useEffect(() => {
@@ -71,10 +67,6 @@ export function SidebarPinContextProvider(
     // empty deps because we only want to report the loaded pin count once per app load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    lsc.set("pinned-resources", pinnedResources)
-  }, [pinnedResources, lsc])
 
   function pinResource(name: string) {
     setPinnedResources((prevState) => {
