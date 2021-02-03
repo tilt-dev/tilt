@@ -17,7 +17,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-dmlrTW hlOBcH"
       >
         <li
-          className="sc-pFZIQ sc-bqyKva eVlRtJ chAPtx"
+          className="sc-pFZIQ sc-bqyKva eaCWvj chAPtx"
         >
           <div
             className="sc-jrAGrp sc-kstrdz ghJJLs ddZWsj isSelected"
@@ -51,7 +51,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         className="sc-dmlrTW hlOBcH"
       >
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -160,7 +160,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -269,7 +269,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -378,7 +378,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -487,7 +487,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -596,7 +596,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -705,7 +705,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -837,7 +837,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
         className="sc-dmlrTW hlOBcH"
       >
         <li
-          className="sc-pFZIQ sc-bqyKva eVlRtJ chAPtx"
+          className="sc-pFZIQ sc-bqyKva eaCWvj chAPtx"
         >
           <div
             className="sc-jrAGrp sc-kstrdz ghJJLs ddZWsj isSelected"
@@ -893,7 +893,7 @@ exports[`sidebar renders list of resources 1`] = `
         className="sc-dmlrTW hlOBcH"
       >
         <li
-          className="sc-pFZIQ sc-bqyKva eVlRtJ chAPtx"
+          className="sc-pFZIQ sc-bqyKva eaCWvj chAPtx"
         >
           <div
             className="sc-jrAGrp sc-kstrdz ghJJLs ddZWsj isSelected"
@@ -927,7 +927,7 @@ exports[`sidebar renders list of resources 1`] = `
         className="sc-dmlrTW hlOBcH"
       >
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -1038,7 +1038,7 @@ exports[`sidebar renders list of resources 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -1172,7 +1172,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         className="sc-dmlrTW hlOBcH"
       >
         <li
-          className="sc-pFZIQ sc-bqyKva eVlRtJ chAPtx"
+          className="sc-pFZIQ sc-bqyKva eaCWvj chAPtx"
         >
           <div
             className="sc-jrAGrp sc-kstrdz ghJJLs ddZWsj isSelected"
@@ -1206,7 +1206,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         className="sc-dmlrTW hlOBcH"
       >
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
@@ -1310,7 +1310,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eVlRtJ u-showPinOnHover  isBuilding"
+          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
         >
           <div
             className="sc-jrAGrp ghJJLs  isBuilding"
