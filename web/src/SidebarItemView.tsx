@@ -33,6 +33,7 @@ const SidebarItemRoot = styled.li`
     margin-top: ${SizeUnit(0.35)};
   }
   display: flex;
+  flex-direction: column;
 `
 
 const barberpole = keyframes`
