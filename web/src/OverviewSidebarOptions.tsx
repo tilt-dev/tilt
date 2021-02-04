@@ -13,7 +13,7 @@ import {
   mixinResetListStyle,
   SizeUnit,
 } from "./style-helpers"
-import {SidebarOptions} from "./types"
+import { SidebarOptions } from "./types"
 
 const OverviewSidebarOptionsRoot = styled.div`
   display: flex;
@@ -58,15 +58,21 @@ type OverviewSidebarOptionsProps = {
 }
 
 function toggleAlertsOnTop(props: OverviewSidebarOptionsProps) {
-  props.setOptions({...props.options, alertsOnTop: !props.options.alertsOnTop})
+  props.setOptions({
+    ...props.options,
+    alertsOnTop: !props.options.alertsOnTop,
+  })
 }
 
 function toggleShowTests(props: OverviewSidebarOptionsProps) {
-  props.setOptions({...props.options, showTests: !props.options.showTests})
+  props.setOptions({ ...props.options, showTests: !props.options.showTests })
 }
 
 function toggleShowResources(props: OverviewSidebarOptionsProps) {
-  props.setOptions({...props.options, showResources: !props.options.showResources})
+  props.setOptions({
+    ...props.options,
+    showResources: !props.options.showResources,
+  })
 }
 
 export function OverviewSidebarOptions(

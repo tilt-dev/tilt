@@ -157,7 +157,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
           </SidebarListSection>
           <PinnedItems {...this.props} />
           {testsPresent && (
-            <OverviewSidebarOptions options={options} setOptions={setOptions}/> // TODO: if this vanishes because no tests present, reset it to show everything
+            <OverviewSidebarOptions options={options} setOptions={setOptions} /> // TODO: if this vanishes because no tests present, reset it to show everything
           )}
           <SidebarListSection name="resources">{listItems}</SidebarListSection>
         </SidebarList>
