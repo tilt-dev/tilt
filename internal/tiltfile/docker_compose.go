@@ -15,6 +15,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -91,6 +92,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var imageVal starlark.Value
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
+	var links links.LinkList
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -106,6 +108,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
+		"links?", &links,
 	); err != nil {
 		return nil, err
 	}
@@ -130,6 +133,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	}
 
 	svc.TriggerMode = triggerMode
+	svc.Links = links.Links
 
 	if imageRefAsStr != nil {
 		normalized, err := container.ParseNamed(*imageRefAsStr)
@@ -182,6 +186,7 @@ type dcService struct {
 	PublishedPorts []int
 
 	TriggerMode triggerMode
+	Links       []model.Link
 
 	resourceDeps []string
 }
@@ -276,6 +281,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		ConfigPaths: dcSet.configPaths,
 		YAMLRaw:     service.ServiceConfig,
 		DfRaw:       service.DfContents,
+		Links:       service.Links,
 	}.WithDependencyIDs(service.DependencyIDs).
 		WithPublishedPorts(service.PublishedPorts).
 		WithIgnoredLocalDirectories(service.MountedLocalDirs)

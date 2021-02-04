@@ -28,6 +28,8 @@ type DockerComposeTarget struct {
 	dependencyIDs []TargetID
 
 	publishedPorts []int
+
+	Links []Link
 }
 
 // TODO(nick): This is a temporary hack until we figure out how we want
@@ -58,6 +60,11 @@ func (t DockerComposeTarget) LocalPaths() []string {
 
 func (t DockerComposeTarget) PublishedPorts() []int {
 	return append([]int{}, t.publishedPorts...)
+}
+
+func (t DockerComposeTarget) WithLinks(links []Link) DockerComposeTarget {
+	t.Links = links
+	return t
 }
 
 func (t DockerComposeTarget) WithPublishedPorts(ports []int) DockerComposeTarget {
