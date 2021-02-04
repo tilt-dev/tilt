@@ -30,11 +30,18 @@ func (t ManifestTarget) Status() model.TargetStatus {
 
 func (mt *ManifestTarget) UpdateStatus() model.UpdateStatus {
 	m := mt.Manifest
+	us := mt.State.UpdateStatus(m.TriggerMode)
+
+	if us == model.UpdateStatusPending {
+		// A resource with no update command can still be in pending mode.
+		return us
+	}
+
 	if m.IsLocal() && m.LocalTarget().UpdateCmd.Empty() {
 		return model.UpdateStatusNotApplicable
 	}
 
-	return mt.State.UpdateStatus(m.TriggerMode)
+	return us
 }
 
 var _ model.Target = &ManifestTarget{}
