@@ -5,6 +5,7 @@
 .LogPaneLine {
   display: flex;
   position: relative;
+  font-size: $font-size-smallest;  
 
   &.is-highlighted {
     background-color: rgba($color-blue, $translucent);
