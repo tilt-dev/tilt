@@ -18,7 +18,7 @@ import HUDLayout from "./HUDLayout"
 import HudState from "./HudState"
 import { InterfaceVersion, useInterfaceVersion } from "./InterfaceVersion"
 import K8sViewPane from "./K8sViewPane"
-import { LocalStorageContextProvider } from "./LocalStorage"
+import { tiltfileKeyContext } from "./LocalStorage"
 import LogPane from "./LogPane"
 import { logLinesFromString } from "./logs"
 import LogStore, { LogStoreProvider } from "./LogStore"
@@ -353,7 +353,7 @@ export default class HUD extends Component<HudProps, HudState> {
       let validateTab = (name: string) =>
         resources.some((res) => res.name === name)
       return (
-        <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
+        <tiltfileKeyContext.Provider value={view.tiltfileKey}>
           <SidebarPinContextProvider>
             <OverviewNavProvider validateTab={validateTab}>
               <div className={hudClasses.join(" ")}>
@@ -367,12 +367,12 @@ export default class HUD extends Component<HudProps, HudState> {
               </div>
             </OverviewNavProvider>
           </SidebarPinContextProvider>
-        </LocalStorageContextProvider>
+        </tiltfileKeyContext.Provider>
       )
     }
 
     return (
-      <LocalStorageContextProvider tiltfileKey={view.tiltfileKey}>
+      <tiltfileKeyContext.Provider value={view.tiltfileKey}>
         <SidebarPinContextProvider>
           <LegacyNavProvider resourceView={resourceView}>
             <div className={hudClasses.join(" ")}>
@@ -395,7 +395,7 @@ export default class HUD extends Component<HudProps, HudState> {
             </div>
           </LegacyNavProvider>
         </SidebarPinContextProvider>
-      </LocalStorageContextProvider>
+      </tiltfileKeyContext.Provider>
     )
   }
 

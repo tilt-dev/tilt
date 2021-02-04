@@ -1,7 +1,7 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { LocalStorageContextProvider, makeKey } from "./LocalStorage"
+import { makeKey, tiltfileKeyContext } from "./LocalStorage"
 import { TwoResourcesTwoTests } from "./OverviewResourceSidebar.stories"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
@@ -91,7 +91,7 @@ it("doesn't show SidebarOptionSetter if no tests present", () => {
   let items = [tiltfileResource(), oneResource()].map((r) => new SidebarItem(r))
   const root = mount(
     <MemoryRouter>
-      <LocalStorageContextProvider tiltfileKey={"test"}>
+      <tiltfileKeyContext.Provider value="test">
         <SidebarPinContextProvider>
           <SidebarResources
             items={items}
@@ -100,7 +100,7 @@ it("doesn't show SidebarOptionSetter if no tests present", () => {
             pathBuilder={pathBuilder}
           />
         </SidebarPinContextProvider>
-      </LocalStorageContextProvider>
+      </tiltfileKeyContext.Provider>
     </MemoryRouter>
   )
   let sidebar = root.find(SidebarResources)
@@ -117,11 +117,11 @@ it("still displays pinned tests when tests hidden", () => {
   )
   const root = mount(
     <MemoryRouter>
-      <LocalStorageContextProvider tiltfileKey={"test"}>
+      <tiltfileKeyContext.Provider value="test">
         <SidebarPinContextProvider>
           {TwoResourcesTwoTests()}
         </SidebarPinContextProvider>
-      </LocalStorageContextProvider>
+      </tiltfileKeyContext.Provider>
     </MemoryRouter>
   )
 

@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useState } from "react"
+import React, { useContext, useEffect } from "react"
 import { matchPath, useHistory } from "react-router-dom"
-import { useLocalStorageContext } from "./LocalStorage"
+import { usePersistentState } from "./LocalStorage"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceName, ResourceView } from "./types"
 
@@ -117,7 +117,10 @@ export function OverviewNavProvider(
   }>
 ) {
   let { children, validateTab, tabsForTesting } = props
-  let lsc = useLocalStorageContext()
+  const [tabs, setTabs] = usePersistentState<string[]>(
+    "tabs",
+    addAllTabIfEmpty(tabsForTesting || [])
+  )
   let history = useHistory()
   let pb = usePathBuilder()
   let selectedTab = ""
@@ -133,22 +136,11 @@ export function OverviewNavProvider(
     invalidTab = candidateTab
   }
 
-  // The list of tabs open. A tab name should never appear twice in the list.
-  const [tabs, setTabs] = useState<string[]>(() => {
-    return addAllTabIfEmpty(
-      tabsForTesting ?? lsc.get<Array<string>>("tabs") ?? []
-    )
-  })
-
   useEffect(() => {
     if (selectedTab && !tabs.includes(selectedTab)) {
       setTabs(tabs.concat([selectedTab]))
     }
   }, [tabs, selectedTab])
-
-  useEffect(() => {
-    lsc.set("tabs", tabs)
-  }, [tabs, lsc])
 
   // Deletes the resource in the tab list.
   // If we're deleting the current tab, navigate to the next reasonable tab.

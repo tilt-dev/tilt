@@ -52,117 +52,123 @@ function newFixture(initialTabs: string[]): Fixture {
   return f
 }
 
-it("navigates to existing tab on click resource", () => {
-  let f = newFixture(["res1", "res2"])
-  expect(f.nav.tabs).toEqual(["res1", "res2"])
-  expect(f.nav.selectedTab).toEqual("")
+describe("tabnav", () => {
+  afterEach(() => {
+    localStorage.clear()
+  })
 
-  f.openResource("res1")
+  it("navigates to existing tab on click resource", () => {
+    let f = newFixture(["res1", "res2"])
+    expect(f.nav.tabs).toEqual(["res1", "res2"])
+    expect(f.nav.selectedTab).toEqual("")
 
-  expect(f.nav.tabs).toEqual(["res1", "res2"])
-  expect(f.nav.selectedTab).toEqual("res1")
-  expect(f.history.location.pathname).toEqual("/r/res1/overview")
-})
+    f.openResource("res1")
 
-it("navigates to new tab on click resource", () => {
-  let f = newFixture(["res1", "res2"])
-  expect(f.nav.tabs).toEqual(["res1", "res2"])
-  expect(f.nav.selectedTab).toEqual("")
+    expect(f.nav.tabs).toEqual(["res1", "res2"])
+    expect(f.nav.selectedTab).toEqual("res1")
+    expect(f.history.location.pathname).toEqual("/r/res1/overview")
+  })
 
-  f.openResource("res3")
+  it("navigates to new tab on click resource", () => {
+    let f = newFixture(["res1", "res2"])
+    expect(f.nav.tabs).toEqual(["res1", "res2"])
+    expect(f.nav.selectedTab).toEqual("")
 
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res3")
-})
+    f.openResource("res3")
 
-it("changes selected tab on click existing resource", () => {
-  let f = newFixture(["res1", "res2", "res3"])
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("")
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res3")
+  })
 
-  f.openResource("res1")
+  it("changes selected tab on click existing resource", () => {
+    let f = newFixture(["res1", "res2", "res3"])
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("")
 
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res1")
+    f.openResource("res1")
 
-  f.openResource("res3")
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res3")
-})
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res1")
 
-it("changes selected tab on click new resource", () => {
-  let f = newFixture(["res1", "res2", "res3"])
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("")
+    f.openResource("res3")
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res3")
+  })
 
-  f.openResource("res2")
+  it("changes selected tab on click new resource", () => {
+    let f = newFixture(["res1", "res2", "res3"])
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("")
 
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res2")
+    f.openResource("res2")
 
-  f.openResource("res4")
-  expect(f.nav.tabs).toEqual(["res1", "res4", "res3"])
-  expect(f.nav.selectedTab).toEqual("res4")
-})
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res2")
 
-it("open new tab to the right on double-click existing resource", () => {
-  let f = newFixture(["res1", "res2", "res3"])
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("")
+    f.openResource("res4")
+    expect(f.nav.tabs).toEqual(["res1", "res4", "res3"])
+    expect(f.nav.selectedTab).toEqual("res4")
+  })
 
-  f.openResource("res1")
+  it("open new tab to the right on double-click existing resource", () => {
+    let f = newFixture(["res1", "res2", "res3"])
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("")
 
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res1")
+    f.openResource("res1")
 
-  f.openResource("res3", { newTab: true })
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res3")
-})
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res1")
 
-it("open new tab to the right on double-click new resource", () => {
-  let f = newFixture(["res1", "res2", "res3"])
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("")
+    f.openResource("res3", { newTab: true })
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res3")
+  })
 
-  f.openResource("res1")
+  it("open new tab to the right on double-click new resource", () => {
+    let f = newFixture(["res1", "res2", "res3"])
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("")
 
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res1")
+    f.openResource("res1")
 
-  f.openResource("res4", { newTab: true })
-  expect(f.nav.tabs).toEqual(["res1", "res4", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res4")
-})
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res1")
 
-it("navigates to the tab on the right when closing", () => {
-  let f = newFixture(["res1", "res2", "res3"])
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("")
+    f.openResource("res4", { newTab: true })
+    expect(f.nav.tabs).toEqual(["res1", "res4", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res4")
+  })
 
-  f.openResource("res2")
+  it("navigates to the tab on the right when closing", () => {
+    let f = newFixture(["res1", "res2", "res3"])
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("")
 
-  expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
-  expect(f.nav.selectedTab).toEqual("res2")
+    f.openResource("res2")
 
-  f.closeTab("res2")
-  expect(f.nav.tabs).toEqual(["res1", "res3"])
-  expect(f.nav.selectedTab).toEqual("res3")
-  expect(f.history.location.pathname).toEqual("/r/res3/overview")
-})
+    expect(f.nav.tabs).toEqual(["res1", "res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res2")
 
-it("navigates to home on closing last tab when closing", () => {
-  let f = newFixture(["res1"])
-  expect(f.nav.tabs).toEqual(["res1"])
-  expect(f.nav.selectedTab).toEqual("")
+    f.closeTab("res2")
+    expect(f.nav.tabs).toEqual(["res1", "res3"])
+    expect(f.nav.selectedTab).toEqual("res3")
+    expect(f.history.location.pathname).toEqual("/r/res3/overview")
+  })
 
-  f.openResource("res1")
+  it("navigates to home on closing last tab when closing", () => {
+    let f = newFixture(["res1"])
+    expect(f.nav.tabs).toEqual(["res1"])
+    expect(f.nav.selectedTab).toEqual("")
 
-  expect(f.nav.tabs).toEqual(["res1"])
-  expect(f.nav.selectedTab).toEqual("res1")
+    f.openResource("res1")
 
-  f.closeTab("res1")
-  expect(f.nav.tabs).toEqual([ResourceName.all])
-  expect(f.nav.selectedTab).toEqual("")
-  expect(f.history.location.pathname).toEqual("/overview")
+    expect(f.nav.tabs).toEqual(["res1"])
+    expect(f.nav.selectedTab).toEqual("res1")
+
+    f.closeTab("res1")
+    expect(f.nav.tabs).toEqual([ResourceName.all])
+    expect(f.nav.selectedTab).toEqual("")
+    expect(f.history.location.pathname).toEqual("/overview")
+  })
 })
