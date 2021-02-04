@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
@@ -105,16 +106,18 @@ func TestServeReadinessProbeInvalidSpec(t *testing.T) {
 	c := model.ToHostCmdInDir("sleep 60", "testdir")
 	localTarget := model.NewLocalTarget("foo", model.Cmd{}, c, nil)
 	localTarget.ReadinessProbe = &v1.Probe{
-		// probe spec populated but missing handler
-		Handler: v1.Handler{},
+		Handler: v1.Handler{HTTPGet: &v1.HTTPGetAction{
+			// port > 65535
+			Port: intstr.FromInt(70000),
+		}},
 	}
 
 	f.resourceFromTarget("foo", localTarget, t1)
 	f.step()
 
-	f.assertStatus("foo", model.RuntimeStatusOK, 1)
+	f.assertStatus("foo", model.RuntimeStatusError, 1)
 
-	f.assertLogMessage("foo", "Invalid readiness probe: unsupported probe type")
+	f.assertLogMessage("foo", "Invalid readiness probe: port number out of range: 70000")
 	assert.Equal(t, 0, f.fpm.ProbeCount())
 }
 
