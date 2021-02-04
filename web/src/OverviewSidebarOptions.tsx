@@ -13,7 +13,7 @@ import {
   mixinResetListStyle,
   SizeUnit,
 } from "./style-helpers"
-import { SidebarOptions } from "./types"
+import {SidebarOptions} from "./types"
 
 const OverviewSidebarOptionsRoot = styled.div`
   display: flex;
@@ -53,10 +53,20 @@ const AlertsOnTopToggle = styled.button`
 `
 
 type OverviewSidebarOptionsProps = {
-  curState: SidebarOptions
-  toggleShowResources: () => void
-  toggleShowTests: () => void
-  toggleAlertsOnTop: () => void
+  options: SidebarOptions
+  setOptions: (newOptions: SidebarOptions) => void
+}
+
+function toggleAlertsOnTop(props: OverviewSidebarOptionsProps) {
+  props.setOptions({...props.options, alertsOnTop: !props.options.alertsOnTop})
+}
+
+function toggleShowTests(props: OverviewSidebarOptionsProps) {
+  props.setOptions({...props.options, showTests: !props.options.showTests})
+}
+
+function toggleShowResources(props: OverviewSidebarOptionsProps) {
+  props.setOptions({...props.options, showResources: !props.options.showResources})
 }
 
 export function OverviewSidebarOptions(
@@ -76,8 +86,8 @@ export function OverviewSidebarOptions(
               color={"default"}
               icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
               checkedIcon={<CheckBoxIcon fontSize="small" />}
-              checked={props.curState.showResources}
-              onChange={(e) => props.toggleShowResources()}
+              checked={props.options.showResources}
+              onChange={(e) => toggleShowResources(props)}
               name="resources"
               id="resources"
             />
@@ -91,8 +101,8 @@ export function OverviewSidebarOptions(
               color={"default"}
               icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
               checkedIcon={<CheckBoxIcon fontSize="small" />}
-              checked={props.curState.showTests}
-              onChange={(e) => props.toggleShowTests()}
+              checked={props.options.showTests}
+              onChange={(e) => toggleShowTests(props)}
               name="tests"
               id="tests"
             />
@@ -102,8 +112,8 @@ export function OverviewSidebarOptions(
       </FilterOptionList>
 
       <AlertsOnTopToggle
-        className={props.curState.alertsOnTop ? "is-enabled" : ""}
-        onClick={(e) => props.toggleAlertsOnTop()}
+        className={props.options.alertsOnTop ? "is-enabled" : ""}
+        onClick={(e) => toggleAlertsOnTop(props)}
       >
         Alerts on Top
       </AlertsOnTopToggle>

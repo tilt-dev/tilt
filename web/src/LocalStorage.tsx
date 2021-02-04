@@ -17,3 +17,12 @@ export function usePersistentState<S>(name: string, defaultValue: S) {
     defaultValue
   )
 }
+
+export function PersistentStateProvider<S>(props: {
+  name: string
+  defaultValue: S
+  children: (state: S, setState: (newState: S) => void) => JSX.Element
+}) {
+  const [state, setState] = usePersistentState(props.name, props.defaultValue)
+  return props.children(state, setState)
+}
