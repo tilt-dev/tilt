@@ -10,7 +10,7 @@ RUN sudo apt-get install default-jdk
 
 USER root
 
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
 
 RUN apt-get install -y nodejs
 
@@ -22,7 +22,7 @@ RUN firebase setup:emulators:firestore
 
 USER root
 
-RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/kustomize.tar.gz  https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.4.0/kustomize_v3.4.0_linux_amd64.tar.gz \
+RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/kustomize.tar.gz  https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.9.2/kustomize_v3.9.2_linux_amd64.tar.gz \
   && tar -xz -C /tmp -f /tmp/kustomize.tar.gz \
   && mv /tmp/kustomize /usr/bin/kustomize
 
@@ -30,20 +30,20 @@ RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.ta
   && tar -xz -C /tmp -f /tmp/helm.tar.gz \
   && mv /tmp/linux-amd64/helm /usr/bin/helm2
 
-RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://get.helm.sh/helm-v3.0.0-linux-amd64.tar.gz \
+RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://get.helm.sh/helm-v3.5.0-linux-amd64.tar.gz \
   && tar -xz -C /tmp -f /tmp/helm.tar.gz \
   && mv /tmp/linux-amd64/helm /usr/bin/helm3
 
 USER circleci
 
-RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/google-cloud-sdk.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-265.0.0-linux-x86_64.tar.gz \
+RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/google-cloud-sdk.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-326.0.0-linux-x86_64.tar.gz \
   && tar -xz -C /tmp -f /tmp/google-cloud-sdk.tar.gz
 
 RUN /tmp/google-cloud-sdk/install.sh
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.30.0
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.35.2
 
-RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.19.0
+RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.10
 
 ENV PATH="${PATH}:/tmp/google-cloud-sdk/bin"
 ENV PATH="${PATH}:/home/circleci/.yarn/bin"
