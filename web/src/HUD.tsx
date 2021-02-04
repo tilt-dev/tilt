@@ -1,5 +1,4 @@
 import { History, UnregisterCallback } from "history"
-import * as _ from "lodash"
 import React, { Component } from "react"
 import { matchPath, useHistory } from "react-router"
 import { Route, RouteComponentProps, Switch } from "react-router-dom"
@@ -158,7 +157,8 @@ export default class HUD extends Component<HudProps, HudState> {
 
   setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
     this.setState((prevState) => {
-      let newState = _.clone(state) as any
+      let newState: any = {}
+      Object.assign(newState, state)
       newState.logStore = prevState.logStore ?? new LogStore()
 
       let newLogList = newState.view?.logList
@@ -193,15 +193,18 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   snapshotFromState(state: HudState): Proto.webviewSnapshot {
-    let view = _.cloneDeep(state.view ?? null)
-    if (view && state.logStore) {
+    let view: any = {}
+    if (state.view) {
+      Object.assign(view, state.view)
+    }
+    if (state.logStore) {
       view.logList = state.logStore.toLogList(maxSnapshotLogSize)
     }
     return {
       view: view,
       isSidebarClosed: !!state.isSidebarClosed,
       path: this.props.history.location.pathname,
-      snapshotHighlight: _.cloneDeep(state.snapshotHighlight),
+      snapshotHighlight: state.snapshotHighlight,
     }
   }
 
