@@ -161,6 +161,7 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 
 	statusCh := make(chan statusAndMetadata)
 
+	spanID := SpanIDForServeLog(proc.procNum)
 	if spec.ReadinessProbe != nil {
 		statusChangeFunc := processReadinessProbeUpdate(ctx, st, spec.ManifestName, proc.stillHasSameProcNum())
 		probeWorker, err := probeWorkerFromSpec(
@@ -168,15 +169,19 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 			spec.ReadinessProbe,
 			statusChangeFunc)
 		if err != nil {
-			logger.Get(ctx).Warnf("Invalid readiness probe: %v", err)
-		} else {
-			proc.probeWorker = probeWorker
+			logger.Get(ctx).Errorf("Invalid readiness probe: %v", err)
+			st.Dispatch(LocalServeStatusAction{
+				ManifestName: spec.ManifestName,
+				Status:       model.RuntimeStatusError,
+				SpanID:       spanID,
+			})
+			return
 		}
+		proc.probeWorker = probeWorker
 	}
 
 	go processStatuses(ctx, statusCh, st, spec.ManifestName, proc)
 
-	spanID := SpanIDForServeLog(proc.procNum)
 	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
 }
 

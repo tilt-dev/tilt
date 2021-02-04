@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 )
+
+var errInvalidProbeAction = errors.New("exactly one of exec, http_get, or tcp_socket must be specified")
 
 func NewExtension() Extension {
 	return Extension{}
@@ -81,6 +84,10 @@ func (e Extension) probe(thread *starlark.Thread, fn *starlark.Builtin, args sta
 		},
 	}
 
+	if err := validateProbeSpec(spec); err != nil {
+		return nil, err
+	}
+
 	return Probe{
 		Struct: starlarkstruct.FromKeywords(starlark.String("probe"), []starlark.Tuple{
 			{starlark.String("initial_delay_secs"), initialDelayVal},
@@ -94,6 +101,23 @@ func (e Extension) probe(thread *starlark.Thread, fn *starlark.Builtin, args sta
 		}),
 		spec: spec,
 	}, nil
+}
+
+func validateProbeSpec(spec *v1.Probe) error {
+	actionCount := 0
+	if spec.Exec != nil {
+		actionCount++
+	}
+	if spec.HTTPGet != nil {
+		actionCount++
+	}
+	if spec.TCPSocket != nil {
+		actionCount++
+	}
+	if actionCount != 1 {
+		return errInvalidProbeAction
+	}
+	return nil
 }
 
 type ExecAction struct {

@@ -18,7 +18,8 @@ p = probe(initial_delay_secs=123,
           timeout_secs=456,
           period_secs=789,
           success_threshold=987,
-          failure_threshold=654)
+          failure_threshold=654,
+          exec=exec_action([]))
 
 print(p.initial_delay_secs)
 print(p.timeout_secs)
@@ -39,7 +40,7 @@ print("tcp_socket:", p.tcp_socket)
 789
 987
 654
-exec: None
+exec: "exec_action"(command = [])
 http_get: None
 tcp_socket: None
 `)
@@ -47,7 +48,27 @@ tcp_socket: None
 	require.Contains(t, f.PrintOutput(), expectedOutput)
 }
 
-func TestProbeExec(t *testing.T) {
+func TestProbeActions_None(t *testing.T) {
+	f := starkit.NewFixture(t, NewExtension())
+	defer f.TearDown()
+
+	f.File("Tiltfile", `p = probe()`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.EqualError(t, err, `exactly one of exec, http_get, or tcp_socket must be specified`)
+}
+
+func TestProbeActions_Multiple(t *testing.T) {
+	f := starkit.NewFixture(t, NewExtension())
+	defer f.TearDown()
+
+	f.File("Tiltfile", `p = probe(exec=exec_action([]), http_get=http_get_action(8000))`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.EqualError(t, err, `exactly one of exec, http_get, or tcp_socket must be specified`)
+}
+
+func TestProbeActions_Exec(t *testing.T) {
 	f := starkit.NewFixture(t, NewExtension())
 	defer f.TearDown()
 
@@ -63,7 +84,7 @@ print(p.exec.command)
 	require.Contains(t, f.PrintOutput(), `["sleep", "60"]`)
 }
 
-func TestProbeHTTPGet(t *testing.T) {
+func TestProbeActions_HTTPGet(t *testing.T) {
 	f := starkit.NewFixture(t, NewExtension())
 	defer f.TearDown()
 
@@ -89,7 +110,7 @@ https
 	require.Contains(t, f.PrintOutput(), expectedOutput)
 }
 
-func TestProbeHTTPGetNoHost(t *testing.T) {
+func TestProbeActions_HTTPGet_NoHost(t *testing.T) {
 	f := starkit.NewFixture(t, NewExtension())
 	defer f.TearDown()
 
@@ -114,7 +135,7 @@ https
 	require.Contains(t, f.PrintOutput(), expectedOutput)
 }
 
-func TestProbeTCP(t *testing.T) {
+func TestProbeActions_TCPSocket(t *testing.T) {
 	f := starkit.NewFixture(t, NewExtension())
 	defer f.TearDown()
 
