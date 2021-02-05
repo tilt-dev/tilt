@@ -7,5 +7,7 @@ p = probe(initial_delay_secs=0,
 
 local_resource('foo', serve_cmd='./hello.sh foo', readiness_probe=p)
 
+# readiness probe explicitly set to None
 local_resource('bar', serve_cmd='./hello.sh bar',
+               readiness_probe=None,
                resource_deps=['foo'])
