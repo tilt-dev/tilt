@@ -7,6 +7,7 @@ orbs:
   kubernetes: circleci/kubernetes@0.9.1
 jobs:
   build-linux:
+    resource_class: medium+
     docker:
       - image: gcr.io/windmill-public-containers/tilt-ci@sha256:56c0fa5f06f4c053aebf446179e661d3a92775bd60db1b97d4b3753582d83fcb
 
