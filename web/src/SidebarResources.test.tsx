@@ -3,17 +3,28 @@ import fetchMock from "jest-fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import { expectIncr } from "./analytics_test_helpers"
-import { makeKey, tiltfileKeyContext } from "./LocalStorage"
+import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
+import { AlertsOnTopToggle } from "./OverviewSidebarOptions"
+import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { SidebarItemBox } from "./SidebarItemView"
 import { SidebarPinContextProvider } from "./SidebarPin"
 import SidebarPinButton from "./SidebarPinButton"
 import SidebarResources, { SidebarListSection } from "./SidebarResources"
-import { twoResourceView } from "./testdata"
-import { ResourceView } from "./types"
+import {
+  oneResource,
+  oneResourceTestWithName,
+  twoResourceView,
+} from "./testdata"
+import { ResourceView, SidebarOptions } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
+
+const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
+  "sidebar_options"
+)
+const pinnedItemsAccessor = accessorsForTesting<string[]>("pinned-resources")
 
 function getPinnedItemNames(
   root: ReactWrapper<any, React.Component["state"], React.Component>
@@ -71,16 +82,11 @@ describe("SidebarResources", () => {
     expectIncr(0, "ui.web.pin", { pinCount: "0", action: "load" })
     expectIncr(1, "ui.web.pin", { pinCount: "1", action: "pin" })
 
-    expect(localStorage.getItem(makeKey("test", "pinned-resources"))).toEqual(
-      JSON.stringify(["snack"])
-    )
+    expect(pinnedItemsAccessor.get()).toEqual(["snack"])
   })
 
   it("reads pinned items from local storage", () => {
-    localStorage.setItem(
-      makeKey("test", "pinned-resources"),
-      JSON.stringify(["vigoda", "snack"])
-    )
+    pinnedItemsAccessor.set(["vigoda", "snack"])
 
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     const root = mount(
@@ -103,10 +109,7 @@ describe("SidebarResources", () => {
 
   it("removes items from the pinned group when items are pinned", () => {
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
-    localStorage.setItem(
-      makeKey("test", "pinned-resources"),
-      JSON.stringify(items.map((i) => i.name))
-    )
+    pinnedItemsAccessor.set(items.map((i) => i.name))
 
     const root = mount(
       <MemoryRouter>
@@ -132,8 +135,108 @@ describe("SidebarResources", () => {
     expectIncr(0, "ui.web.pin", { pinCount: "2", action: "load" })
     expectIncr(1, "ui.web.pin", { pinCount: "1", action: "unpin" })
 
-    expect(localStorage.getItem(makeKey("test", "pinned-resources"))).toEqual(
-      JSON.stringify(["vigoda"])
-    )
+    expect(pinnedItemsAccessor.get()).toEqual(["vigoda"])
   })
+
+  const loadCases: [string, SidebarOptions, string[]][] = [
+    [
+      "showResources",
+      { showResources: false, showTests: true, alertsOnTop: true },
+      ["a", "b"],
+    ],
+    [
+      "showTests",
+      { showResources: true, showTests: false, alertsOnTop: true },
+      ["vigoda"],
+    ],
+    [
+      "alertsOnTop",
+      { showResources: true, showTests: true, alertsOnTop: false },
+      ["vigoda", "a", "b"],
+    ],
+  ]
+  test.each(loadCases)(
+    "loads %p from localStorage",
+    (name, options, expectedItems) => {
+      sidebarOptionsAccessor.set(options)
+
+      const items = [
+        oneResource(),
+        oneResourceTestWithName("a"),
+        oneResourceTestWithName("b"),
+      ].map((res) => new SidebarItem(res))
+
+      const root = mount(
+        <MemoryRouter>
+          <tiltfileKeyContext.Provider value="test">
+            <SidebarResources
+              items={items}
+              selected={""}
+              resourceView={ResourceView.OverviewDetail}
+              pathBuilder={pathBuilder}
+            />
+          </tiltfileKeyContext.Provider>
+        </MemoryRouter>
+      )
+
+      assertSidebarItemsAndOptions(
+        root,
+        expectedItems,
+        options.showResources,
+        options.showTests,
+        options.alertsOnTop
+      )
+    }
+  )
+
+  const saveCases: [string, SidebarOptions][] = [
+    [
+      "showResources",
+      { showResources: false, showTests: true, alertsOnTop: true },
+    ],
+    ["showTests", { showResources: true, showTests: false, alertsOnTop: true }],
+    [
+      "alertsOnTop",
+      { showResources: true, showTests: true, alertsOnTop: false },
+    ],
+  ]
+  test.each(saveCases)(
+    "saves option %s to localStorage",
+    (name, expectedOptions) => {
+      const items = [
+        oneResource(),
+        oneResourceTestWithName("a"),
+        oneResourceTestWithName("b"),
+      ].map((res) => new SidebarItem(res))
+
+      const root = mount(
+        <MemoryRouter>
+          <tiltfileKeyContext.Provider value="test">
+            <SidebarResources
+              items={items}
+              selected={""}
+              resourceView={ResourceView.OverviewDetail}
+              pathBuilder={pathBuilder}
+            />
+          </tiltfileKeyContext.Provider>
+        </MemoryRouter>
+      )
+
+      root.find("input#resources").simulate("change", {
+        target: { checked: expectedOptions.showResources },
+      })
+      root
+        .find("input#tests")
+        .simulate("change", { target: { checked: expectedOptions.showTests } })
+      if (
+        root.find(AlertsOnTopToggle).hasClass("is-enabled") !=
+        expectedOptions.alertsOnTop
+      ) {
+        root.find(AlertsOnTopToggle).simulate("click")
+      }
+
+      const observedOptions = sidebarOptionsAccessor.get()
+      expect(observedOptions).toEqual(expectedOptions)
+    }
+  )
 })

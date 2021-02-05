@@ -3,7 +3,7 @@ import FormControlLabel from "@material-ui/core/FormControlLabel"
 import { makeStyles } from "@material-ui/core/styles"
 import CheckBoxIcon from "@material-ui/icons/CheckBox"
 import CheckBoxOutlineBlankIcon from "@material-ui/icons/CheckBoxOutlineBlank"
-import React from "react"
+import React, { Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
 import {
   Color,
@@ -38,7 +38,7 @@ const useStyles = makeStyles({
   },
 })
 
-const AlertsOnTopToggle = styled.button`
+export const AlertsOnTopToggle = styled.button`
   ${mixinResetButtonStyle}
   color: ${Color.grayLightest};
   background-color: ${Color.gray};
@@ -54,24 +54,30 @@ const AlertsOnTopToggle = styled.button`
 
 type OverviewSidebarOptionsProps = {
   options: SidebarOptions
-  setOptions: (newOptions: SidebarOptions) => void
+  setOptions: Dispatch<SetStateAction<SidebarOptions>>
 }
 
-function toggleAlertsOnTop(props: OverviewSidebarOptionsProps) {
-  props.setOptions({
-    ...props.options,
-    alertsOnTop: !props.options.alertsOnTop,
+function setAlertsOnTop(
+  props: OverviewSidebarOptionsProps,
+  alertsOnTop: boolean
+) {
+  props.setOptions((prevOptions) => {
+    return { ...prevOptions, alertsOnTop: alertsOnTop }
   })
 }
 
-function toggleShowTests(props: OverviewSidebarOptionsProps) {
-  props.setOptions({ ...props.options, showTests: !props.options.showTests })
+function setShowTests(props: OverviewSidebarOptionsProps, showTests: boolean) {
+  props.setOptions((prevOptions) => {
+    return { ...prevOptions, showTests: showTests }
+  })
 }
 
-function toggleShowResources(props: OverviewSidebarOptionsProps) {
-  props.setOptions({
-    ...props.options,
-    showResources: !props.options.showResources,
+function setShowResources(
+  props: OverviewSidebarOptionsProps,
+  showResources: boolean
+) {
+  props.setOptions((prevOptions) => {
+    return { ...prevOptions, showResources: showResources }
   })
 }
 
@@ -93,7 +99,7 @@ export function OverviewSidebarOptions(
               icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
               checkedIcon={<CheckBoxIcon fontSize="small" />}
               checked={props.options.showResources}
-              onChange={(e) => toggleShowResources(props)}
+              onChange={(e) => setShowResources(props, e.target.checked)}
               name="resources"
               id="resources"
             />
@@ -108,7 +114,7 @@ export function OverviewSidebarOptions(
               icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
               checkedIcon={<CheckBoxIcon fontSize="small" />}
               checked={props.options.showTests}
-              onChange={(e) => toggleShowTests(props)}
+              onChange={(e) => setShowTests(props, e.target.checked)}
               name="tests"
               id="tests"
             />
@@ -119,7 +125,7 @@ export function OverviewSidebarOptions(
 
       <AlertsOnTopToggle
         className={props.options.alertsOnTop ? "is-enabled" : ""}
-        onClick={(e) => toggleAlertsOnTop(props)}
+        onClick={(e) => setAlertsOnTop(props, !props.options.alertsOnTop)}
       >
         Alerts on Top
       </AlertsOnTopToggle>

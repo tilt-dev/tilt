@@ -1,7 +1,7 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { makeKey, tiltfileKeyContext } from "./LocalStorage"
+import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import OverviewItemView from "./OverviewItemView"
 import OverviewPane, {
   AllResources,
@@ -27,6 +27,10 @@ function assertContainerWithResources(
   }
 }
 
+const pinnedResourcesAccessor = accessorsForTesting<string[]>(
+  "pinned-resources"
+)
+
 it("renders all resources if no pinned and no tests", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>{TwoResources()}</MemoryRouter>
@@ -38,10 +42,7 @@ it("renders all resources if no pinned and no tests", () => {
 })
 
 it("renders pinned resources", () => {
-  localStorage.setItem(
-    makeKey("test", "pinned-resources"),
-    JSON.stringify(["snack"])
-  )
+  pinnedResourcesAccessor.set(["snack"])
 
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>

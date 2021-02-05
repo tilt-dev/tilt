@@ -1,4 +1,4 @@
-import React from "react"
+import React, { Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
 import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
@@ -108,7 +108,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
 
   renderWithOptions(
     options: SidebarOptions,
-    setOptions: (so: SidebarOptions) => void
+    setOptions: Dispatch<SetStateAction<SidebarOptions>>
   ) {
     let pb = this.props.pathBuilder
     let totalAlerts = this.props.items // Open Q: do we include alert totals for hidden elems?
