@@ -14,6 +14,13 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 )
 
+const (
+	typeProbe           = "Probe"
+	typeExecAction      = "ExecAction"
+	typeHTTPGetAction   = "HTTPGetAction"
+	typeTCPSocketAction = "TCPSocketAction"
+)
+
 var errInvalidProbeAction = errors.New("exactly one of exec, http_get, or tcp_socket must be specified")
 
 func NewExtension() Extension {
@@ -46,6 +53,25 @@ type Probe struct {
 }
 
 var _ starlark.Value = Probe{}
+
+// Unpack handles the possibility of receiving starlark.None but otherwise just casts to Probe
+func (p *Probe) Unpack(v starlark.Value) error {
+	if v == nil || v == starlark.None {
+		return nil
+	}
+
+	if probe, ok := v.(Probe); ok {
+		*p = probe
+	} else {
+		return fmt.Errorf("got %T, want %s", v, p.Type())
+	}
+
+	return nil
+}
+
+func (p Probe) Type() string {
+	return typeProbe
+}
 
 // Spec returns the probe specification in the canonical format. It must not be modified.
 func (p Probe) Spec() *v1.Probe {
@@ -89,7 +115,7 @@ func (e Extension) probe(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	}
 
 	return Probe{
-		Struct: starlarkstruct.FromKeywords(starlark.String("probe"), []starlark.Tuple{
+		Struct: starlarkstruct.FromKeywords(starlark.String(typeProbe), []starlark.Tuple{
 			{starlark.String("initial_delay_secs"), initialDelayVal},
 			{starlark.String("timeout_secs"), timeoutVal},
 			{starlark.String("period_secs"), periodVal},
@@ -136,6 +162,25 @@ func (e ExecAction) ValueOrNone() starlark.Value {
 	return starlark.None
 }
 
+// Unpack handles the possibility of receiving starlark.None but otherwise just casts to ExecAction
+func (e *ExecAction) Unpack(v starlark.Value) error {
+	if v == nil || v == starlark.None {
+		return nil
+	}
+
+	if exec, ok := v.(ExecAction); ok {
+		*e = exec
+	} else {
+		return fmt.Errorf("got %T, want %s", v, e.Type())
+	}
+
+	return nil
+}
+
+func (e ExecAction) Type() string {
+	return typeExecAction
+}
+
 func (e Extension) execAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command value.StringSequence
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "command", &command)
@@ -144,7 +189,7 @@ func (e Extension) execAction(thread *starlark.Thread, fn *starlark.Builtin, arg
 	}
 	spec := &v1.ExecAction{Command: []string(command)}
 	return ExecAction{
-		Struct: starlarkstruct.FromKeywords(starlark.String("exec_action"), []starlark.Tuple{
+		Struct: starlarkstruct.FromKeywords(starlark.String(typeExecAction), []starlark.Tuple{
 			{starlark.String("command"), command.Sequence()},
 		}),
 		action: spec,
@@ -158,6 +203,21 @@ type HTTPGetAction struct {
 
 var _ starlark.Value = HTTPGetAction{}
 
+// Unpack handles the possibility of receiving starlark.None but otherwise just casts to HTTPGetAction
+func (h *HTTPGetAction) Unpack(v starlark.Value) error {
+	if v == nil || v == starlark.None {
+		return nil
+	}
+
+	if httpGet, ok := v.(HTTPGetAction); ok {
+		*h = httpGet
+	} else {
+		return fmt.Errorf("got %T, want %s", v, h.Type())
+	}
+
+	return nil
+}
+
 func (h HTTPGetAction) ValueOrNone() starlark.Value {
 	// starlarkstruct does not handle being nil well, so need to explicitly return a NoneType
 	// instead of it when embedding in another value (i.e. within the probe)
@@ -165,6 +225,10 @@ func (h HTTPGetAction) ValueOrNone() starlark.Value {
 		return h
 	}
 	return starlark.None
+}
+
+func (h HTTPGetAction) Type() string {
+	return typeHTTPGetAction
 }
 
 func (e Extension) httpGetAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -189,7 +253,7 @@ func (e Extension) httpGetAction(thread *starlark.Thread, fn *starlark.Builtin, 
 	}
 
 	return HTTPGetAction{
-		Struct: starlarkstruct.FromKeywords(starlark.String("http_get_action"), []starlark.Tuple{
+		Struct: starlarkstruct.FromKeywords(starlark.String(typeHTTPGetAction), []starlark.Tuple{
 			{starlark.String("host"), host},
 			{starlark.String("port"), starlark.MakeInt(port)},
 			{starlark.String("scheme"), scheme},
@@ -206,6 +270,21 @@ type TCPSocketAction struct {
 
 var _ starlark.Value = TCPSocketAction{}
 
+// Unpack handles the possibility of receiving starlark.None but otherwise just casts to TCPSocketAction
+func (t *TCPSocketAction) Unpack(v starlark.Value) error {
+	if v == nil || v == starlark.None {
+		return nil
+	}
+
+	if tcpSocket, ok := v.(TCPSocketAction); ok {
+		*t = tcpSocket
+	} else {
+		return fmt.Errorf("got %T, want %s", v, t.Type())
+	}
+
+	return nil
+}
+
 func (t TCPSocketAction) ValueOrNone() starlark.Value {
 	// starlarkstruct does not handle being nil well, so need to explicitly return a NoneType
 	// instead of it when embedding in another value (i.e. within the probe)
@@ -213,6 +292,10 @@ func (t TCPSocketAction) ValueOrNone() starlark.Value {
 		return t
 	}
 	return starlark.None
+}
+
+func (t TCPSocketAction) Type() string {
+	return typeTCPSocketAction
 }
 
 func (e Extension) tcpSocketAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -227,7 +310,7 @@ func (e Extension) tcpSocketAction(thread *starlark.Thread, fn *starlark.Builtin
 	}
 	spec := &v1.TCPSocketAction{Host: host.GoString(), Port: intstr.FromInt(port)}
 	return TCPSocketAction{
-		Struct: starlarkstruct.FromKeywords(starlark.String("tcp_socket_action"), []starlark.Tuple{
+		Struct: starlarkstruct.FromKeywords(starlark.String(typeTCPSocketAction), []starlark.Tuple{
 			{starlark.String("host"), host},
 			{starlark.String("port"), starlark.MakeInt(port)},
 		}),

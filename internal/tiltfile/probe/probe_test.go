@@ -19,7 +19,8 @@ p = probe(initial_delay_secs=123,
           period_secs=789,
           success_threshold=987,
           failure_threshold=654,
-          exec=exec_action([]))
+          exec=exec_action([]),
+          http_get=None)
 
 print(p.initial_delay_secs)
 print(p.timeout_secs)
@@ -40,7 +41,7 @@ print("tcp_socket:", p.tcp_socket)
 789
 987
 654
-exec: "exec_action"(command = [])
+exec: "ExecAction"(command = [])
 http_get: None
 tcp_socket: None
 `)
@@ -62,7 +63,9 @@ func TestProbeActions_Multiple(t *testing.T) {
 	f := starkit.NewFixture(t, NewExtension())
 	defer f.TearDown()
 
-	f.File("Tiltfile", `p = probe(exec=exec_action([]), http_get=http_get_action(8000))`)
+	f.File("Tiltfile", `
+p = probe(exec=exec_action([]), http_get=http_get_action(8000), tcp_socket=None)
+`)
 
 	_, err := f.ExecFile("Tiltfile")
 	require.EqualError(t, err, `exactly one of exec, http_get, or tcp_socket must be specified`)
