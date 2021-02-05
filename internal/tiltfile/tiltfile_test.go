@@ -47,6 +47,7 @@ import (
 
 type localResourceLinks []model.Link
 type k8sResourceLinks []model.Link
+type dcResourceLinks []model.Link
 
 const simpleDockerfile = "FROM golang:1.10"
 
@@ -813,6 +814,33 @@ k8s_resource('foo', links=EXPR)
 				k8sResourceLinks(c.expected),
 				db(image("gcr.io/foo")),
 				deployment("foo"))
+		})
+
+		t.Run("dc-"+c.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.file("docker-compose.yml", `version: '3.0'
+services:
+  foo:
+    image: gcr.io/foo
+`)
+			s := `
+docker_compose('docker-compose.yml')
+dc_resource('foo', links=EXPR)`
+
+			s = strings.Replace(s, "EXPR", c.expr, -1)
+			f.file("Tiltfile", s)
+
+			if c.errorMsg != "" {
+				f.loadErrString(c.errorMsg)
+				return
+			}
+
+			f.load()
+			f.assertNextManifest("foo",
+				dcResourceLinks(c.expected),
+			)
 		})
 	}
 }
@@ -5975,6 +6003,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
+		case dcResourceLinks:
+			f.assertLinks(opt, m.DockerComposeTarget().Links)
 		case localResourceLinks:
 			f.assertLinks(opt, m.LocalTarget().Links)
 		case k8sResourceLinks:
