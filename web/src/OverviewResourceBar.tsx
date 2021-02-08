@@ -52,7 +52,7 @@ let ResourceBarEndRoot = styled.div`
 let ResourceBarStatusRoot = styled.div`
   display: flex;
   font-family: ${Font.sansSerif};
-  font-size: ${FontSize.smallester};
+  font-size: ${FontSize.smallest};
   align-items: center;
   color: ${Color.grayLightest};
 
