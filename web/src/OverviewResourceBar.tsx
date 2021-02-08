@@ -52,7 +52,7 @@ let ResourceBarEndRoot = styled.div`
 let ResourceBarStatusRoot = styled.div`
   display: flex;
   font-family: ${Font.sansSerif};
-  font-size: ${FontSize.smallester};
+  font-size: ${FontSize.smallest};
   align-items: center;
   color: ${Color.grayLightest};
 
@@ -300,7 +300,7 @@ export let MenuButton = styled.button`
 let MenuButtonLabel = styled.div`
   position: absolute;
   bottom: 0;
-  font-size: ${FontSize.smallester};
+  font-size: ${FontSize.smallest};
   color: ${Color.blueDark};
   width: 200%;
   transition: opacity ${AnimDuration.default} ease;
