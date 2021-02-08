@@ -2,7 +2,10 @@ import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
-import { TwoResourcesTwoTests } from "./OverviewResourceSidebar.stories"
+import {
+  TestsWithErrors,
+  TwoResourcesTwoTests,
+} from "./OverviewResourceSidebar.stories"
 import {
   AlertsOnTopToggle,
   OverviewSidebarOptions,
@@ -80,6 +83,10 @@ describe("overview sidebar options", () => {
       true,
       false
     )
+
+    // re-check and make sure resources are visible
+    clickResourcesToggle(root)
+    assertSidebarItemsAndOptions(root, allNames, true, true, false)
   })
 
   it("hides tests when tests unchecked", () => {
@@ -94,6 +101,10 @@ describe("overview sidebar options", () => {
       false,
       false
     )
+
+    // re-check and make sure tests are visible
+    clickTestsToggle(root)
+    assertSidebarItemsAndOptions(root, allNames, true, true, false)
   })
 
   it("hides resources and tests when both unchecked", () => {
@@ -174,4 +185,40 @@ describe("overview sidebar options", () => {
     expect(pinned).toHaveLength(1)
     expect(pinned.at(0).props().item.name).toEqual("beep")
   })
+})
+
+it("toggles/untoggles Alerts On Top sorting when button clicked", () => {
+  const root = mount(TestsWithErrors())
+
+  const origOrder = [
+    "(Tiltfile)",
+    "test_0",
+    "test_1",
+    "test_2",
+    "test_3",
+    "test_4",
+    "test_5",
+    "test_6",
+    "test_7",
+  ]
+  const alertsOnTopOrder = [
+    "test_0",
+    "test_2",
+    "test_4",
+    "test_6",
+    "(Tiltfile)",
+    "test_1",
+    "test_3",
+    "test_5",
+    "test_7",
+  ]
+  assertSidebarItemsAndOptions(root, origOrder, true, true, false)
+
+  let aotToggle = root.find(AlertsOnTopToggle)
+  aotToggle.simulate("click")
+
+  assertSidebarItemsAndOptions(root, alertsOnTopOrder, true, true, true)
+
+  aotToggle.simulate("click")
+  assertSidebarItemsAndOptions(root, origOrder, true, true, false)
 })
