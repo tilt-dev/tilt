@@ -7,7 +7,6 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
-	"github.com/opentracing/opentracing-go"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 
@@ -66,10 +65,6 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
 	}
 	dcTarget := dcTargets[0]
-
-	span, ctx := opentracing.StartSpanFromContext(ctx, "DockerComposeBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("target", dcTargets[0].Name)
-	defer span.Finish()
 
 	startTime := time.Now()
 	defer func() {
