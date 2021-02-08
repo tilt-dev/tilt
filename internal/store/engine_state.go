@@ -734,6 +734,8 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 			endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
 		}
 	}
+
+	endpoints = append(endpoints, mt.Manifest.DockerComposeTarget().Links...)
 	return endpoints
 }
 
