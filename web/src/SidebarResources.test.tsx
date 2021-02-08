@@ -141,17 +141,17 @@ describe("SidebarResources", () => {
   const loadCases: [string, SidebarOptions, string[]][] = [
     [
       "showResources",
-      { showResources: false, showTests: true, alertsOnTop: true },
+      { showResources: false, showTests: true, alertsOnTop: false },
       ["a", "b"],
     ],
     [
       "showTests",
-      { showResources: true, showTests: false, alertsOnTop: true },
+      { showResources: true, showTests: false, alertsOnTop: false },
       ["vigoda"],
     ],
     [
       "alertsOnTop",
-      { showResources: true, showTests: true, alertsOnTop: false },
+      { showResources: true, showTests: true, alertsOnTop: true },
       ["vigoda", "a", "b"],
     ],
   ]
