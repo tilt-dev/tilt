@@ -13,6 +13,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -169,7 +170,8 @@ func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(&proto_webview.Snapshot{
+	var m jsonpb.Marshaler
+	err = m.Marshal(w, &proto_webview.Snapshot{
 		View: view,
 	})
 	if err != nil {
