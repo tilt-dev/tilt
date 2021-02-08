@@ -34,6 +34,7 @@ type endpointsCase struct {
 
 	k8sResLinks   []model.Link
 	localResLinks []model.Link
+	dcResLinks    []model.Link
 }
 
 func (c endpointsCase) validate() {
@@ -324,6 +325,10 @@ func TestManifestTargetEndpoints(t *testing.T) {
 				model.MustNewLink("http://localhost:7000/", ""),
 			},
 			dcPublishedPorts: []int{8000, 7000},
+			dcResLinks: []model.Link{
+				model.MustNewLink("www.apple.edu", "apple"),
+				model.MustNewLink("www.zombo.com", "zombo"),
+			},
 		},
 		{
 			name: "load balancers",
@@ -372,6 +377,8 @@ func TestManifestTargetEndpoints(t *testing.T) {
 				m = m.WithDeployTarget(model.LocalTarget{Links: c.localResLinks})
 			} else if len(c.dcPublishedPorts) > 0 {
 				m = m.WithDeployTarget(model.DockerComposeTarget{}.WithPublishedPorts(c.dcPublishedPorts))
+			} else if len(c.dcResLinks) > 0 {
+				m = m.WithDeployTarget(model.DockerComposeTarget{Links: c.dcResLinks})
 			}
 
 			mt := newManifestTargetWithLoadBalancerURLs(m, c.lbURLs)
