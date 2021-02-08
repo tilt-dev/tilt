@@ -1,9 +1,12 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { makeKey, tiltfileKeyContext } from "./LocalStorage"
+import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import { TwoResourcesTwoTests } from "./OverviewResourceSidebar.stories"
-import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
+import {
+  AlertsOnTopToggle,
+  OverviewSidebarOptions,
+} from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView from "./SidebarItemView"
@@ -14,11 +17,16 @@ import { ResourceView } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
-function assertSidebarItemsAndOptions(
+const pinnedResourcesAccessor = accessorsForTesting<string[]>(
+  "pinned-resources"
+)
+
+export function assertSidebarItemsAndOptions(
   root: ReactWrapper,
   names: string[],
   expectShowResources: boolean,
-  expectShowTests: boolean
+  expectShowTests: boolean,
+  expectAlertsOnTop: boolean
 ) {
   let sidebar = root.find(SidebarResources)
   expect(sidebar).toHaveLength(1)
@@ -27,11 +35,8 @@ function assertSidebarItemsAndOptions(
   // or we'll have duplicates
   let all = sidebar.find(SidebarListSection).find({ name: "resources" })
   let items = all.find(SidebarItemView)
-  expect(items).toHaveLength(names.length)
-
-  for (let i = 0; i < names.length; i++) {
-    expect(items.at(i).props().item.name).toEqual(names[i])
-  }
+  const observedNames = items.map((i) => i.props().item.name)
+  expect(observedNames).toEqual(names)
 
   let optSetter = sidebar.find(OverviewSidebarOptions)
   expect(optSetter).toHaveLength(1)
@@ -39,121 +44,133 @@ function assertSidebarItemsAndOptions(
     expectShowResources
   )
   expect(optSetter.find("input#tests").props().checked).toEqual(expectShowTests)
+  expect(optSetter.find(AlertsOnTopToggle).hasClass("is-enabled")).toEqual(
+    expectAlertsOnTop
+  )
 }
 
 const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
 
-it("shows tests and resources by default", () => {
-  const root = mount(TwoResourcesTwoTests())
-  assertSidebarItemsAndOptions(root, allNames, true, true)
-})
+describe("overview sidebar options", () => {
+  afterEach(() => {
+    localStorage.clear()
+  })
 
-it("hides resources when resources unchecked", () => {
-  const root = mount(TwoResourcesTwoTests())
-  assertSidebarItemsAndOptions(root, allNames, true, true)
+  it("shows tests and resources by default", () => {
+    const root = mount(TwoResourcesTwoTests())
+    assertSidebarItemsAndOptions(root, allNames, true, true, false)
+  })
 
-  root
-    .find("input#resources")
-    .simulate("change", { target: { checked: false } })
-  assertSidebarItemsAndOptions(
-    root,
-    ["(Tiltfile)", "beep", "boop"],
-    false,
-    true
-  )
-})
+  it("hides resources when resources unchecked", () => {
+    const root = mount(TwoResourcesTwoTests())
+    assertSidebarItemsAndOptions(root, allNames, true, true, false)
 
-it("hides tests when tests unchecked", () => {
-  const root = mount(TwoResourcesTwoTests())
-  assertSidebarItemsAndOptions(root, allNames, true, true)
+    root
+      .find("input#resources")
+      .simulate("change", { target: { checked: false } })
+    assertSidebarItemsAndOptions(
+      root,
+      ["(Tiltfile)", "beep", "boop"],
+      false,
+      true,
+      false
+    )
+  })
 
-  root.find("input#tests").simulate("change", { target: { checked: false } })
-  assertSidebarItemsAndOptions(
-    root,
-    ["(Tiltfile)", "vigoda", "snack"],
-    true,
-    false
-  )
-})
+  it("hides tests when tests unchecked", () => {
+    const root = mount(TwoResourcesTwoTests())
+    assertSidebarItemsAndOptions(root, allNames, true, true, false)
 
-it("hides resources and tests when both unchecked", () => {
-  const root = mount(TwoResourcesTwoTests())
-  assertSidebarItemsAndOptions(root, allNames, true, true)
+    root.find("input#tests").simulate("change", { target: { checked: false } })
+    assertSidebarItemsAndOptions(
+      root,
+      ["(Tiltfile)", "vigoda", "snack"],
+      true,
+      false,
+      false
+    )
+  })
 
-  root
-    .find("input#resources")
-    .simulate("change", { target: { checked: false } })
-  root.find("input#tests").simulate("change", { target: { checked: false } })
-  assertSidebarItemsAndOptions(root, ["(Tiltfile)"], false, false)
-})
+  it("hides resources and tests when both unchecked", () => {
+    const root = mount(TwoResourcesTwoTests())
+    assertSidebarItemsAndOptions(root, allNames, true, true, false)
 
-it("doesn't show SidebarOptionSetter if no tests present", () => {
-  let items = [tiltfileResource(), oneResource()].map((r) => new SidebarItem(r))
-  const root = mount(
-    <MemoryRouter>
-      <tiltfileKeyContext.Provider value="test">
-        <SidebarPinContextProvider>
-          <SidebarResources
-            items={items}
-            selected={""}
-            resourceView={ResourceView.Log}
-            pathBuilder={pathBuilder}
-          />
-        </SidebarPinContextProvider>
-      </tiltfileKeyContext.Provider>
-    </MemoryRouter>
-  )
-  let sidebar = root.find(SidebarResources)
-  expect(sidebar).toHaveLength(1)
+    root
+      .find("input#resources")
+      .simulate("change", { target: { checked: false } })
+    root.find("input#tests").simulate("change", { target: { checked: false } })
+    assertSidebarItemsAndOptions(root, ["(Tiltfile)"], false, false, false)
+  })
 
-  let optSetter = sidebar.find(OverviewSidebarOptions)
-  expect(optSetter).toHaveLength(0)
-})
+  it("doesn't show SidebarOptionSetter if no tests present", () => {
+    let items = [tiltfileResource(), oneResource()].map(
+      (r) => new SidebarItem(r)
+    )
+    const root = mount(
+      <MemoryRouter>
+        <tiltfileKeyContext.Provider value="test">
+          <SidebarPinContextProvider>
+            <SidebarResources
+              items={items}
+              selected={""}
+              resourceView={ResourceView.Log}
+              pathBuilder={pathBuilder}
+            />
+          </SidebarPinContextProvider>
+        </tiltfileKeyContext.Provider>
+      </MemoryRouter>
+    )
+    let sidebar = root.find(SidebarResources)
+    expect(sidebar).toHaveLength(1)
 
-it("still displays pinned tests when tests hidden", () => {
-  localStorage.setItem(
-    makeKey("test", "pinned-resources"),
-    JSON.stringify(["beep"])
-  )
-  const root = mount(
-    <MemoryRouter>
-      <tiltfileKeyContext.Provider value="test">
-        <SidebarPinContextProvider>
-          {TwoResourcesTwoTests()}
-        </SidebarPinContextProvider>
-      </tiltfileKeyContext.Provider>
-    </MemoryRouter>
-  )
+    let optSetter = sidebar.find(OverviewSidebarOptions)
+    expect(optSetter).toHaveLength(0)
+  })
 
-  assertSidebarItemsAndOptions(
-    root,
-    ["(Tiltfile)", "vigoda", "snack", "beep", "boop"],
-    true,
-    true
-  )
+  it("still displays pinned tests when tests hidden", () => {
+    pinnedResourcesAccessor.set(["beep"])
+    const root = mount(
+      <MemoryRouter>
+        <tiltfileKeyContext.Provider value="test">
+          <SidebarPinContextProvider>
+            {TwoResourcesTwoTests()}
+          </SidebarPinContextProvider>
+        </tiltfileKeyContext.Provider>
+      </MemoryRouter>
+    )
 
-  let pinned = root
-    .find(SidebarListSection)
-    .find({ name: "Pinned" })
-    .find(SidebarItemView)
-  expect(pinned).toHaveLength(1)
-  expect(pinned.at(0).props().item.name).toEqual("beep")
+    assertSidebarItemsAndOptions(
+      root,
+      ["(Tiltfile)", "vigoda", "snack", "beep", "boop"],
+      true,
+      true,
+      false
+    )
 
-  root.find("input#tests").simulate("change", { target: { checked: false } })
-  assertSidebarItemsAndOptions(
-    root,
-    ["(Tiltfile)", "vigoda", "snack"],
-    true,
-    false
-  )
+    let pinned = root
+      .find(SidebarListSection)
+      .find({ name: "Pinned" })
+      .find(SidebarItemView)
+    expect(pinned).toHaveLength(1)
+    expect(pinned.at(0).props().item.name).toEqual("beep")
 
-  // "beep" should still be pinned, even though we're no longer showing tests in the main resource list
-  pinned = root
-    .find(SidebarListSection)
-    .find({ name: "Pinned" })
-    .find(SidebarItemView)
-  expect(pinned).toHaveLength(1)
-  expect(pinned.at(0).props().item.name).toEqual("beep")
+    root.find("input#tests").simulate("change", { target: { checked: false } })
+    assertSidebarItemsAndOptions(
+      root,
+      ["(Tiltfile)", "vigoda", "snack"],
+      true,
+      false,
+      false
+    )
+
+    // "beep" should still be pinned, even though we're no longer showing tests in the main resource list
+    pinned = root
+      .find(SidebarListSection)
+      .find({ name: "Pinned" })
+      .find(SidebarItemView)
+    expect(pinned).toHaveLength(1)
+    expect(pinned.at(0).props().item.name).toEqual("beep")
+  })
 })
 
 // TODO:

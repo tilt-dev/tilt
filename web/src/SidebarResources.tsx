@@ -1,5 +1,6 @@
-import React from "react"
+import React, { Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
+import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
@@ -56,8 +57,6 @@ type SidebarProps = {
   pathBuilder: PathBuilder
 }
 
-type SidebarState = SidebarOptions
-
 let defaultOptions: SidebarOptions = {
   showResources: true,
   showTests: true,
@@ -95,17 +94,10 @@ function sortByHasAlerts(itemA: SidebarItem, itemB: SidebarItem): number {
   return Number(hasAlerts(itemB)) - Number(hasAlerts(itemA))
 }
 
-export class SidebarResources extends React.Component<
-  SidebarProps,
-  SidebarState
-> {
+export class SidebarResources extends React.Component<SidebarProps> {
   constructor(props: SidebarProps) {
     super(props)
     this.triggerSelected = this.triggerSelected.bind(this)
-    this.toggleShowResources = this.toggleShowResources.bind(this)
-    this.toggleShowTests = this.toggleShowTests.bind(this)
-    this.toggleAlertsOnTop = this.toggleAlertsOnTop.bind(this)
-    this.state = defaultOptions
   }
 
   triggerSelected(action: string) {
@@ -114,31 +106,10 @@ export class SidebarResources extends React.Component<
     }
   }
 
-  toggleShowResources() {
-    this.setState((prevState: SidebarOptions) => {
-      return {
-        showResources: !prevState.showResources,
-      }
-    })
-  }
-
-  toggleShowTests() {
-    this.setState((prevState: SidebarOptions) => {
-      return {
-        showTests: !prevState.showTests,
-      }
-    })
-  }
-
-  toggleAlertsOnTop() {
-    this.setState((prevState: SidebarOptions) => {
-      return {
-        alertsOnTop: !prevState.alertsOnTop,
-      }
-    })
-  }
-
-  render() {
+  renderWithOptions(
+    options: SidebarOptions,
+    setOptions: Dispatch<SetStateAction<SidebarOptions>>
+  ) {
     let pb = this.props.pathBuilder
     let totalAlerts = this.props.items // Open Q: do we include alert totals for hidden elems?
       .map((i) => i.buildAlertCount + i.runtimeAlertCount)
@@ -150,12 +121,12 @@ export class SidebarResources extends React.Component<
     //       and what effect does this have on keyboard shortcuts? :(
     let filteredItems = this.props.items.filter(
       (item) =>
-        (!item.isTest && this.state.showResources) ||
-        (item.isTest && this.state.showTests) ||
+        (!item.isTest && options.showResources) ||
+        (item.isTest && options.showTests) ||
         item.isTiltfile
     )
 
-    if (this.state.alertsOnTop) {
+    if (options.alertsOnTop) {
       filteredItems.sort(sortByHasAlerts)
     }
 
@@ -186,12 +157,7 @@ export class SidebarResources extends React.Component<
           </SidebarListSection>
           <PinnedItems {...this.props} />
           {testsPresent && (
-            <OverviewSidebarOptions
-              curState={this.state}
-              toggleShowResources={this.toggleShowResources}
-              toggleShowTests={this.toggleShowTests}
-              toggleAlertsOnTop={this.toggleAlertsOnTop}
-            /> // TODO: if this vanishes because no tests present, reset it to show everything
+            <OverviewSidebarOptions options={options} setOptions={setOptions} /> // TODO: if this vanishes because no tests present, reset it to show everything
           )}
           <SidebarListSection name="resources">{listItems}</SidebarListSection>
         </SidebarList>
@@ -202,6 +168,17 @@ export class SidebarResources extends React.Component<
           resourceView={this.props.resourceView}
         />
       </SidebarResourcesRoot>
+    )
+  }
+
+  render() {
+    return (
+      <PersistentStateProvider
+        defaultValue={defaultOptions}
+        name={"sidebar_options"}
+      >
+        {(value: SidebarOptions, set) => this.renderWithOptions(value, set)}
+      </PersistentStateProvider>
     )
   }
 }

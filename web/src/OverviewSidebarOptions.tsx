@@ -3,7 +3,7 @@ import FormControlLabel from "@material-ui/core/FormControlLabel"
 import { makeStyles } from "@material-ui/core/styles"
 import CheckBoxIcon from "@material-ui/icons/CheckBox"
 import CheckBoxOutlineBlankIcon from "@material-ui/icons/CheckBoxOutlineBlank"
-import React from "react"
+import React, { Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
 import {
   Color,
@@ -38,7 +38,7 @@ const useStyles = makeStyles({
   },
 })
 
-const AlertsOnTopToggle = styled.button`
+export const AlertsOnTopToggle = styled.button`
   ${mixinResetButtonStyle}
   color: ${Color.grayLightest};
   background-color: ${Color.gray};
@@ -53,10 +53,32 @@ const AlertsOnTopToggle = styled.button`
 `
 
 type OverviewSidebarOptionsProps = {
-  curState: SidebarOptions
-  toggleShowResources: () => void
-  toggleShowTests: () => void
-  toggleAlertsOnTop: () => void
+  options: SidebarOptions
+  setOptions: Dispatch<SetStateAction<SidebarOptions>>
+}
+
+function setAlertsOnTop(
+  props: OverviewSidebarOptionsProps,
+  alertsOnTop: boolean
+) {
+  props.setOptions((prevOptions) => {
+    return { ...prevOptions, alertsOnTop: alertsOnTop }
+  })
+}
+
+function setShowTests(props: OverviewSidebarOptionsProps, showTests: boolean) {
+  props.setOptions((prevOptions) => {
+    return { ...prevOptions, showTests: showTests }
+  })
+}
+
+function setShowResources(
+  props: OverviewSidebarOptionsProps,
+  showResources: boolean
+) {
+  props.setOptions((prevOptions) => {
+    return { ...prevOptions, showResources: showResources }
+  })
 }
 
 export function OverviewSidebarOptions(
@@ -76,8 +98,8 @@ export function OverviewSidebarOptions(
               color={"default"}
               icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
               checkedIcon={<CheckBoxIcon fontSize="small" />}
-              checked={props.curState.showResources}
-              onChange={(e) => props.toggleShowResources()}
+              checked={props.options.showResources}
+              onChange={(e) => setShowResources(props, e.target.checked)}
               name="resources"
               id="resources"
             />
@@ -91,8 +113,8 @@ export function OverviewSidebarOptions(
               color={"default"}
               icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
               checkedIcon={<CheckBoxIcon fontSize="small" />}
-              checked={props.curState.showTests}
-              onChange={(e) => props.toggleShowTests()}
+              checked={props.options.showTests}
+              onChange={(e) => setShowTests(props, e.target.checked)}
               name="tests"
               id="tests"
             />
@@ -102,8 +124,8 @@ export function OverviewSidebarOptions(
       </FilterOptionList>
 
       <AlertsOnTopToggle
-        className={props.curState.alertsOnTop ? "is-enabled" : ""}
-        onClick={(e) => props.toggleAlertsOnTop()}
+        className={props.options.alertsOnTop ? "is-enabled" : ""}
+        onClick={(e) => setAlertsOnTop(props, !props.options.alertsOnTop)}
       >
         Alerts on Top
       </AlertsOnTopToggle>

@@ -28,7 +28,7 @@ import {
   TriggerMode,
 } from "./types"
 
-const SidebarItemRoot = styled.li`
+export const SidebarItemRoot = styled.li`
   & + & {
     margin-top: ${SizeUnit(0.35)};
   }
