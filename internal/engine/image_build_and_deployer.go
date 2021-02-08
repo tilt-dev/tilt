@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -99,9 +98,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	}
 
 	kTarget := kTargets[0]
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ImageBuildAndDeployer-BuildAndDeploy")
-	span.SetTag("target", kTarget.Name)
-	defer span.Finish()
 
 	startTime := time.Now()
 	defer func() {

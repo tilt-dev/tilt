@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/opentracing/opentracing-go"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
@@ -71,9 +70,6 @@ func (u Upper) Start(
 	token token.Token,
 	cloudAddress string,
 ) error {
-
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Start")
-	defer span.Finish()
 
 	startTime := time.Now()
 

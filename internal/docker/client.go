@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -26,7 +25,6 @@ import (
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -512,14 +510,10 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 }
 
 func (c *Cli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-CopyToContainerRoot")
-	defer span.Finish()
 	return c.CopyToContainer(ctx, container, "/", content, types.CopyToContainerOptions{})
 }
 
 func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "daemon-ContainerRestartNoWait")
-	defer span.Finish()
 
 	// Don't wait on the container to fully start.
 	dur := time.Duration(0)
@@ -528,9 +522,6 @@ func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) er
 }
 
 func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer")
-	span.SetTag("cmd", strings.Join(cmd.Argv, " "))
-	defer span.Finish()
 
 	cfg := types.ExecConfig{
 		Cmd:          cmd.Argv,
@@ -557,9 +548,7 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 	}
 	defer connection.Close()
 
-	esSpan, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer-ExecStart")
 	err = c.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
-	esSpan.Finish()
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#start")
 	}
@@ -569,9 +558,7 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		return errors.Wrap(err, "ExecInContainer#print")
 	}
 
-	bufSpan, ctx := opentracing.StartSpanFromContext(ctx, "dockerCli-ExecInContainer-readOutput")
 	_, err = io.Copy(out, connection.Reader)
-	bufSpan.Finish()
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#copy")
 	}

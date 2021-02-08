@@ -6,8 +6,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/opentracing/opentracing-go"
-
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -27,9 +25,6 @@ func NewExecUpdater(kCli k8s.Client) *ExecUpdater {
 
 func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ExecUpdater-UpdateContainer")
-	defer span.Finish()
-
 	if !hotReload {
 		return fmt.Errorf("ExecUpdater does not support `restart_container()` step. If you ran Tilt " +
 			"with `--updateMode=exec`, omit this flag. If you are using a non-Docker container runtime, " +
