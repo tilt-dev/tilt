@@ -15,6 +15,7 @@ import ClearLogs from "./ClearLogs"
 import { displayURL } from "./links"
 import { FilterLevel, FilterSet, FilterSource } from "./logfilters"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
+import { usePathBuilder } from "./PathBuilder"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 type OverviewActionBarProps = {
@@ -417,6 +418,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
   let manifestName = resource?.name || ""
   let endpoints = resource?.endpointLinks || []
   let podId = resource?.podID || ""
+  const isSnapshot = usePathBuilder().isSnapshot()
 
   let endpointEls: any = []
   endpoints.forEach((ep, i) => {
@@ -476,7 +478,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
           filterSet={props.filterSet}
           alerts={alerts}
         />
-        <ClearLogs resource={resource} alerts={alerts} />
+        {isSnapshot || <ClearLogs resource={resource} alerts={alerts} />}
       </ActionBarBottomRow>
     </ActionBarRoot>
   )
