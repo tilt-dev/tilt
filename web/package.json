@@ -40,6 +40,8 @@
     "ci": "react-scripts test --runInBand --reporters=default --reporters=jest-junit",
     "test-debug": "react-scripts --inspect-brk test --runInBand --no-cache",
     "eject": "react-scripts eject",
+    "eslint": "eslint --fix 'src/**/*.ts*'",
+    "prettier": "prettier --write \"src/**/*.ts*\"",
     "check": "prettier --check \"src/**/*.ts*\" && tsc -p . && eslint 'src/**/*.ts*'",
     "storybook": "start-storybook -p 9009 -s public",
     "build-storybook": "build-storybook -s public"
