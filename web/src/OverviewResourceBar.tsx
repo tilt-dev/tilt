@@ -300,7 +300,7 @@ export let MenuButton = styled.button`
 let MenuButtonLabel = styled.div`
   position: absolute;
   bottom: 0;
-  font-size: ${FontSize.smallester};
+  font-size: ${FontSize.smallest};
   color: ${Color.blueDark};
   width: 200%;
   transition: opacity ${AnimDuration.default} ease;
