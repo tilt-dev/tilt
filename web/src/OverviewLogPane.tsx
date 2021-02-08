@@ -235,8 +235,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       if (typeof this.props.scrollToStoredLineIndex === "number") {
         this.needsScrollToLine = true
       }
-      this.autoscroll =
-        !this.props.pathBuilder.isSnapshot() && !this.needsScrollToLine
+      this.autoscroll = !this.needsScrollToLine
       this.scrollTop = -1
 
       this.readLogsFromLogStore()
@@ -255,8 +254,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     if (typeof this.props.scrollToStoredLineIndex == "number") {
       this.needsScrollToLine = true
     }
-    this.autoscroll =
-      !this.props.pathBuilder.isSnapshot() && !this.needsScrollToLine
+    this.autoscroll = !this.needsScrollToLine
 
     rootEl.addEventListener("scroll", this.onScroll, {
       passive: true,
@@ -317,6 +315,8 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   }
 
   private maybeEngageAutoscroll() {
+    // We don't expect new log lines in snapshots. So when we scroll down, we don't need
+    // to worry about re-engaging autoscroll.
     if (this.props.pathBuilder.isSnapshot()) {
       return
     }
