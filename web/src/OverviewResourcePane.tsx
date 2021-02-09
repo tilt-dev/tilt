@@ -48,37 +48,28 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     selectedTab = r.name
   }
 
-  const buildAlerts = () => {
-    let alerts: Alert[] = []
-    if (r) {
-      alerts = combinedAlerts(r, logStore)
-    } else if (all) {
-      resources.forEach((r) => alerts.push(...combinedAlerts(r, logStore)))
-    }
-    return alerts
-  }
-  const [alerts, setAlerts] = useState<Alert[]>([])
-  // update alerts whenever the selected resource changes
-  useEffect(() => setAlerts(buildAlerts), [r])
+  const [truncateCount, setTruncateCount] = useState<number>(0)
 
   // add a listener to rebuild alerts whenever a truncation event occurs
+  // truncateCount is a dummy state variable to trigger a re-render to
+  // simplify logic vs reconciliation between logStore + props
   useEffect(() => {
     const rebuildAlertsOnLogClear = (e: LogUpdateEvent) => {
-      if (e.action !== LogUpdateAction.truncate) {
-        return
-      }
-
-      if (
-        all ||
-        Object.values(e.spans).some((span) => span.manifestName == r?.name)
-      ) {
-        setAlerts(buildAlerts)
+      if (e.action === LogUpdateAction.truncate) {
+        setTruncateCount(truncateCount + 1)
       }
     }
 
     logStore.addUpdateListener(rebuildAlertsOnLogClear)
     return () => logStore.removeUpdateListener(rebuildAlertsOnLogClear)
-  }, [])
+  }, [truncateCount])
+
+  let alerts: Alert[] = []
+  if (r) {
+    alerts = combinedAlerts(r, logStore)
+  } else if (all) {
+    resources.forEach((r) => alerts.push(...combinedAlerts(r, logStore)))
+  }
 
   // Hide the HTML element scrollbars, since this pane does all scrolling internally.
   // TODO(nick): Remove this when the old UI is deleted.

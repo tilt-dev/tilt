@@ -66,7 +66,6 @@ export enum LogUpdateAction {
 
 export interface LogUpdateEvent {
   action: LogUpdateAction
-  spans: { [key: string]: Proto.webviewLogSpan }
 }
 
 type callback = (e: LogUpdateEvent) => void
@@ -194,18 +193,10 @@ class LogStore {
       }
     }
 
-    const modifiedSpans = {} as { [key: string]: Proto.webviewLogSpan }
-    newSegments.forEach((newSegment) => {
-      this.addSegment(newSegment)
-      const spanId = newSegment.spanId || defaultSpanId
-      modifiedSpans[spanId] = {
-        manifestName: this.spans[spanId].manifestName,
-      }
-    })
+    newSegments.forEach((segment) => this.addSegment(segment))
 
     this.invokeUpdateCallbacks({
       action: LogUpdateAction.append,
-      spans: modifiedSpans,
     })
   }
 
@@ -283,11 +274,9 @@ class LogStore {
       spansToDelete.add(defaultSpanId)
     }
 
-    const deletedSpans = {} as { [key: string]: Proto.webviewLogSpan }
     for (const span of Object.values(this.spans)) {
       const spanId = span.spanId
       if (spansToDelete.has(spanId)) {
-        deletedSpans[spanId] = { manifestName: this.spans[spanId].manifestName }
         delete this.spans[spanId]
         delete this.warningIndex[spanId]
       } else {
@@ -308,7 +297,6 @@ class LogStore {
 
     this.invokeUpdateCallbacks({
       action: LogUpdateAction.truncate,
-      spans: deletedSpans,
     })
   }
 
@@ -371,7 +359,7 @@ class LogStore {
   allSpans(): { [key: string]: LogSpan } {
     const result: { [key: string]: LogSpan } = {}
     for (let spanId in this.spans) {
-      result[spanId] = { ...this.spans[spanId] }
+      result[spanId] = this.spans[spanId]
     }
     return result
   }
@@ -381,7 +369,7 @@ class LogStore {
     for (let spanId in this.spans) {
       let span = this.spans[spanId]
       if (span.manifestName === mn) {
-        result[spanId] = { ...span }
+        result[spanId] = span
       }
     }
     return result

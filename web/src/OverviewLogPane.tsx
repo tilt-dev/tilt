@@ -221,28 +221,11 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    let isAffectedByUpdate = false
-    if (this.props.manifestName === "") {
-      isAffectedByUpdate = true
-    } else {
-      for (const span of Object.values(e.spans)) {
-        if (span.manifestName == this.props.manifestName) {
-          isAffectedByUpdate = true
-          break
-        }
-      }
-    }
-
-    if (!isAffectedByUpdate) {
-      return
-    }
-
-    if (e.action == LogUpdateAction.append) {
-      this.readLogsFromLogStore()
-    } else if (e.action == LogUpdateAction.truncate) {
+    if (e.action === LogUpdateAction.truncate) {
       this.resetRender()
-      this.readLogsFromLogStore()
     }
+
+    this.readLogsFromLogStore()
   }
 
   componentDidUpdate(prevProps: OverviewLogComponentProps) {

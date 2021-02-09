@@ -1,12 +1,22 @@
 import React from "react"
 import styled from "styled-components"
 import { useLogStore } from "./LogStore"
-import { Color, FontSize } from "./style-helpers"
+import {
+  AnimDuration,
+  Color,
+  FontSize,
+  mixinResetButtonStyle,
+} from "./style-helpers"
 
-const ClearLogsButton = styled.a`
+const ClearLogsButton = styled.button`
+  ${mixinResetButtonStyle}
   margin-left: auto;
-  cursor: pointer;
   font-size: ${FontSize.small};
+  color: ${Color.white};
+
+  & {
+    transition: color ${AnimDuration.default} ease;
+  }
 
   &:hover {
     color: ${Color.blue};

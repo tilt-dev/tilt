@@ -198,10 +198,7 @@ it("renders new logs first", () => {
     lines.push(`incremental line ${i}\n`)
   }
   appendLines(component.props.logStore, "fe", ...lines)
-  component.onLogUpdate({
-    action: LogUpdateAction.append,
-    spans: { fe: { manifestName: "fe" } },
-  })
+  component.onLogUpdate({ action: LogUpdateAction.append })
   expect(component.forwardBuffer.length).toEqual(newLineCount)
   expect(component.backwardBuffer.length).toEqual(initLineCount)
 

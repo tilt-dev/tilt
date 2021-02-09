@@ -50,7 +50,3 @@ export function sourcePrefix(n: string) {
 export function isBuildSpanId(spanId: string): boolean {
   return spanId.indexOf("build:") !== -1
 }
-
-export function isTiltfileSpanId(spanId: string): boolean {
-  return spanId.indexOf("tiltfile:") !== -1
-}
