@@ -49,6 +49,13 @@ export function assertSidebarItemsAndOptions(
   )
 }
 
+function clickResourcesToggle(root: ReactWrapper) {
+  root.find("input#resources").simulate("click")
+}
+function clickTestsToggle(root: ReactWrapper) {
+  root.find("input#tests").simulate("click")
+}
+
 const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
 
 describe("overview sidebar options", () => {
@@ -65,9 +72,7 @@ describe("overview sidebar options", () => {
     const root = mount(TwoResourcesTwoTests())
     assertSidebarItemsAndOptions(root, allNames, true, true, false)
 
-    root
-      .find("input#resources")
-      .simulate("change", { target: { checked: false } })
+    clickResourcesToggle(root)
     assertSidebarItemsAndOptions(
       root,
       ["(Tiltfile)", "beep", "boop"],
@@ -81,7 +86,7 @@ describe("overview sidebar options", () => {
     const root = mount(TwoResourcesTwoTests())
     assertSidebarItemsAndOptions(root, allNames, true, true, false)
 
-    root.find("input#tests").simulate("change", { target: { checked: false } })
+    clickTestsToggle(root)
     assertSidebarItemsAndOptions(
       root,
       ["(Tiltfile)", "vigoda", "snack"],
@@ -95,10 +100,8 @@ describe("overview sidebar options", () => {
     const root = mount(TwoResourcesTwoTests())
     assertSidebarItemsAndOptions(root, allNames, true, true, false)
 
-    root
-      .find("input#resources")
-      .simulate("change", { target: { checked: false } })
-    root.find("input#tests").simulate("change", { target: { checked: false } })
+    clickResourcesToggle(root)
+    clickTestsToggle(root)
     assertSidebarItemsAndOptions(root, ["(Tiltfile)"], false, false, false)
   })
 
@@ -154,7 +157,7 @@ describe("overview sidebar options", () => {
     expect(pinned).toHaveLength(1)
     expect(pinned.at(0).props().item.name).toEqual("beep")
 
-    root.find("input#tests").simulate("change", { target: { checked: false } })
+    clickTestsToggle(root)
     assertSidebarItemsAndOptions(
       root,
       ["(Tiltfile)", "vigoda", "snack"],
@@ -172,7 +175,3 @@ describe("overview sidebar options", () => {
     expect(pinned.at(0).props().item.name).toEqual("beep")
   })
 })
-
-// TODO:
-//   - if test present; hide/show tests/resources; and then test removed (e.g. commented
-//     out of tiltfile) then we hide the check boxes AND ALSO reset filters to show everything

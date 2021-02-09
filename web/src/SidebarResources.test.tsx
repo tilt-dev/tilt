@@ -222,17 +222,19 @@ describe("SidebarResources", () => {
         </MemoryRouter>
       )
 
-      root.find("input#resources").simulate("change", {
-        target: { checked: expectedOptions.showResources },
-      })
-      root
-        .find("input#tests")
-        .simulate("change", { target: { checked: expectedOptions.showTests } })
-      if (
-        root.find(AlertsOnTopToggle).hasClass("is-enabled") !=
-        expectedOptions.alertsOnTop
-      ) {
-        root.find(AlertsOnTopToggle).simulate("click")
+      let resToggle = root.find("input#resources")
+      if (resToggle.props().checked != expectedOptions.showResources) {
+        resToggle.simulate("click")
+      }
+
+      let testToggle = root.find("input#tests")
+      if (testToggle.props().checked != expectedOptions.showTests) {
+        testToggle.simulate("click")
+      }
+
+      let aotToggle = root.find(AlertsOnTopToggle)
+      if (aotToggle.hasClass("is-enabled") != expectedOptions.alertsOnTop) {
+        aotToggle.simulate("click")
       }
 
       const observedOptions = sidebarOptionsAccessor.get()
