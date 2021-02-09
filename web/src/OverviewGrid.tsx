@@ -22,7 +22,7 @@ let OverviewGridRoot = styled.ul`
   }
   &:last-child {
     border-bottom-width: 0;
-  }  
+  }
 `
 
 export default function OverviewGrid(props: OverviewGridProps) {
