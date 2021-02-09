@@ -91,6 +91,7 @@ func TestServeReadinessProbe(t *testing.T) {
 		}
 		return true
 	})
+	f.assertLogMessage("foo", "[readiness probe: success] fake probe succeeded")
 
 	assert.Equal(t, "sleep", f.fpm.execName)
 	assert.Equal(t, []string{"15"}, f.fpm.execArgs)
@@ -181,7 +182,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	out := bufsync.NewThreadSafeBuffer()
-	l := logger.NewLogger(logger.DebugLvl, out)
+	l := logger.NewLogger(logger.VerboseLvl, out)
 	ctx = logger.WithLogger(ctx, l)
 
 	fe := NewFakeExecer()

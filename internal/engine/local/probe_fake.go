@@ -52,5 +52,5 @@ func (m *FakeProberManager) ProbeCount() int {
 }
 
 func successProbe(_ context.Context) (prober.Result, string, error) {
-	return prober.Success, "", nil
+	return prober.Success, "fake probe succeeded!", nil
 }
