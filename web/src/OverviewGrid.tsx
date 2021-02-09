@@ -17,12 +17,12 @@ let OverviewGridRoot = styled.ul`
   padding-left: ${SizeUnit(0.25)};
   position: relative;
   box-sizing: border-box;
-  &:nth-child(2) {
+  &:nth-child(2n) {
     border-bottom: 1px dotted ${Color.grayLight};
   }
-  &:nth-child(4) {
-    border-bottom: 1px dotted ${Color.grayLight};
-  }
+  &:last-child {
+    border-bottom-width: 0;
+  }  
 `
 
 export default function OverviewGrid(props: OverviewGridProps) {
