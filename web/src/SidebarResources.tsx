@@ -57,7 +57,7 @@ type SidebarProps = {
   pathBuilder: PathBuilder
 }
 
-let defaultOptions: SidebarOptions = {
+export const defaultOptions: SidebarOptions = {
   showResources: true,
   showTests: true,
   alertsOnTop: false,
@@ -115,7 +115,13 @@ export class SidebarResources extends React.Component<SidebarProps> {
       .map((i) => i.buildAlertCount + i.runtimeAlertCount)
       .reduce((sum, current) => sum + current, 0)
 
-    let testsPresent = this.props.items.some((item) => item.isTest)
+    // generally, only show filters if there are tests (otherwise the filters are just noise)
+    //   however, also show filters if the filter options are non-default
+    //   (e.g., in case there were previously tests and the user deselected resources)
+    const showFilters =
+      this.props.items.some((item) => item.isTest) ||
+      options.showResources !== defaultOptions.showResources ||
+      options.showTests !== defaultOptions.showTests
 
     // TODO: what do we do when we filter out the selected item? Pinned item(s)?
     //       and what effect does this have on keyboard shortcuts? :(
@@ -157,7 +163,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
           </SidebarListSection>
           <PinnedItems {...this.props} />
           <OverviewSidebarOptions
-            showFilters={testsPresent}
+            showFilters={showFilters}
             options={options}
             setOptions={setOptions}
           />
