@@ -20,7 +20,7 @@ let OverviewGridRoot = styled.ul`
     border-bottom: 1px dotted ${Color.grayLight};
   }
   &:last-child {
-    border-bottom-width: 0px;
+    border-bottom-width: 0;
   }
 `
 
