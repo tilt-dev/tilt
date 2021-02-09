@@ -24,9 +24,13 @@ const OverviewSidebarOptionsRoot = styled.div`
   padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
   color: ${Color.offWhite};
+
+  &.is-filtersHidden {
+    justify-content: flex-end;
+  }
 `
 
-const FilterOptionList = styled.ul`
+export const FilterOptionList = styled.ul`
   ${mixinResetListStyle}
   display: flex;
   user-select: none; // Prevent unsightly highlighting on the label
@@ -53,6 +57,7 @@ export const AlertsOnTopToggle = styled.button`
 `
 
 type OverviewSidebarOptionsProps = {
+  showFilters: boolean
   options: SidebarOptions
   setOptions: Dispatch<SetStateAction<SidebarOptions>>
 }
@@ -81,50 +86,55 @@ function setShowResources(
   })
 }
 
+function filterOptions(props: OverviewSidebarOptionsProps) {
+  const classes = useStyles()
+  return (
+    <FilterOptionList>
+      <FormControlLabel
+        control={
+          <Checkbox
+            className={classes.root}
+            color={"default"}
+            icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+            checkedIcon={<CheckBoxIcon fontSize="small" />}
+            checked={props.options.showResources}
+            onClick={(e) =>
+              setShowResources(props, !props.options.showResources)
+            }
+            name="resources"
+            id="resources"
+          />
+        }
+        label="Resources"
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            className={classes.root}
+            color={"default"}
+            icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+            checkedIcon={<CheckBoxIcon fontSize="small" />}
+            checked={props.options.showTests}
+            onClick={(e) => setShowTests(props, !props.options.showTests)}
+            name="tests"
+            id="tests"
+          />
+        }
+        label="Tests"
+      />
+    </FilterOptionList>
+  )
+}
+
 export function OverviewSidebarOptions(
   props: OverviewSidebarOptionsProps
 ): JSX.Element {
-  const classes = useStyles()
-
   return (
     <OverviewSidebarOptionsRoot
       style={{ marginTop: SizeUnit(0.75), marginBottom: SizeUnit(-0.5) }}
+      className={!props.showFilters ? "is-filtersHidden" : ""}
     >
-      <FilterOptionList>
-        <FormControlLabel
-          control={
-            <Checkbox
-              className={classes.root}
-              color={"default"}
-              icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
-              checkedIcon={<CheckBoxIcon fontSize="small" />}
-              checked={props.options.showResources}
-              onClick={(e) =>
-                setShowResources(props, !props.options.showResources)
-              }
-              name="resources"
-              id="resources"
-            />
-          }
-          label="Resources"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              className={classes.root}
-              color={"default"}
-              icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
-              checkedIcon={<CheckBoxIcon fontSize="small" />}
-              checked={props.options.showTests}
-              onClick={(e) => setShowTests(props, !props.options.showTests)}
-              name="tests"
-              id="tests"
-            />
-          }
-          label="Tests"
-        />
-      </FilterOptionList>
-
+      {props.showFilters ? filterOptions(props) : null}
       <AlertsOnTopToggle
         className={props.options.alertsOnTop ? "is-enabled" : ""}
         onClick={(e) => setAlertsOnTop(props, !props.options.alertsOnTop)}

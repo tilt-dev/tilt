@@ -8,6 +8,7 @@ import {
 } from "./OverviewResourceSidebar.stories"
 import {
   AlertsOnTopToggle,
+  FilterOptionList,
   OverviewSidebarOptions,
 } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
@@ -116,7 +117,7 @@ describe("overview sidebar options", () => {
     assertSidebarItemsAndOptions(root, ["(Tiltfile)"], false, false, false)
   })
 
-  it("doesn't show SidebarOptionSetter if no tests present", () => {
+  it("doesn't show filter options if no tests present", () => {
     let items = [tiltfileResource(), oneResource()].map(
       (r) => new SidebarItem(r)
     )
@@ -137,8 +138,8 @@ describe("overview sidebar options", () => {
     let sidebar = root.find(SidebarResources)
     expect(sidebar).toHaveLength(1)
 
-    let optSetter = sidebar.find(OverviewSidebarOptions)
-    expect(optSetter).toHaveLength(0)
+    let filters = sidebar.find(FilterOptionList)
+    expect(filters).toHaveLength(0)
   })
 
   it("still displays pinned tests when tests hidden", () => {

@@ -41,6 +41,22 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         </li>
       </ul>
     </div>
+    <div
+      className="sc-bdfBwQ bJwFId is-filtersHidden"
+      style={
+        Object {
+          "marginBottom": "-16px",
+          "marginTop": "24px",
+        }
+      }
+    >
+      <button
+        className="sc-dlfnbm hYhRhc"
+        onClick={[Function]}
+      >
+        Alerts on Top
+      </button>
+    </div>
     <div>
       <div
         className="sc-hHftDr keXJQh"
@@ -861,6 +877,22 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
         </li>
       </ul>
     </div>
+    <div
+      className="sc-bdfBwQ bJwFId is-filtersHidden"
+      style={
+        Object {
+          "marginBottom": "-16px",
+          "marginTop": "24px",
+        }
+      }
+    >
+      <button
+        className="sc-dlfnbm hYhRhc"
+        onClick={[Function]}
+      >
+        Alerts on Top
+      </button>
+    </div>
     <div>
       <div
         className="sc-hHftDr keXJQh"
@@ -916,6 +948,22 @@ exports[`sidebar renders list of resources 1`] = `
           </div>
         </li>
       </ul>
+    </div>
+    <div
+      className="sc-bdfBwQ bJwFId is-filtersHidden"
+      style={
+        Object {
+          "marginBottom": "-16px",
+          "marginTop": "24px",
+        }
+      }
+    >
+      <button
+        className="sc-dlfnbm hYhRhc"
+        onClick={[Function]}
+      >
+        Alerts on Top
+      </button>
     </div>
     <div>
       <div
@@ -1195,6 +1243,22 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           </div>
         </li>
       </ul>
+    </div>
+    <div
+      className="sc-bdfBwQ bJwFId is-filtersHidden"
+      style={
+        Object {
+          "marginBottom": "-16px",
+          "marginTop": "24px",
+        }
+      }
+    >
+      <button
+        className="sc-dlfnbm hYhRhc"
+        onClick={[Function]}
+      >
+        Alerts on Top
+      </button>
     </div>
     <div>
       <div
