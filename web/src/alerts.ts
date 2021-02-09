@@ -51,12 +51,6 @@ function podRestarted(r: Resource) {
   return (rInfo.podRestarts ?? 0) > 0
 }
 
-// Errors for both DC and K8s Resources
-function buildFailed(resource: Resource) {
-  let history = resource.buildHistory ?? []
-  return history.length > 0 && history[0].error
-}
-
 function runtimeAlerts(r: Resource, logStore: LogStore | null): Alert[] {
   let result: Alert[] = []
 
@@ -78,11 +72,12 @@ function runtimeAlerts(r: Resource, logStore: LogStore | null): Alert[] {
 function buildAlerts(r: Resource, logStore: LogStore | null): Alert[] {
   let result: Alert[] = []
 
-  if (buildFailed(r)) {
-    result.push(buildFailedAlert(r, logStore))
+  const failAlert = buildFailedAlert(r, logStore)
+  if (failAlert) {
+    result.push(failAlert)
   }
 
-  let bwa = buildWarningsAlerts(r)
+  let bwa = buildWarningsAlerts(r, logStore)
   if (bwa.length > 0) {
     result.push(...bwa)
   }
@@ -170,45 +165,51 @@ function crashRebuildAlert(r: Resource): Alert {
 function buildFailedAlert(
   resource: Resource,
   logStore: LogStore | null
-): Alert {
+): Alert | null {
   // both: DCResource and K8s Resource
-  let history = resource.buildHistory ?? []
-  let spanId = history[0].spanId || ""
+  const latestBuild = (resource.buildHistory ?? [])[0]
+  const spanId = latestBuild?.spanId ?? ""
+  if (
+    !latestBuild ||
+    !latestBuild.error ||
+    (logStore && !logStore.hasLinesForSpan(spanId))
+  ) {
+    return null
+  }
   let msg = "[missing error message]"
-  if (spanId && logStore) {
+  if (logStore) {
     msg = logLinesToString(logStore.spanLog([spanId]), false)
   }
   return {
     alertType: BuildFailedErrorType,
     header: "Build error",
     msg: msg,
-    timestamp: history[0].finishTime ?? "",
+    timestamp: latestBuild.finishTime ?? "",
     resourceName: resource.name ?? "",
     level: FilterLevel.error,
     source: FilterSource.build,
   }
 }
 
-function buildWarningsAlerts(resource: Resource): Alert[] {
-  let warnings: string[] = []
+function buildWarningsAlerts(
+  resource: Resource,
+  logStore: LogStore | null
+): Alert[] {
   let alertArray: Alert[] = []
-  let history = resource.buildHistory ?? []
-
-  if (history.length) {
-    warnings = history[0].warnings ?? []
-  }
-  if (warnings.length > 0) {
-    warnings.forEach((w) => {
-      alertArray.push({
-        alertType: WarningErrorType,
-        header: resource.name ?? "",
-        msg: w,
-        timestamp: history[0].finishTime ?? "",
-        resourceName: resource.name ?? "",
-        level: FilterLevel.warn,
-        source: FilterSource.build,
-      })
-    })
+  const latestBuild = (resource.buildHistory ?? [])[0]
+  if (
+    latestBuild &&
+    (!logStore || logStore.hasLinesForSpan(latestBuild.spanId ?? ""))
+  ) {
+    alertArray = (latestBuild.warnings || []).map((w) => ({
+      alertType: WarningErrorType,
+      header: resource.name ?? "",
+      msg: w,
+      timestamp: latestBuild.finishTime ?? "",
+      resourceName: resource.name ?? "",
+      level: FilterLevel.warn,
+      source: FilterSource.build,
+    }))
   }
   return alertArray
 }

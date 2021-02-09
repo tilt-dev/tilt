@@ -117,6 +117,11 @@ class LogStore {
     this.updateCallbacks = this.updateCallbacks.filter((item) => item !== c)
   }
 
+  hasLinesForSpan(spanId: string): boolean {
+    const span = this.spans[spanId]
+    return span && span.firstLineIndex !== -1
+  }
+
   warnings(spanId: string): LogWarning[] {
     return this.warningIndex[spanId] ?? []
   }
@@ -380,11 +385,6 @@ class LogStore {
       }
     }
     return result
-  }
-
-  getOrderedSpansIdsForManifest(mn: string): string[] {
-    const spans = this.spansForManifest(mn)
-    return this.sortedSpanIds(Object.keys(spans))
   }
 
   getOrderedBuildSpanIds(spanId: string): string[] {

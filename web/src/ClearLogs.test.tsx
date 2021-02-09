@@ -1,30 +1,12 @@
 import { mount } from "enzyme"
 import React from "react"
-import { Alert } from "./alerts"
 import ClearLogs from "./ClearLogs"
-import { FilterLevel, FilterSource } from "./logfilters"
 import { logLinesToString } from "./logs"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import { oneResource } from "./testdata"
 import { appendLinesForManifestAndSpan } from "./testlogs"
 
 describe("ClearLogs", () => {
-  const createAlert = (
-    resourceName: string,
-    source: FilterSource,
-    level: FilterLevel
-  ): Alert => {
-    return {
-      alertType: "",
-      header: "",
-      msg: "",
-      timestamp: "",
-      resourceName,
-      source,
-      level,
-    }
-  }
-
   const createPopulatedLogStore = (): LogStore => {
     const logStore = new LogStore()
     appendLinesForManifestAndSpan(logStore, "", "", [
@@ -60,27 +42,6 @@ describe("ClearLogs", () => {
     root.find(ClearLogs).simulate("click")
     expect(logStore.spans).toEqual({})
     expect(logStore.allLog()).toHaveLength(0)
-  })
-
-  it("clears all resources except ones with current alerts", () => {
-    const logStore = createPopulatedLogStore()
-    const alerts: Alert[] = [
-      createAlert("vigoda", FilterSource.build, FilterLevel.warn),
-      createAlert("manifest2", FilterSource.runtime, FilterLevel.error),
-    ]
-    const root = mount(
-      <LogStoreProvider value={logStore}>
-        <ClearLogs alerts={alerts} />
-      </LogStoreProvider>
-    )
-    root.find(ClearLogs).simulate("click")
-    expect(Object.keys(logStore.spans).sort()).toEqual([
-      "build:m1:2",
-      "pod:m2-def456",
-    ])
-    expect(logLinesToString(logStore.allLog(), false)).toEqual(
-      "m1:2 build line 1\nm1:2 build line 2\nm2 runtime line 1"
-    )
   })
 
   it("clears a specific resource", () => {

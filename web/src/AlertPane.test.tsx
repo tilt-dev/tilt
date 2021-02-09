@@ -6,6 +6,7 @@ import AlertPane from "./AlertPane"
 import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import { oneResourceUnrecognizedError } from "./testdata"
+import { appendLinesForManifestAndSpan } from "./testlogs"
 import { TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
@@ -205,11 +206,16 @@ it("renders warnings", () => {
       finishTime: ts,
       isCrashRebuild: true,
       warnings: ["Hi I'm a warning"],
+      spanId: "build:1",
     },
   ]
   if (!resource.k8sResourceInfo) throw new Error("missing k8s info")
   resource.k8sResourceInfo.podCreationTime = ts
   resource.k8sResourceInfo.podStatus = "ok"
+
+  appendLinesForManifestAndSpan(logStore, resource.name!, "build:1", [
+    "build 1",
+  ])
 
   let resources = [resource]
 

@@ -1,6 +1,7 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import styled from "styled-components"
 import { Alert, combinedAlerts } from "./alerts"
+import { LogUpdateAction, LogUpdateEvent, useLogStore } from "./LogStore"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
@@ -32,6 +33,7 @@ let Main = styled.div`
 
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let nav = useTabNav()
+  const logStore = useLogStore()
   let resources = props.view?.resources || []
   let name = nav.invalidTab || nav.selectedTab || ""
   let r: Proto.webviewResource | undefined
@@ -46,12 +48,37 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     selectedTab = r.name
   }
 
-  let alerts: Alert[] = []
-  if (r) {
-    alerts = combinedAlerts(r, null)
-  } else if (all) {
-    resources.forEach((r) => alerts.push(...combinedAlerts(r, null)))
+  const buildAlerts = () => {
+    let alerts: Alert[] = []
+    if (r) {
+      alerts = combinedAlerts(r, logStore)
+    } else if (all) {
+      resources.forEach((r) => alerts.push(...combinedAlerts(r, logStore)))
+    }
+    return alerts
   }
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  // update alerts whenever the selected resource changes
+  useEffect(() => setAlerts(buildAlerts), [r])
+
+  // add a listener to rebuild alerts whenever a truncation event occurs
+  useEffect(() => {
+    const rebuildAlertsOnLogClear = (e: LogUpdateEvent) => {
+      if (e.action !== LogUpdateAction.truncate) {
+        return
+      }
+
+      if (
+        all ||
+        Object.values(e.spans).some((span) => span.manifestName == r?.name)
+      ) {
+        setAlerts(buildAlerts)
+      }
+    }
+
+    logStore.addUpdateListener(rebuildAlertsOnLogClear)
+    return () => logStore.removeUpdateListener(rebuildAlertsOnLogClear)
+  }, [])
 
   // Hide the HTML element scrollbars, since this pane does all scrolling internally.
   // TODO(nick): Remove this when the old UI is deleted.

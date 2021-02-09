@@ -478,7 +478,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
           filterSet={props.filterSet}
           alerts={alerts}
         />
-        {isSnapshot || <ClearLogs resource={resource} alerts={alerts} />}
+        {isSnapshot || <ClearLogs resource={resource} />}
       </ActionBarBottomRow>
     </ActionBarRoot>
   )
