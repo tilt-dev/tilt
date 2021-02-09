@@ -42,7 +42,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
       </ul>
     </div>
     <div
-      className="sc-bdfBwQ bcRcZF is-filtersHidden"
+      className="sc-bdfBwQ bJwFId is-filtersHidden"
       style={
         Object {
           "marginBottom": "-16px",
@@ -878,7 +878,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
       </ul>
     </div>
     <div
-      className="sc-bdfBwQ bcRcZF is-filtersHidden"
+      className="sc-bdfBwQ bJwFId is-filtersHidden"
       style={
         Object {
           "marginBottom": "-16px",
@@ -950,7 +950,7 @@ exports[`sidebar renders list of resources 1`] = `
       </ul>
     </div>
     <div
-      className="sc-bdfBwQ bcRcZF is-filtersHidden"
+      className="sc-bdfBwQ bJwFId is-filtersHidden"
       style={
         Object {
           "marginBottom": "-16px",
@@ -1245,7 +1245,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       </ul>
     </div>
     <div
-      className="sc-bdfBwQ bcRcZF is-filtersHidden"
+      className="sc-bdfBwQ bJwFId is-filtersHidden"
       style={
         Object {
           "marginBottom": "-16px",

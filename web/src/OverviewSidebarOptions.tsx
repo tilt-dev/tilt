@@ -98,7 +98,9 @@ function filterOptions(props: OverviewSidebarOptionsProps) {
             icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
             checkedIcon={<CheckBoxIcon fontSize="small" />}
             checked={props.options.showResources}
-            onChange={(e) => setShowResources(props, e.target.checked)}
+            onClick={(e) =>
+              setShowResources(props, !props.options.showResources)
+            }
             name="resources"
             id="resources"
           />
@@ -113,7 +115,7 @@ function filterOptions(props: OverviewSidebarOptionsProps) {
             icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
             checkedIcon={<CheckBoxIcon fontSize="small" />}
             checked={props.options.showTests}
-            onChange={(e) => setShowTests(props, e.target.checked)}
+            onClick={(e) => setShowTests(props, !props.options.showTests)}
             name="tests"
             id="tests"
           />
