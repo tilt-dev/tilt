@@ -16,7 +16,7 @@ let OverviewGridRoot = styled.ul`
   padding-left: ${SizeUnit(0.25)};
   position: relative;
   box-sizing: border-box;
-  border-bottom: 1px dotted ${Color.grayLight};  
+  border-bottom: 1px dotted ${Color.grayLight};
   &:last-child {
     border-bottom-width: 0;
   }
