@@ -26,10 +26,11 @@ const OverviewSidebarOptionsRoot = styled.div`
   color: ${Color.offWhite};
 `
 
-const FilterOptionList = styled.ul`
+export const FilterOptionList = styled.ul<{ visible: boolean }>`
   ${mixinResetListStyle}
   display: flex;
   user-select: none; // Prevent unsightly highlighting on the label
+  visibility: ${(props) => (props.visible ? "default" : "hidden")};
 `
 
 const useStyles = makeStyles({
@@ -53,6 +54,7 @@ export const AlertsOnTopToggle = styled.button`
 `
 
 type OverviewSidebarOptionsProps = {
+  showFilters: boolean
   options: SidebarOptions
   setOptions: Dispatch<SetStateAction<SidebarOptions>>
 }
@@ -90,7 +92,7 @@ export function OverviewSidebarOptions(
     <OverviewSidebarOptionsRoot
       style={{ marginTop: SizeUnit(0.75), marginBottom: SizeUnit(-0.5) }}
     >
-      <FilterOptionList>
+      <FilterOptionList visible={props.showFilters}>
         <FormControlLabel
           control={
             <Checkbox

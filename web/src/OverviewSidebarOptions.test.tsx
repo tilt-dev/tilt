@@ -5,6 +5,7 @@ import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import { TwoResourcesTwoTests } from "./OverviewResourceSidebar.stories"
 import {
   AlertsOnTopToggle,
+  FilterOptionList,
   OverviewSidebarOptions,
 } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
@@ -123,8 +124,8 @@ describe("overview sidebar options", () => {
     let sidebar = root.find(SidebarResources)
     expect(sidebar).toHaveLength(1)
 
-    let optSetter = sidebar.find(OverviewSidebarOptions)
-    expect(optSetter).toHaveLength(0)
+    let filters = sidebar.find(FilterOptionList)
+    expect(filters.get(0).props.visible).toEqual(false)
   })
 
   it("still displays pinned tests when tests hidden", () => {
