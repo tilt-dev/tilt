@@ -42,7 +42,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
       </ul>
     </div>
     <div
-      className="sc-bdfBwQ jYVSUn"
+      className="sc-bdfBwQ bcRcZF is-filtersHidden"
       style={
         Object {
           "marginBottom": "-16px",
@@ -50,114 +50,6 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
         }
       }
     >
-      <ul
-        className="sc-gsTCUz jipOPh"
-      >
-        <label
-          className="MuiFormControlLabel-root"
-        >
-          <span
-            aria-disabled={false}
-            className="MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-2 MuiCheckbox-root makeStyles-root-1 PrivateSwitchBase-checked-3 Mui-checked"
-            onBlur={[Function]}
-            onDragLeave={[Function]}
-            onFocus={[Function]}
-            onKeyDown={[Function]}
-            onKeyUp={[Function]}
-            onMouseDown={[Function]}
-            onMouseLeave={[Function]}
-            onMouseUp={[Function]}
-            onTouchEnd={[Function]}
-            onTouchMove={[Function]}
-            onTouchStart={[Function]}
-            tabIndex={null}
-          >
-            <span
-              className="MuiIconButton-label"
-            >
-              <input
-                checked={true}
-                className="PrivateSwitchBase-input-5"
-                data-indeterminate={false}
-                id="resources"
-                name="resources"
-                onChange={[Function]}
-                type="checkbox"
-              />
-              <svg
-                aria-hidden={true}
-                className="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
-                focusable="false"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                />
-              </svg>
-            </span>
-            <span
-              className="MuiTouchRipple-root"
-            />
-          </span>
-          <span
-            className="MuiTypography-root MuiFormControlLabel-label MuiTypography-body1"
-          >
-            Resources
-          </span>
-        </label>
-        <label
-          className="MuiFormControlLabel-root"
-        >
-          <span
-            aria-disabled={false}
-            className="MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-2 MuiCheckbox-root makeStyles-root-1 PrivateSwitchBase-checked-3 Mui-checked"
-            onBlur={[Function]}
-            onDragLeave={[Function]}
-            onFocus={[Function]}
-            onKeyDown={[Function]}
-            onKeyUp={[Function]}
-            onMouseDown={[Function]}
-            onMouseLeave={[Function]}
-            onMouseUp={[Function]}
-            onTouchEnd={[Function]}
-            onTouchMove={[Function]}
-            onTouchStart={[Function]}
-            tabIndex={null}
-          >
-            <span
-              className="MuiIconButton-label"
-            >
-              <input
-                checked={true}
-                className="PrivateSwitchBase-input-5"
-                data-indeterminate={false}
-                id="tests"
-                name="tests"
-                onChange={[Function]}
-                type="checkbox"
-              />
-              <svg
-                aria-hidden={true}
-                className="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
-                focusable="false"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                />
-              </svg>
-            </span>
-            <span
-              className="MuiTouchRipple-root"
-            />
-          </span>
-          <span
-            className="MuiTypography-root MuiFormControlLabel-label MuiTypography-body1"
-          >
-            Tests
-          </span>
-        </label>
-      </ul>
       <button
         className="sc-dlfnbm hYhRhc"
         onClick={[Function]}
@@ -986,7 +878,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
       </ul>
     </div>
     <div
-      className="sc-bdfBwQ jYVSUn"
+      className="sc-bdfBwQ bcRcZF is-filtersHidden"
       style={
         Object {
           "marginBottom": "-16px",
@@ -994,108 +886,6 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
         }
       }
     >
-      <ul
-        className="sc-gsTCUz jipOPh"
-      >
-        <label
-          className="MuiFormControlLabel-root"
-        >
-          <span
-            aria-disabled={false}
-            className="MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-2 MuiCheckbox-root makeStyles-root-1 PrivateSwitchBase-checked-3 Mui-checked"
-            onBlur={[Function]}
-            onDragLeave={[Function]}
-            onFocus={[Function]}
-            onKeyDown={[Function]}
-            onKeyUp={[Function]}
-            onMouseDown={[Function]}
-            onMouseLeave={[Function]}
-            onMouseUp={[Function]}
-            onTouchEnd={[Function]}
-            onTouchMove={[Function]}
-            onTouchStart={[Function]}
-            tabIndex={null}
-          >
-            <span
-              className="MuiIconButton-label"
-            >
-              <input
-                checked={true}
-                className="PrivateSwitchBase-input-5"
-                data-indeterminate={false}
-                id="resources"
-                name="resources"
-                onChange={[Function]}
-                type="checkbox"
-              />
-              <svg
-                aria-hidden={true}
-                className="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
-                focusable="false"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                />
-              </svg>
-            </span>
-          </span>
-          <span
-            className="MuiTypography-root MuiFormControlLabel-label MuiTypography-body1"
-          >
-            Resources
-          </span>
-        </label>
-        <label
-          className="MuiFormControlLabel-root"
-        >
-          <span
-            aria-disabled={false}
-            className="MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-2 MuiCheckbox-root makeStyles-root-1 PrivateSwitchBase-checked-3 Mui-checked"
-            onBlur={[Function]}
-            onDragLeave={[Function]}
-            onFocus={[Function]}
-            onKeyDown={[Function]}
-            onKeyUp={[Function]}
-            onMouseDown={[Function]}
-            onMouseLeave={[Function]}
-            onMouseUp={[Function]}
-            onTouchEnd={[Function]}
-            onTouchMove={[Function]}
-            onTouchStart={[Function]}
-            tabIndex={null}
-          >
-            <span
-              className="MuiIconButton-label"
-            >
-              <input
-                checked={true}
-                className="PrivateSwitchBase-input-5"
-                data-indeterminate={false}
-                id="tests"
-                name="tests"
-                onChange={[Function]}
-                type="checkbox"
-              />
-              <svg
-                aria-hidden={true}
-                className="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
-                focusable="false"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                />
-              </svg>
-            </span>
-          </span>
-          <span
-            className="MuiTypography-root MuiFormControlLabel-label MuiTypography-body1"
-          >
-            Tests
-          </span>
-        </label>
-      </ul>
       <button
         className="sc-dlfnbm hYhRhc"
         onClick={[Function]}
@@ -1160,7 +950,7 @@ exports[`sidebar renders list of resources 1`] = `
       </ul>
     </div>
     <div
-      className="sc-bdfBwQ jYVSUn"
+      className="sc-bdfBwQ bcRcZF is-filtersHidden"
       style={
         Object {
           "marginBottom": "-16px",
@@ -1168,114 +958,6 @@ exports[`sidebar renders list of resources 1`] = `
         }
       }
     >
-      <ul
-        className="sc-gsTCUz jipOPh"
-      >
-        <label
-          className="MuiFormControlLabel-root"
-        >
-          <span
-            aria-disabled={false}
-            className="MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-2 MuiCheckbox-root makeStyles-root-1 PrivateSwitchBase-checked-3 Mui-checked"
-            onBlur={[Function]}
-            onDragLeave={[Function]}
-            onFocus={[Function]}
-            onKeyDown={[Function]}
-            onKeyUp={[Function]}
-            onMouseDown={[Function]}
-            onMouseLeave={[Function]}
-            onMouseUp={[Function]}
-            onTouchEnd={[Function]}
-            onTouchMove={[Function]}
-            onTouchStart={[Function]}
-            tabIndex={null}
-          >
-            <span
-              className="MuiIconButton-label"
-            >
-              <input
-                checked={true}
-                className="PrivateSwitchBase-input-5"
-                data-indeterminate={false}
-                id="resources"
-                name="resources"
-                onChange={[Function]}
-                type="checkbox"
-              />
-              <svg
-                aria-hidden={true}
-                className="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
-                focusable="false"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                />
-              </svg>
-            </span>
-            <span
-              className="MuiTouchRipple-root"
-            />
-          </span>
-          <span
-            className="MuiTypography-root MuiFormControlLabel-label MuiTypography-body1"
-          >
-            Resources
-          </span>
-        </label>
-        <label
-          className="MuiFormControlLabel-root"
-        >
-          <span
-            aria-disabled={false}
-            className="MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-2 MuiCheckbox-root makeStyles-root-1 PrivateSwitchBase-checked-3 Mui-checked"
-            onBlur={[Function]}
-            onDragLeave={[Function]}
-            onFocus={[Function]}
-            onKeyDown={[Function]}
-            onKeyUp={[Function]}
-            onMouseDown={[Function]}
-            onMouseLeave={[Function]}
-            onMouseUp={[Function]}
-            onTouchEnd={[Function]}
-            onTouchMove={[Function]}
-            onTouchStart={[Function]}
-            tabIndex={null}
-          >
-            <span
-              className="MuiIconButton-label"
-            >
-              <input
-                checked={true}
-                className="PrivateSwitchBase-input-5"
-                data-indeterminate={false}
-                id="tests"
-                name="tests"
-                onChange={[Function]}
-                type="checkbox"
-              />
-              <svg
-                aria-hidden={true}
-                className="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
-                focusable="false"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                />
-              </svg>
-            </span>
-            <span
-              className="MuiTouchRipple-root"
-            />
-          </span>
-          <span
-            className="MuiTypography-root MuiFormControlLabel-label MuiTypography-body1"
-          >
-            Tests
-          </span>
-        </label>
-      </ul>
       <button
         className="sc-dlfnbm hYhRhc"
         onClick={[Function]}
@@ -1563,7 +1245,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       </ul>
     </div>
     <div
-      className="sc-bdfBwQ jYVSUn"
+      className="sc-bdfBwQ bcRcZF is-filtersHidden"
       style={
         Object {
           "marginBottom": "-16px",
@@ -1571,114 +1253,6 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
         }
       }
     >
-      <ul
-        className="sc-gsTCUz jipOPh"
-      >
-        <label
-          className="MuiFormControlLabel-root"
-        >
-          <span
-            aria-disabled={false}
-            className="MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-2 MuiCheckbox-root makeStyles-root-1 PrivateSwitchBase-checked-3 Mui-checked"
-            onBlur={[Function]}
-            onDragLeave={[Function]}
-            onFocus={[Function]}
-            onKeyDown={[Function]}
-            onKeyUp={[Function]}
-            onMouseDown={[Function]}
-            onMouseLeave={[Function]}
-            onMouseUp={[Function]}
-            onTouchEnd={[Function]}
-            onTouchMove={[Function]}
-            onTouchStart={[Function]}
-            tabIndex={null}
-          >
-            <span
-              className="MuiIconButton-label"
-            >
-              <input
-                checked={true}
-                className="PrivateSwitchBase-input-5"
-                data-indeterminate={false}
-                id="resources"
-                name="resources"
-                onChange={[Function]}
-                type="checkbox"
-              />
-              <svg
-                aria-hidden={true}
-                className="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
-                focusable="false"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                />
-              </svg>
-            </span>
-            <span
-              className="MuiTouchRipple-root"
-            />
-          </span>
-          <span
-            className="MuiTypography-root MuiFormControlLabel-label MuiTypography-body1"
-          >
-            Resources
-          </span>
-        </label>
-        <label
-          className="MuiFormControlLabel-root"
-        >
-          <span
-            aria-disabled={false}
-            className="MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-2 MuiCheckbox-root makeStyles-root-1 PrivateSwitchBase-checked-3 Mui-checked"
-            onBlur={[Function]}
-            onDragLeave={[Function]}
-            onFocus={[Function]}
-            onKeyDown={[Function]}
-            onKeyUp={[Function]}
-            onMouseDown={[Function]}
-            onMouseLeave={[Function]}
-            onMouseUp={[Function]}
-            onTouchEnd={[Function]}
-            onTouchMove={[Function]}
-            onTouchStart={[Function]}
-            tabIndex={null}
-          >
-            <span
-              className="MuiIconButton-label"
-            >
-              <input
-                checked={true}
-                className="PrivateSwitchBase-input-5"
-                data-indeterminate={false}
-                id="tests"
-                name="tests"
-                onChange={[Function]}
-                type="checkbox"
-              />
-              <svg
-                aria-hidden={true}
-                className="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall"
-                focusable="false"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                />
-              </svg>
-            </span>
-            <span
-              className="MuiTouchRipple-root"
-            />
-          </span>
-          <span
-            className="MuiTypography-root MuiFormControlLabel-label MuiTypography-body1"
-          >
-            Tests
-          </span>
-        </label>
-      </ul>
       <button
         className="sc-dlfnbm hYhRhc"
         onClick={[Function]}

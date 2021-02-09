@@ -156,9 +156,6 @@ export class SidebarResources extends React.Component<SidebarProps> {
             />
           </SidebarListSection>
           <PinnedItems {...this.props} />
-          {
-            // TODO: if this vanishes because no tests present, reset it to show everything}
-          }
           <OverviewSidebarOptions
             showFilters={testsPresent}
             options={options}

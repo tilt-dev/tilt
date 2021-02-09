@@ -103,7 +103,7 @@ describe("overview sidebar options", () => {
     assertSidebarItemsAndOptions(root, ["(Tiltfile)"], false, false, false)
   })
 
-  it("doesn't show SidebarOptionSetter if no tests present", () => {
+  it("doesn't show filter options if no tests present", () => {
     let items = [tiltfileResource(), oneResource()].map(
       (r) => new SidebarItem(r)
     )
@@ -125,7 +125,7 @@ describe("overview sidebar options", () => {
     expect(sidebar).toHaveLength(1)
 
     let filters = sidebar.find(FilterOptionList)
-    expect(filters.get(0).props.visible).toEqual(false)
+    expect(filters).toHaveLength(0)
   })
 
   it("still displays pinned tests when tests hidden", () => {
