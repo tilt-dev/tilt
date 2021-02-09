@@ -492,7 +492,7 @@ github.com/tilt-dev/go-get/internal/web
 # github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 ## explicit
 github.com/tilt-dev/localregistry-go
-# github.com/tilt-dev/probe v0.1.0
+# github.com/tilt-dev/probe v0.2.0
 ## explicit
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober

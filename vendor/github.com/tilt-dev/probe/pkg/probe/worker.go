@@ -41,11 +41,14 @@ const (
 // safe to use from multiple Goroutines.
 var realClock = clockwork.NewRealClock()
 
-// StatusChangedFunc is invoked on status transitions.
+// StatusChangedFunc is invoked on status transitions using WorkerOnStatusChange.
 //
 // It will NOT be called for subsequent probe invocations that do not
 // result in a status change.
 type StatusChangedFunc func(status prober.Result, output string)
+
+// ProbeResultFunc is invoked on every probe execution using WorkerOnProbeResult.
+type ResultFunc func(result prober.Result, output string, err error)
 
 // WorkerOption can be passed when creating a Worker to configure the
 // instance.
@@ -82,17 +85,17 @@ func NewWorker(p prober.Prober, opts ...WorkerOption) *Worker {
 //
 // It's loosely based (but simplified) on the k8s.io/kubernetes/pkg/kubelet/prober design.
 type Worker struct {
-	// probe is the actual logic that will be invoked to determine status.
+	// prober is the actual logic that will be invoked to determine status.
 	prober prober.Prober
 	// clock is used to create timers and facilitate easier unit testing.
 	clock clockwork.Clock
 	// mu guards mutable state that can be accessed from multiple goroutines (see docs on
 	// individual fields for which mu must be held before access).
 	mu sync.Mutex
-	// stopFunc is invoked when a running Worker instance is stopped to cancel the context.
+	// running is true when the worker has been started; otherwise, false.
 	//
 	// mu must be held before accessing.
-	stopFunc context.CancelFunc
+	running bool
 	// initialDelay is the amount of time before the probe is first executed.
 	initialDelay time.Duration
 	// period is the interval on which the probe is executed.
@@ -106,14 +109,12 @@ type Worker struct {
 	// failureThreshold is the number of times a probe must fail after previously having
 	// been successful before it will transition to a failure state.
 	failureThreshold int
-	// resultsChan receives ALL probe execution results, including duplicates.
-	//
-	// Currently, this is only exposed internally for testing to force synchronization.
-	resultsChan chan probeResult
 	// status is only updated after the failure/success threshold is crossed.
 	//
 	// mu must be held before accessing.
 	status prober.Result
+	// resultFunc is an optional function to call whenever a probe executes.
+	resultFunc ResultFunc
 	// statusFunc is an optional function to call whenever the status changes.
 	statusFunc StatusChangedFunc
 	// lastResult is the result of the previous probe execution and is used along with
@@ -126,19 +127,17 @@ type Worker struct {
 
 // Run periodically executes a probe until stopped.
 //
-// The Worker can be stopped by explicitly calling Stop() or implicitly
-// via context cancellation.
+// The Worker can be stopped by cancelling the context.
 //
 // Calling Run() on an instance that is already running will result in
 // a panic.
 func (w *Worker) Run(ctx context.Context) {
 	w.mu.Lock()
-	if w.stopFunc != nil {
+	if w.running {
 		panic("prober is already running")
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	w.stopFunc = cancel
 
+	w.running = true
 	w.lastResult = prober.Unknown
 	w.resultRun = 0
 	// initial status is failure until a successful probe
@@ -153,22 +152,20 @@ func (w *Worker) Run(ctx context.Context) {
 		w.doProbe(ctx)
 		select {
 		case <-ctx.Done():
+			w.mu.Lock()
+			w.status = prober.Unknown
+			w.running = false
+			w.mu.Unlock()
 			return
 		case <-ticker.Chan():
 		}
 	}
 }
 
-// Stop halts further probe invocations. It is safe to call Stop()
-// more than once.
-func (w *Worker) Stop() {
+func (w *Worker) Running() bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.stopFunc != nil {
-		w.stopFunc()
-		w.stopFunc = nil
-		w.status = prober.Unknown
-	}
+	return w.running
 }
 
 // Status returns the current probe result.
@@ -210,13 +207,21 @@ func (w *Worker) doProbe(ctx context.Context) {
 //
 // This is very similar to https://github.com/kubernetes/kubernetes/blob/v1.20.2/pkg/kubelet/prober/worker.go#L260-L273
 func (w *Worker) handleResult(probeResult probeResult) {
-	if w.resultsChan != nil {
+	result := probeResult.result
+	statusChanged := false
+
+	if w.resultFunc != nil || w.statusFunc != nil {
+		// these are handled together to ensure that order is result then status changed
 		defer func() {
-			w.resultsChan <- probeResult
+			if w.resultFunc != nil {
+				w.resultFunc(result, probeResult.output, probeResult.err)
+			}
+			if statusChanged && w.statusFunc != nil {
+				w.statusFunc(result, probeResult.output)
+			}
 		}()
 	}
 
-	result := probeResult.result
 	if probeResult.err != nil {
 		if !errors.Is(probeResult.err, context.DeadlineExceeded) {
 			// the probe itself returned an error, so ignore this execution
@@ -240,16 +245,13 @@ func (w *Worker) handleResult(probeResult probeResult) {
 	}
 
 	w.mu.Lock()
-	if w.stopFunc == nil || w.status == result {
+	if !w.running || w.status == result {
 		w.mu.Unlock()
 		return
 	}
 	w.status = result
+	statusChanged = true
 	w.mu.Unlock()
-
-	if w.statusFunc != nil {
-		w.statusFunc(result, probeResult.output)
-	}
 }
 
 // isSuccessResult coerces a probe.Result value into a bool based on
@@ -315,5 +317,13 @@ func WorkerInitialDelay(delay time.Duration) WorkerOption {
 func WorkerOnStatusChange(f StatusChangedFunc) WorkerOption {
 	return func(w *Worker) {
 		w.statusFunc = f
+	}
+}
+
+// WorkerOnProbeResult sets the function to invoke after every probe
+// execution regardless of whether it results in a status transition.
+func WorkerOnProbeResult(f ResultFunc) WorkerOption {
+	return func(w *Worker) {
+		w.resultFunc = f
 	}
 }

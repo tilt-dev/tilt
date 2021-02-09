@@ -28,7 +28,7 @@ func TestLocalResource(t *testing.T) {
 	f.TiltWatch()
 
 	const barServeLogMessage = "Running serve cmd: ./hello.sh bar"
-	const readinessProbeSuccessMessage = `[readiness probe] fake probe success message`
+	const readinessProbeSuccessMessage = `[readiness probe: success] fake probe success message`
 
 	require.NoError(t, f.logs.WaitUntilContains("hello! foo #1", 5*time.Second))
 
@@ -44,7 +44,7 @@ func TestLocalResource(t *testing.T) {
 	require.NoError(t, f.logs.WaitUntilContains("hello! bar #1", 5*time.Second))
 
 	require.NoError(t, os.Remove(f.testDirPath("probe-success")))
-	require.NoError(t, f.logs.WaitUntilContains(`[readiness probe] fake probe failure message`, 5*time.Second))
+	require.NoError(t, f.logs.WaitUntilContains(`[readiness probe: failure] fake probe failure message`, 5*time.Second))
 
 	// send a SIGTERM and make sure Tilt propagates it to its local_resource processes
 	require.NoError(t, f.activeTiltUp.process.Signal(syscall.SIGTERM))

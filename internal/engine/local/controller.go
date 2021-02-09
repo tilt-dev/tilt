@@ -117,14 +117,12 @@ func (c *Controller) stop(name model.ManifestName) {
 	proc := c.procs[name]
 	// change the process's current number so that any further events received by the existing process will be considered out of date
 	proc.incrProcNum()
-	if proc.probeWorker != nil {
-		proc.probeWorker.Stop()
-	}
 	if proc.cancelFunc == nil {
 		return
 	}
 	proc.cancelFunc()
 	<-proc.doneCh
+	proc.probeWorker = nil
 	proc.cancelFunc = nil
 	proc.doneCh = nil
 }
@@ -163,11 +161,13 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 
 	spanID := SpanIDForServeLog(proc.procNum)
 	if spec.ReadinessProbe != nil {
-		statusChangeFunc := processReadinessProbeUpdate(ctx, st, spec.ManifestName, proc.stillHasSameProcNum())
+		statusChangeFunc := processReadinessProbeStatusChange(ctx, st, spec.ManifestName, proc.stillHasSameProcNum())
+		resultLoggerFunc := processReadinessProbeResultLogger(ctx, proc.stillHasSameProcNum())
 		probeWorker, err := probeWorkerFromSpec(
 			c.proberManager,
 			spec.ReadinessProbe,
-			statusChangeFunc)
+			statusChangeFunc,
+			resultLoggerFunc)
 		if err != nil {
 			logger.Get(ctx).Errorf("Invalid readiness probe: %v", err)
 			st.Dispatch(LocalServeStatusAction{
@@ -185,33 +185,58 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
 }
 
-func processReadinessProbeUpdate(
-	ctx context.Context,
-	st store.RStore,
-	manifestName model.ManifestName,
-	stillHasSameProcNum func() bool) probe.StatusChangedFunc {
+func processReadinessProbeStatusChange(ctx context.Context, st store.RStore, manifestName model.ManifestName, stillHasSameProcNum func() bool) probe.StatusChangedFunc {
 	return func(status prober.Result, output string) {
 		if !stillHasSameProcNum() {
 			return
 		}
-		if output != "" {
-			w := logger.Get(ctx).Writer(logger.VerboseLvl)
 
-			var logMessage strings.Builder
-			s := bufio.NewScanner(strings.NewReader(output))
-			for s.Scan() {
-				logMessage.WriteString("[readiness probe] ")
-				logMessage.WriteString(s.Text())
-				logMessage.WriteRune('\n')
-			}
-
-			_, _ = io.WriteString(w, logMessage.String())
+		if status == prober.Success {
+			// successful probes are ONLY logged on status change to reduce chattiness
+			logProbeOutput(ctx, status, output, nil)
 		}
+
 		ready := status == prober.Success || status == prober.Warning
 		st.Dispatch(LocalServeReadinessProbeAction{
 			ManifestName: manifestName,
 			Ready:        ready,
 		})
+	}
+}
+
+func logProbeOutput(ctx context.Context, result prober.Result, output string, err error) {
+	l := logger.Get(ctx)
+	if !l.Level().ShouldDisplay(logger.VerboseLvl) {
+		return
+	}
+
+	if err != nil {
+		l.Verbosef("[readiness probe error] %v", err)
+	} else if output != "" {
+		w := l.Writer(logger.VerboseLvl)
+		var logMessage strings.Builder
+		s := bufio.NewScanner(strings.NewReader(output))
+		for s.Scan() {
+			logMessage.WriteString("[readiness probe: ")
+			logMessage.WriteString(string(result))
+			logMessage.WriteString("] ")
+			logMessage.Write(s.Bytes())
+			logMessage.WriteRune('\n')
+		}
+		_, _ = io.WriteString(w, logMessage.String())
+	}
+}
+
+func processReadinessProbeResultLogger(ctx context.Context, stillHasSameProcNum func() bool) probe.ResultFunc {
+	return func(result prober.Result, output string, err error) {
+		if !stillHasSameProcNum() {
+			return
+		}
+
+		// successful probes are ONLY logged on status change to reduce chattiness
+		if result != prober.Success {
+			logProbeOutput(ctx, result, output, err)
+		}
 	}
 }
 
