@@ -19,10 +19,10 @@ let OverviewGridRoot = styled.ul`
   box-sizing: border-box;
   &:nth-child(even) {
     border-bottom: 1px dotted ${Color.grayLight};
-  }
+  };
   &:last-child {
     border-bottom-width: 0;
-  }
+  };
 `
 
 export default function OverviewGrid(props: OverviewGridProps) {
