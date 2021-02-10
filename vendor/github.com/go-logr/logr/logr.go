@@ -78,9 +78,9 @@ limitations under the License.
 // Each log message from a Logger has four types of context:
 // logger name, log verbosity, log message, and the named values.
 //
-// The Logger name constists of a series of name "segments" added by successive
+// The Logger name consists of a series of name "segments" added by successive
 // calls to WithName.  These name segments will be joined in some way by the
-// underlying implementation.  It is strongly reccomended that name segements
+// underlying implementation.  It is strongly recommended that name segments
 // contain simple identifiers (letters, digits, and hyphen), and do not contain
 // characters that could muddle the log output or confuse the joining operation
 // (e.g.  whitespace, commas, periods, slashes, brackets, quotes, etc).
@@ -91,8 +91,8 @@ limitations under the License.
 // and log messages for users to filter on.  It's illegal to pass a log level
 // below zero.
 //
-// The log message consists of a constant message attached to the the log line.
-// This should generally be a simple description of what's occuring, and should
+// The log message consists of a constant message attached to the log line.
+// This should generally be a simple description of what's occurring, and should
 // never be a format string.
 //
 // Variable information can then be attached using named values (key/value
@@ -125,7 +125,7 @@ limitations under the License.
 // - `"ts"`: the timestamp for a log line.
 //
 // Implementations are encouraged to make use of these keys to represent the
-// above concepts, when neccessary (for example, in a pure-JSON output form, it
+// above concepts, when necessary (for example, in a pure-JSON output form, it
 // would be necessary to represent at least message and timestamp as ordinary
 // named values).
 package logr
@@ -171,8 +171,12 @@ type Logger interface {
 
 	// WithName adds a new element to the logger's name.
 	// Successive calls with WithName continue to append
-	// suffixes to the logger's name.  It's strongly reccomended
+	// suffixes to the logger's name.  It's strongly recommended
 	// that name segments contain only letters, digits, and hyphens
 	// (see the package documentation for more information).
 	WithName(name string) Logger
 }
+
+// InfoLogger provides compatibility with code that relies on the v0.1.0 interface
+// Deprecated: use Logger instead. This will be removed in a future release.
+type InfoLogger = Logger

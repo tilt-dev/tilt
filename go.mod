@@ -23,7 +23,7 @@ require (
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
-	github.com/fatih/color v1.7.0
+	github.com/fatih/color v1.9.0
 	github.com/gdamore/tcell v1.1.3
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-errors/errors v1.1.1 // indirect
@@ -45,8 +45,8 @@ require (
 	github.com/json-iterator/go v1.1.10
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
-	github.com/mattn/go-colorable v0.1.4
-	github.com/mattn/go-isatty v0.0.10
+	github.com/mattn/go-colorable v0.1.7
+	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-sqlite3 v2.0.2+incompatible // indirect
 	github.com/mattn/go-tty v0.0.3
 	github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e // indirect
@@ -68,6 +68,7 @@ require (
 	github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.2.0
+	github.com/tilt-dev/tilt-apiserver v0.0.0-20210210202120-90d2423ea10f
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
@@ -75,9 +76,9 @@ require (
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20200615180055-61b64bc45990
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
-	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/text v0.3.5 // indirect
-	google.golang.org/genproto v0.0.0-20200527145253-8367513e4ece
+	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.29.1
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/dancannon/gorethink.v3 v3.0.5 // indirect
@@ -86,12 +87,12 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	helm.sh/helm/v3 v3.4.1
-	k8s.io/api v0.20.0
-	k8s.io/apimachinery v0.20.0
-	k8s.io/cli-runtime v0.20.0
-	k8s.io/client-go v0.20.0
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.20.2
+	k8s.io/cli-runtime v0.20.2
+	k8s.io/client-go v0.20.2
 	k8s.io/klog/v2 v2.4.0
-	k8s.io/kubectl v0.20.0
+	k8s.io/kubectl v0.20.2
 	sigs.k8s.io/kustomize/api v0.7.2
 	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
