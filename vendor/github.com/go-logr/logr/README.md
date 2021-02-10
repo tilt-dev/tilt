@@ -41,6 +41,7 @@ There are implementations for the following logging libraries:
 - **log** (the Go standard library logger):
   [stdr](https://github.com/go-logr/stdr)
 - **github.com/sirupsen/logrus**: [logrusr](https://github.com/bombsimon/logrusr)
+- **github.com/wojas/genericr**: [genericr](https://github.com/wojas/genericr) (makes it easy to implement your own backend)
 
 # FAQ
 
