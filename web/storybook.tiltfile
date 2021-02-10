@@ -21,7 +21,7 @@ local_resource(
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
-local_resource(
+test(
   'test-js',
   'cd .. && make test-js',
   auto_init=False,
