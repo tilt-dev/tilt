@@ -91,8 +91,10 @@ require (
 	k8s.io/apimachinery v0.20.2
 	k8s.io/cli-runtime v0.20.2
 	k8s.io/client-go v0.20.2
+	k8s.io/code-generator v0.20.2
 	k8s.io/klog/v2 v2.4.0
 	k8s.io/kubectl v0.20.2
+	sigs.k8s.io/apiserver-runtime v0.0.0-20201103144618-b52895ea8337
 	sigs.k8s.io/kustomize/api v0.7.2
 	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
