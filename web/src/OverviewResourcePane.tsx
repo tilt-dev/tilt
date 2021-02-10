@@ -1,6 +1,7 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import styled from "styled-components"
 import { Alert, combinedAlerts } from "./alerts"
+import { LogUpdateAction, LogUpdateEvent, useLogStore } from "./LogStore"
 import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
@@ -32,6 +33,7 @@ let Main = styled.div`
 
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let nav = useTabNav()
+  const logStore = useLogStore()
   let resources = props.view?.resources || []
   let name = nav.invalidTab || nav.selectedTab || ""
   let r: Proto.webviewResource | undefined
@@ -46,11 +48,27 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     selectedTab = r.name
   }
 
+  const [truncateCount, setTruncateCount] = useState<number>(0)
+
+  // add a listener to rebuild alerts whenever a truncation event occurs
+  // truncateCount is a dummy state variable to trigger a re-render to
+  // simplify logic vs reconciliation between logStore + props
+  useEffect(() => {
+    const rebuildAlertsOnLogClear = (e: LogUpdateEvent) => {
+      if (e.action === LogUpdateAction.truncate) {
+        setTruncateCount(truncateCount + 1)
+      }
+    }
+
+    logStore.addUpdateListener(rebuildAlertsOnLogClear)
+    return () => logStore.removeUpdateListener(rebuildAlertsOnLogClear)
+  }, [truncateCount])
+
   let alerts: Alert[] = []
   if (r) {
-    alerts = combinedAlerts(r, null)
+    alerts = combinedAlerts(r, logStore)
   } else if (all) {
-    resources.forEach((r) => alerts.push(...combinedAlerts(r, null)))
+    resources.forEach((r) => alerts.push(...combinedAlerts(r, logStore)))
   }
 
   // Hide the HTML element scrollbars, since this pane does all scrolling internally.

@@ -9,6 +9,7 @@ import {
 } from "./alerts"
 import { FilterLevel, FilterSource } from "./logfilters"
 import LogStore from "./LogStore"
+import { appendLinesForManifestAndSpan } from "./testlogs"
 import { TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
@@ -130,11 +131,16 @@ describe("combinedAlerts", () => {
       {
         warnings: ["Hi i'm a warning"],
         finishTime: "10:00am",
+        spanId: "build:2",
       },
       {
         warnings: ["This warning shouldn't show up", "Or this one"],
+        spanId: "build:1",
       },
     ]
+
+    appendLinesForManifestAndSpan(logStore, r.name!, "build:1", ["build 1"])
+    appendLinesForManifestAndSpan(logStore, r.name!, "build:2", ["build 2"])
 
     let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
@@ -268,38 +274,17 @@ it("DC Resource: should show a warning alert using the first build history", () 
     {
       warnings: ["Hi i'm a warning"],
       finishTime: "10:00am",
+      spanId: "build:2",
     },
     {
       warnings: ["This warning shouldn't show up", "Or this one"],
+      spanId: "build:1",
     },
   ]
-  let actual = combinedAlerts(r, logStore)
-  let expectedAlerts: Alert[] = [
-    {
-      alertType: WarningErrorType,
-      msg: "Hi i'm a warning",
-      timestamp: "10:00am",
-      header: "vigoda",
-      resourceName: "vigoda",
-      level: FilterLevel.warn,
-      source: FilterSource.build,
-    },
-  ]
-  expect(actual).toEqual(expectedAlerts)
-})
 
-//DC Resource Tests
-it("DC resource: should show a warning alert using the first build history", () => {
-  let r: Resource = dcResource()
-  r.buildHistory = [
-    {
-      warnings: ["Hi i'm a warning"],
-      finishTime: "10:00am",
-    },
-    {
-      warnings: ["This warning shouldn't show up", "Or this one"],
-    },
-  ]
+  appendLinesForManifestAndSpan(logStore, r.name!, "build:1", ["build 1"])
+  appendLinesForManifestAndSpan(logStore, r.name!, "build:2", ["build 2"])
+
   let actual = combinedAlerts(r, logStore)
   let expectedAlerts: Alert[] = [
     {

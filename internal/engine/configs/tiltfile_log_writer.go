@@ -24,5 +24,5 @@ func (w *tiltfileLogWriter) Write(level logger.Level, fields logger.Fields, p []
 }
 
 func SpanIDForLoadCount(loadCount int) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("tilfile:%d", loadCount))
+	return logstore.SpanID(fmt.Sprintf("tiltfile:%d", loadCount))
 }
