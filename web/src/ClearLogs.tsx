@@ -13,10 +13,7 @@ const ClearLogsButton = styled.button`
   margin-left: auto;
   font-size: ${FontSize.small};
   color: ${Color.white};
-
-  & {
-    transition: color ${AnimDuration.default} ease;
-  }
+  transition: color ${AnimDuration.default} ease;
 
   &:hover {
     color: ${Color.blue};
