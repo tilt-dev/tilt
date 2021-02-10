@@ -626,6 +626,7 @@ golang.org/x/crypto/ssh/terminal
 golang.org/x/lint
 golang.org/x/lint/golint
 # golang.org/x/mod v0.3.0
+golang.org/x/mod/module
 golang.org/x/mod/semver
 # golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 ## explicit
@@ -686,12 +687,16 @@ golang.org/x/tools/go/loader
 golang.org/x/tools/go/packages
 golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/go/types/typeutil
+golang.org/x/tools/imports
 golang.org/x/tools/internal/analysisinternal
 golang.org/x/tools/internal/event
 golang.org/x/tools/internal/event/core
 golang.org/x/tools/internal/event/keys
 golang.org/x/tools/internal/event/label
+golang.org/x/tools/internal/fastwalk
 golang.org/x/tools/internal/gocommand
+golang.org/x/tools/internal/gopathwalk
+golang.org/x/tools/internal/imports
 golang.org/x/tools/internal/lsp/fuzzy
 golang.org/x/tools/internal/packagesinternal
 golang.org/x/tools/internal/typesinternal
@@ -1349,6 +1354,41 @@ k8s.io/client-go/util/homedir
 k8s.io/client-go/util/jsonpath
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/workqueue
+# k8s.io/code-generator v0.20.2
+## explicit
+k8s.io/code-generator
+k8s.io/code-generator/cmd/client-gen
+k8s.io/code-generator/cmd/client-gen/args
+k8s.io/code-generator/cmd/client-gen/generators
+k8s.io/code-generator/cmd/client-gen/generators/fake
+k8s.io/code-generator/cmd/client-gen/generators/scheme
+k8s.io/code-generator/cmd/client-gen/generators/util
+k8s.io/code-generator/cmd/client-gen/path
+k8s.io/code-generator/cmd/client-gen/types
+k8s.io/code-generator/cmd/conversion-gen
+k8s.io/code-generator/cmd/conversion-gen/args
+k8s.io/code-generator/cmd/conversion-gen/generators
+k8s.io/code-generator/cmd/deepcopy-gen
+k8s.io/code-generator/cmd/deepcopy-gen/args
+k8s.io/code-generator/cmd/defaulter-gen
+k8s.io/code-generator/cmd/defaulter-gen/args
+k8s.io/code-generator/cmd/go-to-protobuf
+k8s.io/code-generator/cmd/go-to-protobuf/protobuf
+k8s.io/code-generator/cmd/import-boss
+k8s.io/code-generator/cmd/informer-gen
+k8s.io/code-generator/cmd/informer-gen/args
+k8s.io/code-generator/cmd/informer-gen/generators
+k8s.io/code-generator/cmd/lister-gen
+k8s.io/code-generator/cmd/lister-gen/args
+k8s.io/code-generator/cmd/lister-gen/generators
+k8s.io/code-generator/cmd/openapi-gen
+k8s.io/code-generator/cmd/register-gen
+k8s.io/code-generator/cmd/register-gen/args
+k8s.io/code-generator/cmd/register-gen/generators
+k8s.io/code-generator/cmd/set-gen
+k8s.io/code-generator/pkg/namer
+k8s.io/code-generator/pkg/util
+k8s.io/code-generator/third_party/forked/golang/reflect
 # k8s.io/component-base v0.20.2
 k8s.io/component-base/cli/flag
 k8s.io/component-base/featuregate
@@ -1361,19 +1401,34 @@ k8s.io/component-base/metrics/legacyregistry
 k8s.io/component-base/metrics/prometheus/workqueue
 k8s.io/component-base/metrics/testutil
 k8s.io/component-base/version
+# k8s.io/gengo v0.0.0-20201113003025-83324d819ded
+k8s.io/gengo/args
+k8s.io/gengo/examples/deepcopy-gen/generators
+k8s.io/gengo/examples/defaulter-gen/generators
+k8s.io/gengo/examples/import-boss/generators
+k8s.io/gengo/examples/set-gen/generators
+k8s.io/gengo/examples/set-gen/sets
+k8s.io/gengo/generator
+k8s.io/gengo/namer
+k8s.io/gengo/parser
+k8s.io/gengo/types
 # k8s.io/klog v1.0.0
 k8s.io/klog
 # k8s.io/klog/v2 v2.4.0
 ## explicit
 k8s.io/klog/v2
 # k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
+k8s.io/kube-openapi/cmd/openapi-gen/args
 k8s.io/kube-openapi/pkg/builder
 k8s.io/kube-openapi/pkg/common
+k8s.io/kube-openapi/pkg/generators
+k8s.io/kube-openapi/pkg/generators/rules
 k8s.io/kube-openapi/pkg/handler
 k8s.io/kube-openapi/pkg/schemaconv
 k8s.io/kube-openapi/pkg/util
 k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/util/proto/validation
+k8s.io/kube-openapi/pkg/util/sets
 # k8s.io/kubectl v0.20.2
 ## explicit
 k8s.io/kubectl/pkg/cmd/apply
@@ -1404,6 +1459,10 @@ k8s.io/utils/trace
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.14
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/proto/client
+# sigs.k8s.io/apiserver-runtime v0.0.0-20201103144618-b52895ea8337
+## explicit
+sigs.k8s.io/apiserver-runtime/pkg/builder/resource
+sigs.k8s.io/apiserver-runtime/pkg/builder/resource/resourcestrategy
 # sigs.k8s.io/kustomize v2.0.3+incompatible
 sigs.k8s.io/kustomize/pkg/commands/build
 sigs.k8s.io/kustomize/pkg/constants

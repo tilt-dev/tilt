@@ -1,4 +1,3 @@
-
 /*
 Copyright 2020 The Tilt Dev Authors
 
@@ -15,11 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
-
 // +k8s:deepcopy-gen=package,register
 // +groupName=core.tilt.dev
 
 // Package api is the internal version of the API.
 package core
-

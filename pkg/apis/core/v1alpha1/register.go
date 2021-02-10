@@ -1,4 +1,3 @@
-
 /*
 Copyright 2020 The Tilt Dev Authors
 
@@ -15,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package v1alpha1
 
 import (
@@ -23,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
-
 
 var AddToScheme = func(scheme *runtime.Scheme) error {
 	metav1.AddToGroupVersion(scheme, schema.GroupVersion{

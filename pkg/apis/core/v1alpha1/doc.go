@@ -1,4 +1,3 @@
-
 /*
 Copyright 2020 The Tilt Dev Authors
 
@@ -15,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 // Api versions allow the api contract for a resource to be changed while keeping
 // backward compatibility by support multiple concurrent versions
 // of the same resource
@@ -26,4 +24,3 @@ limitations under the License.
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=core.tilt.dev
 package v1alpha1 // import "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-
