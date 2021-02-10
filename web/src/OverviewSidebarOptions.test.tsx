@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   TestsWithErrors,
+  TwoResources,
   TwoResourcesTwoTests,
 } from "./OverviewResourceSidebar.stories"
 import {
@@ -12,15 +13,19 @@ import {
   OverviewSidebarOptions,
 } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
-import SidebarItem from "./SidebarItem"
 import SidebarItemView from "./SidebarItemView"
 import { SidebarPinContextProvider } from "./SidebarPin"
-import SidebarResources, { SidebarListSection } from "./SidebarResources"
-import { oneResource, tiltfileResource } from "./testdata"
-import { ResourceView } from "./types"
+import SidebarResources, {
+  defaultOptions,
+  SidebarListSection,
+} from "./SidebarResources"
+import { SidebarOptions } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
+const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
+  "sidebar_options"
+)
 const pinnedResourcesAccessor = accessorsForTesting<string[]>(
   "pinned-resources"
 )
@@ -118,28 +123,28 @@ describe("overview sidebar options", () => {
   })
 
   it("doesn't show filter options if no tests present", () => {
-    let items = [tiltfileResource(), oneResource()].map(
-      (r) => new SidebarItem(r)
-    )
-    const root = mount(
-      <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
-            <SidebarResources
-              items={items}
-              selected={""}
-              resourceView={ResourceView.Log}
-              pathBuilder={pathBuilder}
-            />
-          </SidebarPinContextProvider>
-        </tiltfileKeyContext.Provider>
-      </MemoryRouter>
-    )
+    const root = mount(TwoResources())
+
     let sidebar = root.find(SidebarResources)
     expect(sidebar).toHaveLength(1)
 
     let filters = sidebar.find(FilterOptionList)
     expect(filters).toHaveLength(0)
+  })
+
+  it("shows filter options when no tests are present if filter options are non-default", () => {
+    sidebarOptionsAccessor.set({ ...defaultOptions, showResources: false })
+    const root = mount(
+      <tiltfileKeyContext.Provider value="test">
+        {TwoResources()}
+      </tiltfileKeyContext.Provider>
+    )
+
+    let sidebar = root.find(SidebarResources)
+    expect(sidebar).toHaveLength(1)
+
+    let filters = sidebar.find(FilterOptionList)
+    expect(filters).toHaveLength(1)
   })
 
   it("still displays pinned tests when tests hidden", () => {
