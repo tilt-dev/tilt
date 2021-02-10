@@ -146,7 +146,7 @@ release:
 
 prettier:
 	cd web && yarn install
-	cd web && yarn run prettier --write "src/**/*.ts*"
+	cd web && yarn prettier
 
 storybook:
 	cd web && yarn install
