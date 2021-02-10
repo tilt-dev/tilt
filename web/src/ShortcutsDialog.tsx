@@ -58,6 +58,26 @@ function Shortcut(props: React.PropsWithChildren<{ label: string }>) {
   )
 }
 
+function cmdOrCtrlShortcut(key: string) {
+  // OS detection is inherently fragile on the web; thankfully, we really only
+  // care about macOS vs "everything else" and as of macOS 11 (Big Sur), this
+  // works reliably
+  const isMac = navigator.platform.indexOf("Mac") != -1
+
+  if (isMac) {
+    return (
+      <>
+        <ShortcutBox>&#8984;</ShortcutBox> + <ShortcutBox>{key}</ShortcutBox>
+      </>
+    )
+  }
+  return (
+    <>
+      <ShortcutBox>Ctrl</ShortcutBox> + <ShortcutBox>{key}</ShortcutBox>
+    </>
+  )
+}
+
 export default function ShortcutsDialog(props: props) {
   return (
     <FloatDialog id="shortcuts" title="Keyboard Shortcuts" {...props}>
@@ -81,6 +101,7 @@ export default function ShortcutsDialog(props: props) {
           </Shortcut>
         </React.Fragment>
       )}
+      <Shortcut label="Clear Logs">{cmdOrCtrlShortcut("Backspace")}</Shortcut>
       <Shortcut label="Make Snapshot">
         <ShortcutBox>s</ShortcutBox>
       </Shortcut>

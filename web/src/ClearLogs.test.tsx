@@ -3,8 +3,8 @@ import React from "react"
 import ClearLogs from "./ClearLogs"
 import { logLinesToString } from "./logs"
 import LogStore, { LogStoreProvider } from "./LogStore"
-import { oneResource } from "./testdata"
 import { appendLinesForManifestAndSpan } from "./testlogs"
+import { ResourceName } from "./types"
 
 describe("ClearLogs", () => {
   const createPopulatedLogStore = (): LogStore => {
@@ -36,7 +36,7 @@ describe("ClearLogs", () => {
     const logStore = createPopulatedLogStore()
     const root = mount(
       <LogStoreProvider value={logStore}>
-        <ClearLogs />
+        <ClearLogs resourceName={ResourceName.all} />
       </LogStoreProvider>
     )
     root.find(ClearLogs).simulate("click")
@@ -46,10 +46,9 @@ describe("ClearLogs", () => {
 
   it("clears a specific resource", () => {
     const logStore = createPopulatedLogStore()
-    const resource = oneResource()
     const root = mount(
       <LogStoreProvider value={logStore}>
-        <ClearLogs resource={resource} />
+        <ClearLogs resourceName={"vigoda"} />
       </LogStoreProvider>
     )
     root.find(ClearLogs).simulate("click")
