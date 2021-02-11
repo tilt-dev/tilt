@@ -14,9 +14,11 @@ import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import ClearLogs from "./ClearLogs"
 import { displayURL } from "./links"
 import { FilterLevel, FilterSet, FilterSource } from "./logfilters"
+import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { usePathBuilder } from "./PathBuilder"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { ResourceName } from "./types"
 
 type OverviewActionBarProps = {
   // The current resource. May be null if there is no resource.
@@ -415,10 +417,11 @@ function openEndpointUrl(url: string) {
 
 export default function OverviewActionBar(props: OverviewActionBarProps) {
   let { resource, filterSet, alerts } = props
-  let manifestName = resource?.name || ""
   let endpoints = resource?.endpointLinks || []
   let podId = resource?.podID || ""
+  const resourceName = resource ? resource.name || "" : ResourceName.all
   const isSnapshot = usePathBuilder().isSnapshot()
+  const logStore = useLogStore()
 
   let endpointEls: any = []
   endpoints.forEach((ep, i) => {
@@ -452,15 +455,17 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
           <EndpointSet />
         )}
         {copyButton}
-        <OverviewActionBarKeyboardShortcuts
-          endpoints={endpoints}
-          openEndpointUrl={openEndpointUrl}
-        />
       </ActionBarTopRow>
     ) : null
 
   return (
     <ActionBarRoot>
+      <OverviewActionBarKeyboardShortcuts
+        logStore={logStore}
+        resourceName={resourceName}
+        endpoints={endpoints}
+        openEndpointUrl={openEndpointUrl}
+      />
       {topRow}
       <ActionBarBottomRow>
         <FilterRadioButton
@@ -478,7 +483,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
           filterSet={props.filterSet}
           alerts={alerts}
         />
-        {isSnapshot || <ClearLogs resource={resource} />}
+        {isSnapshot || <ClearLogs resourceName={resourceName} />}
       </ActionBarBottomRow>
     </ActionBarRoot>
   )

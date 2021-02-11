@@ -1,9 +1,13 @@
 import React, { Component } from "react"
 import { incr } from "./analytics"
+import { clearLogs } from "./ClearLogs"
+import LogStore from "./LogStore"
 
 type Link = Proto.webviewLink
 
 type Props = {
+  logStore: LogStore
+  resourceName: string
   endpoints?: Link[]
   openEndpointUrl: (url: string) => void
 }
@@ -29,7 +33,17 @@ class OverviewActionBarKeyboardShortcuts extends Component<Props> {
   }
 
   onKeydown(e: KeyboardEvent) {
-    if (e.metaKey || e.altKey || e.ctrlKey || e.isComposing) {
+    if (e.altKey || e.isComposing) {
+      return
+    }
+
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === "Backspace" && !e.shiftKey) {
+        clearLogs(this.props.logStore, this.props.resourceName, "shortcut")
+        e.preventDefault()
+        return
+      }
+
       return
     }
 
@@ -48,7 +62,7 @@ class OverviewActionBarKeyboardShortcuts extends Component<Props> {
   }
 
   render() {
-    return <span style={{ display: "none" }}></span>
+    return <></>
   }
 }
 
