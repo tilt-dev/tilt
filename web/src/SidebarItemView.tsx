@@ -97,9 +97,8 @@ let SidebarItemInnerBox = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  // Long Resource names need to be truncated.
-  // Override default where flex item can't be less wide than its content:
-  min-width: 0;
+  // To truncate long resource names…
+  min-width: 0; // Override default that accomodates width of content
 `
 
 let SidebarItemRuntimeBox = styled.div`
