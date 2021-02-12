@@ -15,7 +15,7 @@ let Container = styled.div`
 `
 
 export default {
-  title: "New UI/_To Review/AccountMenu",
+  title: "New UI/Shared/AccountMenu",
   decorators: [
     (Story: any) => (
       <Container>

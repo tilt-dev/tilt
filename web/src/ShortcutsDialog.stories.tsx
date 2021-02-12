@@ -7,7 +7,7 @@ function onRequestClose() {
 }
 
 export default {
-  title: "New UI/_To Review/ShortcutsDialog",
+  title: "New UI/Shared/ShortcutsDialog",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>

@@ -85,7 +85,7 @@ let withTeam = () => {
 }
 
 export default {
-  title: "New UI/_To Review/ShareSnapshotModal",
+  title: "New UI/Shared/ShareSnapshotModal",
 }
 
 export const SignedOut = signedOut

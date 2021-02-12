@@ -2,7 +2,7 @@ import React from "react"
 import MetricsDialog from "./MetricsDialog"
 
 export default {
-  title: "New UI/_To Review/MetricsDialog",
+  title: "New UI/Shared/MetricsDialog",
   argTypes: { onClose: { action: "closed" } },
 }
 
