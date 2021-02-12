@@ -188,7 +188,7 @@ let RuntimeBoxStack = styled.div`
   flex-grow: 1;
   flex-shrink: 1;
   // To truncate long resource names…
-  min-width: 0; // Override default that accomodates width of content
+  min-width: 0; // Override default, so width can be less than content
 `
 
 let InnerRuntimeBox = styled.div`
