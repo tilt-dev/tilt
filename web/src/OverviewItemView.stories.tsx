@@ -1,12 +1,12 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
-import OverviewItemView,{
-OverviewItem,
-OverviewItemDetails,
-OverviewItemViewProps
+import OverviewItemView, {
+  OverviewItem,
+  OverviewItemDetails,
+  OverviewItemViewProps,
 } from "./OverviewItemView"
 import { oneResourceNoAlerts } from "./testdata"
-import { ResourceStatus,TriggerMode } from "./types"
+import { ResourceStatus, TriggerMode } from "./types"
 
 type Resource = Proto.webviewResource
 
