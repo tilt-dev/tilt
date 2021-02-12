@@ -97,6 +97,8 @@ let SidebarItemInnerBox = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  // To truncate long resource names…
+  min-width: 0; // Override default, so width can be less than content
 `
 
 let SidebarItemRuntimeBox = styled.div`
@@ -121,13 +123,15 @@ let SidebarItemBuildBox = styled.div`
 let SidebarItemText = styled.div`
   display: flex;
   align-items: center;
-  flex-grow: 1;
   white-space: nowrap;
   overflow: hidden;
   opacity: ${ColorAlpha.almostOpaque};
-  // TODO: Allow flex-grow: 1 to work with text truncation
-  // For now, a hack that sacrifices some width but ensures truncation:
-  max-width: 140px;
+`
+
+let SidebarPinBox = styled.div`
+  display: flex;
+  align-items: stretch;
+  flex-grow: 1;
 `
 
 let SidebarItemAllRoot = styled(SidebarItemRoot)`
@@ -204,6 +208,7 @@ let SidebarItemTimeAgo = styled.span`
 let SidebarItemActions = styled.div`
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 `
 
 export function triggerUpdate(name: string, action: string) {
@@ -343,7 +348,9 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
               alertCount={item.runtimeAlertCount}
             />
             <SidebarItemName name={item.name} />
-            <SidebarPinButton resourceName={item.name} />
+            <SidebarPinBox>
+              <SidebarPinButton resourceName={item.name} />
+            </SidebarPinBox>
             <SidebarItemTimeAgo>
               {hasSuccessfullyDeployed ? timeAgo : "—"}
             </SidebarItemTimeAgo>

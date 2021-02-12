@@ -10,7 +10,6 @@ let PinButton = styled.button`
   padding: 0;
   background-color: transparent;
   align-items: center;
-  justify-content: flex-start;
   margin-right: 5px;
 `
 

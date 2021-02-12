@@ -187,6 +187,8 @@ let RuntimeBoxStack = styled.div`
   flex-direction: column;
   flex-grow: 1;
   flex-shrink: 1;
+  // To truncate long resource names…
+  min-width: 0; // Override default, so width can be less than content
 `
 
 let InnerRuntimeBox = styled.div`
@@ -219,9 +221,6 @@ let OverviewItemNameRoot = styled(OverviewItemText)`
   font-family: ${Font.sansSerif};
   font-weight: 600;
   z-index: 1; // Appear above the .isBuilding gradient
-  // TODO: Allow flex-grow: 1 to work with text truncation
-  // For now, a hack that sacrifices some width but ensures truncation:
-  max-width: 240px;
 `
 
 let OverviewItemNameTruncate = styled.span`
