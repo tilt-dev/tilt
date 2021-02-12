@@ -2,7 +2,7 @@ import React from "react"
 import AnalyticsNudge from "./AnalyticsNudge"
 
 export default {
-  title: "AnalyticsNudge",
+  title: "New UI/_To Review/AnalyticsNudge",
 }
 
 export const NeedsNudge = () => <AnalyticsNudge needsNudge={true} />

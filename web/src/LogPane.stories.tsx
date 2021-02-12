@@ -48,7 +48,7 @@ function threeResources() {
 }
 
 export default {
-  title: "LogPane",
+  title: "Legacy UI/LogPane",
 }
 
 export const ThreeResources = threeResources

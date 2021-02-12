@@ -114,7 +114,7 @@ function itemView(...options: optionFn[]) {
 }
 
 export default {
-  title: "SidebarItemView",
+  title: "Legacy UI/SidebarItemView",
   args: { selected: false },
 }
 

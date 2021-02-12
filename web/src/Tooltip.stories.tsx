@@ -2,7 +2,7 @@ import React from "react"
 import Tooltip from "./Tooltip"
 
 export default {
-  title: "Tooltip",
+  title: "New UI/_To Review/Tooltip",
 }
 
 export const Default = () => (

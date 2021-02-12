@@ -3,7 +3,7 @@ import SocketBar from "./SocketBar"
 import { SocketState } from "./types"
 
 export default {
-  title: "SocketBar",
+  title: "New UI/_To Review/SocketBar",
 }
 
 export const _Reconnecting = () => (

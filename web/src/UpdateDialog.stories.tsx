@@ -7,7 +7,7 @@ function onRequestClose() {
 }
 
 export default {
-  title: "UpdateDialog",
+  title: "Legacy UI/UpdateDialog",
 }
 
 export const Dialog = () => (

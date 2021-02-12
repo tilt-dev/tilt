@@ -7,7 +7,7 @@ import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 type Resource = Proto.webviewResource
 
 export default {
-  title: "OverviewGrid",
+  title: "New UI/Overview/OverviewGrid",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>

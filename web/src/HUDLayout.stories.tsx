@@ -106,7 +106,7 @@ function layoutTwoLevelNav() {
 }
 
 export default {
-  title: "HUDLayout",
+  title: "Legacy UI/HUDLayout",
 }
 
 export const Default = layoutDefault

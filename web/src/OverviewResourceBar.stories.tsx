@@ -12,7 +12,7 @@ import { UpdateStatus } from "./types"
 type Resource = Proto.webviewResource
 
 export default {
-  title: "OverviewResourceBar",
+  title: "New UI/Shared/OverviewResourceBar",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>

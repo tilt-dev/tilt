@@ -6,7 +6,7 @@ import { OverviewNavProvider } from "./TabNav"
 type Resource = Proto.webviewResource
 
 export default {
-  title: "OverviewTabBar",
+  title: "New UI/Shared/OverviewTabBar",
   decorators: [
     (Story: any, context: any) => {
       return (
