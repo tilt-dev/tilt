@@ -88,6 +88,17 @@ func (s prodServer) fetchFromAssetBucket(w http.ResponseWriter, req *http.Reques
 	// want to embed other frames.
 	outres.Header.Del("X-Frame-Options")
 
+	// Set caching headers according to this doc:
+	// https://create-react-app.dev/docs/production-build/#static-file-caching
+	//
+	// Static artifacts are checksummed and can be cached indefinitely
+	// The main index html page should never be cached.
+	if strings.HasSuffix(u.Path, "index.html") {
+		outres.Header.Set("Cache-Control", "no-store, max-age=0")
+	} else {
+		outres.Header.Set("Cache-Control", "public, max-age=31536000")
+	}
+
 	copyHeader(w.Header(), outres.Header)
 
 	resBody, err := ioutil.ReadAll(outres.Body)
