@@ -77,7 +77,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -190,7 +190,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -303,7 +303,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -416,7 +416,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -529,7 +529,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -642,7 +642,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -755,7 +755,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -1013,7 +1013,7 @@ exports[`sidebar renders list of resources 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -1128,7 +1128,7 @@ exports[`sidebar renders list of resources 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -1316,7 +1316,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
@@ -1424,7 +1424,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe fazjKk"
+              className="sc-kEjbxe gpekhu"
             >
               <div
                 className="sc-iqHYGH juiiLS"
