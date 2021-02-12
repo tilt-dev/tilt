@@ -7,7 +7,7 @@ import { appendLines } from "./testlogs"
 import { LogLevel } from "./types"
 
 export default {
-  title: "OverviewLogPane",
+  title: "New UI/Overview/OverviewLogPane",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>

@@ -17,7 +17,7 @@ type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 export default {
-  title: "OverviewResourceSidebar",
+  title: "New UI/Log View/OverviewResourceSidebar",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>

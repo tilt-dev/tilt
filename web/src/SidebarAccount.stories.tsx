@@ -2,7 +2,7 @@ import React from "react"
 import SidebarAccount from "./SidebarAccount"
 
 export default {
-  title: "SidebarAccount",
+  title: "Legacy UI/SidebarAccount",
 }
 
 export const Default = () => (

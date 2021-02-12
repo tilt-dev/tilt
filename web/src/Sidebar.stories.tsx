@@ -114,7 +114,7 @@ function oneItemWithStatus(status: ResourceStatus) {
 }
 
 export default {
-  title: "Sidebar",
+  title: "Legacy UI/Sidebar",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>

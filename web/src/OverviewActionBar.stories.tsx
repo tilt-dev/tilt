@@ -9,7 +9,7 @@ import { oneResource } from "./testdata"
 type Resource = Proto.webviewResource
 
 export default {
-  title: "OverviewActionBar",
+  title: "New UI/Log View/OverviewActionBar",
   decorators: [
     (Story: any, context: any) => {
       let level = context?.args?.level || ""

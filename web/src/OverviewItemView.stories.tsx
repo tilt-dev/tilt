@@ -81,7 +81,7 @@ function itemView(...options: optionFn[]) {
 }
 
 export default {
-  title: "OverviewItemView",
+  title: "New UI/Overview/OverviewItemView",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>

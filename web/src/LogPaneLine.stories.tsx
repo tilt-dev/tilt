@@ -68,7 +68,7 @@ function threeLines() {
 }
 
 export default {
-  title: "LogPaneLine",
+  title: "Legacy UI/LogPaneLine",
 }
 
 export const InfoLine = infoLine

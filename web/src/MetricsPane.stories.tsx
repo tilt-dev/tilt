@@ -20,7 +20,7 @@ function graphs() {
 }
 
 export default {
-  title: "MetricsPane",
+  title: "New UI/_To Review/MetricsPane",
 }
 
 export const Teaser = teaser

@@ -6,7 +6,7 @@ const fakeOnClose = () => {}
 const longError = "ERROR\n".repeat(500)
 
 export default {
-  title: "FatalErrorModal",
+  title: "New UI/_To Review/FatalErrorModal",
 }
 
 export const ShortError = () => (

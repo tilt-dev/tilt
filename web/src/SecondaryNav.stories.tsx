@@ -122,7 +122,7 @@ function traceNavLast() {
 }
 
 export default {
-  title: "SecondaryNav",
+  title: "Legacy UI/SecondaryNav",
 }
 
 export const Default = topBarDefault
