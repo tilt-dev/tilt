@@ -41,11 +41,11 @@ const useStyles = makeStyles({
 
 let testFilterControlsBorderRadius = "3px"
 
-const TestFilterSegmentedControls = styled.div`
+const ResourceFilterSegmentedControls = styled.div`
   margin-left: ${SizeUnit(0.25)};
 `
 
-export const TestFilterSegmentedControl = styled.button`
+const ResourceFilterSegmentedControl = styled.button`
   ${mixinResetButtonStyle}
   color: ${Color.grayLightest};
   background-color: ${Color.gray};
@@ -57,17 +57,21 @@ export const TestFilterSegmentedControl = styled.button`
     background-color: ${Color.offWhite};
   }
 
-  &:first-child {
-    border-top-left-radius: ${testFilterControlsBorderRadius};
-    border-bottom-left-radius: ${testFilterControlsBorderRadius};
-  }
-  &:last-child {
-    border-top-right-radius: ${testFilterControlsBorderRadius};
-    border-bottom-right-radius: ${testFilterControlsBorderRadius};
-  }
   & + & {
     border-left: 2px solid ${Color.grayDark};
   }
+`
+
+export const TestsHiddenSegmentedControl = styled(
+  ResourceFilterSegmentedControl
+)`
+  border-top-left-radius: ${testFilterControlsBorderRadius};
+  border-bottom-left-radius: ${testFilterControlsBorderRadius};
+`
+
+export const TestsOnlySegmentedControl = styled(ResourceFilterSegmentedControl)`
+  border-top-right-radius: ${testFilterControlsBorderRadius};
+  border-bottom-right-radius: ${testFilterControlsBorderRadius};
 `
 
 export const AlertsOnTopToggle = styled.button`
@@ -128,20 +132,20 @@ function filterOptions(props: OverviewSidebarOptionsProps) {
   return (
     <FilterOptionList>
       Tests:
-      <TestFilterSegmentedControls>
-        <TestFilterSegmentedControl
+      <ResourceFilterSegmentedControls>
+        <TestsHiddenSegmentedControl
           className={props.options.testsHidden ? "is-enabled" : ""}
           onClick={(e) => toggleTestsHidden(props)}
         >
           Hidden
-        </TestFilterSegmentedControl>
-        <TestFilterSegmentedControl
+        </TestsHiddenSegmentedControl>
+        <TestsOnlySegmentedControl
           className={props.options.testsOnly ? "is-enabled" : ""}
           onClick={(e) => toggleTestsOnly(props)}
         >
           Only
-        </TestFilterSegmentedControl>
-      </TestFilterSegmentedControls>
+        </TestsOnlySegmentedControl>
+      </ResourceFilterSegmentedControls>
     </FilterOptionList>
   )
 }

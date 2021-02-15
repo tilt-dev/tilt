@@ -4,7 +4,11 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import { expectIncr } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
-import { AlertsOnTopToggle } from "./OverviewSidebarOptions"
+import {
+  AlertsOnTopToggle,
+  TestsHiddenSegmentedControl,
+  TestsOnlySegmentedControl,
+} from "./OverviewSidebarOptions"
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
@@ -140,18 +144,18 @@ describe("SidebarResources", () => {
 
   const loadCases: [string, SidebarOptions, string[]][] = [
     [
-      "showResources",
+      "tests only",
       { testsHidden: false, testsOnly: true, alertsOnTop: false },
       ["a", "b"],
     ],
     [
-      "showTests",
+      "tests hidden",
       { testsHidden: true, testsOnly: false, alertsOnTop: false },
       ["vigoda"],
     ],
     [
       "alertsOnTop",
-      { testsHidden: true, testsOnly: true, alertsOnTop: true },
+      { testsHidden: false, testsOnly: false, alertsOnTop: true },
       ["vigoda", "a", "b"],
     ],
   ]
@@ -190,14 +194,11 @@ describe("SidebarResources", () => {
   )
 
   const saveCases: [string, SidebarOptions][] = [
-    [
-      "showResources",
-      { testsHidden: false, testsOnly: true, alertsOnTop: true },
-    ],
-    ["showTests", { testsHidden: true, testsOnly: false, alertsOnTop: true }],
+    ["testsHidden", { testsHidden: true, testsOnly: false, alertsOnTop: true }],
+    ["testsOnly", { testsHidden: false, testsOnly: true, alertsOnTop: true }],
     [
       "alertsOnTop",
-      { testsHidden: true, testsOnly: true, alertsOnTop: false },
+      { testsHidden: false, testsOnly: false, alertsOnTop: false },
     ],
   ]
   test.each(saveCases)(
@@ -222,14 +223,18 @@ describe("SidebarResources", () => {
         </MemoryRouter>
       )
 
-      let resToggle = root.find("input#resources")
-      if (resToggle.props().checked != expectedOptions.testsHidden) {
-        resToggle.simulate("click")
+      let testsHiddenControl = root.find(TestsHiddenSegmentedControl)
+      if (
+        testsHiddenControl.hasClass("is-enabled") != expectedOptions.testsHidden
+      ) {
+        testsHiddenControl.simulate("click")
       }
 
-      let testToggle = root.find("input#tests")
-      if (testToggle.props().checked != expectedOptions.testsOnly) {
-        testToggle.simulate("click")
+      let testsOnlyControl = root.find(TestsOnlySegmentedControl)
+      if (
+        testsOnlyControl.hasClass("is-enabled") != expectedOptions.testsOnly
+      ) {
+        testsOnlyControl.simulate("click")
       }
 
       let aotToggle = root.find(AlertsOnTopToggle)

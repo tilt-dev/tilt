@@ -2,38 +2,38 @@
 
 exports[`sidebar abbreviates durations under a minute 1`] = `
 <nav
-  className="sc-dIUggk grSaCL Sidebar-resources "
+  className="sc-fKFyDc iXLYud Sidebar-resources "
 >
   <div
-    className="sc-hHftDr"
+    className="sc-bBXqnf"
   >
     <div>
       <div
-        className="sc-dmlrTW iTieuF"
+        className="sc-iwyYcG fXFHir"
       >
         
       </div>
       <ul
-        className="sc-kfzAmx khbJgg"
+        className="sc-cxFLnm jlNuLB"
       >
         <li
-          className="sc-pFZIQ sc-kstrdz eaCWvj gajrif"
+          className="sc-crrsfI sc-bkzZxe jItnSg gzVHhL"
         >
           <div
-            className="sc-jrAGrp sc-hBEYos ghJJLs gVXwBF isSelected"
+            className="sc-dQppl sc-idOhPF btfhxN kwjnVr isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-hKgILt iMooxb isNone"
+              className="sc-iBPRYJ hwwEyI isNone"
             >
               <svg>
                 checkmark-small.svg
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+              className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
             >
               All
             </div>
@@ -45,13 +45,12 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
       className="sc-bdfBwQ bJwFId is-filtersHidden"
       style={
         Object {
-          "marginBottom": "-16px",
           "marginTop": "24px",
         }
       }
     >
       <button
-        className="sc-dlfnbm hYhRhc"
+        className="sc-gKsewC jRJBDl"
         onClick={[Function]}
       >
         Alerts on Top
@@ -59,32 +58,32 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
     </div>
     <div>
       <div
-        className="sc-dmlrTW iTieuF"
+        className="sc-iwyYcG fXFHir"
       >
         resources
       </div>
       <ul
-        className="sc-kfzAmx khbJgg"
+        className="sc-cxFLnm jlNuLB"
       >
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="resource4"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -98,32 +97,32 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="resource4"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     resource4
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:36:03.000Z"
@@ -134,11 +133,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -152,17 +151,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Completed in 12s, with issues
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -180,24 +179,24 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="resource9"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -211,32 +210,32 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="resource9"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     resource9
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:35:58.000Z"
@@ -247,11 +246,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -265,17 +264,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Completed in 12s, with issues
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -293,24 +292,24 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="resource19"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -324,32 +323,32 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="resource19"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     resource19
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:35:48.000Z"
@@ -360,11 +359,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -378,17 +377,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Completed in 12s, with issues
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -406,24 +405,24 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="resource29"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -437,32 +436,32 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="resource29"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     resource29
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:35:38.000Z"
@@ -473,11 +472,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -491,17 +490,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Completed in 12s, with issues
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -519,24 +518,24 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="resource39"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -550,32 +549,32 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="resource39"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     resource39
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:35:28.000Z"
@@ -586,11 +585,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -604,17 +603,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Completed in 12s, with issues
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -632,24 +631,24 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="resource49"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -663,32 +662,32 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="resource49"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     resource49
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:35:18.000Z"
@@ -699,11 +698,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -717,17 +716,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Completed in 12s, with issues
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -745,24 +744,24 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="resource54"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -776,32 +775,32 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="resource54"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     resource54
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:35:13.000Z"
@@ -812,11 +811,11 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -830,17 +829,17 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Completed in 12s, with issues
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -866,38 +865,38 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
 
 exports[`sidebar renders empty resource list without crashing 1`] = `
 <nav
-  className="sc-dIUggk grSaCL Sidebar-resources "
+  className="sc-fKFyDc iXLYud Sidebar-resources "
 >
   <div
-    className="sc-hHftDr"
+    className="sc-bBXqnf"
   >
     <div>
       <div
-        className="sc-dmlrTW iTieuF"
+        className="sc-iwyYcG fXFHir"
       >
         
       </div>
       <ul
-        className="sc-kfzAmx khbJgg"
+        className="sc-cxFLnm jlNuLB"
       >
         <li
-          className="sc-pFZIQ sc-kstrdz eaCWvj gajrif"
+          className="sc-crrsfI sc-bkzZxe jItnSg gzVHhL"
         >
           <div
-            className="sc-jrAGrp sc-hBEYos ghJJLs gVXwBF isSelected"
+            className="sc-dQppl sc-idOhPF btfhxN kwjnVr isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-hKgILt iMooxb isNone"
+              className="sc-iBPRYJ hwwEyI isNone"
             >
               <svg>
                 checkmark-small.svg
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+              className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
             >
               All
             </div>
@@ -909,13 +908,12 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
       className="sc-bdfBwQ bJwFId is-filtersHidden"
       style={
         Object {
-          "marginBottom": "-16px",
           "marginTop": "24px",
         }
       }
     >
       <button
-        className="sc-dlfnbm hYhRhc"
+        className="sc-gKsewC jRJBDl"
         onClick={[Function]}
       >
         Alerts on Top
@@ -923,12 +921,12 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
     </div>
     <div>
       <div
-        className="sc-dmlrTW iTieuF"
+        className="sc-iwyYcG fXFHir"
       >
         resources
       </div>
       <ul
-        className="sc-kfzAmx khbJgg"
+        className="sc-cxFLnm jlNuLB"
       />
     </div>
   </div>
@@ -938,38 +936,38 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
 
 exports[`sidebar renders list of resources 1`] = `
 <nav
-  className="sc-dIUggk grSaCL Sidebar-resources "
+  className="sc-fKFyDc iXLYud Sidebar-resources "
 >
   <div
-    className="sc-hHftDr"
+    className="sc-bBXqnf"
   >
     <div>
       <div
-        className="sc-dmlrTW iTieuF"
+        className="sc-iwyYcG fXFHir"
       >
         
       </div>
       <ul
-        className="sc-kfzAmx khbJgg"
+        className="sc-cxFLnm jlNuLB"
       >
         <li
-          className="sc-pFZIQ sc-kstrdz eaCWvj gajrif"
+          className="sc-crrsfI sc-bkzZxe jItnSg gzVHhL"
         >
           <div
-            className="sc-jrAGrp sc-hBEYos ghJJLs gVXwBF isSelected"
+            className="sc-dQppl sc-idOhPF btfhxN kwjnVr isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-hKgILt iMooxb isNone"
+              className="sc-iBPRYJ hwwEyI isNone"
             >
               <svg>
                 checkmark-small.svg
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+              className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
             >
               All
             </div>
@@ -981,13 +979,12 @@ exports[`sidebar renders list of resources 1`] = `
       className="sc-bdfBwQ bJwFId is-filtersHidden"
       style={
         Object {
-          "marginBottom": "-16px",
           "marginTop": "24px",
         }
       }
     >
       <button
-        className="sc-dlfnbm hYhRhc"
+        className="sc-gKsewC jRJBDl"
         onClick={[Function]}
       >
         Alerts on Top
@@ -995,32 +992,32 @@ exports[`sidebar renders list of resources 1`] = `
     </div>
     <div>
       <div
-        className="sc-dmlrTW iTieuF"
+        className="sc-iwyYcG fXFHir"
       >
         resources
       </div>
       <ul
-        className="sc-kfzAmx khbJgg"
+        className="sc-cxFLnm jlNuLB"
       >
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -1034,32 +1031,32 @@ exports[`sidebar renders list of resources 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="vigoda"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     vigoda
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:36:07.000Z"
@@ -1070,11 +1067,11 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isUnhealthy"
+                  className="sc-iBPRYJ hwwEyI isUnhealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -1090,17 +1087,17 @@ exports[`sidebar renders list of resources 1`] = `
                   </svg>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Update error
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -1118,24 +1115,24 @@ exports[`sidebar renders list of resources 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="snack"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -1149,32 +1146,32 @@ exports[`sidebar renders list of resources 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="snack"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     snack
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   <time
                     dateTime="2017-12-21T15:35:57.000Z"
@@ -1185,11 +1182,11 @@ exports[`sidebar renders list of resources 1`] = `
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isUnhealthy"
+                  className="sc-iBPRYJ hwwEyI isUnhealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -1205,17 +1202,17 @@ exports[`sidebar renders list of resources 1`] = `
                   </svg>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Update error
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -1241,38 +1238,38 @@ exports[`sidebar renders list of resources 1`] = `
 
 exports[`sidebar renders resources that haven't been built yet 1`] = `
 <nav
-  className="sc-dIUggk grSaCL Sidebar-resources "
+  className="sc-fKFyDc iXLYud Sidebar-resources "
 >
   <div
-    className="sc-hHftDr"
+    className="sc-bBXqnf"
   >
     <div>
       <div
-        className="sc-dmlrTW iTieuF"
+        className="sc-iwyYcG fXFHir"
       >
         
       </div>
       <ul
-        className="sc-kfzAmx khbJgg"
+        className="sc-cxFLnm jlNuLB"
       >
         <li
-          className="sc-pFZIQ sc-kstrdz eaCWvj gajrif"
+          className="sc-crrsfI sc-bkzZxe jItnSg gzVHhL"
         >
           <div
-            className="sc-jrAGrp sc-hBEYos ghJJLs gVXwBF isSelected"
+            className="sc-dQppl sc-idOhPF btfhxN kwjnVr isSelected"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-hKgILt iMooxb isNone"
+              className="sc-iBPRYJ hwwEyI isNone"
             >
               <svg>
                 checkmark-small.svg
               </svg>
             </div>
             <div
-              className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+              className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
             >
               All
             </div>
@@ -1284,13 +1281,12 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       className="sc-bdfBwQ bJwFId is-filtersHidden"
       style={
         Object {
-          "marginBottom": "-16px",
           "marginTop": "24px",
         }
       }
     >
       <button
-        className="sc-dlfnbm hYhRhc"
+        className="sc-gKsewC jRJBDl"
         onClick={[Function]}
       >
         Alerts on Top
@@ -1298,32 +1294,32 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
     </div>
     <div>
       <div
-        className="sc-dmlrTW iTieuF"
+        className="sc-iwyYcG fXFHir"
       >
         resources
       </div>
       <ul
-        className="sc-kfzAmx khbJgg"
+        className="sc-cxFLnm jlNuLB"
       >
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="vigoda"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -1337,42 +1333,42 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="vigoda"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     vigoda
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   —
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isBuilding"
+                  className="sc-iBPRYJ hwwEyI isBuilding"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -1386,17 +1382,17 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Updating…
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={
@@ -1414,24 +1410,24 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
           </div>
         </li>
         <li
-          className="sc-pFZIQ eaCWvj u-showPinOnHover  isBuilding"
+          className="sc-crrsfI jItnSg u-showPinOnHover  isBuilding"
         >
           <div
-            className="sc-jrAGrp ghJJLs  isBuilding"
+            className="sc-dQppl btfhxN  isBuilding"
             data-name="snack"
             onClick={[Function]}
             role="button"
             tabIndex={-1}
           >
             <div
-              className="sc-kEjbxe gpekhu"
+              className="sc-bqyKva iOaTfz"
             >
               <div
-                className="sc-iqHYGH juiiLS"
+                className="sc-kstrdz eHNvIE"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isHealthy"
+                  className="sc-iBPRYJ hwwEyI isHealthy"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -1445,42 +1441,42 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl sc-fodVxV frNjEq hMCDIC"
+                  className="sc-fodVxV sc-dIUggk iMcVO gmTuhM"
                   title="snack"
                 >
                   <span
-                    className="sc-fFubgz dbrUMP"
+                    className="sc-hHftDr gJoLEh"
                   >
                     snack
                   </span>
                 </div>
                 <div
-                  className="sc-bqyKva eItknN"
+                  className="sc-fFubgz dtAnGh"
                 >
                   <button
-                    className="sc-eCssSg fZtIvG"
+                    className="sc-fubCfw gidPif"
                     onClick={[Function]}
                     title="Pin to Top"
                   >
                     <svg
-                      className="sc-gKsewC MUSWU"
+                      className="sc-jrAGrp fOOXsv"
                     >
                       pin.svg
                     </svg>
                   </button>
                 </div>
                 <span
-                  className="sc-bkzZxe dGllbM"
+                  className="sc-dmlrTW cMjcII"
                 >
                   —
                 </span>
               </div>
               <div
-                className="sc-crrsfI bAJfaH"
+                className="sc-hBEYos fVbLmK"
               >
                 <div
                   aria-describedby={null}
-                  className="sc-hKgILt iMooxb isBuilding"
+                  className="sc-iBPRYJ hwwEyI isBuilding"
                   onBlur={[Function]}
                   onFocus={[Function]}
                   onMouseLeave={[Function]}
@@ -1494,17 +1490,17 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
                   </span>
                 </div>
                 <div
-                  className="sc-dQppl frNjEq"
+                  className="sc-fodVxV iMcVO"
                 >
                   Updating…
                 </div>
               </div>
             </div>
             <div
-              className="sc-idOhPF csSihC"
+              className="sc-kfzAmx gYdoGx"
             >
               <button
-                className="sc-iBPRYJ cjfxil"
+                className="sc-kEjbxe gaYZpE"
                 disabled={true}
                 onClick={[Function]}
                 style={

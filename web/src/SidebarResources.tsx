@@ -123,18 +123,16 @@ export class SidebarResources extends React.Component<SidebarProps> {
       options.testsHidden !== defaultOptions.testsHidden ||
       options.testsOnly !== defaultOptions.testsOnly
 
-    // TODO: what do we do when we filter out the selected item? Pinned item(s)?
-    //       and what effect does this have on keyboard shortcuts? :(
-    let filteredItems = this.props.items
+    let filteredItems = [...this.props.items]
     if (options.testsHidden) {
       filteredItems = this.props.items.filter((item) => !item.isTest)
     } else if (options.testsOnly) {
-      // This filters out the Tiltfile, is that what we want?
       filteredItems = this.props.items.filter((item) => item.isTest)
     }
 
     if (options.alertsOnTop) {
       filteredItems.sort(sortByHasAlerts)
+    } else {
     }
 
     let listItems = filteredItems.map((item) => (

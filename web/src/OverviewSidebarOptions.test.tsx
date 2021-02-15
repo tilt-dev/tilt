@@ -11,6 +11,8 @@ import {
   AlertsOnTopToggle,
   FilterOptionList,
   OverviewSidebarOptions,
+  TestsHiddenSegmentedControl,
+  TestsOnlySegmentedControl,
 } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItemView from "./SidebarItemView"
@@ -33,8 +35,8 @@ const pinnedResourcesAccessor = accessorsForTesting<string[]>(
 export function assertSidebarItemsAndOptions(
   root: ReactWrapper,
   names: string[],
-  expectShowResources: boolean,
-  expectShowTests: boolean,
+  expectTestsHidden: boolean,
+  expectTestsOnly: boolean,
   expectAlertsOnTop: boolean
 ) {
   let sidebar = root.find(SidebarResources)
@@ -49,20 +51,22 @@ export function assertSidebarItemsAndOptions(
 
   let optSetter = sidebar.find(OverviewSidebarOptions)
   expect(optSetter).toHaveLength(1)
-  expect(optSetter.find("input#resources").props().checked).toEqual(
-    expectShowResources
-  )
-  expect(optSetter.find("input#tests").props().checked).toEqual(expectShowTests)
+  expect(
+    optSetter.find(TestsHiddenSegmentedControl).hasClass("is-enabled")
+  ).toEqual(expectTestsHidden)
+  expect(
+    optSetter.find(TestsOnlySegmentedControl).hasClass("is-enabled")
+  ).toEqual(expectTestsOnly)
   expect(optSetter.find(AlertsOnTopToggle).hasClass("is-enabled")).toEqual(
     expectAlertsOnTop
   )
 }
 
-function clickResourcesToggle(root: ReactWrapper) {
-  root.find("input#resources").simulate("click")
+function clickTestsHiddenControl(root: ReactWrapper) {
+  root.find(TestsHiddenSegmentedControl).simulate("click")
 }
-function clickTestsToggle(root: ReactWrapper) {
-  root.find("input#tests").simulate("click")
+function clickTestsOnlyControl(root: ReactWrapper) {
+  root.find(TestsOnlySegmentedControl).simulate("click")
 }
 
 const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
@@ -72,34 +76,16 @@ describe("overview sidebar options", () => {
     localStorage.clear()
   })
 
-  it("shows tests and resources by default", () => {
+  it("shows all resources by default", () => {
     const root = mount(TwoResourcesTwoTests())
-    assertSidebarItemsAndOptions(root, allNames, true, true, false)
+    assertSidebarItemsAndOptions(root, allNames, false, false, false)
   })
 
-  it("hides resources when resources unchecked", () => {
+  it("hides tests when TestsHidden enabled", () => {
     const root = mount(TwoResourcesTwoTests())
-    assertSidebarItemsAndOptions(root, allNames, true, true, false)
+    assertSidebarItemsAndOptions(root, allNames, false, false, false)
 
-    clickResourcesToggle(root)
-    assertSidebarItemsAndOptions(
-      root,
-      ["(Tiltfile)", "beep", "boop"],
-      false,
-      true,
-      false
-    )
-
-    // re-check and make sure resources are visible
-    clickResourcesToggle(root)
-    assertSidebarItemsAndOptions(root, allNames, true, true, false)
-  })
-
-  it("hides tests when tests unchecked", () => {
-    const root = mount(TwoResourcesTwoTests())
-    assertSidebarItemsAndOptions(root, allNames, true, true, false)
-
-    clickTestsToggle(root)
+    clickTestsHiddenControl(root)
     assertSidebarItemsAndOptions(
       root,
       ["(Tiltfile)", "vigoda", "snack"],
@@ -108,18 +94,40 @@ describe("overview sidebar options", () => {
       false
     )
 
-    // re-check and make sure tests are visible
-    clickTestsToggle(root)
-    assertSidebarItemsAndOptions(root, allNames, true, true, false)
+    // re-check and make sure everything is visible
+    clickTestsHiddenControl(root)
+    assertSidebarItemsAndOptions(root, allNames, false, false, false)
   })
 
-  it("hides resources and tests when both unchecked", () => {
+  it("shows only tests when TestsOnly enabled", () => {
     const root = mount(TwoResourcesTwoTests())
-    assertSidebarItemsAndOptions(root, allNames, true, true, false)
+    assertSidebarItemsAndOptions(root, allNames, false, false, false)
 
-    clickResourcesToggle(root)
-    clickTestsToggle(root)
-    assertSidebarItemsAndOptions(root, ["(Tiltfile)"], false, false, false)
+    clickTestsOnlyControl(root)
+    assertSidebarItemsAndOptions(root, ["beep", "boop"], false, true, false)
+
+    // re-check and make sure tests are visible
+    clickTestsOnlyControl(root)
+    assertSidebarItemsAndOptions(root, allNames, false, false, false)
+  })
+
+  it("only one filter option can be enabled at once", () => {
+    const root = mount(TwoResourcesTwoTests())
+    assertSidebarItemsAndOptions(root, allNames, false, false, false)
+
+    clickTestsHiddenControl(root)
+    clickTestsOnlyControl(root)
+    assertSidebarItemsAndOptions(root, ["beep", "boop"], false, true, false)
+
+    // Make sure it works in the other direction too
+    clickTestsHiddenControl(root)
+    assertSidebarItemsAndOptions(
+      root,
+      ["(Tiltfile)", "vigoda", "snack"],
+      true,
+      false,
+      false
+    )
   })
 
   it("doesn't show filter options if no tests present", () => {
@@ -133,7 +141,7 @@ describe("overview sidebar options", () => {
   })
 
   it("shows filter options when no tests are present if filter options are non-default", () => {
-    sidebarOptionsAccessor.set({ ...defaultOptions, testsHidden: false })
+    sidebarOptionsAccessor.set({ ...defaultOptions, testsHidden: true })
     const root = mount(
       <tiltfileKeyContext.Provider value="test">
         {TwoResources()}
@@ -162,8 +170,8 @@ describe("overview sidebar options", () => {
     assertSidebarItemsAndOptions(
       root,
       ["(Tiltfile)", "vigoda", "snack", "beep", "boop"],
-      true,
-      true,
+      false,
+      false,
       false
     )
 
@@ -174,7 +182,7 @@ describe("overview sidebar options", () => {
     expect(pinned).toHaveLength(1)
     expect(pinned.at(0).props().item.name).toEqual("beep")
 
-    clickTestsToggle(root)
+    clickTestsHiddenControl(root)
     assertSidebarItemsAndOptions(
       root,
       ["(Tiltfile)", "vigoda", "snack"],
@@ -218,13 +226,13 @@ it("toggles/untoggles Alerts On Top sorting when button clicked", () => {
     "test_5",
     "test_7",
   ]
-  assertSidebarItemsAndOptions(root, origOrder, true, true, false)
+  assertSidebarItemsAndOptions(root, origOrder, false, false, false)
 
   let aotToggle = root.find(AlertsOnTopToggle)
   aotToggle.simulate("click")
 
-  assertSidebarItemsAndOptions(root, alertsOnTopOrder, true, true, true)
+  assertSidebarItemsAndOptions(root, alertsOnTopOrder, false, false, true)
 
   aotToggle.simulate("click")
-  assertSidebarItemsAndOptions(root, origOrder, true, true, false)
+  assertSidebarItemsAndOptions(root, origOrder, false, false, false)
 })
