@@ -158,8 +158,9 @@ jobs:
     steps:
       - setup_remote_docker:
           version: 19.03.12
-      - slack/status:
+      - slack/notify:
           mentions: "nick"
+          message: "A Tilt release has started!"
       - checkout
       - gcp-cli/install
       - gcp-cli/initialize
