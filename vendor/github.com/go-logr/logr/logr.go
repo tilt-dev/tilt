@@ -40,17 +40,16 @@ limitations under the License.
 // we want to log that we've made some decision.
 //
 // With the traditional log package, we might write:
-//  log.Printf(
-//      "decided to set field foo to value %q for object %s/%s",
+//   log.Printf("decided to set field foo to value %q for object %s/%s",
 //       targetValue, object.Namespace, object.Name)
 //
 // With logr's structured logging, we'd write:
-//  // elsewhere in the file, set up the logger to log with the prefix of "reconcilers",
-//  // and the named value target-type=Foo, for extra context.
-//  log := mainLogger.WithName("reconcilers").WithValues("target-type", "Foo")
+//   // elsewhere in the file, set up the logger to log with the prefix of
+//   // "reconcilers", and the named value target-type=Foo, for extra context.
+//   log := mainLogger.WithName("reconcilers").WithValues("target-type", "Foo")
 //
-//  // later on...
-//  log.Info("setting field foo on object", "value", targetValue, "object", object)
+//   // later on...
+//   log.Info("setting foo on object", "value", targetValue, "object", object)
 //
 // Depending on our logging implementation, we could then make logging decisions
 // based on field values (like only logging such events for objects in a certain
@@ -128,7 +127,21 @@ limitations under the License.
 // above concepts, when necessary (for example, in a pure-JSON output form, it
 // would be necessary to represent at least message and timestamp as ordinary
 // named values).
+//
+// Implementations may choose to give callers access to the underlying
+// logging implementation.  The recommended pattern for this is:
+//   // Underlier exposes access to the underlying logging implementation.
+//   // Since callers only have a logr.Logger, they have to know which
+//   // implementation is in use, so this interface is less of an abstraction
+//   // and more of way to test type conversion.
+//   type Underlier interface {
+//       GetUnderlying() <underlying-type>
+//   }
 package logr
+
+import (
+	"context"
+)
 
 // TODO: consider adding back in format strings if they're really needed
 // TODO: consider other bits of zap/zapcore functionality like ObjectMarshaller (for arbitrary objects)
@@ -180,3 +193,30 @@ type Logger interface {
 // InfoLogger provides compatibility with code that relies on the v0.1.0 interface
 // Deprecated: use Logger instead. This will be removed in a future release.
 type InfoLogger = Logger
+
+type contextKey struct{}
+
+// FromContext returns a Logger constructed from ctx or nil if no
+// logger details are found.
+func FromContext(ctx context.Context) Logger {
+	if v, ok := ctx.Value(contextKey{}).(Logger); ok {
+		return v
+	}
+
+	return nil
+}
+
+// FromContextOrDiscard returns a Logger constructed from ctx or a Logger
+// that discards all messages if no logger details are found.
+func FromContextOrDiscard(ctx context.Context) Logger {
+	if v, ok := ctx.Value(contextKey{}).(Logger); ok {
+		return v
+	}
+
+	return discardLogger{}
+}
+
+// NewContext returns a new context derived from ctx that embeds the Logger.
+func NewContext(ctx context.Context, l Logger) context.Context {
+	return context.WithValue(ctx, contextKey{}, l)
+}

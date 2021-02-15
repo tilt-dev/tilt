@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"

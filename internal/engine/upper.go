@@ -14,6 +14,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/engine/apiserver"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
@@ -184,6 +185,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleMetricsDashboardAction(state, action)
 	case server.OverrideTriggerModeAction:
 		handleOverrideTriggerModeAction(ctx, state, action)
+	case apiserver.SyncAction:
+		handleAPIServerSyncAction(ctx, state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -942,5 +945,16 @@ func handleOverrideTriggerModeAction(ctx context.Context, state *store.EngineSta
 			return
 		}
 		mt.Manifest.TriggerMode = action.TriggerMode
+	}
+}
+
+func handleAPIServerSyncAction(ctx context.Context, state *store.EngineState, action apiserver.SyncAction) {
+	mn := action.Manifest.Name
+	if _, ok := state.ManifestTargets[mn]; ok {
+		logger.Get(ctx).Infof("Ignoring manifest %q", mn)
+		// mt.Manifest = action.Manifest
+	} else {
+		logger.Get(ctx).Infof("Injecting manifest %q", mn)
+		state.UpsertManifestTarget(store.NewManifestTarget(action.Manifest))
 	}
 }

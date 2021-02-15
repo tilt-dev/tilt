@@ -33,6 +33,7 @@ import (
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -3774,6 +3775,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
+	tscm := controllers.NewTiltServerControllerManager(nil)
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
@@ -3816,7 +3818,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, ar, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, ar, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

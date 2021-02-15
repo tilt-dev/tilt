@@ -2,6 +2,7 @@ package engine
 
 import (
 	"github.com/tilt-dev/tilt/internal/cloud"
+	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
@@ -23,6 +24,7 @@ import (
 
 func ProvideSubscribers(
 	hudsc *server.HeadsUpServerController,
+	tscm *controllers.TiltServerControllerManager,
 	hud hud.HeadsUpDisplay,
 	ts *hud.TerminalStream,
 	tp *prompt.TerminalPrompt,
@@ -53,6 +55,9 @@ func ProvideSubscribers(
 		// The API server must go before other subscribers,
 		// so that it can run its boot sequence first.
 		hudsc,
+		// The controller manager must go after the API server,
+		// so that it can connect to it and make resources available.
+		tscm,
 
 		hud,
 		ts,

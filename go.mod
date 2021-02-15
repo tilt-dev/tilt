@@ -97,6 +97,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
 	k8s.io/kubectl v0.20.2
 	sigs.k8s.io/apiserver-runtime v0.0.0-20201103144618-b52895ea8337
+	sigs.k8s.io/controller-runtime v0.8.2
 	sigs.k8s.io/kustomize/api v0.7.2
 	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
@@ -115,6 +116,10 @@ replace (
 	// change: https://github.com/go-openapi/spec/commit/55f43acfece4ec21dd910b355e80e15d35960aa9
 	// kubectl pulls in an old version of kustomize, which pulls in an old version of go-openapi, with which the new kustomize is incompatible
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.3
+
+	// controller-runtime uses a newer gnostic but apiserver + kube-openapi require an older version
+	// due to an incompatible change from yaml.v2 -> yaml.v3
+	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
 
 	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413

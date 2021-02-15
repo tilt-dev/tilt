@@ -20,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine"
@@ -121,6 +122,8 @@ var BaseWireSet = wire.NewSet(
 	fswatch.NewWatchManager,
 	fswatch.ProvideFsWatcherMaker,
 	fswatch.ProvideTimerMaker,
+
+	controllers.WireSet,
 
 	provideWebVersion,
 	provideWebMode,
