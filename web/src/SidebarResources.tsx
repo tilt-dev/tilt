@@ -58,8 +58,8 @@ type SidebarProps = {
 }
 
 export const defaultOptions: SidebarOptions = {
-  showResources: true,
-  showTests: true,
+  testsHidden: false,
+  testsOnly: false,
   alertsOnTop: false,
 }
 
@@ -120,17 +120,18 @@ export class SidebarResources extends React.Component<SidebarProps> {
     //   (e.g., in case there were previously tests and the user deselected resources)
     const showFilters =
       this.props.items.some((item) => item.isTest) ||
-      options.showResources !== defaultOptions.showResources ||
-      options.showTests !== defaultOptions.showTests
+      options.testsHidden !== defaultOptions.testsHidden ||
+      options.testsOnly !== defaultOptions.testsOnly
 
     // TODO: what do we do when we filter out the selected item? Pinned item(s)?
     //       and what effect does this have on keyboard shortcuts? :(
-    let filteredItems = this.props.items.filter(
-      (item) =>
-        (!item.isTest && options.showResources) ||
-        (item.isTest && options.showTests) ||
-        item.isTiltfile
-    )
+    let filteredItems = this.props.items
+    if (options.testsHidden) {
+      filteredItems = this.props.items.filter((item) => !item.isTest)
+    } else if (options.testsOnly) {
+      // This filters out the Tiltfile, is that what we want?
+      filteredItems = this.props.items.filter((item) => item.isTest)
+    }
 
     if (options.alertsOnTop) {
       filteredItems.sort(sortByHasAlerts)

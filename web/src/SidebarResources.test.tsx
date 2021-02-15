@@ -141,17 +141,17 @@ describe("SidebarResources", () => {
   const loadCases: [string, SidebarOptions, string[]][] = [
     [
       "showResources",
-      { showResources: false, showTests: true, alertsOnTop: false },
+      { testsHidden: false, testsOnly: true, alertsOnTop: false },
       ["a", "b"],
     ],
     [
       "showTests",
-      { showResources: true, showTests: false, alertsOnTop: false },
+      { testsHidden: true, testsOnly: false, alertsOnTop: false },
       ["vigoda"],
     ],
     [
       "alertsOnTop",
-      { showResources: true, showTests: true, alertsOnTop: true },
+      { testsHidden: true, testsOnly: true, alertsOnTop: true },
       ["vigoda", "a", "b"],
     ],
   ]
@@ -182,8 +182,8 @@ describe("SidebarResources", () => {
       assertSidebarItemsAndOptions(
         root,
         expectedItems,
-        options.showResources,
-        options.showTests,
+        options.testsHidden,
+        options.testsOnly,
         options.alertsOnTop
       )
     }
@@ -192,12 +192,12 @@ describe("SidebarResources", () => {
   const saveCases: [string, SidebarOptions][] = [
     [
       "showResources",
-      { showResources: false, showTests: true, alertsOnTop: true },
+      { testsHidden: false, testsOnly: true, alertsOnTop: true },
     ],
-    ["showTests", { showResources: true, showTests: false, alertsOnTop: true }],
+    ["showTests", { testsHidden: true, testsOnly: false, alertsOnTop: true }],
     [
       "alertsOnTop",
-      { showResources: true, showTests: true, alertsOnTop: false },
+      { testsHidden: true, testsOnly: true, alertsOnTop: false },
     ],
   ]
   test.each(saveCases)(
@@ -223,12 +223,12 @@ describe("SidebarResources", () => {
       )
 
       let resToggle = root.find("input#resources")
-      if (resToggle.props().checked != expectedOptions.showResources) {
+      if (resToggle.props().checked != expectedOptions.testsHidden) {
         resToggle.simulate("click")
       }
 
       let testToggle = root.find("input#tests")
-      if (testToggle.props().checked != expectedOptions.showTests) {
+      if (testToggle.props().checked != expectedOptions.testsOnly) {
         testToggle.simulate("click")
       }
 

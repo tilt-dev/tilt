@@ -133,7 +133,7 @@ describe("overview sidebar options", () => {
   })
 
   it("shows filter options when no tests are present if filter options are non-default", () => {
-    sidebarOptionsAccessor.set({ ...defaultOptions, showResources: false })
+    sidebarOptionsAccessor.set({ ...defaultOptions, testsHidden: false })
     const root = mount(
       <tiltfileKeyContext.Provider value="test">
         {TwoResources()}
