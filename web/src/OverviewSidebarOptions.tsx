@@ -39,13 +39,13 @@ const useStyles = makeStyles({
   },
 })
 
-let testFilterControlsBorderRadius = "3px"
+const segmentedControlsBorderRadius = "3px"
 
 const ResourceFilterSegmentedControls = styled.div`
   margin-left: ${SizeUnit(0.25)};
 `
 
-const ResourceFilterSegmentedControl = styled.button`
+const ResourceFilterToggle = styled.button`
   ${mixinResetButtonStyle}
   color: ${Color.grayLightest};
   background-color: ${Color.gray};
@@ -62,16 +62,14 @@ const ResourceFilterSegmentedControl = styled.button`
   }
 `
 
-export const TestsHiddenSegmentedControl = styled(
-  ResourceFilterSegmentedControl
-)`
-  border-top-left-radius: ${testFilterControlsBorderRadius};
-  border-bottom-left-radius: ${testFilterControlsBorderRadius};
+export const TestsHiddenToggle = styled(ResourceFilterToggle)`
+  border-top-left-radius: ${segmentedControlsBorderRadius};
+  border-bottom-left-radius: ${segmentedControlsBorderRadius};
 `
 
-export const TestsOnlySegmentedControl = styled(ResourceFilterSegmentedControl)`
-  border-top-right-radius: ${testFilterControlsBorderRadius};
-  border-bottom-right-radius: ${testFilterControlsBorderRadius};
+export const TestsOnlyToggle = styled(ResourceFilterToggle)`
+  border-top-right-radius: ${segmentedControlsBorderRadius};
+  border-bottom-right-radius: ${segmentedControlsBorderRadius};
 `
 
 export const AlertsOnTopToggle = styled.button`
@@ -133,18 +131,18 @@ function filterOptions(props: OverviewSidebarOptionsProps) {
     <FilterOptionList>
       Tests:
       <ResourceFilterSegmentedControls>
-        <TestsHiddenSegmentedControl
+        <TestsHiddenToggle
           className={props.options.testsHidden ? "is-enabled" : ""}
           onClick={(e) => toggleTestsHidden(props)}
         >
           Hidden
-        </TestsHiddenSegmentedControl>
-        <TestsOnlySegmentedControl
+        </TestsHiddenToggle>
+        <TestsOnlyToggle
           className={props.options.testsOnly ? "is-enabled" : ""}
           onClick={(e) => toggleTestsOnly(props)}
         >
           Only
-        </TestsOnlySegmentedControl>
+        </TestsOnlyToggle>
       </ResourceFilterSegmentedControls>
     </FilterOptionList>
   )

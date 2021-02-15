@@ -6,8 +6,8 @@ import { expectIncr } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   AlertsOnTopToggle,
-  TestsHiddenSegmentedControl,
-  TestsOnlySegmentedControl,
+  TestsHiddenToggle,
+  TestsOnlyToggle,
 } from "./OverviewSidebarOptions"
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
@@ -223,14 +223,14 @@ describe("SidebarResources", () => {
         </MemoryRouter>
       )
 
-      let testsHiddenControl = root.find(TestsHiddenSegmentedControl)
+      let testsHiddenControl = root.find(TestsHiddenToggle)
       if (
         testsHiddenControl.hasClass("is-enabled") != expectedOptions.testsHidden
       ) {
         testsHiddenControl.simulate("click")
       }
 
-      let testsOnlyControl = root.find(TestsOnlySegmentedControl)
+      let testsOnlyControl = root.find(TestsOnlyToggle)
       if (
         testsOnlyControl.hasClass("is-enabled") != expectedOptions.testsOnly
       ) {

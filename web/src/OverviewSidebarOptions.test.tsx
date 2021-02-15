@@ -11,8 +11,8 @@ import {
   AlertsOnTopToggle,
   FilterOptionList,
   OverviewSidebarOptions,
-  TestsHiddenSegmentedControl,
-  TestsOnlySegmentedControl,
+  TestsHiddenToggle,
+  TestsOnlyToggle,
 } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItemView from "./SidebarItemView"
@@ -51,22 +51,22 @@ export function assertSidebarItemsAndOptions(
 
   let optSetter = sidebar.find(OverviewSidebarOptions)
   expect(optSetter).toHaveLength(1)
-  expect(
-    optSetter.find(TestsHiddenSegmentedControl).hasClass("is-enabled")
-  ).toEqual(expectTestsHidden)
-  expect(
-    optSetter.find(TestsOnlySegmentedControl).hasClass("is-enabled")
-  ).toEqual(expectTestsOnly)
+  expect(optSetter.find(TestsHiddenToggle).hasClass("is-enabled")).toEqual(
+    expectTestsHidden
+  )
+  expect(optSetter.find(TestsOnlyToggle).hasClass("is-enabled")).toEqual(
+    expectTestsOnly
+  )
   expect(optSetter.find(AlertsOnTopToggle).hasClass("is-enabled")).toEqual(
     expectAlertsOnTop
   )
 }
 
 function clickTestsHiddenControl(root: ReactWrapper) {
-  root.find(TestsHiddenSegmentedControl).simulate("click")
+  root.find(TestsHiddenToggle).simulate("click")
 }
 function clickTestsOnlyControl(root: ReactWrapper) {
-  root.find(TestsOnlySegmentedControl).simulate("click")
+  root.find(TestsOnlyToggle).simulate("click")
 }
 
 const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
