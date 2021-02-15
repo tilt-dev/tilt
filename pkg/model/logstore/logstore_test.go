@@ -45,7 +45,7 @@ func TestAppendDifferentLevelsMultiLines(t *testing.T) {
 
 func TestLog_AppendOverLimit(t *testing.T) {
 	l := NewLogStore()
-	l.maxLogLengthInBytes = 100
+	l.maxLogLengthInBytes = 32
 
 	l.Append(newGlobalTestLogEvent("hello\n"), nil)
 	sb := strings.Builder{}
@@ -58,7 +58,19 @@ func TestLog_AppendOverLimit(t *testing.T) {
 
 	s := sb.String()
 	l.Append(newGlobalTestLogEvent(s), nil)
-	assert.Equal(t, s[:l.logTruncationTarget()], l.String())
+	assert.Equal(t, "x\nx\nx\nx\nx\nx\nx\nx\n", l.String())
+}
+
+func TestLog_TruncateChattySpansFirst(t *testing.T) {
+	l := NewLogStore()
+	l.maxLogLengthInBytes = 60
+
+	l.Append(newTestLogEvent("(tiltfile)", time.Now(), "Tiltfile Success"), nil)
+	for i := 0; i < 20; i++ {
+		l.Append(newTestLogEvent("noisy", time.Now(), "Noisy Log\n"), nil)
+	}
+
+	assert.Contains(t, l.String(), "Tiltfile Success")
 }
 
 func TestLogPrefix(t *testing.T) {

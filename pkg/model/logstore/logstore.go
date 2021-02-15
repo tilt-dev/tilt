@@ -771,20 +771,66 @@ func (s *LogStore) ensureMaxLength() {
 		return
 	}
 
-	// Figure out where we have to truncate.
-	bytesSpent := 0
-	truncationIndex := -1
+	// First, count the number of bytes in each manifest.
+	manifestByteCount := manifestByteCount{}
+	for _, segment := range s.segments {
+		manifestByteCount[s.spans[segment.SpanID].ManifestName] += segment.Len()
+	}
+
+	// Next, repeatedly cut the longest manifest in half until
+	// we've reached the target number of bytes to cut.
+	leftToCut := s.len - s.logTruncationTarget()
+	for leftToCut > 0 {
+		mn := manifestByteCount.longestManifestName()
+		amountToCut := manifestByteCount[mn] / 2
+		if amountToCut > leftToCut {
+			amountToCut = leftToCut
+		}
+		leftToCut -= amountToCut
+		manifestByteCount[mn] = manifestByteCount[mn] - amountToCut
+	}
+
+	// Lastly, go through all the segments, and truncate the manifests
+	// where we said we would.
+	newSegments := make([]LogSegment, 0, len(s.segments)/2)
+	trimmedSegmentCount := 0
 	for i := len(s.segments) - 1; i >= 0; i-- {
 		segment := s.segments[i]
-		bytesSpent += segment.Len()
-		if truncationIndex == -1 && bytesSpent > s.logTruncationTarget() {
-			truncationIndex = i + 1
+		mn := s.spans[segment.SpanID].ManifestName
+		manifestByteCount[mn] -= segment.Len()
+		if manifestByteCount[mn] < 0 {
+			trimmedSegmentCount++
+			continue
 		}
-		if bytesSpent > s.maxLogLengthInBytes {
-			s.segments = s.segments[truncationIndex:]
-			s.checkpointOffset += Checkpoint(truncationIndex)
-			s.recomputeDerivedValues()
-			return
+
+		newSegments = append(newSegments, segment)
+	}
+
+	reverseLogSegments(newSegments)
+	s.checkpointOffset += Checkpoint(trimmedSegmentCount)
+	s.segments = newSegments
+	s.recomputeDerivedValues()
+}
+
+// https://github.com/golang/go/wiki/SliceTricks#reversing
+func reverseLogSegments(a []LogSegment) {
+	for i := len(a)/2 - 1; i >= 0; i-- {
+		opp := len(a) - 1 - i
+		a[i], a[opp] = a[opp], a[i]
+	}
+}
+
+// Helper struct to find the manifest with the most logs.
+type manifestByteCount map[model.ManifestName]int
+
+func (s manifestByteCount) longestManifestName() model.ManifestName {
+	longest := model.ManifestName("")
+	longestCount := -1
+	for key, count := range s {
+		if count > longestCount {
+			longest = key
+			longestCount = count
 		}
 	}
+	return longest
 }
