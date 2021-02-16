@@ -12,8 +12,6 @@
   }
 
   &.is-buildEvent-init {
-    margin-top: $spacing-unit * 0.5;
-    margin-bottom: $spacing-unit * 0.5;
     background-color: $color-gray;
     text-align: right;
     padding-right: $spacing-unit;
@@ -34,6 +32,11 @@
   }
 }
 
+.LogPaneLine:not(.is-buildEvent) + .LogPaneLine.is-buildEvent,
+.LogPaneLine.is-buildEvent + .LogPaneLine:not(.is-buildEvent) {
+  margin-top: 8px;
+}
+
 .LogPaneLine-alertNav {
   position: absolute;
   display: block;
@@ -52,14 +55,6 @@
     color: $color-blue;
     border-color: $color-blue;
   }
-}
-
-.LogPaneLine.is-buildEvent-init + .LogPaneLine.is-buildEvent-fallback,
-.LogPaneLine.is-buildEvent-fallback + .LogPaneLine.is-buildEvent-fallback {
-
-  // A lil' trick so bottom margin only appears after the last element
-  margin-top: -$spacing-unit * 0.5;
-  margin-bottom: $spacing-unit * 0.5;
 }
 
 .logLinePrefix {
@@ -98,10 +93,9 @@
 
   // Make spacing around "header" text more generous for legibility
   // We avoid padding on the parent .LogPaneLine, lest we squish .logLinePrefix
-  .LogPaneLine.is-buildEvent-init &,
-  .LogPaneLine.is-buildEvent-fallback & {
-    padding-top: $spacing-unit * 0.2;
-    padding-bottom: $spacing-unit * 0.2;
+  .LogPaneLine.is-buildEvent & {
+    padding-top: 4px;
+    padding-bottom: 4px;
   }
 
   // A left border draws your eye to notable log lines
