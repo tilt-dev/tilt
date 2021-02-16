@@ -37,6 +37,22 @@
   margin-top: 8px;
 }
 
+// Make spacing around "header" text more generous for legibility
+// We avoid padding on the parent .LogPaneLine, lest we squish .logLinePrefix
+.LogPaneLine.is-buildEvent-init .LogPaneLine-content {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.LogPaneLine:not(.is-buildEvent-fallback) + .LogPaneLine.is-buildEvent-fallback .LogPaneLine-content {
+  padding-top: 8px;
+}
+.LogPaneLine.is-buildEvent-fallback .LogPaneLine-content {
+  padding-bottom: 8px;
+}
+.LogPaneLine.is-buildEvent-fallback + .LogPaneLine.is-buildEvent-fallback .LogPaneLine-content {
+  margin-top: -8px;
+}
+
 .LogPaneLine-alertNav {
   position: absolute;
   display: block;
@@ -90,13 +106,6 @@
   flex: 1;
   border-left: $logLine-separator-height solid $color-gray;
   overflow-wrap: anywhere;
-
-  // Make spacing around "header" text more generous for legibility
-  // We avoid padding on the parent .LogPaneLine, lest we squish .logLinePrefix
-  .LogPaneLine.is-buildEvent & {
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
 
   // A left border draws your eye to notable log lines
   // Placed right of the prefix, so it's always just next to the log text

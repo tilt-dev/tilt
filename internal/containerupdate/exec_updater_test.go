@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -115,6 +116,19 @@ func TestUpdateContainerRunsFailure(t *testing.T) {
 		assert.Equal(t, "Run step \"a\" failed with exit code: 1", err.Error())
 	}
 	assert.Equal(t, 2, len(f.kCli.ExecCalls))
+}
+
+func TestUpdateContainerPermissionDenied(t *testing.T) {
+	f := newExecFixture(t)
+
+	f.kCli.ExecOutputs = []io.Reader{strings.NewReader("tar: app/index.js: Cannot open: File exists")}
+	f.kCli.ExecErrors = []error{exec.CodeExitError{Err: fmt.Errorf("command terminated with exit code 2"), Code: 1}}
+
+	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), nil, cmds, true)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "container filesystem denied access")
+	}
+	assert.Equal(t, 1, len(f.kCli.ExecCalls))
 }
 
 type execUpdaterFixture struct {
