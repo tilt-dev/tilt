@@ -197,6 +197,74 @@ print(path)
 	assert.Equal(t, fmt.Sprintf("%s\n", f.JoinPath("bar")), f.PrintOutput())
 }
 
+func TestRelpath(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File("Tiltfile", fmt.Sprintf(`
+print(os.path.relpath(os.getcwd(), '%s'))
+`, f.JoinPath("beep/boop")))
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, "beep/boop\n", f.PrintOutput())
+}
+
+func TestRelpathToDifferentDir(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File("Tiltfile", fmt.Sprintf(`
+print(os.path.relpath('%s', '%s'))
+`, f.JoinPath("beep/"), f.JoinPath("beep/boop")))
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, "boop\n", f.PrintOutput())
+}
+
+func TestRelpathImpossible(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File("Tiltfile", `
+print(os.path.relpath(os.getcwd(), 'some/nonsense/path'))
+`)
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "can't make some/nonsense/path relative to")
+}
+
+func TestRelpathUpADir(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File("foo/Tiltfile", fmt.Sprintf(`
+print(os.path.relpath(os.getcwd(), '%s'))
+`, f.JoinPath("beep/boop")))
+
+	_, err := f.ExecFile("foo/Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, "../beep/boop\n", f.PrintOutput())
+}
+
+func TestRelpathLoad(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File("foo/Tiltfile", fmt.Sprintf(`
+path = os.path.relpath(os.getcwd(), '%s')
+`, f.JoinPath("foo/beep/boop")))
+
+	f.File("Tiltfile", `
+load('./foo/Tiltfile', 'path')
+print(path)
+`)
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, "beep/boop\n", f.PrintOutput())
+}
+
 func TestBasename(t *testing.T) {
 	f := NewFixture(t)
 	f.UseRealFS()

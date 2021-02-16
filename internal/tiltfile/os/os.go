@@ -34,6 +34,10 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("os.path.relpath", relpath)
+	if err != nil {
+		return err
+	}
 	err = addPathBuiltin(env, "os.path.basename", basename)
 	if err != nil {
 		return err
@@ -162,6 +166,17 @@ func addPathBuiltin(env *starkit.Environment, name string,
 
 func abspath(t *starlark.Thread, path string) (starlark.Value, error) {
 	return starlark.String(starkit.AbsPath(t, path)), nil
+}
+
+func relpath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var basepath, targpath string
+	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
+		"basepath", &basepath,
+		"targpath", &targpath); err != nil {
+		return nil, err
+	}
+	relPath, err := filepath.Rel(basepath, targpath)
+	return starlark.String(relPath), err
 }
 
 func basename(t *starlark.Thread, path string) (starlark.Value, error) {
