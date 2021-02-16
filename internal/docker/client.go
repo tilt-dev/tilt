@@ -44,13 +44,6 @@ var (
 	BuiltByTiltLabelStr = fmt.Sprintf("%s=%s", BuiltByLabel, BuiltByValue)
 )
 
-// Version info
-// https://docs.docker.com/develop/sdk/#api-version-matrix
-//
-// The docker API docs highly recommend we set a default version,
-// so that new versions don't break us.
-const defaultVersion = "1.39"
-
 // Minimum docker version we've tested on.
 // A good way to test old versions is to connect to an old version of Minikube,
 // so that we connect to the docker server in minikube instead of futzing with

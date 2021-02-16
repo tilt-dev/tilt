@@ -10,15 +10,12 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"strings"
-	"time"
-	"unsafe"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
@@ -32,7 +29,6 @@ import (
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
-const httpTimeOut = 5 * time.Second
 const TiltTokenCookieName = "Tilt-Token"
 
 type analyticsPayload struct {
@@ -364,24 +360,6 @@ func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *ht
 /* -- SNAPSHOT: SENDING SNAPSHOT TO SERVER -- */
 type snapshotURLJson struct {
 	Url string `json:"url"`
-}
-
-// the default json decoding just blows up if a time.Time field is empty
-// this uses the default behavior, except empty string -> time.Time{}
-type timeAllowEmptyDecoder struct{}
-
-func (codec timeAllowEmptyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-	s := iter.ReadString()
-	var ret time.Time
-	if s != "" {
-		var err error
-		ret, err = time.Parse(time.RFC3339, s)
-		if err != nil {
-			iter.ReportError("timeAllowEmptyDecoder", errors.Wrapf(err, "decoding '%s'", s).Error())
-			return
-		}
-	}
-	*((*time.Time)(ptr)) = ret
 }
 
 func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {

@@ -4235,16 +4235,6 @@ func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path stri
 		WithImageTarget(iTarget).
 		Build()
 }
-func (f *testFixture) newDCManifest(name string, DCYAMLRaw string, dockerfileContents string) model.Manifest {
-	f.WriteFile("docker-compose.yml", DCYAMLRaw)
-	return model.Manifest{
-		Name: model.ManifestName(name),
-	}.WithDeployTarget(model.DockerComposeTarget{
-		ConfigPaths: []string{f.JoinPath("docker-compose.yml")},
-		YAMLRaw:     []byte(DCYAMLRaw),
-		DfRaw:       []byte(dockerfileContents),
-	})
-}
 
 func (f *testFixture) assertAllBuildsConsumed() {
 	close(f.b.calls)
@@ -4452,22 +4442,6 @@ func assertLineMatches(t *testing.T, lines []string, re *regexp.Regexp) {
 func assertContainsOnce(t *testing.T, s string, val string) {
 	assert.Contains(t, s, val)
 	assert.Equal(t, 1, strings.Count(s, val), "Expected string to appear only once")
-}
-
-func entityWithUID(t *testing.T, yaml string, uid string) k8s.K8sEntity {
-	es, err := k8s.ParseYAMLFromString(yaml)
-	if err != nil {
-		t.Fatalf("error parsing yaml: %v", err)
-	}
-
-	if len(es) != 1 {
-		t.Fatalf("expected exactly 1 k8s entity from yaml, got %d", len(es))
-	}
-
-	e := es[0]
-	k8s.SetUIDForTest(t, &e, uid)
-
-	return e
 }
 
 type fakeSnapshotUploader struct {

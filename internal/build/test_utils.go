@@ -14,7 +14,6 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
 
 	wmcontainer "github.com/tilt-dev/tilt/internal/container"
@@ -22,7 +21,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/testutils"
-	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -129,39 +127,7 @@ func (f *dockerBuildFixture) getNameFromTest() wmcontainer.RefSet {
 	return wmcontainer.MustSimpleRefSet(sel)
 }
 
-func (f *dockerBuildFixture) startRegistry() {
-	stdout := bufsync.NewThreadSafeBuffer()
-	cmd := exec.Command("docker", "run", "--name", "tilt-registry", "-p", "5005:5000", "registry:2")
-	cmd.Stdout = stdout
-	cmd.Stderr = stdout
-	f.registry = cmd
-
-	err := cmd.Start()
-	if err != nil {
-		f.t.Fatal(err)
-	}
-
-	err = stdout.WaitUntilContains("listening on", 5*time.Second)
-	if err != nil {
-		f.t.Fatalf("Registry didn't start: %v", err)
-	}
-}
-
 type expectedFile = testutils.ExpectedFile
-
-func (f *dockerBuildFixture) assertImageExists(ref reference.NamedTagged) {
-	_, _, err := f.dCli.ImageInspectWithRaw(f.ctx, ref.String())
-	if err != nil {
-		f.t.Errorf("Expected image %q to exist, got: %v", ref, err)
-	}
-}
-
-func (f *dockerBuildFixture) assertImageNotExists(ref reference.NamedTagged) {
-	_, _, err := f.dCli.ImageInspectWithRaw(f.ctx, ref.String())
-	if err == nil || !client.IsErrNotFound(err) {
-		f.t.Errorf("Expected image %q to fail with ErrNotFound, got: %v", ref, err)
-	}
-}
 
 func (f *dockerBuildFixture) assertImageHasLabels(ref reference.Named, expected map[string]string) {
 	inspect, _, err := f.dCli.ImageInspectWithRaw(f.ctx, ref.String())

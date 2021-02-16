@@ -173,17 +173,6 @@ func (f *logStreamerFixture) newViewWithLogsForManifests(messages []string, mani
 	}
 }
 
-func (f *logStreamerFixture) addLogs(view proto_webview.View, messages []string, manifestNames []string) proto_webview.View {
-	view.LogList.FromCheckpoint = view.LogList.ToCheckpoint
-	newSegs := f.segments(messages, manifestNames)
-	view.LogList.Segments = append(view.LogList.Segments, newSegs...)
-	view.LogList.ToCheckpoint = int32(len(view.LogList.Segments))
-
-	view.LogList.Spans = f.spans(manifestNames, view.LogList.Spans)
-
-	return view
-}
-
 func (f *logStreamerFixture) segments(messages []string, manifestNames []string) []*proto_webview.LogSegment {
 	if len(messages) != len(manifestNames) {
 		f.t.Fatalf("Need same number of messages and manifestNames (got %d and %d)",

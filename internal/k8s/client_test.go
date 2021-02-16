@@ -28,8 +28,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
-const upsertTimeout = time.Minute
-
 func TestEmptyNamespace(t *testing.T) {
 	var emptyNamespace Namespace
 	assert.True(t, emptyNamespace.Empty())

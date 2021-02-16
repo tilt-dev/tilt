@@ -8,23 +8,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 )
-
-func makeLabelSet(lps []model.LabelPair) labels.Set {
-	ls := labels.Set{}
-	for _, lp := range lps {
-		ls[lp.Key] = lp.Value
-	}
-	return ls
-}
-
-func makeLabelSelector(lps []model.LabelPair) string {
-	return labels.SelectorFromSet(makeLabelSet(lps)).String()
-}
 
 func InjectLabels(entity K8sEntity, labels []model.LabelPair) (K8sEntity, error) {
 	return injectLabels(entity, labels, false)

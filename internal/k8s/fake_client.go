@@ -419,10 +419,6 @@ func FakePodSpec(image reference.NamedTagged) v1.PodSpec {
 	}
 }
 
-func (c *FakeK8sClient) applyWasCalled() bool {
-	return c.Yaml != ""
-}
-
 func (c *FakeK8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
 	pfc := &(c.FakePortForwardClient)
 	return pfc.CreatePortForwarder(ctx, namespace, podID, optionalLocalPort, remotePort, host)

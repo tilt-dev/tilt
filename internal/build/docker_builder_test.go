@@ -14,11 +14,8 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/testutils"
 )
-
-const simpleDockerfile = dockerfile.Dockerfile("FROM alpine")
 
 func TestDigestAsTag(t *testing.T) {
 	dig := digest.Digest("sha256:cc5f4c463f81c55183d8d737ba2f0d30b3e6f3670dbe2da68f0aac168e93fbb1")

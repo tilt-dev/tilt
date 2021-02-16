@@ -387,11 +387,6 @@ func (pw podWaiter) withExpectedPhase(phase v1.PodPhase) podWaiter {
 	return pw
 }
 
-func (pw podWaiter) withTimeout(timeout time.Duration) podWaiter {
-	pw.timeout = timeout
-	return pw
-}
-
 func (pw podWaiter) wait() []string {
 	ctx, cancel := context.WithTimeout(pw.f.ctx, pw.timeout)
 	defer cancel()

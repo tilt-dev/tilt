@@ -16,10 +16,6 @@ const SanchoYAML = testyaml.SanchoYAML
 
 const SanchoTwinYAML = testyaml.SanchoTwinYAML
 
-const SanchoBaseDockerfile = `
-FROM go:1.10
-`
-
 const SanchoDockerfile = `
 FROM go:1.10
 ADD . .
@@ -51,32 +47,6 @@ func NewSanchoLiveUpdateManifest(f Fixture) model.Manifest {
 	return manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
-		Build()
-}
-
-func NewSanchoLiveUpdateManifestWithTriggeredRuns(f Fixture, shouldRestart bool) model.Manifest {
-	syncs := []model.LiveUpdateSyncStep{
-		{
-			Source: f.Path(),
-			Dest:   "/go/src/github.com/tilt-dev/sancho",
-		},
-	}
-	runs := []model.LiveUpdateRunStep{
-		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo hello")},
-		model.LiveUpdateRunStep{
-			Command:  model.ToUnixCmd("echo a"),
-			Triggers: model.NewPathSet([]string{"a.txt"}, f.Path()),
-		},
-		model.LiveUpdateRunStep{
-			Command:  model.ToUnixCmd("echo b"),
-			Triggers: model.NewPathSet([]string{"b.txt"}, f.Path()),
-		},
-	}
-	lu := assembleLiveUpdate(syncs, runs, shouldRestart, nil, f)
-	return manifestbuilder.New(f, "sancho").
-		WithK8sYAML(testyaml.SanchoYAML).
-		WithImageTargets(NewSanchoDockerBuildImageTarget(f)).
-		WithLiveUpdateAtIndex(lu, 0).
 		Build()
 }
 
@@ -123,19 +93,6 @@ func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Mani
 		Build()
 }
 
-func NewSanchoCustomBuildManifestWithLiveUpdate(fixture Fixture) model.Manifest {
-	cb := model.CustomBuild{
-		Command:    model.ToHostCmd("exit 0"),
-		Deps:       []string{fixture.JoinPath("app")},
-		LiveUpdate: NewSanchoLiveUpdate(fixture),
-	}
-
-	return manifestbuilder.New(fixture, "sancho").
-		WithK8sYAML(SanchoYAML).
-		WithImageTarget(model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)).
-		Build()
-}
-
 func NewSanchoCustomBuildManifestWithPushDisabled(fixture Fixture) model.Manifest {
 	cb := model.CustomBuild{
 		Command:     model.ToHostCmd("exit 0"),
@@ -155,11 +112,6 @@ func NewSanchoDockerBuildImageTarget(f Fixture) model.ImageTarget {
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  f.Path(),
 	})
-}
-
-func NewSanchoSyncOnlyImageTarget(f Fixture, syncs []model.LiveUpdateSyncStep) model.ImageTarget {
-	lu := assembleLiveUpdate(syncs, nil, false, []string{}, f)
-	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), lu)
 }
 
 func NewSanchoLiveUpdate(f Fixture) model.LiveUpdate {
