@@ -5,17 +5,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"sync/atomic"
-	"time"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
-
-// The amount of time to wait for a reconnection before restarting the browser
-// window.
-const reconnectDur = 2 * time.Second
 
 type HeadsUpServerController struct {
 	host        model.WebHost
@@ -38,11 +32,6 @@ func ProvideHeadsUpServerController(host model.WebHost, port model.WebPort, hudS
 
 func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 	s.assetServer.TearDown(ctx)
-}
-
-func (s *HeadsUpServerController) isWebsocketConnected() bool {
-	connCount := atomic.LoadInt32(&(s.hudServer.numWebsocketConns))
-	return connCount > 0
 }
 
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore) {

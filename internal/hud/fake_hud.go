@@ -50,11 +50,6 @@ func (h *FakeHud) OnChange(ctx context.Context, st store.RStore) {
 	}
 }
 
-func (h *FakeHud) close() {
-	h.Closed = true
-	close(h.closeCh)
-}
-
 func (h *FakeHud) update(v view.View, vs view.ViewState) error {
 	h.LastView = v
 	h.updates <- v

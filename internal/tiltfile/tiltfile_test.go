@@ -6351,32 +6351,6 @@ func entrypoint(command model.Cmd) entrypointHelper {
 	return entrypointHelper{command}
 }
 
-type addHelper struct {
-	src  string
-	dest string
-}
-
-func add(src string, dest string) addHelper {
-	return addHelper{src, dest}
-}
-
-type runHelper struct {
-	cmd      string
-	triggers []string
-}
-
-func run(cmd string, triggers ...string) runHelper {
-	return runHelper{cmd, triggers}
-}
-
-type hotReloadHelper struct {
-	on bool
-}
-
-func hotReload(on bool) hotReloadHelper {
-	return hotReloadHelper{on: on}
-}
-
 type cmdHelper struct {
 	cmd model.Cmd
 }

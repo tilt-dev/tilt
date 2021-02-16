@@ -1004,15 +1004,6 @@ func (f *ibdFixture) resultsToNextState(results store.BuildResultSet) store.Buil
 	return stateSet
 }
 
-func (f *ibdFixture) replaceRegistry(defaultReg string, sel container.RefSelector) reference.Named {
-	reg := container.MustNewRegistry(defaultReg)
-	named, err := reg.ReplaceRegistryForLocalRef(sel)
-	if err != nil {
-		f.T().Fatal(err)
-	}
-	return named
-}
-
 func newK8sMultiEntityManifest(name string) model.Manifest {
 	yaml := fmt.Sprintf(`
 apiVersion: v1

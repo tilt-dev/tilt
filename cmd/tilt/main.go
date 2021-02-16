@@ -9,7 +9,6 @@ import (
 
 // Magic variables set by goreleaser
 var version string
-var commit string
 var date string
 
 func main() {

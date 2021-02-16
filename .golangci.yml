@@ -68,12 +68,6 @@ issues:
     - linters:
         - gosimple
       text: "S1008:"
-    - linters:
-        - staticcheck
-      text: "is unused"
-    - linters:
-        - unused
-      text: "is unused"
 
 
 

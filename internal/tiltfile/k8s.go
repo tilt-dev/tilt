@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -39,9 +38,6 @@ type k8sResource struct {
 
 	// All k8s resources to be deployed.
 	entities []k8s.K8sEntity
-
-	// Image selectors that the user manually asked to be associated with this resource.
-	refSelectors []container.RefSelector
 
 	imageRefs referenceList
 
@@ -83,10 +79,6 @@ type k8sResourceOptions struct {
 	links             []model.Link
 }
 
-func (r *k8sResource) addRefSelector(selector container.RefSelector) {
-	r.refSelectors = append(r.refSelectors, selector)
-}
-
 func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
 	locators []k8s.ImageLocator, envVarImages []container.RefSelector) error {
 	r.entities = append(r.entities, entities...)
@@ -106,16 +98,6 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
 	}
 
 	return nil
-}
-
-// Return the image selectors in a deterministic order.
-func (r k8sResource) refSelectorList() []string {
-	result := make([]string, 0, len(r.refSelectors))
-	for _, selector := range r.refSelectors {
-		result = append(result, selector.String())
-	}
-	sort.Strings(result)
-	return result
 }
 
 func (s *tiltfileState) k8sYaml(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

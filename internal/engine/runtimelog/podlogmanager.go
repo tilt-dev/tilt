@@ -43,12 +43,6 @@ func NewPodLogManager(kClient k8s.Client) *PodLogManager {
 	}
 }
 
-func cancelAll(watches []PodLogWatch) {
-	for _, w := range watches {
-		w.cancel()
-	}
-}
-
 // Always ignore the istio-init container.
 // TODO(nick): Make this configurable. See https://github.com/tilt-dev/tilt/issues/3814
 func (m *PodLogManager) initContainersWithWatchedLogs(pod store.Pod) []store.Container {

@@ -252,10 +252,6 @@ func (tcf *tcFixture) teardown() {
 	defer tcf.temp.TearDown()
 }
 
-func (tcf *tcFixture) getActions() []store.Action {
-	return tcf.st.Actions()
-}
-
 type fakeClock struct {
 	now time.Time
 }

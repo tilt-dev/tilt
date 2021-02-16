@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
@@ -424,10 +423,6 @@ func (b PodBuilder) Build() *v1.Pod {
 			ContainerStatuses: b.buildContainerStatuses(spec),
 		},
 	}
-}
-
-func imageNameForManifest(manifestName string) reference.Named {
-	return container.MustParseNamed(manifestName)
 }
 
 func parseYAMLFromManifest(m model.Manifest) ([]k8s.K8sEntity, error) {

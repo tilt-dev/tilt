@@ -49,10 +49,6 @@ type JSONPathImageLocatorSpec struct {
 	jsonPath string
 }
 
-func (s *JSONPathImageLocatorSpec) badValueErr(v starlark.Value) error {
-	return fmt.Errorf("Expected map of the form {'json_path': ..., 'repo_field': ..., 'tag_field': ...}. Actual: %s", v)
-}
-
 func (s *JSONPathImageLocatorSpec) Unpack(v starlark.Value) error {
 	var ok bool
 	s.jsonPath, ok = starlark.AsString(v)
