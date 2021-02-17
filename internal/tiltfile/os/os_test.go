@@ -197,12 +197,14 @@ print(path)
 	assert.Equal(t, fmt.Sprintf("%s\n", f.JoinPath("bar")), f.PrintOutput())
 }
 
+// NOTE(maia): `relpath` tests use raw strings (`r'stuff'`) so that Windows tests pass
+// (otherwise Starlark sees invalid escape sequences in Windows filespaths and gets mad)
 func TestRelpath(t *testing.T) {
 	f := NewFixture(t)
 	f.UseRealFS()
 
 	f.File("Tiltfile", fmt.Sprintf(`
-print(os.path.relpath(os.getcwd(), '%s'))
+print(os.path.relpath(os.getcwd(), r'%s'))
 `, f.JoinPath("beep/boop")))
 
 	_, err := f.ExecFile("Tiltfile")
@@ -215,7 +217,7 @@ func TestRelpathToDifferentDir(t *testing.T) {
 	f.UseRealFS()
 
 	f.File("Tiltfile", fmt.Sprintf(`
-print(os.path.relpath('%s', '%s'))
+print(os.path.relpath(r'%s', r'%s'))
 `, f.JoinPath("beep/"), f.JoinPath("beep/boop")))
 
 	_, err := f.ExecFile("Tiltfile")
@@ -240,7 +242,7 @@ func TestRelpathUpADir(t *testing.T) {
 	f.UseRealFS()
 
 	f.File("foo/Tiltfile", fmt.Sprintf(`
-print(os.path.relpath(os.getcwd(), '%s'))
+print(os.path.relpath(os.getcwd(), r'%s'))
 `, f.JoinPath("beep/boop")))
 
 	_, err := f.ExecFile("foo/Tiltfile")
@@ -253,7 +255,7 @@ func TestRelpathLoad(t *testing.T) {
 	f.UseRealFS()
 
 	f.File("foo/Tiltfile", fmt.Sprintf(`
-path = os.path.relpath(os.getcwd(), '%s')
+path = os.path.relpath(os.getcwd(), r'%s')
 `, f.JoinPath("foo/beep/boop")))
 
 	f.File("Tiltfile", `
