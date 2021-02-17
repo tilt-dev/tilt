@@ -79,9 +79,11 @@ function newLineEl(
     classes.push("is-error")
   }
   if (buildEvent === "init") {
+    classes.push("is-buildEvent")
     classes.push("is-buildEvent-init")
   }
   if (buildEvent === "fallback") {
+    classes.push("is-buildEvent")
     classes.push("is-buildEvent-fallback")
   }
   let span = document.createElement("span")

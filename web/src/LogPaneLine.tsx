@@ -54,9 +54,11 @@ class LogPaneLine extends PureComponent<LogPaneProps> {
       classes.push("is-contextChange")
     }
     if (props.buildEvent === "init") {
+      classes.push("is-buildEvent")
       classes.push("is-buildEvent-init")
     }
     if (props.buildEvent === "fallback") {
+      classes.push("is-buildEvent")
       classes.push("is-buildEvent-fallback")
     }
 

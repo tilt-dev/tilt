@@ -95,9 +95,31 @@ export const BuildEventLines = () => {
   let logStore = new LogStore()
   let lines = [
     { text: "Start build\n", fields: { buildEvent: "init" } },
-    { text: "Fallback build\n", fields: { buildEvent: "fallback" } },
+    { text: "Fallback build 1\n", fields: { buildEvent: "fallback" } },
+    { text: "Fallback build 2\n", fields: { buildEvent: "fallback" } },
+    { text: "Fallback build 3\n", fields: { buildEvent: "fallback" } },
     "Build log 1\n",
     "Build log 2\n",
+  ]
+  appendLines(logStore, "fe", ...lines)
+  return (
+    <LogStoreProvider value={logStore}>
+      <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
+    </LogStoreProvider>
+  )
+}
+
+export const BuildFallbackLines = () => {
+  let logStore = new LogStore()
+  let lines = [
+    { text: "Start build\n", fields: { buildEvent: "init" } },
+    "Build log 1\n",
+    "Build log 2\n",
+    { text: "Fallback build 1\n", fields: { buildEvent: "fallback" } },
+    { text: "Fallback build 2\n", fields: { buildEvent: "fallback" } },
+    { text: "Fallback build 3\n", fields: { buildEvent: "fallback" } },
+    "Build log 3\n",
+    "Build log 4\n",
   ]
   appendLines(logStore, "fe", ...lines)
   return (
