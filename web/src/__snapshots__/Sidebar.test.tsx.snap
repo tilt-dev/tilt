@@ -50,7 +50,7 @@ exports[`sidebar abbreviates durations under a minute 1`] = `
       }
     >
       <button
-        className="sc-gKsewC jRJBDl"
+        className="sc-gKsewC gQFzAy"
         onClick={[Function]}
       >
         Alerts on Top
@@ -913,7 +913,7 @@ exports[`sidebar renders empty resource list without crashing 1`] = `
       }
     >
       <button
-        className="sc-gKsewC jRJBDl"
+        className="sc-gKsewC gQFzAy"
         onClick={[Function]}
       >
         Alerts on Top
@@ -984,7 +984,7 @@ exports[`sidebar renders list of resources 1`] = `
       }
     >
       <button
-        className="sc-gKsewC jRJBDl"
+        className="sc-gKsewC gQFzAy"
         onClick={[Function]}
       >
         Alerts on Top
@@ -1286,7 +1286,7 @@ exports[`sidebar renders resources that haven't been built yet 1`] = `
       }
     >
       <button
-        className="sc-gKsewC jRJBDl"
+        className="sc-gKsewC gQFzAy"
         onClick={[Function]}
       >
         Alerts on Top
