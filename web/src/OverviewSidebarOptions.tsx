@@ -39,7 +39,7 @@ const useStyles = makeStyles({
   },
 })
 
-const segmentedControlsBorderRadius = "3px"
+const toggleBorderRadius = "3px"
 
 const ResourceFilterSegmentedControls = styled.div`
   margin-left: ${SizeUnit(0.25)};
@@ -63,13 +63,13 @@ const ResourceFilterToggle = styled.button`
 `
 
 export const TestsHiddenToggle = styled(ResourceFilterToggle)`
-  border-top-left-radius: ${segmentedControlsBorderRadius};
-  border-bottom-left-radius: ${segmentedControlsBorderRadius};
+  border-top-left-radius: ${toggleBorderRadius};
+  border-bottom-left-radius: ${toggleBorderRadius};
 `
 
 export const TestsOnlyToggle = styled(ResourceFilterToggle)`
-  border-top-right-radius: ${segmentedControlsBorderRadius};
-  border-bottom-right-radius: ${segmentedControlsBorderRadius};
+  border-top-right-radius: ${toggleBorderRadius};
+  border-bottom-right-radius: ${toggleBorderRadius};
 `
 
 export const AlertsOnTopToggle = styled.button`
@@ -77,7 +77,7 @@ export const AlertsOnTopToggle = styled.button`
   color: ${Color.grayLightest};
   background-color: ${Color.gray};
   padding: ${SizeUnit(0.125)} ${SizeUnit(0.25)};
-  border-radius: 3px;
+  border-radius: ${toggleBorderRadius};
   font-size: ${FontSize.smallester};
 
   &.is-enabled {
