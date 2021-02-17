@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react"
+import React, { useContext } from "react"
 import { matchPath, useHistory } from "react-router-dom"
 import { usePersistentState } from "./LocalStorage"
 import { usePathBuilder } from "./PathBuilder"
@@ -117,7 +117,7 @@ export function OverviewNavProvider(
   }>
 ) {
   let { children, validateTab, tabsForTesting } = props
-  const [tabs, setTabs] = usePersistentState<string[]>(
+  let [tabs, setTabs] = usePersistentState<string[]>(
     "tabs",
     addAllTabIfEmpty(tabsForTesting || [])
   )
@@ -136,11 +136,14 @@ export function OverviewNavProvider(
     invalidTab = candidateTab
   }
 
-  useEffect(() => {
-    if (selectedTab && !tabs.includes(selectedTab)) {
-      setTabs(tabs.concat([selectedTab]))
-    }
-  }, [tabs, selectedTab])
+  // Make sure that the tab list matches the available resources,
+  // and fix it up if they do. It's OK if this doesn't get propagated
+  // back to the hook state - it will get propagated the next time
+  // we set tabs.
+  tabs = tabs.filter((tab) => validateTab(tab))
+  if (selectedTab && !tabs.includes(selectedTab)) {
+    tabs = tabs.concat([selectedTab])
+  }
 
   // Deletes the resource in the tab list.
   // If we're deleting the current tab, navigate to the next reasonable tab.
