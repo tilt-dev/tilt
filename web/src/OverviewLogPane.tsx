@@ -246,7 +246,6 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
         this.needsScrollToLine = true
       }
       this.autoscroll = !this.needsScrollToLine
-      this.scrollTop = -1
 
       this.readLogsFromLogStore()
     } else if (prevProps.logStore !== this.props.logStore) {
@@ -384,9 +383,16 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     this.lineHashList = new LineHashList()
     this.prologuesBySpanId = {}
     this.logCheckpoint = 0
+    this.scrollTop = -1
+
     if (this.renderBufferRafId) {
       this.props.raf.cancelAnimationFrame(this.renderBufferRafId)
       this.renderBufferRafId = 0
+    }
+
+    if (this.autoscrollRafId) {
+      this.props.raf.cancelAnimationFrame(this.autoscrollRafId)
+      this.autoscrollRafId = 0
     }
   }
 

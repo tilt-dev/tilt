@@ -505,4 +505,47 @@ describe("LogStore", () => {
     )
     expect(logLinesToString(logs.manifestLog("be"), false)).toEqual("")
   })
+
+  it("truncates output for snapshots", () => {
+    let logs = new LogStore()
+    logs.maxLogLength = 40
+
+    logs.append({
+      spans: {
+        "build:1": { manifestName: "fe" },
+      },
+      segments: [newManifestSegment("build:1", "build 1\n")],
+      fromCheckpoint: 0,
+      toCheckpoint: 1,
+    })
+
+    logs.append({
+      spans: {
+        "build:2": { manifestName: "be" },
+      },
+      segments: [
+        newManifestSegment("build:2", "build 2\n"),
+        newManifestSegment("build:2", "build 3\n"),
+        newManifestSegment("build:2", "build 4\n"),
+        newManifestSegment("build:2", "build 5\n"),
+        newManifestSegment("build:2", "build 6\n"),
+        newManifestSegment("build:2", "build 7\n"),
+      ],
+      fromCheckpoint: 1,
+      toCheckpoint: 7,
+    })
+
+    logs.append({
+      spans: {
+        "": {},
+      },
+      segments: [newGlobalSegment("global line 1\n")],
+      fromCheckpoint: 7,
+      toCheckpoint: 8,
+    })
+
+    expect(logLinesToString(logs.allLog(), true)).toEqual(
+      "fe          ┊ build 1\nbe          ┊ build 7\nglobal line 1"
+    )
+  })
 })
