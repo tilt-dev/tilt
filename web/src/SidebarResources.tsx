@@ -132,7 +132,6 @@ export class SidebarResources extends React.Component<SidebarProps> {
 
     if (options.alertsOnTop) {
       filteredItems.sort(sortByHasAlerts)
-    } else {
     }
 
     let listItems = filteredItems.map((item) => (
