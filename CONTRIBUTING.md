@@ -104,6 +104,27 @@ There are plenty of toy projects to play with in the [integration](https://githu
 - [Live Update Examples](https://github.com/tilt-dev/live_update): contains Go and Python examples of Tilt's [Live Update](https://docs.tilt.dev/live_update_tutorial.html) functionality
 - [Sidecar Example](https://github.com/tilt-dev/sidecar_example): simple Python app and home-rolled logging sidecar
 
+### APIServer
+
+The Tilt APIServer is our new system for managing Tilt internals:
+https://github.com/tilt-dev/tilt-apiserver
+
+To add a new first-party type, run:
+
+```
+scripts/add-new-type.sh MyResourceType
+```
+
+and follow the instructions.
+
+Once you've added fields for your type, run:
+
+```
+scripts/update-codegen.sh
+```
+
+to regenerate client code for reading and writing the new type.
+
 ### Web
 The Tilt UI is a React single page application.
 

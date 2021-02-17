@@ -20,6 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 )
 
 // GroupName is the group name used in this package
@@ -30,17 +32,39 @@ const Version = "v1alpha1"
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
 
+func AllResourceObjects() []resource.Object {
+	return []resource.Object{
+		&Manifest{},
+		&FileWatch{},
+
+		// Hey! You! If you're adding a new top-level type, add the type object here.
+	}
+}
+func AllResourceLists() []runtime.Object {
+	return []runtime.Object{
+		&ManifestList{},
+		&FileWatchList{},
+
+		// Hey! You! If you're adding a new top-level type, add the List type here.
+	}
+}
+
 var AddToScheme = func(scheme *runtime.Scheme) error {
 	metav1.AddToGroupVersion(scheme, schema.GroupVersion{
 		Group:   GroupName,
 		Version: Version,
 	})
-	// +kubebuilder:scaffold:install
+
+	objs := []runtime.Object{}
+	for _, obj := range AllResourceObjects() {
+		objs = append(objs, obj)
+	}
+	objs = append(objs, AllResourceLists()...)
 
 	scheme.AddKnownTypes(schema.GroupVersion{
 		Group:   GroupName,
 		Version: Version,
-	}, &Manifest{}, &ManifestList{})
+	}, objs...)
 	return nil
 }
 

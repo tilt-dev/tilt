@@ -29,6 +29,10 @@ type FakeCoreV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeCoreV1alpha1) FileWatches() v1alpha1.FileWatchInterface {
+	return &FakeFileWatches{c}
+}
+
 func (c *FakeCoreV1alpha1) Manifests() v1alpha1.ManifestInterface {
 	return &FakeManifests{c}
 }

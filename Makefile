@@ -171,4 +171,4 @@ test_install_version_check: install
 	NO_INSTALL=1 PATH="~/go/bin:$$PATH" scripts/install.sh
 
 shellcheck:
-	find ./scripts -type f -name '*.sh' -exec docker run --rm -it -v $$(pwd):/mnt nlknguyen/alpine-shellcheck {} \;
+	find ./scripts -type f -name '*.sh' -exec docker run --rm -it -e SHELLCHECK_OPTS="-e SC2001" -v $$(pwd):/mnt nlknguyen/alpine-shellcheck {} \;

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder"
@@ -16,15 +15,14 @@ import (
 )
 
 func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port model.WebPort, tiltBuild model.TiltBuild) (*start.TiltServerOptions, error) {
-	dir, err := ioutil.TempDir("", "tilt-data")
-	if err != nil {
-		return nil, err
-	}
-
 	w := logger.Get(ctx).Writer(logger.DebugLvl)
-	builder := builder.APIServer.
-		WithResourceMemoryStorage(&v1alpha1.Manifest{}, dir).
-		WithOpenAPIDefinitions("tilt", tiltBuild.Version, openapi.GetOpenAPIDefinitions)
+	builder := builder.APIServer
+
+	for _, obj := range v1alpha1.AllResourceObjects() {
+		builder = builder.WithResourceMemoryStorage(obj, "data")
+	}
+	builder = builder.WithOpenAPIDefinitions("tilt", tiltBuild.Version, openapi.GetOpenAPIDefinitions)
+
 	codec, err := builder.BuildCodec()
 	if err != nil {
 		return nil, err

@@ -18,6 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
+// FileWatchListerExpansion allows custom methods to be added to
+// FileWatchLister.
+type FileWatchListerExpansion interface{}
+
 // ManifestListerExpansion allows custom methods to be added to
 // ManifestLister.
 type ManifestListerExpansion interface{}
