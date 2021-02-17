@@ -123,7 +123,7 @@ func (f *filepathREST) List(
 	if err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) {
 		appendItem(v, obj)
 	}); err != nil {
-		return nil, fmt.Errorf("failed walking filepath %v", dirname)
+		return nil, fmt.Errorf("failed walking filepath %v: %v", dirname, err)
 	}
 	return newListObj, nil
 }
@@ -265,6 +265,9 @@ func (f *filepathREST) Delete(
 	}
 
 	if err := f.fs.Remove(filename); err != nil {
+		if err != nil && os.IsNotExist(err) {
+			return nil, false, apierrors.NewNotFound(f.groupResource, name)
+		}
 		return nil, false, err
 	}
 	f.notifyWatchers(watch.Event{
@@ -290,7 +293,7 @@ func (f *filepathREST) DeleteCollection(
 		_ = f.fs.Remove(path)
 		appendItem(v, obj)
 	}); err != nil {
-		return nil, fmt.Errorf("failed walking filepath %v", dirname)
+		return nil, fmt.Errorf("failed walking filepath %v: %v", dirname, err)
 	}
 	return newListObj, nil
 }
