@@ -4,7 +4,11 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import { expectIncr } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
-import { AlertsOnTopToggle } from "./OverviewSidebarOptions"
+import {
+  AlertsOnTopToggle,
+  TestsHiddenToggle,
+  TestsOnlyToggle,
+} from "./OverviewSidebarOptions"
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
@@ -140,18 +144,18 @@ describe("SidebarResources", () => {
 
   const loadCases: [string, SidebarOptions, string[]][] = [
     [
-      "showResources",
-      { showResources: false, showTests: true, alertsOnTop: false },
+      "tests only",
+      { testsHidden: false, testsOnly: true, alertsOnTop: false },
       ["a", "b"],
     ],
     [
-      "showTests",
-      { showResources: true, showTests: false, alertsOnTop: false },
+      "tests hidden",
+      { testsHidden: true, testsOnly: false, alertsOnTop: false },
       ["vigoda"],
     ],
     [
       "alertsOnTop",
-      { showResources: true, showTests: true, alertsOnTop: true },
+      { testsHidden: false, testsOnly: false, alertsOnTop: true },
       ["vigoda", "a", "b"],
     ],
   ]
@@ -182,22 +186,19 @@ describe("SidebarResources", () => {
       assertSidebarItemsAndOptions(
         root,
         expectedItems,
-        options.showResources,
-        options.showTests,
+        options.testsHidden,
+        options.testsOnly,
         options.alertsOnTop
       )
     }
   )
 
   const saveCases: [string, SidebarOptions][] = [
-    [
-      "showResources",
-      { showResources: false, showTests: true, alertsOnTop: true },
-    ],
-    ["showTests", { showResources: true, showTests: false, alertsOnTop: true }],
+    ["testsHidden", { testsHidden: true, testsOnly: false, alertsOnTop: true }],
+    ["testsOnly", { testsHidden: false, testsOnly: true, alertsOnTop: true }],
     [
       "alertsOnTop",
-      { showResources: true, showTests: true, alertsOnTop: false },
+      { testsHidden: false, testsOnly: false, alertsOnTop: false },
     ],
   ]
   test.each(saveCases)(
@@ -222,14 +223,18 @@ describe("SidebarResources", () => {
         </MemoryRouter>
       )
 
-      let resToggle = root.find("input#resources")
-      if (resToggle.props().checked != expectedOptions.showResources) {
-        resToggle.simulate("click")
+      let testsHiddenControl = root.find(TestsHiddenToggle)
+      if (
+        testsHiddenControl.hasClass("is-enabled") != expectedOptions.testsHidden
+      ) {
+        testsHiddenControl.simulate("click")
       }
 
-      let testToggle = root.find("input#tests")
-      if (testToggle.props().checked != expectedOptions.showTests) {
-        testToggle.simulate("click")
+      let testsOnlyControl = root.find(TestsOnlyToggle)
+      if (
+        testsOnlyControl.hasClass("is-enabled") != expectedOptions.testsOnly
+      ) {
+        testsOnlyControl.simulate("click")
       }
 
       let aotToggle = root.find(AlertsOnTopToggle)
