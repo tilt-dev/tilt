@@ -169,10 +169,13 @@ func abspath(t *starlark.Thread, path string) (starlark.Value, error) {
 }
 
 func relpath(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var basepath, targpath string
+	var targpath string
+	basepath := starkit.AbsWorkingDir(thread) // by default, relative to CWD
+
+	// Matches syntax of Python's os.path.relpath()
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
-		"basepath", &basepath,
-		"targpath", &targpath); err != nil {
+		"targpath", &targpath,
+		"basepath?", &basepath); err != nil {
 		return nil, err
 	}
 	relPath, err := filepath.Rel(basepath, targpath)
