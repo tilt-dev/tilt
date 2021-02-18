@@ -576,7 +576,7 @@ export default class HUD extends Component<HudProps, HudState> {
     let tiltCloudTeamName = view?.tiltCloudTeamName || null
     let isSnapshot = this.pathBuilder.isSnapshot()
     let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
-      let name = props.match.params.name
+      const name = decodeURIComponent(props.match.params?.name ?? "")
       return (
         <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
           <SidebarAccount
@@ -630,7 +630,7 @@ export default class HUD extends Component<HudProps, HudState> {
     let isSnapshot = this.pathBuilder.isSnapshot()
 
     let traceRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params?.name ?? ""
+      const name = decodeURIComponent(props.match.params?.name ?? "")
       let span = props.match.params?.span ?? ""
 
       let r = resources.find((r) => r.name === name)
@@ -657,7 +657,7 @@ export default class HUD extends Component<HudProps, HudState> {
     }
 
     let logsRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params?.name ?? ""
+      const name = decodeURIComponent(props.match.params?.name ?? "")
       let r = resources.find((r) => r.name === name)
       if (r === undefined) {
         return <Route component={NotFound} />
@@ -682,7 +682,7 @@ export default class HUD extends Component<HudProps, HudState> {
     }
 
     let errorRoute = (props: RouteComponentProps<any>): React.ReactNode => {
-      let name = props.match.params ? props.match.params.name : ""
+      const name = decodeURIComponent(props.match.params?.name ?? "")
       let er = resources.find((r) => r.name === name)
       if (!er) {
         return <Route component={NotFound} />
@@ -696,7 +696,7 @@ export default class HUD extends Component<HudProps, HudState> {
       )
     }
     let facetsRoute = (props: RouteComponentProps<any>): React.ReactNode => {
-      let name = props.match.params ? props.match.params.name : ""
+      const name = decodeURIComponent(props.match.params?.name ?? "")
       let fr = resources.find((r) => r.name === name)
       if (!fr) {
         return <Route component={NotFound} />

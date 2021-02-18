@@ -50,6 +50,7 @@ export function LegacyNavProvider(
   let pb = usePathBuilder()
   let { resourceView, children } = props
   let nav = (name: string) => {
+    name = encodeURIComponent(name)
     let all = name === "" || name === ResourceName.all
     if (all) {
       switch (resourceView) {
@@ -129,7 +130,9 @@ export function OverviewNavProvider(
   let matchResource = matchPath(history.location.pathname, {
     path: pb.path("/r/:name"),
   })
-  let candidateTab = (matchResource?.params as any)?.name || ""
+  let candidateTab = decodeURIComponent(
+    (matchResource?.params as any)?.name || ""
+  )
   if (candidateTab && validateTab(candidateTab)) {
     selectedTab = candidateTab
   } else {
@@ -175,7 +178,7 @@ export function OverviewNavProvider(
   }
 
   let openResource = (name: string, options?: { newTab: boolean }) => {
-    name = name || ResourceName.all
+    name = encodeURIComponent(name || ResourceName.all)
     let openNew = options?.newTab || false
     let url = pb.path(`/r/${name}/overview`)
     let newTabs
