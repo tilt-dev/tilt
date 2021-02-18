@@ -72,8 +72,9 @@ type FakeK8sClient struct {
 	listCallCount           int
 	listReturnsEmpty        bool
 
-	ExecCalls  []ExecCall
-	ExecErrors []error
+	ExecCalls   []ExecCall
+	ExecOutputs []io.Reader
+	ExecErrors  []error
 }
 
 type ExecCall struct {
@@ -456,6 +457,12 @@ func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.N
 		Cmd:   cmd,
 		Stdin: stdinBytes,
 	})
+
+	if len(c.ExecOutputs) > 0 {
+		out := c.ExecOutputs[0]
+		c.ExecOutputs = c.ExecOutputs[1:]
+		_, _ = io.Copy(stdout, out)
+	}
 
 	if len(c.ExecErrors) > 0 {
 		err = c.ExecErrors[0]
