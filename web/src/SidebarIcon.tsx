@@ -111,7 +111,6 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
         <SidebarIconRoot className={`${this.status()}`}>{icon}</SidebarIconRoot>
       )
     }
-
     return (
       <Tooltip title={this.props.tooltipText}>
         <SidebarIconRoot className={`${this.status()}`}>{icon}</SidebarIconRoot>

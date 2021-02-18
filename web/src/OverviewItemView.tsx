@@ -24,6 +24,7 @@ import {
   ColorRGBA,
   Font,
   FontSize,
+  mixinTruncateText,
   overviewItemBorderRadius,
   SizeUnit,
   Width,
@@ -39,7 +40,6 @@ export const OverviewItemRoot = styled.li`
   width: calc((100% - 3 * ${SizeUnit(0.75)} - 2 * ${SizeUnit(1)}) / 4);
   box-sizing: border-box;
   margin: 0 0 ${SizeUnit(0.75)} ${SizeUnit(0.75)};
-  position: relative; // Anchor Trigger Mode button
 `
 
 type Resource = Proto.webviewResource
@@ -126,14 +126,24 @@ const barberpole = keyframes`
   }
 `
 
-// Flexbox (column) containing:
-// - `OverviewItemRuntimeBox` - (row) with runtime info, pin, trigger, trigger mode
-// - `OverviewItemBuildBox` - (row) with build status, text
+// `OverviewItemBox` is a flexbox column with two children:
+//
+// `OverviewItemRuntimeBox` has the runtime status, resource type, name, trigger button
+//   +----+   +------------------------+
+//   |Sta-+   | InnerRuntimeBox        |
+//   |tus |   +------------------------+ <- Inside RuntimeBoxStack
+//   |Icon|   | InnerRuntimeBox        |
+//   +----+   +------------------------+
+//
+// `OverviewItemBuildBox`, right below, has build status, additional info, and trigger mode
+//   +----+   +-------------------+  +-----------+
+//   |Icon|   | OverviewItemText  |  |TriggerMode|
+//   +----+   +-------------------+  +-----------+
+
 export let OverviewItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
-  align-items: stretch;
   flex-grow: 1;
   flex-direction: column;
   transition: color ${AnimDuration.default} linear,
@@ -141,10 +151,9 @@ export let OverviewItemBox = styled.div`
   overflow: hidden;
   border: 1px solid ${Color.grayLighter};
   position: relative; // Anchor .isBuilding::after + OverviewItemActions
-  text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
-  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.51);
+  box-shadow: 0px 3px 3px 0px rgba(0, 0, 0, ${ColorAlpha.translucent});
   border-radius: ${overviewItemBorderRadius};
   padding: 0;
 
@@ -171,17 +180,12 @@ export let OverviewItemBox = styled.div`
   }
 `
 
-// Flexbox (row) containing:
-// - StatusIcon - imported component
-// - `RuntimeBoxStack` - (column) with 2 `InnerRuntimeBox` (row) with type, name, pin, timeago, etc
-// - `OverviewItemActions` - (column) with trigger, trigger mode
 let OverviewItemRuntimeBox = styled.div`
   display: flex;
   align-items: stretch;
-  flex-grow: 1;
   transition: border-color ${AnimDuration.default} linear;
+  flex-grow: 1;
 `
-
 let RuntimeBoxStack = styled.div`
   display: flex;
   flex-direction: column;
@@ -190,42 +194,28 @@ let RuntimeBoxStack = styled.div`
   // To truncate long resource names…
   min-width: 0; // Override default, so width can be less than content
 `
-
 let InnerRuntimeBox = styled.div`
   display: flex;
   align-items: center;
+  flex-grow: 1;
 `
-
-let OverviewItemActions = styled.div`
-  display: flex;
-  flex-direction: column;
-`
-
-let OverviewItemBuildBox = styled.div`
-  display: flex;
-  align-items: stretch;
-  flex-shrink: 1;
-  border-top: 1px solid ${Color.grayLighter};
-`
-
-let OverviewItemText = styled.div`
+let OverviewItemType = styled.div`
   display: flex;
   align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
+  color: ${Color.grayLightest};
   opacity: ${ColorAlpha.almostOpaque};
 `
-
-let OverviewItemNameRoot = styled(OverviewItemText)`
-  opacity: 1;
+let OverviewItemNameRoot = styled.div`
+  display: flex;
   font-family: ${Font.sansSerif};
   font-weight: 600;
+  padding-bottom: 8px;
   z-index: 1; // Appear above the .isBuilding gradient
+  // To truncate long resource names…
+  min-width: 0; // Override default, so width can be less than content
 `
-
 let OverviewItemNameTruncate = styled.span`
-  overflow: hidden;
-  text-overflow: ellipsis;
+  ${mixinTruncateText}
 `
 
 let OverviewItemName = (props: { name: string }) => {
@@ -243,6 +233,24 @@ let OverviewItemTimeAgo = styled.span`
   margin-right: ${SizeUnit(0.5)};
   flex-grow: 1;
   text-align: right;
+`
+
+let OverviewItemBuildBox = styled.div`
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 1;
+  border-top: 1px solid ${Color.grayLighter};
+  padding-right: 4px;
+`
+
+let OverviewItemBuildText = styled.div`
+  color: ${Color.grayLightest};
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  ${mixinTruncateText}
 `
 
 export function triggerUpdate(name: string, action: string) {
@@ -353,7 +361,6 @@ function RuntimeBox(props: RuntimeBoxProps) {
   let building = !isZeroTime(item.currentBuildStartTime)
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
   let hasBuilt = item.lastBuild !== null
-  let onModeToggle = toggleTriggerMode.bind(null, item.name)
   let onTrigger = triggerUpdate.bind(null, item.name)
 
   return (
@@ -363,36 +370,28 @@ function RuntimeBox(props: RuntimeBoxProps) {
         status={item.runtimeStatus}
         alertCount={item.runtimeAlertCount}
       />
-      <RuntimeBoxStack style={{ margin: "8px 0px" }}>
+      <RuntimeBoxStack>
         <InnerRuntimeBox>
-          <OverviewItemText>{item.resourceTypeLabel}</OverviewItemText>
+          <OverviewItemType>{item.resourceTypeLabel}</OverviewItemType>
           <SidebarPinButton resourceName={item.name} />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>
+          <SidebarTriggerButton
+            isTiltfile={item.isTiltfile}
+            isSelected={false}
+            hasPendingChanges={item.hasPendingChanges}
+            hasBuilt={hasBuilt}
+            isBuilding={building}
+            triggerMode={item.triggerMode}
+            isQueued={item.queued}
+            onTrigger={onTrigger}
+          />
         </InnerRuntimeBox>
         <InnerRuntimeBox>
           <OverviewItemName name={item.name} />
         </InnerRuntimeBox>
       </RuntimeBoxStack>
-      <OverviewItemActions>
-        <SidebarTriggerButton
-          isTiltfile={item.isTiltfile}
-          isSelected={false}
-          hasPendingChanges={item.hasPendingChanges}
-          hasBuilt={hasBuilt}
-          isBuilding={building}
-          triggerMode={item.triggerMode}
-          isQueued={item.queued}
-          onTrigger={onTrigger}
-        />
-        {item.isTest && (
-          <TriggerModeToggle
-            triggerMode={item.triggerMode}
-            onModeToggle={onModeToggle}
-          />
-        )}
-      </OverviewItemActions>
     </OverviewItemRuntimeBox>
   )
 }
@@ -404,6 +403,7 @@ type BuildBoxProps = {
 
 function BuildBox(props: BuildBoxProps) {
   let { item } = props
+  let onModeToggle = toggleTriggerMode.bind(null, item.name)
 
   return (
     <OverviewItemBuildBox>
@@ -412,9 +412,13 @@ function BuildBox(props: BuildBoxProps) {
         status={item.buildStatus}
         alertCount={item.buildAlertCount}
       />
-      <OverviewItemText style={{ margin: "8px 0px" }}>
-        {buildStatusText(item)}
-      </OverviewItemText>
+      <OverviewItemBuildText>{buildStatusText(item)}</OverviewItemBuildText>
+      {item.isTest && (
+        <TriggerModeToggle
+          triggerMode={item.triggerMode}
+          onModeToggle={onModeToggle}
+        />
+      )}
     </OverviewItemBuildBox>
   )
 }
@@ -461,7 +465,7 @@ let OverviewItemDetailsBox = styled.div`
   position: relative;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
-  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.51);
+  box-shadow: 0px 3px 3px 0px rgba(0, 0, 0, ${ColorAlpha.almostOpaque});
   border-radius: ${overviewItemBorderRadius};
 `
 
@@ -661,7 +665,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
     <OverviewItemRoot
       key={item.name}
       onClick={handleClick}
-      className="u-showPinOnHover"
+      className="u-showPinOnHover u-showTriggerModeOnHover"
     >
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <RuntimeBox item={item} />

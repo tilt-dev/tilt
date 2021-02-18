@@ -1,45 +1,47 @@
 import React from "react"
 import styled from "styled-components"
-import { ReactComponent as AutoSvg } from "./assets/svg/auto.svg"
-import {
-  AnimDuration,
-  Color,
-  ColorAlpha,
-  mixinResetButtonStyle,
-  SizeUnit,
-} from "./style-helpers"
+import { ReactComponent as TriggerModeButtonSvg } from "./assets/svg/trigger-mode-button.svg"
+import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 import { TriggerMode } from "./types"
 
 let TriggerModeToggleRoot = styled.button`
   ${mixinResetButtonStyle}
-  width: ${SizeUnit(1)};
-  height: ${SizeUnit(1)};
+  display: flex;
+  align-items: center;
+  transition: opacity ${AnimDuration.short} linear;
+  opacity: 0;
+
+  .u-showTriggerModeOnHover:hover &,
+  &:focus {
+    opacity: 1;
+  }
 
   .fillStd {
-    fill: ${Color.blue};
-    transition: fill ${AnimDuration.short} linear;
+    fill: ${Color.grayDark};
   }
   .strokeStd {
-    stroke: ${Color.blue};
-    opacity: ${ColorAlpha.almostOpaque};
+    stroke: ${Color.grayLight};
     transition: stroke ${AnimDuration.short} linear;
   }
-  .autoSvg-toggleOn {
+  .triggerModeSvg-isManual {
+    opacity: 0;
     fill: ${Color.blue};
+    transition: opacity ${AnimDuration.default} ease;
+  }
+  .triggerModeSvg-isAuto {
+    fill: ${Color.grayLight};
+    transition: opacity ${AnimDuration.default} ease;
   }
 
   &.is-manual {
-    .fillStd {
-      fill: ${Color.grayLight};
-    }
     .strokeStd {
-      stroke: ${Color.grayLight};
+      stroke: ${Color.blue};
     }
-    .autoSvg-toggleOn {
-      fill: none;
+    .triggerModeSvg-isManual {
+      opacity: 1;
     }
-    .autoSvg-toggleOff {
-      fill: ${Color.grayLight};
+    .triggerModeSvg-isAuto {
+      opacity: 0;
     }
   }
 `
@@ -51,8 +53,8 @@ type TriggerModeToggleProps = {
 }
 
 export const ToggleTriggerModeTooltip = {
-  isManual: "Auto OFF (file changes do not trigger updates)",
-  isAuto: "Auto ON (file changes trigger update)",
+  isManual: "File changes do not trigger updates",
+  isAuto: "File changes trigger update",
 }
 
 const titleText = (isManual: boolean): string => {
@@ -85,7 +87,7 @@ function TriggerModeToggle(props: TriggerModeToggleProps) {
       onClick={onClick}
       title={titleText(isManualTriggerMode)}
     >
-      <AutoSvg />
+      <TriggerModeButtonSvg />
     </TriggerModeToggleRoot>
   )
 }

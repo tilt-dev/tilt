@@ -20,6 +20,7 @@ export let SidebarTriggerButtonRoot = styled.button`
   border-top-right-radius: ${overviewItemBorderRadius};
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   justify-content: center;
   opacity: 0;
   pointer-events: none;
@@ -32,7 +33,6 @@ export let SidebarTriggerButtonRoot = styled.button`
   &.isQueued {
     opacity: 1;
   }
-
   &.isSelected {
     background-color: ${Color.gray7};
   }
@@ -47,11 +47,14 @@ export let SidebarTriggerButtonRoot = styled.button`
     transition: fill ${AnimDuration.default} ease;
     fill: ${Color.grayLight};
   }
+  &.is-manual .fillStd {
+    fill: ${Color.blue};
+  }
   &.isSelected .fillStd {
     fill: ${Color.black};
   }
   &:hover .fillStd {
-    fill: ${Color.blue};
+    fill: ${Color.white};
   }
   &.isSelected:hover .fillStd {
     fill: ${Color.blueDark};
@@ -147,7 +150,9 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
   if (props.isQueued) {
     classes.push("isQueued")
   }
-
+  if (isManualTriggerMode) {
+    classes.push("is-manual")
+  }
   return (
     <SidebarTriggerButtonRoot
       onClick={onClick}
