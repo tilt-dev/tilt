@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -195,6 +196,96 @@ print(path)
 	_, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s\n", f.JoinPath("bar")), f.PrintOutput())
+}
+
+// NOTE(maia): `relpath` tests use raw strings (`r'stuff'`) so that Windows tests pass
+// (otherwise Starlark sees invalid escape sequences in Windows filespaths and gets mad)
+// Also, we use filepath.Rel to get expected path so it works on all OS's.
+func TestRelpathDefaultCWD(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	targpath := f.JoinPath("beep/boop")
+	expected, err := filepath.Rel(f.Path(), targpath)
+	assert.NoError(t, err)
+
+	f.File("Tiltfile", fmt.Sprintf(`
+print(os.path.relpath(r'%s'))
+`, targpath))
+
+	_, err = f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, expected, strings.TrimSpace(f.PrintOutput()))
+}
+
+func TestRelpathToDifferentDir(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	targpath := f.JoinPath("beep/boop")
+	basepath := f.JoinPath("beep/")
+	expected, err := filepath.Rel(basepath, targpath)
+	assert.NoError(t, err)
+
+	f.File("Tiltfile", fmt.Sprintf(`
+print(os.path.relpath(r'%s', r'%s'))
+`, targpath, basepath))
+
+	_, err = f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, expected, strings.TrimSpace(f.PrintOutput()))
+}
+
+func TestRelpathImpossible(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.File("Tiltfile", `
+print(os.path.relpath('some/nonsense/path'))
+`)
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "can't make some/nonsense/path relative to")
+}
+
+func TestRelpathUpADir(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	targpath := f.JoinPath("beep/boop")
+	basepath := f.JoinPath("foo")
+	expected, err := filepath.Rel(basepath, targpath)
+	assert.NoError(t, err)
+
+	f.File("foo/Tiltfile", fmt.Sprintf(`
+print(os.path.relpath(r'%s'))
+`, f.JoinPath("beep/boop")))
+
+	_, err = f.ExecFile("foo/Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, expected, strings.TrimSpace(f.PrintOutput()))
+}
+
+func TestRelpathLoad(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	targpath := f.JoinPath("foo/beep/boop")
+	basepath := f.JoinPath("foo")
+	expected, err := filepath.Rel(basepath, targpath)
+	assert.NoError(t, err)
+
+	f.File("foo/Tiltfile", fmt.Sprintf(`
+path = os.path.relpath(r'%s')
+`, f.JoinPath("foo/beep/boop")))
+
+	f.File("Tiltfile", `
+load('./foo/Tiltfile', 'path')
+print(path)
+`)
+	_, err = f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	assert.Equal(t, expected, strings.TrimSpace(f.PrintOutput()))
 }
 
 func TestBasename(t *testing.T) {
