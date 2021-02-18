@@ -1,42 +1,40 @@
 import React from "react"
 import styled from "styled-components"
 import { ReactComponent as TriggerModeButtonSvg } from "./assets/svg/trigger-mode-button.svg"
-import {
-  AnimDuration,
-  Color,
-  ColorAlpha,
-  mixinResetButtonStyle,
-} from "./style-helpers"
+import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 import { TriggerMode } from "./types"
 
 let TriggerModeToggleRoot = styled.button`
   ${mixinResetButtonStyle}
+  display: flex;
+  align-items: center;
 
   .fillStd {
-    fill: ${Color.blue};
-    transition: fill ${AnimDuration.short} linear;
+    fill: ${Color.grayDark};
   }
   .strokeStd {
-    stroke: ${Color.blue};
-    opacity: ${ColorAlpha.almostOpaque};
+    stroke: ${Color.grayLight};
     transition: stroke ${AnimDuration.short} linear;
   }
-  .triggerModeSvg-toggleOn {
+  .triggerModeSvg-isManual {
+    opacity: 0;
     fill: ${Color.blue};
+    transition: opacity ${AnimDuration.default} ease;
+  }
+  .triggerModeSvg-isAuto {
+    fill: ${Color.grayLight};
+    transition: opacity ${AnimDuration.default} ease;
   }
 
   &.is-manual {
-    .fillStd {
-      fill: ${Color.grayLight};
-    }
     .strokeStd {
-      stroke: ${Color.grayLight};
+      stroke: ${Color.blue};
     }
-    .autoSvg-toggleOn {
-      fill: none;
+    .triggerModeSvg-isManual {
+      opacity: 1;
     }
-    .autoSvg-toggleOff {
-      fill: ${Color.grayLight};
+    .triggerModeSvg-isAuto {
+      opacity: 0;
     }
   }
 `

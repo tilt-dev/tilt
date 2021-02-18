@@ -235,6 +235,7 @@ let OverviewItemBuildBox = styled.div`
   align-items: stretch;
   flex-shrink: 1;
   border-top: 1px solid ${Color.grayLighter};
+  padding-right: 4px;
 `
 
 let OverviewItemBuildText = styled.div`
