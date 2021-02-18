@@ -415,7 +415,6 @@ function k8sResource(): Resource {
     runtimeStatus: "",
     triggerMode: TriggerMode.TriggerModeAuto,
     hasPendingChanges: true,
-    facets: [],
     queued: false,
   }
 }
@@ -452,7 +451,6 @@ function dcResource(): Resource {
     runtimeStatus: "ok",
     isTiltfile: false,
     crashLog: "",
-    facets: [],
     queued: false,
   }
 }

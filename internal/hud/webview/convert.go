@@ -77,8 +77,6 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 
 		podID := ms.MostRecentPod().PodID
 
-		facets := mt.Facets(s.Secrets)
-
 		bh, err := ToProtoBuildRecords(buildHistory, s.LogStore)
 		if err != nil {
 			return nil, err
@@ -122,7 +120,6 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			CrashLog:           ms.CrashLog.String(),
 			TriggerMode:        int32(mt.Manifest.TriggerMode),
 			HasPendingChanges:  hasPendingChanges,
-			Facets:             model.FacetsToProto(facets),
 			Queued:             s.ManifestInTriggerQueue(name),
 		}
 

@@ -108,7 +108,6 @@ export function tiltfileResource(): Resource {
     endpointLinks: [],
     podID: "",
     isTiltfile: true,
-    facets: [],
     queued: false,
   }
   return resource
@@ -151,7 +150,6 @@ function oneResource(): Resource {
     endpointLinks: [],
     podID: "",
     isTiltfile: false,
-    facets: [],
     queued: false,
     specs: vigodaSpecs(),
   }
@@ -350,7 +348,6 @@ function twoResourceView(): view {
       podUpdateStartTime: "",
     },
     hasPendingChanges: false,
-    facets: [],
     queued: false,
     specs: vigodaSpecs(),
   }
