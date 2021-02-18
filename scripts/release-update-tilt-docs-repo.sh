@@ -14,7 +14,7 @@ if [[ "${GITHUB_TOKEN-}" == "" ]]; then
 fi
 
 VERSION=${1//v/}
-VERSION_PATTERN="^[0-9]+\.[0-9]+\.[0-9]+$"
+VERSION_PATTERN="^[0-9]+\\.[0-9]+\\.[0-9]+$"
 if ! [[ $VERSION =~ $VERSION_PATTERN ]]; then
     echo "Version did not match expected pattern. Actual: $VERSION"
     exit 1
@@ -35,7 +35,7 @@ sed -i -E "s/asdf install tilt .*/asdf install tilt $VERSION/" docs/upgrade.md
 sed -i -E "s/asdf global tilt .*/asdf global tilt $VERSION/" docs/upgrade.md
 
 # the sed pattern doesn't need to match the whole string.
-SED_VERSION_PATTERN="[0-9]+\.[0-9]+\.[0-9]+"
+SED_VERSION_PATTERN="[0-9]+\\.[0-9]+\\.[0-9]+"
 sed -i -E "s|/download/v$SED_VERSION_PATTERN/tilt.$SED_VERSION_PATTERN|/download/v$VERSION/tilt.$VERSION|" docs/install.md
 sed -i -E "s|/download/v$SED_VERSION_PATTERN/tilt.$SED_VERSION_PATTERN|/download/v$VERSION/tilt.$VERSION|" docs/upgrade.md
 git add .

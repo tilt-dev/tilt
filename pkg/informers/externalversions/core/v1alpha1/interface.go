@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// FileWatches returns a FileWatchInformer.
+	FileWatches() FileWatchInformer
 	// Manifests returns a ManifestInformer.
 	Manifests() ManifestInformer
 }
@@ -37,6 +39,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// FileWatches returns a FileWatchInformer.
+func (v *version) FileWatches() FileWatchInformer {
+	return &fileWatchInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Manifests returns a ManifestInformer.

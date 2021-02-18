@@ -14,7 +14,7 @@ if [[ "${GITHUB_TOKEN-}" == "" ]]; then
 fi
 
 VERSION=${1//v/}
-VERSION_PATTERN="^[0-9]+\.[0-9]+\.[0-9]+$"
+VERSION_PATTERN="^[0-9]+\\.[0-9]+\\.[0-9]+$"
 if ! [[ $VERSION =~ $VERSION_PATTERN ]]; then
     echo "Version did not match expected pattern. Actual: $VERSION"
     exit 1
