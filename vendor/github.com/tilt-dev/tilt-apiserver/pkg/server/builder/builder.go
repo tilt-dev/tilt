@@ -22,6 +22,7 @@ import (
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
+	"github.com/tilt-dev/tilt-apiserver/pkg/storage/filepath"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -36,6 +37,7 @@ var APIServer = &Server{
 
 // Server builds a new apiserver for a single API group
 type Server struct {
+	memoryFS             *filepath.MemoryFS
 	errs                 []error
 	storage              map[schema.GroupResource]*singletonProvider
 	groupVersions        map[schema.GroupVersion]bool

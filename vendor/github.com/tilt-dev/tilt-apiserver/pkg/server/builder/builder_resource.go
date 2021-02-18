@@ -16,6 +16,14 @@ func (a *Server) WithResourceFileStorage(obj resource.Object, path string) *Serv
 	return a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, fs))
 }
 
+// Registers a request handler for the resource that stores it in memory.
+func (a *Server) WithResourceMemoryStorage(obj resource.Object, path string) *Server {
+	if a.memoryFS == nil {
+		a.memoryFS = filepath.NewMemoryFS()
+	}
+	return a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS))
+}
+
 // WithResourceAndHandler registers a request handler for the resource rather than the default
 // etcd backed storage.
 //

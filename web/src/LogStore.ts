@@ -13,6 +13,8 @@ import { LogLine, LogPatchSet } from "./types"
 const defaultSpanId = "_"
 const fieldNameProgressId = "progressID"
 
+const defaultMaxLogLength = 1000 * 1000
+
 type LogSpan = {
   spanId: string
   manifestName: string
@@ -95,6 +97,10 @@ class LogStore {
 
   updateCallbacks: callback[]
 
+  // Track log length, for truncation.
+  logLength: number = 0
+  maxLogLength: number
+
   constructor() {
     this.spans = {}
     this.segments = []
@@ -104,6 +110,7 @@ class LogStore {
     this.warningIndex = {}
     this.lineCache = {}
     this.updateCallbacks = []
+    this.maxLogLength = defaultMaxLogLength
   }
 
   addUpdateListener(c: callback) {
@@ -198,6 +205,8 @@ class LogStore {
     this.invokeUpdateCallbacks({
       action: LogUpdateAction.append,
     })
+
+    this.ensureMaxLength()
   }
 
   private invokeUpdateCallbacks(e: LogUpdateEvent) {
@@ -217,6 +226,7 @@ class LogStore {
     // workaround firestore bug. see comments on defaultSpanId.
     newSegment.spanId = newSegment.spanId || defaultSpanId
     this.segments.push(newSegment)
+    this.logLength += newSegment.text?.length || 0
 
     let candidate = new StoredLine(newSegment)
     let spanId = candidate.spanId
@@ -265,6 +275,7 @@ class LogStore {
       return
     }
 
+    this.logLength = 0
     this.lines = []
     this.lineCache = []
     this.segmentToLine = []
@@ -590,6 +601,99 @@ class LogStore {
       lines: result,
       checkpoint: this.segments.length,
     }
+  }
+
+  // After a log hits its limit, we need to truncate it to keep it small
+  // we do this by cutting a big chunk at a time, so that we have rarer, larger changes, instead of
+  // a small change every time new data is written to the log
+  // https://github.com/tilt-dev/tilt/issues/1935#issuecomment-531390353
+  logTruncationTarget(): number {
+    return this.maxLogLength / 2
+  }
+
+  ensureMaxLength() {
+    if (this.logLength <= this.maxLogLength) {
+      return
+    }
+
+    // First, count the number of bytes in each manifest.
+    let manifestByteCount: { [key: string]: number } = {}
+    function longestManifestName() {
+      let longest = ""
+      let longestCount = -1
+      for (let key in manifestByteCount) {
+        let count = manifestByteCount[key]
+        if (count > longestCount) {
+          longest = key
+          longestCount = count
+        }
+      }
+      return longest
+    }
+
+    for (let segment of this.segments) {
+      let span = this.spans[segment.spanId || defaultSpanId]
+      if (span) {
+        let name = span.manifestName || ""
+        let count = manifestByteCount[name] || 0
+        let len = segment.text?.length || 0
+        manifestByteCount[name] = count + len
+      }
+    }
+
+    // Next, repeatedly cut the longest manifest in half until
+    // we've reached the target number of bytes to cut.
+    let leftToCut = this.logLength - this.logTruncationTarget()
+    while (leftToCut > 0) {
+      let mn = longestManifestName()
+      let amountToCut = manifestByteCount[mn] / 2
+      if (amountToCut > leftToCut) {
+        amountToCut = leftToCut
+      }
+      leftToCut -= amountToCut
+      manifestByteCount[mn] = manifestByteCount[mn] - amountToCut
+    }
+
+    // Lastly, go through all the segments, and truncate the manifests
+    // where we said we would.
+    let newSegments = []
+    let trimmedSegmentCount = 0
+    for (let i = this.segments.length - 1; i >= 0; i--) {
+      let segment = this.segments[i]
+      let span = this.spans[segment.spanId || defaultSpanId]
+      let mn = span?.manifestName || ""
+      let count = manifestByteCount[mn] || 0
+      let len = segment.text?.length || 0
+      manifestByteCount[mn] = count - len
+      if (manifestByteCount[mn] < 0) {
+        trimmedSegmentCount++
+        continue
+      }
+
+      newSegments.push(segment)
+    }
+
+    newSegments.reverse()
+
+    // Reset the state of the logstore.
+    this.logLength = 0
+    this.lines = []
+    this.lineCache = []
+    this.segmentToLine = []
+
+    for (const span of Object.values(this.spans)) {
+      span.firstLineIndex = -1
+      span.lastLineIndex = -1
+    }
+
+    this.segments = []
+    for (const segment of newSegments) {
+      this.addSegment(segment)
+    }
+
+    this.invokeUpdateCallbacks({
+      action: LogUpdateAction.truncate,
+    })
   }
 }
 

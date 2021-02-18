@@ -1,8 +1,4 @@
-import Checkbox from "@material-ui/core/Checkbox"
-import FormControlLabel from "@material-ui/core/FormControlLabel"
 import { makeStyles } from "@material-ui/core/styles"
-import CheckBoxIcon from "@material-ui/icons/CheckBox"
-import CheckBoxOutlineBlankIcon from "@material-ui/icons/CheckBoxOutlineBlank"
 import React, { Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
 import {
@@ -33,6 +29,7 @@ const OverviewSidebarOptionsRoot = styled.div`
 export const FilterOptionList = styled.ul`
   ${mixinResetListStyle}
   display: flex;
+  align-items: center;
   user-select: none; // Prevent unsightly highlighting on the label
 `
 
@@ -42,12 +39,45 @@ const useStyles = makeStyles({
   },
 })
 
+const toggleBorderRadius = "3px"
+
+const ResourceFilterSegmentedControls = styled.div`
+  margin-left: ${SizeUnit(0.25)};
+`
+
+const ResourceFilterToggle = styled.button`
+  ${mixinResetButtonStyle}
+  color: ${Color.grayLightest};
+  background-color: ${Color.gray};
+  padding: ${SizeUnit(0.125)} ${SizeUnit(0.25)};
+  font-size: ${FontSize.smallester};
+
+  &.is-enabled {
+    color: ${Color.grayDarkest};
+    background-color: ${Color.offWhite};
+  }
+
+  & + & {
+    border-left: 2px solid ${Color.grayDark};
+  }
+`
+
+export const TestsHiddenToggle = styled(ResourceFilterToggle)`
+  border-top-left-radius: ${toggleBorderRadius};
+  border-bottom-left-radius: ${toggleBorderRadius};
+`
+
+export const TestsOnlyToggle = styled(ResourceFilterToggle)`
+  border-top-right-radius: ${toggleBorderRadius};
+  border-bottom-right-radius: ${toggleBorderRadius};
+`
+
 export const AlertsOnTopToggle = styled.button`
   ${mixinResetButtonStyle}
   color: ${Color.grayLightest};
   background-color: ${Color.gray};
   padding: ${SizeUnit(0.125)} ${SizeUnit(0.25)};
-  border-radius: 3px;
+  border-radius: ${toggleBorderRadius};
   font-size: ${FontSize.smallester};
 
   &.is-enabled {
@@ -71,18 +101,27 @@ function setAlertsOnTop(
   })
 }
 
-function setShowTests(props: OverviewSidebarOptionsProps, showTests: boolean) {
+function toggleTestsOnly(props: OverviewSidebarOptionsProps) {
   props.setOptions((prevOptions) => {
-    return { ...prevOptions, showTests: showTests }
+    // Always set the option you're not currently toggling to 'false', because both
+    // of these settings cannot be 'true' at the same time
+    return {
+      ...prevOptions,
+      testsHidden: false,
+      testsOnly: !prevOptions.testsOnly,
+    }
   })
 }
 
-function setShowResources(
-  props: OverviewSidebarOptionsProps,
-  showResources: boolean
-) {
+function toggleTestsHidden(props: OverviewSidebarOptionsProps) {
   props.setOptions((prevOptions) => {
-    return { ...prevOptions, showResources: showResources }
+    // Always set the option you're not currently toggling to 'false', because both
+    // of these settings cannot be 'true' at the same time
+    return {
+      ...prevOptions,
+      testsHidden: !prevOptions.testsHidden,
+      testsOnly: false,
+    }
   })
 }
 
@@ -90,38 +129,21 @@ function filterOptions(props: OverviewSidebarOptionsProps) {
   const classes = useStyles()
   return (
     <FilterOptionList>
-      <FormControlLabel
-        control={
-          <Checkbox
-            className={classes.root}
-            color={"default"}
-            icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
-            checkedIcon={<CheckBoxIcon fontSize="small" />}
-            checked={props.options.showResources}
-            onClick={(e) =>
-              setShowResources(props, !props.options.showResources)
-            }
-            name="resources"
-            id="resources"
-          />
-        }
-        label="Resources"
-      />
-      <FormControlLabel
-        control={
-          <Checkbox
-            className={classes.root}
-            color={"default"}
-            icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
-            checkedIcon={<CheckBoxIcon fontSize="small" />}
-            checked={props.options.showTests}
-            onClick={(e) => setShowTests(props, !props.options.showTests)}
-            name="tests"
-            id="tests"
-          />
-        }
-        label="Tests"
-      />
+      Tests:
+      <ResourceFilterSegmentedControls>
+        <TestsHiddenToggle
+          className={props.options.testsHidden ? "is-enabled" : ""}
+          onClick={(e) => toggleTestsHidden(props)}
+        >
+          Hidden
+        </TestsHiddenToggle>
+        <TestsOnlyToggle
+          className={props.options.testsOnly ? "is-enabled" : ""}
+          onClick={(e) => toggleTestsOnly(props)}
+        >
+          Only
+        </TestsOnlyToggle>
+      </ResourceFilterSegmentedControls>
     </FilterOptionList>
   )
 }
@@ -131,7 +153,7 @@ export function OverviewSidebarOptions(
 ): JSX.Element {
   return (
     <OverviewSidebarOptionsRoot
-      style={{ marginTop: SizeUnit(0.75), marginBottom: SizeUnit(-0.5) }}
+      style={{ marginTop: SizeUnit(0.75) }}
       className={!props.showFilters ? "is-filtersHidden" : ""}
     >
       {props.showFilters ? filterOptions(props) : null}

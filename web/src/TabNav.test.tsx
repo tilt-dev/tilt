@@ -12,6 +12,7 @@ class Fixture {
   nav: any = null
   root: any = null
   history: MemoryHistory = createMemoryHistory()
+  validateTab: (res: string) => boolean = () => true
 
   constructor(initialTabs: string[]) {
     this.initialTabs = initialTabs
@@ -21,7 +22,10 @@ class Fixture {
     let tabs = this.nav?.tabs || this.initialTabs
     this.root = mount(
       <Router history={this.history}>
-        <OverviewNavProvider tabsForTesting={tabs} validateTab={() => true}>
+        <OverviewNavProvider
+          tabsForTesting={tabs}
+          validateTab={this.validateTab}
+        >
           <TabNavContextConsumer>
             {(capturedNav) => void (this.nav = capturedNav)}
           </TabNavContextConsumer>
@@ -170,5 +174,14 @@ describe("tabnav", () => {
     expect(f.nav.tabs).toEqual([ResourceName.all])
     expect(f.nav.selectedTab).toEqual("")
     expect(f.history.location.pathname).toEqual("/overview")
+  })
+
+  it("filters tabs that don't validate", () => {
+    let f = new Fixture(["res1", "res2"])
+    f.validateTab = (res) => res != "res1"
+    f.history.location.pathname = "/r/res3/overview"
+    f.mount()
+    expect(f.nav.tabs).toEqual(["res2", "res3"])
+    expect(f.nav.selectedTab).toEqual("res3")
   })
 })

@@ -105,8 +105,10 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		} else {
 			lastUnexpectedErr = err
 			if isLiveUpdate {
-				l.Warnf("Live Update failed with unexpected error:\n\t%v\n"+
-					"Falling back to a full image build + deploy\n", err)
+				// Indent the error message.
+				errMsg := strings.Replace(strings.TrimSpace(fmt.Sprintf("%v", err)), "\n", "\n\t", -1)
+				l.Warnf("Live Update failed with unexpected error:\n\t%s\n"+
+					"Falling back to a full image build + deploy", errMsg)
 			} else if i+1 < len(composite.builders) {
 				logger.Get(ctx).Infof("got unexpected error during build/deploy: %v", err)
 			}

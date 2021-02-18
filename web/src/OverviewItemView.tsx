@@ -58,7 +58,7 @@ function resourceTypeLabel(res: Resource): string {
       return "Docker Compose Service"
     } else if (spec.type === TargetType.Local) {
       if (res.localResourceInfo && !!res.localResourceInfo.isTest) {
-        return "Test [local]"
+        return "Test"
       }
       return "Local Script"
     }
