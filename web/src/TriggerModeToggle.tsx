@@ -8,6 +8,13 @@ let TriggerModeToggleRoot = styled.button`
   ${mixinResetButtonStyle}
   display: flex;
   align-items: center;
+  transition: opacity ${AnimDuration.short} linear;
+  opacity: 0;
+
+  .u-showTriggerModeOnHover:hover &,
+  &:focus {
+    opacity: 1;
+  }
 
   .fillStd {
     fill: ${Color.grayDark};
@@ -46,8 +53,8 @@ type TriggerModeToggleProps = {
 }
 
 export const ToggleTriggerModeTooltip = {
-  isManual: "Auto OFF (file changes do not trigger updates)",
-  isAuto: "Auto ON (file changes trigger update)",
+  isManual: "File changes do not trigger updates",
+  isAuto: "File changes trigger update",
 }
 
 const titleText = (isManual: boolean): string => {

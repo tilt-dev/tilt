@@ -64,7 +64,6 @@ export let SidebarItemBox = styled.div`
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
-    color: ${Color.blue};
   }
 
   &.isSelected {
@@ -321,7 +320,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   return (
     <SidebarItemRoot
       key={item.name}
-      className={`u-showPinOnHover ${isSelectedClass} ${isBuildingClass}`}
+      className={`u-showPinOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass}`}
     >
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}

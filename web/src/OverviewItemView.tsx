@@ -665,7 +665,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
     <OverviewItemRoot
       key={item.name}
       onClick={handleClick}
-      className="u-showPinOnHover"
+      className="u-showPinOnHover u-showTriggerModeOnHover"
     >
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <RuntimeBox item={item} />
