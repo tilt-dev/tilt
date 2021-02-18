@@ -83,7 +83,6 @@ export enum ShowErrorModal {
 
 export type Snapshot = {
   view: Proto.webviewView
-  isSidebarClosed: boolean
   path?: string
   snapshotHighlight?: SnapshotHighlight | null
 }

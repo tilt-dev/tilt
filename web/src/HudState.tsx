@@ -8,7 +8,6 @@ import {
 
 type HudState = {
   view: Proto.webviewView
-  isSidebarClosed: boolean
   snapshotLink: string
   showSnapshotModal: boolean
   showCopySuccess: boolean

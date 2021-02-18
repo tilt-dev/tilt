@@ -1,53 +1,33 @@
 import { History, UnregisterCallback } from "history"
 import React, { Component } from "react"
-import { matchPath, useHistory } from "react-router"
+import { useHistory } from "react-router"
 import { Route, RouteComponentProps, Switch } from "react-router-dom"
-import AlertPane from "./AlertPane"
-import { combinedAlerts } from "./alerts"
 import { incr, navigationToTags } from "./analytics"
 import AnalyticsNudge from "./AnalyticsNudge"
 import AppController from "./AppController"
 import ErrorModal from "./ErrorModal"
-import FacetsPane from "./FacetsPane"
 import FatalErrorModal from "./FatalErrorModal"
 import Features from "./feature"
 import HeroScreen from "./HeroScreen"
 import "./HUD.scss"
-import HUDLayout from "./HUDLayout"
 import HudState from "./HudState"
 import { InterfaceVersion, useInterfaceVersion } from "./InterfaceVersion"
-import K8sViewPane from "./K8sViewPane"
 import { tiltfileKeyContext } from "./LocalStorage"
-import LogPane from "./LogPane"
-import { logLinesFromString } from "./logs"
 import LogStore, { LogStoreProvider } from "./LogStore"
-import MetricsPane from "./MetricsPane"
-import NoMatch from "./NoMatch"
-import NotFound from "./NotFound"
 import OverviewPane from "./OverviewPane"
 import OverviewResourcePane from "./OverviewResourcePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
-import ResourceInfo from "./ResourceInfo"
-import SecondaryNav from "./SecondaryNav"
 import ShareSnapshotModal from "./ShareSnapshotModal"
-import Sidebar from "./Sidebar"
-import SidebarAccount from "./SidebarAccount"
-import SidebarItem from "./SidebarItem"
 import { SidebarPinContextProvider } from "./SidebarPin"
-import SidebarResources from "./SidebarResources"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
-import Statusbar, { StatusItem } from "./Statusbar"
-import { LegacyNavProvider, OverviewNavProvider } from "./TabNav"
-import { traceNav } from "./trace"
+import { StatusItem } from "./Statusbar"
+import { OverviewNavProvider } from "./TabNav"
 import {
-  LogLine,
-  ResourceView,
   ShowErrorModal,
   ShowFatalErrorModal,
   SnapshotHighlight,
   SocketState,
-  TargetType,
 } from "./types"
 
 type HudProps = {
@@ -77,10 +57,6 @@ export default class HUD extends Component<HudProps, HudState> {
     this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
     this.unlisten = this.history.listen((location: any, action: string) => {
-      if (this.maybeRedirectToNewUI(location)) {
-        return
-      }
-
       let tags = navigationToTags(location, action)
       incr("ui.web.navigation", tags)
 
@@ -106,7 +82,6 @@ export default class HUD extends Component<HudProps, HudState> {
         tiltCloudSchemeHost: "",
         tiltCloudTeamID: "",
       },
-      isSidebarClosed: false,
       snapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
@@ -118,7 +93,6 @@ export default class HUD extends Component<HudProps, HudState> {
       logStore: new LogStore(),
     }
 
-    this.toggleSidebar = this.toggleSidebar.bind(this)
     this.handleClearHighlight = this.handleClearHighlight.bind(this)
     this.handleSetHighlight = this.handleSetHighlight.bind(this)
     this.handleOpenModal = this.handleOpenModal.bind(this)
@@ -135,19 +109,6 @@ export default class HUD extends Component<HudProps, HudState> {
     } else {
       this.controller.createNewSocket()
     }
-
-    this.maybeRedirectToNewUI(location)
-  }
-
-  maybeRedirectToNewUI(location: any): boolean {
-    if (
-      location.pathname === "/" &&
-      this.props.interfaceVersion.isNewDefault()
-    ) {
-      this.history.push(this.pathBuilder.path("/overview"))
-      return true
-    }
-    return false
   }
 
   componentWillUnmount() {
@@ -180,14 +141,6 @@ export default class HUD extends Component<HudProps, HudState> {
     this.props.history.replace(path)
   }
 
-  toggleSidebar() {
-    this.setState((prevState) => {
-      return {
-        isSidebarClosed: !prevState.isSidebarClosed,
-      }
-    })
-  }
-
   path(relPath: string) {
     return this.pathBuilder.path(relPath)
   }
@@ -202,7 +155,6 @@ export default class HUD extends Component<HudProps, HudState> {
     }
     return {
       view: view,
-      isSidebarClosed: !!state.isSidebarClosed,
       path: this.props.history.location.pathname,
       snapshotHighlight: state.snapshotHighlight,
     }
@@ -304,80 +256,17 @@ export default class HUD extends Component<HudProps, HudState> {
     let fatalErrorModal = this.renderFatalErrorModal(view)
     let errorModal = this.renderErrorModal()
 
-    let statusbar = (
-      <Statusbar
-        items={statusItems}
-        alertsUrl={this.path("/alerts")}
-        runningBuild={runningBuild}
-        suggestedVersion={suggestedVersion}
-        checkVersion={checkUpdates}
-      />
-    )
-
     let hudClasses = ["HUD"]
     if (this.pathBuilder.isSnapshot()) {
       hudClasses.push("is-snapshot")
     }
 
-    let pathname = String(this.props.history.location.pathname)
-    let matchTrace = matchPath(pathname, {
-      path: this.path("/r/:name/trace/:span"),
-    })
-    let matchTraceParams: any = matchTrace?.params
-    let isTwoLevelHeader = !!matchTraceParams?.span
-    let matchGrid = matchPath(pathname, {
-      path: this.path("/overview"),
-    })
-    let matchOverviewDetail = matchPath(pathname, {
-      path: this.path("/r/:name/overview"),
-    })
-    let matchOverview = matchGrid || matchOverviewDetail
-    let matchAlerts =
-      matchPath(pathname, {
-        path: this.path("/alerts"),
-      }) ||
-      matchPath(pathname, {
-        path: this.path("/r/:name/alerts"),
-      })
-    let matchFacets = matchPath(pathname, {
-      path: this.path("/r/:name/facets"),
-    })
-    let resourceView = matchFacets
-      ? ResourceView.Facets
-      : matchAlerts
-      ? ResourceView.Alerts
-      : matchOverviewDetail
-      ? ResourceView.OverviewDetail
-      : matchGrid
-      ? ResourceView.Grid
-      : ResourceView.Log
-
-    if (matchOverview) {
-      let validateTab = (name: string) =>
-        resources.some((res) => res.name === name)
-      return (
-        <tiltfileKeyContext.Provider value={view.tiltfileKey}>
-          <SidebarPinContextProvider>
-            <OverviewNavProvider validateTab={validateTab}>
-              <div className={hudClasses.join(" ")}>
-                <AnalyticsNudge needsNudge={needsNudge} />
-                <SocketBar state={this.state.socketState} />
-                {fatalErrorModal}
-                {errorModal}
-                {shareSnapshotModal}
-
-                {this.renderOverviewSwitch()}
-              </div>
-            </OverviewNavProvider>
-          </SidebarPinContextProvider>
-        </tiltfileKeyContext.Provider>
-      )
-    }
-
+    let validateTab = (name: string) =>
+      resources.some((res) => res.name === name)
     return (
       <tiltfileKeyContext.Provider value={view.tiltfileKey}>
         <SidebarPinContextProvider>
-          <LegacyNavProvider resourceView={resourceView}>
+          <OverviewNavProvider validateTab={validateTab}>
             <div className={hudClasses.join(" ")}>
               <AnalyticsNudge needsNudge={needsNudge} />
               <SocketBar state={this.state.socketState} />
@@ -385,18 +274,9 @@ export default class HUD extends Component<HudProps, HudState> {
               {errorModal}
               {shareSnapshotModal}
 
-              {this.renderSidebarSwitch()}
-              {statusbar}
-
-              <HUDLayout
-                header={this.renderHUDHeader()}
-                isSidebarClosed={!!this.state.isSidebarClosed}
-                isTwoLevelHeader={isTwoLevelHeader}
-              >
-                {this.renderMainPaneSwitch()}
-              </HUDLayout>
+              {this.renderOverviewSwitch()}
             </div>
-          </LegacyNavProvider>
+          </OverviewNavProvider>
         </SidebarPinContextProvider>
       </tiltfileKeyContext.Provider>
     )
@@ -427,342 +307,6 @@ export default class HUD extends Component<HudProps, HudState> {
           </LogStoreProvider>
         </PathBuilderProvider>
       </SnapshotActionProvider>
-    )
-  }
-
-  renderHUDHeader() {
-    return (
-      <>
-        {this.renderResourceInfo()}
-        {this.renderSecondaryNav()}
-      </>
-    )
-  }
-
-  renderResourceInfo() {
-    let match = matchPath(String(this.props.history.location.pathname), {
-      path: this.path("/r/:name"),
-    })
-    let params: any = match?.params
-    let name = params?.name
-
-    let view = this.state.view
-    let showCopySuccess = this.state.showCopySuccess
-    let resources = view?.resources ?? []
-    let selectedResource = resources?.find((r) => r.name === name)
-
-    let endpoints = selectedResource?.endpointLinks ?? []
-    let podID = selectedResource?.podID ?? ""
-    let podStatus =
-      (selectedResource?.k8sResourceInfo &&
-        selectedResource?.k8sResourceInfo.podStatus) ||
-      ""
-
-    let showSnapshot =
-      this.getFeatures().isEnabled("snapshots") &&
-      !this.pathBuilder.isSnapshot()
-    let snapshotHighlight = this.state.snapshotHighlight || null
-
-    return (
-      <ResourceInfo
-        endpoints={endpoints}
-        podID={podID}
-        podStatus={podStatus}
-        showSnapshotButton={showSnapshot}
-        showCopySuccess={showCopySuccess}
-        highlight={snapshotHighlight}
-        handleOpenModal={this.handleOpenModal}
-        handleClickCopy={this.handleShowCopySuccess}
-      />
-    )
-  }
-
-  renderSecondaryNav() {
-    let view = this.state.view
-    let resources = view?.resources ?? []
-    let hasK8s = resources.some((r) => {
-      let specs = r.specs ?? []
-      return specs.some((spec) => spec.type === TargetType.K8s)
-    })
-
-    let secondaryNavRoute = (
-      t: ResourceView,
-      props: RouteComponentProps<any>
-    ) => {
-      let name = props.match.params?.name ?? ""
-      let span = props.match.params?.span ?? ""
-      let numAlerts = 0
-      let logUrl = name === "" ? this.path("/") : this.path(`/r/${name}`)
-      let alertsUrl =
-        name === "" ? this.path("/alerts") : this.path(`/r/${name}/alerts`)
-
-      let facetsUrl = name !== "" ? this.path(`/r/${name}/facets`) : null
-      let metricsUrl = ""
-      let isSnapshot = this.pathBuilder.isSnapshot()
-      let showMetricsTab =
-        name === "" && !isSnapshot && (hasK8s || view?.metricsServing?.mode)
-      if (showMetricsTab) {
-        metricsUrl = this.path("/metrics")
-      }
-
-      let currentTraceNav =
-        span && this.state.logStore
-          ? traceNav(this.state.logStore, this.pathBuilder, span)
-          : null
-
-      if (name) {
-        let selectedResource = resources.find((r) => r.name === name)
-        if (selectedResource) {
-          numAlerts = combinedAlerts(selectedResource, null).length
-        }
-      } else {
-        numAlerts = resources
-          .map((r) => combinedAlerts(r, null).length)
-          .reduce((sum, current) => sum + current, 0)
-      }
-
-      return (
-        <SecondaryNav
-          logUrl={logUrl}
-          alertsUrl={alertsUrl}
-          resourceView={t}
-          numberOfAlerts={numAlerts}
-          facetsUrl={facetsUrl}
-          metricsUrl={metricsUrl}
-          traceNav={currentTraceNav}
-        />
-      )
-    }
-
-    return (
-      <Switch>
-        <Route
-          path={this.path("/r/:name/alerts")}
-          render={secondaryNavRoute.bind(null, ResourceView.Alerts)}
-        />
-        <Route
-          path={this.path("/r/:name/facets")}
-          render={secondaryNavRoute.bind(null, ResourceView.Facets)}
-        />
-        <Route
-          path={this.path("/r/:name/trace/:span")}
-          render={secondaryNavRoute.bind(null, ResourceView.Trace)}
-        />
-        <Route
-          path={this.path("/r/:name")}
-          render={secondaryNavRoute.bind(null, ResourceView.Log)}
-        />
-        <Route
-          path={this.path("/alerts")}
-          render={secondaryNavRoute.bind(null, ResourceView.Alerts)}
-        />
-        <Route
-          path={this.path("/metrics")}
-          render={secondaryNavRoute.bind(null, ResourceView.Metrics)}
-        />
-        <Route render={secondaryNavRoute.bind(null, ResourceView.Log)} />
-      </Switch>
-    )
-  }
-
-  renderSidebarSwitch() {
-    let view = this.state.view
-    let resources = view?.resources || []
-    let sidebarItems = resources.map((res) => new SidebarItem(res))
-    let isSidebarClosed = !!this.state.isSidebarClosed
-    let tiltCloudUsername = view?.tiltCloudUsername || null
-    let tiltCloudSchemeHost = view?.tiltCloudSchemeHost || ""
-    let tiltCloudTeamID = view?.tiltCloudTeamID || null
-    let tiltCloudTeamName = view?.tiltCloudTeamName || null
-    let isSnapshot = this.pathBuilder.isSnapshot()
-    let sidebarRoute = (t: ResourceView, props: RouteComponentProps<any>) => {
-      let name = props.match.params.name
-      return (
-        <Sidebar isClosed={isSidebarClosed} toggleSidebar={this.toggleSidebar}>
-          <SidebarAccount
-            tiltCloudUsername={tiltCloudUsername}
-            tiltCloudSchemeHost={tiltCloudSchemeHost}
-            tiltCloudTeamID={tiltCloudTeamID}
-            tiltCloudTeamName={tiltCloudTeamName}
-            isSnapshot={isSnapshot}
-          />
-          <SidebarResources
-            selected={name}
-            items={sidebarItems}
-            resourceView={t}
-            pathBuilder={this.pathBuilder}
-          />
-        </Sidebar>
-      )
-    }
-    return (
-      <Switch>
-        <Route
-          path={this.path("/r/:name/alerts")}
-          render={sidebarRoute.bind(null, ResourceView.Alerts)}
-        />
-        <Route
-          path={this.path("/r/:name/facets")}
-          render={sidebarRoute.bind(null, ResourceView.Facets)}
-        />
-        <Route
-          path={this.path("/alerts")}
-          render={sidebarRoute.bind(null, ResourceView.Alerts)}
-        />
-        <Route
-          path={this.path("/metrics")}
-          render={sidebarRoute.bind(null, ResourceView.Metrics)}
-        />
-        <Route
-          path={this.path("/r/:name")}
-          render={sidebarRoute.bind(null, ResourceView.Log)}
-        />
-        <Route render={sidebarRoute.bind(null, ResourceView.Log)} />
-      </Switch>
-    )
-  }
-
-  renderMainPaneSwitch() {
-    let logStore = this.state.logStore ?? null
-    let view = this.state.view
-    let resources = (view && view.resources) || []
-    let snapshotHighlight = this.state.snapshotHighlight || null
-    let isSnapshot = this.pathBuilder.isSnapshot()
-
-    let traceRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params?.name ?? ""
-      let span = props.match.params?.span ?? ""
-
-      let r = resources.find((r) => r.name === name)
-      if (r === undefined) {
-        return <Route component={NotFound} />
-      }
-
-      let logLines: LogLine[] = []
-      if (span && logStore) {
-        logLines = logStore.traceLog(span)
-      }
-
-      return (
-        <LogPane
-          logLines={logLines}
-          showManifestPrefix={false}
-          manifestName={name}
-          handleSetHighlight={this.handleSetHighlight}
-          handleClearHighlight={this.handleClearHighlight}
-          highlight={snapshotHighlight}
-          isSnapshot={isSnapshot}
-        />
-      )
-    }
-
-    let logsRoute = (props: RouteComponentProps<any>) => {
-      let name = props.match.params?.name ?? ""
-      let r = resources.find((r) => r.name === name)
-      if (r === undefined) {
-        return <Route component={NotFound} />
-      }
-
-      let logLines: LogLine[] = []
-      if (name && logStore) {
-        logLines = logStore.manifestLog(name)
-      }
-
-      return (
-        <LogPane
-          logLines={logLines}
-          showManifestPrefix={false}
-          manifestName={name}
-          handleSetHighlight={this.handleSetHighlight}
-          handleClearHighlight={this.handleClearHighlight}
-          highlight={snapshotHighlight}
-          isSnapshot={isSnapshot}
-        />
-      )
-    }
-
-    let errorRoute = (props: RouteComponentProps<any>): React.ReactNode => {
-      let name = props.match.params ? props.match.params.name : ""
-      let er = resources.find((r) => r.name === name)
-      if (!er) {
-        return <Route component={NotFound} />
-      }
-      return (
-        <AlertPane
-          pathBuilder={this.pathBuilder}
-          resources={[er]}
-          logStore={logStore}
-        />
-      )
-    }
-    let facetsRoute = (props: RouteComponentProps<any>): React.ReactNode => {
-      let name = props.match.params ? props.match.params.name : ""
-      let fr = resources.find((r) => r.name === name)
-      if (!fr) {
-        return <Route component={NotFound} />
-      }
-      return <FacetsPane resource={fr} logStore={logStore} />
-    }
-    let allLogsRoute = () => {
-      let allLogs: LogLine[] = []
-      if (logStore) {
-        allLogs = logStore.allLog()
-      } else if (view?.log) {
-        allLogs = logLinesFromString(
-          "ERROR: Tilt Server and client protocol mismatch. This happens in dev mode if you have a new client talking to an old Tilt binary. Please re-compile Tilt"
-        )
-      }
-      return (
-        <LogPane
-          logLines={allLogs}
-          showManifestPrefix={true}
-          manifestName={""}
-          handleSetHighlight={this.handleSetHighlight}
-          handleClearHighlight={this.handleClearHighlight}
-          highlight={this.state.snapshotHighlight}
-          isSnapshot={isSnapshot}
-        />
-      )
-    }
-
-    let serving = view.metricsServing as Proto.webviewMetricsServing
-
-    return (
-      <Switch>
-        <Route exact path={this.path("/")} render={allLogsRoute} />
-        <Route
-          exact
-          path={this.path("/alerts")}
-          render={() => (
-            <AlertPane
-              pathBuilder={this.pathBuilder}
-              resources={resources}
-              logStore={logStore}
-            />
-          )}
-        />
-        <Route
-          exact
-          path={this.path("/metrics")}
-          render={() => (
-            <MetricsPane pathBuilder={this.pathBuilder} serving={serving} />
-          )}
-        />
-        <Route exact path={this.path("/r/:name")} render={logsRoute} />
-        <Route
-          exact
-          path={this.path("/r/:name/trace/:span")}
-          render={traceRoute}
-        />
-        <Route
-          exact
-          path={this.path("/r/:name/k8s")}
-          render={() => <K8sViewPane />}
-        />
-        <Route exact path={this.path("/r/:name/alerts")} render={errorRoute} />
-        <Route exact path={this.path("/r/:name/facets")} render={facetsRoute} />
-        <Route component={NoMatch} />
-      </Switch>
     )
   }
 
