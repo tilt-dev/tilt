@@ -13,6 +13,7 @@ The APIs of these commands may change frequently.
 	}
 
 	addCommand(result, newTiltfileResultCmd())
+	addCommand(result, newKubeconfigPathCmd())
 
 	return result
 }

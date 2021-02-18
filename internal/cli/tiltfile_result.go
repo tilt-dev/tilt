@@ -52,8 +52,10 @@ func (c *tiltfileResultCmd) name() model.TiltSubcommand { return "tiltfile-resul
 func (c *tiltfileResultCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tiltfile-result",
-		Short: "Exec the Tiltfile and print data about execution. By default, prints Tiltfile execution results as JSON (note: the API is unstable and may change); can also print timings of Tiltfile Builtin calls.",
-		Long: `Exec the Tiltfile and print data about execution. By default, prints Tiltfile execution results as JSON (note: the API is unstable and may change); can also print timings of Tiltfile Builtin calls.
+		Short: "Exec the Tiltfile and print data about execution",
+		Long: `Exec the Tiltfile and print data about execution.
+
+By default, prints Tiltfile execution results as JSON (note: the API is unstable and may change); can also print timings of Tiltfile Builtin calls.
 
 Exit code 0: successful Tiltfile evaluation (data printed to stdout)
 Exit code 1: some failure in setup, printing results, etc. (any logs printed to stderr)
