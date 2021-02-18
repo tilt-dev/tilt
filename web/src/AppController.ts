@@ -126,7 +126,6 @@ class AppController {
 
         this.component.setAppState({
           view: data.view,
-          isSidebarClosed: data.isSidebarClosed,
         })
         if (data.path) {
           this.component.setHistoryLocation(this.pb.path(data.path))
