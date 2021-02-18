@@ -117,3 +117,9 @@ export const mixinResetButtonStyle = `
   font-family: inherit;
   cursor: pointer;
 `
+
+export const mixinTruncateText = `
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`

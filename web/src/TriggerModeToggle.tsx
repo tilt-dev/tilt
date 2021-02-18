@@ -1,19 +1,16 @@
 import React from "react"
 import styled from "styled-components"
-import { ReactComponent as AutoSvg } from "./assets/svg/auto.svg"
+import { ReactComponent as TriggerModeButtonSvg } from "./assets/svg/trigger-mode-button.svg"
 import {
   AnimDuration,
   Color,
   ColorAlpha,
   mixinResetButtonStyle,
-  SizeUnit,
 } from "./style-helpers"
 import { TriggerMode } from "./types"
 
 let TriggerModeToggleRoot = styled.button`
   ${mixinResetButtonStyle}
-  width: ${SizeUnit(1)};
-  height: ${SizeUnit(1)};
 
   .fillStd {
     fill: ${Color.blue};
@@ -24,7 +21,7 @@ let TriggerModeToggleRoot = styled.button`
     opacity: ${ColorAlpha.almostOpaque};
     transition: stroke ${AnimDuration.short} linear;
   }
-  .autoSvg-toggleOn {
+  .triggerModeSvg-toggleOn {
     fill: ${Color.blue};
   }
 
@@ -85,7 +82,7 @@ function TriggerModeToggle(props: TriggerModeToggleProps) {
       onClick={onClick}
       title={titleText(isManualTriggerMode)}
     >
-      <AutoSvg />
+      <TriggerModeButtonSvg />
     </TriggerModeToggleRoot>
   )
 }
