@@ -1,11 +1,7 @@
-import FormControlLabel from "@material-ui/core/FormControlLabel"
-import FormGroup from "@material-ui/core/FormGroup"
 import { withStyles } from "@material-ui/core/styles"
 import Switch from "@material-ui/core/Switch"
 import React from "react"
-import { Link } from "react-router-dom"
 import FloatDialog from "./FloatDialog"
-import { useInterfaceVersion } from "./InterfaceVersion"
 import { usePathBuilder } from "./PathBuilder"
 import { Color } from "./style-helpers"
 
@@ -61,55 +57,39 @@ const GreenSwitch = withStyles({
 })(Switch)
 
 export default function UpdateDialog(props: props) {
-  let interfaceVersion = useInterfaceVersion()
   let pathBuilder = usePathBuilder()
   let { showUpdate, suggestedVersion } = props
-  let updateEl = props.showUpdate ? (
-    <div>
-      <span role="img" aria-label="Decorative sparkling stars">
-        ✨
-      </span>
-      &nbsp;
-      <a
-        href="https://docs.tilt.dev/upgrade.html"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Get Tilt v{suggestedVersion || "?"}!
-      </a>
-      &nbsp;
-      <span role="img" aria-label="Decorative sparkling stars">
-        ✨
-      </span>
-    </div>
-  ) : null
+  let updateEl: any | null = null
+  if (props.showUpdate) {
+    updateEl = (
+      <div key="update">
+        <span role="img" aria-label="Decorative sparkling stars">
+          ✨
+        </span>
+        &nbsp;
+        <a
+          href="https://docs.tilt.dev/upgrade.html"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Get Tilt v{suggestedVersion || "?"}!
+        </a>
+        &nbsp;
+        <span role="img" aria-label="Decorative sparkling stars">
+          ✨
+        </span>
+      </div>
+    )
+  } else {
+    updateEl = (
+      <div key="no-update">Already on the recommended version! Nice work.</div>
+    )
+  }
 
-  let isNewDefault = interfaceVersion.isNewDefault()
-  let isWrongInterface = isNewDefault != props.isNewInterface
-  let title =
-    !props.isNewInterface || props.showUpdate
-      ? "Updates Available"
-      : "Tilt Interface Setting"
-  let interfaceSwitch = (
-    <GreenSwitch
-      checked={!isNewDefault}
-      onChange={interfaceVersion.toggleDefault}
-    />
-  )
-  let label = isWrongInterface ? (
-    <div>
-      Go back to Tilt’s old interface (
-      <Link to={pathBuilder.path("/")}>Refresh</Link>)
-    </div>
-  ) : (
-    <div>Go back to Tilt’s old interface</div>
-  )
+  let title = props.showUpdate ? "Updates Available" : "Tilt Version"
   return (
     <FloatDialog id="update" title={title} {...props}>
       {updateEl}
-      <FormGroup>
-        <FormControlLabel label={label} control={interfaceSwitch} />
-      </FormGroup>
     </FloatDialog>
   )
 }
