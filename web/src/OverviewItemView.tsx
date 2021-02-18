@@ -204,7 +204,6 @@ let OverviewItemType = styled.div`
   align-items: center;
   color: ${Color.grayLightest};
   opacity: ${ColorAlpha.almostOpaque};
-  ${mixinTruncateText}
 `
 let OverviewItemNameRoot = styled.div`
   display: flex;
@@ -212,6 +211,10 @@ let OverviewItemNameRoot = styled.div`
   font-weight: 600;
   padding-bottom: 8px;
   z-index: 1; // Appear above the .isBuilding gradient
+  // To truncate long resource names…
+  min-width: 0; // Override default, so width can be less than content
+`
+let OverviewItemNameTruncate = styled.span`
   ${mixinTruncateText}
 `
 
@@ -219,7 +222,9 @@ let OverviewItemName = (props: { name: string }) => {
   // A common complaint is that long names get truncated, so we
   // use a title prop so that the user can see the full name.
   return (
-    <OverviewItemNameRoot title={props.name}>{props.name}</OverviewItemNameRoot>
+    <OverviewItemNameRoot title={props.name}>
+      <OverviewItemNameTruncate>{props.name}</OverviewItemNameTruncate>
+    </OverviewItemNameRoot>
   )
 }
 

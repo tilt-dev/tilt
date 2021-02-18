@@ -20,6 +20,7 @@ export let SidebarTriggerButtonRoot = styled.button`
   border-top-right-radius: ${overviewItemBorderRadius};
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   justify-content: center;
   opacity: 0;
   pointer-events: none;

@@ -119,7 +119,7 @@ export const mixinResetButtonStyle = `
 `
 
 export const mixinTruncateText = `
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 `

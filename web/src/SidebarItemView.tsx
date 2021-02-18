@@ -14,6 +14,7 @@ import {
   ColorRGBA,
   Font,
   FontSize,
+  mixinTruncateText,
   overviewItemBorderRadius,
   SizeUnit,
 } from "./style-helpers"
@@ -113,25 +114,24 @@ let SidebarItemRuntimeBox = styled.div`
     border-bottom-color: ${Color.grayLightest};
   }
 `
-
-let SidebarItemBuildBox = styled.div`
-  display: flex;
-  align-items: stretch;
-  height: ${SizeUnit(1)};
-`
-
-let SidebarItemText = styled.div`
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  opacity: ${ColorAlpha.almostOpaque};
-`
-
 let SidebarPinBox = styled.div`
   display: flex;
   align-items: stretch;
   flex-grow: 1;
+`
+
+let SidebarItemBuildBox = styled.div`
+  display: flex;
+  align-items: stretch;
+  padding-right: 4px;
+`
+let SidebarItemText = styled.div`
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  color: ${Color.grayLightest};
 `
 
 let SidebarItemAllRoot = styled(SidebarItemRoot)`
@@ -172,17 +172,17 @@ export function SidebarItemAll(props: SidebarItemAllProps) {
   )
 }
 
-let SidebarItemNameRoot = styled(SidebarItemText)`
-  opacity: 1;
+let SidebarItemNameRoot = styled.div`
+  display: flex;
+  align-items: center;
   font-family: ${Font.sansSerif};
   font-weight: 600;
   z-index: 1; // Appear above the .isBuilding gradient
+  // To truncate long resource names…
+  min-width: 0; // Override default, so width can be less than content
 `
-
 let SidebarItemNameTruncate = styled.span`
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  ${mixinTruncateText}
 `
 
 let SidebarItemName = (props: { name: string }) => {
@@ -203,12 +203,6 @@ let SidebarItemTimeAgo = styled.span`
   text-align: right;
   white-space: nowrap;
   padding-right: ${SizeUnit(0.25)};
-`
-
-let SidebarItemActions = styled.div`
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
 `
 
 export function triggerUpdate(name: string, action: string) {
@@ -354,6 +348,16 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
             <SidebarItemTimeAgo>
               {hasSuccessfullyDeployed ? timeAgo : "—"}
             </SidebarItemTimeAgo>
+            <SidebarTriggerButton
+              isTiltfile={item.isTiltfile}
+              isSelected={isSelected}
+              hasPendingChanges={item.hasPendingChanges}
+              hasBuilt={hasBuilt}
+              isBuilding={building}
+              triggerMode={item.triggerMode}
+              isQueued={item.queued}
+              onTrigger={onTrigger}
+            />
           </SidebarItemRuntimeBox>
           <SidebarItemBuildBox>
             <SidebarIcon
@@ -362,26 +366,14 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
               alertCount={item.buildAlertCount}
             />
             <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
+            {item.isTest && (
+              <TriggerModeToggle
+                triggerMode={item.triggerMode}
+                onModeToggle={onModeToggle}
+              />
+            )}
           </SidebarItemBuildBox>
         </SidebarItemInnerBox>
-        <SidebarItemActions>
-          <SidebarTriggerButton
-            isTiltfile={item.isTiltfile}
-            isSelected={isSelected}
-            hasPendingChanges={item.hasPendingChanges}
-            hasBuilt={hasBuilt}
-            isBuilding={building}
-            triggerMode={item.triggerMode}
-            isQueued={item.queued}
-            onTrigger={onTrigger}
-          />
-          {item.isTest && (
-            <TriggerModeToggle
-              triggerMode={item.triggerMode}
-              onModeToggle={onModeToggle}
-            />
-          )}
-        </SidebarItemActions>
       </SidebarItemBox>
     </SidebarItemRoot>
   )
