@@ -11,12 +11,14 @@ import (
 type Model struct {
 	state map[reflect.Type]interface{}
 
-	BuiltinCalls []BuiltinCall
+	BuiltinCalls   []BuiltinCall
+	AnalyticsInfos []AnalyticsInfo
 }
 
 func NewModel() Model {
 	return Model{
-		state: make(map[reflect.Type]interface{}),
+		state:          make(map[reflect.Type]interface{}),
+		AnalyticsInfos: []AnalyticsInfo{},
 	}
 }
 

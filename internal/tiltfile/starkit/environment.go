@@ -188,6 +188,9 @@ func (e *Environment) start(path string) (Model, error) {
 
 	_, err = e.exec(t, path)
 	model.BuiltinCalls = e.builtinCalls
+	for _, i := range e.loadInterceptors {
+		model.AnalyticsInfos = append(model.AnalyticsInfos, i.AnalyticsInfo()...)
+	}
 	return model, err
 }
 

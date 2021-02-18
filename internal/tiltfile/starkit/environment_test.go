@@ -47,6 +47,29 @@ y = x +1
 	require.NoError(t, err)
 }
 
+func TestLoadInterceptorAnalyticsInfoCollection(t *testing.T) {
+	f := NewFixture(t)
+	f.UseRealFS()
+
+	f.temp.WriteFile("Tiltfile", `
+load('this_path_does_not_matter', "x")
+`)
+	f.temp.WriteFile("foo/Tiltfile", `
+x = 1
+y = x +1
+`)
+
+	infos := []AnalyticsInfo{ExtensionsAnalyticsInfo{ExtensionsLoaded: map[string]bool{"foobar": true}}}
+	fi := fakeLoadInterceptor{
+		analyticsInfos: infos,
+	}
+	f.SetLoadInterceptor(fi)
+	m, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+	require.Equal(t, infos, m.AnalyticsInfos)
+
+}
+
 func TestLoadInterceptorThatFails(t *testing.T) {
 	f := NewFixture(t)
 	f.File("Tiltfile", `
@@ -64,16 +87,26 @@ y = x + 1
 	assert.Contains(t, err.Error(), "I'm an error look at me!")
 }
 
-type fakeLoadInterceptor struct{}
+type fakeLoadInterceptor struct {
+	analyticsInfos []AnalyticsInfo
+}
 
 func (fakeLoadInterceptor) LocalPath(t *starlark.Thread, path string) (string, error) {
 	return "./foo/Tiltfile", nil
+}
+
+func (fi fakeLoadInterceptor) AnalyticsInfo() []AnalyticsInfo {
+	return fi.analyticsInfos
 }
 
 type failLoadInterceptor struct{}
 
 func (failLoadInterceptor) LocalPath(t *starlark.Thread, path string) (string, error) {
 	return "", fmt.Errorf("I'm an error look at me!")
+}
+
+func (failLoadInterceptor) AnalyticsInfo() []AnalyticsInfo {
+	return nil
 }
 
 func NewExtensionWithIdentifier(id string) *TestExtension {

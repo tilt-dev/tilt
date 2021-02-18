@@ -17,12 +17,14 @@ import (
 type Extension struct {
 	fetcher Fetcher
 	store   Store
+	info    starkit.ExtensionsAnalyticsInfo
 }
 
 func NewExtension(fetcher Fetcher, store Store) *Extension {
 	return &Extension{
 		fetcher: fetcher,
 		store:   store,
+		info:    starkit.NewExtensionsAnalyticsInfo(),
 	}
 }
 
@@ -66,7 +68,14 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (string, error) {
 		_ = e.fetcher.CleanUp()
 	}()
 
+	// Record that we loaded this extension
+	e.info.ExtensionsLoaded[moduleName] = true
+
 	return e.store.Write(ctx, contents)
+}
+
+func (e *Extension) AnalyticsInfo() []starkit.AnalyticsInfo {
+	return []starkit.AnalyticsInfo{e.info}
 }
 
 var _ starkit.LoadInterceptor = (*Extension)(nil)

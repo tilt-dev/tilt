@@ -11,4 +11,7 @@ type LoadInterceptor interface {
 	// Ensure the content is present in the path returned
 	// Returns "" if this interceptor doesn't act on this path
 	LocalPath(t *starlark.Thread, path string) (string, error)
+
+	// Optionally, a LoadInterceptor can record some info to send to analytics later
+	AnalyticsInfo() []AnalyticsInfo
 }

@@ -12,6 +12,8 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/tilt/pkg/logger"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -225,7 +227,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	if tlr.Error == nil {
 		s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
 	}
-	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration)
+	tfl.reportTiltfileLoaded(ctx, s.builtinCallCounts, s.builtinArgCounts, duration, result.AnalyticsInfos)
 	reportTiltfileExecMetrics(ctx, duration, err != nil)
 
 	if len(aSettings.CustomTagsToReport) > 0 {
@@ -243,10 +245,20 @@ func reportCustomTags(a *analytics.TiltAnalytics, tags map[string]string) {
 	a.Incr("tiltfile.custom.report", tags)
 }
 
-func (tfl *tiltfileLoader) reportTiltfileLoaded(
-	callCounts map[string]int,
-	argCounts map[string]map[string]int, loadDur time.Duration) {
+func (tfl *tiltfileLoader) reportTiltfileLoaded(ctx context.Context,
+	callCounts map[string]int, argCounts map[string]map[string]int,
+	loadDur time.Duration, extraInfos []starkit.AnalyticsInfo) {
 	tags := make(map[string]string)
+
+	var extensionsLoaded map[string]bool
+	for _, info := range extraInfos {
+		switch info := info.(type) {
+		case starkit.ExtensionsAnalyticsInfo:
+			extensionsLoaded = info.ExtensionsLoaded
+		default:
+			logger.Get(ctx).Debugf("found AnalyticsInfo of unrecognized type %T: %v", info, info)
+		}
+	}
 
 	// env should really be a global tag, but there's a circular dependency
 	// between the global tags and env initialization, so we add it manually.
@@ -262,4 +274,8 @@ func (tfl *tiltfileLoader) reportTiltfileLoaded(
 	}
 	tfl.analytics.Incr("tiltfile.loaded", tags)
 	tfl.analytics.Timer("tiltfile.load", loadDur, nil)
+	for ext := range extensionsLoaded {
+		tags := map[string]string{"env": string(tfl.env), "name": ext}
+		tfl.analytics.Incr("tiltfile.loaded.extension", tags)
+	}
 }
