@@ -237,13 +237,13 @@ function ResourceMetadata(props: { counts: StatusCounts }) {
     let favicon: any = document.head.querySelector("#favicon")
     let faviconHref = ""
     if (unhealthy > 0) {
-      document.title = `Tilt | ❌ (${unhealthy})`
+      document.title = `✖︎ ${unhealthy} ┊ Tilt`
       faviconHref = "/static/ico/favicon-red.ico"
     } else if (pending || total === 0) {
-      document.title = `Tilt | ⏲  (${healthy}/${total})`
+      document.title = `… ${healthy}/${total} ┊ Tilt`
       faviconHref = "/static/ico/favicon-gray.ico"
     } else {
-      document.title = `Tilt | ✅ (${healthy}/${total})`
+      document.title = `✔︎ ${healthy}/${total} ┊ Tilt`
       faviconHref = "/static/ico/favicon-green.ico"
     }
     if (favicon) {
