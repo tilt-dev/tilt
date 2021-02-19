@@ -157,7 +157,12 @@ message Resource {
   reserved "alerts";
   reserved 23;
 
-  repeated Facet facets = 24;
+  // Facets have been removed from the UI. They may come back in a future protocol. See:
+  // https://github.com/tilt-dev/tilt/issues/4148
+  // https://github.com/tilt-dev/tilt/issues/4219
+  reserved "facets";
+  reserved 24;
+  
   bool queued = 25;
 
   // NEXT ID: 30

@@ -269,7 +269,6 @@ function fillResourceFields(): Resource {
     runtimeStatus: "",
     triggerMode: TriggerMode.TriggerModeAuto,
     hasPendingChanges: true,
-    facets: [],
     queued: false,
   }
 }

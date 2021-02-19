@@ -88,7 +88,6 @@ declare namespace Proto {
      * A span id for the log that crashed.
      */
     crashLogSpanId?: string;
-    facets?: webviewFacet[];
     queued?: boolean;
   }
   export interface webviewMetricsServing {
@@ -155,15 +154,6 @@ declare namespace Proto {
     podRestarts?: number;
     spanId?: string;
     displayNames?: string[];
-  }
-  export interface webviewFacet {
-    name?: string;
-    value?: string;
-    /**
-     * If span_id is non-empty, that means the value is in the logstore
-     * instead of in the value field.
-     */
-    spanId?: string;
   }
   export interface webviewDCResourceInfo {
     configPaths?: string[];

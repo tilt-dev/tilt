@@ -171,21 +171,6 @@
         }
       }
     },
-    "webviewFacet": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        },
-        "span_id": {
-          "type": "string",
-          "description": "If span_id is non-empty, that means the value is in the logstore\ninstead of in the value field."
-        }
-      }
-    },
     "webviewK8sResourceInfo": {
       "type": "object",
       "properties": {
@@ -428,12 +413,6 @@
         "crash_log_span_id": {
           "type": "string",
           "description": "A span id for the log that crashed."
-        },
-        "facets": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/webviewFacet"
-          }
         },
         "queued": {
           "type": "boolean",
