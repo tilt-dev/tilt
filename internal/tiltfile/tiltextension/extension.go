@@ -7,6 +7,7 @@ package tiltextension
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"go.starlark.net/starlark"
@@ -20,6 +21,11 @@ type Extension struct {
 	info    starkit.ExtensionsAnalyticsInfo
 }
 
+type Fetcher interface {
+	Fetch(ctx context.Context, moduleName string) (ModuleContents, error)
+	CleanUp() error
+}
+
 func NewExtension(fetcher Fetcher, store Store) *Extension {
 	return &Extension{
 		fetcher: fetcher,
@@ -28,12 +34,23 @@ func NewExtension(fetcher Fetcher, store Store) *Extension {
 	}
 }
 
-type Fetcher interface {
-	Fetch(ctx context.Context, moduleName string) (ModuleContents, error)
-	CleanUp() error
+func ProvideExtension() (*Extension, error) {
+	dlr, err := NewTempDirDownloader()
+	if err != nil {
+		return nil, err
+	}
+	fetcher := NewGithubFetcher(dlr)
+
+	// Pass a nil store: we initialize it in OnStart once we know the dir of the Tiltfile
+	return NewExtension(fetcher, nil), nil
 }
 
 func (e *Extension) OnStart(env *starkit.Environment) error {
+	if e.store == nil {
+		// If we haven't initialized the store yet, do it (now that we know
+		// the path of the root Tiltfile)
+		e.store = NewLocalStore(filepath.Dir(env.StartPath()))
+	}
 	env.AddLoadInterceptor(e)
 	return nil
 }

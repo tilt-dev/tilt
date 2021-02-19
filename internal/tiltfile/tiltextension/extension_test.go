@@ -1,8 +1,6 @@
 package tiltextension
 
 import (
-	"context"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,7 +18,7 @@ func TestFetchableAlreadyPresentWorks(t *testing.T) {
 load("ext://fetchable", "printFoo")
 printFoo()
 `)
-	f.writeModuleLocally("fetchable", libText)
+	f.writeModuleLocally("fetchable", testLibText)
 
 	f.assertExecOutput("foo")
 }
@@ -33,7 +31,7 @@ func TestUnfetchableAlreadyPresentWorks(t *testing.T) {
 load("ext://unfetchable", "printFoo")
 printFoo()
 `)
-	f.writeModuleLocally("unfetchable", libText)
+	f.writeModuleLocally("unfetchable", testLibText)
 
 	f.assertExecOutput("foo")
 }
@@ -73,7 +71,7 @@ load("ext://fetchable", "printFoo")
 printFoo()
 `)
 
-	f.writeModuleLocally("fetchable", libText)
+	f.writeModuleLocally("fetchable", testLibText)
 
 	f.assertExecOutput("foo")
 }
@@ -108,7 +106,7 @@ printFoo()
 	// root Tiltfile. (If we look for this extension in the wrong place and
 	// try to fetch this extension into ./nested/tilt_modules,
 	// the fake fetcher will error.)
-	f.writeModuleLocally("unfetchable", libText)
+	f.writeModuleLocally("unfetchable", testLibText)
 
 	f.assertExecOutput("foo")
 }
@@ -121,10 +119,7 @@ type extensionFixture struct {
 
 func newExtensionFixture(t *testing.T) *extensionFixture {
 	tmp := tempdir.NewTempDirFixture(t)
-	ext := NewExtension(
-		&fakeFetcher{t: t},
-		NewLocalStore(tmp.JoinPath("project")),
-	)
+	ext := NewFakeExtension(t, tmp.JoinPath("project"))
 	skf := starkit.NewFixture(t, ext, include.IncludeFn{})
 	skf.UseRealFS()
 
@@ -168,11 +163,6 @@ func (f *extensionFixture) writeModuleLocally(name string, contents string) {
 	f.tmp.WriteFile(filepath.Join("project", "tilt_modules", name, "Tiltfile"), contents)
 }
 
-const libText = `
-def printFoo():
-  print("foo")
-`
-
 const printBar = `
 def printBar():
   print("bar")
@@ -185,22 +175,3 @@ def printFoo():
 	print("foo")
 	printBar()
 `
-
-type fakeFetcher struct {
-	t *testing.T
-}
-
-func (f *fakeFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
-	if moduleName != "fetchable" {
-		return ModuleContents{}, fmt.Errorf("module %s can't be fetched because... reasons", moduleName)
-	}
-
-	return ModuleContents{
-		Name: "fetchable",
-		Dir:  dirWithTiltfile(f.t, libText),
-	}, nil
-}
-
-func (f *fakeFetcher) CleanUp() error {
-	return nil
-}

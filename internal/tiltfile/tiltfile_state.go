@@ -66,6 +66,7 @@ type tiltfileState struct {
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
 	configExt     *config.Extension
+	extensionExt  *tiltextension.Extension
 	localRegistry container.Registry
 	features      feature.FeatureSet
 
@@ -135,6 +136,7 @@ func newTiltfileState(
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
 	configExt *config.Extension,
+	extensionsExt *tiltextension.Extension,
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
@@ -144,6 +146,7 @@ func newTiltfileState(
 		k8sContextExt:             k8sContextExt,
 		versionExt:                versionExt,
 		configExt:                 configExt,
+		extensionExt:              extensionsExt,
 		localRegistry:             localRegistry,
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
@@ -179,12 +182,6 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 
 	s.configExt.UserConfigState = userConfigState
 
-	dlr, err := tiltextension.NewTempDirDownloader()
-	if err != nil {
-		return nil, starkit.Model{}, err
-	}
-	fetcher := tiltextension.NewGithubFetcher(dlr)
-
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
@@ -205,7 +202,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		shlex.NewExtension(),
 		watch.NewExtension(),
 		loaddynamic.NewExtension(),
-		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
+		s.extensionExt,
 		links.NewExtension(),
 		print.NewExtension(),
 		probe.NewExtension(),

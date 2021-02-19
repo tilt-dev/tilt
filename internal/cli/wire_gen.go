@@ -50,6 +50,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
@@ -82,13 +83,17 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	tiltBuild := provideTiltInfo()
 	versionExtension := version.NewExtension(tiltBuild)
 	configExtension := config.NewExtension(subcommand)
+	tiltextensionExtension, err := tiltextension.ProvideExtension()
+	if err != nil {
+		return cmdTiltfileResultDeps{}, err
+	}
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	clusterEnv := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
 	localEnv := docker.ProvideLocalEnv(ctx, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, versionExtension, configExtension, tiltextensionExtension, dockerComposeClient, webHost, defaults, env)
 	cliCmdTiltfileResultDeps := newTiltfileResultDeps(tiltfileLoader)
 	return cliCmdTiltfileResultDeps, nil
 }
@@ -128,10 +133,14 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	tiltBuild := provideTiltInfo()
 	versionExtension := version.NewExtension(tiltBuild)
 	configExtension := config.NewExtension(subcommand)
+	tiltextensionExtension, err := tiltextension.ProvideExtension()
+	if err != nil {
+		return dpDeps{}, err
+	}
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, extension, versionExtension, configExtension, tiltextensionExtension, dockerComposeClient, webHost, defaults, env)
 	cliDpDeps := newDPDeps(switchCli, tiltfileLoader)
 	return cliDpDeps, nil
 }
@@ -222,8 +231,12 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	tiltBuild := provideTiltInfo()
 	versionExtension := version.NewExtension(tiltBuild)
 	configExtension := config.NewExtension(subcommand)
+	tiltextensionExtension, err := tiltextension.ProvideExtension()
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, tiltextensionExtension, dockerComposeClient, webHost, defaults, env)
 	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
@@ -380,8 +393,12 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	tiltBuild := provideTiltInfo()
 	versionExtension := version.NewExtension(tiltBuild)
 	configExtension := config.NewExtension(subcommand)
+	tiltextensionExtension, err := tiltextension.ProvideExtension()
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, tiltextensionExtension, dockerComposeClient, webHost, defaults, env)
 	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
@@ -633,13 +650,17 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	tiltBuild := provideTiltInfo()
 	versionExtension := version.NewExtension(tiltBuild)
 	configExtension := config.NewExtension(subcommand)
+	tiltextensionExtension, err := tiltextension.ProvideExtension()
+	if err != nil {
+		return DownDeps{}, err
+	}
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	clusterEnv := docker.ProvideClusterEnv(ctx, env, runtime, minikubeClient)
 	localEnv := docker.ProvideLocalEnv(ctx, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, client, extension, versionExtension, configExtension, tiltextensionExtension, dockerComposeClient, webHost, defaults, env)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, client)
 	return downDeps, nil
 }

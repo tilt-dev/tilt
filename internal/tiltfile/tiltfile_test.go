@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 
@@ -4888,7 +4889,9 @@ func TestBuiltinAnalytics(t *testing.T) {
 	// 2. a keyword arg
 	// 3. a mix of both for the same arg
 	// 4. a builtin from a starkit extension
+	// 5. a Tilt extension
 	f.file("Tiltfile", `
+load('ext://fetchable', 'printFoo')
 local('echo hi')
 local(command='echo hi')
 local('echo hi', quiet=True)
@@ -4911,6 +4914,12 @@ allow_k8s_contexts("hello")
 	for k, v := range expectedCounts {
 		require.Equal(t, v, countEvent.Tags[k], "count for %s", k)
 	}
+
+	extensionEvent := f.SingleAnalyticsEvent("tiltfile.loaded.extension")
+	expectedTags := map[string]string{
+		"name": "fetchable",
+	}
+	require.Equal(t, expectedTags, extensionEvent.Tags)
 }
 
 func TestCustomTagsReported(t *testing.T) {
@@ -5554,11 +5563,13 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, features, f.k8sEnv)
+
+	extensionsExt := tiltextension.NewFakeExtension(f.t, f.JoinPath("project"))
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt,
+		extensionsExt, dcc, f.webHost, features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {
-
 	out := new(bytes.Buffer)
 	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
 	f := tempdir.NewTempDirFixture(t)

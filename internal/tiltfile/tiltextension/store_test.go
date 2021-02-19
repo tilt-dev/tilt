@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -150,14 +149,4 @@ func (f *fixture) tearDown() {
 
 func (f *fixture) dirWithTiltfile(contents string) string {
 	return dirWithTiltfile(f.t, contents)
-}
-
-func dirWithTiltfile(t *testing.T, contents string) string {
-	dir, err := ioutil.TempDir("", "fakeFetcher")
-	require.NoError(t, err)
-
-	err = ioutil.WriteFile(filepath.Join(dir, "Tiltfile"), []byte(contents), os.FileMode(0644))
-	require.NoError(t, err)
-
-	return dir
 }
