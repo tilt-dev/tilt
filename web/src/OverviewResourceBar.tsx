@@ -1,4 +1,4 @@
-import React, { Component, useRef, useState } from "react"
+import React, { Component, useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
@@ -231,6 +231,28 @@ function statusCounts(resources: Proto.webviewResource[]): StatusCounts {
   }
 }
 
+function ResourceMetadata(props: { counts: StatusCounts }) {
+  let { total, healthy, pending, unhealthy } = props.counts
+  useEffect(() => {
+    let favicon: any = document.head.querySelector("#favicon")
+    let faviconHref = ""
+    if (unhealthy > 0) {
+      document.title = `Tilt | ❌ (${unhealthy})`
+      faviconHref = "/static/ico/favicon-red.ico"
+    } else if (pending || total === 0) {
+      document.title = `Tilt | ⏲  (${healthy}/${total})`
+      faviconHref = "/static/ico/favicon-gray.ico"
+    } else {
+      document.title = `Tilt | ✅ (${healthy}/${total})`
+      faviconHref = "/static/ico/favicon-green.ico"
+    }
+    if (favicon) {
+      favicon.href = faviconHref
+    }
+  }, [total, healthy, pending, unhealthy])
+  return <></>
+}
+
 function ResourceBarStatus(props: ResourceBarStatusProps) {
   // Count the statuses.
   let resources = props.view.resources || []
@@ -247,6 +269,7 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
 
   return (
     <>
+      <ResourceMetadata counts={statusCounts(resources)} />
       <ResourceGroupStatus
         counts={statusCounts(otherResources)}
         label={"Resources"}

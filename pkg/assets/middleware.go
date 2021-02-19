@@ -45,7 +45,7 @@ func InferVersion(defaultVersion model.WebVersion, h http.Handler) http.Handler 
 			return
 		}
 
-		if !(strings.HasPrefix(origPath, "/static/")) {
+		if !(strings.HasPrefix(origPath, "/static/")) && origPath != "/favicon.ico" {
 			// redirect everything else to the main entry point.
 			origPath = "index.html"
 		}
