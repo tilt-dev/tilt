@@ -20,11 +20,11 @@ type repoNotifyCancel struct {
 
 // Watches git for branch switches and fires events.
 type GitManager struct {
-	fsWatcherMaker FsWatcherMaker
+	fsWatcherMaker watch.FsWatcherMaker
 	repoWatches    map[model.LocalGitRepo]repoNotifyCancel
 }
 
-func NewGitManager(fsWatcherMaker FsWatcherMaker) *GitManager {
+func NewGitManager(fsWatcherMaker watch.FsWatcherMaker) *GitManager {
 	return &GitManager{
 		fsWatcherMaker: fsWatcherMaker,
 		repoWatches:    make(map[model.LocalGitRepo]repoNotifyCancel),

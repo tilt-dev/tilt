@@ -15,22 +15,28 @@ package filewatch
 import (
 	"context"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/tilt-dev/tilt/internal/store"
 	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-// FileWatchController reconciles a FileWatch object
+// fsFileWatchFinalizer cleans up the actual filesystem (fs) monitor for a FileWatch spec.
+const fsFileWatchFinalizer = "fswatch.filewatch.finalizers.core.tilt.dev"
+
+// Controller reconciles a filewatches.FileWatch object.
 type Controller struct {
 	ctrlclient.Client
-	Store store.RStore
+
+	WatchManager *ApiServerWatchManager
 }
 
-func NewController(store store.RStore) *Controller {
+func NewController(wm *ApiServerWatchManager) *Controller {
 	return &Controller{
-		Store: store,
+		WatchManager: wm,
 	}
 }
 
@@ -38,8 +44,64 @@ func NewController(store store.RStore) *Controller {
 // +kubebuilder:rbac:groups=,resources=filewatches/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=,resources=filewatches/finalizers,verbs=update
 
-func (r *Controller) Reconcile(_ context.Context, _ ctrl.Request) (ctrl.Result, error) {
-	// this is currently a no-op stub
+func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := logger.Get(ctx).WithFields(logger.Fields{"apiserver_entity": req.NamespacedName.String()})
+	ctx = logger.WithLogger(ctx, log)
+
+	var fileWatchApiObj filewatches.FileWatch
+	if err := r.Get(ctx, req.NamespacedName, &fileWatchApiObj); err != nil {
+		return ctrl.Result{}, ctrlclient.IgnoreNotFound(err)
+	}
+
+	if fileWatchApiObj.ObjectMeta.DeletionTimestamp.IsZero() {
+		// ensure finalizer is attached to non-deleted objects so that the actual filesystem-level
+		// monitor is removed upon deletion
+		if !controllerutil.ContainsFinalizer(&fileWatchApiObj, fsFileWatchFinalizer) {
+			controllerutil.AddFinalizer(&fileWatchApiObj, fsFileWatchFinalizer)
+			if err := r.Update(ctx, &fileWatchApiObj); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(&fileWatchApiObj, fsFileWatchFinalizer) {
+			if err := r.WatchManager.StopWatch(fileWatchApiObj.Name); err != nil {
+				// errors aren't propagated as it could result in the entity getting
+				// stuck in deleting state forever (this matches logic for previous
+				// Tilt Store watch manager)
+				log.Debugf("Error during filesystem watch cleanup: %v", err)
+			}
+
+			controllerutil.RemoveFinalizer(&fileWatchApiObj, fsFileWatchFinalizer)
+			if err := r.Update(ctx, &fileWatchApiObj); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
+		// object is being deleted - stop reconcile
+		return ctrl.Result{}, nil
+	}
+
+	// N.B. the background context is used as the root context for file watching; otherwise, the file watch would
+	//		be cancelled as soon as reconciliation was done
+	fileWatchCtx := logger.WithLogger(context.Background(), log)
+	// reconciliation MUST be idempotent; StartWatch() will noop if spec hasn't changed and update it if it has
+	addedOrUpdated, err := r.WatchManager.StartWatch(fileWatchCtx, fileWatchApiObj.Name, fileWatchApiObj.Spec)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if addedOrUpdated {
+		log.Debugf("Added/updated FS watch for FileWatch API object")
+		// TODO(milas): revisit this logic based on finalized data flows (e.g. does it make more sense to
+		//				simply reset LastEventTime + SeenFiles to nil?
+		now := metav1.Now()
+		fileWatchApiObj.Status.LastEventTime = &now
+		fileWatchApiObj.Status.SeenFiles = nil
+
+		if err := r.Update(ctx, &fileWatchApiObj); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	return ctrl.Result{}, nil
 }
 

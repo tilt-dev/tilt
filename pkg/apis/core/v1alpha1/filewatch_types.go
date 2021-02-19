@@ -53,6 +53,12 @@ type FileWatchList struct {
 
 // FileWatchSpec defines the desired state of FileWatch
 type FileWatchSpec struct {
+	RootPath string `json:"rootPath"`
+
+	Paths []string `json:"matchPatterns,omitempty"`
+
+	// +optional
+	IgnorePatterns []string `json:"ignorePatterns,omitempty"`
 }
 
 var _ resource.Object = &FileWatch{}
@@ -99,6 +105,15 @@ func (in *FileWatchList) GetListMeta() *metav1.ListMeta {
 
 // FileWatchStatus defines the observed state of FileWatch
 type FileWatchStatus struct {
+	LastEventTime *metav1.Time `json:"lastEventTime,omitempty"`
+	SeenFiles     []string     `json:"seenFiles,omitempty"`
+	ErrorMessage  string       `json:"errorMessage"`
+	// FileEvents []FileEvent `json:"fileEvents,omitempty"`
+}
+
+type FileEvent struct {
+	Time      *metav1.Time `json:"time"`
+	SeenFiles []string     `json:"seenFiles"`
 }
 
 // FileWatch implements ObjectWithStatusSubResource interface.

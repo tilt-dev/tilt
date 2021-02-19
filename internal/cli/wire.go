@@ -48,6 +48,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/user"
+	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -120,8 +121,8 @@ var BaseWireSet = wire.NewSet(
 	provideUpdateModeFlag,
 	fswatch.NewGitManager,
 	fswatch.NewWatchManager,
-	fswatch.ProvideFsWatcherMaker,
-	fswatch.ProvideTimerMaker,
+	watch.ProvideFsWatcherMaker,
+	watch.ProvideTimerMaker,
 
 	controllers.WireSet,
 

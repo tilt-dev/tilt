@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
-	"strings"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -87,6 +85,10 @@ func DesiredWindowsBufferSize() int {
 	return defaultBufferSize
 }
 
-func IsWindowsShortReadError(err error) bool {
-	return runtime.GOOS == "windows" && err != nil && strings.Contains(err.Error(), "short read")
+type FsWatcherMaker func(paths []string, ignore PathMatcher, l logger.Logger) (Notify, error)
+
+func ProvideFsWatcherMaker() FsWatcherMaker {
+	return func(paths []string, ignore PathMatcher, l logger.Logger) (Notify, error) {
+		return NewWatcher(paths, ignore, l)
+	}
 }

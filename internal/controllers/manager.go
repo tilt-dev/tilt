@@ -27,10 +27,10 @@ var _ store.SetUpper = &TiltServerControllerManager{}
 var _ store.Subscriber = &TiltServerControllerManager{}
 var _ store.TearDowner = &TiltServerControllerManager{}
 
-func NewTiltServerControllerManager(config *server.APIServerConfig, scheme *runtime.Scheme) (*TiltServerControllerManager, error) {
+func NewTiltServerControllerManager(config *server.APIServerConfig, scheme *Scheme) (*TiltServerControllerManager, error) {
 	return &TiltServerControllerManager{
 		config: config.GenericConfig.LoopbackClientConfig,
-		scheme: scheme,
+		scheme: scheme.RuntimeScheme(),
 	}, nil
 }
 

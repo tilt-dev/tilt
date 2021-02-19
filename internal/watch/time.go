@@ -1,10 +1,18 @@
-package fswatch
+package watch
 
 import (
 	"sync"
 	"testing"
 	"time"
 )
+
+type TimerMaker func(d time.Duration) <-chan time.Time
+
+func ProvideTimerMaker() TimerMaker {
+	return func(t time.Duration) <-chan time.Time {
+		return time.After(t)
+	}
+}
 
 type FakeTimerMaker struct {
 	RestTimerLock *sync.Mutex

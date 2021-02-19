@@ -2,10 +2,9 @@ package fswatch
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -18,22 +17,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
-
-// When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
-// 200ms is not the result of any kind of research or experimentation
-// it might end up being a significant part of deployment delay, if we get the total latency <2s
-// it might also be long enough that it misses some changes if the user has some operation involving a large file
-//   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
-const BufferMinRestInMs = 200
-
-// When waiting for a `watchBufferDurationInMs`-long break in file modifications to aggregate notifications,
-// if we haven't seen a break by the time `watchBufferMaxTimeInMs` has passed, just send off whatever we've got
-const BufferMaxTimeInMs = 10000
-
-var BufferMinRestDuration = BufferMinRestInMs * time.Millisecond
-var BufferMaxDuration = BufferMaxTimeInMs * time.Millisecond
-
-const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install#system-specific-preparation`
 
 var ConfigsTargetID = model.TargetID{
 	Type: model.TargetTypeConfigs,
@@ -101,15 +84,15 @@ type targetNotifyCancel struct {
 
 type WatchManager struct {
 	targetWatches      map[model.TargetID]targetNotifyCancel
-	fsWatcherMaker     FsWatcherMaker
-	timerMaker         TimerMaker
+	fsWatcherMaker     watch.FsWatcherMaker
+	timerMaker         watch.TimerMaker
 	globalIgnores      []model.Dockerignore
 	globalIgnore       model.PathMatcher
 	disabledForTesting bool
 	mu                 sync.Mutex
 }
 
-func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchManager {
+func NewWatchManager(watcherMaker watch.FsWatcherMaker, timerMaker watch.TimerMaker) *WatchManager {
 	return &WatchManager{
 		targetWatches:  make(map[model.TargetID]targetNotifyCancel),
 		fsWatcherMaker: watcherMaker,
@@ -299,7 +282,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 	watcher watch.Notify,
 	st store.RStore) {
 
-	eventsCh := coalesceEvents(w.timerMaker, watcher.Events())
+	eventsCh := watch.CoalesceEvents(w.timerMaker, watcher.Events())
 
 	for {
 		select {
@@ -308,16 +291,9 @@ func (w *WatchManager) dispatchFileChangesLoop(
 				return
 			}
 			if watch.IsWindowsShortReadError(err) {
-				st.Dispatch(store.NewErrorAction(fmt.Errorf("Windows I/O overflow.\n"+
-					"You may be able to fix this by setting the env var %s.\n"+
-					"Current buffer size: %d\n"+
-					"More details: https://github.com/tilt-dev/tilt/issues/3556\n"+
-					"Caused by: %v",
-					watch.WindowsBufferSizeEnvVar,
-					watch.DesiredWindowsBufferSize(),
-					err)))
+				st.Dispatch(store.NewErrorAction(errors.New(watch.WindowsShortReadErrorMessage(err))))
 			} else if err.Error() == fsnotify.ErrEventOverflow.Error() {
-				st.Dispatch(store.NewErrorAction(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err)))
+				st.Dispatch(store.NewErrorAction(errors.New(watch.DetectedOverflowErrorMessage(err))))
 			} else {
 				st.Dispatch(store.NewErrorAction(err))
 			}
@@ -339,55 +315,4 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			}
 		}
 	}
-}
-
-//makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
-//from the user's perspective are grouped together.
-func coalesceEvents(timerMaker TimerMaker, eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
-	ret := make(chan []watch.FileEvent)
-	go func() {
-		defer close(ret)
-
-		for {
-			event, ok := <-eventChan
-			if !ok {
-				return
-			}
-			events := []watch.FileEvent{event}
-
-			// keep grabbing changes until we've gone `BufferMinRestDuration` without seeing a change
-			minRestTimer := timerMaker(BufferMinRestDuration)
-
-			// but if we go too long before seeing a break (e.g., a process is constantly writing logs to that dir)
-			// then just send what we've got
-			timeout := timerMaker(BufferMaxDuration)
-
-			done := false
-			channelClosed := false
-			for !done && !channelClosed {
-				select {
-				case event, ok := <-eventChan:
-					if !ok {
-						channelClosed = true
-					} else {
-						minRestTimer = timerMaker(BufferMinRestDuration)
-						events = append(events, event)
-					}
-				case <-minRestTimer:
-					done = true
-				case <-timeout:
-					done = true
-				}
-			}
-			if len(events) > 0 {
-				ret <- events
-			}
-
-			if channelClosed {
-				return
-			}
-		}
-
-	}()
-	return ret
 }

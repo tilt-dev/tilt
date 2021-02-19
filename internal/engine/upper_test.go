@@ -3692,7 +3692,7 @@ type testFixture struct {
 	upper                      Upper
 	b                          *fakeBuildAndDeployer
 	fsWatcher                  *fswatch.FakeMultiWatcher
-	timerMaker                 *fswatch.FakeTimerMaker
+	timerMaker                 *watch.FakeTimerMaker
 	docker                     *docker.FakeClient
 	kClient                    *k8s.FakeK8sClient
 	hud                        hud.HeadsUpDisplay
@@ -3726,7 +3726,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	watcher := fswatch.NewFakeMultiWatcher()
 	b := newFakeBuildAndDeployer(t)
 
-	timerMaker := fswatch.MakeFakeTimerMaker(t)
+	timerMaker := watch.MakeFakeTimerMaker(t)
 
 	dockerClient := docker.NewFakeClient()
 

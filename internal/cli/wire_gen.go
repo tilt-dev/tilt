@@ -56,6 +56,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/user"
+	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -182,7 +183,14 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	controller := filewatch.NewController(storeStore)
+	tiltapiInterface, err := server.ProvideTiltInterface(apiserverConfig)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	fsWatcherMaker := watch.ProvideFsWatcherMaker()
+	timerMaker := watch.ProvideTimerMaker()
+	apiServerWatchManager := filewatch.NewApiServerWatchManager(tiltapiInterface, fsWatcherMaker, timerMaker)
+	controller := filewatch.NewController(apiServerWatchManager)
 	v := controllers.ProvideControllers(controller)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -216,8 +224,6 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, namespace)
 	podLogManager := runtimelog.NewPodLogManager(client)
 	portforwardController := portforward.NewController(client)
-	fsWatcherMaker := fswatch.ProvideFsWatcherMaker()
-	timerMaker := fswatch.ProvideTimerMaker()
 	watchManager := fswatch.NewWatchManager(fsWatcherMaker, timerMaker)
 	gitManager := fswatch.NewGitManager(fsWatcherMaker)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -352,7 +358,14 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	controller := filewatch.NewController(storeStore)
+	tiltapiInterface, err := server.ProvideTiltInterface(apiserverConfig)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	fsWatcherMaker := watch.ProvideFsWatcherMaker()
+	timerMaker := watch.ProvideTimerMaker()
+	apiServerWatchManager := filewatch.NewApiServerWatchManager(tiltapiInterface, fsWatcherMaker, timerMaker)
+	controller := filewatch.NewController(apiServerWatchManager)
 	v := controllers.ProvideControllers(controller)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -386,8 +399,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, namespace)
 	podLogManager := runtimelog.NewPodLogManager(client)
 	portforwardController := portforward.NewController(client)
-	fsWatcherMaker := fswatch.ProvideFsWatcherMaker()
-	timerMaker := fswatch.ProvideTimerMaker()
 	watchManager := fswatch.NewWatchManager(fsWatcherMaker, timerMaker)
 	gitManager := fswatch.NewGitManager(fsWatcherMaker)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -735,7 +746,7 @@ func wireAnalytics(l logger.Logger, cmdName model.TiltSubcommand) (*analytics.Ti
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher, ProvideKubeContextOverride)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.WireSet, user.WireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward.NewController, engine.NewBuildController, local.ProvideExecer, local.ProvideProberManager, local.NewController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, exit.NewController, provideClock, hud.WireSet, prompt.WireSet, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewGitManager, fswatch.NewWatchManager, fswatch.ProvideFsWatcherMaker, fswatch.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.WireSet, user.WireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward.NewController, engine.NewBuildController, local.ProvideExecer, local.ProvideProberManager, local.NewController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, exit.NewController, provideClock, hud.WireSet, prompt.WireSet, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewGitManager, fswatch.NewWatchManager, watch.ProvideFsWatcherMaker, watch.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
