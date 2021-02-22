@@ -113,13 +113,17 @@ func (s prodServer) fetchFromAssetBucket(w http.ResponseWriter, req *http.Reques
 
 func RewriteContentURLs(req *http.Request, content []byte) []byte {
 	path := req.URL.Path
-	shouldRewrite := strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".css")
+	shouldRewrite := strings.HasSuffix(path, ".html") ||
+		strings.HasSuffix(path, ".css") ||
+		strings.HasSuffix(path, ".ico")
 	if !shouldRewrite {
 		return content
 	}
 
 	prefix := getPublicPathPrefix(req)
-	return bytes.ReplaceAll(content, []byte("/static/"), []byte(fmt.Sprintf("%s/static/", prefix)))
+	content = bytes.ReplaceAll(content, []byte("/static/"), []byte(fmt.Sprintf("%s/static/", prefix)))
+	content = bytes.ReplaceAll(content, []byte("/favicon.ico"), []byte(fmt.Sprintf("%s/favicon.ico", prefix)))
+	return content
 }
 
 func copyHeader(dst, src http.Header) {

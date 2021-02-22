@@ -30,6 +30,31 @@ func TestIndexRequest(t *testing.T) {
 		assert.Equal(t, f.recvReq.URL.Path, "/v1.2.3/index.html")
 	}
 	assert.Contains(t, res.Body.String(), `<script src="/v1.2.3/static/js/2.f1bd84e9.chunk.js">`)
+	assert.Contains(t, res.Body.String(), `<link id="favicon" rel="shortcut icon" href="/v1.2.3/favicon.ico">`)
+}
+
+func TestFaviconRequest(t *testing.T) {
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/favicon.ico", bytes.NewBuffer(nil))
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v1.2.3/favicon.ico")
+	}
+}
+
+func TestFaviconGreenRequest(t *testing.T) {
+	f := newProdServerFixture(t)
+	defer f.TearDown()
+
+	req := httptest.NewRequest("GET", "/static/ico/favicon-green.ico", bytes.NewBuffer(nil))
+	res := httptest.NewRecorder()
+	f.server.ServeHTTP(res, req)
+	if assert.NotNil(t, f.recvReq) {
+		assert.Equal(t, f.recvReq.URL.Path, "/v1.2.3/static/ico/favicon-green.ico")
+	}
 }
 
 func TestChunkRequest(t *testing.T) {
@@ -220,4 +245,4 @@ func attachQueryVersion(req *http.Request, v string) {
 
 // Copied from
 // view-source:https://storage.googleapis.com/tilt-static-assets/v0.10.14/index.html
-const indexHTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="shortcut icon" href="https://tilt.build/favicon.ico"><link href="https://fonts.googleapis.com/css?family=Inconsolata:400,700|Montserrat:600" rel="stylesheet"><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name="theme-color" content="#000000"><title>Tilt</title><link href="/static/css/main.a164f855.chunk.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script>!function(f){function e(e){for(var t,r,n=e[0],o=e[1],u=e[2],i=0,l=[];i<n.length;i++)r=n[i],Object.prototype.hasOwnProperty.call(p,r)&&p[r]&&l.push(p[r][0]),p[r]=0;for(t in o)Object.prototype.hasOwnProperty.call(o,t)&&(f[t]=o[t]);for(s&&s(e);l.length;)l.shift()();return c.push.apply(c,u||[]),a()}function a(){for(var e,t=0;t<c.length;t++){for(var r=c[t],n=!0,o=1;o<r.length;o++){var u=r[o];0!==p[u]&&(n=!1)}n&&(c.splice(t--,1),e=i(i.s=r[0]))}return e}var r={},p={1:0},c=[];function i(e){if(r[e])return r[e].exports;var t=r[e]={i:e,l:!1,exports:{}};return f[e].call(t.exports,t,t.exports,i),t.l=!0,t.exports}i.m=f,i.c=r,i.d=function(e,t,r){i.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:r})},i.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},i.t=function(t,e){if(1&e&&(t=i(t)),8&e)return t;if(4&e&&"object"==typeof t&&t&&t.__esModule)return t;var r=Object.create(null);if(i.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:t}),2&e&&"string"!=typeof t)for(var n in t)i.d(r,n,function(e){return t[e]}.bind(null,n));return r},i.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return i.d(t,"a",t),t},i.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},i.p="/";var t=this["webpackJsonptilt-ui"]=this["webpackJsonptilt-ui"]||[],n=t.push.bind(t);t.push=e,t=t.slice();for(var o=0;o<t.length;o++)e(t[o]);var s=n;a()}([])</script><script src="/static/js/2.f1bd84e9.chunk.js"></script><script src="/static/js/main.99897104.chunk.js"></script></body></html>`
+const indexHTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><link id="favicon" rel="shortcut icon" href="/favicon.ico"><link href="https://fonts.googleapis.com/css?family=Inconsolata:400,700|Montserrat:600" rel="stylesheet"><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name="theme-color" content="#000000"><title>Tilt</title><link href="/static/css/main.a164f855.chunk.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script>!function(f){function e(e){for(var t,r,n=e[0],o=e[1],u=e[2],i=0,l=[];i<n.length;i++)r=n[i],Object.prototype.hasOwnProperty.call(p,r)&&p[r]&&l.push(p[r][0]),p[r]=0;for(t in o)Object.prototype.hasOwnProperty.call(o,t)&&(f[t]=o[t]);for(s&&s(e);l.length;)l.shift()();return c.push.apply(c,u||[]),a()}function a(){for(var e,t=0;t<c.length;t++){for(var r=c[t],n=!0,o=1;o<r.length;o++){var u=r[o];0!==p[u]&&(n=!1)}n&&(c.splice(t--,1),e=i(i.s=r[0]))}return e}var r={},p={1:0},c=[];function i(e){if(r[e])return r[e].exports;var t=r[e]={i:e,l:!1,exports:{}};return f[e].call(t.exports,t,t.exports,i),t.l=!0,t.exports}i.m=f,i.c=r,i.d=function(e,t,r){i.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:r})},i.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},i.t=function(t,e){if(1&e&&(t=i(t)),8&e)return t;if(4&e&&"object"==typeof t&&t&&t.__esModule)return t;var r=Object.create(null);if(i.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:t}),2&e&&"string"!=typeof t)for(var n in t)i.d(r,n,function(e){return t[e]}.bind(null,n));return r},i.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return i.d(t,"a",t),t},i.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},i.p="/";var t=this["webpackJsonptilt-ui"]=this["webpackJsonptilt-ui"]||[],n=t.push.bind(t);t.push=e,t=t.slice();for(var o=0;o<t.length;o++)e(t[o]);var s=n;a()}([])</script><script src="/static/js/2.f1bd84e9.chunk.js"></script><script src="/static/js/main.99897104.chunk.js"></script></body></html>`
