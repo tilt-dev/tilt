@@ -4,7 +4,7 @@
 # 1) Better leverage OS-specific C headers
 # 2) Be able to do releases from a CI job
 
-FROM dockercore/golang-cross:1.13.15
+FROM gcr.io/windmill-public-containers/golang-cross:1.14.12
 
 ENV GORELEASER_VERSION=0.127.0
 ENV GORELEASER_SHA=bf7e0f34d1d46041f302a0dd773a5c70ff7476c147d3a30659a5a11e823bccbd
