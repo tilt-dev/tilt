@@ -85,8 +85,8 @@ func (s *Store) StateMutex() *sync.RWMutex {
 	return &s.stateMu
 }
 
-func (s *Store) AddSubscriber(ctx context.Context, sub Subscriber) {
-	s.subscribers.Add(ctx, sub)
+func (s *Store) AddSubscriber(ctx context.Context, sub Subscriber) error {
+	return s.subscribers.Add(ctx, s, sub)
 }
 
 func (s *Store) RemoveSubscriber(ctx context.Context, sub Subscriber) error {
@@ -128,12 +128,15 @@ func (s *Store) Close() {
 	close(s.actionCh)
 }
 
-func (s *Store) SetUpSubscribersForTesting(ctx context.Context) {
-	s.subscribers.SetUp(ctx)
+func (s *Store) SetUpSubscribersForTesting(ctx context.Context) error {
+	return s.subscribers.SetUp(ctx, s)
 }
 
 func (s *Store) Loop(ctx context.Context) error {
-	s.subscribers.SetUp(ctx)
+	err := s.subscribers.SetUp(ctx, s)
+	if err != nil {
+		return err
+	}
 	defer s.subscribers.TeardownAll(context.Background())
 
 	for {

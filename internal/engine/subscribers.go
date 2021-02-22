@@ -22,6 +22,7 @@ import (
 )
 
 func ProvideSubscribers(
+	hudsc *server.HeadsUpServerController,
 	hud hud.HeadsUpDisplay,
 	ts *hud.TerminalStream,
 	tp *prompt.TerminalPrompt,
@@ -37,7 +38,6 @@ func ProvideSubscribers(
 	dclm *runtimelog.DockerComposeLogManager,
 	pm *ProfilerManager,
 	ar *analytics.AnalyticsReporter,
-	hudsc *server.HeadsUpServerController,
 	au *analytics.AnalyticsUpdater,
 	ewm *k8swatch.EventWatchManager,
 	tcum *cloud.CloudStatusManager,
@@ -50,6 +50,10 @@ func ProvideSubscribers(
 	mmc *metrics.ModeController,
 ) []store.Subscriber {
 	return []store.Subscriber{
+		// The API server must go before other subscribers,
+		// so that it can run its boot sequence first.
+		hudsc,
+
 		hud,
 		ts,
 		tp,
@@ -65,7 +69,6 @@ func ProvideSubscribers(
 		dclm,
 		pm,
 		ar,
-		hudsc,
 		au,
 		ewm,
 		tcum,

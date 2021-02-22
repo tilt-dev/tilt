@@ -190,7 +190,7 @@ func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) 
 
 	// Fire a fake OnChange event to initialize the connection.
 	ws.OnChange(s.ctx, s.store)
-	s.store.AddSubscriber(s.ctx, ws)
+	_ = s.store.AddSubscriber(s.ctx, ws)
 
 	ws.Stream(s.ctx, s.store)
 	atomic.AddInt32(&s.numWebsocketConns, -1)

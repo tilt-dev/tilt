@@ -18,9 +18,15 @@ type Subscriber interface {
 }
 
 // Some subscribers need to do SetUp or TearDown.
+//
 // Both hold the subscriber lock, so should return quickly.
+//
+// SetUp and TearDown are called in serial, in the order they were added.
 type SetUpper interface {
-	SetUp(ctx context.Context)
+	// Initialize the subscriber.
+	//
+	// Any errors will trigger an ErrorAction.
+	SetUp(ctx context.Context, st RStore) error
 }
 type TearDowner interface {
 	TearDown(ctx context.Context)
@@ -38,7 +44,7 @@ type subscriberList struct {
 	mu          sync.Mutex
 }
 
-func (l *subscriberList) Add(ctx context.Context, s Subscriber) {
+func (l *subscriberList) Add(ctx context.Context, st RStore, s Subscriber) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -48,8 +54,9 @@ func (l *subscriberList) Add(ctx context.Context, s Subscriber) {
 	l.subscribers = append(l.subscribers, e)
 	if l.setup {
 		// the rest of the subscriberList has already been set up, so set up this subscriber directly
-		e.maybeSetUp(ctx)
+		return e.maybeSetUp(ctx, st)
 	}
+	return nil
 }
 
 func (l *subscriberList) Remove(ctx context.Context, s Subscriber) error {
@@ -69,15 +76,19 @@ func (l *subscriberList) Remove(ctx context.Context, s Subscriber) error {
 	return fmt.Errorf("Subscriber not found: %T: %+v", s, s)
 }
 
-func (l *subscriberList) SetUp(ctx context.Context) {
+func (l *subscriberList) SetUp(ctx context.Context, st RStore) error {
 	l.mu.Lock()
 	subscribers := append([]*subscriberEntry{}, l.subscribers...)
 	l.setup = true
 	l.mu.Unlock()
 
 	for _, s := range subscribers {
-		s.maybeSetUp(ctx)
+		err := s.maybeSetUp(ctx, st)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (l *subscriberList) TeardownAll(ctx context.Context) {
@@ -162,13 +173,14 @@ func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 	e.clearActive()
 }
 
-func (e *subscriberEntry) maybeSetUp(ctx context.Context) {
+func (e *subscriberEntry) maybeSetUp(ctx context.Context, st RStore) error {
 	s, ok := e.subscriber.(SetUpper)
 	if ok {
 		e.activeMu.Lock()
 		defer e.activeMu.Unlock()
-		s.SetUp(ctx)
+		return s.SetUp(ctx, st)
 	}
+	return nil
 }
 
 func (e *subscriberEntry) maybeTeardown(ctx context.Context) {
