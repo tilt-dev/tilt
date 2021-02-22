@@ -28,12 +28,12 @@ func NewExtension(fetcher Fetcher, store Store) *Extension {
 	}
 }
 
-type ExtState struct {
+type State struct {
 	ExtsLoaded map[string]bool
 }
 
 func (e Extension) NewState() interface{} {
-	return ExtState{
+	return State{
 		ExtsLoaded: make(map[string]bool),
 	}
 }
@@ -49,7 +49,7 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 }
 
 func (e *Extension) recordExtensionLoaded(ctx context.Context, t *starlark.Thread, moduleName string) {
-	err := starkit.SetState(t, func(existing ExtState) (ExtState, error) {
+	err := starkit.SetState(t, func(existing State) (State, error) {
 		existing.ExtsLoaded[moduleName] = true
 		return existing, nil
 	})
@@ -102,7 +102,7 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (localPath string,
 var _ starkit.LoadInterceptor = (*Extension)(nil)
 var _ starkit.StatefulExtension = (*Extension)(nil)
 
-func MustState(model starkit.Model) ExtState {
+func MustState(model starkit.Model) State {
 	state, err := GetState(model)
 	if err != nil {
 		panic(err)
@@ -110,8 +110,8 @@ func MustState(model starkit.Model) ExtState {
 	return state
 }
 
-func GetState(m starkit.Model) (ExtState, error) {
-	var state ExtState
+func GetState(m starkit.Model) (State, error) {
+	var state State
 	err := m.Load(&state)
 	return state, err
 }
