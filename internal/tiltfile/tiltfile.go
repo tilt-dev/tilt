@@ -12,6 +12,8 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -225,7 +227,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	if tlr.Error == nil {
 		s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
 	}
-	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration)
+	extState, _ := tiltextension.GetState(result)
+	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration, extState.ExtsLoaded)
 	reportTiltfileExecMetrics(ctx, duration, err != nil)
 
 	if len(aSettings.CustomTagsToReport) > 0 {
@@ -244,8 +247,8 @@ func reportCustomTags(a *analytics.TiltAnalytics, tags map[string]string) {
 }
 
 func (tfl *tiltfileLoader) reportTiltfileLoaded(
-	callCounts map[string]int,
-	argCounts map[string]map[string]int, loadDur time.Duration) {
+	callCounts map[string]int, argCounts map[string]map[string]int,
+	loadDur time.Duration, extensionsLoaded map[string]bool) {
 	tags := make(map[string]string)
 
 	// env should really be a global tag, but there's a circular dependency
@@ -262,4 +265,11 @@ func (tfl *tiltfileLoader) reportTiltfileLoaded(
 	}
 	tfl.analytics.Incr("tiltfile.loaded", tags)
 	tfl.analytics.Timer("tiltfile.load", loadDur, nil)
+	for ext := range extensionsLoaded {
+		tags := map[string]string{
+			"env":  string(tfl.env),
+			"name": ext,
+		}
+		tfl.analytics.Incr("tiltfile.loaded.extension", tags)
+	}
 }
