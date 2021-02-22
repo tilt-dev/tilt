@@ -121,7 +121,7 @@ func TestUpdateContainerRunsFailure(t *testing.T) {
 func TestUpdateContainerPermissionDenied(t *testing.T) {
 	f := newExecFixture(t)
 
-	f.kCli.ExecOutputs = []io.Reader{strings.NewReader("tar: app/index.js: Cannot open: File exists")}
+	f.kCli.ExecOutputs = []io.Reader{strings.NewReader("tar: app/index.js: Cannot open: File exists\n")}
 	f.kCli.ExecErrors = []error{exec.CodeExitError{Err: fmt.Errorf("command terminated with exit code 2"), Code: 1}}
 
 	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), nil, cmds, true)
