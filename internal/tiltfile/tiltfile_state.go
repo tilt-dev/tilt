@@ -427,7 +427,7 @@ func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f starkit.Function) starkit.
 			kubeContext := k8sContextState.KubeContext()
 			return nil, fmt.Errorf(`Refusing to run '%s' because %s might be a production kube context.
 If you're sure you want to continue add:
-allow_k8s_contexts('%s')
+	allow_k8s_contexts('%s')
 before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), kubeContext, kubeContext)
 		}
 
