@@ -53,6 +53,7 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+    - deadcode
     - errcheck
     - megacheck
     - govet

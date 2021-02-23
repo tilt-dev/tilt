@@ -1318,6 +1318,8 @@ const (
 	claimFinished
 )
 
+var _ claim = claimNone
+
 func (s *tiltfileState) triggerModeFn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var triggerMode triggerMode
 	err := s.unpackArgs(fn.Name(), args, kwargs, "trigger_mode", &triggerMode)
