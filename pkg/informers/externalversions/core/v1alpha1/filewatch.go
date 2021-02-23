@@ -22,14 +22,15 @@ import (
 	"context"
 	time "time"
 
-	corev1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	tiltapi "github.com/tilt-dev/tilt/pkg/clientset/tiltapi"
-	internalinterfaces "github.com/tilt-dev/tilt/pkg/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/tilt-dev/tilt/pkg/listers/core/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
+
+	corev1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	tiltapi "github.com/tilt-dev/tilt/pkg/clientset/tiltapi"
+	internalinterfaces "github.com/tilt-dev/tilt/pkg/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/tilt-dev/tilt/pkg/listers/core/v1alpha1"
 )
 
 // FileWatchInformer provides access to a shared informer and lister for

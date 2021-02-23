@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test test-go check-js test-js test-storybook integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor shellcheck release-container
+.PHONY: all proto install lint test test-go check-js test-js test-storybook integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor shellcheck release-container update-codegen
 
 all: check-go check-js test-js test-storybook
 
@@ -172,3 +172,7 @@ test_install_version_check: install
 
 shellcheck:
 	find ./scripts -type f -name '*.sh' -exec docker run --rm -it -e SHELLCHECK_OPTS="-e SC2001" -v $$(pwd):/mnt nlknguyen/alpine-shellcheck {} \;
+
+update-codegen:
+	scripts/update-codegen.sh
+	goimports -w -l $(GOIMPORTS_LOCAL_ARG) pkg

@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	testUrl        = "https://fake.tilt.dev"
 	versionDefault = model.WebVersion("v1.2.3")
 	version666     = model.WebVersion("v6.6.6")
 )

@@ -8,8 +8,7 @@ import (
 )
 
 var (
-	sel         = MustParseSelector("gcr.io/foo/bar")
-	regHostOnly = Registry{Host: "localhost:1234"}
+	sel = MustParseSelector("gcr.io/foo/bar")
 )
 
 func TestNewRefSetWithInvalidRegistryErrors(t *testing.T) {

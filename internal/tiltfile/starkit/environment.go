@@ -286,6 +286,8 @@ const (
 	loadStatusDone
 )
 
+var _ loadStatus = loadStatusNone
+
 type loadCacheEntry struct {
 	status  loadStatus
 	exports starlark.StringDict

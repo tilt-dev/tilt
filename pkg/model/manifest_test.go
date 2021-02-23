@@ -25,36 +25,6 @@ var buildArgs2 = DockerBuildArgs{
 	"beep": "boop",
 }
 
-var sync1 = Sync{
-	LocalPath:     "/foo",
-	ContainerPath: "/bar",
-}
-var sync2 = Sync{
-	LocalPath:     "/baz",
-	ContainerPath: "/beep",
-}
-
-var cmdSayHi = Cmd{Argv: []string{"bash", "-c", "echo hi"}}
-var cmdSayBye = Cmd{Argv: []string{"bash", "-c", "echo bye"}}
-var stepSayHi = Run{Cmd: cmdSayHi}
-var stepSayBye = Run{Cmd: cmdSayBye}
-var stepSayHiTriggerFoo = Run{
-	Cmd:      cmdSayHi,
-	Triggers: NewPathSet([]string{"foo"}, "/src"),
-}
-var stepSayHiTriggerBar = Run{
-	Cmd:      cmdSayHi,
-	Triggers: NewPathSet([]string{"bar"}, "/src"),
-}
-var stepSayHiTriggerDirA = Run{
-	Cmd:      cmdSayHi,
-	Triggers: NewPathSet([]string{"foo"}, "/dirA"),
-}
-var stepSayHiTriggerDirB = Run{
-	Cmd:      cmdSayHi,
-	Triggers: NewPathSet([]string{"foo"}, "/dirB"),
-}
-
 var equalitytests = []struct {
 	name                string
 	m1                  Manifest
