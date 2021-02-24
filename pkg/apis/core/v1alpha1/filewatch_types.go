@@ -77,7 +77,7 @@ func (in *FileWatch) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "core.tilt.dev",
 		Version:  "v1alpha1",
-		Resource: "fileWatchs",
+		Resource: "filewatches",
 	}
 }
 
