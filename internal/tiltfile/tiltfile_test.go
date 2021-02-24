@@ -3038,7 +3038,7 @@ k8s_yaml('foo.yaml')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "hello")
 }
 
-func TestAssemblyVersion2Basic(t *testing.T) {
+func TestAssemblyBasic(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3058,7 +3058,7 @@ k8s_yaml('foo.yaml')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/Dockerfile", "foo/.dockerignore")
 }
 
-func TestAssemblyVersion2TwoWorkloadsSameImage(t *testing.T) {
+func TestAssemblyTwoWorkloadsSameImage(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3081,6 +3081,28 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 		deployment("bar"))
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "bar.yaml", "foo/Dockerfile", "foo/.dockerignore")
+}
+
+// Fix a bug where a service with no selectors trivially matched all pods, so Tilt grouped
+// it with the first workload (https://github.com/tilt-dev/tilt/issues/4233)
+func TestAssemblyServiceWithoutSelectorMatchesNothing(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("all.yaml",
+		deployment("foo", withLabels(map[string]string{"app": "foo"})),
+
+		service("service-without-selectors", withLabels(map[string]string{})),
+	)
+	f.file("Tiltfile", `
+k8s_yaml('all.yaml')
+`)
+
+	f.load()
+
+	f.assertNextManifest("foo", deployment("foo"))
+
+	f.assertNextManifestUnresourced("service-without-selectors")
 }
 
 func TestK8sResourceNoMatch(t *testing.T) {
@@ -5656,7 +5678,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 				f.t.Fatal(err)
 			}
 
-			if len(e.selectorLabels) > 0 {
+			if e.selectorLabels != nil {
 				for _, obj := range objs {
 					err := overwriteSelectorsForService(&obj, e.selectorLabels)
 					if err != nil {

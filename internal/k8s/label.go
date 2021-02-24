@@ -172,7 +172,8 @@ func allowLabelChangesInOptionalSelector(obj runtime.Object) {
 	selectorField.Set(reflect.ValueOf(selector))
 }
 
-// SelectorMatchesLabels indicates whether the pod selector of the given entity matches the given label(s).
+// SelectorMatchesLabels indicates whether the pod selector of the given entity
+// matches the given label(s). For an empty selector, returns `false`.
 // Currently only supports Services, but may be expanded to support other types that
 // match pods via selectors.
 func (e K8sEntity) SelectorMatchesLabels(labels map[string]string) bool {
@@ -181,6 +182,11 @@ func (e K8sEntity) SelectorMatchesLabels(labels map[string]string) bool {
 		return false
 	}
 	selector := svc.Spec.Selector
+
+	if len(selector) == 0 {
+		return false
+	}
+
 	for k, selVal := range selector {
 		realVal, ok := labels[k]
 		if !ok || realVal != selVal {

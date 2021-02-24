@@ -299,6 +299,7 @@ func TestSelectorMatchesLabels(t *testing.T) {
 		"tier":        "backend",
 		"foo":         "bar", // an extra label on the pod shouldn't affect the match
 	}
+
 	assert.True(t, svc.SelectorMatchesLabels(labels))
 
 	assert.False(t, dep.SelectorMatchesLabels(labels), "kind Deployment does not support SelectorMatchesLabels")
@@ -308,6 +309,11 @@ func TestSelectorMatchesLabels(t *testing.T) {
 
 	delete(labels, "app")
 	assert.False(t, svc.SelectorMatchesLabels(labels), "expected key missing")
+
+	service, ok := svc.Obj.(*v1.Service)
+	require.True(t, ok, "typing svc as k8s Service")
+	service.Spec.Selector = nil
+	assert.False(t, svc.SelectorMatchesLabels(labels), "empty selector should match nothing")
 }
 
 func TestMatchesMetadataLabels(t *testing.T) {
