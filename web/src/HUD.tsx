@@ -1,5 +1,6 @@
 import { History, UnregisterCallback } from "history"
 import React, { Component } from "react"
+import ReactOutlineManager from "react-outline-manager"
 import { useHistory } from "react-router"
 import { Route, RouteComponentProps, Switch } from "react-router-dom"
 import { incr, navigationToTags } from "./analytics"
@@ -266,17 +267,19 @@ export default class HUD extends Component<HudProps, HudState> {
     return (
       <tiltfileKeyContext.Provider value={view.tiltfileKey}>
         <SidebarPinContextProvider>
-          <OverviewNavProvider validateTab={validateTab}>
-            <div className={hudClasses.join(" ")}>
-              <AnalyticsNudge needsNudge={needsNudge} />
-              <SocketBar state={this.state.socketState} />
-              {fatalErrorModal}
-              {errorModal}
-              {shareSnapshotModal}
+          <ReactOutlineManager>
+            <OverviewNavProvider validateTab={validateTab}>
+              <div className={hudClasses.join(" ")}>
+                <AnalyticsNudge needsNudge={needsNudge} />
+                <SocketBar state={this.state.socketState} />
+                {fatalErrorModal}
+                {errorModal}
+                {shareSnapshotModal}
 
-              {this.renderOverviewSwitch()}
-            </div>
-          </OverviewNavProvider>
+                {this.renderOverviewSwitch()}
+              </div>
+            </OverviewNavProvider>
+          </ReactOutlineManager>
         </SidebarPinContextProvider>
       </tiltfileKeyContext.Provider>
     )
