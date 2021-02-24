@@ -68,10 +68,14 @@ func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore) {
 	<-call.done
 }
 
-func (f *fakeSubscriber) SetUp(ctx context.Context) {
+func (f *fakeSubscriber) SetUp(ctx context.Context, st RStore) error {
 	f.setupCount++
+	return nil
 }
 
 func (f *fakeSubscriber) TearDown(ctx context.Context) {
 	f.teardownCount++
 }
+
+var _ SetUpper = &fakeSubscriber{}
+var _ TearDowner = &fakeSubscriber{}

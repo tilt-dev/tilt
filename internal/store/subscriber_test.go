@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubscriber(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(ctx, s)
+	require.NoError(t, st.AddSubscriber(ctx, s))
 
 	st.NotifySubscribers(ctx)
 	call := <-s.onChange
@@ -23,7 +24,7 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(ctx, s)
+	require.NoError(t, st.AddSubscriber(ctx, s))
 
 	st.NotifySubscribers(ctx)
 	call := <-s.onChange
@@ -45,10 +46,10 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 func TestAddSubscriberToAlreadySetUpListCallsSetUp(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
-	st.subscribers.SetUp(ctx)
+	_ = st.subscribers.SetUp(ctx, st)
 
 	s := newFakeSubscriber()
-	st.AddSubscriber(ctx, s)
+	require.NoError(t, st.AddSubscriber(ctx, s))
 
 	assert.Equal(t, 1, s.setupCount)
 }
@@ -58,7 +59,7 @@ func TestAddSubscriberBeforeSetupNoop(t *testing.T) {
 	ctx := context.Background()
 
 	s := newFakeSubscriber()
-	st.AddSubscriber(ctx, s)
+	require.NoError(t, st.AddSubscriber(ctx, s))
 
 	// We haven't called SetUp on subscriber list as a whole, so won't call it on a new individual subscriber
 	assert.Equal(t, 0, s.setupCount)
@@ -69,7 +70,7 @@ func TestRemoveSubscriber(t *testing.T) {
 	ctx := context.Background()
 	s := newFakeSubscriber()
 
-	st.AddSubscriber(ctx, s)
+	require.NoError(t, st.AddSubscriber(ctx, s))
 	st.NotifySubscribers(ctx)
 	s.assertOnChangeCount(t, 1)
 
@@ -93,9 +94,9 @@ func TestSubscriberSetup(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(ctx, s)
+	require.NoError(t, st.AddSubscriber(ctx, s))
 
-	st.subscribers.SetUp(ctx)
+	_ = st.subscribers.SetUp(ctx, st)
 
 	assert.Equal(t, 1, s.setupCount)
 }
@@ -104,7 +105,7 @@ func TestSubscriberTeardown(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(ctx, s)
+	require.NoError(t, st.AddSubscriber(ctx, s))
 
 	go st.Dispatch(NewErrorAction(context.Canceled))
 	err := st.Loop(ctx)
@@ -119,7 +120,7 @@ func TestSubscriberTeardownOnRemove(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()
 	s := newFakeSubscriber()
-	st.AddSubscriber(ctx, s)
+	require.NoError(t, st.AddSubscriber(ctx, s))
 
 	errChan := make(chan error)
 	go func() {

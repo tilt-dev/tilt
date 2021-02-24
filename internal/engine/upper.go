@@ -43,16 +43,19 @@ type Upper struct {
 type ServiceWatcherMaker func(context.Context, *store.Store) error
 type PodWatcherMaker func(context.Context, *store.Store) error
 
-func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) Upper {
+func NewUpper(ctx context.Context, st *store.Store, subs []store.Subscriber) (Upper, error) {
 	// There's not really a good reason to add all the subscribers
 	// in NewUpper(), but it's as good a place as any.
 	for _, sub := range subs {
-		st.AddSubscriber(ctx, sub)
+		err := st.AddSubscriber(ctx, sub)
+		if err != nil {
+			return Upper{}, err
+		}
 	}
 
 	return Upper{
 		store: st,
-	}
+	}, nil
 }
 
 func (u Upper) Dispatch(action store.Action) {

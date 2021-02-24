@@ -19,7 +19,6 @@ type HeadsUpServerController struct {
 	hudServer        *HeadsUpServer
 	assetServer      assets.Server
 	webURL           model.WebURL
-	initDone         bool
 	apiServerOptions *start.TiltServerOptions
 
 	shutdown   func()
@@ -54,31 +53,30 @@ func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 }
 
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore) {
-	defer func() {
-		s.initDone = true
-	}()
+}
 
-	if s.initDone || s.port == 0 {
-		return
+// Merge the APIServer and the Tilt Web server into a single handler,
+// and attach them both to the public listener.
+func (s *HeadsUpServerController) SetUp(ctx context.Context, st store.RStore) error {
+	if s.port == 0 {
+		// TODO(nick): In the near future, Tilt won't work at all if it doesn't have an
+		// API server running on a port. It might make sense to use
+		// https://pkg.go.dev/github.com/akutz/memconn
+		// (an in-memory network layer) if this is an important use-case.
+		return nil
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	s.shutdown = cancel
 
-	err := s.serve(ctx, st)
+	err := s.setUpHelper(ctx, st)
 	if err != nil {
-		st.Dispatch(
-			store.NewErrorAction(
-				fmt.Errorf("Cannot start the tilt-apiserver: %v", err)))
-		return
+		return fmt.Errorf("Cannot start the tilt-apiserver: %v", err)
 	}
+	return nil
 }
 
-// Merge the APIServer and the Tilt Web server into a single handler,
-// and attach them both to the public listener.
-//
-// TODO(nick): We could move this to SetUp if SetUp had error-handling.
-func (s *HeadsUpServerController) serve(ctx context.Context, st store.RStore) error {
+func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RStore) error {
 	stopCh := ctx.Done()
 	o := s.apiServerOptions
 	config, err := o.Config()
@@ -139,4 +137,5 @@ func (s *HeadsUpServerController) serve(ctx context.Context, st store.RStore) er
 	return nil
 }
 
+var _ store.SetUpper = &HeadsUpServerController{}
 var _ store.TearDowner = &HeadsUpServerController{}

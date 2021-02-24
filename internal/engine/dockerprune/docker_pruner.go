@@ -45,12 +45,12 @@ func (dp *DockerPruner) DisabledForTesting(disabled bool) {
 	dp.disabledForTesting = disabled
 }
 
-func (dp *DockerPruner) SetUp(ctx context.Context) {
+func (dp *DockerPruner) SetUp(ctx context.Context, _ store.RStore) error {
 	err := dp.dCli.CheckConnected()
 	if err != nil {
 		// If Docker is not responding at all, other parts of the system will log this.
 		dp.disabledOnSetup = true
-		return
+		return nil
 	}
 
 	if err := dp.sufficientVersionError(); err != nil {
@@ -58,8 +58,9 @@ func (dp *DockerPruner) SetUp(ctx context.Context) {
 			"[Docker Prune] Docker API version too low for Tilt to run Docker Prune:\n\t%v", err,
 		)
 		dp.disabledOnSetup = true
-		return
+		return nil
 	}
+	return nil
 }
 
 func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {

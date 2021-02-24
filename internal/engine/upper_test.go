@@ -3736,7 +3736,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
-	st.AddSubscriber(ctx, fSub)
+	require.NoError(t, st.AddSubscriber(ctx, fSub))
 
 	plm := runtimelog.NewPodLogManager(kCli)
 	bc := NewBuildController(b)
@@ -3762,7 +3762,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
-	hudsc := server.ProvideHeadsUpServerController(0, nil, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{})
+	require.NoError(t, err)
+	hudsc := server.ProvideHeadsUpServerController(0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := local.NewFakeExecer()
@@ -3814,8 +3816,9 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, ar, hudsc, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
-	ret.upper = NewUpper(ctx, st, subs)
+	subs := ProvideSubscribers(hudsc, h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, ar, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
+	ret.upper, err = NewUpper(ctx, st, subs)
+	require.NoError(t, err)
 
 	go func() {
 		err := h.Run(ctx, ret.upper.Dispatch, hud.DefaultRefreshInterval)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/testutils"
 
@@ -20,11 +21,11 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 	}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreWithFakeReducer()
-	st.SetUpSubscribersForTesting(ctx)
+	_ = st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
 	ws := NewWebsocketSubscriber(ctx, conn)
-	st.AddSubscriber(ctx, ws)
+	require.NoError(t, st.AddSubscriber(ctx, ws))
 
 	done := make(chan bool)
 	go func() {
@@ -46,11 +47,11 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 func TestWebsocketReadErrDuringMsg(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreWithFakeReducer()
-	st.SetUpSubscribersForTesting(ctx)
+	_ = st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
 	ws := NewWebsocketSubscriber(ctx, conn)
-	st.AddSubscriber(ctx, ws)
+	require.NoError(t, st.AddSubscriber(ctx, ws))
 
 	done := make(chan bool)
 	go func() {
@@ -77,12 +78,12 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 func TestWebsocketNextWriterError(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st, _ := store.NewStoreWithFakeReducer()
-	st.SetUpSubscribersForTesting(ctx)
+	_ = st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
 	conn.nextWriterError = fmt.Errorf("fake NextWriter error")
 	ws := NewWebsocketSubscriber(ctx, conn)
-	st.AddSubscriber(ctx, ws)
+	require.NoError(t, st.AddSubscriber(ctx, ws))
 
 	done := make(chan bool)
 	go func() {

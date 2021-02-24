@@ -140,14 +140,42 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
-	v := provideClock()
-	renderer := hud.NewRenderer(v)
-	webHost := provideWebHost()
 	webPort := provideWebPort()
+	webHost := provideWebHost()
+	tiltBuild := provideTiltInfo()
+	tiltServerOptions, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	webMode, err := provideWebMode(tiltBuild)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	webVersion := provideWebVersion(tiltBuild)
+	assetsServer, err := provideAssetServer(webMode, webVersion)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	tiltDevDir, err := dirs.UseTiltDevDir()
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	filePrefs := user.NewFilePrefs(tiltDevDir)
+	modeController := metrics.NewModeController(webHost, filePrefs)
+	httpClient := cloud.ProvideHttpClient()
+	address := cloudurl.ProvideAddress()
+	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, modeController, snapshotUploader)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
 	webURL, err := provideWebURL(webHost, webPort)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
+	headsUpServerController := server.ProvideHeadsUpServerController(webPort, tiltServerOptions, headsUpServer, assetsServer, webURL)
+	v := provideClock()
+	renderer := hud.NewRenderer(v)
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
@@ -219,7 +247,6 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, traceTracer)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	extension := k8scontext.NewExtension(kubeContext, env)
-	tiltBuild := provideTiltInfo()
 	versionExtension := version.NewExtension(tiltBuild)
 	configExtension := config.NewExtension(subcommand)
 	defaults := _wireDefaultsValue
@@ -229,33 +256,6 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
-	tiltServerOptions, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	webMode, err := provideWebMode(tiltBuild)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	webVersion := provideWebVersion(tiltBuild)
-	assetsServer, err := provideAssetServer(webMode, webVersion)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	tiltDevDir, err := dirs.UseTiltDevDir()
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	filePrefs := user.NewFilePrefs(tiltDevDir)
-	modeController := metrics.NewModeController(webHost, filePrefs)
-	httpClient := cloud.ProvideHttpClient()
-	address := cloudurl.ProvideAddress()
-	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, modeController, snapshotUploader)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	headsUpServerController := server.ProvideHeadsUpServerController(webPort, tiltServerOptions, headsUpServer, assetsServer, webURL)
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher, namespace)
 	clockworkClock := clockwork.NewRealClock()
@@ -270,8 +270,11 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
-	upper := engine.NewUpper(ctx, storeStore, v2)
+	v2 := engine.ProvideSubscribers(headsUpServerController, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
+	upper, err := engine.NewUpper(ctx, storeStore, v2)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
 	tokenToken, err := token.GetOrCreateToken(tiltDevDir)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -298,14 +301,42 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
-	v := provideClock()
-	renderer := hud.NewRenderer(v)
-	webHost := provideWebHost()
 	webPort := provideWebPort()
+	webHost := provideWebHost()
+	tiltBuild := provideTiltInfo()
+	tiltServerOptions, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	webMode, err := provideWebMode(tiltBuild)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	webVersion := provideWebVersion(tiltBuild)
+	assetsServer, err := provideAssetServer(webMode, webVersion)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	tiltDevDir, err := dirs.UseTiltDevDir()
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	filePrefs := user.NewFilePrefs(tiltDevDir)
+	modeController := metrics.NewModeController(webHost, filePrefs)
+	httpClient := cloud.ProvideHttpClient()
+	address := cloudurl.ProvideAddress()
+	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, modeController, snapshotUploader)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
 	webURL, err := provideWebURL(webHost, webPort)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
+	headsUpServerController := server.ProvideHeadsUpServerController(webPort, tiltServerOptions, headsUpServer, assetsServer, webURL)
+	v := provideClock()
+	renderer := hud.NewRenderer(v)
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
@@ -377,7 +408,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, traceTracer)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
 	extension := k8scontext.NewExtension(kubeContext, env)
-	tiltBuild := provideTiltInfo()
 	versionExtension := version.NewExtension(tiltBuild)
 	configExtension := config.NewExtension(subcommand)
 	defaults := _wireDefaultsValue
@@ -387,33 +417,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	profilerManager := engine.NewProfilerManager()
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
-	tiltServerOptions, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
-	webMode, err := provideWebMode(tiltBuild)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
-	webVersion := provideWebVersion(tiltBuild)
-	assetsServer, err := provideAssetServer(webMode, webVersion)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
-	tiltDevDir, err := dirs.UseTiltDevDir()
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
-	filePrefs := user.NewFilePrefs(tiltDevDir)
-	modeController := metrics.NewModeController(webHost, filePrefs)
-	httpClient := cloud.ProvideHttpClient()
-	address := cloudurl.ProvideAddress()
-	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, modeController, snapshotUploader)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
-	headsUpServerController := server.ProvideHeadsUpServerController(webPort, tiltServerOptions, headsUpServer, assetsServer, webURL)
 	cmdTags := _wireCmdTagsValue
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher, namespace)
@@ -429,8 +432,11 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v2 := engine.ProvideSubscribers(headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, headsUpServerController, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
-	upper := engine.NewUpper(ctx, storeStore, v2)
+	v2 := engine.ProvideSubscribers(headsUpServerController, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
+	upper, err := engine.NewUpper(ctx, storeStore, v2)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
 	tokenToken, err := token.GetOrCreateToken(tiltDevDir)
 	if err != nil {
 		return CmdCIDeps{}, err

@@ -24,7 +24,7 @@ func TestBroadcastActions(t *testing.T) {
 	f := newFixture(t)
 
 	s := newFakeSubscriber()
-	f.store.AddSubscriber(f.ctx, s)
+	_ = f.store.AddSubscriber(f.ctx, s)
 
 	f.Start()
 
@@ -40,7 +40,7 @@ func TestBroadcastActionsBatching(t *testing.T) {
 	f := newFixture(t)
 
 	s := newFakeSubscriber()
-	f.store.AddSubscriber(f.ctx, s)
+	_ = f.store.AddSubscriber(f.ctx, s)
 
 	f.Start()
 
