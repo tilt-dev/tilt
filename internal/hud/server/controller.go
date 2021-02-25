@@ -8,18 +8,17 @@ import (
 	"github.com/gorilla/mux"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 
-	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type HeadsUpServerController struct {
-	port             model.WebPort
-	hudServer        *HeadsUpServer
-	assetServer      assets.Server
-	webURL           model.WebURL
-	apiServerOptions *start.TiltServerOptions
+	port            model.WebPort
+	hudServer       *HeadsUpServer
+	assetServer     assets.Server
+	webURL          model.WebURL
+	apiServerConfig *APIServerConfig
 
 	shutdown   func()
 	shutdownCh <-chan struct{}
@@ -27,7 +26,7 @@ type HeadsUpServerController struct {
 
 func ProvideHeadsUpServerController(
 	port model.WebPort,
-	apiServerOptions *start.TiltServerOptions,
+	apiServerConfig *APIServerConfig,
 	hudServer *HeadsUpServer,
 	assetServer assets.Server,
 	webURL model.WebURL) *HeadsUpServerController {
@@ -36,13 +35,13 @@ func ProvideHeadsUpServerController(
 	close(emptyCh)
 
 	return &HeadsUpServerController{
-		port:             port,
-		hudServer:        hudServer,
-		assetServer:      assetServer,
-		webURL:           webURL,
-		apiServerOptions: apiServerOptions,
-		shutdown:         func() {},
-		shutdownCh:       emptyCh,
+		port:            port,
+		hudServer:       hudServer,
+		assetServer:     assetServer,
+		webURL:          webURL,
+		apiServerConfig: apiServerConfig,
+		shutdown:        func() {},
+		shutdownCh:      emptyCh,
 	}
 }
 
@@ -78,12 +77,7 @@ func (s *HeadsUpServerController) SetUp(ctx context.Context, st store.RStore) er
 
 func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RStore) error {
 	stopCh := ctx.Done()
-	o := s.apiServerOptions
-	config, err := o.Config()
-	if err != nil {
-		return err
-	}
-
+	config := s.apiServerConfig
 	server, err := config.Complete().New()
 	if err != nil {
 		return err
@@ -104,6 +98,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	serving := config.ExtraConfig.DeprecatedInsecureServingInfo
 
 	r := mux.NewRouter()
+	r.Path("/api").Handler(http.NotFoundHandler())
 	r.PathPrefix("/apis").Handler(apiserverHandler)
 	r.PathPrefix("/healthz").Handler(apiserverHandler)
 	r.PathPrefix("/livez").Handler(apiserverHandler)
@@ -122,7 +117,6 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	if err != nil {
 		return err
 	}
-
 	server.GenericAPIServer.RunPostStartHooks(stopCh)
 
 	go func() {
