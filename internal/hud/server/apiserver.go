@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"net"
 
+	"k8s.io/client-go/dynamic"
+
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
+	"github.com/tilt-dev/tilt/pkg/clientset/tiltapi"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -14,7 +18,13 @@ import (
 	"github.com/tilt-dev/tilt/pkg/openapi"
 )
 
-func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port model.WebPort, tiltBuild model.TiltBuild) (*start.TiltServerOptions, error) {
+type APIServerConfig = apiserver.Config
+
+type DynamicInterface = dynamic.Interface
+type Interface = tiltapi.Interface
+
+// Configures the Tilt API server.
+func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port model.WebPort, tiltBuild model.TiltBuild) (*APIServerConfig, error) {
 	w := logger.Get(ctx).Writer(logger.DebugLvl)
 	builder := builder.APIServer
 
@@ -30,7 +40,7 @@ func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port mode
 
 	o := start.NewTiltServerOptions(w, w, codec)
 	if port == 0 {
-		return o, nil
+		return nil, nil
 	}
 
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), int(port)))
@@ -52,5 +62,15 @@ func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port mode
 	if err != nil {
 		return nil, err
 	}
-	return o, nil
+	return o.Config()
+}
+
+// Provide a typed API client for the Tilt server.
+func ProvideTiltInterface(config *APIServerConfig) (Interface, error) {
+	return tiltapi.NewForConfig(config.GenericConfig.LoopbackClientConfig)
+}
+
+// Provide a dynamic API client for the Tilt server.
+func ProvideTiltDynamic(config *APIServerConfig) (DynamicInterface, error) {
+	return dynamic.NewForConfig(config.GenericConfig.LoopbackClientConfig)
 }
