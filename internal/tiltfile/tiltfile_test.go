@@ -4167,6 +4167,24 @@ k8s_resource(objects=['foo-service:Service:default'], new_name='my-services')
 	f.loadErrString(tiltfile_k8s.DuplicateYAMLDetectedError("Service foo-service", stack).Error())
 }
 
+func TestDuplicateYAMLDefaultNamespaceVsEmptyNamespace(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.gitInit("")
+	f.yaml("all.yaml",
+		// unspecified namespace is functionally the same as namespace: default,
+		// make sure that Tilt knows that these services are duplicates of each other
+		service("foo-service"), service("foo-service", namespace("default")))
+	f.file("Tiltfile", `
+k8s_yaml('all.yaml')
+`)
+
+	stack := fmt.Sprintf(`Traceback (most recent call last):
+  %s:2:9: in <toplevel>
+  <builtin>: in k8s_yaml`, f.JoinPath("Tiltfile"))
+	f.loadErrString(tiltfile_k8s.DuplicateYAMLDetectedError("Service foo-service (Namespace: default)", stack).Error())
+}
+
 func TestSetTeamID(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -5687,6 +5705,15 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 				}
 			}
 
+			if e.namespace != "" {
+				for _, obj := range objs {
+					err := overwriteNamespaceForService(&obj, e.namespace)
+					if err != nil {
+						f.t.Fatal(err)
+					}
+				}
+			}
+
 			entityObjs = append(entityObjs, objs...)
 
 		case secretHelper:
@@ -6197,6 +6224,7 @@ func podReadiness(podReadiness model.PodReadinessMode) podReadinessHelper {
 type serviceHelper struct {
 	name           string
 	selectorLabels map[string]string
+	namespace      string
 }
 
 func service(name string, opts ...interface{}) serviceHelper {
@@ -6205,6 +6233,8 @@ func service(name string, opts ...interface{}) serviceHelper {
 		switch opt := opt.(type) {
 		case labelsHelper:
 			r.selectorLabels = opt.labels
+		case namespaceHelper:
+			r.namespace = opt.namespace
 		default:
 			panic(fmt.Errorf("unexpected arg to deployment: %T %v", opt, opt))
 		}
@@ -6535,6 +6565,15 @@ func overwriteSelectorsForService(entity *k8s.K8sEntity, labels map[string]strin
 		return fmt.Errorf("don't know how to set selectors for %T", entity.Obj)
 	}
 	svc.Spec.Selector = labels
+	return nil
+}
+
+func overwriteNamespaceForService(entity *k8s.K8sEntity, ns string) error {
+	svc, ok := entity.Obj.(*v1.Service)
+	if !ok {
+		return fmt.Errorf("don't know how to set namespace for %T", entity.Obj)
+	}
+	svc.ObjectMeta.Namespace = ns
 	return nil
 }
 

@@ -89,7 +89,7 @@ func (e K8sEntity) ToObjectReference() v1.ObjectReference {
 		Kind:       kind,
 		APIVersion: apiVersion,
 		Name:       meta.GetName(),
-		Namespace:  meta.GetNamespace(),
+		Namespace:  e.Namespace().String(), // so that we normalize "" --> "default"
 		UID:        meta.GetUID(),
 	}
 }
