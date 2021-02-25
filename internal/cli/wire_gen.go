@@ -175,8 +175,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
-	restConfig := controllers.ProvideRESTConfig(webHost, webPort)
-	tiltServerControllerManager := controllers.NewTiltServerControllerManager(restConfig)
+	tiltServerControllerManager := controllers.NewTiltServerControllerManager(apiserverConfig)
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
@@ -338,8 +337,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
-	restConfig := controllers.ProvideRESTConfig(webHost, webPort)
-	tiltServerControllerManager := controllers.NewTiltServerControllerManager(restConfig)
+	tiltServerControllerManager := controllers.NewTiltServerControllerManager(apiserverConfig)
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)

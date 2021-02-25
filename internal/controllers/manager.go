@@ -11,10 +11,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
 	corev1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type TiltServerControllerManager struct {
@@ -26,15 +26,15 @@ var _ store.SetUpper = &TiltServerControllerManager{}
 var _ store.Subscriber = &TiltServerControllerManager{}
 var _ store.TearDowner = &TiltServerControllerManager{}
 
-func ProvideRESTConfig(apiserverHost model.WebHost, apiserverPort model.WebPort) *rest.Config {
-	return &rest.Config{
-		Host: fmt.Sprintf("http://%s:%d", string(apiserverHost), int(apiserverPort)),
+func NewTiltServerControllerManager(config *server.APIServerConfig) *TiltServerControllerManager {
+	// TODO(milas): remove this once tests use in-memory connection + real config
+	var cfg *rest.Config
+	if config != nil {
+		cfg = config.GenericConfig.LoopbackClientConfig
 	}
-}
 
-func NewTiltServerControllerManager(config *rest.Config) *TiltServerControllerManager {
 	return &TiltServerControllerManager{
-		config: config,
+		config: cfg,
 	}
 }
 
