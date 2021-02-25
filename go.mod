@@ -5,6 +5,7 @@ go 1.14
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
+	github.com/akutz/memconn v0.1.0
 	github.com/alessio/shellescape v1.2.2
 	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
@@ -68,7 +69,7 @@ require (
 	github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.2.0
-	github.com/tilt-dev/tilt-apiserver v0.1.0
+	github.com/tilt-dev/tilt-apiserver v0.2.0
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa

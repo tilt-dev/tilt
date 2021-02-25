@@ -9,10 +9,11 @@ import (
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder"
-	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
 	"github.com/tilt-dev/tilt/pkg/clientset/tiltapi"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+
+	"github.com/akutz/memconn"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/openapi"
@@ -23,36 +24,44 @@ type APIServerConfig = apiserver.Config
 type DynamicInterface = dynamic.Interface
 type Interface = tiltapi.Interface
 
+func ProvideMemConn() *memconn.Provider {
+	return &memconn.Provider{}
+}
+
 // Configures the Tilt API server.
-func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port model.WebPort, tiltBuild model.TiltBuild) (*APIServerConfig, error) {
+func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port model.WebPort, tiltBuild model.TiltBuild, memconn *memconn.Provider) (*APIServerConfig, error) {
 	w := logger.Get(ctx).Writer(logger.DebugLvl)
-	builder := builder.APIServer
+	builder := builder.NewServerBuilder().
+		WithOutputWriter(w)
 
 	for _, obj := range v1alpha1.AllResourceObjects() {
 		builder = builder.WithResourceMemoryStorage(obj, "data")
 	}
 	builder = builder.WithOpenAPIDefinitions("tilt", tiltBuild.Version, openapi.GetOpenAPIDefinitions)
+	if port == 0 {
+		builder = builder.WithConnProvider(memconn)
+	} else {
+		builder = builder.WithBindPort(int(port))
+	}
 
-	codec, err := builder.BuildCodec()
+	o, err := builder.ToServerOptions()
 	if err != nil {
 		return nil, err
 	}
 
-	o := start.NewTiltServerOptions(w, w, codec)
 	if port == 0 {
-		return nil, nil
+		// Fake bind port
+		o.ServingOptions.BindPort = 1
+	} else {
+		l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), int(port)))
+		if err != nil {
+			return nil, fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
+				"If you want to run multiple Tilt instances simultaneously,\n"+
+				"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
+				port, err)
+		}
+		o.ServingOptions.Listener = l
 	}
-
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), int(port)))
-	if err != nil {
-		return nil, fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
-			"If you want to run multiple Tilt instances simultaneously,\n"+
-			"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
-			port, err)
-	}
-
-	o.ServingOptions.BindPort = int(port)
-	o.ServingOptions.Listener = l
 
 	err = o.Complete()
 	if err != nil {
