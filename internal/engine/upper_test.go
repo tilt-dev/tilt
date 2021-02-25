@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/akutz/memconn"
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
@@ -3763,7 +3764,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	pm := NewProfilerManager()
-	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{})
+	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, &memconn.Provider{})
 	require.NoError(t, err)
 	hudsc := server.ProvideHeadsUpServerController(0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)

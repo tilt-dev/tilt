@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/akutz/memconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -24,11 +25,11 @@ import (
 // Ensure creating objects works with the dynamic API clients.
 func TestAPIServer(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	port := model.WebPort(10352)
-	cfg, err := ProvideTiltServerOptions(ctx, "localhost", port, model.TiltBuild{})
+	memconn := &memconn.Provider{}
+	cfg, err := ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
 	require.NoError(t, err)
 
-	hudsc := ProvideHeadsUpServerController(port, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	hudsc := ProvideHeadsUpServerController(0, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	st := store.NewTestingStore()
 	require.NoError(t, hudsc.SetUp(ctx, st))
 	defer hudsc.TearDown(ctx)
@@ -79,11 +80,11 @@ type typedTestCase struct {
 // Ensure creating objects works with the typed API clients.
 func TestAPIServerTypedClient(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	port := model.WebPort(10353)
-	cfg, err := ProvideTiltServerOptions(ctx, "localhost", port, model.TiltBuild{})
+	memconn := &memconn.Provider{}
+	cfg, err := ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
 	require.NoError(t, err)
 
-	hudsc := ProvideHeadsUpServerController(port, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	hudsc := ProvideHeadsUpServerController(0, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	st := store.NewTestingStore()
 	require.NoError(t, hudsc.SetUp(ctx, st))
 	defer hudsc.TearDown(ctx)

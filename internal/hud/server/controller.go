@@ -57,14 +57,6 @@ func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore)
 // Merge the APIServer and the Tilt Web server into a single handler,
 // and attach them both to the public listener.
 func (s *HeadsUpServerController) SetUp(ctx context.Context, st store.RStore) error {
-	if s.port == 0 {
-		// TODO(nick): In the near future, Tilt won't work at all if it doesn't have an
-		// API server running on a port. It might make sense to use
-		// https://pkg.go.dev/github.com/akutz/memconn
-		// (an in-memory network layer) if this is an important use-case.
-		return nil
-	}
-
 	ctx, cancel := context.WithCancel(ctx)
 	s.shutdown = cancel
 
@@ -95,7 +87,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 
 	prepared := server.GenericAPIServer.PrepareRun()
 	apiserverHandler := prepared.Handler
-	serving := config.ExtraConfig.DeprecatedInsecureServingInfo
+	serving := config.ExtraConfig.ServingInfo
 
 	r := mux.NewRouter()
 	r.Path("/api").Handler(http.NotFoundHandler())
