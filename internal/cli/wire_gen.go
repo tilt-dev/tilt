@@ -144,7 +144,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	webPort := provideWebPort()
 	webHost := provideWebHost()
 	tiltBuild := provideTiltInfo()
-	tiltServerOptions, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -174,7 +174,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	headsUpServerController := server.ProvideHeadsUpServerController(webPort, tiltServerOptions, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
 	restConfig := controllers.ProvideRESTConfig(webHost, webPort)
 	tiltServerControllerManager := controllers.NewTiltServerControllerManager(restConfig)
 	v := provideClock()
@@ -307,7 +307,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	webPort := provideWebPort()
 	webHost := provideWebHost()
 	tiltBuild := provideTiltInfo()
-	tiltServerOptions, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -337,7 +337,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	headsUpServerController := server.ProvideHeadsUpServerController(webPort, tiltServerOptions, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
 	restConfig := controllers.ProvideRESTConfig(webHost, webPort)
 	tiltServerControllerManager := controllers.NewTiltServerControllerManager(restConfig)
 	v := provideClock()

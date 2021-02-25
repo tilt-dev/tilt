@@ -4232,6 +4232,27 @@ allow_k8s_contexts("allowed-context")
 	}
 }
 
+// Test for fix to https://github.com/tilt-dev/tilt/issues/4234
+func TestCheckK8SContextWhenOnlyUncategorizedK8s(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	// We'll only have Uncategorized k8s entities, no K8s resources--
+	// make sure we still check K8sContext and throw an error if need be
+	f.yaml("service.yaml", service("some-service"))
+
+	f.file("Tiltfile", `
+k8s_yaml("service.yaml")
+allow_k8s_contexts("allowed-context")
+`)
+	f.setupFoo()
+
+	f.k8sContext = "gke"
+	f.k8sEnv = k8s.EnvGKE
+
+	f.loadErrString("If you're sure", "switch k8s contexts", "allow_k8s_contexts")
+}
+
 func TestLocalObeysAllowedK8sContexts(t *testing.T) {
 	for _, test := range []struct {
 		name                    string
