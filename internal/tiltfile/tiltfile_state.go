@@ -225,7 +225,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		return nil, result, err
 	}
 
-	if len(resources.k8s) > 0 {
+	if len(resources.k8s) > 0 || len(unresourced) > 0 {
 		manifests, err = s.translateK8s(resources.k8s)
 		if err != nil {
 			return nil, result, err
@@ -236,7 +236,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 			kubeContext := k8sContextState.KubeContext()
 			return nil, result, fmt.Errorf(`Stop! %s might be production.
 If you're sure you want to deploy there, add:
-allow_k8s_contexts('%s')
+	allow_k8s_contexts('%s')
 to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext, kubeContext)
 		}
 	} else {
@@ -427,7 +427,7 @@ func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f starkit.Function) starkit.
 			kubeContext := k8sContextState.KubeContext()
 			return nil, fmt.Errorf(`Refusing to run '%s' because %s might be a production kube context.
 If you're sure you want to continue add:
-allow_k8s_contexts('%s')
+	allow_k8s_contexts('%s')
 before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), kubeContext, kubeContext)
 		}
 
