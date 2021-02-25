@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 var ErrUnsupportedProbeType = errors.New("unsupported probe type")
@@ -29,7 +29,7 @@ type ProberManager interface {
 	Exec(name string, args ...string) prober.ProberFunc
 }
 
-func probeWorkerFromSpec(manager ProberManager, probeSpec *v1.Probe, changedFunc probe.StatusChangedFunc, resultFunc probe.ResultFunc) (*probe.Worker, error) {
+func probeWorkerFromSpec(manager ProberManager, probeSpec *v1alpha1.Probe, changedFunc probe.StatusChangedFunc, resultFunc probe.ResultFunc) (*probe.Worker, error) {
 	probeFunc, err := proberFromSpec(manager, probeSpec)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func probeWorkerFromSpec(manager ProberManager, probeSpec *v1.Probe, changedFunc
 	return w, nil
 }
 
-func proberFromSpec(manager ProberManager, probeSpec *v1.Probe) (prober.Prober, error) {
+func proberFromSpec(manager ProberManager, probeSpec *v1alpha1.Probe) (prober.Prober, error) {
 	if probeSpec == nil {
 		return nil, nil
 	} else if probeSpec.Exec != nil {
@@ -96,7 +96,7 @@ func proberFromSpec(manager ProberManager, probeSpec *v1.Probe) (prober.Prober, 
 
 // extractURL converts a K8s HTTP GET probe spec to a Go URL
 // adapted from https://github.com/kubernetes/kubernetes/blob/v1.20.2/pkg/kubelet/prober/prober.go#L163-L186
-func extractURL(httpGet *v1.HTTPGetAction) (*url.URL, error) {
+func extractURL(httpGet *v1alpha1.HTTPGetAction) (*url.URL, error) {
 	port, err := extractPort(httpGet.Port)
 	if err != nil {
 		return nil, err
@@ -126,27 +126,16 @@ func extractURL(httpGet *v1.HTTPGetAction) (*url.URL, error) {
 // adapted from https://github.com/kubernetes/kubernetes/blob/v1.20.2/pkg/kubelet/prober/prober.go#L203-L223
 // (note: this implementation is substantially simplified from K8s - it does not handle "named" ports as that
 // 		  does not apply)
-func extractPort(v intstr.IntOrString) (int, error) {
-	var port int
-	switch v.Type {
-	case intstr.Int:
-		port = v.IntValue()
-	case intstr.String:
-		var err error
-		port, err = strconv.Atoi(v.StrVal)
-		if err != nil {
-			return 0, fmt.Errorf("invalid port number: %q", v.StrVal)
-		}
-	}
+func extractPort(port int32) (int, error) {
 	if port <= 0 || port > 65535 {
-		return 0, fmt.Errorf("port number out of range: %s", v.String())
+		return 0, fmt.Errorf("port number out of range: %d", port)
 	}
-	return port, nil
+	return int(port), nil
 }
 
 // convertHeaders creates a stdlib http.Header map from a collection of HTTP header key-value pairs
 // adapted from https://github.com/kubernetes/kubernetes/blob/v1.20.2/pkg/kubelet/prober/prober.go#L146-L154
-func convertHeaders(headerList []v1.HTTPHeader) http.Header {
+func convertHeaders(headerList []v1alpha1.HTTPHeader) http.Header {
 	headers := make(http.Header)
 	for _, header := range headerList {
 		headers[header.Name] = append(headers[header.Name], header.Value)
