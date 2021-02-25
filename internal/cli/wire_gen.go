@@ -23,6 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	"github.com/tilt-dev/tilt/internal/controllers/core"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
@@ -176,9 +177,16 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
-	tiltServerControllerManager := controllers.NewTiltServerControllerManager(apiserverConfig)
-	v := provideClock()
-	renderer := hud.NewRenderer(v)
+	scheme := controllers.NewScheme()
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	fileWatchController := core.NewFileWatchController(storeStore)
+	v := controllers.ProvideControllers(fileWatchController)
+	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
+	v2 := provideClock()
+	renderer := hud.NewRenderer(v2)
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
@@ -273,8 +281,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v2 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
-	upper, err := engine.NewUpper(ctx, storeStore, v2)
+	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
+	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -339,9 +347,16 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
-	tiltServerControllerManager := controllers.NewTiltServerControllerManager(apiserverConfig)
-	v := provideClock()
-	renderer := hud.NewRenderer(v)
+	scheme := controllers.NewScheme()
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	fileWatchController := core.NewFileWatchController(storeStore)
+	v := controllers.ProvideControllers(fileWatchController)
+	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
+	v2 := provideClock()
+	renderer := hud.NewRenderer(v2)
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
@@ -437,8 +452,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v2 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
-	upper, err := engine.NewUpper(ctx, storeStore, v2)
+	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
+	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
