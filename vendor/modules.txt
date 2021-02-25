@@ -38,6 +38,9 @@ github.com/PuerkitoBio/urlesc
 ## explicit
 github.com/agl/ed25519
 github.com/agl/ed25519/edwards25519
+# github.com/akutz/memconn v0.1.0
+## explicit
+github.com/akutz/memconn
 # github.com/alessio/shellescape v1.2.2
 ## explicit
 github.com/alessio/shellescape
@@ -513,7 +516,7 @@ github.com/tilt-dev/localregistry-go
 ## explicit
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober
-# github.com/tilt-dev/tilt-apiserver v0.1.0
+# github.com/tilt-dev/tilt-apiserver v0.2.0
 ## explicit
 github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder

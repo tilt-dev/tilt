@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -234,6 +235,25 @@ func (f *filepathREST) Update(
 			return nil, false, err
 		}
 	}
+
+	objMeta, err := meta.Accessor(updatedObj)
+	if err != nil {
+		return nil, false, err
+	}
+	// handle 2-phase deletes -> for entities with finalizers, DeletionTimestamp is set and reconcilers execute +
+	// remove them (triggering more updates); once drained, it can be deleted from the final update operation
+	// loosely based off https://github.com/kubernetes/apiserver/blob/947ebe755ed8aed2e0f0f5d6420caad07fc04cc2/pkg/registry/generic/registry/store.go#L624
+	if len(objMeta.GetFinalizers()) == 0 && !objMeta.GetDeletionTimestamp().IsZero() {
+		if err := f.fs.Remove(filename); err != nil {
+			return nil, false, err
+		}
+		f.notifyWatchers(watch.Event{
+			Type:   watch.Deleted,
+			Object: updatedObj,
+		})
+		return updatedObj, false, nil
+	}
+
 	if err := f.fs.Write(f.codec, filename, updatedObj); err != nil {
 		return nil, false, err
 	}
@@ -262,6 +282,34 @@ func (f *filepathREST) Delete(
 		if err := deleteValidation(ctx, oldObj); err != nil {
 			return nil, false, err
 		}
+	}
+
+	objMeta, err := meta.Accessor(oldObj)
+	if err != nil {
+		return nil, false, err
+	}
+	// loosely adapted from https://github.com/kubernetes/apiserver/blob/947ebe755ed8aed2e0f0f5d6420caad07fc04cc2/pkg/registry/generic/registry/store.go#L854-L877
+	if len(objMeta.GetFinalizers()) != 0 {
+
+		now := metav1.NewTime(time.Now())
+		// per-contract, deletion timestamps can not be unset and can only be moved _earlier_
+		if objMeta.GetDeletionTimestamp() == nil || now.Before(objMeta.GetDeletionTimestamp()) {
+			objMeta.SetDeletionTimestamp(&now)
+		}
+		zero := int64(0)
+		objMeta.SetDeletionGracePeriodSeconds(&zero)
+
+		if err := f.fs.Write(f.codec, filename, oldObj); err != nil {
+			return nil, false, err
+		}
+
+		f.notifyWatchers(watch.Event{
+			Type:   watch.Modified,
+			Object: oldObj,
+		})
+
+		// false in return indicates object will be deleted asynchronously
+		return oldObj, false, nil
 	}
 
 	if err := f.fs.Remove(filename); err != nil {

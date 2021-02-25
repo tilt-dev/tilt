@@ -143,7 +143,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	webPort := provideWebPort()
 	webHost := provideWebHost()
 	tiltBuild := provideTiltInfo()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
+	provider := server.ProvideMemConn()
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild, provider)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -304,7 +305,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	webPort := provideWebPort()
 	webHost := provideWebHost()
 	tiltBuild := provideTiltInfo()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild)
+	provider := server.ProvideMemConn()
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild, provider)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
