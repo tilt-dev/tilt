@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
@@ -175,6 +176,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
+	tiltServerControllerManager := controllers.NewTiltServerControllerManager(apiserverConfig)
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
@@ -271,7 +273,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v2 := engine.ProvideSubscribers(headsUpServerController, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
+	v2 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
 	upper, err := engine.NewUpper(ctx, storeStore, v2)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -337,6 +339,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
+	tiltServerControllerManager := controllers.NewTiltServerControllerManager(apiserverConfig)
 	v := provideClock()
 	renderer := hud.NewRenderer(v)
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
@@ -434,7 +437,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v2 := engine.ProvideSubscribers(headsUpServerController, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
+	v2 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, controller, watchManager, gitManager, buildController, configsController, eventWatcher, dockerComposeLogManager, profilerManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, localController, podMonitor, exitController, metricsController, modeController)
 	upper, err := engine.NewUpper(ctx, storeStore, v2)
 	if err != nil {
 		return CmdCIDeps{}, err
@@ -717,7 +720,7 @@ func wireAnalytics(l logger.Logger, cmdName model.TiltSubcommand) (*analytics.Ti
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher, ProvideKubeContextOverride)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.WireSet, user.WireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward.NewController, engine.NewBuildController, local.ProvideExecer, local.ProvideProberManager, local.NewController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, exit.NewController, provideClock, hud.WireSet, prompt.WireSet, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewGitManager, fswatch.NewWatchManager, fswatch.ProvideFsWatcherMaker, fswatch.ProvideTimerMaker, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.WireSet, user.WireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward.NewController, engine.NewBuildController, local.ProvideExecer, local.ProvideProberManager, local.NewController, k8swatch.NewPodWatcher, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, engine.NewProfilerManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, exit.NewController, provideClock, hud.WireSet, prompt.WireSet, provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.ProvideSubscribers, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewGitManager, fswatch.NewWatchManager, fswatch.ProvideFsWatcherMaker, fswatch.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,

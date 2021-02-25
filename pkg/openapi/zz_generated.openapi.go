@@ -313,6 +313,16 @@ func schema_pkg_apis_core_v1alpha1_ManifestSpec(ref common.ReferenceCallback) co
 			SchemaProps: spec.SchemaProps{
 				Description: "ManifestSpec defines the desired state of Manifest",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"type"},
 			},
 		},
 	}

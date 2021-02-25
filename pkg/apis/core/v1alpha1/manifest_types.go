@@ -52,6 +52,7 @@ type ManifestList struct {
 
 // ManifestSpec defines the desired state of Manifest
 type ManifestSpec struct {
+	Type string `json:"type"`
 }
 
 var _ resource.Object = &Manifest{}

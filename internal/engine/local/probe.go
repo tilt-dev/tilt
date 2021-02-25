@@ -10,10 +10,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tilt-dev/probe/pkg/probe"
-	"github.com/tilt-dev/probe/pkg/prober"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/tilt-dev/probe/pkg/probe"
+	"github.com/tilt-dev/probe/pkg/prober"
 )
 
 var ErrUnsupportedProbeType = errors.New("unsupported probe type")
