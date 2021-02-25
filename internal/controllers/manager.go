@@ -56,9 +56,16 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 	utilruntime.Must(corev1alpha1.AddToScheme(scheme))
 
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{
-		Scheme:           scheme,
+		Scheme: scheme,
+		// controller manager should NOT be used for admission webhook registration without
+		// additional changes to handle port selection; it will automatically listen on a
+		// default port (9443) if a webhook is registered, which will break running multiple
+		// tilt instances
+		Port: 0,
+		// leader election is unnecessary as a single manager instance is run in-process with
+		// the apiserver
 		LeaderElection:   false,
-		LeaderElectionID: "b69659b9.",
+		LeaderElectionID: "tilt-apiserver-ctrl",
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %v", err)
