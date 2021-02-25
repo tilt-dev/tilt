@@ -3776,7 +3776,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	tscm := controllers.NewTiltServerControllerManager(nil)
+	tscm := controllers.NewTiltServerControllerManager(serverOptions)
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)

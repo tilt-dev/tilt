@@ -27,24 +27,12 @@ var _ store.Subscriber = &TiltServerControllerManager{}
 var _ store.TearDowner = &TiltServerControllerManager{}
 
 func NewTiltServerControllerManager(config *server.APIServerConfig) *TiltServerControllerManager {
-	// TODO(milas): remove this once tests use in-memory connection + real config
-	var cfg *rest.Config
-	if config != nil {
-		cfg = config.GenericConfig.LoopbackClientConfig
-	}
-
 	return &TiltServerControllerManager{
-		config: cfg,
+		config: config.GenericConfig.LoopbackClientConfig,
 	}
 }
 
 func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore) error {
-	if m.config == nil {
-		// TODO(milas): remove this once tests use in-memory connection + real config
-		logger.Get(ctx).Debugf("No REST config provided; controller manager will not be started")
-		return nil
-	}
-
 	scheme := runtime.NewScheme()
 
 	ctx, m.cancel = context.WithCancel(ctx)
@@ -57,11 +45,13 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{
 		Scheme: scheme,
-		// controller manager should NOT be used for admission webhook registration without
-		// additional changes to handle port selection; it will automatically listen on a
-		// default port (9443) if a webhook is registered, which will break running multiple
-		// tilt instances
-		Port: 0,
+		// controller manager lazily listens on a port if a webhook is registered; this functionality
+		// is currently NOT used; to prevent it from listening on a default port (9443) and potentially
+		// causing conflicts running multiple instances of tilt, this is set to an invalid value
+		Port: -1,
+		// disable metrics + health probe by setting them to "0"
+		MetricsBindAddress:     "0",
+		HealthProbeBindAddress: "0",
 		// leader election is unnecessary as a single manager instance is run in-process with
 		// the apiserver
 		LeaderElection:   false,
