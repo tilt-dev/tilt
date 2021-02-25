@@ -2,6 +2,7 @@ import Anser from "anser"
 import React, { Component } from "react"
 import { useHistory } from "react-router"
 import styled, { keyframes } from "styled-components"
+import "./AnsiLine.scss" // for line color CSS classes
 import {
   FilterLevel,
   FilterSet,
