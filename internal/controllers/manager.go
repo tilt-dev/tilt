@@ -57,7 +57,6 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{
 		Scheme:           scheme,
-		Port:             9443,
 		LeaderElection:   false,
 		LeaderElectionID: "b69659b9.",
 	})
