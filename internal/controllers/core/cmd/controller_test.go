@@ -7,8 +7,15 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
@@ -17,35 +24,27 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func TestNoop(t *testing.T) {
-	f := newFixture(t)
-	defer f.teardown()
-
-	f.step()
-	f.assertNoStatus()
-}
+var timeout = time.Second
+var interval = 5 * time.Millisecond
 
 func TestUpdate(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	t1 := time.Unix(1, 0)
-	f.resource("foo", "true", ".", t1)
-	f.step()
-	f.assertStatus("foo", model.RuntimeStatusOK, 1)
-
-	t2 := time.Unix(2, 0)
-	f.resource("foo", "false", ".", t2)
-	f.step()
-	f.assertStatus("foo", model.RuntimeStatusOK, 2)
-	f.assertNoAction("error for cancel", func(action store.Action) bool {
-		a, ok := action.(LocalServeStatusAction)
-		if !ok {
-			return false
-		}
-		return a.ManifestName == "foo" && a.Status == model.RuntimeStatusError
+	cmdTrue := f.cmd("foo", "true", ".")
+	f.create(cmdTrue)
+	f.assertCmdMatches("foo", func(cmd Cmd) bool {
+		return cmd.Status.Running != nil
 	})
-	f.fe.RequireNoKnownProcess(t, "true")
+
+	cmdFalse := f.cmd("foo", "false", ".")
+	f.update(cmdFalse)
+	f.assertCmdMatches("foo", func(cmd Cmd) bool {
+		return cmd.Status.Running != nil && cmp.Equal(cmdFalse.Spec, cmd.Spec)
+	})
+
+	f.assertNoProcessExists(cmdTrue)
+
 	f.assertLogMessage("foo", "Starting cmd false")
 	f.assertLogMessage("foo", "cmd true canceled")
 }
@@ -54,12 +53,13 @@ func TestServe(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	t1 := time.Unix(1, 0)
-	f.resource("foo", "sleep 60", "testdir", t1)
-	f.step()
-	f.assertStatus("foo", model.RuntimeStatusOK, 1)
+	cmd := f.cmd("foo", "sleep 60", "testdir")
+	f.create(cmd)
+	f.assertCmdMatches("foo", func(cmd Cmd) bool {
+		return cmd.Status.Running != nil && cmd.Status.Ready
+	})
 
-	require.Equal(t, "testdir", f.fe.processes["sleep 60"].workdir)
+	require.Equal(t, "testdir", f.fe.getProcess(cmd).workdir)
 
 	f.assertLogMessage("foo", "Starting cmd sleep 60")
 }
@@ -68,27 +68,17 @@ func TestServeReadinessProbe(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	t1 := time.Unix(1, 0)
-
-	c := model.ToHostCmdInDir("sleep 60", "testdir")
-	localTarget := model.NewLocalTarget("foo", model.Cmd{}, c, nil)
-	localTarget.ReadinessProbe = &v1alpha1.Probe{
+	cmd := f.cmd("foo", "sleep 60", "testdir")
+	cmd.Spec.ReadinessProbe = &v1alpha1.Probe{
 		TimeoutSeconds: 5,
 		Handler: v1alpha1.Handler{
 			Exec: &v1alpha1.ExecAction{Command: []string{"sleep", "15"}},
 		},
 	}
 
-	f.resourceFromTarget("foo", localTarget, t1)
-	f.step()
-	f.assertAction("did not find readiness probe action", func(action store.Action) bool {
-		probeAction, ok := action.(LocalServeReadinessProbeAction)
-		if !ok ||
-			probeAction.ManifestName != "foo" ||
-			probeAction.Ready != true {
-			return false
-		}
-		return true
+	f.create(cmd)
+	f.assertCmdMatches("foo", func(cmd Cmd) bool {
+		return cmd.Status.Running != nil && cmd.Status.Ready
 	})
 	f.assertLogMessage("foo", "[readiness probe: success] fake probe succeeded")
 
@@ -101,21 +91,18 @@ func TestServeReadinessProbeInvalidSpec(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	t1 := time.Unix(1, 0)
-
-	c := model.ToHostCmdInDir("sleep 60", "testdir")
-	localTarget := model.NewLocalTarget("foo", model.Cmd{}, c, nil)
-	localTarget.ReadinessProbe = &v1alpha1.Probe{
+	cmd := f.cmd("foo", "sleep 60", "testdir")
+	cmd.Spec.ReadinessProbe = &v1alpha1.Probe{
 		Handler: v1alpha1.Handler{HTTPGet: &v1alpha1.HTTPGetAction{
 			// port > 65535
 			Port: 70000,
 		}},
 	}
+	f.create(cmd)
 
-	f.resourceFromTarget("foo", localTarget, t1)
-	f.step()
-
-	f.assertStatus("foo", model.RuntimeStatusError, 1)
+	f.assertCmdMatches("foo", func(cmd Cmd) bool {
+		return cmd.Status.Terminated != nil && cmd.Status.Terminated.ExitCode == 1
+	})
 
 	f.assertLogMessage("foo", "Invalid readiness probe: port number out of range: 70000")
 	assert.Equal(t, 0, f.fpm.ProbeCount())
@@ -125,16 +112,19 @@ func TestFailure(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	t1 := time.Unix(1, 0)
-	f.resource("foo", "true", ".", t1)
-	f.step()
-	f.assertStatus("foo", model.RuntimeStatusOK, 1)
+	cmd := f.cmd("foo", "true", ".")
+	f.create(cmd)
+	f.assertCmdMatches("foo", func(cmd Cmd) bool {
+		return cmd.Status.Running != nil
+	})
 	f.assertLogMessage("foo", "Starting cmd true")
 
 	err := f.fe.stop("true", 5)
 	require.NoError(t, err)
 
-	f.assertStatus("foo", model.RuntimeStatusError, 1)
+	f.assertCmdMatches("foo", func(cmd Cmd) bool {
+		return cmd.Status.Terminated != nil && cmd.Status.Terminated.ExitCode != 5
+	})
 	f.assertLogMessage("foo", "cmd true exited with code 5")
 }
 
@@ -142,10 +132,8 @@ func TestUniqueSpanIDs(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	t1 := time.Unix(1, 0)
-	f.resource("foo", "foo.sh", ".", t1)
-	f.resource("bar", "bar.sh", ".", t1)
-	f.step()
+	f.create(f.cmd("foo", "foo.sh", "."))
+	f.create(f.cmd("bar", "bar.sh", "."))
 
 	fooStart := f.waitForLogEventContaining("Starting cmd foo.sh")
 	barStart := f.waitForLogEventContaining("Starting cmd bar.sh")
@@ -156,24 +144,45 @@ func TestTearDown(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	t1 := time.Unix(1, 0)
-	f.resource("foo", "foo.sh", ".", t1)
-	f.resource("bar", "bar.sh", ".", t1)
-	f.step()
+	cmdFoo := f.cmd("foo", "foo.sh", ".")
+	f.create(cmdFoo)
+
+	cmdBar := f.cmd("bar", "bar.sh", ".")
+	f.create(cmdBar)
 
 	f.c.TearDown(f.ctx)
 
-	f.fe.RequireNoKnownProcess(t, "foo.sh")
-	f.fe.RequireNoKnownProcess(t, "bar.sh")
+	f.assertNoProcessExists(cmdFoo)
+	f.assertNoProcessExists(cmdBar)
+}
+
+type testStore struct {
+	*store.TestingStore
+	ctx context.Context
+}
+
+func NewTestingStore(ctx context.Context) *testStore {
+	return &testStore{
+		TestingStore: store.NewTestingStore(),
+		ctx:          ctx,
+	}
+}
+
+func (s *testStore) Dispatch(action store.Action) {
+	s.TestingStore.Dispatch(action)
+
+	logAction, ok := action.(store.LogAction)
+	if ok {
+		logger.Get(s.ctx).Infof("%s", logAction.Message())
+	}
 }
 
 type fixture struct {
 	t      *testing.T
-	st     *store.TestingStore
-	state  store.EngineState
+	st     *testStore
 	fe     *FakeExecer
 	fpm    *FakeProberManager
-	c      *ControllerOld
+	c      *Controller
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -183,19 +192,23 @@ func newFixture(t *testing.T) *fixture {
 	out := bufsync.NewThreadSafeBuffer()
 	l := logger.NewLogger(logger.VerboseLvl, out)
 	ctx = logger.WithLogger(ctx, l)
+	st := NewTestingStore(ctx)
+
+	scheme := runtime.NewScheme()
+	_ = v1alpha1.AddToScheme(scheme)
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	fe := NewFakeExecer()
 	fpm := NewFakeProberManager()
+	controller := NewController(st, fe, fpm)
+	controller.SetClient(client)
 
 	return &fixture{
-		t:  t,
-		st: store.NewTestingStore(),
-		state: store.EngineState{
-			ManifestTargets: make(map[model.ManifestName]*store.ManifestTarget),
-		},
+		t:      t,
+		st:     st,
 		fe:     fe,
 		fpm:    fpm,
-		c:      NewControllerOld(fe, fpm),
+		c:      controller,
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -203,39 +216,49 @@ func newFixture(t *testing.T) *fixture {
 
 func (f *fixture) teardown() {
 	f.cancel()
+	f.c.TearDown(context.Background())
 }
 
-func (f *fixture) resource(name string, cmd string, workdir string, lastDeploy time.Time) {
-	c := model.ToHostCmd(cmd)
-	c.Dir = workdir
-	localTarget := model.NewLocalTarget(model.TargetName(name), model.Cmd{}, c, nil)
-	f.resourceFromTarget(name, localTarget, lastDeploy)
+func (f *fixture) create(r *Cmd) {
+	require.NoError(f.t, f.c.Client.Create(f.ctx, r))
+
+	key := types.NamespacedName{Name: r.Name}
+	_, err := f.c.Reconcile(f.ctx, ctrl.Request{NamespacedName: key})
+	require.NoError(f.t, err)
 }
 
-func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastDeploy time.Time) {
-	n := model.ManifestName(name)
-	m := model.Manifest{
-		Name: n,
-	}.WithDeployTarget(target)
-	f.state.UpsertManifestTarget(&store.ManifestTarget{
-		Manifest: m,
-		State: &store.ManifestState{
-			LastSuccessfulDeployTime: lastDeploy,
+func (f *fixture) update(r *Cmd) {
+	var old Cmd
+	key := types.NamespacedName{Name: r.Name}
+	require.NoError(f.t, f.c.Client.Get(f.ctx, key, &old))
+
+	r.ObjectMeta.ResourceVersion = old.ResourceVersion
+
+	require.NoError(f.t, f.c.Client.Update(f.ctx, r))
+
+	_, err := f.c.Reconcile(f.ctx, ctrl.Request{NamespacedName: key})
+	require.NoError(f.t, err)
+}
+
+func (f *fixture) cmd(name string, cmd string, workdir string) *Cmd {
+	return &Cmd{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				v1alpha1.LabelManifest: name,
+			},
 		},
-	})
-}
-
-func (f *fixture) step() {
-	f.st.ClearActions()
-	f.st.SetState(f.state)
-	f.c.OnChange(f.ctx, f.st)
-}
-
-func (f *fixture) assertNoStatus() {
-	actions := f.st.Actions()
-	if len(actions) > 0 {
-		f.t.Fatalf("expected no actions")
+		Spec: CmdSpec{
+			Args: model.ToHostCmd(cmd).Argv,
+			Dir:  workdir,
+		},
 	}
+}
+
+func (f *fixture) assertNoProcessExists(cmd *Cmd) {
+	assert.Eventually(f.t, func() bool {
+		return f.fe.getProcess(cmd) == nil
+	}, timeout, interval)
 }
 
 func (f *fixture) assertAction(msg string, pred func(action store.Action) bool) {
@@ -257,25 +280,16 @@ func (f *fixture) assertAction(msg string, pred func(action store.Action) bool) 
 	}
 }
 
-func (f *fixture) assertNoAction(msg string, pred func(action store.Action) bool) {
-	for _, action := range f.st.Actions() {
-		require.Falsef(f.t, pred(action), "%s", msg)
-	}
-}
-
-func (f *fixture) assertStatus(name string, status model.RuntimeStatus, sequenceNum int) {
-	msg := fmt.Sprintf("didn't find name %s, status %v, sequence %d", name, status, sequenceNum)
-	pred := func(action store.Action) bool {
-		stAction, ok := action.(LocalServeStatusAction)
-		if !ok ||
-			stAction.ManifestName != model.ManifestName(name) ||
-			stAction.Status != status {
+func (f *fixture) assertCmdMatches(name string, matcher func(cmd Cmd) bool) {
+	key := types.NamespacedName{Name: name}
+	var cmd Cmd
+	assert.Eventually(f.t, func() bool {
+		err := f.c.Get(f.ctx, key, &cmd)
+		if err != nil {
 			return false
 		}
-		return true
-	}
-
-	f.assertAction(msg, pred)
+		return matcher(cmd)
+	}, timeout, interval)
 }
 
 func (f *fixture) assertLogMessage(name string, messages ...string) {

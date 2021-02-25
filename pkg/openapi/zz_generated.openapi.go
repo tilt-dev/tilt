@@ -328,6 +328,13 @@ func schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref common.ReferenceCallba
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "(brief) reason the process is terminated",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"pid", "exitCode"},
 			},

@@ -29,6 +29,10 @@ const GroupName = "core.tilt.dev"
 
 const Version = "v1alpha1"
 
+// The label on any object that identifies which manifest
+// its logs should appear under.
+const LabelManifest = "resource"
+
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
 
