@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"go/build"
 	"io"
 	"io/ioutil"
 	"os"
@@ -81,7 +82,9 @@ func (f *fixture) testDirPath(s string) string {
 
 func (f *fixture) installTilt() {
 	f.t.Helper()
-	cmd := exec.CommandContext(f.ctx, "go", "install", "-mod", "vendor", "github.com/tilt-dev/tilt/cmd/tilt")
+	// use the current GOROOT to pick which Go to build with
+	goBin := filepath.Join(build.Default.GOROOT, "bin", "go")
+	cmd := exec.CommandContext(f.ctx, goBin, "install", "-mod", "vendor", "github.com/tilt-dev/tilt/cmd/tilt")
 	cmd.Dir = packageDir
 	f.runOrFail(cmd, "Building tilt")
 }
