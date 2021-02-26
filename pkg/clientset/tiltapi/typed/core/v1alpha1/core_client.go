@@ -27,6 +27,7 @@ import (
 
 type CoreV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	CmdsGetter
 	FileWatchesGetter
 	ManifestsGetter
 }
@@ -34,6 +35,10 @@ type CoreV1alpha1Interface interface {
 // CoreV1alpha1Client is used to interact with features provided by the core.tilt.dev group.
 type CoreV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *CoreV1alpha1Client) Cmds() CmdInterface {
+	return newCmds(c)
 }
 
 func (c *CoreV1alpha1Client) FileWatches() FileWatchInterface {
