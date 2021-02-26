@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,7 +36,7 @@ var _ rest.Storage = &filepathREST{}
 // NewFilepathREST instantiates a new REST storage.
 func NewFilepathREST(
 	fs FS,
-	strategy rest.RESTCreateStrategy,
+	strategy Strategy,
 	groupResource schema.GroupResource,
 	codec runtime.Codec,
 	rootpath string,
@@ -73,9 +74,10 @@ type filepathREST struct {
 	newFunc     func() runtime.Object
 	newListFunc func() runtime.Object
 
-	strategy      rest.RESTCreateStrategy
-	groupResource schema.GroupResource
-	fs            FS
+	strategy       Strategy
+	groupResource  schema.GroupResource
+	fs             FS
+	currentVersion int64
 }
 
 func (f *filepathREST) notifyWatchers(ev watch.Event) {
@@ -161,6 +163,7 @@ func (f *filepathREST) Create(
 		return nil, err
 	}
 	filename := f.objectFileName(ctx, accessor.GetName())
+	accessor.SetResourceVersion(fmt.Sprintf("%d", atomic.AddInt64(&f.currentVersion, 1)))
 
 	if f.fs.Exists(filename) {
 		return nil, ErrFileNotExists
@@ -212,6 +215,11 @@ func (f *filepathREST) Update(
 	if err != nil {
 		return nil, false, err
 	}
+
+	if err := rest.BeforeUpdate(f.strategy, ctx, updatedObj, oldObj); err != nil {
+		return nil, false, err
+	}
+
 	filename := f.objectFileName(ctx, name)
 
 	if isCreate {
@@ -240,6 +248,8 @@ func (f *filepathREST) Update(
 	if err != nil {
 		return nil, false, err
 	}
+	objMeta.SetResourceVersion(fmt.Sprintf("%d", atomic.AddInt64(&f.currentVersion, 1)))
+
 	// handle 2-phase deletes -> for entities with finalizers, DeletionTimestamp is set and reconcilers execute +
 	// remove them (triggering more updates); once drained, it can be deleted from the final update operation
 	// loosely based off https://github.com/kubernetes/apiserver/blob/947ebe755ed8aed2e0f0f5d6420caad07fc04cc2/pkg/registry/generic/registry/store.go#L624

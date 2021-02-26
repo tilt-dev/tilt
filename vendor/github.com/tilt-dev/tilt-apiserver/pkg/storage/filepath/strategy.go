@@ -16,51 +16,10 @@ limitations under the License.
 
 package filepath
 
-import (
-	"context"
+import "k8s.io/apiserver/pkg/registry/rest"
 
-	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/apiserver/pkg/storage/names"
-)
-
-// NewStrategy creates and returns a genericStrategy instance
-func NewStrategy(typer runtime.ObjectTyper, obj resource.Object) genericStrategy {
-	return genericStrategy{typer, names.SimpleNameGenerator, obj}
-}
-
-type genericStrategy struct {
-	runtime.ObjectTyper
-	names.NameGenerator
-	obj resource.Object
-}
-
-func (s genericStrategy) NamespaceScoped() bool {
-	return s.obj.NamespaceScoped()
-}
-
-func (genericStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
-}
-
-func (genericStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
-}
-
-func (genericStrategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
-	return field.ErrorList{}
-}
-
-func (genericStrategy) AllowCreateOnUpdate() bool {
-	return false
-}
-
-func (genericStrategy) AllowUnconditionalUpdate() bool {
-	return false
-}
-
-func (genericStrategy) Canonicalize(obj runtime.Object) {
-}
-
-func (genericStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
-	return field.ErrorList{}
+type Strategy interface {
+	rest.RESTUpdateStrategy
+	rest.RESTCreateStrategy
+	rest.RESTDeleteStrategy
 }
