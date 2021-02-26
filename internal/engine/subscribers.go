@@ -25,6 +25,7 @@ import (
 func ProvideSubscribers(
 	hudsc *server.HeadsUpServerController,
 	tscm *controllers.TiltServerControllerManager,
+	cb *controllers.ControllerBuilder,
 	hud hud.HeadsUpDisplay,
 	ts *hud.TerminalStream,
 	tp *prompt.TerminalPrompt,
@@ -58,6 +59,7 @@ func ProvideSubscribers(
 		// The controller manager must go after the API server,
 		// so that it can connect to it and make resources available.
 		tscm,
+		cb,
 
 		hud,
 		ts,

@@ -21,7 +21,9 @@ type Subscriber interface {
 //
 // Both hold the subscriber lock, so should return quickly.
 //
-// SetUp and TearDown are called in serial, in the order they were added.
+// SetUp and TearDown are called in serial.
+// SetUp is called in FIFO order while TearDown is LIFO so that
+// inter-subscriber dependencies are respected.
 type SetUpper interface {
 	// Initialize the subscriber.
 	//
@@ -91,14 +93,15 @@ func (l *subscriberList) SetUp(ctx context.Context, st RStore) error {
 	return nil
 }
 
+// TeardownAll removes subscribes in the reverse order as they were subscribed.
 func (l *subscriberList) TeardownAll(ctx context.Context) {
 	l.mu.Lock()
 	subscribers := append([]*subscriberEntry{}, l.subscribers...)
 	l.setup = false
 	l.mu.Unlock()
 
-	for _, s := range subscribers {
-		s.maybeTeardown(ctx)
+	for i := len(subscribers) - 1; i >= 0; i-- {
+		subscribers[i].maybeTeardown(ctx)
 	}
 }
 
