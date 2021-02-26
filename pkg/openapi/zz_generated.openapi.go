@@ -30,14 +30,20 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":      schema_pkg_apis_core_v1alpha1_ExecAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":       schema_pkg_apis_core_v1alpha1_FileWatch(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":   schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec":   schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus": schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":   schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":      schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":         schema_pkg_apis_core_v1alpha1_Handler(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Manifest":        schema_pkg_apis_core_v1alpha1_Manifest(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestList":    schema_pkg_apis_core_v1alpha1_ManifestList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestSpec":    schema_pkg_apis_core_v1alpha1_ManifestSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestStatus":  schema_pkg_apis_core_v1alpha1_ManifestStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":           schema_pkg_apis_core_v1alpha1_Probe(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction": schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                   schema_pkg_apis_meta_v1_APIGroup(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":               schema_pkg_apis_meta_v1_APIGroupList(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResource":                schema_pkg_apis_meta_v1_APIResource(ref),
@@ -90,6 +96,34 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"k8s.io/apimachinery/pkg/runtime.TypeMeta":                        schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
 		"k8s.io/apimachinery/pkg/runtime.Unknown":                         schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
 		"k8s.io/apimachinery/pkg/version.Info":                            schema_k8sio_apimachinery_pkg_version_Info(ref),
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ExecAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ExecAction describes a \"run in container\" action.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"command": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Command is the command line to execute inside the container, the working directory for the command  is root ('/') in the container's filesystem. The command is simply exec'd, it is not run inside a shell, so traditional shell instructions ('|', etc) won't work. To use a shell, you need to explicitly call out to that shell. Exit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -211,6 +245,128 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "HTTPGetAction describes an action based on HTTP Get requests.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to access on the HTTP server.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"port": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name or number of the port to access on the container. Number must be in the range 1 to 65535.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"host": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Host name to connect to, defaults to the pod IP. You probably want to set \"Host\" in httpHeaders instead.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scheme": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Scheme to use for connecting to the host. Defaults to HTTP.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"httpHeaders": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Custom headers to set in the request. HTTP allows repeated headers.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"port"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_HTTPHeader(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "HTTPHeader describes a custom header to be used in HTTP probes",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The header field name",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The header field value",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "value"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_Handler(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Handler defines a specific action that should be taken in a probe.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"exec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "One and only one of the following should be specified. Exec specifies the action to take.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction"),
+						},
+					},
+					"httpGet": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HTTPGet specifies the http request to perform.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction"),
+						},
+					},
+					"tcpSocket": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_Manifest(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -324,6 +480,103 @@ func schema_pkg_apis_core_v1alpha1_ManifestStatus(ref common.ReferenceCallback) 
 			SchemaProps: spec.SchemaProps{
 				Description: "ManifestStatus defines the observed state of Manifest",
 				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_Probe(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Probe describes a health check to be performed o determine whether it is alive or ready to receive traffic.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"exec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "One and only one of the following should be specified. Exec specifies the action to take.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction"),
+						},
+					},
+					"httpGet": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HTTPGet specifies the http request to perform.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction"),
+						},
+					},
+					"tcpSocket": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction"),
+						},
+					},
+					"initialDelaySeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Number of seconds after the container has started before liveness probes are initiated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"timeoutSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"periodSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "How often (in seconds) to perform the probe. Default to 10 seconds. Minimum value is 1.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"successThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"failureThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Minimum consecutive failures for the probe to be considered failed after having succeeded. Defaults to 3. Minimum value is 1.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TCPSocketAction describes an action based on opening a socket",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"port": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Number or name of the port to access on the container. Number must be in the range 1 to 65535.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"host": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Host name to connect to, defaults to the pod IP.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"port"},
 			},
 		},
 	}
