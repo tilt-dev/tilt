@@ -3,9 +3,8 @@ package model
 import (
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type LocalTarget struct {
@@ -26,7 +25,7 @@ type LocalTarget struct {
 	Tags   []string // eventually we might want tags to be more widespread -- stored on manifest maybe?
 	IsTest bool     // does this target represent a Test?
 
-	ReadinessProbe *v1.Probe
+	ReadinessProbe *v1alpha1.Probe
 }
 
 var _ TargetSpec = LocalTarget{}
@@ -74,7 +73,7 @@ func (lt LocalTarget) WithTags(tags []string) LocalTarget {
 	return lt
 }
 
-func (lt LocalTarget) WithReadinessProbe(probeSpec *v1.Probe) LocalTarget {
+func (lt LocalTarget) WithReadinessProbe(probeSpec *v1alpha1.Probe) LocalTarget {
 	lt.ReadinessProbe = probeSpec
 	return lt
 }

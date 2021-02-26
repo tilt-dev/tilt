@@ -41,6 +41,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
 	"github.com/tilt-dev/tilt/internal/yaml"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -6451,7 +6452,7 @@ func serveCmdArray(dir string, argv []string, env []string) serveCmdHelper {
 }
 
 type readinessProbeHelper struct {
-	probeSpec *v1.Probe
+	probeSpec *v1alpha1.Probe
 }
 
 type localTargetHelper struct {

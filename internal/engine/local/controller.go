@@ -9,12 +9,11 @@ import (
 	"sync"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -337,7 +336,7 @@ type ServeSpec struct {
 	ManifestName   model.ManifestName
 	ServeCmd       model.Cmd
 	TriggerTime    time.Time // TriggerTime is how Runner knows to restart; if it's newer than the TriggerTime of the currently running command, then Runner should restart it
-	ReadinessProbe *v1.Probe
+	ReadinessProbe *v1alpha1.Probe
 }
 
 type statusAndMetadata struct {
