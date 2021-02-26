@@ -34,6 +34,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -3770,12 +3771,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := local.NewFakeExecer()
 	fpm := local.NewFakeProberManager()
-	lc := local.NewController(fe, fpm)
+	fc := fake.NewTiltClient()
+	fcb := fake.NewClientBuilder(fc)
+	lc := local.NewController(fe, fpm, fc)
+
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, controllers.NewScheme())
+	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, controllers.NewScheme(), fcb)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
 	cb := controllers.NewControllerBuilder(tscm, nil)
 

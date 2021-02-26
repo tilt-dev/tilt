@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/probe/pkg/prober"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -28,17 +29,19 @@ type Controller struct {
 	proberManager ProberManager
 	cmds          map[types.NamespacedName]*Cmd
 	mu            sync.Mutex
+	client        ctrlclient.Client
 }
 
 var _ store.Subscriber = &Controller{}
 var _ store.TearDowner = &Controller{}
 
-func NewController(execer Execer, proberManager ProberManager) *Controller {
+func NewController(execer Execer, proberManager ProberManager, client ctrlclient.Client) *Controller {
 	return &Controller{
 		execer:        execer,
 		procs:         make(map[model.ManifestName]*currentProcess),
 		proberManager: proberManager,
 		cmds:          make(map[types.NamespacedName]*Cmd),
+		client:        client,
 	}
 }
 
