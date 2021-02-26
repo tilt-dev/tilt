@@ -1423,8 +1423,6 @@ sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/proto/client
 # sigs.k8s.io/apiserver-runtime v0.0.0-20201103144618-b52895ea8337
 ## explicit
-sigs.k8s.io/apiserver-runtime/pkg/builder/resource
-sigs.k8s.io/apiserver-runtime/pkg/builder/resource/resourcestrategy
 # sigs.k8s.io/controller-runtime v0.8.2
 ## explicit
 sigs.k8s.io/controller-runtime

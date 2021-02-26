@@ -13,7 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/apiserver-runtime/pkg/builder/resource"
+
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
