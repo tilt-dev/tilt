@@ -41,6 +41,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
 	"github.com/tilt-dev/tilt/internal/yaml"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -4931,11 +4932,20 @@ func TestBuiltinAnalytics(t *testing.T) {
 	// 2. a keyword arg
 	// 3. a mix of both for the same arg
 	// 4. a builtin from a starkit extension
+	// 5. loading a Tilt extension
+
 	f.file("Tiltfile", `
 local('echo hi')
 local(command='echo hi')
 local('echo hi', quiet=True)
 allow_k8s_contexts("hello")
+load('ext://fooExt', 'printFoo')
+`)
+
+	// write the extension locally so we don't need to deal with fake fetchers etc.
+	f.WriteFile(filepath.Join("tilt_modules", "fooExt", "Tiltfile"), `
+def printFoo():
+  print("foo")
 `)
 
 	f.load()
@@ -4954,6 +4964,13 @@ allow_k8s_contexts("hello")
 	for k, v := range expectedCounts {
 		require.Equal(t, v, countEvent.Tags[k], "count for %s", k)
 	}
+
+	extensionEvent := f.SingleAnalyticsEvent("tiltfile.loaded.extension")
+	expectedTags := map[string]string{
+		"name": "fooExt",
+		"env":  "docker-for-desktop",
+	}
+	require.Equal(t, expectedTags, extensionEvent.Tags)
 }
 
 func TestCustomTagsReported(t *testing.T) {
@@ -6451,7 +6468,7 @@ func serveCmdArray(dir string, argv []string, env []string) serveCmdHelper {
 }
 
 type readinessProbeHelper struct {
-	probeSpec *v1.Probe
+	probeSpec *v1alpha1.Probe
 }
 
 type localTargetHelper struct {

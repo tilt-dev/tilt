@@ -9,11 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -73,10 +72,10 @@ func TestServeReadinessProbe(t *testing.T) {
 
 	c := model.ToHostCmdInDir("sleep 60", "testdir")
 	localTarget := model.NewLocalTarget("foo", model.Cmd{}, c, nil)
-	localTarget.ReadinessProbe = &v1.Probe{
+	localTarget.ReadinessProbe = &v1alpha1.Probe{
 		TimeoutSeconds: 5,
-		Handler: v1.Handler{
-			Exec: &v1.ExecAction{Command: []string{"sleep", "15"}},
+		Handler: v1alpha1.Handler{
+			Exec: &v1alpha1.ExecAction{Command: []string{"sleep", "15"}},
 		},
 	}
 
@@ -106,10 +105,10 @@ func TestServeReadinessProbeInvalidSpec(t *testing.T) {
 
 	c := model.ToHostCmdInDir("sleep 60", "testdir")
 	localTarget := model.NewLocalTarget("foo", model.Cmd{}, c, nil)
-	localTarget.ReadinessProbe = &v1.Probe{
-		Handler: v1.Handler{HTTPGet: &v1.HTTPGetAction{
+	localTarget.ReadinessProbe = &v1alpha1.Probe{
+		Handler: v1alpha1.Handler{HTTPGet: &v1alpha1.HTTPGetAction{
 			// port > 65535
-			Port: intstr.FromInt(70000),
+			Port: 70000,
 		}},
 	}
 

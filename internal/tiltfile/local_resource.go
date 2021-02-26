@@ -6,13 +6,13 @@ import (
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -35,7 +35,7 @@ type localResource struct {
 	tags   []string
 	isTest bool
 
-	readinessProbe *v1.Probe
+	readinessProbe *v1alpha1.Probe
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

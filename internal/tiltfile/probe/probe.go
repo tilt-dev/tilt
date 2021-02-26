@@ -7,11 +7,10 @@ import (
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 const (
@@ -49,7 +48,7 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 
 type Probe struct {
 	*starlarkstruct.Struct
-	spec *v1.Probe
+	spec *v1alpha1.Probe
 }
 
 var _ starlark.Value = Probe{}
@@ -74,7 +73,7 @@ func (p Probe) Type() string {
 }
 
 // Spec returns the probe specification in the canonical format. It must not be modified.
-func (p Probe) Spec() *v1.Probe {
+func (p Probe) Spec() *v1alpha1.Probe {
 	return p.spec
 }
 
@@ -97,13 +96,13 @@ func (e Extension) probe(thread *starlark.Thread, fn *starlark.Builtin, args sta
 		return nil, err
 	}
 
-	spec := &v1.Probe{
+	spec := &v1alpha1.Probe{
 		InitialDelaySeconds: initialDelayVal.Int32(),
 		TimeoutSeconds:      timeoutVal.Int32(),
 		PeriodSeconds:       periodVal.Int32(),
 		SuccessThreshold:    successThresholdVal.Int32(),
 		FailureThreshold:    failureThresholdVal.Int32(),
-		Handler: v1.Handler{
+		Handler: v1alpha1.Handler{
 			HTTPGet:   httpGet.action,
 			Exec:      exec.action,
 			TCPSocket: tcpSocket.action,
@@ -129,7 +128,7 @@ func (e Extension) probe(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	}, nil
 }
 
-func validateProbeSpec(spec *v1.Probe) error {
+func validateProbeSpec(spec *v1alpha1.Probe) error {
 	actionCount := 0
 	if spec.Exec != nil {
 		actionCount++
@@ -148,7 +147,7 @@ func validateProbeSpec(spec *v1.Probe) error {
 
 type ExecAction struct {
 	*starlarkstruct.Struct
-	action *v1.ExecAction
+	action *v1alpha1.ExecAction
 }
 
 var _ starlark.Value = ExecAction{}
@@ -187,7 +186,7 @@ func (e Extension) execAction(thread *starlark.Thread, fn *starlark.Builtin, arg
 	if err != nil {
 		return nil, err
 	}
-	spec := &v1.ExecAction{Command: []string(command)}
+	spec := &v1alpha1.ExecAction{Command: []string(command)}
 	return ExecAction{
 		Struct: starlarkstruct.FromKeywords(starlark.String(typeExecAction), []starlark.Tuple{
 			{starlark.String("command"), command.Sequence()},
@@ -198,7 +197,7 @@ func (e Extension) execAction(thread *starlark.Thread, fn *starlark.Builtin, arg
 
 type HTTPGetAction struct {
 	*starlarkstruct.Struct
-	action *v1.HTTPGetAction
+	action *v1alpha1.HTTPGetAction
 }
 
 var _ starlark.Value = HTTPGetAction{}
@@ -245,10 +244,10 @@ func (e Extension) httpGetAction(thread *starlark.Thread, fn *starlark.Builtin, 
 		return nil, err
 	}
 
-	spec := &v1.HTTPGetAction{
+	spec := &v1alpha1.HTTPGetAction{
 		Host:   host.GoString(),
-		Port:   intstr.FromInt(port),
-		Scheme: v1.URIScheme(strings.ToUpper(scheme.GoString())),
+		Port:   int32(port),
+		Scheme: v1alpha1.URIScheme(strings.ToUpper(scheme.GoString())),
 		Path:   path.GoString(),
 	}
 
@@ -265,7 +264,7 @@ func (e Extension) httpGetAction(thread *starlark.Thread, fn *starlark.Builtin, 
 
 type TCPSocketAction struct {
 	*starlarkstruct.Struct
-	action *v1.TCPSocketAction
+	action *v1alpha1.TCPSocketAction
 }
 
 var _ starlark.Value = TCPSocketAction{}
@@ -308,7 +307,7 @@ func (e Extension) tcpSocketAction(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, err
 	}
-	spec := &v1.TCPSocketAction{Host: host.GoString(), Port: intstr.FromInt(port)}
+	spec := &v1alpha1.TCPSocketAction{Host: host.GoString(), Port: int32(port)}
 	return TCPSocketAction{
 		Struct: starlarkstruct.FromKeywords(starlark.String(typeTCPSocketAction), []starlark.Tuple{
 			{starlark.String("host"), host},

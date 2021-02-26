@@ -17,6 +17,7 @@ limitations under the License.
 package apiserver
 
 import (
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -45,15 +46,22 @@ func buildAPIGroupInfos(scheme *runtime.Scheme,
 	apiGroups := []*pkgserver.APIGroupInfo{}
 	for _, group := range groups.List() {
 		apis := map[string]map[string]rest.Storage{}
-		var err error
 		for gvr, storageProviderFunc := range apiMap {
 			if gvr.Group == group {
 				if _, found := apis[gvr.Version]; !found {
 					apis[gvr.Version] = map[string]rest.Storage{}
 				}
-				apis[gvr.Version][gvr.Resource], err = storageProviderFunc(scheme, g)
+				storage, err := storageProviderFunc(scheme, g)
 				if err != nil {
 					return nil, err
+				}
+				apis[gvr.Version][gvr.Resource] = storage
+				if _, ok := storage.(resourcestrategy.Defaulter); ok {
+					if obj, ok := storage.(runtime.Object); ok {
+						scheme.AddTypeDefaultingFunc(obj, func(obj interface{}) {
+							obj.(resourcestrategy.Defaulter).Default()
+						})
+					}
 				}
 			}
 		}

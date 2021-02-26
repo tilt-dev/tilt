@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile/include"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
@@ -22,7 +24,8 @@ printFoo()
 `)
 	f.writeModuleLocally("fetchable", libText)
 
-	f.assertExecOutput("foo")
+	res := f.assertExecOutput("foo")
+	f.assertLoadRecorded(res, "fetchable")
 }
 
 func TestUnfetchableAlreadyPresentWorks(t *testing.T) {
@@ -35,7 +38,8 @@ printFoo()
 `)
 	f.writeModuleLocally("unfetchable", libText)
 
-	f.assertExecOutput("foo")
+	res := f.assertExecOutput("foo")
+	f.assertLoadRecorded(res, "unfetchable")
 }
 
 func TestFetchFetchableWorks(t *testing.T) {
@@ -47,7 +51,8 @@ load("ext://fetchable", "printFoo")
 printFoo()
 `)
 
-	f.assertExecOutput("foo")
+	res := f.assertExecOutput("foo")
+	f.assertLoadRecorded(res, "fetchable")
 }
 
 func TestFetchUnfetchableFails(t *testing.T) {
@@ -59,7 +64,8 @@ load("ext://unfetchable", "printFoo")
 printFoo()
 `)
 
-	f.assertError("unfetchable can't be fetched")
+	res := f.assertError("unfetchable can't be fetched")
+	f.assertNoLoadsRecorded(res) // don't record metrics for failed imports
 }
 
 func TestIncludedFileMayIncludeExtension(t *testing.T) {
@@ -75,7 +81,8 @@ printFoo()
 
 	f.writeModuleLocally("fetchable", libText)
 
-	f.assertExecOutput("foo")
+	res := f.assertExecOutput("foo")
+	f.assertLoadRecorded(res, "fetchable")
 }
 
 func TestExtensionMayLoadExtension(t *testing.T) {
@@ -89,7 +96,8 @@ printFoo()
 	f.writeModuleLocally("fooExt", extensionThatLoadsExtension)
 	f.writeModuleLocally("barExt", printBar)
 
-	f.assertExecOutput("foo\nbar")
+	res := f.assertExecOutput("foo\nbar")
+	f.assertLoadRecorded(res, "fooExt", "barExt")
 }
 
 func TestLoadedFilesResolveExtensionsFromRootTiltfile(t *testing.T) {
@@ -110,7 +118,8 @@ printFoo()
 	// the fake fetcher will error.)
 	f.writeModuleLocally("unfetchable", libText)
 
-	f.assertExecOutput("foo")
+	res := f.assertExecOutput("foo")
+	f.assertLoadRecorded(res, "unfetchable")
 }
 
 type extensionFixture struct {
@@ -144,24 +153,41 @@ func (f *extensionFixture) tiltfile(contents string) {
 	f.skf.File("Tiltfile", contents)
 }
 
-func (f *extensionFixture) assertExecOutput(expected string) {
-	_, err := f.skf.ExecFile("Tiltfile")
+func (f *extensionFixture) assertExecOutput(expected string) starkit.Model {
+	result, err := f.skf.ExecFile("Tiltfile")
 	if err != nil {
 		f.t.Fatalf("unexpected error %v", err)
 	}
 	if !strings.Contains(f.skf.PrintOutput(), expected) {
 		f.t.Fatalf("output %q doesn't contain expected output %q", f.skf.PrintOutput(), expected)
 	}
+	return result
 }
 
-func (f *extensionFixture) assertError(expected string) {
-	_, err := f.skf.ExecFile("Tiltfile")
+func (f *extensionFixture) assertError(expected string) starkit.Model {
+	result, err := f.skf.ExecFile("Tiltfile")
 	if err == nil {
 		f.t.Fatalf("expected error; got none (output %q)", f.skf.PrintOutput())
 	}
 	if !strings.Contains(err.Error(), expected) {
 		f.t.Fatalf("error %v doens't contain expected text %q", err, expected)
 	}
+	return result
+}
+
+func (f *extensionFixture) assertLoadRecorded(model starkit.Model, expected ...string) {
+	state := MustState(model)
+
+	expectedSet := map[string]bool{}
+	for _, exp := range expected {
+		expectedSet[exp] = true
+	}
+
+	assert.Equal(f.t, expectedSet, state.ExtsLoaded)
+}
+
+func (f *extensionFixture) assertNoLoadsRecorded(model starkit.Model) {
+	f.assertLoadRecorded(model)
 }
 
 func (f *extensionFixture) writeModuleLocally(name string, contents string) {

@@ -2,19 +2,18 @@ package local
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 func TestProbeFromSpecUnsupported(t *testing.T) {
 	// empty probe spec
-	probeSpec := &v1.Probe{}
+	probeSpec := &v1alpha1.Probe{}
 	p, err := proberFromSpec(&FakeProberManager{}, probeSpec)
 	assert.Nil(t, p)
 	assert.ErrorIs(t, err, ErrUnsupportedProbeType)
@@ -23,23 +22,22 @@ func TestProbeFromSpecUnsupported(t *testing.T) {
 func TestProbeFromSpecTCP(t *testing.T) {
 	type tc struct {
 		host        string
-		port        intstr.IntOrString
+		port        int32
 		expectedErr string
 	}
 	cases := []tc{
-		{"localhost", intstr.FromInt(8080), ""},
-		{"localhost", intstr.IntOrString{}, "port number out of range: 0"},
-		{"localhost", intstr.FromString("http"), `invalid port number: "http"`},
-		{"localhost", intstr.FromInt(-1), "port number out of range: -1"},
-		{"localhost", intstr.FromInt(65536), "port number out of range: 65536"},
-		{"localhost", intstr.FromString("1234"), ""},
-		{"", intstr.FromInt(22), ""},
+		{"localhost", 8080, ""},
+		{"localhost", 0, "port number out of range: 0"},
+		{"localhost", -1, "port number out of range: -1"},
+		{"localhost", 65536, "port number out of range: 65536"},
+		{"localhost", 1234, ""},
+		{"", 22, ""},
 	}
 	for i, tc := range cases {
-		t.Run(fmt.Sprintf("[%d] %s:%s", i, tc.host, tc.port.String()), func(t *testing.T) {
-			probeSpec := &v1.Probe{
-				Handler: v1.Handler{
-					TCPSocket: &v1.TCPSocketAction{
+		t.Run(fmt.Sprintf("[%d] %s:%d", i, tc.host, tc.port), func(t *testing.T) {
+			probeSpec := &v1alpha1.Probe{
+				Handler: v1alpha1.Handler{
+					TCPSocket: &v1alpha1.TCPSocketAction{
 						Host: tc.host,
 						Port: tc.port,
 					},
@@ -57,8 +55,7 @@ func TestProbeFromSpecTCP(t *testing.T) {
 				} else {
 					assert.Equal(t, "localhost", manager.tcpHost)
 				}
-				// IntValue does implicit conversion for strings that are valid ints
-				assert.Equal(t, tc.port.IntValue(), manager.tcpPort)
+				assert.Equal(t, int(tc.port), int(manager.tcpPort))
 			}
 		})
 	}
@@ -66,37 +63,37 @@ func TestProbeFromSpecTCP(t *testing.T) {
 
 func TestProbeFromSpecHTTP(t *testing.T) {
 	type tc struct {
-		httpGet     *v1.HTTPGetAction
+		httpGet     *v1alpha1.HTTPGetAction
 		expectedErr string
 	}
 	cases := []tc{
 		{
-			&v1.HTTPGetAction{
+			&v1alpha1.HTTPGetAction{
 				Host: "",
-				Port: intstr.FromInt(80),
+				Port: 80,
 			},
 			"",
 		},
 		{
-			&v1.HTTPGetAction{
+			&v1alpha1.HTTPGetAction{
 				Host: "localhost",
-				Port: intstr.FromInt(-1),
+				Port: -1,
 			},
 			"port number out of range: -1",
 		},
 		{
-			&v1.HTTPGetAction{
+			&v1alpha1.HTTPGetAction{
 				Host:   "localhost",
-				Port:   intstr.FromInt(8080),
-				Scheme: v1.URISchemeHTTPS,
+				Port:   8080,
+				Scheme: v1alpha1.URISchemeHTTPS,
 			},
 			"",
 		},
 		{
-			&v1.HTTPGetAction{
+			&v1alpha1.HTTPGetAction{
 				Host: "localhost",
-				Port: intstr.FromInt(8888),
-				HTTPHeaders: []v1.HTTPHeader{
+				Port: 8888,
+				HTTPHeaders: []v1alpha1.HTTPHeader{
 					{Name: "X-Fake-Header", Value: "value-1"},
 					{Name: "X-Fake-Header", Value: "value-2"},
 					{Name: "Content-Type", Value: "application/json"},
@@ -106,9 +103,9 @@ func TestProbeFromSpecHTTP(t *testing.T) {
 		},
 	}
 	for i, tc := range cases {
-		t.Run(fmt.Sprintf("[%d] %s", i, tc.httpGet.String()), func(t *testing.T) {
-			probeSpec := &v1.Probe{
-				Handler: v1.Handler{
+		t.Run(fmt.Sprintf("[%d] %v", i, tc.httpGet), func(t *testing.T) {
+			probeSpec := &v1alpha1.Probe{
+				Handler: v1alpha1.Handler{
 					HTTPGet: tc.httpGet,
 				},
 			}
@@ -125,7 +122,7 @@ func TestProbeFromSpecHTTP(t *testing.T) {
 				} else {
 					assert.Equal(t, "localhost", u.Hostname())
 				}
-				assert.Equal(t, strconv.Itoa(tc.httpGet.Port.IntValue()), u.Port())
+				assert.Equal(t, fmt.Sprintf("%d", tc.httpGet.Port), u.Port())
 				if tc.httpGet.Scheme != "" {
 					assert.Equal(t, strings.ToLower(string(tc.httpGet.Scheme)), u.Scheme)
 				} else {
@@ -147,9 +144,9 @@ func TestProbeFromSpecExec(t *testing.T) {
 	}
 	for i, command := range cases {
 		t.Run(fmt.Sprintf("[%d] %s", i, command), func(t *testing.T) {
-			probeSpec := &v1.Probe{
-				Handler: v1.Handler{
-					Exec: &v1.ExecAction{
+			probeSpec := &v1alpha1.Probe{
+				Handler: v1alpha1.Handler{
+					Exec: &v1alpha1.ExecAction{
 						Command: command,
 					},
 				},
