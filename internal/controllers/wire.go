@@ -3,16 +3,16 @@ package controllers
 import (
 	"github.com/google/wire"
 
-	"github.com/tilt-dev/tilt/internal/controllers/core"
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 )
 
 var controllerSet = wire.NewSet(
-	core.NewFileWatchController,
+	filewatch.NewController,
 
 	ProvideControllers,
 )
 
-func ProvideControllers(fileWatch *core.FileWatchController) []Controller {
+func ProvideControllers(fileWatch *filewatch.Controller) []Controller {
 	return []Controller{
 		fileWatch,
 	}

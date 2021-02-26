@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package core
+package filewatch
 
 import (
 	"context"
@@ -23,13 +23,13 @@ import (
 )
 
 // FileWatchController reconciles a FileWatch object
-type FileWatchController struct {
+type Controller struct {
 	ctrlclient.Client
 	Store store.RStore
 }
 
-func NewFileWatchController(store store.RStore) *FileWatchController {
-	return &FileWatchController{
+func NewController(store store.RStore) *Controller {
+	return &Controller{
 		Store: store,
 	}
 }
@@ -38,18 +38,17 @@ func NewFileWatchController(store store.RStore) *FileWatchController {
 // +kubebuilder:rbac:groups=,resources=filewatches/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=,resources=filewatches/finalizers,verbs=update
 
-func (r *FileWatchController) Reconcile(_ context.Context, _ ctrl.Request) (ctrl.Result, error) {
+func (r *Controller) Reconcile(_ context.Context, _ ctrl.Request) (ctrl.Result, error) {
 	// this is currently a no-op stub
 	return ctrl.Result{}, nil
 }
 
-func (r *FileWatchController) SetClient(client ctrlclient.Client) {
+func (r *Controller) SetClient(client ctrlclient.Client) {
 	r.Client = client
 }
 
-func (r *FileWatchController) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&filewatches.FileWatch{}).
-		Owns(&filewatches.FileWatch{}).
 		Complete(r)
 }
