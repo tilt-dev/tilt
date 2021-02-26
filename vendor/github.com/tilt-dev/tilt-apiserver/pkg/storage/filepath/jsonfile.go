@@ -33,9 +33,8 @@ import (
 //       WithResourceAndHandler(&v1alpha1.ExampleResource{},
 //             jsonfile.NewJsonFileStorageProvider(&v1alpha1.ExampleResource{}, /*the root file-path*/ "data")).
 //       Build()
-func NewJSONFilepathStorageProvider(obj resource.Object, rootPath string, fs FS) builderrest.ResourceHandlerProvider {
+func NewJSONFilepathStorageProvider(obj resource.Object, rootPath string, fs FS, strategy Strategy) builderrest.ResourceHandlerProvider {
 	return func(scheme *runtime.Scheme, getter generic.RESTOptionsGetter) (rest.Storage, error) {
-		strategy := NewStrategy(scheme, obj)
 		gr := obj.GetGroupVersionResource().GroupResource()
 		opt, err := getter.GetRESTOptions(gr)
 		if err != nil {

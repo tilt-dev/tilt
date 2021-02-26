@@ -518,7 +518,7 @@ github.com/tilt-dev/localregistry-go
 ## explicit
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober
-# github.com/tilt-dev/tilt-apiserver v0.2.0
+# github.com/tilt-dev/tilt-apiserver v0.2.1
 ## explicit
 github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder
@@ -1421,8 +1421,6 @@ k8s.io/utils/trace
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.14
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/proto/client
-# sigs.k8s.io/apiserver-runtime v0.0.0-20201103144618-b52895ea8337
-## explicit
 # sigs.k8s.io/controller-runtime v0.8.2
 ## explicit
 sigs.k8s.io/controller-runtime
