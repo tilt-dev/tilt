@@ -36,6 +36,7 @@ func AllResourceObjects() []resource.Object {
 	return []resource.Object{
 		&Manifest{},
 		&FileWatch{},
+		&Cmd{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
 	}
@@ -44,6 +45,7 @@ func AllResourceLists() []runtime.Object {
 	return []runtime.Object{
 		&ManifestList{},
 		&FileWatchList{},
+		&CmdList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.
 	}

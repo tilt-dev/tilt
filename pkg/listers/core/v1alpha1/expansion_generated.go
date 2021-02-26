@@ -18,6 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
+// CmdListerExpansion allows custom methods to be added to
+// CmdLister.
+type CmdListerExpansion interface{}
+
 // FileWatchListerExpansion allows custom methods to be added to
 // FileWatchLister.
 type FileWatchListerExpansion interface{}
