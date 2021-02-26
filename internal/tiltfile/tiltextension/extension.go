@@ -71,7 +71,7 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (localPath string,
 
 	moduleName := strings.TrimPrefix(arg, extensionPrefix)
 	defer func() {
-		if err != nil {
+		if err == nil {
 			// NOTE(maia): Maybe in future we want to track if there was an error or not?
 			// For now, only record on successful load.
 			e.recordExtensionLoaded(ctx, t, moduleName)
