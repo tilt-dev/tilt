@@ -64,13 +64,13 @@ export function LegacyNavProvider(
 
     switch (props.resourceView) {
       case ResourceView.Alerts:
-        history.push(pb.path(`/r/${name}/alerts`))
+        history.push(pb.encpath`/r/${name}/alerts`)
         return
       case ResourceView.Facets:
-        history.push(pb.path(`/r/${name}/facets`))
+        history.push(pb.encpath`/r/${name}/facets`)
         return
       default:
-        history.push(pb.path(`/r/${name}`))
+        history.push(pb.encpath`/r/${name}`)
         return
     }
   }
@@ -129,7 +129,9 @@ export function OverviewNavProvider(
   let matchResource = matchPath(history.location.pathname, {
     path: pb.path("/r/:name"),
   })
-  let candidateTab = (matchResource?.params as any)?.name || ""
+  let candidateTab = decodeURIComponent(
+    (matchResource?.params as any)?.name || ""
+  )
   if (candidateTab && validateTab(candidateTab)) {
     selectedTab = candidateTab
   } else {
@@ -164,7 +166,7 @@ export function OverviewNavProvider(
 
     let newUrl = pb.path(`/overview`)
     if (newSelectedTab) {
-      newUrl = pb.path(`/r/${newSelectedTab}/overview`)
+      newUrl = pb.encpath`/r/${newSelectedTab}/overview`
     }
 
     // Ideally, we'd use a reducer to set tab state, but we
@@ -177,7 +179,7 @@ export function OverviewNavProvider(
   let openResource = (name: string, options?: { newTab: boolean }) => {
     name = name || ResourceName.all
     let openNew = options?.newTab || false
-    let url = pb.path(`/r/${name}/overview`)
+    let url = pb.encpath`/r/${name}/overview`
     let newTabs
     let selectedIndex = tabs.indexOf(selectedTab)
     let includes = tabs.includes(name)

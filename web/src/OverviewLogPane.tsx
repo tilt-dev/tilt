@@ -572,7 +572,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       let storedLineIndex = line.storedLineIndex
       let history = this.props.history
       history.push(
-        this.props.pathBuilder.path(`/r/${line.manifestName}/overview`),
+        this.props.pathBuilder.encpath`/r/${line.manifestName}/overview`,
         { storedLineIndex }
       )
     }

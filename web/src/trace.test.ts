@@ -37,22 +37,22 @@ it("generates trace nav data", () => {
     count: 2,
     current: {
       index: 0,
-      url: "/r/fe/trace/build:1",
+      url: "/r/fe/trace/build%3A1",
     },
     next: {
       index: 1,
-      url: "/r/fe/trace/build:2",
+      url: "/r/fe/trace/build%3A2",
     },
   })
   expect(traceNav(logs, pb, "build:2")).toEqual({
     count: 2,
     prev: {
       index: 0,
-      url: "/r/fe/trace/build:1",
+      url: "/r/fe/trace/build%3A1",
     },
     current: {
       index: 1,
-      url: "/r/fe/trace/build:2",
+      url: "/r/fe/trace/build%3A2",
     },
   })
 })
