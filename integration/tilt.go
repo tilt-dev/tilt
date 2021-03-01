@@ -2,10 +2,12 @@ package integration
 
 import (
 	"fmt"
+	"go/build"
 	"io"
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,7 +26,11 @@ func NewTiltDriver() *TiltDriver {
 }
 
 func (d *TiltDriver) cmd(args []string, out io.Writer) *exec.Cmd {
-	cmd := exec.Command("tilt", args...)
+	// rely on the Tilt binary in GOPATH that should have been created by `go install` from the
+	// fixture to avoid accidentally picking up a system install of tilt with higher precedence
+	// on system PATH
+	tiltBin := filepath.Join(build.Default.GOPATH, "bin", "tilt")
+	cmd := exec.Command(tiltBin, args...)
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.Env = os.Environ()
