@@ -130,7 +130,7 @@ func (m *ApiServerWatchManager) StartWatch(ctx context.Context, name string, spe
 
 func (m *ApiServerWatchManager) cleanupAndRemoveWatch(w *fsWatch) {
 	if err := w.notifier.Close(); err != nil {
-		w.logger.Debugf("Error cleaning up FS watch for %q: %v", w.name)
+		w.logger.Debugf("Error cleaning up FS watch for %q: %v", w.name, err)
 	}
 	w.cancel()
 

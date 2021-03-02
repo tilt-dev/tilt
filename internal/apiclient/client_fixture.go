@@ -131,6 +131,14 @@ func (f *FakeClientFixture) AssertActionsContains(matchFunc ActionMatchFunc) cli
 	}
 }
 
+type actionWithName interface {
+	GetName() string
+}
+
+type actionWithObject interface {
+	GetObject() runtime.Object
+}
+
 type actionsForLog []clienttest.Action
 
 func (a actionsForLog) String() string {
@@ -138,20 +146,12 @@ func (a actionsForLog) String() string {
 	for i, action := range a {
 		var name string
 		switch x := action.(type) {
-		case clienttest.CreateAction:
+		case actionWithName:
+			name = x.GetName()
+		case actionWithObject:
 			if metaObj, _ := meta.Accessor(x.GetObject()); metaObj != nil {
 				name = metaObj.GetName()
 			}
-		case clienttest.GetAction:
-			name = x.GetName()
-		case clienttest.UpdateAction:
-			if metaObj, _ := meta.Accessor(x.GetObject()); metaObj != nil {
-				name = metaObj.GetName()
-			}
-		case clienttest.PatchAction:
-			name = x.GetName()
-		case clienttest.DeleteAction:
-			name = x.GetName()
 		}
 		m := fmt.Sprintf("\t%d) %s %s:%s", i+1, strings.ToUpper(action.GetVerb()), action.GetResource().Resource, action.GetSubresource())
 		if name != "" {
