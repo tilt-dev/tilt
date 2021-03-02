@@ -225,7 +225,7 @@ type wmFixture struct {
 	cancel           func()
 	store            *store.TestingStore
 	wm               *WatchManager
-	fakeMultiWatcher *FakeMultiWatcher
+	fakeMultiWatcher *watch.FakeMultiWatcher
 	fakeTimerMaker   watch.FakeTimerMaker
 	*tempdir.TempDirFixture
 }
@@ -233,7 +233,7 @@ type wmFixture struct {
 func newWMFixture(t *testing.T) *wmFixture {
 	st := store.NewTestingStore()
 	timerMaker := watch.MakeFakeTimerMaker(t)
-	fakeMultiWatcher := NewFakeMultiWatcher()
+	fakeMultiWatcher := watch.NewFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.NewSub, timerMaker.Maker())
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()

@@ -3691,7 +3691,7 @@ type testFixture struct {
 	clock                      clockwork.Clock
 	upper                      Upper
 	b                          *fakeBuildAndDeployer
-	fsWatcher                  *fswatch.FakeMultiWatcher
+	fsWatcher                  *watch.FakeMultiWatcher
 	timerMaker                 *watch.FakeTimerMaker
 	docker                     *docker.FakeClient
 	kClient                    *k8s.FakeK8sClient
@@ -3723,7 +3723,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 
-	watcher := fswatch.NewFakeMultiWatcher()
+	watcher := watch.NewFakeMultiWatcher()
 	b := newFakeBuildAndDeployer(t)
 
 	timerMaker := watch.MakeFakeTimerMaker(t)

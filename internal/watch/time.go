@@ -17,7 +17,7 @@ func ProvideTimerMaker() TimerMaker {
 type FakeTimerMaker struct {
 	RestTimerLock *sync.Mutex
 	MaxTimerLock  *sync.Mutex
-	t             *testing.T
+	t             testing.TB
 }
 
 func (f FakeTimerMaker) Maker() TimerMaker {
@@ -45,7 +45,7 @@ func (f FakeTimerMaker) Maker() TimerMaker {
 	}
 }
 
-func MakeFakeTimerMaker(t *testing.T) FakeTimerMaker {
+func MakeFakeTimerMaker(t testing.TB) FakeTimerMaker {
 	restTimerLock := new(sync.Mutex)
 	maxTimerLock := new(sync.Mutex)
 

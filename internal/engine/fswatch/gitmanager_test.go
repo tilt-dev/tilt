@@ -68,13 +68,13 @@ type gmFixture struct {
 	cancel           func()
 	store            *store.TestingStore
 	gm               *GitManager
-	fakeMultiWatcher *FakeMultiWatcher
+	fakeMultiWatcher *watch.FakeMultiWatcher
 	*tempdir.TempDirFixture
 }
 
 func newGMFixture(t *testing.T) *gmFixture {
 	st := store.NewTestingStore()
-	fakeMultiWatcher := NewFakeMultiWatcher()
+	fakeMultiWatcher := watch.NewFakeMultiWatcher()
 	gm := NewGitManager(fakeMultiWatcher.NewSub)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()

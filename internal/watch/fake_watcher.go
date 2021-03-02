@@ -1,32 +1,31 @@
-package fswatch
+package watch
 
 import (
 	"path/filepath"
 	"sync"
 
 	"github.com/tilt-dev/tilt/internal/ospath"
-	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type FakeMultiWatcher struct {
-	Events chan watch.FileEvent
+	Events chan FileEvent
 	Errors chan error
 
 	mu         sync.Mutex
 	watchers   []*FakeWatcher
-	subs       []chan watch.FileEvent
+	subs       []chan FileEvent
 	subsErrors []chan error
 }
 
 func NewFakeMultiWatcher() *FakeMultiWatcher {
-	r := &FakeMultiWatcher{Events: make(chan watch.FileEvent, 20), Errors: make(chan error, 20)}
+	r := &FakeMultiWatcher{Events: make(chan FileEvent, 20), Errors: make(chan error, 20)}
 	go r.loop()
 	return r
 }
 
-func (w *FakeMultiWatcher) NewSub(paths []string, ignore watch.PathMatcher, _ logger.Logger) (watch.Notify, error) {
-	subCh := make(chan watch.FileEvent)
+func (w *FakeMultiWatcher) NewSub(paths []string, ignore PathMatcher, _ logger.Logger) (Notify, error) {
+	subCh := make(chan FileEvent)
 	errorCh := make(chan error)
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -38,10 +37,10 @@ func (w *FakeMultiWatcher) NewSub(paths []string, ignore watch.PathMatcher, _ lo
 	return watcher, nil
 }
 
-func (w *FakeMultiWatcher) getSubs() []chan watch.FileEvent {
+func (w *FakeMultiWatcher) getSubs() []chan FileEvent {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return append([]chan watch.FileEvent{}, w.subs...)
+	return append([]chan FileEvent{}, w.subs...)
 }
 
 func (w *FakeMultiWatcher) getSubErrors() []chan error {
@@ -86,22 +85,22 @@ func (w *FakeMultiWatcher) loop() {
 }
 
 type FakeWatcher struct {
-	inboundCh  chan watch.FileEvent
-	outboundCh chan watch.FileEvent
+	inboundCh  chan FileEvent
+	outboundCh chan FileEvent
 	errorCh    chan error
 
 	paths  []string
-	ignore watch.PathMatcher
+	ignore PathMatcher
 }
 
-func NewFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error, paths []string, ignore watch.PathMatcher) *FakeWatcher {
+func NewFakeWatcher(inboundCh chan FileEvent, errorCh chan error, paths []string, ignore PathMatcher) *FakeWatcher {
 	for i, path := range paths {
 		paths[i], _ = filepath.Abs(path)
 	}
 
 	return &FakeWatcher{
 		inboundCh:  inboundCh,
-		outboundCh: make(chan watch.FileEvent, 20),
+		outboundCh: make(chan FileEvent, 20),
 		errorCh:    errorCh,
 		paths:      paths,
 		ignore:     ignore,
@@ -135,12 +134,12 @@ func (w *FakeWatcher) Errors() chan error {
 	return w.errorCh
 }
 
-func (w *FakeWatcher) Events() chan watch.FileEvent {
+func (w *FakeWatcher) Events() chan FileEvent {
 	return w.outboundCh
 }
 
 func (w *FakeWatcher) loop() {
-	var q []watch.FileEvent
+	var q []FileEvent
 	for {
 		if len(q) == 0 {
 			e, ok := <-w.inboundCh
@@ -157,4 +156,4 @@ func (w *FakeWatcher) loop() {
 	}
 }
 
-var _ watch.Notify = &FakeWatcher{}
+var _ Notify = &FakeWatcher{}
