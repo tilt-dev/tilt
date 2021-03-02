@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	. "github.com/onsi/gomega"
 )
 
 var _ RStore = &TestingStore{}
@@ -98,40 +100,41 @@ func (s *TestingStore) WaitForAction(t testing.TB, typ reflect.Type) Action {
 // it to return the index it was found at, and then take an index, so that we can start
 // searching from the next index
 func WaitForAction(t testing.TB, typ reflect.Type, getActions func() []Action) Action {
-	start := time.Now()
-	timeout := 500 * time.Millisecond
+	msg := func() string {
+		return fmt.Sprintf("timed out waiting for action of type %s. Saw the following actions while waiting: %+v",
+			typ.Name(),
+			getActions())
+	}
 
-	for time.Since(start) < timeout {
+	var action Action
+	NewWithT(t).Eventually(func() Action {
 		actions := getActions()
 		for _, a := range actions {
 			if reflect.TypeOf(a) == typ {
+				action = a
 				return a
 			} else if la, ok := a.(LogAction); ok {
 				fmt.Println(string(la.Message()))
 			}
 		}
-	}
-	t.Fatalf("timed out waiting for action of type %s. Saw the following actions while waiting: %+v",
-		typ.Name(),
-		getActions())
-	return nil
+		return nil
+	}, 500*time.Millisecond).Should(Not(BeNil()), msg)
+
+	return action
 }
 
 // for use by tests (with a real channel-based store, NOT a TestingStore). Assert that
 // we don't see an action of the given type
-func AssertNoActionOfType(t testing.TB, typ reflect.Type, getActions func() []Action) Action {
-	start := time.Now()
-	timeout := 300 * time.Millisecond
-
-	for time.Since(start) < timeout {
+func AssertNoActionOfType(t testing.TB, typ reflect.Type, getActions func() []Action) {
+	NewWithT(t).Consistently(func() string {
 		actions := getActions()
 		for _, a := range actions {
 			if reflect.TypeOf(a) == typ {
-				t.Fatalf("Found action of type %s where none was expected: %+v", typ.Name(), a)
+				return fmt.Sprintf("Found action of type %s where none was expected: %+v", typ.Name(), a)
 			} else if la, ok := a.(LogAction); ok {
 				fmt.Println(string(la.Message()))
 			}
 		}
-	}
-	return nil
+		return ""
+	}, 300*time.Millisecond).Should(BeEmpty())
 }
