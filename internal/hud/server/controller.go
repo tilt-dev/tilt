@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	genericapiserver "k8s.io/apiserver/pkg/server"
@@ -17,11 +18,11 @@ type HeadsUpServerController struct {
 	port            model.WebPort
 	hudServer       *HeadsUpServer
 	assetServer     assets.Server
+	apiServer       *http.Server
 	webURL          model.WebURL
 	apiServerConfig *APIServerConfig
 
-	shutdown   func()
-	shutdownCh <-chan struct{}
+	shutdown func()
 }
 
 func ProvideHeadsUpServerController(
@@ -41,14 +42,16 @@ func ProvideHeadsUpServerController(
 		webURL:          webURL,
 		apiServerConfig: apiServerConfig,
 		shutdown:        func() {},
-		shutdownCh:      emptyCh,
 	}
 }
 
 func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 	s.shutdown()
-	<-s.shutdownCh
 	s.assetServer.TearDown(ctx)
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+	_ = s.apiServer.Shutdown(ctx)
 }
 
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore) {
@@ -101,14 +104,12 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	r.PathPrefix("/version").Handler(apiserverHandler)
 	r.PathPrefix("/").Handler(s.hudServer.Router())
 
-	stoppedCh, err := genericapiserver.RunServer(&http.Server{
+	s.apiServer = &http.Server{
 		Addr:           serving.Listener.Addr().String(),
 		Handler:        r,
 		MaxHeaderBytes: 1 << 20,
-	}, serving.Listener, prepared.ShutdownTimeout, stopCh)
-	if err != nil {
-		return err
 	}
+	runServer(ctx, s.apiServer, serving.Listener)
 	server.GenericAPIServer.RunPostStartHooks(stopCh)
 
 	go func() {
@@ -117,8 +118,6 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 			st.Dispatch(store.NewErrorAction(err))
 		}
 	}()
-
-	s.shutdownCh = stoppedCh
 
 	return nil
 }
