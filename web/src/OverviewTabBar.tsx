@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
+import { usePathBuilder } from "./PathBuilder"
 import {
   AnimDuration,
   Color,
@@ -115,6 +116,7 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
   let nav = useTabNav()
   let tabs = nav.tabs
   let selectedTab = props.selectedTab
+  let pb = usePathBuilder()
 
   let onClose = (e: any, name: string) => {
     e.stopPropagation()
@@ -123,7 +125,7 @@ export default function OverviewTabBar(props: OverviewTabBarProps) {
   }
 
   let tabEls = tabs.map((name) => {
-    let href = `/r/${name}/overview`
+    let href = pb.encpath`/r/${name}/overview`
     let text = name === ResourceName.all ? "All Resources" : name
     let isSelectedTab = false
     if (selectedTab === name) {

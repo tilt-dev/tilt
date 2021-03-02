@@ -536,7 +536,8 @@ async function copyTextToClipboard(text: string, cb: () => void) {
 // with a popover over the original OverviewItemDetails
 export function OverviewItemDetails(props: OverviewItemDetailsProps) {
   let { item, width, height } = props
-  let link = `/r/${item.name}/overview`
+  let pathBuilder = usePathBuilder()
+  let link = pathBuilder.encpath`/r/${item.name}/overview`
   let endpoints = item.endpoints.map((ep) => {
     return (
       <Endpoint
@@ -582,7 +583,6 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
     )
   }
 
-  let pathBuilder = usePathBuilder()
   let isBuildingClass =
     item.buildStatus === ResourceStatus.Building ? "isBuilding" : ""
   let ref = useRef(null as any)
@@ -607,7 +607,7 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
         <OverviewItemDetailsLinkBox>
           {endpoints}
           {copy}
-          <ShowDetailsBox to={pathBuilder.path(link)}>
+          <ShowDetailsBox to={link}>
             <MaximizeSvg />
 
             <DetailTextBold>Show details</DetailTextBold>

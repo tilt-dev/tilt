@@ -57,11 +57,21 @@ class PathBuilder {
     return ""
   }
 
-  path(relPath: string) {
+  path(relPath: string): string {
     if (relPath[0] !== "/") {
       throw new Error('relPath should start with "/", actual:' + relPath)
     }
     return this.rootPath() + relPath
+  }
+
+  // A template literal function for encoding paths.
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals
+  encpath(strings: TemplateStringsArray, ...values: string[]): string {
+    let result = [strings[0]]
+    for (let i = 0; i < values.length; i++) {
+      result.push(encodeURIComponent(values[i]), strings[i + 1])
+    }
+    return this.path(result.join(""))
   }
 }
 
@@ -74,5 +84,4 @@ const pathBuilderContext = React.createContext<PathBuilder>(
 export function usePathBuilder(): PathBuilder {
   return useContext(pathBuilderContext)
 }
-
 export const PathBuilderProvider = pathBuilderContext.Provider

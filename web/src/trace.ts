@@ -8,7 +8,7 @@ function traceData(
   span: { spanId: string; manifestName: string },
   index: number
 ): LogTrace {
-  let url = pb.path(`/r/${span.manifestName}/trace/${span.spanId}`)
+  let url = pb.encpath`/r/${span.manifestName}/trace/${span.spanId}`
   return { url, index }
 }
 

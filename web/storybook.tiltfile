@@ -4,31 +4,31 @@ local_resource(
   links=['http://localhost:9009'])
 
 local_resource(
-  'prettier',
+  'check/prettier',
   'cd .. && make prettier',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
 local_resource(
-  'tsc',
+  'check/tsc',
   'node_modules/.bin/tsc -p .',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
 local_resource(
-  'check-js',
+  'check/check-js',
   'cd .. && make check-js',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
 test(
-  'test-js',
+  'test/test-js',
   'cd .. && make test-js',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
 local_resource(
-  'update-snapshots',
+  'test/update-snapshots',
   'CI=true yarn test -u',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
