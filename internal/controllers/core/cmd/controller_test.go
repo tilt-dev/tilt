@@ -59,7 +59,7 @@ func TestServe(t *testing.T) {
 		return cmd.Status.Running != nil && cmd.Status.Ready
 	})
 
-	require.Equal(t, "testdir", f.fe.getProcess(cmd).workdir)
+	require.Equal(t, "testdir", f.fe.Process(cmd).workdir)
 
 	f.assertLogMessage("foo", "Starting cmd sleep 60")
 }
@@ -257,7 +257,7 @@ func (f *fixture) cmd(name string, cmd string, workdir string) *Cmd {
 
 func (f *fixture) assertNoProcessExists(cmd *Cmd) {
 	assert.Eventually(f.t, func() bool {
-		return f.fe.getProcess(cmd) == nil
+		return f.fe.Process(cmd) == nil
 	}, timeout, interval)
 }
 

@@ -85,8 +85,6 @@ var BaseWireSet = wire.NewSet(
 	runtimelog.NewPodLogManager,
 	portforward.NewController,
 	engine.NewBuildController,
-	local.ProvideExecer,
-	local.ProvideProberManager,
 	local.NewController,
 	k8swatch.NewPodWatcher,
 	k8swatch.NewServiceWatcher,

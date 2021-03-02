@@ -34,6 +34,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -3454,8 +3455,6 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 		return strings.Contains(state.LogStore.ManifestLog("foo"), "Starting cmd false")
 	})
 
-	f.fe.RequireNoKnownProcess(t, "true")
-
 	err := f.Stop()
 	require.NoError(t, err)
 }
@@ -3707,8 +3706,7 @@ type testFixture struct {
 	tfl                        tiltfile.TiltfileLoader
 	opter                      *tiltanalytics.FakeOpter
 	dp                         *dockerprune.DockerPruner
-	fe                         *local.FakeExecer
-	fpm                        *local.FakeProberManager
+	fe                         *cmd.FakeExecer
 	overrideMaxParallelUpdates int
 
 	onchangeCh chan bool
@@ -3768,16 +3766,21 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
-	fe := local.NewFakeExecer()
-	fpm := local.NewFakeProberManager()
-	lc := local.NewController(fe, fpm)
+	fe := cmd.NewFakeExecer()
+	fpm := cmd.NewFakeProberManager()
+
+	clientset, err := server.ProvideTiltInterface(serverOptions)
+	require.NoError(t, err)
+
+	lc := local.NewController(clientset.CoreV1alpha1().Cmds())
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
 	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, controllers.NewScheme())
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	cb := controllers.NewControllerBuilder(tscm, nil)
+	cmdc := cmd.NewController(st, fe, fpm)
+	cb := controllers.NewControllerBuilder(tscm, []controllers.Controller{cmdc})
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
@@ -3807,7 +3810,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		opter:          to,
 		dp:             dp,
 		fe:             fe,
-		fpm:            fpm,
 	}
 
 	ret.disableEnvAnalyticsOpt()

@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -161,3 +162,15 @@ type PanicAction struct {
 }
 
 func (PanicAction) Action() {}
+
+type Cmd = v1alpha1.Cmd
+
+type CmdUpdateAction struct {
+	Cmd *Cmd
+}
+
+func NewCmdUpdateAction(cmd *Cmd) CmdUpdateAction {
+	return CmdUpdateAction{Cmd: cmd.DeepCopy()}
+}
+
+func (CmdUpdateAction) Action() {}

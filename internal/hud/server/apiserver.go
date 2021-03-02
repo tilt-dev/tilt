@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder"
 	"github.com/tilt-dev/tilt/pkg/clientset/tiltapi"
+	tiltapicore "github.com/tilt-dev/tilt/pkg/clientset/tiltapi/typed/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -77,6 +78,10 @@ func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port mode
 // Provide a typed API client for the Tilt server.
 func ProvideTiltInterface(config *APIServerConfig) (Interface, error) {
 	return tiltapi.NewForConfig(config.GenericConfig.LoopbackClientConfig)
+}
+
+func ProvideCmdInterface(i Interface) tiltapicore.CmdInterface {
+	return i.CoreV1alpha1().Cmds()
 }
 
 // Provide a dynamic API client for the Tilt server.

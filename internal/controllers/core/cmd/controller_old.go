@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -50,6 +51,7 @@ func (c *Controller) SetClient(client client.Client) {
 }
 
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log.Println("RECONCILE", req)
 	var cmd Cmd
 	err := c.Get(ctx, req.NamespacedName, &cmd)
 	if err != nil {
@@ -249,13 +251,23 @@ func (c *Controller) updateStatus(ctx context.Context, name types.NamespacedName
 		logger.Get(ctx).Infof("cmd status update: %v", err)
 	}
 
+	proc, ok := c.procs[name]
+	if !ok {
+		return
+	}
+
+	newStatus := proc.status
+	update(&newStatus)
+	proc.status = newStatus
+
 	updated := cmd.DeepCopy()
-	update(&updated.Status)
+	updated.Status = *(newStatus.DeepCopy())
 
 	err = c.Status().Update(ctx, updated)
 	if err != nil {
 		logger.Get(ctx).Infof("cmd status update: %v", err)
 	}
+	c.st.Dispatch(store.NewCmdUpdateAction(updated))
 }
 
 func (c *Controller) processStatuses(
@@ -307,6 +319,7 @@ func (c *Controller) processStatuses(
 // (note: it may not be running yet, or may have already finished)
 type currentProcess struct {
 	spec       CmdSpec
+	status     CmdStatus
 	procNum    int
 	cancelFunc context.CancelFunc
 	// closed when the process finishes executing, intentionally or not

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"path/filepath"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -168,10 +170,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handlePanicAction(state, action)
 	case server.SetTiltfileArgsAction:
 		handleSetTiltfileArgsAction(state, action)
-	case local.LocalServeStatusAction:
-		handleLocalServeStatusAction(ctx, state, action)
-	case local.LocalServeReadinessProbeAction:
-		handleLocalServeReadinessProbeAction(ctx, state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
 	case exit.Action:
@@ -184,6 +182,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleMetricsDashboardAction(state, action)
 	case server.OverrideTriggerModeAction:
 		handleOverrideTriggerModeAction(ctx, state, action)
+	case store.CmdUpdateAction:
+		handleCmdUpdateAction(state, action)
+	case local.CmdCreateAction:
+		handleCmdCreateAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -773,46 +775,6 @@ func handleSetTiltfileArgsAction(state *store.EngineState, action server.SetTilt
 	state.UserConfigState = state.UserConfigState.WithArgs(action.Args)
 }
 
-func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState, action local.LocalServeStatusAction) {
-	mt, ok := state.ManifestTargets[action.ManifestName]
-	if !ok {
-		logger.Get(ctx).Infof("got runtime status information for unknown local resource %s", action.ManifestName)
-	}
-	ms := mt.State
-
-	lrs := ms.LocalRuntimeState()
-
-	if action.Status == model.RuntimeStatusError {
-		lrs.Ready = false
-	}
-
-	lrs.Status = action.Status
-	lrs.PID = action.PID
-	lrs.SpanID = action.SpanID
-	ms.RuntimeState = lrs
-}
-
-func handleLocalServeReadinessProbeAction(ctx context.Context, state *store.EngineState, action local.LocalServeReadinessProbeAction) {
-	ms, ok := state.ManifestState(action.ManifestName)
-	if !ok {
-		logger.Get(ctx).Infof("got readiness probe information for unknown local resource %s", action.ManifestName)
-	}
-
-	lrs := ms.LocalRuntimeState()
-	lrs.Ready = action.Ready
-	if action.Ready {
-		lrs.LastReadyOrSucceededTime = time.Now()
-		if lrs.Status == "" || lrs.Status == model.RuntimeStatusPending {
-			// only transition to OK if currently pending AND ready
-			lrs.Status = model.RuntimeStatusOK
-		}
-	} else if lrs.Status == "" || lrs.Status == model.RuntimeStatusOK {
-		// only transition to pending if currently OK and NOT ready
-		lrs.Status = model.RuntimeStatusPending
-	}
-	ms.RuntimeState = lrs
-}
-
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action dcwatch.EventAction) {
 	evt := action.Event
 	mn := model.ManifestName(evt.Service)
@@ -943,4 +905,79 @@ func handleOverrideTriggerModeAction(ctx context.Context, state *store.EngineSta
 		}
 		mt.Manifest.TriggerMode = action.TriggerMode
 	}
+}
+
+// When the Cmd controller updates a command, check to see
+// what parts of the EngineState care about that command.
+//
+// If the local serve cmd is watching the cmd, update
+// the local runtime state to match the cmd status.
+func handleCmdUpdateAction(state *store.EngineState, action store.CmdUpdateAction) {
+	log.Printf("UPDATE ACTION %+v\n", action)
+	cmd := action.Cmd
+	mn := model.ManifestName(cmd.Labels[v1alpha1.LabelManifest])
+	mt, ok := state.ManifestTargets[mn]
+	if !ok {
+		delete(state.Cmds, cmd.Name)
+		return
+	}
+
+	ms := mt.State
+	lrs := ms.LocalRuntimeState()
+	if lrs.CmdName != cmd.Name {
+		delete(state.Cmds, cmd.Name)
+		return
+	}
+
+	state.Cmds[action.Cmd.Name] = cmd
+
+	spec := cmd.Spec
+	status := cmd.Status
+	if status.Running != nil {
+		lrs.PID = int(cmd.Status.Running.PID)
+
+		// Currently, Cmd is only used for servers.
+		// Make the Status OK when the readiness probe passes (if there is one).
+		if spec.ReadinessProbe == nil || cmd.Status.Ready {
+			lrs.Status = model.RuntimeStatusOK
+		} else {
+			lrs.Status = model.RuntimeStatusPending
+		}
+
+	} else if status.Terminated != nil {
+		// Currently, CMD is only used for servers,
+		// so any termination is an error.
+		lrs.PID = int(status.Terminated.PID)
+		lrs.Status = model.RuntimeStatusError
+
+	} else {
+		lrs.Status = model.RuntimeStatusPending
+	}
+
+	if lrs.Ready != cmd.Status.Ready {
+		lrs.Ready = cmd.Status.Ready
+		if lrs.Ready {
+			lrs.LastReadyOrSucceededTime = time.Now()
+		}
+	}
+
+	ms.RuntimeState = lrs
+}
+
+// When the local controller creates a new command, link
+// that command to the Local runtime state.
+func handleCmdCreateAction(state *store.EngineState, action local.CmdCreateAction) {
+	mn := action.ManifestName
+	mt, ok := state.ManifestTargets[mn]
+	if !ok {
+		return
+	}
+
+	log.Printf("CREATE ACTION %+v\n", action)
+	ms := mt.State
+	lrs := ms.LocalRuntimeState()
+	lrs.CmdName = action.Cmd.Name
+	ms.RuntimeState = lrs
+
+	handleCmdUpdateAction(state, store.CmdUpdateAction{Cmd: action.Cmd})
 }

@@ -8,6 +8,7 @@ var WireSet = wire.NewSet(
 	ProvideMemConn,
 	ProvideTiltServerOptions,
 	ProvideTiltInterface,
+	ProvideCmdInterface,
 	ProvideTiltDynamic,
 	ProvideHeadsUpServer,
 	ProvideHeadsUpServerController,

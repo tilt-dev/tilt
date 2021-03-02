@@ -104,7 +104,7 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan stat
 	}
 }
 
-func (fe *FakeExecer) getProcess(cmd *Cmd) *fakeExecProcess {
+func (fe *FakeExecer) Process(cmd *Cmd) *fakeExecProcess {
 	fe.mu.Lock()
 	defer fe.mu.Unlock()
 	return fe.processes[model.Cmd{Argv: cmd.Spec.Args}.String()]

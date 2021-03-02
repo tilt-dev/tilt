@@ -29,6 +29,8 @@ type EngineState struct {
 	// saved so that we can render in order
 	ManifestDefinitionOrder []model.ManifestName
 
+	Cmds map[string]*Cmd
+
 	// TODO(nick): This will eventually be a general Target index.
 	ManifestTargets map[model.ManifestName]*ManifestTarget
 
@@ -462,6 +464,7 @@ type ManifestState struct {
 func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.LogStore = logstore.NewLogStore()
+	ret.Cmds = make(map[string]*Cmd)
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
 	ret.PendingConfigFileChanges = make(map[string]time.Time)
 	ret.Secrets = model.SecretSet{}
