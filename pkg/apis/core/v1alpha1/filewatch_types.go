@@ -107,13 +107,7 @@ func (in *FileWatchList) GetListMeta() *metav1.ListMeta {
 type FileWatchStatus struct {
 	LastEventTime *metav1.Time `json:"lastEventTime,omitempty"`
 	SeenFiles     []string     `json:"seenFiles,omitempty"`
-	ErrorMessage  string       `json:"errorMessage"`
-	// FileEvents []FileEvent `json:"fileEvents,omitempty"`
-}
-
-type FileEvent struct {
-	Time      *metav1.Time `json:"time"`
-	SeenFiles []string     `json:"seenFiles"`
+	Error         string       `json:"error,omitempty"`
 }
 
 // FileWatch implements ObjectWithStatusSubResource interface.

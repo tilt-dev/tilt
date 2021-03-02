@@ -38,7 +38,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting":    schema_pkg_apis_core_v1alpha1_CmdStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus":          schema_pkg_apis_core_v1alpha1_CmdStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":         schema_pkg_apis_core_v1alpha1_ExecAction(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent":          schema_pkg_apis_core_v1alpha1_FileEvent(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":          schema_pkg_apis_core_v1alpha1_FileWatch(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":      schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec":      schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref),
@@ -426,40 +425,6 @@ func schema_pkg_apis_core_v1alpha1_ExecAction(ref common.ReferenceCallback) comm
 	}
 }
 
-func schema_pkg_apis_core_v1alpha1_FileEvent(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"time": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
-						},
-					},
-					"seenFiles": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"time", "seenFiles"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
-	}
-}
-
 func schema_pkg_apis_core_v1alpha1_FileWatch(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -631,15 +596,13 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 							},
 						},
 					},
-					"errorMessage": {
+					"error": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 				},
-				Required: []string{"errorMessage"},
 			},
 		},
 		Dependencies: []string{

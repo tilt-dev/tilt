@@ -174,7 +174,7 @@ func (m *ApiServerWatchManager) notifyLoop(ctx context.Context, w *fsWatch) {
 			err := m.updateStatus(ctx, w.name, func(status *filewatches.FileWatchStatus) {
 				now := v1.Now()
 				status.LastEventTime = &now
-				status.ErrorMessage = ""
+				status.Error = ""
 				status.SeenFiles = seenFiles(fsEvents, status.SeenFiles)
 			})
 			if err != nil {
@@ -197,7 +197,7 @@ func (m *ApiServerWatchManager) notifyLoop(ctx context.Context, w *fsWatch) {
 			updateErr := m.updateStatus(ctx, w.name, func(status *filewatches.FileWatchStatus) {
 				now := v1.Now()
 				status.LastEventTime = &now
-				status.ErrorMessage = errorMessage
+				status.Error = errorMessage
 			})
 			if updateErr != nil {
 				// TODO(milas): make this log message coherent (also - should this be fatal?)
