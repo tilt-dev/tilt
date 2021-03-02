@@ -7,7 +7,7 @@ import (
 )
 
 var controllerSet = wire.NewSet(
-	filewatch.NewController,
+	filewatch.WireSet,
 
 	ProvideControllers,
 )
@@ -23,8 +23,6 @@ var WireSet = wire.NewSet(
 
 	NewScheme,
 	NewControllerBuilder,
-
-	filewatch.NewApiServerWatchManager,
 
 	controllerSet,
 )

@@ -29,6 +29,10 @@ type NotifyClient interface {
 	UpdateStatus(ctx context.Context, fileWatch *filewatches.FileWatch, opts v1.UpdateOptions) (*filewatches.FileWatch, error)
 }
 
+func ProvideNotifyClient(tiltApiClient tiltapi.Interface) NotifyClient {
+	return tiltApiClient.CoreV1alpha1().FileWatches()
+}
+
 type ApiServerWatchManager struct {
 	client NotifyClient
 
@@ -36,38 +40,36 @@ type ApiServerWatchManager struct {
 	timerMaker   watch.TimerMaker
 
 	mu      sync.Mutex
-	watches map[string]fsWatch
+	watches map[string]*fsWatch
 }
 
 type fsWatch struct {
+	name string
 	spec     filewatches.FileWatchSpec
+	logger logger.Logger
 	notifier watch.Notify
 	cancel   func()
 }
 
-func NewApiServerWatchManager(clientset tiltapi.Interface, watcherMaker watch.FsWatcherMaker, timerMaker watch.TimerMaker) *ApiServerWatchManager {
+func NewApiServerWatchManager(notifyClient NotifyClient, watcherMaker watch.FsWatcherMaker, timerMaker watch.TimerMaker) *ApiServerWatchManager {
 	return &ApiServerWatchManager{
-		client:       clientset.CoreV1alpha1().FileWatches(),
+		client:       notifyClient,
 		watcherMaker: watcherMaker,
 		timerMaker:   timerMaker,
-		watches:      make(map[string]fsWatch),
+		watches:      make(map[string]*fsWatch),
 	}
 }
 
-func (m *ApiServerWatchManager) StopWatch(name string) error {
+func (m *ApiServerWatchManager) StopWatch(name string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	w, ok := m.watches[name]
 	if !ok {
-		return nil
+		return
 	}
 
-	if err := w.notifier.Close(); err != nil {
-		return err
-	}
-	w.cancel()
-	return nil
+	m.cleanupAndRemoveWatch(w)
 }
 
 // StartWatch adds a new filesystem watch for a FileWatch API object.
@@ -79,8 +81,8 @@ func (m *ApiServerWatchManager) StartWatch(ctx context.Context, name string, spe
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	oldWatch, watchAlreadyExists := m.watches[name]
-	if watchAlreadyExists {
+	oldWatch := m.watches[name]
+	if oldWatch != nil {
 		if equality.Semantic.DeepEqual(oldWatch.spec, spec) {
 			return false, nil
 		}
@@ -106,25 +108,36 @@ func (m *ApiServerWatchManager) StartWatch(ctx context.Context, name string, spe
 	}
 
 	watchCtx, cancel := context.WithCancel(ctx)
-
-	w := fsWatch{
+	w := &fsWatch{
+		name: name,
 		spec:     spec,
+		logger: logger.Get(watchCtx),
 		notifier: notifier,
 		cancel:   cancel,
 	}
-
-	go m.notifyLoop(watchCtx, name, notifier)
+	go m.notifyLoop(watchCtx, w)
 
 	// the old watch is cleaned up AFTER starting the new one to avoid missing events
 	// (this might mean duplicates are received, which is an acceptable trade-off)
-	if oldWatch.cancel != nil {
-		oldWatch.cancel()
-		delete(m.watches, name)
+	if oldWatch != nil {
+		m.cleanupAndRemoveWatch(oldWatch)
 	}
 
 	m.watches[name] = w
 
 	return true, nil
+}
+
+func (m *ApiServerWatchManager) cleanupAndRemoveWatch(w *fsWatch) {
+	if err := w.notifier.Close(); err != nil {
+		w.logger.Debugf("Error cleaning up FS watch for %q: %v", w)
+	}
+	w.cancel()
+
+	entry := m.watches[w.name]
+	if entry == w {
+		delete(m.watches, w.name)
+	}
 }
 
 type updateStatusFunc func(status *filewatches.FileWatchStatus)
@@ -142,8 +155,14 @@ func (m *ApiServerWatchManager) updateStatus(ctx context.Context, name string, u
 	return nil
 }
 
-func (m *ApiServerWatchManager) notifyLoop(ctx context.Context, name string, notifier watch.Notify) {
-	eventsCh := watch.CoalesceEvents(m.timerMaker, notifier.Events())
+func (m *ApiServerWatchManager) notifyLoop(ctx context.Context, w *fsWatch) {
+	eventsCh := watch.CoalesceEvents(m.timerMaker, w.notifier.Events())
+
+	defer func() {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		m.cleanupAndRemoveWatch(w)
+	}()
 
 	for {
 		select {
@@ -152,16 +171,16 @@ func (m *ApiServerWatchManager) notifyLoop(ctx context.Context, name string, not
 				return
 			}
 
-			err := m.updateStatus(ctx, name, func(status *filewatches.FileWatchStatus) {
+			err := m.updateStatus(ctx, w.name, func(status *filewatches.FileWatchStatus) {
 				now := v1.Now()
 				status.LastEventTime = &now
 				status.ErrorMessage = ""
 				status.SeenFiles = seenFiles(fsEvents, status.SeenFiles)
 			})
 			if err != nil {
-				logger.Get(ctx).Debugf("Failed to record FS events for %q: %v", name, err)
+				w.logger.Debugf("Failed to record FS events for %q: %v", w.name, err)
 			}
-		case err, ok := <-notifier.Errors():
+		case err, ok := <-w.notifier.Errors():
 			if !ok {
 				return
 			}
@@ -175,19 +194,16 @@ func (m *ApiServerWatchManager) notifyLoop(ctx context.Context, name string, not
 				errorMessage = err.Error()
 			}
 
-			updateErr := m.updateStatus(ctx, name, func(status *filewatches.FileWatchStatus) {
+			updateErr := m.updateStatus(ctx, w.name, func(status *filewatches.FileWatchStatus) {
 				now := v1.Now()
 				status.LastEventTime = &now
 				status.ErrorMessage = errorMessage
 			})
 			if updateErr != nil {
 				// TODO(milas): make this log message coherent (also - should this be fatal?)
-				logger.Get(ctx).Debugf("Failed to update FileWatch: %v", updateErr)
+				w.logger.Debugf("Failed to update FileWatch: %v", updateErr)
 			}
 		case <-ctx.Done():
-			if err := notifier.Close(); err != nil {
-				logger.Get(ctx).Debugf("Error cleaning up FS watch: %v", err)
-			}
 			return
 		}
 	}

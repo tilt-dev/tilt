@@ -64,13 +64,7 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(&fileWatchApiObj, fsFileWatchFinalizer) {
-			if err := r.WatchManager.StopWatch(fileWatchApiObj.Name); err != nil {
-				// errors aren't propagated as it could result in the entity getting
-				// stuck in deleting state forever (this matches logic for previous
-				// Tilt Store watch manager)
-				log.Debugf("Error during filesystem watch cleanup: %v", err)
-			}
-
+			r.WatchManager.StopWatch(fileWatchApiObj.Name)
 			controllerutil.RemoveFinalizer(&fileWatchApiObj, fsFileWatchFinalizer)
 			if err := r.Update(ctx, &fileWatchApiObj); err != nil {
 				return ctrl.Result{}, err
