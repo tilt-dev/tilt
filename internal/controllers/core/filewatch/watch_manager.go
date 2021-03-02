@@ -44,9 +44,9 @@ type ApiServerWatchManager struct {
 }
 
 type fsWatch struct {
-	name string
+	name     string
 	spec     filewatches.FileWatchSpec
-	logger logger.Logger
+	logger   logger.Logger
 	notifier watch.Notify
 	cancel   func()
 }
@@ -109,9 +109,9 @@ func (m *ApiServerWatchManager) StartWatch(ctx context.Context, name string, spe
 
 	watchCtx, cancel := context.WithCancel(ctx)
 	w := &fsWatch{
-		name: name,
+		name:     name,
 		spec:     spec,
-		logger: logger.Get(watchCtx),
+		logger:   logger.Get(watchCtx),
 		notifier: notifier,
 		cancel:   cancel,
 	}
@@ -130,7 +130,7 @@ func (m *ApiServerWatchManager) StartWatch(ctx context.Context, name string, spe
 
 func (m *ApiServerWatchManager) cleanupAndRemoveWatch(w *fsWatch) {
 	if err := w.notifier.Close(); err != nil {
-		w.logger.Debugf("Error cleaning up FS watch for %q: %v", w)
+		w.logger.Debugf("Error cleaning up FS watch for %q: %v", w.name)
 	}
 	w.cancel()
 

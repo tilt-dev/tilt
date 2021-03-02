@@ -76,7 +76,7 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// N.B. the background context is used as the root context for file watching; otherwise, the file watch would
-	//		be cancelled as soon as reconciliation was done
+	//		be canceled as soon as reconciliation was done
 	fileWatchCtx := logger.WithLogger(context.Background(), log)
 	// reconciliation MUST be idempotent; StartWatch() will noop if spec hasn't changed and update it if it has
 	addedOrUpdated, err := r.WatchManager.StartWatch(fileWatchCtx, fileWatchApiObj.Name, fileWatchApiObj.Spec)
