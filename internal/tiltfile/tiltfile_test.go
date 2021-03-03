@@ -4967,8 +4967,8 @@ def printFoo():
 
 	extensionEvent := f.SingleAnalyticsEvent("tiltfile.loaded.extension")
 	expectedTags := map[string]string{
-		"name": "fooExt",
-		"env":  "docker-for-desktop",
+		"ext_name": "fooExt",
+		"env":      "docker-for-desktop",
 	}
 	require.Equal(t, expectedTags, extensionEvent.Tags)
 }

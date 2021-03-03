@@ -267,8 +267,8 @@ func (tfl *tiltfileLoader) reportTiltfileLoaded(
 	tfl.analytics.Timer("tiltfile.load", loadDur, nil)
 	for ext := range extensionsLoaded {
 		tags := map[string]string{
-			"env":  string(tfl.env),
-			"name": ext,
+			"env":      string(tfl.env),
+			"ext_name": ext,
 		}
 		tfl.analytics.Incr("tiltfile.loaded.extension", tags)
 	}
