@@ -116,6 +116,10 @@ type EngineState struct {
 	MetricsServing  MetricsServing
 
 	UserConfigState model.UserConfigState
+
+	// API-server-based data models. Stored in EngineState
+	// to assist in migration.
+	Cmds map[string]*Cmd
 }
 
 type CloudStatus struct {
@@ -473,6 +477,7 @@ func NewState() *EngineState {
 		ret.AnalyticsEnvOpt = analytics.OptOut
 	}
 
+	ret.Cmds = make(map[string]*Cmd)
 	return ret
 }
 
