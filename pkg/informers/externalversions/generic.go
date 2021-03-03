@@ -58,8 +58,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1alpha1().Cmds().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("filewatches"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1alpha1().FileWatches().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("manifests"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1alpha1().Manifests().Informer()}, nil
 
 	}
 

@@ -177,6 +177,10 @@ type CmdStateTerminated struct {
 
 	// Time at which the command last terminated
 	FinishedAt metav1.Time `json:"finishedAt,omitempty"`
+
+	// (brief) reason the process is terminated
+	// +optional
+	Reason string `json:"reason,omitempty"`
 }
 
 // Cmd implements ObjectWithStatusSubResource interface.

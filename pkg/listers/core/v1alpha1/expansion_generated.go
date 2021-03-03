@@ -25,7 +25,3 @@ type CmdListerExpansion interface{}
 // FileWatchListerExpansion allows custom methods to be added to
 // FileWatchLister.
 type FileWatchListerExpansion interface{}
-
-// ManifestListerExpansion allows custom methods to be added to
-// ManifestLister.
-type ManifestListerExpansion interface{}

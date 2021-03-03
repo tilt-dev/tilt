@@ -29,7 +29,6 @@ type CoreV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	CmdsGetter
 	FileWatchesGetter
-	ManifestsGetter
 }
 
 // CoreV1alpha1Client is used to interact with features provided by the core.tilt.dev group.
@@ -43,10 +42,6 @@ func (c *CoreV1alpha1Client) Cmds() CmdInterface {
 
 func (c *CoreV1alpha1Client) FileWatches() FileWatchInterface {
 	return newFileWatches(c)
-}
-
-func (c *CoreV1alpha1Client) Manifests() ManifestInterface {
-	return newManifests(c)
 }
 
 // NewForConfig creates a new CoreV1alpha1Client for the given config.
