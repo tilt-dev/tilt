@@ -24,12 +24,12 @@ type APIServerConfig = apiserver.Config
 type DynamicInterface = dynamic.Interface
 type Interface = tiltapi.Interface
 
-func ProvideMemConn() *memconn.Provider {
-	return &memconn.Provider{}
+func ProvideMemConn() apiserver.ConnProvider {
+	return apiserver.NetworkConnProvider(&memconn.Provider{}, "memu")
 }
 
 // Configures the Tilt API server.
-func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port model.WebPort, tiltBuild model.TiltBuild, memconn *memconn.Provider) (*APIServerConfig, error) {
+func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port model.WebPort, tiltBuild model.TiltBuild, memconn apiserver.ConnProvider) (*APIServerConfig, error) {
 	w := logger.Get(ctx).Writer(logger.DebugLvl)
 	builder := builder.NewServerBuilder().
 		WithOutputWriter(w)

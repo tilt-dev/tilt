@@ -17,9 +17,6 @@ limitations under the License.
 package apiserver
 
 import (
-	"context"
-	"net"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -28,12 +25,6 @@ import (
 	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 )
-
-type ConnProvider interface {
-	Dial(network, address string) (net.Conn, error)
-	DialContext(ctx context.Context, network, address string) (net.Conn, error)
-	Listen(network, address string) (net.Listener, error)
-}
 
 func NewScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
