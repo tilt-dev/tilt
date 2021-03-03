@@ -183,15 +183,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	tiltapiInterface, err := server.ProvideTiltInterface(apiserverConfig)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	notifyClient := filewatch.ProvideNotifyClient(tiltapiInterface)
 	fsWatcherMaker := watch.ProvideFsWatcherMaker()
 	timerMaker := watch.ProvideTimerMaker()
-	apiServerWatchManager := filewatch.NewApiServerWatchManager(notifyClient, fsWatcherMaker, timerMaker)
-	controller := filewatch.NewController(apiServerWatchManager)
+	controller := filewatch.NewController(fsWatcherMaker, timerMaker)
 	v := controllers.ProvideControllers(controller)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -359,15 +353,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	tiltapiInterface, err := server.ProvideTiltInterface(apiserverConfig)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
-	notifyClient := filewatch.ProvideNotifyClient(tiltapiInterface)
 	fsWatcherMaker := watch.ProvideFsWatcherMaker()
 	timerMaker := watch.ProvideTimerMaker()
-	apiServerWatchManager := filewatch.NewApiServerWatchManager(notifyClient, fsWatcherMaker, timerMaker)
-	controller := filewatch.NewController(apiServerWatchManager)
+	controller := filewatch.NewController(fsWatcherMaker, timerMaker)
 	v := controllers.ProvideControllers(controller)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
