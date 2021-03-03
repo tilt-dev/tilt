@@ -95,7 +95,6 @@ var BaseWireSet = wire.NewSet(
 	telemetry.NewController,
 	dcwatch.NewEventWatcher,
 	runtimelog.NewDockerComposeLogManager,
-	engine.NewProfilerManager,
 	cloud.WireSet,
 	cloudurl.ProvideAddress,
 	k8srollout.NewPodMonitor,

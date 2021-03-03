@@ -3762,7 +3762,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
-	pm := NewProfilerManager()
 	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, server.ProvideMemConn())
 	require.NoError(t, err)
 	hudsc := server.ProvideHeadsUpServerController(0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
@@ -3820,7 +3819,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, pm, ar, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwm, gm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
