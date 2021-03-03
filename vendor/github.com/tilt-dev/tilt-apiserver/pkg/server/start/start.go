@@ -139,7 +139,7 @@ func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
 			o.ServingOptions.BindPort = 80 // Create a fake port.
 		}
 
-		l, err := o.ConnProvider.Listen("memb", fmt.Sprintf("%s:%d", o.ServingOptions.BindAddress, o.ServingOptions.BindPort))
+		l, err := o.ConnProvider.Listen("tcp", fmt.Sprintf("%s:%d", o.ServingOptions.BindAddress, o.ServingOptions.BindPort))
 		if err != nil {
 			return nil, err
 		}
@@ -179,7 +179,7 @@ func (o TiltServerOptions) LoopbackClientConfig() *rest.Config {
 	}
 	if o.ConnProvider != nil {
 		result.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
-			return o.ConnProvider.DialContext(ctx, "memb", address)
+			return o.ConnProvider.DialContext(ctx, network, address)
 		}
 	}
 	return result

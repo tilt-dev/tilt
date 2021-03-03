@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/akutz/memconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 
@@ -26,7 +26,7 @@ import (
 // Ensure creating objects works with the dynamic API clients.
 func TestAPIServer(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	memconn := &memconn.Provider{}
+	memconn := ProvideMemConn()
 	cfg, err := ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
 	require.NoError(t, err)
 
@@ -76,12 +76,13 @@ type typedTestCase struct {
 	Name   string
 	Create func(ctx context.Context, name string, annotations map[string]string) error
 	Get    func(ctx context.Context, name string) (resource.Object, error)
+	Watch  func(ctx context.Context) (watch.Interface, error)
 }
 
 // Ensure creating objects works with the typed API clients.
 func TestAPIServerTypedClient(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	memconn := &memconn.Provider{}
+	memconn := ProvideMemConn()
 	cfg, err := ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
 	require.NoError(t, err)
 
@@ -108,13 +109,20 @@ func TestAPIServerTypedClient(t *testing.T) {
 			Get: func(ctx context.Context, name string) (resource.Object, error) {
 				return clientset.CoreV1alpha1().FileWatches().Get(ctx, name, metav1.GetOptions{})
 			},
+			Watch: func(ctx context.Context) (watch.Interface, error) {
+				return clientset.CoreV1alpha1().FileWatches().Watch(ctx, metav1.ListOptions{})
+			},
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
 			objName := fmt.Sprintf("typed-%s", strings.ToLower(testCase.Name))
-			err := testCase.Create(ctx, objName, map[string]string{
+			watcher, err := testCase.Watch(ctx)
+			require.NoError(t, err)
+			defer watcher.Stop()
+
+			err = testCase.Create(ctx, objName, map[string]string{
 				"my-random-key": "my-random-value",
 			})
 			require.NoError(t, err)
@@ -127,6 +135,11 @@ func TestAPIServerTypedClient(t *testing.T) {
 
 			assert.Equal(t, objName, metadata.GetName())
 			assert.Equal(t, "my-random-value", metadata.GetAnnotations()["my-random-key"])
+
+			watchEvent := <-watcher.ResultChan()
+			watchedMetadata, err := meta.Accessor(watchEvent.Object)
+			require.NoError(t, err)
+			assert.Equal(t, objName, watchedMetadata.GetName())
 		})
 	}
 }
