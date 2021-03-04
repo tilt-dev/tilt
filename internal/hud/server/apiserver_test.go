@@ -25,7 +25,7 @@ import (
 )
 
 // Ensure creating objects works with the dynamic API clients.
-func TestAPIServer(t *testing.T) {
+func TestAPIServerDynamicClient(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	memconn := &memconn.Provider{}
 	cfg, err := ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
@@ -67,11 +67,8 @@ func TestAPIServer(t *testing.T) {
 							"my-random-key": "my-random-value",
 						},
 					},
+					"spec": sampleSpecs[typeName],
 				},
-			}
-
-			if spec, ok := sampleSpecs[typeName]; ok {
-				unstructured.Object["spec"] = spec
 			}
 
 			objClient := dynamic.Resource(obj.GetGroupVersionResource())
