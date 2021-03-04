@@ -60,6 +60,7 @@ func (f *TempDirFixture) Chdir() {
 }
 
 func (f *TempDirFixture) JoinPath(path ...string) string {
+	f.t.Helper()
 	p := []string{}
 	isAbs := len(path) > 0 && filepath.IsAbs(path[0])
 	if isAbs {

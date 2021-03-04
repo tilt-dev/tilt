@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -39,6 +40,19 @@ func TestAPIServer(t *testing.T) {
 	dynamic, err := ProvideTiltDynamic(cfg)
 	require.NoError(t, err)
 
+	// for types with validation logic, a passing spec must be provided here
+	sampleSpecs := map[string]map[string]interface{}{
+		"FileWatch": {
+			"watches": []map[string]interface{}{
+				{
+					// this needs to be a valid path for the target OS
+					"rootPath": mustCwd(t),
+					"paths":    []string{"pathToWatch"},
+				},
+			},
+		},
+	}
+
 	for _, obj := range v1alpha1.AllResourceObjects() {
 		typeName := reflect.TypeOf(obj).Elem().Name()
 		t.Run(typeName, func(t *testing.T) {
@@ -54,6 +68,10 @@ func TestAPIServer(t *testing.T) {
 						},
 					},
 				},
+			}
+
+			if spec, ok := sampleSpecs[typeName]; ok {
+				unstructured.Object["spec"] = spec
 			}
 
 			objClient := dynamic.Resource(obj.GetGroupVersionResource())
@@ -102,6 +120,15 @@ func TestAPIServerTypedClient(t *testing.T) {
 						Name:        name,
 						Annotations: annotations,
 					},
+					Spec: v1alpha1.FileWatchSpec{
+						Watches: []v1alpha1.WatchDef{
+							{
+								// this needs to be a valid path for the target OS
+								RootPath: mustCwd(t),
+								Paths:    []string{"a path to watch"},
+							},
+						},
+					},
 				}, metav1.CreateOptions{})
 				return err
 			},
@@ -129,4 +156,10 @@ func TestAPIServerTypedClient(t *testing.T) {
 			assert.Equal(t, "my-random-value", metadata.GetAnnotations()["my-random-key"])
 		})
 	}
+}
+
+func mustCwd(t testing.TB) string {
+	dir, err := os.Getwd()
+	require.NoError(t, err, "Could not get current working directory")
+	return dir
 }
