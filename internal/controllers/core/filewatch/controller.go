@@ -55,9 +55,6 @@ func NewController(watcherMaker watch.FsWatcherMaker, timerMaker watch.TimerMake
 }
 
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logger.Get(ctx).WithFields(logger.Fields{"apiserver_entity": req.NamespacedName.String()})
-	ctx = logger.WithLogger(ctx, log)
-
 	var fileWatchApiObj filewatches.FileWatch
 	if err := c.Get(ctx, req.NamespacedName, &fileWatchApiObj); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -72,11 +69,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
-	// N.B. the background context is used as the root context for file watching; otherwise, the file watch would
-	//		be canceled as soon as reconciliation was done
-	fileWatchCtx := logger.WithLogger(context.Background(), log)
 	// reconciliation MUST be idempotent; StartWatch() will noop if spec hasn't changed and update it if it has
-	addedOrUpdated, err := c.StartWatch(fileWatchCtx, req.NamespacedName, fileWatchApiObj.Spec)
+	addedOrUpdated, err := c.StartWatch(ctx, req.NamespacedName, fileWatchApiObj.Spec)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
