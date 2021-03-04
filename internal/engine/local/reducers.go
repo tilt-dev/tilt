@@ -3,18 +3,31 @@ package local
 import (
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // When the Cmd controller updates a command, check to see
-// what parts of the EngineState care about that command.
 //
 // If the local serve cmd is watching the cmd, update
 // the local runtime state to match the cmd status.
-func HandleCmdUpdateAction(state *store.EngineState, action CmdUpdateAction) {
-	cmd := action.Cmd
+func HandleCmdUpdateStatusAction(state *store.EngineState, action CmdUpdateStatusAction) {
+	cmd, ok := state.Cmds[action.Cmd.Name]
+	if !ok {
+		return
+	}
+	cmd = cmd.DeepCopy()
+	cmd.Status = action.Cmd.Status
+	state.Cmds[action.Cmd.Name] = cmd
+	updateLocalRuntimeStatus(state, cmd)
+}
+
+// If the local serve cmd is watching the cmd, update
+// the local runtime state to match the cmd status.
+func updateLocalRuntimeStatus(state *store.EngineState, cmd *v1alpha1.Cmd) {
 	mn := model.ManifestName(cmd.Labels[v1alpha1.LabelManifest])
 	mt, ok := state.ManifestTargets[mn]
 	if !ok {
@@ -25,11 +38,10 @@ func HandleCmdUpdateAction(state *store.EngineState, action CmdUpdateAction) {
 	ms := mt.State
 	lrs := ms.LocalRuntimeState()
 	if lrs.CmdName != cmd.Name {
-		delete(state.Cmds, cmd.Name)
 		return
 	}
 
-	state.Cmds[action.Cmd.Name] = cmd
+	state.Cmds[cmd.Name] = cmd
 
 	spec := cmd.Spec
 	status := cmd.Status
@@ -77,12 +89,21 @@ func HandleCmdCreateAction(state *store.EngineState, action CmdCreateAction) {
 
 	ms := mt.State
 	lrs := ms.LocalRuntimeState()
-	if lrs.CmdName != "" {
-		delete(state.Cmds, lrs.CmdName)
-	}
-
 	lrs.CmdName = cmd.Name
 	ms.RuntimeState = lrs
 
-	HandleCmdUpdateAction(state, CmdUpdateAction{Cmd: cmd})
+	updateLocalRuntimeStatus(state, cmd)
+}
+
+// Mark the command for deletion.
+func HandleCmdDeleteAction(state *store.EngineState, action CmdDeleteAction) {
+	cmd, ok := state.Cmds[action.Name]
+	if !ok {
+		return
+	}
+
+	updated := cmd.DeepCopy()
+	now := metav1.Now()
+	updated.ObjectMeta.DeletionTimestamp = &now
+	state.Cmds[action.Name] = updated
 }

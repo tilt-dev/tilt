@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -43,6 +44,11 @@ func TestUpdate(t *testing.T) {
 	t2 := time.Unix(2, 0)
 	f.resource("foo", "false", ".", t2)
 	f.step()
+	f.assertCmdMatches("foo-serve-1", func(cmd *Cmd) bool {
+		return cmd.DeletionTimestamp != nil
+	})
+
+	f.step()
 	f.assertCmdMatches("foo-serve-2", func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil
 	})
@@ -50,6 +56,7 @@ func TestUpdate(t *testing.T) {
 	f.fe.RequireNoKnownProcess(t, "true")
 	f.assertLogMessage("foo", "Starting cmd false")
 	f.assertLogMessage("foo", "cmd true canceled")
+	assert.Equal(t, 2, f.st.CmdCount())
 }
 
 func TestServe(t *testing.T) {
@@ -174,7 +181,8 @@ func TestTearDown(t *testing.T) {
 
 type testStore struct {
 	*store.TestingStore
-	out io.Writer
+	out     io.Writer
+	summary store.ChangeSummary
 }
 
 func NewTestingStore(out io.Writer) *testStore {
@@ -205,10 +213,17 @@ func (s *testStore) Dispatch(action store.Action) {
 	switch action := action.(type) {
 	case store.LogAction:
 		_, _ = s.out.Write(action.Message())
+
 	case CmdCreateAction:
 		HandleCmdCreateAction(st, action)
-	case CmdUpdateAction:
-		HandleCmdUpdateAction(st, action)
+		action.Summarize(&s.summary)
+
+	case CmdUpdateStatusAction:
+		HandleCmdUpdateStatusAction(st, action)
+
+	case CmdDeleteAction:
+		HandleCmdDeleteAction(st, action)
+		action.Summarize(&s.summary)
 	}
 }
 
@@ -218,6 +233,7 @@ type fixture struct {
 	st     *testStore
 	fe     *FakeExecer
 	fpm    *FakeProberManager
+	sc     *ServerController
 	c      *Controller
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -226,13 +242,16 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	out := bufsync.NewThreadSafeBuffer()
-	l := logger.NewLogger(logger.VerboseLvl, out)
+	w := io.MultiWriter(out, os.Stdout)
+	l := logger.NewLogger(logger.VerboseLvl, w)
 	ctx = logger.WithLogger(ctx, l)
-	st := NewTestingStore(out)
+	st := NewTestingStore(w)
 
 	fe := NewFakeExecer()
 	fpm := NewFakeProberManager()
 	fc := fake.NewTiltClient()
+	sc := NewServerController()
+	c := NewController(fe, fpm, fc)
 
 	return &fixture{
 		t:      t,
@@ -240,7 +259,8 @@ func newFixture(t *testing.T) *fixture {
 		out:    out,
 		fe:     fe,
 		fpm:    fpm,
-		c:      NewController(fe, fpm, fc),
+		sc:     sc,
+		c:      c,
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -274,8 +294,9 @@ func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastD
 }
 
 func (f *fixture) step() {
-	f.st.ClearActions()
-	f.c.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	f.st.summary = store.ChangeSummary{}
+	f.sc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	f.c.OnChange(f.ctx, f.st, f.st.summary)
 }
 
 func (f *fixture) assertLogMessage(name string, messages ...string) {

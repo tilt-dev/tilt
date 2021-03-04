@@ -11,6 +11,7 @@ import (
 
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,12 +23,12 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
+// A controller that reads CmdSpec and writes CmdStatus
 type Controller struct {
 	execer        Execer
-	procs         map[model.ManifestName]*currentProcess
-	procCount     int
+	procs         map[types.NamespacedName]*currentProcess
 	proberManager ProberManager
-	cmds          map[types.NamespacedName]*Cmd
+	updateCmds    map[types.NamespacedName]*Cmd
 	mu            sync.Mutex
 	client        ctrlclient.Client
 }
@@ -38,99 +39,38 @@ var _ store.TearDowner = &Controller{}
 func NewController(execer Execer, proberManager ProberManager, client ctrlclient.Client) *Controller {
 	return &Controller{
 		execer:        execer,
-		procs:         make(map[model.ManifestName]*currentProcess),
+		procs:         make(map[types.NamespacedName]*currentProcess),
 		proberManager: proberManager,
-		cmds:          make(map[types.NamespacedName]*Cmd),
 		client:        client,
+		updateCmds:    make(map[types.NamespacedName]*Cmd),
 	}
 }
 
-func (c *Controller) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
-	specs := c.determineServeSpecs(ctx, st)
-	c.update(ctx, specs, st)
+func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+	toReconcile := c.diff(ctx, st, summary)
+	for name, update := range toReconcile {
+		c.reconcile(ctx, st, name, update)
+	}
 }
 
-func (c *Controller) determineServeSpecs(ctx context.Context, st store.RStore) []ServeSpec {
+func (c *Controller) diff(ctx context.Context, st store.RStore, summary store.ChangeSummary) map[types.NamespacedName]*Cmd {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	var r []ServeSpec
-
-	for _, mt := range state.Targets() {
-		if !mt.Manifest.IsLocal() {
-			continue
-		}
-		lt := mt.Manifest.LocalTarget()
-		if lt.ServeCmd.Empty() ||
-			mt.State.LastSuccessfulDeployTime.IsZero() {
-			continue
-		}
-		r = append(r, ServeSpec{
-			ManifestName:   mt.Manifest.Name,
-			ServeCmd:       lt.ServeCmd,
-			TriggerTime:    mt.State.LastSuccessfulDeployTime,
-			ReadinessProbe: lt.ReadinessProbe,
-		})
+	result := map[types.NamespacedName]*Cmd{}
+	for key := range summary.CmdSpecs {
+		result[types.NamespacedName{Name: key}] = state.Cmds[key]
 	}
-
-	return r
+	return result
 }
 
-func (c *Controller) update(ctx context.Context, specs []ServeSpec, st store.RStore) {
-	var toStop []model.ManifestName
-	var toStart []ServeSpec
-
-	seen := make(map[model.ManifestName]bool)
-	for _, spec := range specs {
-		seen[spec.ManifestName] = true
-		proc := c.getOrMakeProc(spec.ManifestName)
-		if c.shouldStart(spec, proc) {
-			toStart = append(toStart, spec)
-		}
+// Stop the command, and wait for it to finish before continuing.
+func (c *Controller) stop(name types.NamespacedName) {
+	proc, ok := c.procs[name]
+	if !ok {
+		return
 	}
 
-	for name := range c.procs {
-		if !seen[name] {
-			toStop = append(toStop, name)
-		}
-	}
-
-	// stop old ones
-	for _, name := range toStop {
-		c.stop(name)
-		delete(c.procs, name)
-	}
-
-	// now start them
-	for _, spec := range toStart {
-		c.start(ctx, spec, st)
-	}
-}
-
-func (c *Controller) shouldStart(spec ServeSpec, proc *currentProcess) bool {
-	if proc.cancelFunc == nil {
-		// nothing is running, so start it
-		return true
-	}
-
-	if spec.TriggerTime.After(proc.spec.TriggerTime) {
-		// there's been a new trigger, so start it
-		return true
-	}
-
-	return false
-}
-
-func (c *Controller) stop(name model.ManifestName) {
-	proc := c.procs[name]
-	if proc.cmdName.Name != "" {
-		c.mu.Lock()
-		delete(c.cmds, proc.cmdName)
-		c.mu.Unlock()
-	}
-
-	// change the process's current number so that any further events received by the existing process will be considered out of date
-	proc.incrProcNum()
 	if proc.cancelFunc == nil {
 		return
 	}
@@ -141,56 +81,45 @@ func (c *Controller) stop(name model.ManifestName) {
 	proc.doneCh = nil
 }
 
-func (c *Controller) getOrMakeProc(name model.ManifestName) *currentProcess {
-	if c.procs[name] == nil {
-		c.procs[name] = &currentProcess{}
-	}
-
-	return c.procs[name]
-}
-
 func (c *Controller) TearDown(ctx context.Context) {
 	for name := range c.procs {
 		c.stop(name)
 	}
 }
 
-func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore) {
-	c.stop(spec.ManifestName)
+func (c *Controller) reconcile(ctx context.Context, st store.RStore, name types.NamespacedName, cmd *Cmd) {
+	if cmd == nil || cmd.ObjectMeta.DeletionTimestamp != nil {
+		c.stop(name)
+		delete(c.procs, name)
+		return
+	}
 
-	proc := c.procs[spec.ManifestName]
-	proc.spec = spec
-	c.procCount++
-	proc.procNum = c.procCount
+	proc, ok := c.procs[name]
+	if ok {
+		if equality.Semantic.DeepEqual(proc.spec, cmd.Spec) {
+			return
+		}
+
+		// change the process's current number so that any further events received
+		// by the existing process will be considered out of date
+		proc.incrProcNum()
+
+		c.stop(name)
+	} else {
+		proc = &currentProcess{}
+		c.procs[name] = proc
+	}
+
+	proc.spec = cmd.Spec
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
+
+	c.resetStatus(st, name, cmd)
 
 	statusCh := make(chan statusAndMetadata)
 
-	cmdName := fmt.Sprintf("%s-serve-%d", spec.ManifestName, c.procCount)
-	spanID := SpanIDForServeLog(proc.procNum)
-	name := types.NamespacedName{Name: cmdName}
-	proc.cmdName = name
-
-	cmd := &Cmd{
-		ObjectMeta: ObjectMeta{
-			Name: cmdName,
-			Annotations: map[string]string{
-				v1alpha1.AnnotationSpanID: string(spanID),
-			},
-			Labels: map[string]string{
-				v1alpha1.LabelManifest: spec.ManifestName.String(),
-			},
-		},
-		Spec: CmdSpec{
-			Args:           spec.ServeCmd.Argv,
-			Dir:            spec.ServeCmd.Dir,
-			Env:            spec.ServeCmd.Env,
-			ReadinessProbe: spec.ReadinessProbe,
-		},
-	}
-	c.createCmd(st, name, cmd)
-
 	ctx = store.MustObjectLogHandler(ctx, st, cmd)
+	spec := cmd.Spec
+	spanID := model.LogSpanID(cmd.ObjectMeta.Annotations[v1alpha1.AnnotationSpanID])
 
 	if spec.ReadinessProbe != nil {
 		statusChangeFunc := c.processReadinessProbeStatusChange(ctx, st, name, proc.stillHasSameProcNum())
@@ -218,7 +147,12 @@ func (c *Controller) start(ctx context.Context, spec ServeSpec, st store.RStore)
 	startedAt := metav1.Now()
 	go c.processStatuses(ctx, statusCh, st, proc, name, startedAt)
 
-	proc.doneCh = c.execer.Start(ctx, spec.ServeCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
+	serveCmd := model.Cmd{
+		Argv: spec.Args,
+		Dir:  spec.Dir,
+		Env:  spec.Env,
+	}
+	proc.doneCh = c.execer.Start(ctx, serveCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
 }
 
 func (c *Controller) processReadinessProbeStatusChange(ctx context.Context, st store.RStore, name types.NamespacedName, stillHasSameProcNum func() bool) probe.StatusChangedFunc {
@@ -278,13 +212,17 @@ func processReadinessProbeResultLogger(ctx context.Context, stillHasSameProcNum 
 	}
 }
 
-// Create the cmd.
-func (c *Controller) createCmd(st store.RStore, name types.NamespacedName, cmd *Cmd) {
+func (c *Controller) resetStatus(st store.RStore, name types.NamespacedName, cmd *Cmd) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.cmds[name] = cmd
-	st.Dispatch(NewCmdCreateAction(cmd))
+	updated := cmd.DeepCopy()
+	updated.Status = CmdStatus{
+		Waiting: &CmdStateWaiting{},
+	}
+	c.updateCmds[name] = updated
+
+	st.Dispatch(NewCmdUpdateStatusAction(updated))
 }
 
 // Update the stored status.
@@ -296,13 +234,13 @@ func (c *Controller) updateStatus(st store.RStore, name types.NamespacedName, up
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	cmd, ok := c.cmds[name]
+	cmd, ok := c.updateCmds[name]
 	if !ok {
 		return
 	}
 
 	update(&cmd.Status)
-	st.Dispatch(NewCmdUpdateAction(cmd))
+	st.Dispatch(NewCmdUpdateStatusAction(cmd))
 }
 
 func (c *Controller) processStatuses(
@@ -359,13 +297,12 @@ func (c *Controller) processStatuses(
 // make sure there's at most one process per Manifest.
 // (note: it may not be running yet, or may have already finished)
 type currentProcess struct {
-	spec       ServeSpec
+	spec       CmdSpec
 	procNum    int
 	cancelFunc context.CancelFunc
 	// closed when the process finishes executing, intentionally or not
 	doneCh      chan struct{}
 	probeWorker *probe.Worker
-	cmdName     types.NamespacedName
 
 	mu sync.Mutex
 }
@@ -393,14 +330,6 @@ func (p *currentProcess) currentProcNum() int {
 
 func SpanIDForServeLog(procNum int) logstore.SpanID {
 	return logstore.SpanID(fmt.Sprintf("localserve:%d", procNum))
-}
-
-// ServeSpec describes what Runner should be running
-type ServeSpec struct {
-	ManifestName   model.ManifestName
-	ServeCmd       model.Cmd
-	TriggerTime    time.Time // TriggerTime is how Runner knows to restart; if it's newer than the TriggerTime of the currently running command, then Runner should restart it
-	ReadinessProbe *v1alpha1.Probe
 }
 
 type statusAndMetadata struct {
