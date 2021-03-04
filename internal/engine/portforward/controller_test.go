@@ -290,7 +290,7 @@ func newPLCFixture(t *testing.T) *plcFixture {
 }
 
 func (f *plcFixture) onChange() {
-	f.plc.OnChange(f.ctx, f.st)
+	f.plc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
 }
 

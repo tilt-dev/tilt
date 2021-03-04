@@ -14,7 +14,7 @@ import (
 // Subscribers are only allowed to read state. If they want to
 // modify state, they should call store.Dispatch()
 type Subscriber interface {
-	OnChange(ctx context.Context, st RStore)
+	OnChange(ctx context.Context, st RStore, summary ChangeSummary)
 }
 
 // Some subscribers need to do SetUp or TearDown.
@@ -105,7 +105,7 @@ func (l *subscriberList) TeardownAll(ctx context.Context) {
 	}
 }
 
-func (l *subscriberList) NotifyAll(ctx context.Context, store *Store) {
+func (l *subscriberList) NotifyAll(ctx context.Context, store *Store, summary ChangeSummary) {
 	l.mu.Lock()
 	subscribers := append([]*subscriberEntry{}, l.subscribers...)
 	l.mu.Unlock()
@@ -115,7 +115,7 @@ func (l *subscriberList) NotifyAll(ctx context.Context, store *Store) {
 		isPending := s.claimPending()
 		if isPending {
 			SafeGo(store, func() {
-				s.notify(ctx, store)
+				s.notify(ctx, store, summary)
 			})
 		}
 	}
@@ -167,12 +167,12 @@ func (e *subscriberEntry) clearActive() {
 	e.hasActive = false
 }
 
-func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
+func (e *subscriberEntry) notify(ctx context.Context, store *Store, summary ChangeSummary) {
 	e.activeMu.Lock()
 	defer e.activeMu.Unlock()
 
 	e.movePendingToActive()
-	e.subscriber.OnChange(ctx, store)
+	e.subscriber.OnChange(ctx, store, summary)
 	e.clearActive()
 }
 

@@ -4395,7 +4395,7 @@ type fixtureSub struct {
 	ch chan bool
 }
 
-func (s fixtureSub) OnChange(ctx context.Context, st store.RStore) {
+func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	s.ch <- true
 }
 

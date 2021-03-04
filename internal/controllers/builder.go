@@ -33,7 +33,7 @@ func NewControllerBuilder(tscm *TiltServerControllerManager, controllers []Contr
 var _ store.Subscriber = &ControllerBuilder{}
 var _ store.SetUpper = &ControllerBuilder{}
 
-func (c *ControllerBuilder) OnChange(_ context.Context, _ store.RStore) {}
+func (c *ControllerBuilder) OnChange(_ context.Context, _ store.RStore, _ store.ChangeSummary) {}
 
 func (c *ControllerBuilder) SetUp(_ context.Context, _ store.RStore) error {
 	mgr := c.tscm.GetManager()

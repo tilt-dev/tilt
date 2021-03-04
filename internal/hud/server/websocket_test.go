@@ -33,10 +33,10 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 		close(done)
 	}()
 
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, store.LegacyChangeSummary())
 	conn.AssertNextWriteMsg(t).Ack()
 
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, store.LegacyChangeSummary())
 	conn.AssertNextWriteMsg(t).Ack()
 
 	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
@@ -59,7 +59,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 		close(done)
 	}()
 
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, store.LegacyChangeSummary())
 
 	m := conn.AssertNextWriteMsg(t)
 
@@ -91,7 +91,7 @@ func TestWebsocketNextWriterError(t *testing.T) {
 		close(done)
 	}()
 
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
 
 	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}

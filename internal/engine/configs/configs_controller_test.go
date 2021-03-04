@@ -34,7 +34,7 @@ func TestConfigsController(t *testing.T) {
 
 	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.setManifestResult(bar)
-	f.cc.OnChange(f.ctx, f.st)
+	f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	expected := &ConfigsReloadedAction{
 		Manifests:  []model.Manifest{bar},
@@ -58,7 +58,7 @@ func TestConfigsControllerDockerNotConnected(t *testing.T) {
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		Build()
 	f.setManifestResult(bar)
-	f.cc.OnChange(f.ctx, f.st)
+	f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	if assert.Error(t, f.st.end.Err) {
 		assert.Equal(t, "Failed to connect to Docker: connection-error", f.st.end.Err.Error())
@@ -77,7 +77,7 @@ func TestConfigsControllerDockerNotConnectedButNotRequired(t *testing.T) {
 		WithK8sYAML(testyaml.SanchoYAML).
 		Build()
 	f.setManifestResult(bar)
-	f.cc.OnChange(f.ctx, f.st)
+	f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	assert.NoError(t, f.st.end.Err)
 }
@@ -94,7 +94,7 @@ func TestBuildReasonTrigger(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.setManifestResult(bar)
-	f.cc.OnChange(f.ctx, f.st)
+	f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	assert.True(t, f.st.start.Reason.Has(model.BuildReasonFlagTriggerWeb),
 		"expected build reason has flag: TriggerWeb")
@@ -105,7 +105,7 @@ func TestErrorLog(t *testing.T) {
 	defer f.TearDown()
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{Error: fmt.Errorf("The goggles do nothing!")}
-	f.cc.OnChange(f.ctx, f.st)
+	f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	assert.Contains(f.T(), f.st.out.String(), "ERROR LEVEL: The goggles do nothing!")
 }

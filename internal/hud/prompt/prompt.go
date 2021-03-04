@@ -103,7 +103,7 @@ func (p *TerminalPrompt) TearDown(ctx context.Context) {
 	}
 }
 
-func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore) {
+func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if !p.isEnabled(st) {
 		return
 	}

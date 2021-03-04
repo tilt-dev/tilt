@@ -170,7 +170,7 @@ func (c *CloudStatusManager) needsLookup(requestKey statusRequestKey) bool {
 		requestKey != c.lastRequestKey
 }
 
-func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore) {
+func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
