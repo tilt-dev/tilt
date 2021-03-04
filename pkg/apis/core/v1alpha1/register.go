@@ -34,7 +34,6 @@ var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
 
 func AllResourceObjects() []resource.Object {
 	return []resource.Object{
-		&Manifest{},
 		&FileWatch{},
 		&Cmd{},
 
@@ -43,7 +42,6 @@ func AllResourceObjects() []resource.Object {
 }
 func AllResourceLists() []runtime.Object {
 	return []runtime.Object{
-		&ManifestList{},
 		&FileWatchList{},
 		&CmdList{},
 

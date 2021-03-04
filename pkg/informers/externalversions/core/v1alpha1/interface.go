@@ -28,8 +28,6 @@ type Interface interface {
 	Cmds() CmdInformer
 	// FileWatches returns a FileWatchInformer.
 	FileWatches() FileWatchInformer
-	// Manifests returns a ManifestInformer.
-	Manifests() ManifestInformer
 }
 
 type version struct {
@@ -51,9 +49,4 @@ func (v *version) Cmds() CmdInformer {
 // FileWatches returns a FileWatchInformer.
 func (v *version) FileWatches() FileWatchInformer {
 	return &fileWatchInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
-}
-
-// Manifests returns a ManifestInformer.
-func (v *version) Manifests() ManifestInformer {
-	return &manifestInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

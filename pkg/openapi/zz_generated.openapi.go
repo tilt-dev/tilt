@@ -45,10 +45,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":      schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":         schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":            schema_pkg_apis_core_v1alpha1_Handler(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Manifest":           schema_pkg_apis_core_v1alpha1_Manifest(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestList":       schema_pkg_apis_core_v1alpha1_ManifestList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestSpec":       schema_pkg_apis_core_v1alpha1_ManifestSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestStatus":     schema_pkg_apis_core_v1alpha1_ManifestStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":              schema_pkg_apis_core_v1alpha1_Probe(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":    schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                      schema_pkg_apis_meta_v1_APIGroup(ref),
@@ -326,6 +322,13 @@ func schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref common.ReferenceCallba
 							Description: "Time at which the command last terminated",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "(brief) reason the process is terminated",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -662,134 +665,6 @@ func schema_pkg_apis_core_v1alpha1_Handler(ref common.ReferenceCallback) common.
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction"},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_Manifest(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "Manifest",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
-						},
-					},
-					"spec": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestSpec"),
-						},
-					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestStatus"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ManifestStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_ManifestList(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ManifestList",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
-						},
-					},
-					"items": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Manifest"),
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"items"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Manifest", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_ManifestSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ManifestSpec defines the desired state of Manifest",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"type": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-				},
-				Required: []string{"type"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_ManifestStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ManifestStatus defines the observed state of Manifest",
-				Type:        []string{"object"},
-			},
-		},
 	}
 }
 
