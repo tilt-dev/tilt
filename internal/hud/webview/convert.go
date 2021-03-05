@@ -117,7 +117,6 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			PodID:              podID.String(),
 			Specs:              specs,
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
-			CrashLog:           ms.CrashLog.String(),
 			TriggerMode:        int32(mt.Manifest.TriggerMode),
 			HasPendingChanges:  hasPendingChanges,
 			Queued:             s.ManifestInTriggerQueue(name),

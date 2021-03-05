@@ -15,7 +15,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func handlePodDeleteAction(ctx context.Context, state *store.EngineState, action k8swatch.PodDeleteAction) {
@@ -55,7 +54,6 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 
 	prunePods(ms)
 
-	oldRestartTotal := podInfo.AllContainerRestarts()
 	podInfo.Containers = podContainers(ctx, pod, pod.Status.ContainerStatuses)
 	podInfo.InitContainers = podContainers(ctx, pod, pod.Status.InitContainerStatuses)
 	if isNew {
@@ -86,15 +84,6 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 			manifest.Name, podInfo.PodID)
 	}
 	checkForContainerCrash(ctx, state, mt)
-
-	if oldRestartTotal < podInfo.AllContainerRestarts() {
-		spanID := podInfo.SpanID
-		if spanID == "" {
-			ms.CrashLog = model.Log{}
-		} else {
-			ms.CrashLog = model.NewLog(state.LogStore.TailSpan(50, spanID))
-		}
-	}
 }
 
 // Find the ManifestTarget for the PodChangeAction,
@@ -251,15 +240,6 @@ func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *s
 	}
 
 	// The pod isn't what we expect!
-	// TODO(nick): We should store the logs by container ID, and
-	// only put the container that crashed in the CrashLog.
-	spanID := ms.MostRecentPod().SpanID
-	if spanID == "" {
-		ms.CrashLog = model.Log{}
-	} else {
-		ms.CrashLog = model.NewLog(state.LogStore.TailSpan(50, spanID))
-	}
-
 	ms.NeedsRebuildFromCrash = true
 	ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)

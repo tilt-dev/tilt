@@ -2123,7 +2123,6 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
-		assert.Equal(t, ms.CrashLog.String(), "first string\nsecond string\n")
 		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 	})
 
