@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"path/filepath"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,6 +54,13 @@ type FileWatchList struct {
 
 // FileWatchSpec defines the desired state of FileWatch
 type FileWatchSpec struct {
+	WatchedPaths []string    `json:"watchedPaths"`
+	Ignores      []IgnoreDef `json:"ignores"`
+}
+
+type IgnoreDef struct {
+	BasePath string   `json:"basePath"`
+	Patterns []string `json:"paths"`
 }
 
 var _ resource.Object = &FileWatch{}
@@ -86,9 +94,31 @@ func (in *FileWatch) IsStorageVersion() bool {
 	return true
 }
 
-func (in *FileWatch) Validate(ctx context.Context) field.ErrorList {
-	// TODO(user): Modify it, adding your API validation here.
-	return nil
+func (in *FileWatch) Validate(_ context.Context) field.ErrorList {
+	var fieldErrors field.ErrorList
+	watchedPathsPath := field.NewPath("spec", "watchedPaths")
+	if len(in.Spec.WatchedPaths) == 0 {
+		fieldErrors = append(fieldErrors, field.Required(watchedPathsPath, "cannot be an empty list"))
+	}
+	for watchedPathIndex, watchedPath := range in.Spec.WatchedPaths {
+		if !filepath.IsAbs(watchedPath) {
+			fieldErrors = append(fieldErrors, field.Invalid(watchedPathsPath.Index(watchedPathIndex), watchedPath, "must be an absolute file path"))
+		}
+	}
+	for ignoreDefIndex, ignoreDef := range in.Spec.Ignores {
+		ignoreDefPath := field.NewPath("spec", "ignores").Index(ignoreDefIndex)
+		if !filepath.IsAbs(ignoreDef.BasePath) {
+			fieldErrors = append(fieldErrors, field.Invalid(ignoreDefPath, ignoreDef.BasePath, "must be an absolute file path"))
+		}
+		// patterns can be empty, which means ignore the entire directory
+		for ignorePatternIndex, ignorePattern := range ignoreDef.Patterns {
+			ingorePatternPath := ignoreDefPath.Child("patterns").Index(ignorePatternIndex)
+			if filepath.IsAbs(ignorePattern) {
+				fieldErrors = append(fieldErrors, field.Invalid(ingorePatternPath, ignorePattern, "must be a relative file path"))
+			}
+		}
+	}
+	return fieldErrors
 }
 
 var _ resource.ObjectList = &FileWatchList{}
@@ -99,6 +129,14 @@ func (in *FileWatchList) GetListMeta() *metav1.ListMeta {
 
 // FileWatchStatus defines the observed state of FileWatch
 type FileWatchStatus struct {
+	LastEventTime *metav1.Time `json:"lastEventTime,omitempty"`
+	FileEvents    []FileEvent  `json:"fileEvents"`
+	Error         string       `json:"error,omitempty"`
+}
+
+type FileEvent struct {
+	Time      metav1.Time `json:"time"`
+	SeenFiles []string    `json:"seenFiles"`
 }
 
 // FileWatch implements ObjectWithStatusSubResource interface.

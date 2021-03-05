@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/tilt-dev/wmclient/pkg/analytics"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
+	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -116,6 +118,8 @@ type EngineState struct {
 	MetricsServing  MetricsServing
 
 	UserConfigState model.UserConfigState
+
+	FileWatches map[types.NamespacedName]*filewatches.FileWatch
 }
 
 type CloudStatus struct {
@@ -476,6 +480,8 @@ func NewState() *EngineState {
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
 		ret.AnalyticsEnvOpt = analytics.OptOut
 	}
+
+	ret.FileWatches = make(map[types.NamespacedName]*filewatches.FileWatch)
 
 	return ret
 }

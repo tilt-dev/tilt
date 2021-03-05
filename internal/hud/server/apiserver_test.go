@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -24,7 +25,7 @@ import (
 )
 
 // Ensure creating objects works with the dynamic API clients.
-func TestAPIServer(t *testing.T) {
+func TestAPIServerDynamicClient(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	memconn := ProvideMemConn()
 	cfg, err := ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
@@ -38,6 +39,13 @@ func TestAPIServer(t *testing.T) {
 	// Dynamic type tests
 	dynamic, err := ProvideTiltDynamic(cfg)
 	require.NoError(t, err)
+
+	specs := map[string]interface{}{
+		"FileWatch": map[string]interface{}{
+			// this needs to include a valid absolute path for the current GOOS
+			"watchedPaths": []string{mustCwd(t)},
+		},
+	}
 
 	for _, obj := range v1alpha1.AllResourceObjects() {
 		typeName := reflect.TypeOf(obj).Elem().Name()
@@ -53,6 +61,7 @@ func TestAPIServer(t *testing.T) {
 							"my-random-key": "my-random-value",
 						},
 					},
+					"spec": specs[typeName],
 				},
 			}
 
@@ -103,6 +112,10 @@ func TestAPIServerTypedClient(t *testing.T) {
 						Name:        name,
 						Annotations: annotations,
 					},
+					Spec: v1alpha1.FileWatchSpec{
+						// this needs to include a valid absolute path for the current GOOS
+						WatchedPaths: []string{mustCwd(t)},
+					},
 				}, metav1.CreateOptions{})
 				return err
 			},
@@ -142,4 +155,11 @@ func TestAPIServerTypedClient(t *testing.T) {
 			assert.Equal(t, objName, watchedMetadata.GetName())
 		})
 	}
+}
+
+func mustCwd(t testing.TB) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	require.NoError(t, err, "Could not get current working directory")
+	return cwd
 }

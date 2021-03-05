@@ -31,6 +31,22 @@ func NewGitManager(fsWatcherMaker FsWatcherMaker) *GitManager {
 	}
 }
 
+func WatchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget {
+	var watchable []WatchableTarget
+	seen := map[model.TargetID]bool{}
+	for _, m := range manifests {
+		for _, t := range m.TargetSpecs() {
+			if !seen[t.ID()] {
+				if watchTarg, ok := t.(WatchableTarget); ok {
+					watchable = append(watchable, watchTarg)
+					seen[watchTarg.ID()] = true
+				}
+			}
+		}
+	}
+	return watchable
+}
+
 func (m *GitManager) diff(ctx context.Context, st store.RStore) (setup, teardown []model.LocalGitRepo) {
 	state := st.RLockState()
 	defer st.RUnlockState()
