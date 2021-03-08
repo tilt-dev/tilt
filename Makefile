@@ -77,6 +77,10 @@ integration-kind:
 	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration -count 1
 	kind delete cluster --name=integration
 
+# Run the extension integration tests against the current kubecontext
+test-extensions:
+	scripts/test-extensions.sh
+
 dev-js:
 	cd web && yarn install && yarn run start
 
