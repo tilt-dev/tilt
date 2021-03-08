@@ -236,12 +236,6 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 		ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	}
 
-	// Keep the crash log around until we have a rebuild
-	// triggered by a explicit change (i.e., not a crash rebuild)
-	if !action.Reason.IsCrashOnly() {
-		ms.CrashLog = model.Log{}
-	}
-
 	state.CurrentlyBuilding[mn] = true
 	state.RemoveFromTriggerQueue(mn)
 }

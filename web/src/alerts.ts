@@ -1,4 +1,4 @@
-import { podStatusIsCrash, podStatusIsError } from "./constants"
+import { podStatusIsError } from "./constants"
 import { FilterLevel, FilterSource } from "./logfilters"
 import { logLinesToString } from "./logs"
 import LogStore from "./LogStore"
@@ -96,11 +96,7 @@ function podStatusIsErrAlert(resource: Resource): Alert {
   let rInfo = resource.k8sResourceInfo as K8sResourceInfo
   let podStatus = rInfo.podStatus
   let podStatusMessage = rInfo.podStatusMessage
-  let msg = ""
-  if (podStatusIsCrash(podStatus)) {
-    msg = resource.crashLog ?? ""
-  }
-  msg = msg || podStatusMessage || `Pod has status ${podStatus}`
+  let msg = podStatusMessage || `Pod has status ${podStatus}`
 
   return {
     alertType: PodStatusErrorType,
@@ -114,8 +110,8 @@ function podStatusIsErrAlert(resource: Resource): Alert {
 }
 function podRestartAlert(r: Resource): Alert {
   let rInfo = r.k8sResourceInfo as K8sResourceInfo
-  let msg = r.crashLog || ""
   let header = `Restarts: ${Number(rInfo.podRestarts).toString()}`
+  let msg = header
 
   let dismissHandler = () => {
     let url = "/api/action"
@@ -151,7 +147,7 @@ function podRestartAlert(r: Resource): Alert {
 }
 function crashRebuildAlert(r: Resource): Alert {
   let rInfo = r.k8sResourceInfo as K8sResourceInfo
-  let msg = r.crashLog || ""
+  let msg = "Pod crashed"
   return {
     alertType: CrashRebuildErrorType,
     header: "Pod crashed",

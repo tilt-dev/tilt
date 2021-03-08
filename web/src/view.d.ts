@@ -80,14 +80,6 @@ declare namespace Proto {
     isTiltfile?: boolean;
     specs?: webviewTargetSpec[];
     showBuildStatus?: boolean;
-    /**
-     * Obsoleted by crash_log_span_id.
-     */
-    crashLog?: string;
-    /**
-     * A span id for the log that crashed.
-     */
-    crashLogSpanId?: string;
     queued?: boolean;
   }
   export interface webviewMetricsServing {
