@@ -118,6 +118,7 @@ var BaseWireSet = wire.NewSet(
 	engineanalytics.NewAnalyticsUpdater,
 	engineanalytics.ProvideAnalyticsReporter,
 	provideUpdateModeFlag,
+	fswatch.NewManifestSubscriber,
 	fswatch.NewWatchManager,
 	fswatch.ProvideFsWatcherMaker,
 	fswatch.ProvideTimerMaker,
