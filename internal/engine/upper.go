@@ -132,8 +132,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		fswatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
 	case fswatch.FileWatchDeleteAction:
 		handleFileWatchDeleteEvent(ctx, state, action)
-	case fswatch.GitBranchStatusAction:
-		handleGitBranchStatus(state, action)
 	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
 	case k8swatch.PodDeleteAction:
@@ -494,10 +492,6 @@ func handleStartProfilingAction(state *store.EngineState) {
 
 func handleFileWatchDeleteEvent(_ context.Context, state *store.EngineState, action fswatch.FileWatchDeleteAction) {
 	delete(state.FileWatches, action.Name)
-}
-
-func handleGitBranchStatus(state *store.EngineState, bsa fswatch.GitBranchStatusAction) {
-	// TODO(nick): Do something with this data.
 }
 
 func handleConfigsReloadStarted(

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,14 +55,6 @@ func (FileWatchDeleteAction) Action() {}
 func NewFileWatchDeleteAction(name types.NamespacedName) FileWatchDeleteAction {
 	return FileWatchDeleteAction{Name: name}
 }
-
-type GitBranchStatusAction struct {
-	Time time.Time
-	Repo model.LocalGitRepo
-	Head string
-}
-
-func (GitBranchStatusAction) Action() {}
 
 func HandleFileWatchCreateEvent(_ context.Context, state *store.EngineState, action FileWatchCreateAction) {
 	name := types.NamespacedName{Namespace: action.FileWatch.GetNamespace(), Name: action.FileWatch.GetName()}
