@@ -137,14 +137,27 @@ func (in *FileWatchList) GetListMeta() *metav1.ListMeta {
 
 // FileWatchStatus defines the observed state of FileWatch
 type FileWatchStatus struct {
+	// LastEventTime is the timestamp of the most recent file event. It is nil if no events have been seen yet.
+	//
+	// If the specifics of which files changed are not important, this field can be used as a watermark without
+	// needing to inspect FileEvents.
 	LastEventTime *metav1.Time `json:"lastEventTime,omitempty"`
-	FileEvents    []FileEvent  `json:"fileEvents"`
-	Error         string       `json:"error,omitempty"`
+	// FileEvents summarizes batches of file changes (create, modify, or delete) that have been seen in ascending
+	// chronological order. Only the most recent 20 events are included.
+	FileEvents []FileEvent `json:"fileEvents"`
+	// Error is set if there is a problem with the filesystem watch. If non-empty, consumers should assume that
+	// no filesystem events will be seen and that the file watcher is in a failed state.
+	Error string `json:"error,omitempty"`
 }
 
 type FileEvent struct {
-	Time      metav1.Time `json:"time"`
-	SeenFiles []string    `json:"seenFiles"`
+	// Time is an approximate timestamp for a batch of file changes.
+	//
+	// This will NOT exactly match any inode attributes (e.g. ctime, mtime) at the filesystem level and is purely
+	// informational or for use as an opaque watermark.
+	Time metav1.Time `json:"time"`
+	// SeenFiles is a list of paths which changed (create, modify, or delete).
+	SeenFiles []string `json:"seenFiles"`
 }
 
 // FileWatch implements ObjectWithStatusSubResource interface.
