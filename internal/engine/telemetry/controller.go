@@ -30,7 +30,7 @@ func NewController(clock build.Clock, spans tracer.SpanSource) *Controller {
 	}
 }
 
-func (t *Controller) OnChange(ctx context.Context, st store.RStore) {
+func (t *Controller) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	state := st.RLockState()
 	ts := state.TelemetrySettings
 	tc := ts.Cmd

@@ -71,7 +71,7 @@ func TestPodWatch(t *testing.T) {
 
 	manifest := f.addManifestWithSelectors("server")
 
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
@@ -91,7 +91,7 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 
 	manifest := f.addManifestWithSelectors("server")
 
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
@@ -116,7 +116,7 @@ func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 
 	manifest := f.addManifestWithSelectors("server")
 
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	pb := podbuilder.New(t, manifest).WithResourceVersion("9")
 
@@ -143,7 +143,7 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	ls2 := labels.Set{"baz": "quu"}.AsSelector()
 	manifest := f.addManifestWithSelectors("server", ls1, ls2)
 
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	p := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
@@ -162,7 +162,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	ls1 := labels.Set{"foo": "bar"}.AsSelector()
 	manifest := f.addManifestWithSelectors("server1", ls1)
 
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	p := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
@@ -177,7 +177,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	manifest2 := f.addManifestWithSelectors("server2", ls2)
 	f.removeManifest("server1")
 
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	pb2 := podbuilder.New(t, manifest2).WithPodID("pod2")
 	p2 := pb2.Build()
@@ -215,7 +215,7 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 	defer f.TearDown()
 	manifest := f.addManifestWithSelectors("server")
 
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	pb := podbuilder.New(t, manifest)
 
@@ -253,7 +253,7 @@ func TestPodWatchReadd(t *testing.T) {
 
 	manifest := f.addManifestWithSelectors("server")
 
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
@@ -264,12 +264,12 @@ func TestPodWatchReadd(t *testing.T) {
 	f.assertObservedPods(p)
 
 	f.removeManifest("server")
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	f.pods = nil
 	_ = f.addManifestWithSelectors("server")
 	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.pw.OnChange(f.ctx, f.store)
+	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	// Make sure the pods are re-broadcast.
 	// Even though the pod didn't change when the manifest was
@@ -405,7 +405,7 @@ func (f *pwFixture) TearDown() {
 }
 
 func (f *pwFixture) addDeployedUID(m model.Manifest, uid types.UID) {
-	defer f.pw.OnChange(f.ctx, f.store)
+	defer f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	state := f.store.LockMutableStateForTesting()
 	defer f.store.UnlockMutableState()

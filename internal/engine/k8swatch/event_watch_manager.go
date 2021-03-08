@@ -69,7 +69,7 @@ func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 	}
 }
 
-func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore) {
+func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	taskList := m.diff(st)
 
 	m.mu.Lock()

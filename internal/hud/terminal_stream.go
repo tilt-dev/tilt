@@ -24,7 +24,7 @@ func (h *TerminalStream) TearDown(ctx context.Context) {
 		return
 	}
 
-	h.OnChange(ctx, h.store)
+	h.OnChange(ctx, h.store, store.LegacyChangeSummary())
 
 	state := h.store.RLockState()
 	uncompleted := state.LogStore.IsLastSegmentUncompleted()
@@ -41,7 +41,7 @@ func (h *TerminalStream) isEnabled(st store.RStore) bool {
 	return state.TerminalMode == store.TerminalModeStream
 }
 
-func (h *TerminalStream) OnChange(ctx context.Context, st store.RStore) {
+func (h *TerminalStream) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if !h.isEnabled(st) {
 		return
 	}

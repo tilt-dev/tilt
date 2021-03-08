@@ -21,7 +21,7 @@ type AnalyticsReporter struct {
 	started bool
 }
 
-func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore) {
+func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if ar.started {
 		return
 	}

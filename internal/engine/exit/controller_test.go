@@ -36,7 +36,7 @@ func TestExitControlAllSuccess(t *testing.T) {
 		})
 	})
 
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -47,7 +47,7 @@ func TestExitControlAllSuccess(t *testing.T) {
 	})
 
 	// Verify that completing the second build causes an exit
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.True(t, f.store.exitSignal)
 	assert.Nil(t, f.store.exitError)
 }
@@ -64,7 +64,7 @@ func TestExitControlFirstFailure(t *testing.T) {
 		state.UpsertManifestTarget(store.NewManifestTarget(m2))
 	})
 
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -76,7 +76,7 @@ func TestExitControlFirstFailure(t *testing.T) {
 	})
 
 	// Verify that if one build fails with an error, it fails immediately.
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.True(t, f.store.exitSignal)
 }
 
@@ -101,7 +101,7 @@ func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
 		})
 	})
 
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -116,7 +116,7 @@ func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.True(t, f.store.exitSignal)
 	require.Error(t, f.store.exitError)
 	assert.Contains(t, f.store.exitError.Error(),
@@ -145,7 +145,7 @@ func TestExitControlCISuccess(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, readyPod("pod-a"))
 	})
 
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -154,7 +154,7 @@ func TestExitControlCISuccess(t *testing.T) {
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.True(t, f.store.exitSignal)
 	assert.Nil(t, f.store.exitError)
 }
@@ -174,7 +174,7 @@ func TestExitControlCIJobSuccess(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, readyPod("pod-a"))
 	})
 
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -183,7 +183,7 @@ func TestExitControlCIJobSuccess(t *testing.T) {
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.True(t, f.store.exitSignal)
 	assert.Nil(t, f.store.exitError)
 }
@@ -208,7 +208,7 @@ func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
 		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitFalse))
 	})
 
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.False(t, f.store.exitSignal)
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -217,7 +217,7 @@ func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
 	})
 
 	// Verify that if one pod fails with an error, it fails immediately.
-	f.c.OnChange(f.ctx, f.store)
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.True(t, f.store.exitSignal)
 	assert.Nil(t, f.store.exitError)
 }

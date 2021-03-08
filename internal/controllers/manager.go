@@ -89,4 +89,5 @@ func (m *TiltServerControllerManager) TearDown(_ context.Context) {
 }
 
 // OnChange is a no-op but used to get initialized in upper along with the API server
-func (m *TiltServerControllerManager) OnChange(_ context.Context, _ store.RStore) {}
+func (m *TiltServerControllerManager) OnChange(_ context.Context, _ store.RStore, _ store.ChangeSummary) {
+}

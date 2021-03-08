@@ -15,9 +15,10 @@ func TestSubscriber(t *testing.T) {
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, ChangeSummary{Legacy: true})
 	call := <-s.onChange
 	close(call.done)
+	assert.True(t, call.summary.Legacy)
 }
 
 func TestSubscriberInterleavedCalls(t *testing.T) {
@@ -26,10 +27,10 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, ChangeSummary{})
 	call := <-s.onChange
-	st.NotifySubscribers(ctx)
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, LegacyChangeSummary())
+	st.NotifySubscribers(ctx, LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
 	close(call.done)
 
@@ -71,12 +72,12 @@ func TestRemoveSubscriber(t *testing.T) {
 	s := newFakeSubscriber()
 
 	require.NoError(t, st.AddSubscriber(ctx, s))
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, ChangeSummary{})
 	s.assertOnChangeCount(t, 1)
 
 	err := st.RemoveSubscriber(ctx, s)
 	assert.NoError(t, err)
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, LegacyChangeSummary())
 	s.assertOnChangeCount(t, 0)
 }
 
@@ -129,12 +130,12 @@ func TestSubscriberTeardownOnRemove(t *testing.T) {
 	}()
 
 	// Make sure the loop has started.
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, ChangeSummary{})
 	s.assertOnChangeCount(t, 1)
 
 	// Remove the subscriber and make sure it doesn't get a change.
 	_ = st.RemoveSubscriber(ctx, s)
-	st.NotifySubscribers(ctx)
+	st.NotifySubscribers(ctx, ChangeSummary{})
 	s.assertOnChangeCount(t, 0)
 
 	assert.Equal(t, 1, s.teardownCount)

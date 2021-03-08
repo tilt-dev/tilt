@@ -453,11 +453,8 @@ func (v *ResourceView) resourceExpandedRuntimeError() (rty.Component, bool) {
 	pane := rty.NewConcatLayout(rty.DirVert)
 	ok := false
 	if isCrashing(v.res) {
-		runtimeLog := v.res.CrashLog.Tail(abbreviatedLogLineCount).String()
-		if runtimeLog == "" {
-			spanID := v.res.ResourceInfo.RuntimeSpanID()
-			runtimeLog = v.logReader.TailSpan(abbreviatedLogLineCount, spanID)
-		}
+		spanID := v.res.ResourceInfo.RuntimeSpanID()
+		runtimeLog := v.logReader.TailSpan(abbreviatedLogLineCount, spanID)
 		abbrevLog := abbreviateLog(runtimeLog)
 		for _, logLine := range abbrevLog {
 			pane.Add(rty.TextString(logLine))

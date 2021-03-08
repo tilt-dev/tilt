@@ -228,7 +228,7 @@ func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastD
 func (f *fixture) step() {
 	f.st.ClearActions()
 	f.st.SetState(f.state)
-	f.c.OnChange(f.ctx, f.st)
+	f.c.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 }
 
 func (f *fixture) assertNoStatus() {

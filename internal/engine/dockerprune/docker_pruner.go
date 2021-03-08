@@ -63,7 +63,7 @@ func (dp *DockerPruner) SetUp(ctx context.Context, _ store.RStore) error {
 	return nil
 }
 
-func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore) {
+func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if dp.disabledForTesting || dp.disabledOnSetup {
 		return
 	}

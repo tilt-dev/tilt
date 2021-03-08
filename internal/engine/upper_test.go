@@ -2124,7 +2124,6 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
-		assert.Equal(t, ms.CrashLog.String(), "first string\nsecond string\n")
 		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 	})
 
@@ -4410,7 +4409,7 @@ type fixtureSub struct {
 	ch chan bool
 }
 
-func (s fixtureSub) OnChange(ctx context.Context, st store.RStore) {
+func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	s.ch <- true
 }
 

@@ -29,6 +29,8 @@ type ModeController struct {
 	initialized bool
 }
 
+var _ store.Subscriber = &ModeController{}
+
 func NewModeController(host model.WebHost, userPrefs user.PrefsInterface) *ModeController {
 	return &ModeController{host: host, userPrefs: userPrefs}
 }
@@ -116,7 +118,7 @@ func (c *ModeController) checkReady(ctx context.Context, rStore store.RStore) {
 	})
 }
 
-func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore) {
+func (c *ModeController) OnChange(ctx context.Context, rStore store.RStore, _ store.ChangeSummary) {
 	c.initialize(ctx, rStore)
 	c.checkReady(ctx, rStore)
 }

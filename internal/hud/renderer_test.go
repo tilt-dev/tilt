@@ -185,7 +185,6 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 			PodRestarts:     0,
 		},
 		Endpoints: []string{"1.2.3.4:8080"},
-		CrashLog:  model.NewLog("1\n2\n3\n4\nabe vigoda is now dead\n5\n6\n7\n8\n"),
 	})
 	rtf.run("crash rebuild", 70, 20, v, plainVs)
 
@@ -376,7 +375,6 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 	v := newView(view.Resource{
 		Name:      "vigoda",
 		Endpoints: []string{"1.2.3.4:8080"},
-		CrashLog:  model.NewLog("Definitely borken"),
 		BuildHistory: []model.BuildRecord{{
 			SpanID:     "vigoda:1",
 			StartTime:  ts,
@@ -447,7 +445,6 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 	v := newView(view.Resource{
 		Name:      "vigoda",
 		Endpoints: []string{"1.2.3.4:8080"},
-		CrashLog:  model.NewLog("Definitely borken"),
 		BuildHistory: []model.BuildRecord{{
 			SpanID:     "vigoda:1",
 			StartTime:  ts,

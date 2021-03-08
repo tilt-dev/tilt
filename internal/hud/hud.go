@@ -261,7 +261,7 @@ func (h *Hud) isEnabled(st store.RStore) bool {
 	return state.TerminalMode == store.TerminalModeHUD
 }
 
-func (h *Hud) OnChange(ctx context.Context, st store.RStore) {
+func (h *Hud) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if !h.isEnabled(st) {
 		return
 	}

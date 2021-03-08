@@ -63,7 +63,7 @@ func TestServiceWatchUIDDelayed(t *testing.T) {
 	uid := types.UID("fake-uid")
 	manifest := f.addManifest("server")
 
-	f.sw.OnChange(f.ctx, f.store)
+	f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	ls := k8s.ManagedByTiltSelector()
 	s := servicebuilder.New(f.t, manifest).
@@ -93,7 +93,7 @@ func (f *swFixture) addManifest(manifestName model.ManifestName) model.Manifest 
 }
 
 func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
-	defer f.sw.OnChange(f.ctx, f.store)
+	defer f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	state := f.store.LockMutableStateForTesting()
 	defer f.store.UnlockMutableState()

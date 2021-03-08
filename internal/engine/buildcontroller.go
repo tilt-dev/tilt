@@ -80,7 +80,7 @@ func (c *BuildController) DisableForTesting() {
 	c.disabledForTesting = true
 }
 
-func (c *BuildController) OnChange(ctx context.Context, st store.RStore) {
+func (c *BuildController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if c.disabledForTesting {
 		return
 	}
