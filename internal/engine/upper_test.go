@@ -2123,6 +2123,8 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
+		assert.Contains(t, es.LogStore.ManifestLog(name),
+			"WARNING: Detected container restart. Pod: fakePodID. Container: sancho.\n")
 		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
 	})
 
@@ -2155,7 +2157,8 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	f.withState(func(state store.EngineState) {
 		ms, _ := state.ManifestState(name)
 		spanID := ms.MostRecentPod().SpanID
-		assert.Equal(t, "first string\nsecond string\n", state.LogStore.SpanLog(spanID))
+		assert.Equal(t, "first string\nWARNING: Detected container restart. Pod: fakePodID. Container: sancho.\nsecond string\n",
+			state.LogStore.SpanLog(spanID))
 	})
 
 	err := f.Stop()

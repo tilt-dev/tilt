@@ -54,8 +54,26 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 
 	prunePods(ms)
 
-	podInfo.Containers = podContainers(ctx, pod, pod.Status.ContainerStatuses)
-	podInfo.InitContainers = podContainers(ctx, pod, pod.Status.InitContainerStatuses)
+	initContainers := podContainers(ctx, pod, pod.Status.InitContainerStatuses)
+	if !isNew {
+		names := restartedContainerNames(podInfo.InitContainers, initContainers)
+		for _, name := range names {
+			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", podInfo.PodID, name)
+			handleLogAction(state, store.NewLogAction(manifest.Name, podInfo.SpanID, logger.WarnLvl, nil, []byte(s)))
+		}
+	}
+	podInfo.InitContainers = initContainers
+
+	containers := podContainers(ctx, pod, pod.Status.ContainerStatuses)
+	if !isNew {
+		names := restartedContainerNames(podInfo.Containers, containers)
+		for _, name := range names {
+			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", podInfo.PodID, name)
+			handleLogAction(state, store.NewLogAction(manifest.Name, podInfo.SpanID, logger.WarnLvl, nil, []byte(s)))
+		}
+	}
+	podInfo.Containers = containers
+
 	if isNew {
 		// This is the first time we've seen this pod.
 		// Ignore any restarts that happened before Tilt saw it.
@@ -84,6 +102,25 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 			manifest.Name, podInfo.PodID)
 	}
 	checkForContainerCrash(ctx, state, mt)
+}
+
+func restartedContainerNames(existingContainers []store.Container, newContainers []store.Container) []container.Name {
+	result := []container.Name{}
+	for i, c := range newContainers {
+		if i >= len(existingContainers) {
+			break
+		}
+
+		existing := existingContainers[i]
+		if existing.Name != c.Name {
+			continue
+		}
+
+		if c.Restarts > existing.Restarts {
+			result = append(result, c.Name)
+		}
+	}
+	return result
 }
 
 // Find the ManifestTarget for the PodChangeAction,
