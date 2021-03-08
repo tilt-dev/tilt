@@ -29,6 +29,9 @@ const GroupName = "core.tilt.dev"
 
 const Version = "v1alpha1"
 
+// LabelTargetID is an internal Tilt target ID used for the build graph.
+const LabelTargetID = "tilt.dev/targetId"
+
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
 

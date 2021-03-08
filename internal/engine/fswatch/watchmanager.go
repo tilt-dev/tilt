@@ -200,9 +200,15 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
 		// be responsible for actually generating FileWatch specs, but will behave more as a reconciler
 		// to start/stop watches based on desired state)
 		fw := &filewatches.FileWatch{
-			ObjectMeta: metav1.ObjectMeta{Namespace: name.Namespace, Name: name.Name},
-			Spec:       *spec.DeepCopy(),
-			Status:     *fwStatus,
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: name.Namespace,
+				Name:      name.Name,
+				Labels: map[string]string{
+					filewatches.LabelTargetID: targetID.String(),
+				},
+			},
+			Spec:   *spec.DeepCopy(),
+			Status: *fwStatus,
 		}
 
 		switch res {
@@ -250,8 +256,6 @@ func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name ty
 	}
 	// ephemeral OS/IDE stuff is not part of the spec but always included
 	ignoreMatchers = append(ignoreMatchers, ignore.EphemeralPathMatcher)
-
-	logger.Get(ctx).Debugf("FSWatch[%s]: Starting notifier for %v", name.String(), spec.WatchedPaths)
 
 	notify, err := w.fsWatcherMaker(spec.WatchedPaths, model.NewCompositeMatcher(ignoreMatchers), logger.Get(ctx))
 	if err != nil {

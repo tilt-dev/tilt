@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-	"k8s.io/apimachinery/pkg/types"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -32,7 +30,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/token"
-	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -128,11 +125,11 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case hud.ExitAction:
 		handleHudExitAction(state, action)
 	case fswatch.FileWatchCreateAction:
-		handleFileWatchCreateEvent(ctx, state, action)
+		fswatch.HandleFileWatchCreateEvent(ctx, state, action)
 	case fswatch.FileWatchUpdateAction:
-		handleFileWatchUpdateEvent(ctx, state, action)
+		fswatch.HandleFileWatchUpdateEvent(ctx, state, action)
 	case fswatch.FileWatchUpdateStatusAction:
-		handleFileWatchUpdateStatusEvent(ctx, state, action)
+		fswatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
 	case fswatch.FileWatchDeleteAction:
 		handleFileWatchDeleteEvent(ctx, state, action)
 	case fswatch.GitBranchStatusAction:
@@ -493,62 +490,6 @@ func handleStopProfilingAction(state *store.EngineState) {
 
 func handleStartProfilingAction(state *store.EngineState) {
 	state.IsProfiling = true
-}
-
-func handleFileWatchCreateEvent(_ context.Context, state *store.EngineState, action fswatch.FileWatchCreateAction) {
-	name := types.NamespacedName{Namespace: action.FileWatch.GetNamespace(), Name: action.FileWatch.GetName()}
-	state.FileWatches[name] = action.FileWatch
-}
-
-func handleFileWatchUpdateEvent(_ context.Context, state *store.EngineState, action fswatch.FileWatchUpdateAction) {
-	name := types.NamespacedName{Namespace: action.FileWatch.GetNamespace(), Name: action.FileWatch.GetName()}
-	fw := state.FileWatches[name]
-	if fw == nil {
-		return
-	}
-	action.FileWatch.DeepCopyInto(fw)
-	processFileWatchStatus(state, name, &action.FileWatch.Status)
-}
-
-func handleFileWatchUpdateStatusEvent(_ context.Context, state *store.EngineState, action fswatch.FileWatchUpdateStatusAction) {
-	fw := state.FileWatches[action.Name]
-	if fw == nil {
-		return
-	}
-	action.Status.DeepCopyInto(&fw.Status)
-	processFileWatchStatus(state, action.Name, action.Status)
-}
-
-func processFileWatchStatus(state *store.EngineState, name types.NamespacedName, status *filewatches.FileWatchStatus) {
-	if status.Error != "" || len(status.FileEvents) == 0 {
-		return
-	}
-
-	// since the store is called on EVERY update, can always just look at the last event
-	latestEvent := status.FileEvents[len(status.FileEvents)-1]
-
-	// TODO(milas): should probably centralize this logic and ensure `:` can't exist in resource names
-	targetParts := strings.SplitN(name.Name, ":", 2)
-	targetID := model.TargetID{Type: model.TargetType(targetParts[0]), Name: model.TargetName(targetParts[1])}
-	if targetID.Type == model.TargetTypeConfigs {
-		for _, f := range latestEvent.SeenFiles {
-			state.PendingConfigFileChanges[f] = latestEvent.Time.Time
-		}
-		return
-	}
-
-	mns := state.ManifestNamesForTargetID(targetID)
-	for _, mn := range mns {
-		ms, ok := state.ManifestState(mn)
-		if !ok {
-			return
-		}
-
-		status := ms.MutableBuildStatus(targetID)
-		for _, f := range latestEvent.SeenFiles {
-			status.PendingFileChanges[f] = latestEvent.Time.Time
-		}
-	}
 }
 
 func handleFileWatchDeleteEvent(_ context.Context, state *store.EngineState, action fswatch.FileWatchDeleteAction) {
