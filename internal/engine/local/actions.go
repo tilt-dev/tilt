@@ -1,21 +1,21 @@
 package local
 
-import (
-	"github.com/tilt-dev/tilt/pkg/model"
-)
-
-type LocalServeStatusAction struct {
-	ManifestName model.ManifestName
-	Status       model.RuntimeStatus
-	PID          int // 0 if there's no process running
-	SpanID       model.LogSpanID
+type CmdCreateAction struct {
+	Cmd *Cmd
 }
 
-func (LocalServeStatusAction) Action() {}
-
-type LocalServeReadinessProbeAction struct {
-	ManifestName model.ManifestName
-	Ready        bool
+func NewCmdCreateAction(cmd *Cmd) CmdCreateAction {
+	return CmdCreateAction{Cmd: cmd.DeepCopy()}
 }
 
-func (LocalServeReadinessProbeAction) Action() {}
+func (CmdCreateAction) Action() {}
+
+type CmdUpdateAction struct {
+	Cmd *Cmd
+}
+
+func NewCmdUpdateAction(cmd *Cmd) CmdUpdateAction {
+	return CmdUpdateAction{Cmd: cmd.DeepCopy()}
+}
+
+func (CmdUpdateAction) Action() {}
