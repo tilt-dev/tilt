@@ -100,7 +100,7 @@ func TestWatchManager_IgnoreOutputsImageRefs(t *testing.T) {
 			Build()
 		state.UpsertManifestTarget(store.NewManifestTarget(m))
 	})
-	f.wm.OnChange(f.ctx, f.store)
+	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	f.ChangeFile(t, "included.txt")
 	f.ChangeFile(t, "ref.txt")
@@ -175,7 +175,7 @@ func TestWatchManager_IgnoreWatchSettings(t *testing.T) {
 			Patterns:  []string{"**/foo"},
 		})
 	})
-	f.wm.OnChange(f.ctx, f.store)
+	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	f.ChangeFile(t, filepath.Join("bar", "foo"))
 
@@ -324,7 +324,7 @@ func (f *wmFixture) SetManifestTarget(target model.DockerComposeTarget) {
 	state := f.store.LockMutableStateForTesting()
 	state.UpsertManifestTarget(&mt)
 	f.store.UnlockMutableState()
-	f.wm.OnChange(f.ctx, f.store)
+	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 }
 
 func (f *wmFixture) SetTiltIgnoreContents(s string) {
@@ -337,7 +337,7 @@ func (f *wmFixture) SetTiltIgnoreContents(s string) {
 		Patterns:  patterns,
 	}
 	f.store.UnlockMutableState()
-	f.wm.OnChange(f.ctx, f.store)
+	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 }
 
 func targetFilesChangedActionsToPaths(actions []TargetFilesChangedAction) []string {

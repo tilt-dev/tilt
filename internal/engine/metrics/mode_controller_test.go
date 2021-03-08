@@ -21,7 +21,7 @@ func TestEnableLocalMetrics(t *testing.T) {
 	os.Setenv("TILT_METRICS", "local")
 	defer os.Unsetenv("TILT_METRICS")
 
-	f.mc.OnChange(f.ctx, f.st)
+	f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	assert.Equal(t, model.MetricsDefault, f.st.action.Serving.Mode)
 
 	// Insert a K8s resource into the state store, and make sure that
@@ -32,7 +32,7 @@ func TestEnableLocalMetrics(t *testing.T) {
 			Build()
 		state.UpsertManifestTarget(store.NewManifestTarget(m))
 	})
-	f.mc.OnChange(f.ctx, f.st)
+	f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	if assert.NotNil(t, f.st.action) {
 		assert.Equal(t, model.MetricsLocal, f.st.action.Serving.Mode)
@@ -49,7 +49,7 @@ func TestSetLocalMetrics(t *testing.T) {
 			Build()
 		state.UpsertManifestTarget(store.NewManifestTarget(m))
 	})
-	f.mc.OnChange(f.ctx, f.st)
+	f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	assert.Equal(t, model.MetricsDefault, f.st.action.Serving.Mode)
 
 	f.mc.SetUserMode(f.ctx, f.st, model.MetricsLocal)

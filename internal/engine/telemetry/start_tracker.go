@@ -18,7 +18,7 @@ func NewStartTracker(tracer trace.Tracer) *StartTracker {
 	return &StartTracker{tracer: tracer, startFinished: false}
 }
 
-func (c *StartTracker) OnChange(ctx context.Context, st store.RStore) {
+func (c *StartTracker) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if c.startFinished {
 		return
 	}

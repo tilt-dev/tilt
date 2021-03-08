@@ -233,7 +233,7 @@ func (w *WatchManager) TargetWatchCount() int {
 	return len(w.targetWatches)
 }
 
-func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
+func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 

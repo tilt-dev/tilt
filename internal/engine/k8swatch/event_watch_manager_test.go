@@ -38,7 +38,7 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
-	f.ewm.OnChange(f.ctx, f.store)
+	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.kClient.EmitEvent(f.ctx, evt)
 	expected := store.K8sEventAction{Event: evt, ManifestName: mn}
 	f.assertActions(expected)
@@ -61,7 +61,7 @@ func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
 
 	evt2 := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
-	f.ewm.OnChange(f.ctx, f.store)
+	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.kClient.EmitEvent(f.ctx, evt1)
 	f.kClient.EmitEvent(f.ctx, evt2)
 
@@ -87,8 +87,8 @@ func TestEventWatchManager_duplicateDeployIDs(t *testing.T) {
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
 	f.kClient.EmitEvent(f.ctx, evt)
-	f.ewm.OnChange(f.ctx, f.store)
-	f.ewm.OnChange(f.ctx, f.store)
+	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	expected := store.K8sEventAction{Event: evt, ManifestName: fe1}
 	f.assertActions(expected)
 }
@@ -124,7 +124,7 @@ func TestEventWatchManagerDifferentEvents(t *testing.T) {
 			evt.Reason = c.Reason
 			evt.Type = c.Type
 
-			f.ewm.OnChange(f.ctx, f.store)
+			f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 			f.kClient.EmitEvent(f.ctx, evt)
 			if c.Expected {
 				expected := store.K8sEventAction{Event: evt, ManifestName: mn}
@@ -141,10 +141,10 @@ func TestEventWatchManager_listensOnce(t *testing.T) {
 	defer f.TearDown()
 
 	f.addManifest("fe")
-	f.ewm.OnChange(f.ctx, f.store)
+	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	f.kClient.EventsWatchErr = fmt.Errorf("Multiple watches forbidden")
-	f.ewm.OnChange(f.ctx, f.store)
+	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.assertActions()
 }
 
@@ -156,7 +156,7 @@ func TestEventWatchManager_watchError(t *testing.T) {
 	f.kClient.EventsWatchErr = err
 	f.addManifest("someK8sManifest")
 
-	f.ewm.OnChange(f.ctx, f.store)
+	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	expectedErr := errors.Wrap(err, "Error watching events. Are you connected to kubernetes?\nTry running `kubectl get events -n \"default\"`")
 	expected := store.ErrorAction{Error: expectedErr}
@@ -172,7 +172,7 @@ func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 
 	// Seed the k8s client with a pod and its owner tree
 	manifest := f.addManifest(mn)
-	f.ewm.OnChange(f.ctx, f.store)
+	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	pb := podbuilder.New(t, manifest)
 	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
@@ -291,7 +291,7 @@ func (f *ewmFixture) addManifest(manifestName model.ManifestName) model.Manifest
 }
 
 func (f *ewmFixture) addDeployedUID(m model.Manifest, uid types.UID) {
-	defer f.ewm.OnChange(f.ctx, f.store)
+	defer f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	state := f.store.LockMutableStateForTesting()
 	defer f.store.UnlockMutableState()

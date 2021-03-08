@@ -94,8 +94,8 @@ func (s *Store) RemoveSubscriber(ctx context.Context, sub Subscriber) error {
 }
 
 // Sends messages to all the subscribers asynchronously.
-func (s *Store) NotifySubscribers(ctx context.Context) {
-	s.subscribers.NotifyAll(ctx, s)
+func (s *Store) NotifySubscribers(ctx context.Context, summary ChangeSummary) {
+	s.subscribers.NotifyAll(ctx, s, summary)
 }
 
 // TODO(nick): Clone the state to ensure it's not mutated.
@@ -140,6 +140,8 @@ func (s *Store) Loop(ctx context.Context) error {
 	defer s.subscribers.TeardownAll(context.Background())
 
 	for {
+		summary := ChangeSummary{}
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -154,6 +156,12 @@ func (s *Store) Loop(ctx context.Context) error {
 				}
 
 				s.reduce(ctx, s.state, action)
+
+				if summarizer, ok := action.(Summarizer); ok {
+					summarizer.Summarize(&summary)
+				} else {
+					summary.Legacy = true
+				}
 
 				if s.logActions {
 					newState := s.cheapCopyState()
@@ -174,7 +182,7 @@ func (s *Store) Loop(ctx context.Context) error {
 		if done {
 			return err
 		}
-		s.NotifySubscribers(ctx)
+		s.NotifySubscribers(ctx, summary)
 	}
 }
 

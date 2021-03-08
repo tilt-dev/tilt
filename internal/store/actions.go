@@ -34,6 +34,10 @@ type LogAction struct {
 
 func (LogAction) Action() {}
 
+func (LogAction) Summarize(s *ChangeSummary) {
+	s.Log = true
+}
+
 func (le LogAction) ManifestName() model.ManifestName {
 	return le.mn
 }

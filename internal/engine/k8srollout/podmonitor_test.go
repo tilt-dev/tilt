@@ -57,7 +57,7 @@ func TestMonitorReady(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.SetState(*state)
 
-	f.pm.OnChange(f.ctx, f.store)
+	f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	assertSnapshot(t, f.out.String())
 }

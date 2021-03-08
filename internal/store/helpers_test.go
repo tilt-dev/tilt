@@ -31,7 +31,8 @@ func newFakeSubscriber() *fakeSubscriber {
 }
 
 type onChangeCall struct {
-	done chan bool
+	done    chan bool
+	summary ChangeSummary
 }
 
 func (f *fakeSubscriber) assertOnChangeCount(t *testing.T, count int) {
@@ -62,8 +63,8 @@ func (f *fakeSubscriber) assertOnChange(t *testing.T) {
 	}
 }
 
-func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore) {
-	call := onChangeCall{done: make(chan bool)}
+func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore, summary ChangeSummary) {
+	call := onChangeCall{done: make(chan bool), summary: summary}
 	f.onChange <- call
 	<-call.done
 }

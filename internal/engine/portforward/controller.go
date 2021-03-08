@@ -96,7 +96,7 @@ func (m *Controller) diff(ctx context.Context, st store.RStore) (toStart []portF
 	return toStart, toShutdown
 }
 
-func (m *Controller) OnChange(ctx context.Context, st store.RStore) {
+func (m *Controller) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	toStart, toShutdown := m.diff(ctx, st)
 	for _, entry := range toShutdown {
 		entry.cancel()

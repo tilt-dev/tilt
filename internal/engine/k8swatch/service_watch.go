@@ -42,7 +42,7 @@ func (w *ServiceWatcher) diff(st store.RStore) watcherTaskList {
 	return w.watcherKnownState.createTaskList(state)
 }
 
-func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore) {
+func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	taskList := w.diff(st)
 
 	w.mu.Lock()

@@ -37,7 +37,7 @@ func NewController(execer Execer, proberManager ProberManager) *Controller {
 	}
 }
 
-func (c *Controller) OnChange(ctx context.Context, st store.RStore) {
+func (c *Controller) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	specs := c.determineServeSpecs(ctx, st)
 	c.update(ctx, specs, st)
 }
