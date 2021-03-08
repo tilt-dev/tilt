@@ -570,7 +570,8 @@ func schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"watchedPaths": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "WatchedPaths are absolute paths of directories or files to watch for changes to. It cannot be empty.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -584,7 +585,8 @@ func schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref common.ReferenceCallback) c
 					},
 					"ignores": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Ignores are optional rules to filter out a subset of changes matched by WatchedPaths.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -596,7 +598,7 @@ func schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"watchedPaths", "ignores"},
+				Required: []string{"watchedPaths"},
 			},
 		},
 		Dependencies: []string{
@@ -774,14 +776,16 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 				Properties: map[string]spec.Schema{
 					"basePath": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "BasePath is the absolute root path for the patterns. It cannot be empty.\n\nIf no patterns are specified, everything under it will be recursively ignored.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
-					"paths": {
+					"patterns": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Patterns are dockerignore style rules relative to the base path.\n\nSee https://docs.docker.com/engine/reference/builder/#dockerignore-file.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -794,7 +798,7 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 						},
 					},
 				},
-				Required: []string{"basePath", "paths"},
+				Required: []string{"basePath"},
 			},
 		},
 	}

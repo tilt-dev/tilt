@@ -54,13 +54,21 @@ type FileWatchList struct {
 
 // FileWatchSpec defines the desired state of FileWatch
 type FileWatchSpec struct {
-	WatchedPaths []string    `json:"watchedPaths"`
-	Ignores      []IgnoreDef `json:"ignores"`
+	// WatchedPaths are absolute paths of directories or files to watch for changes to. It cannot be empty.
+	WatchedPaths []string `json:"watchedPaths"`
+	// Ignores are optional rules to filter out a subset of changes matched by WatchedPaths.
+	Ignores []IgnoreDef `json:"ignores,omitempty"`
 }
 
 type IgnoreDef struct {
-	BasePath string   `json:"basePath"`
-	Patterns []string `json:"paths"`
+	// BasePath is the absolute root path for the patterns. It cannot be empty.
+	//
+	// If no patterns are specified, everything under it will be recursively ignored.
+	BasePath string `json:"basePath"`
+	// Patterns are dockerignore style rules relative to the base path.
+	//
+	// See https://docs.docker.com/engine/reference/builder/#dockerignore-file.
+	Patterns []string `json:"patterns,omitempty"`
 }
 
 var _ resource.Object = &FileWatch{}
