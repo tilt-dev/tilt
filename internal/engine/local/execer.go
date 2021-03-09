@@ -99,11 +99,11 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan stat
 	case <-ctx.Done():
 		_, _ = fmt.Fprintf(w, "cmd %v canceled", cmd)
 		// this was cleaned up by the controller, so it's not an error
-		statusCh <- statusAndMetadata{status: Done}
+		statusCh <- statusAndMetadata{status: Done, exitCode: 0}
 	case exitCode := <-exitCh:
 		_, _ = fmt.Fprintf(w, "cmd %v exited with code %d", cmd, exitCode)
 		// even an exit code of 0 is an error, because services aren't supposed to exit!
-		statusCh <- statusAndMetadata{status: Error}
+		statusCh <- statusAndMetadata{status: Error, exitCode: exitCode}
 	}
 }
 
@@ -155,11 +155,17 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	err := c.Start()
 	if err != nil {
 		logger.Get(ctx).Errorf("%s failed to start: %v", cmd.String(), err)
-		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
+		statusCh <- statusAndMetadata{
+			status:   Error,
+			spanID:   spanID,
+			exitCode: 1,
+			reason:   fmt.Sprintf("failed to start: %v", err),
+		}
 		return
 	}
 
-	statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid, spanID: spanID}
+	pid := c.Process.Pid
+	statusCh <- statusAndMetadata{status: Running, pid: pid, spanID: spanID}
 
 	// This is to prevent this goroutine from blocking, since we know there's only going to be one result
 	processExitCh := make(chan error, 1)
@@ -170,17 +176,23 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 
 	select {
 	case err := <-processExitCh:
+		exitCode := 0
+		reason := ""
 		if err == nil {
 			logger.Get(ctx).Errorf("%s exited with exit code 0", cmd.String())
 		} else if ee, ok := err.(*exec.ExitError); ok {
+			exitCode = ee.ExitCode()
+			reason = err.Error()
 			logger.Get(ctx).Errorf("%s exited with exit code %d", cmd.String(), ee.ExitCode())
 		} else {
+			exitCode = 1
+			reason = err.Error()
 			logger.Get(ctx).Errorf("error execing %s: %v", cmd.String(), err)
 		}
-		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
+		statusCh <- statusAndMetadata{status: Error, pid: pid, spanID: spanID, exitCode: exitCode, reason: reason}
 	case <-ctx.Done():
 		e.killProcess(ctx, c, processExitCh)
-		statusCh <- statusAndMetadata{status: Done, spanID: spanID}
+		statusCh <- statusAndMetadata{status: Done, pid: pid, spanID: spanID, reason: "killed", exitCode: 137}
 	}
 }
 

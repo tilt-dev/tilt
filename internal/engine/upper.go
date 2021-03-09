@@ -172,10 +172,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handlePanicAction(state, action)
 	case server.SetTiltfileArgsAction:
 		handleSetTiltfileArgsAction(state, action)
-	case local.LocalServeStatusAction:
-		handleLocalServeStatusAction(ctx, state, action)
-	case local.LocalServeReadinessProbeAction:
-		handleLocalServeReadinessProbeAction(ctx, state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
 	case exit.Action:
@@ -188,6 +184,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleMetricsDashboardAction(state, action)
 	case server.OverrideTriggerModeAction:
 		handleOverrideTriggerModeAction(ctx, state, action)
+	case local.CmdCreateAction:
+		local.HandleCmdCreateAction(state, action)
+	case local.CmdUpdateAction:
+		local.HandleCmdUpdateAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -743,46 +743,6 @@ func handlePanicAction(state *store.EngineState, action store.PanicAction) {
 
 func handleSetTiltfileArgsAction(state *store.EngineState, action server.SetTiltfileArgsAction) {
 	state.UserConfigState = state.UserConfigState.WithArgs(action.Args)
-}
-
-func handleLocalServeStatusAction(ctx context.Context, state *store.EngineState, action local.LocalServeStatusAction) {
-	mt, ok := state.ManifestTargets[action.ManifestName]
-	if !ok {
-		logger.Get(ctx).Infof("got runtime status information for unknown local resource %s", action.ManifestName)
-	}
-	ms := mt.State
-
-	lrs := ms.LocalRuntimeState()
-
-	if action.Status == model.RuntimeStatusError {
-		lrs.Ready = false
-	}
-
-	lrs.Status = action.Status
-	lrs.PID = action.PID
-	lrs.SpanID = action.SpanID
-	ms.RuntimeState = lrs
-}
-
-func handleLocalServeReadinessProbeAction(ctx context.Context, state *store.EngineState, action local.LocalServeReadinessProbeAction) {
-	ms, ok := state.ManifestState(action.ManifestName)
-	if !ok {
-		logger.Get(ctx).Infof("got readiness probe information for unknown local resource %s", action.ManifestName)
-	}
-
-	lrs := ms.LocalRuntimeState()
-	lrs.Ready = action.Ready
-	if action.Ready {
-		lrs.LastReadyOrSucceededTime = time.Now()
-		if lrs.Status == "" || lrs.Status == model.RuntimeStatusPending {
-			// only transition to OK if currently pending AND ready
-			lrs.Status = model.RuntimeStatusOK
-		}
-	} else if lrs.Status == "" || lrs.Status == model.RuntimeStatusOK {
-		// only transition to pending if currently OK and NOT ready
-		lrs.Status = model.RuntimeStatusPending
-	}
-	ms.RuntimeState = lrs
 }
 
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action dcwatch.EventAction) {
