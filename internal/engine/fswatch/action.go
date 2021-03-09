@@ -80,6 +80,10 @@ func HandleFileWatchUpdateStatusEvent(ctx context.Context, state *store.EngineSt
 	processFileWatchStatus(ctx, state, fw)
 }
 
+func HandleFileWatchDeleteEvent(_ context.Context, state *store.EngineState, action FileWatchDeleteAction) {
+	delete(state.FileWatches, action.Name)
+}
+
 func processFileWatchStatus(ctx context.Context, state *store.EngineState, fw *filewatches.FileWatch) {
 	status := fw.Status
 	if status.Error != "" || len(status.FileEvents) == 0 {
