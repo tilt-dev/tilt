@@ -107,9 +107,10 @@ const titleText = (
 }
 
 function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
-  let isManualTriggerMode = props.triggerMode !== TriggerMode.TriggerModeAuto
+  let isManualTriggerMode =
+    props.triggerMode !== TriggerMode.TriggerModeAuto_AutoInit
   let isManualTriggerIncludingInitial =
-    props.triggerMode === TriggerMode.TriggerModeManualIncludingInitial
+    props.triggerMode === TriggerMode.TriggerModeManual_NoInit
 
   // clickable (i.e. trigger button will appear) if it doesn't already have some kind of pending / active build
   let clickable =

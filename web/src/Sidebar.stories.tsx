@@ -71,7 +71,7 @@ function twoItemSidebarOnePinned() {
 function oneItemWithTrigger() {
   let items = oneResourceView().resources.map((res: Resource) => {
     let item = new SidebarItem(res)
-    item.triggerMode = TriggerMode.TriggerModeManualAfterInitial
+    item.triggerMode = TriggerMode.TriggerModeManual_AutoInit
     item.hasPendingChanges = true
     item.currentBuildStartTime = ""
     return item

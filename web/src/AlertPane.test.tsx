@@ -267,7 +267,7 @@ function fillResourceFields(): Resource {
       podRestarts: 0,
     },
     runtimeStatus: "",
-    triggerMode: TriggerMode.TriggerModeAuto,
+    triggerMode: TriggerMode.TriggerModeAuto_AutoInit,
     hasPendingChanges: true,
     queued: false,
   }

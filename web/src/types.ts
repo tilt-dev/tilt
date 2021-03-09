@@ -20,9 +20,10 @@ export enum ResourceView {
 }
 
 export enum TriggerMode {
-  TriggerModeAuto,
-  TriggerModeManualAfterInitial,
-  TriggerModeManualIncludingInitial,
+  TriggerModeAuto_AutoInit,
+  TriggerModeManual_AutoInit,
+  TriggerModeManual_NoInit,
+  TriggerModeAuto_NoInit,
 }
 
 // what is the status of the resource in the cluster
