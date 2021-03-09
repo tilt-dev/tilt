@@ -124,8 +124,14 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		state.FatalError = action.Error
 	case hud.ExitAction:
 		handleHudExitAction(state, action)
-	case fswatch.TargetFilesChangedAction:
-		handleFSEvent(ctx, state, action)
+	case fswatch.FileWatchCreateAction:
+		fswatch.HandleFileWatchCreateEvent(ctx, state, action)
+	case fswatch.FileWatchUpdateAction:
+		fswatch.HandleFileWatchUpdateEvent(ctx, state, action)
+	case fswatch.FileWatchUpdateStatusAction:
+		fswatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
+	case fswatch.FileWatchDeleteAction:
+		fswatch.HandleFileWatchDeleteEvent(ctx, state, action)
 	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
 	case k8swatch.PodDeleteAction:
@@ -476,32 +482,6 @@ func handleStopProfilingAction(state *store.EngineState) {
 
 func handleStartProfilingAction(state *store.EngineState) {
 	state.IsProfiling = true
-}
-
-func handleFSEvent(
-	ctx context.Context,
-	state *store.EngineState,
-	event fswatch.TargetFilesChangedAction) {
-
-	if event.TargetID.Type == model.TargetTypeConfigs {
-		for _, f := range event.Files {
-			state.PendingConfigFileChanges[f] = event.Time
-		}
-		return
-	}
-
-	mns := state.ManifestNamesForTargetID(event.TargetID)
-	for _, mn := range mns {
-		ms, ok := state.ManifestState(mn)
-		if !ok {
-			return
-		}
-
-		status := ms.MutableBuildStatus(event.TargetID)
-		for _, f := range event.Files {
-			status.PendingFileChanges[f] = event.Time
-		}
-	}
 }
 
 func handleConfigsReloadStarted(

@@ -60,45 +60,40 @@ func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
 		}
 	}
 	for _, p := range m.IgnoredLocalDirectories() {
-		dm, err := newDirectoryMatcher(p)
+		dm, err := NewDirectoryMatcher(p)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating directory matcher")
 		}
 		matchers = append(matchers, dm)
 	}
 
-	matchers = append(matchers, ephemeralPathMatcher)
+	matchers = append(matchers, EphemeralPathMatcher)
 
 	return model.NewCompositeMatcher(matchers), nil
 }
 
-func CreateRunMatcher(r model.Run) (model.PathMatcher, error) {
-	dim, err := dockerignore.NewDockerPatternMatcher(r.Triggers.BaseDirectory, r.Triggers.Paths)
-	if err != nil {
-		return nil, err
-	}
-
-	return dim, nil
-}
-
-type directoryMatcher struct {
+type DirectoryMatcher struct {
 	dir string
 }
 
-var _ model.PathMatcher = directoryMatcher{}
+var _ model.PathMatcher = DirectoryMatcher{}
 
-func newDirectoryMatcher(dir string) (directoryMatcher, error) {
+func NewDirectoryMatcher(dir string) (DirectoryMatcher, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
-		return directoryMatcher{}, errors.Wrapf(err, "failed to get abs path of '%s'", dir)
+		return DirectoryMatcher{}, errors.Wrapf(err, "failed to get abs path of '%s'", dir)
 	}
-	return directoryMatcher{dir}, nil
+	return DirectoryMatcher{dir}, nil
 }
 
-func (d directoryMatcher) Matches(p string) (bool, error) {
+func (d DirectoryMatcher) Dir() string {
+	return d.dir
+}
+
+func (d DirectoryMatcher) Matches(p string) (bool, error) {
 	return ospath.IsChild(d.dir, p), nil
 }
 
-func (d directoryMatcher) MatchesEntireDir(p string) (bool, error) {
+func (d DirectoryMatcher) MatchesEntireDir(p string) (bool, error) {
 	return d.Matches(p)
 }

@@ -38,6 +38,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting":    schema_pkg_apis_core_v1alpha1_CmdStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus":          schema_pkg_apis_core_v1alpha1_CmdStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":         schema_pkg_apis_core_v1alpha1_ExecAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent":          schema_pkg_apis_core_v1alpha1_FileEvent(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":          schema_pkg_apis_core_v1alpha1_FileWatch(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":      schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec":      schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref),
@@ -45,6 +46,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":      schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":         schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":            schema_pkg_apis_core_v1alpha1_Handler(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":          schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":              schema_pkg_apis_core_v1alpha1_Probe(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":    schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                      schema_pkg_apis_meta_v1_APIGroup(ref),
@@ -428,6 +430,41 @@ func schema_pkg_apis_core_v1alpha1_ExecAction(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_FileEvent(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"time": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"seenFiles": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"time", "seenFiles"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_FileWatch(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -530,8 +567,42 @@ func schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref common.ReferenceCallback) c
 			SchemaProps: spec.SchemaProps{
 				Description: "FileWatchSpec defines the desired state of FileWatch",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"watchedPaths": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WatchedPaths are absolute paths of directories or files to watch for changes to. It cannot be empty.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"ignores": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ignores are optional rules to filter out a subset of changes matched by WatchedPaths.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"watchedPaths"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef"},
 	}
 }
 
@@ -541,8 +612,37 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 			SchemaProps: spec.SchemaProps{
 				Description: "FileWatchStatus defines the observed state of FileWatch",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"lastEventTime": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"fileEvents": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent"),
+									},
+								},
+							},
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+				Required: []string{"fileEvents"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -665,6 +765,42 @@ func schema_pkg_apis_core_v1alpha1_Handler(ref common.ReferenceCallback) common.
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"basePath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BasePath is the absolute root path for the patterns. It cannot be empty.\n\nIf no patterns are specified, everything under it will be recursively ignored.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"patterns": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Patterns are dockerignore style rules relative to the base path.\n\nSee https://docs.docker.com/engine/reference/builder/#dockerignore-file.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"basePath"},
+			},
+		},
 	}
 }
 

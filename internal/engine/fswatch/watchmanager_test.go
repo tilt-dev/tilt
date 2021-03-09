@@ -15,6 +15,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
@@ -51,7 +52,7 @@ func TestWatchManager_disabledOnCIMode(t *testing.T) {
 
 	f.ChangeFile(t, "foo.txt")
 
-	store.AssertNoActionOfType(t, reflect.TypeOf(TargetFilesChangedAction{}), f.store.Actions)
+	store.AssertNoActionOfType(t, reflect.TypeOf(FileWatchUpdateAction{}), f.store.Actions)
 }
 
 func TestWatchManager_IgnoredLocalDirectories(t *testing.T) {
@@ -269,45 +270,37 @@ func (f *wmFixture) ChangeFile(t *testing.T, path string) {
 	}
 }
 
-func (f *wmFixture) AssertActionsContain(actions []TargetFilesChangedAction, path string) {
+func (f *wmFixture) AssertActionsContain(actions []store.Action, path string) {
 	path, _ = filepath.Abs(path)
-	observedPaths := targetFilesChangedActionsToPaths(actions)
+	observedPaths := extractSeenPathsFromFileWatchActions(actions)
 	assert.Contains(f.T(), observedPaths, path)
 }
 
-func (f *wmFixture) AssertActionsNotContain(actions []TargetFilesChangedAction, path string) {
+func (f *wmFixture) AssertActionsNotContain(actions []store.Action, path string) {
 	path, _ = filepath.Abs(path)
-	observedPaths := targetFilesChangedActionsToPaths(actions)
+	observedPaths := extractSeenPathsFromFileWatchActions(actions)
 	assert.NotContains(f.T(), observedPaths, path)
 }
 
-func (f *wmFixture) ReadActionsUntil(lastFile string) ([]TargetFilesChangedAction, error) {
+func (f *wmFixture) ReadActionsUntil(lastFile string) ([]store.Action, error) {
 	lastFile, _ = filepath.Abs(lastFile)
 	startTime := time.Now()
-	timeout := time.Second
-	var actions []TargetFilesChangedAction
+	timeout := 5 * time.Second
+	var actions []store.Action
 	for time.Since(startTime) < timeout {
-		actions = nil
-		for _, a := range f.store.Actions() {
-			tfca, ok := a.(TargetFilesChangedAction)
-			if !ok {
-				return nil, fmt.Errorf("expected action of type %T, got action of type %T: %v", TargetFilesChangedAction{}, a, a)
-			}
-			// 1. unpack to one file per action, for deterministic inspection
-			// 2. make paths relative to cwd
-			for _, p := range tfca.Files {
-				actions = append(actions, NewTargetFilesChangedAction(tfca.TargetID, p))
-				if p == lastFile {
-					return actions, nil
-				}
+		actions = f.store.Actions()
+		seenPaths := extractSeenPathsFromFileWatchActions(actions)
+		for _, p := range seenPaths {
+			if lastFile == p {
+				return actions, nil
 			}
 		}
-
 	}
 	return nil, fmt.Errorf("timed out waiting for actions. received so far: %v", actions)
 }
 
-func (f *wmFixture) Stop(t *testing.T) []TargetFilesChangedAction {
+func (f *wmFixture) Stop(t *testing.T) []store.Action {
+	t.Helper()
 	f.ChangeFile(t, "stop")
 
 	actions, err := f.ReadActionsUntil("stop")
@@ -340,10 +333,24 @@ func (f *wmFixture) SetTiltIgnoreContents(s string) {
 	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 }
 
-func targetFilesChangedActionsToPaths(actions []TargetFilesChangedAction) []string {
+func extractSeenPathsFromFileWatchActions(actions []store.Action) []string {
 	var paths []string
 	for _, a := range actions {
-		paths = append(paths, a.Files...)
+		var actionStatus *filewatches.FileWatchStatus
+		switch action := a.(type) {
+		case FileWatchCreateAction:
+			actionStatus = &action.FileWatch.Status
+		case FileWatchUpdateAction:
+			actionStatus = &action.FileWatch.Status
+		case FileWatchUpdateStatusAction:
+			actionStatus = action.Status
+		case FileWatchDeleteAction:
+		}
+		if actionStatus != nil {
+			for _, e := range actionStatus.FileEvents {
+				paths = append(paths, e.SeenFiles...)
+			}
+		}
 	}
 	return paths
 }

@@ -29,6 +29,9 @@ const GroupName = "core.tilt.dev"
 
 const Version = "v1alpha1"
 
+// LabelTargetID is an internal Tilt target ID used for the build graph.
+const LabelTargetID = "tilt.dev/target-id"
+
 // The label on any object that identifies which manifest
 // its logs should appear under.
 const LabelManifest = "tilt.dev/resource"
