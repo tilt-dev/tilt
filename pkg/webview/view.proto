@@ -147,10 +147,12 @@ message Resource {
   reserved 21;
 
   // Obsoleted by crash_log_span_id.
-  string crash_log = 22;
+  reserved "crash_log";
+  reserved 22;
 
   // A span id for the log that crashed.
-  string crash_log_span_id = 26;
+  reserved "crash_log_span_id";
+  reserved 26;
 
   // Alerts are currently client-side only, and not
   // sent in the payload.

@@ -128,7 +128,7 @@ func (ws *WebsocketSubscriber) updateClientCheckpoint(msg *proto_webview.AckWebs
 	return nil
 }
 
-func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore) {
+func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, _ store.ChangeSummary) {
 	checkpoint := ws.readClientCheckpoint()
 
 	state := s.RLockState()
@@ -189,7 +189,7 @@ func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) 
 	ws := NewWebsocketSubscriber(s.ctx, conn)
 
 	// Fire a fake OnChange event to initialize the connection.
-	ws.OnChange(s.ctx, s.store)
+	ws.OnChange(s.ctx, s.store, store.LegacyChangeSummary())
 	_ = s.store.AddSubscriber(s.ctx, ws)
 
 	ws.Stream(s.ctx, s.store)

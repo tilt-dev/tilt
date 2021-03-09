@@ -126,7 +126,7 @@ func (c *Controller) isRuntimeDone(mt *store.ManifestTarget) bool {
 	return true
 }
 
-func (c *Controller) OnChange(ctx context.Context, store store.RStore) {
+func (c *Controller) OnChange(ctx context.Context, store store.RStore, _ store.ChangeSummary) {
 	action := c.shouldExit(store)
 	if action.ExitSignal {
 		store.Dispatch(action)

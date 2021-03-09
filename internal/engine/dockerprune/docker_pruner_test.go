@@ -227,7 +227,7 @@ func TestDockerPrunerSinceNBuilds(t *testing.T) {
 	f.dp.lastPruneBuildCount = 5
 	f.dp.lastPruneTime = twoHrsAgo()
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertPrune()
 }
@@ -240,7 +240,7 @@ func TestDockerPrunerNotEnoughBuilds(t *testing.T) {
 	f.dp.lastPruneBuildCount = 5
 	f.dp.lastPruneTime = twoHrsAgo()
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
 }
@@ -251,7 +251,7 @@ func TestDockerPrunerSinceInterval(t *testing.T) {
 	f.withDockerPruneSettings(true, 0, 0, 30*time.Minute)
 	f.dp.lastPruneTime = twoHrsAgo()
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertPrune()
 }
@@ -262,7 +262,7 @@ func TestDockerPrunerSinceDefaultInterval(t *testing.T) {
 	f.withDockerPruneSettings(true, 0, 0, 0)
 	f.dp.lastPruneTime = time.Now().Add(-1 * (model.DockerPruneDefaultInterval + time.Minute))
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertPrune()
 }
@@ -273,7 +273,7 @@ func TestDockerPrunerNotEnoughTimeElapsed(t *testing.T) {
 	f.withDockerPruneSettings(true, 0, 0, 3*time.Hour)
 	f.dp.lastPruneTime = twoHrsAgo()
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
 }
@@ -284,7 +284,7 @@ func TestDockerPrunerSinceDefaultIntervalNotEnoughTime(t *testing.T) {
 	f.withDockerPruneSettings(true, 0, 0, 0)
 	f.dp.lastPruneTime = time.Now().Add(-1 * model.DockerPruneDefaultInterval).Add(20 * time.Minute)
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
 }
@@ -295,7 +295,7 @@ func TestDockerPrunerFirstRun(t *testing.T) {
 	f.withBuildCount(5)
 	f.withDockerPruneSettings(true, 0, 10, 0)
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertPrune()
 }
@@ -306,7 +306,7 @@ func TestDockerPrunerFirstRunButNoCompletedBuilds(t *testing.T) {
 	f.withBuildCount(0)
 	f.withDockerPruneSettings(true, 0, 10, 0)
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
 }
@@ -317,7 +317,7 @@ func TestDockerPrunerNoDockerManifests(t *testing.T) {
 	f.withBuildCount(11)
 	f.withDockerPruneSettings(true, 0, 5, 0)
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
 }
@@ -327,7 +327,7 @@ func TestDockerPrunerDisabled(t *testing.T) {
 	f.withDockerManifestAlreadyBuilt()
 	f.withDockerPruneSettings(false, 0, 0, 0)
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
 }
@@ -339,7 +339,7 @@ func TestDockerPrunerCurrentlyBuilding(t *testing.T) {
 	f.withDockerPruneSettings(true, 0, 0, time.Hour)
 	f.dp.lastPruneTime = twoHrsAgo()
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
 }
@@ -350,7 +350,7 @@ func TestDockerPrunerPendingBuild(t *testing.T) {
 	f.withDockerPruneSettings(true, 0, 0, time.Hour)
 	f.dp.lastPruneTime = twoHrsAgo()
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
 }
@@ -362,7 +362,7 @@ func TestDockerPrunerMaxAgeFromSettings(t *testing.T) {
 	maxAge := time.Hour
 	f.withDockerPruneSettings(true, maxAge, 10, 0)
 
-	f.dp.OnChange(f.ctx, f.st)
+	f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertPrune()
 	untilVals := f.dCli.ContainersPruneFilters.Get("until")

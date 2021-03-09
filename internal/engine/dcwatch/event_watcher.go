@@ -32,7 +32,7 @@ func (w *EventWatcher) needsWatch(st store.RStore) bool {
 	return state.EngineMode.WatchesRuntime() && !w.watching
 }
 
-func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore) {
+func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if !w.needsWatch(st) {
 		return
 	}

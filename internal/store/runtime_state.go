@@ -37,6 +37,7 @@ type RuntimeState interface {
 type ProbeState int
 
 type LocalRuntimeState struct {
+	CmdName                  string
 	Status                   model.RuntimeStatus
 	PID                      int
 	SpanID                   model.LogSpanID

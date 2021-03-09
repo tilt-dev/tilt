@@ -41,6 +41,8 @@ type Controller struct {
 	gitRemote git.GitRemote
 }
 
+var _ store.Subscriber = &Controller{}
+
 func NewController(exporter *DeferredExporter, tiltBuild model.TiltBuild, gitRemote git.GitRemote) *Controller {
 	return &Controller{
 		exporter:  exporter,
@@ -60,7 +62,7 @@ func (c *Controller) newMetricsState(rStore store.RStore) MetricsState {
 	}
 }
 
-func (c *Controller) OnChange(ctx context.Context, rStore store.RStore) {
+func (c *Controller) OnChange(ctx context.Context, rStore store.RStore, _ store.ChangeSummary) {
 	newMetricsState := c.newMetricsState(rStore)
 	oldMetricsState := c.metrics
 	if newMetricsState == oldMetricsState {

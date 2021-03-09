@@ -182,7 +182,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 	})
 }
 
-func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore) {
+func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	if cc.disabledForTesting {
 		return
 	}

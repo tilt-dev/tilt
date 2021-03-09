@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/tilt-dev/wmclient/pkg/analytics"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
+	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -116,6 +118,11 @@ type EngineState struct {
 	MetricsServing  MetricsServing
 
 	UserConfigState model.UserConfigState
+
+	// API-server-based data models. Stored in EngineState
+	// to assist in migration.
+	Cmds        map[string]*Cmd
+	FileWatches map[types.NamespacedName]*filewatches.FileWatch
 }
 
 type CloudStatus struct {
@@ -448,10 +455,6 @@ type ManifestState struct {
 	// We detected stale code and are currently doing an image build
 	NeedsRebuildFromCrash bool
 
-	// If a pod had to be killed because it was crashing, we keep the old log
-	// around for a little while so we can show it in the UX.
-	CrashLog model.Log
-
 	// If this manifest was changed, which config files led to the most recent change in manifest definition
 	ConfigFilesThatCausedChange []string
 
@@ -476,6 +479,9 @@ func NewState() *EngineState {
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
 		ret.AnalyticsEnvOpt = analytics.OptOut
 	}
+
+	ret.Cmds = make(map[string]*Cmd)
+	ret.FileWatches = make(map[types.NamespacedName]*filewatches.FileWatch)
 
 	return ret
 }
@@ -810,7 +816,6 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 			PendingBuildSince:  pendingBuildSince,
 			PendingBuildReason: mt.NextBuildReason(),
 			CurrentBuild:       currentBuild,
-			CrashLog:           ms.CrashLog,
 			Endpoints:          model.LinksToURLStrings(endpoints), // hud can't handle link names, just send URLs
 			ResourceInfo:       resourceInfoView(mt),
 		}
@@ -838,12 +843,6 @@ func tiltfileResourceView(s EngineState) view.Resource {
 		tr.PendingBuildSince = s.TiltfileState.CurrentBuild.StartTime
 	} else {
 		tr.LastDeployTime = s.TiltfileState.LastBuild().FinishTime
-	}
-	if !s.TiltfileState.LastBuild().Empty() {
-		err := s.TiltfileState.LastBuild().Error
-		if err != nil {
-			tr.CrashLog = model.NewLog(err.Error())
-		}
 	}
 	return tr
 }

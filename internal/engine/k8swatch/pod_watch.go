@@ -92,7 +92,7 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 	}
 }
 
-func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore) {
+func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	taskList := w.diff(ctx, st)
 
 	w.mu.Lock()

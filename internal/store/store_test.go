@@ -36,6 +36,29 @@ func TestBroadcastActions(t *testing.T) {
 	f.WaitUntilDone()
 }
 
+func TestLogOnly(t *testing.T) {
+	f := newFixture(t)
+
+	s := newFakeSubscriber()
+	_ = f.store.AddSubscriber(f.ctx, s)
+
+	f.Start()
+
+	f.store.Dispatch(CompletedBuildAction{})
+	call := <-s.onChange
+	assert.False(t, call.summary.IsLogOnly())
+	assert.True(t, call.summary.Legacy)
+	close(call.done)
+
+	f.store.Dispatch(LogAction{})
+	call = <-s.onChange
+	assert.True(t, call.summary.IsLogOnly())
+	close(call.done)
+
+	f.store.Dispatch(DoneAction{})
+	f.WaitUntilDone()
+}
+
 func TestBroadcastActionsBatching(t *testing.T) {
 	f := newFixture(t)
 

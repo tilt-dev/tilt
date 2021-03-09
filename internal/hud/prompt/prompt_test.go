@@ -22,7 +22,7 @@ func TestOpenBrowser(t *testing.T) {
 	f := newFixture()
 	defer f.TearDown()
 
-	f.prompt.OnChange(f.ctx, f.st)
+	f.prompt.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	assert.Contains(t, f.out.String(), "(space) to open the browser")
 
@@ -34,7 +34,7 @@ func TestOpenStream(t *testing.T) {
 	f := newFixture()
 	defer f.TearDown()
 
-	f.prompt.OnChange(f.ctx, f.st)
+	f.prompt.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	assert.Contains(t, f.out.String(), "(s) to stream logs")
 
@@ -48,7 +48,7 @@ func TestOpenHUD(t *testing.T) {
 	f := newFixture()
 	defer f.TearDown()
 
-	f.prompt.OnChange(f.ctx, f.st)
+	f.prompt.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	assert.Contains(t, f.out.String(), "(t) to open legacy terminal mode")
 
@@ -63,7 +63,7 @@ func TestInitOutput(t *testing.T) {
 	defer f.TearDown()
 
 	f.prompt.SetInitOutput(bytes.NewBuffer([]byte("this is a warning\n")))
-	f.prompt.OnChange(f.ctx, f.st)
+	f.prompt.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	assert.Contains(t, f.out.String(), `this is a warning
 

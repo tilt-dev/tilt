@@ -54,7 +54,7 @@ func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 	_ = s.apiServer.Shutdown(ctx)
 }
 
-func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore) {
+func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 }
 
 // Merge the APIServer and the Tilt Web server into a single handler,

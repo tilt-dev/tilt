@@ -7,14 +7,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tilt-dev/fsnotify"
+	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/dockerignore"
 	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/watch"
+	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -24,14 +26,11 @@ import (
 // it might end up being a significant part of deployment delay, if we get the total latency <2s
 // it might also be long enough that it misses some changes if the user has some operation involving a large file
 //   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
-const BufferMinRestInMs = 200
+const BufferMinRestDuration = 200 * time.Millisecond
 
 // When waiting for a `watchBufferDurationInMs`-long break in file modifications to aggregate notifications,
 // if we haven't seen a break by the time `watchBufferMaxTimeInMs` has passed, just send off whatever we've got
-const BufferMaxTimeInMs = 10000
-
-var BufferMinRestDuration = BufferMinRestInMs * time.Millisecond
-var BufferMaxDuration = BufferMaxTimeInMs * time.Millisecond
+const BufferMaxDuration = 10 * time.Second
 
 const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install#system-specific-preparation`
 
@@ -50,71 +49,79 @@ type WatchableTarget interface {
 var _ WatchableTarget = model.ImageTarget{}
 var _ WatchableTarget = model.LocalTarget{}
 
-func WatchableTargetsForManifests(manifests []model.Manifest) []WatchableTarget {
-	var watchable []WatchableTarget
-	seen := map[model.TargetID]bool{}
+// SpecsForManifests creates FileWatch specs from Tilt manifests.
+func SpecsForManifests(manifests []model.Manifest, globalIgnores []model.Dockerignore) map[model.TargetID]filewatches.FileWatchSpec {
+	fileWatches := make(map[model.TargetID]filewatches.FileWatchSpec)
 	for _, m := range manifests {
 		for _, t := range m.TargetSpecs() {
-			if !seen[t.ID()] {
-				if watchTarg, ok := t.(WatchableTarget); ok {
-					watchable = append(watchable, watchTarg)
-					seen[watchTarg.ID()] = true
-				}
+			// ignore targets that have already been processed or aren't watchable
+			_, seen := fileWatches[t.ID()]
+			t, ok := t.(WatchableTarget)
+			if seen || !ok {
+				continue
 			}
+
+			spec := filewatches.FileWatchSpec{
+				WatchedPaths: t.Dependencies(),
+			}
+			for _, di := range t.Dockerignores() {
+				if di.Empty() {
+					continue
+				}
+				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
+					BasePath: di.LocalPath,
+					Patterns: di.Patterns,
+				})
+			}
+			for _, ild := range t.IgnoredLocalDirectories() {
+				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
+					BasePath: ild,
+				})
+			}
+
+			// process global ignores last
+			for _, gi := range globalIgnores {
+				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
+					BasePath: gi.LocalPath,
+					Patterns: gi.Patterns,
+				})
+			}
+			fileWatches[t.ID()] = spec
 		}
 	}
-	return watchable
+	return fileWatches
 }
 
-// configTarget makes a WatchableTarget that works just for the config files (Tiltfile, yaml, Dockerfiles, etc.)
-type configsTarget struct {
-	dependencies []string
-}
+type result int
 
-var _ WatchableTarget = &configsTarget{}
-
-func (m *configsTarget) Dependencies() []string {
-	return m.dependencies
-}
-
-func (m *configsTarget) ID() model.TargetID {
-	return ConfigsTargetID
-}
-
-func (m *configsTarget) LocalRepos() []model.LocalGitRepo {
-	return nil
-}
-
-func (m *configsTarget) Dockerignores() []model.Dockerignore {
-	return nil
-}
-
-func (m *configsTarget) IgnoredLocalDirectories() []string {
-	return nil
-}
+const (
+	resultUnknown result = iota
+	resultAdded
+	resultUpdated
+	resultNoChange
+)
 
 type targetNotifyCancel struct {
-	target WatchableTarget
+	name   types.NamespacedName
+	spec   filewatches.FileWatchSpec
+	status *filewatches.FileWatchStatus
 	notify watch.Notify
 	cancel func()
 }
 
 type WatchManager struct {
-	targetWatches      map[model.TargetID]targetNotifyCancel
+	targetWatches      map[types.NamespacedName]targetNotifyCancel
 	fsWatcherMaker     FsWatcherMaker
 	timerMaker         TimerMaker
-	globalIgnores      []model.Dockerignore
-	globalIgnore       model.PathMatcher
 	disabledForTesting bool
 	mu                 sync.Mutex
 }
 
 func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchManager {
 	return &WatchManager{
-		targetWatches:  make(map[model.TargetID]targetNotifyCancel),
+		targetWatches:  make(map[types.NamespacedName]targetNotifyCancel),
 		fsWatcherMaker: watcherMaker,
 		timerMaker:     timerMaker,
-		globalIgnore:   model.EmptyMatcher,
 	}
 }
 
@@ -122,64 +129,7 @@ func (w *WatchManager) DisableForTesting() {
 	w.disabledForTesting = true
 }
 
-func (w *WatchManager) diff(ctx context.Context, st store.RStore) (setup []WatchableTarget, teardown []model.TargetID) {
-	state := st.RLockState()
-	defer st.RUnlockState()
-
-	if !state.EngineMode.WatchesFiles() {
-		return nil, nil
-	}
-
-	setup = []WatchableTarget{}
-	teardown = []model.TargetID{}
-
-	watchable := WatchableTargetsForManifests(state.Manifests())
-	targetsToProcess := make(map[model.TargetID]WatchableTarget)
-	for _, w := range watchable {
-		targetsToProcess[w.ID()] = w
-	}
-
-	if len(state.ConfigFiles) > 0 {
-		targetsToProcess[ConfigsTargetID] = &configsTarget{dependencies: append([]string(nil), state.ConfigFiles...)}
-	}
-
-	newGlobalIgnores := globalIgnores(state)
-	globalIgnoreChanged := !cmp.Equal(newGlobalIgnores, w.globalIgnores, cmpopts.EquateEmpty())
-
-	for name, mnc := range w.targetWatches {
-		m, ok := targetsToProcess[name]
-		if !ok {
-			teardown = append(teardown, name)
-			continue
-		}
-
-		if globalIgnoreChanged || !watchRulesMatch(m, mnc.target) {
-			teardown = append(teardown, name)
-			setup = append(setup, m)
-		}
-	}
-
-	for name, m := range targetsToProcess {
-		if _, ok := w.targetWatches[name]; !ok {
-			setup = append(setup, m)
-		}
-		delete(targetsToProcess, name)
-	}
-
-	if globalIgnoreChanged {
-		w.globalIgnores = newGlobalIgnores
-
-		globalIgnoreFilter, err := dockerignoresToMatcher(newGlobalIgnores)
-		if err != nil {
-			st.Dispatch(store.NewErrorAction(err))
-		}
-		w.globalIgnore = globalIgnoreFilter
-	}
-
-	return setup, teardown
-}
-
-// Return a list of global ignore patterns.
+// globalIgnores returns a list of global ignore patterns.
 func globalIgnores(es store.EngineState) []model.Dockerignore {
 	ignores := []model.Dockerignore{}
 	if !es.Tiltignore.Empty() {
@@ -208,94 +158,148 @@ func globalIgnores(es store.EngineState) []model.Dockerignore {
 	return ignores
 }
 
-func dockerignoresToMatcher(ignores []model.Dockerignore) (model.PathMatcher, error) {
-	matchers := make([]model.PathMatcher, 0, len(ignores))
-	for _, ignore := range ignores {
-		matcher, err := dockerignore.NewDockerPatternMatcher(ignore.LocalPath, ignore.Patterns)
-		if err != nil {
-			return nil, err
-		}
-		matchers = append(matchers, matcher)
-	}
-	return model.NewCompositeMatcher(matchers), nil
-}
-
-func watchRulesMatch(w1, w2 WatchableTarget) bool {
-	return cmp.Equal(w1.LocalRepos(), w2.LocalRepos()) &&
-		cmp.Equal(w1.Dockerignores(), w2.Dockerignores()) &&
-		cmp.Equal(w1.Dependencies(), w2.Dependencies()) &&
-		cmp.Equal(w1.IgnoredLocalDirectories(), w2.IgnoredLocalDirectories())
-}
-
 func (w *WatchManager) TargetWatchCount() int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return len(w.targetWatches)
 }
 
-func (w *WatchManager) OnChange(ctx context.Context, st store.RStore) {
+func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	setup, teardown := w.diff(ctx, st)
+	state := st.RLockState()
+	defer st.RUnlockState()
 
-	// setup the watch first, to avoid a gap in coverage between setup and
-	// teardown. it's ok if we get a file event twice.
-	newWatches := make(map[model.TargetID]targetNotifyCancel)
-	for _, target := range setup {
-		logger := store.NewLogActionLogger(ctx, st.Dispatch)
-		ignore, err := w.createIgnoreMatcher(target)
-		if err != nil {
-			st.Dispatch(store.NewErrorAction(err))
-			continue
-		}
-
-		watcher, err := w.fsWatcherMaker(target.Dependencies(), ignore, logger)
-		if err != nil {
-			st.Dispatch(store.NewErrorAction(err))
-			continue
-		}
-
-		err = watcher.Start()
-		if err != nil {
-			st.Dispatch(store.NewErrorAction(err))
-			continue
-		}
-
-		ctx, cancel := context.WithCancel(ctx)
-		go w.dispatchFileChangesLoop(ctx, target, watcher, st)
-		newWatches[target.ID()] = targetNotifyCancel{target, watcher, cancel}
+	if !state.EngineMode.WatchesFiles() {
+		return
 	}
 
-	for _, name := range teardown {
-		p, ok := w.targetWatches[name]
-		if !ok {
-			continue
+	// TODO(milas): how can global ignores fit into the API model more cleanly?
+	newGlobalIgnores := globalIgnores(state)
+	specsToProcess := SpecsForManifests(state.Manifests(), newGlobalIgnores)
+
+	if len(state.ConfigFiles) > 0 {
+		specsToProcess[ConfigsTargetID] = filewatches.FileWatchSpec{
+			WatchedPaths: state.ConfigFiles,
 		}
-		err := p.notify.Close()
-		if err != nil {
-			logger.Get(ctx).Infof("Error closing watch for %s: %v", name, err)
-		}
-		p.cancel()
-		delete(w.targetWatches, name)
 	}
 
-	for k, v := range newWatches {
-		w.targetWatches[k] = v
+	watchesToKeep := make(map[types.NamespacedName]bool)
+	for targetID, spec := range specsToProcess {
+		name := types.NamespacedName{Name: targetID.String()}
+		watchesToKeep[name] = true
+		res, fwStatus, err := w.addOrUpdate(ctx, st, name, spec)
+		if err != nil {
+			logger.Get(ctx).Debugf("Error adding/updating watch for %q: %v", name.String(), err)
+			continue
+		}
+
+		// to avoid race conditions + circular data flow issues with reading + writing, the full entity
+		// is always overwritten with a version generated here (in the future, this "controller" will NOT
+		// be responsible for actually generating FileWatch specs, but will behave more as a reconciler
+		// to start/stop watches based on desired state)
+		fw := &filewatches.FileWatch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: name.Namespace,
+				Name:      name.Name,
+				Labels: map[string]string{
+					filewatches.LabelTargetID: targetID.String(),
+				},
+			},
+			Spec:   *spec.DeepCopy(),
+			Status: *fwStatus,
+		}
+
+		switch res {
+		case resultNoChange:
+		case resultAdded:
+			st.Dispatch(NewFileWatchCreateAction(fw))
+		case resultUpdated:
+			st.Dispatch(NewFileWatchUpdateAction(fw))
+		default:
+			logger.Get(ctx).Debugf("Unexpected result %d while processing %q", res, name.String())
+		}
+	}
+
+	// find and delete any that no longer exist from manifests
+	for name, tw := range w.targetWatches {
+		if _, ok := watchesToKeep[name]; !ok {
+			w.cleanupWatch(ctx, tw)
+			delete(w.targetWatches, name)
+			st.Dispatch(NewFileWatchDeleteAction(name))
+		}
 	}
 }
 
-func (w *WatchManager) createIgnoreMatcher(target WatchableTarget) (watch.PathMatcher, error) {
-	filter, err := ignore.CreateFileChangeFilter(target)
-	if err != nil {
-		return nil, err
+func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name types.NamespacedName, spec filewatches.FileWatchSpec) (result, *filewatches.FileWatchStatus, error) {
+	existing, hasExisting := w.targetWatches[name]
+	if hasExisting && equality.Semantic.DeepEqual(existing.spec, spec) {
+		return resultNoChange, existing.status.DeepCopy(), nil
 	}
-	return model.NewCompositeMatcher([]model.PathMatcher{filter, w.globalIgnore}), nil
+
+	var ignoreMatchers []model.PathMatcher
+	for _, ignoreDef := range spec.Ignores {
+		if len(ignoreDef.Patterns) != 0 {
+			m, err := dockerignore.NewDockerPatternMatcher(ignoreDef.BasePath, ignoreDef.Patterns)
+			if err != nil {
+				return resultUnknown, nil, fmt.Errorf("invalid ignore def: %v", err)
+			}
+			ignoreMatchers = append(ignoreMatchers, m)
+		} else {
+			m, err := ignore.NewDirectoryMatcher(ignoreDef.BasePath)
+			if err != nil {
+				return resultUnknown, nil, fmt.Errorf("invalid ignore def: %v", err)
+			}
+			ignoreMatchers = append(ignoreMatchers, m)
+		}
+	}
+	// ephemeral OS/IDE stuff is not part of the spec but always included
+	ignoreMatchers = append(ignoreMatchers, ignore.EphemeralPathMatcher)
+
+	notify, err := w.fsWatcherMaker(spec.WatchedPaths, model.NewCompositeMatcher(ignoreMatchers), logger.Get(ctx))
+	if err != nil {
+		return resultUnknown, nil, fmt.Errorf("failed to initialize filesystem watch: %v", err)
+	}
+	if err := notify.Start(); err != nil {
+		return resultUnknown, nil, fmt.Errorf("failed to initialize filesystem watch: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	tw := targetNotifyCancel{
+		name:   name,
+		spec:   *spec.DeepCopy(),
+		status: &filewatches.FileWatchStatus{},
+		notify: notify,
+		cancel: cancel,
+	}
+
+	go w.dispatchFileChangesLoop(ctx, name, notify, st)
+
+	w.targetWatches[name] = tw
+
+	if hasExisting {
+		// no need to remove from map, we just overwrote it
+		w.cleanupWatch(ctx, existing)
+		return resultUpdated, tw.status.DeepCopy(), nil
+	}
+
+	return resultAdded, tw.status.DeepCopy(), nil
+}
+
+// cleanupWatch stops watching for changes and frees up resources.
+//
+// It does NOT remove the entry from the map - to avoid missed updates, entries are typically just overwritten.
+func (w *WatchManager) cleanupWatch(ctx context.Context, tw targetNotifyCancel) {
+	if err := tw.notify.Close(); err != nil {
+		logger.Get(ctx).Debugf("Failed to close notifier for %q: %v", tw.name.String(), err)
+	}
+	tw.cancel()
 }
 
 func (w *WatchManager) dispatchFileChangesLoop(
 	ctx context.Context,
-	target WatchableTarget,
+	name types.NamespacedName,
 	watcher watch.Notify,
 	st store.RStore) {
 
@@ -307,6 +311,8 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			if !ok {
 				return
 			}
+
+			// TODO(milas): these should probably update the error field and emit FileWatchUpdateAction
 			if watch.IsWindowsShortReadError(err) {
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("Windows I/O overflow.\n"+
 					"You may be able to fix this by setting the env var %s.\n"+
@@ -325,24 +331,30 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			return
 
 		case fsEvents, ok := <-eventsCh:
-
 			if !ok {
 				return
 			}
-			watchEvent := NewTargetFilesChangedAction(target.ID())
-			for _, e := range fsEvents {
-				watchEvent.Files = append(watchEvent.Files, e.Path())
-			}
 
-			if len(watchEvent.Files) > 0 {
-				st.Dispatch(watchEvent)
+			now := metav1.Now()
+			w.mu.Lock()
+			event := filewatches.FileEvent{Time: *now.DeepCopy()}
+			for _, fsEvent := range fsEvents {
+				event.SeenFiles = append(event.SeenFiles, fsEvent.Path())
 			}
+			if len(event.SeenFiles) != 0 {
+				status := w.targetWatches[name].status
+				status.LastEventTime = now.DeepCopy()
+				// TODO(milas): cap max event history
+				status.FileEvents = append(status.FileEvents, event)
+				st.Dispatch(NewFileWatchUpdateStatusAction(name, status))
+			}
+			w.mu.Unlock()
 		}
 	}
 }
 
-//makes an attempt to read some events from `eventChan` so that multiple file changes that happen at the same time
-//from the user's perspective are grouped together.
+// coalesceEvents makes an attempt to read some events from `eventChan` so that multiple file changes
+// that happen at the same time from the user's perspective are grouped together.
 func coalesceEvents(timerMaker TimerMaker, eventChan <-chan watch.FileEvent) <-chan []watch.FileEvent {
 	ret := make(chan []watch.FileEvent)
 	go func() {

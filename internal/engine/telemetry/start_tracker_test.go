@@ -27,7 +27,7 @@ func TestStart(t *testing.T) {
 		model.ManifestName("test"): mt,
 	}}
 	st.SetState(engineState)
-	cst.OnChange(ctx, st)
+	cst.OnChange(ctx, st, store.LegacyChangeSummary())
 
 	// first run span should be started
 	span, exists := ft.spans["first_run"]
@@ -35,7 +35,7 @@ func TestStart(t *testing.T) {
 	assert.False(t, span.ended)
 
 	// first run span should still not be ended
-	cst.OnChange(ctx, st)
+	cst.OnChange(ctx, st, store.LegacyChangeSummary())
 	span, exists = ft.spans["first_run"]
 	require.True(t, exists)
 	assert.False(t, span.ended)
@@ -43,14 +43,14 @@ func TestStart(t *testing.T) {
 	engineState.CompletedBuildCount = 1
 	engineState.ManifestTargets[manifest.ManifestName()].State.BuildHistory = append(engineState.ManifestTargets[manifest.ManifestName()].State.BuildHistory, model.BuildRecord{StartTime: time.Now()})
 	st.SetState(engineState)
-	cst.OnChange(ctx, st)
+	cst.OnChange(ctx, st, store.LegacyChangeSummary())
 
 	// first run span should be ended
 	span, exists = ft.spans["first_run"]
 	require.True(t, exists)
 	assert.True(t, span.ended)
 
-	cst.OnChange(ctx, st)
+	cst.OnChange(ctx, st, store.LegacyChangeSummary())
 
 	// first run span should still be ended
 	span, exists = ft.spans["first_run"]

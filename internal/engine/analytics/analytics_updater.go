@@ -30,7 +30,7 @@ func NewAnalyticsUpdater(ta *analytics.TiltAnalytics, cmdTags CmdTags) *Analytic
 	}
 }
 
-func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore) {
+func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 

@@ -55,7 +55,7 @@ describe("combinedAlerts", () => {
     let expectedAlerts: Alert[] = [
       {
         alertType: PodRestartErrorType,
-        msg: "",
+        msg: "Restarts: 1",
         timestamp: "",
         header: "Restarts: 1",
         resourceName: "snack",
@@ -97,7 +97,6 @@ describe("combinedAlerts", () => {
 
   it("K8s Resource: should show a crash rebuild alert  using the first build info", () => {
     let r: Resource = k8sResource()
-    r.crashLog = "Hello I am a crash log"
     r.buildHistory = [
       {
         isCrashRebuild: true,
@@ -114,7 +113,7 @@ describe("combinedAlerts", () => {
     let expectedAlerts: Alert[] = [
       {
         alertType: CrashRebuildErrorType,
-        msg: "Hello I am a crash log",
+        msg: "Pod crashed",
         timestamp: "10:00AM",
         header: "Pod crashed",
         resourceName: "snack",
@@ -164,7 +163,6 @@ describe("combinedAlerts", () => {
     rInfo.podRestarts = 1 // triggers pod restart alert
     rInfo.podCreationTime = "10:00AM"
 
-    r.crashLog = "I'm a pod that crashed"
     r.buildHistory = [
       // triggers build failed alert
       {
@@ -186,7 +184,7 @@ describe("combinedAlerts", () => {
     let expectedAlerts: Alert[] = [
       {
         alertType: PodRestartErrorType,
-        msg: "I'm a pod that crashed",
+        msg: "Restarts: 1",
         timestamp: "10:00AM",
         header: "Restarts: 1",
         resourceName: "snack",
@@ -208,7 +206,6 @@ describe("combinedAlerts", () => {
 
   it("K8s Resource: should show 3 alerts: 1 crash rebuild alert, 1 build failed alert, 1 warning alert ", () => {
     let r: Resource = k8sResource()
-    r.crashLog = "Hello I am a crash log"
     r.buildHistory = [
       {
         isCrashRebuild: true,
@@ -226,7 +223,7 @@ describe("combinedAlerts", () => {
     let expectedAlerts: Alert[] = [
       {
         alertType: CrashRebuildErrorType,
-        msg: "Hello I am a crash log",
+        msg: "Pod crashed",
         timestamp: "",
         header: "Pod crashed",
         resourceName: "snack",
@@ -396,7 +393,6 @@ function k8sResource(): Resource {
   return {
     name: "snack",
     buildHistory: [],
-    crashLog: "",
     endpointLinks: [],
     podID: "podID",
     isTiltfile: false,
@@ -450,7 +446,6 @@ function dcResource(): Resource {
     },
     runtimeStatus: "ok",
     isTiltfile: false,
-    crashLog: "",
     queued: false,
   }
 }

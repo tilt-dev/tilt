@@ -406,14 +406,6 @@
           "type": "boolean",
           "format": "boolean"
         },
-        "crash_log": {
-          "type": "string",
-          "description": "Obsoleted by crash_log_span_id."
-        },
-        "crash_log_span_id": {
-          "type": "string",
-          "description": "A span id for the log that crashed."
-        },
         "queued": {
           "type": "boolean",
           "format": "boolean"
