@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -231,6 +232,7 @@ func newFixture(t *testing.T) *fixture {
 
 	fe := NewFakeExecer()
 	fpm := NewFakeProberManager()
+	fc := fake.NewTiltClient()
 
 	return &fixture{
 		t:      t,
@@ -238,7 +240,7 @@ func newFixture(t *testing.T) *fixture {
 		out:    out,
 		fe:     fe,
 		fpm:    fpm,
-		c:      NewController(fe, fpm),
+		c:      NewController(fe, fpm, fc),
 		ctx:    ctx,
 		cancel: cancel,
 	}

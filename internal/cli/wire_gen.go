@@ -179,7 +179,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := controllers.NewScheme()
-	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme)
+	deferredClient := controllers.ProvideDeferredClient()
+	clientBuilder := controllers.NewClientBuilder(deferredClient)
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -275,7 +277,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	telemetryController := telemetry.NewController(clock, spanCollector)
 	execer := local.ProvideExecer()
 	proberManager := local.ProvideProberManager()
-	localController := local.NewController(execer, proberManager)
+	localController := local.NewController(execer, proberManager, deferredClient)
 	podMonitor := k8srollout.NewPodMonitor()
 	exitController := exit.NewController()
 	deferredExporter := ProvideDeferredExporter()
@@ -348,7 +350,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := controllers.NewScheme()
-	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme)
+	deferredClient := controllers.ProvideDeferredClient()
+	clientBuilder := controllers.NewClientBuilder(deferredClient)
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -445,7 +449,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	telemetryController := telemetry.NewController(clock, spanCollector)
 	execer := local.ProvideExecer()
 	proberManager := local.ProvideProberManager()
-	localController := local.NewController(execer, proberManager)
+	localController := local.NewController(execer, proberManager, deferredClient)
 	podMonitor := k8srollout.NewPodMonitor()
 	exitController := exit.NewController()
 	deferredExporter := ProvideDeferredExporter()

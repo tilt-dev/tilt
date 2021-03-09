@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -19,6 +20,7 @@ import (
 type TiltServerControllerManager struct {
 	config  *rest.Config
 	scheme  *runtime.Scheme
+	builder cluster.ClientBuilder
 	manager ctrl.Manager
 	cancel  context.CancelFunc
 }
@@ -27,10 +29,11 @@ var _ store.SetUpper = &TiltServerControllerManager{}
 var _ store.Subscriber = &TiltServerControllerManager{}
 var _ store.TearDowner = &TiltServerControllerManager{}
 
-func NewTiltServerControllerManager(config *server.APIServerConfig, scheme *runtime.Scheme) (*TiltServerControllerManager, error) {
+func NewTiltServerControllerManager(config *server.APIServerConfig, scheme *runtime.Scheme, builder cluster.ClientBuilder) (*TiltServerControllerManager, error) {
 	return &TiltServerControllerManager{
-		config: config.GenericConfig.LoopbackClientConfig,
-		scheme: scheme,
+		config:  config.GenericConfig.LoopbackClientConfig,
+		scheme:  scheme,
+		builder: builder,
 	}, nil
 }
 
@@ -65,6 +68,8 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 		// the apiserver
 		LeaderElection:   false,
 		LeaderElectionID: "tilt-apiserver-ctrl",
+
+		ClientBuilder: m.builder,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to create controller manager: %v", err)
