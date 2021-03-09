@@ -11,26 +11,29 @@ type TriggerMode int
 //      for an update
 const (
 	// Tilt automatically performs initial and non-initial builds without manual intervention
-	TriggerModeAuto TriggerMode = iota
+	TriggerModeAuto_AutoInit TriggerMode = iota
 	// Tilt automatically performs initial builds without manual intervention, but requires manual intervention for non-initial builds
-	TriggerModeManualAfterInitial TriggerMode = iota
+	TriggerModeManual_AutoInit TriggerMode = iota
 	// Tilt requires manual intervention for all builds, and never automatically performs a build
-	TriggerModeManualIncludingInitial TriggerMode = iota
+	TriggerModeManual_NoInit TriggerMode = iota
+	// Resource does not automatically build on `tilt up`, but builds automatically in response to file changes
+	TriggerModeAuto_NoInit TriggerMode = iota
 )
 
 var TriggerModes = map[TriggerMode]bool{
-	TriggerModeAuto:                   true,
-	TriggerModeManualAfterInitial:     true,
-	TriggerModeManualIncludingInitial: true,
+	TriggerModeAuto_AutoInit:   true,
+	TriggerModeManual_AutoInit: true,
+	TriggerModeManual_NoInit:   true,
+	TriggerModeAuto_NoInit:     true,
 }
 
 func ValidTriggerMode(tm TriggerMode) bool {
 	return TriggerModes[tm]
 }
 func (t TriggerMode) AutoOnChange() bool {
-	return t == TriggerModeAuto
+	return t == TriggerModeAuto_AutoInit || t == TriggerModeAuto_NoInit
 }
 
 func (t TriggerMode) AutoInitial() bool {
-	return t != TriggerModeManualIncludingInitial
+	return t == TriggerModeAuto_AutoInit || t == TriggerModeManual_AutoInit
 }

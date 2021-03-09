@@ -204,7 +204,7 @@ func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, readyPod("pod-a"))
 
 		manifestAutoInitFalse := manifestbuilder.New(f, "local").WithLocalResource("echo hi", nil).
-			WithTriggerMode(model.TriggerModeManualIncludingInitial).Build()
+			WithTriggerMode(model.TriggerModeManual_NoInit).Build()
 		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitFalse))
 	})
 

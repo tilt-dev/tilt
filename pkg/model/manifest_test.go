@@ -191,14 +191,14 @@ var equalitytests = []struct {
 	},
 	{
 		"TriggerMode equal",
-		Manifest{TriggerMode: TriggerModeManualAfterInitial},
-		Manifest{TriggerMode: TriggerModeManualAfterInitial},
+		Manifest{TriggerMode: TriggerModeManual_AutoInit},
+		Manifest{TriggerMode: TriggerModeManual_AutoInit},
 		false,
 	},
 	{
 		"TriggerMode unequal",
-		Manifest{TriggerMode: TriggerModeAuto},
-		Manifest{TriggerMode: TriggerModeManualAfterInitial},
+		Manifest{TriggerMode: TriggerModeAuto_AutoInit},
+		Manifest{TriggerMode: TriggerModeManual_AutoInit},
 		false,
 	},
 	{

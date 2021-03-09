@@ -495,8 +495,8 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 		name        string
 		triggerMode model.TriggerMode
 	}{
-		{"manual including initial", model.TriggerModeManualIncludingInitial},
-		{"manual after initial", model.TriggerModeManualAfterInitial},
+		{"manual including initial", model.TriggerModeManual_NoInit},
+		{"manual after initial", model.TriggerModeManual_AutoInit},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
@@ -521,6 +521,52 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 	}
 }
 
+func TestTriggerModes(t *testing.T) {
+	for _, tc := range []struct {
+		name                       string
+		triggerMode                model.TriggerMode
+		expectInitialBuild         bool
+		expectBuildWhenFilesChange bool
+	}{
+		{name: "auto with init", triggerMode: model.TriggerModeAuto_AutoInit, expectInitialBuild: true, expectBuildWhenFilesChange: true},
+		{name: "auto without init", triggerMode: model.TriggerModeAuto_NoInit, expectInitialBuild: false, expectBuildWhenFilesChange: true},
+		{name: "manual with init", triggerMode: model.TriggerModeManual_AutoInit, expectInitialBuild: true, expectBuildWhenFilesChange: false},
+		{name: "manual without init", triggerMode: model.TriggerModeManual_NoInit, expectInitialBuild: false, expectBuildWhenFilesChange: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newTestFixture(t)
+			defer f.TearDown()
+
+			manifest := f.simpleManifestWithTriggerMode("foobar", tc.triggerMode)
+			manifests := []model.Manifest{manifest}
+			f.Start(manifests)
+
+			// basic check of trigger mode properties
+			assert.Equal(t, tc.expectInitialBuild, tc.triggerMode.AutoInitial())
+			assert.Equal(t, tc.expectBuildWhenFilesChange, tc.triggerMode.AutoOnChange())
+
+			// if we expect an initial build from the manifest, wait for it to complete
+			if tc.expectInitialBuild {
+				f.nextCallComplete("initial build")
+			}
+
+			f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
+			f.WaitUntil("pending change appears", func(st store.EngineState) bool {
+				return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) >= 1
+			})
+
+			if !tc.expectBuildWhenFilesChange {
+				f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
+				return
+			}
+
+			call := f.nextCallComplete("build after file change")
+			state := call.oneImageState()
+			assert.Equal(t, []string{f.JoinPath("main.go")}, state.FilesChanged())
+		})
+	}
+}
+
 func TestBuildControllerImageBuildTrigger(t *testing.T) {
 	for _, tc := range []struct {
 		name               string
@@ -528,18 +574,19 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 		filesChanged       bool
 		expectedImageBuild bool
 	}{
-		{name: "manual including initial with change", triggerMode: model.TriggerModeManualIncludingInitial, filesChanged: true, expectedImageBuild: false},
-		{name: "manual after initial with change", triggerMode: model.TriggerModeManualAfterInitial, filesChanged: true, expectedImageBuild: false},
-		{name: "manual including initial without change", triggerMode: model.TriggerModeManualIncludingInitial, filesChanged: false, expectedImageBuild: true},
-		{name: "manual after initial without change", triggerMode: model.TriggerModeManualAfterInitial, filesChanged: false, expectedImageBuild: true},
-		{name: "auto without change", triggerMode: model.TriggerModeAuto, filesChanged: false, expectedImageBuild: true},
+		{name: "manual including initial with change", triggerMode: model.TriggerModeManual_NoInit, filesChanged: true, expectedImageBuild: false},
+		{name: "manual after initial with change", triggerMode: model.TriggerModeManual_AutoInit, filesChanged: true, expectedImageBuild: false},
+		{name: "manual including initial without change", triggerMode: model.TriggerModeManual_NoInit, filesChanged: false, expectedImageBuild: true},
+		{name: "manual after initial without change", triggerMode: model.TriggerModeManual_AutoInit, filesChanged: false, expectedImageBuild: true},
+		{name: "auto without change", triggerMode: model.TriggerModeAuto_AutoInit, filesChanged: false, expectedImageBuild: true},
+		{name: "auto after initial without change", triggerMode: model.TriggerModeAuto_NoInit, filesChanged: false, expectedImageBuild: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
 			defer f.TearDown()
 			mName := model.ManifestName("foobar")
 
-			manifest := f.newManifest(mName.String()).WithTriggerMode(tc.triggerMode)
+			manifest := f.simpleManifestWithTriggerMode(mName, tc.triggerMode)
 			manifests := []model.Manifest{manifest}
 			f.Start(manifests)
 
@@ -671,13 +718,13 @@ func TestBuildQueueOrdering(t *testing.T) {
 	defer f.TearDown()
 
 	m1 := f.newManifestWithRef("manifest1", container.MustParseNamed("manifest1")).
-		WithTriggerMode(model.TriggerModeManualAfterInitial)
+		WithTriggerMode(model.TriggerModeManual_AutoInit)
 	m2 := f.newManifestWithRef("manifest2", container.MustParseNamed("manifest2")).
-		WithTriggerMode(model.TriggerModeManualAfterInitial)
+		WithTriggerMode(model.TriggerModeManual_AutoInit)
 	m3 := f.newManifestWithRef("manifest3", container.MustParseNamed("manifest3")).
-		WithTriggerMode(model.TriggerModeManualIncludingInitial)
+		WithTriggerMode(model.TriggerModeManual_NoInit)
 	m4 := f.newManifestWithRef("manifest4", container.MustParseNamed("manifest4")).
-		WithTriggerMode(model.TriggerModeManualIncludingInitial)
+		WithTriggerMode(model.TriggerModeManual_NoInit)
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m4, m2, m3, m1}
@@ -730,11 +777,11 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	// changes to this dir. will register with our automatic manifests
 	dirAuto := f.JoinPath("dirAuto/")
 
-	m1 := f.newDockerBuildManifestWithBuildPath("manifest1", dirManual).WithTriggerMode(model.TriggerModeManualAfterInitial)
-	m2 := f.newDockerBuildManifestWithBuildPath("manifest2", dirManual).WithTriggerMode(model.TriggerModeManualAfterInitial)
-	m3 := f.newDockerBuildManifestWithBuildPath("manifest3", dirManual).WithTriggerMode(model.TriggerModeManualIncludingInitial)
-	m4 := f.newDockerBuildManifestWithBuildPath("manifest4", dirManual).WithTriggerMode(model.TriggerModeManualIncludingInitial)
-	m5 := f.newDockerBuildManifestWithBuildPath("manifest5", dirAuto).WithTriggerMode(model.TriggerModeAuto)
+	m1 := f.newDockerBuildManifestWithBuildPath("manifest1", dirManual).WithTriggerMode(model.TriggerModeManual_AutoInit)
+	m2 := f.newDockerBuildManifestWithBuildPath("manifest2", dirManual).WithTriggerMode(model.TriggerModeManual_AutoInit)
+	m3 := f.newDockerBuildManifestWithBuildPath("manifest3", dirManual).WithTriggerMode(model.TriggerModeManual_NoInit)
+	m4 := f.newDockerBuildManifestWithBuildPath("manifest4", dirManual).WithTriggerMode(model.TriggerModeManual_NoInit)
+	m5 := f.newDockerBuildManifestWithBuildPath("manifest5", dirAuto).WithTriggerMode(model.TriggerModeAuto_AutoInit)
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m5, m4, m2, m3, m1}
@@ -769,7 +816,9 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 
 	for i := range manifests {
 		call := f.nextCall()
-		assert.True(t, strings.HasSuffix(call.firstImgTarg().ID().String(), fmt.Sprintf("manifest%d", i+1)))
+		imgTargID := call.firstImgTarg().ID().String()
+		expectSuffix := fmt.Sprintf("manifest%d", i+1)
+		assert.True(t, strings.HasSuffix(imgTargID, expectSuffix), "expect this call to have image target ...%s (got: %s)", expectSuffix, imgTargID)
 
 		if i < 4 {
 			assert.Equal(t, []string{f.JoinPath("dirManual/main.go")}, call.oneImageState().FilesChanged(), "for manifest %d", i+1)
@@ -1551,4 +1600,10 @@ func (f *testFixture) completeAndCheckBuildsForManifests(manifests ...model.Mani
 	for _, m := range manifests {
 		f.waitUntilManifestNotBuilding(m.Name)
 	}
+}
+
+func (f *testFixture) simpleManifestWithTriggerMode(name model.ManifestName, tm model.TriggerMode) model.Manifest {
+	return manifestbuilder.New(f, name).WithTriggerMode(tm).
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		WithK8sYAML(SanchoYAML).Build()
 }

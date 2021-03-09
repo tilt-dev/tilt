@@ -675,7 +675,7 @@ func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) model.Updat
 	hasPendingBuild := false
 	if ms.TriggerReason != 0 {
 		hasPendingBuild = true
-	} else if triggerMode == model.TriggerModeAuto && hasPendingChanges {
+	} else if triggerMode == model.TriggerModeAuto_AutoInit && hasPendingChanges {
 		hasPendingBuild = true
 	} else if triggerMode.AutoInitial() && currentBuild.Empty() && lastBuild.Empty() {
 		hasPendingBuild = true

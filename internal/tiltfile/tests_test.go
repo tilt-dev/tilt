@@ -43,7 +43,7 @@ t = test("test-foo", "echo hi",
 		deps("a.txt", "b.txt")))
 	assert.True(t, foo.LocalTarget().IsTest, "should be flagged as test manifest")
 	assert.Equal(t, []string{"beep", "boop"}, foo.LocalTarget().Tags)
-	assert.Equal(t, model.TriggerModeManualAfterInitial, foo.TriggerMode)
+	assert.Equal(t, model.TriggerModeManual_AutoInit, foo.TriggerMode)
 }
 
 // TODO:

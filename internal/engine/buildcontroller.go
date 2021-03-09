@@ -211,7 +211,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 
 	isLiveUpdateEligibleTrigger := reason.HasTrigger() &&
 		reason.Has(model.BuildReasonFlagChangedFiles) &&
-		manifest.TriggerMode != model.TriggerModeAuto
+		manifest.TriggerMode != model.TriggerModeAuto_AutoInit
 	isFullBuildTrigger := reason.HasTrigger() && !isLiveUpdateEligibleTrigger
 	if isFullBuildTrigger {
 		for k, v := range result {

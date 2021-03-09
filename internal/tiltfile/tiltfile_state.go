@@ -385,14 +385,14 @@ func starlarkTriggerModeToModel(triggerMode triggerMode, autoInit bool) (model.T
 	switch triggerMode {
 	case TriggerModeAuto:
 		if !autoInit {
-			return 0, errors.New("auto_init=False incompatible with trigger_mode=TRIGGER_MODE_AUTO")
+			return model.TriggerModeAuto_NoInit, nil
 		}
-		return model.TriggerModeAuto, nil
+		return model.TriggerModeAuto_AutoInit, nil
 	case TriggerModeManual:
 		if autoInit {
-			return model.TriggerModeManualAfterInitial, nil
+			return model.TriggerModeManual_AutoInit, nil
 		} else {
-			return model.TriggerModeManualIncludingInitial, nil
+			return model.TriggerModeManual_NoInit, nil
 		}
 	default:
 		return 0, fmt.Errorf("unknown triggerMode %v", triggerMode)
