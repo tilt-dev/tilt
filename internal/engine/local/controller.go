@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -113,7 +114,7 @@ func (c *Controller) reconcile(ctx context.Context, st store.RStore, name types.
 	proc.spec = cmd.Spec
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
-	c.resetStatus(st, name, cmd)
+	c.resetStatus(ctx, st, name, cmd)
 
 	statusCh := make(chan statusAndMetadata)
 
@@ -131,7 +132,7 @@ func (c *Controller) reconcile(ctx context.Context, st store.RStore, name types.
 			resultLoggerFunc)
 		if err != nil {
 			logger.Get(ctx).Errorf("Invalid readiness probe: %v", err)
-			c.updateStatus(st, name, func(status *CmdStatus) {
+			c.updateStatus(ctx, st, name, func(status *CmdStatus) {
 				*status = CmdStatus{
 					Terminated: &CmdStateTerminated{
 						ExitCode: 1,
@@ -171,7 +172,7 @@ func (c *Controller) processReadinessProbeStatusChange(ctx context.Context, st s
 		ready := status == prober.Success || status == prober.Warning
 		if existingReady != ready {
 			existingReady = ready
-			c.updateStatus(st, name, func(status *CmdStatus) { status.Ready = ready })
+			c.updateStatus(ctx, st, name, func(status *CmdStatus) { status.Ready = ready })
 		}
 	}
 }
@@ -212,7 +213,7 @@ func processReadinessProbeResultLogger(ctx context.Context, stillHasSameProcNum 
 	}
 }
 
-func (c *Controller) resetStatus(st store.RStore, name types.NamespacedName, cmd *Cmd) {
+func (c *Controller) resetStatus(ctx context.Context, st store.RStore, name types.NamespacedName, cmd *Cmd) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -222,6 +223,12 @@ func (c *Controller) resetStatus(st store.RStore, name types.NamespacedName, cmd
 	}
 	c.updateCmds[name] = updated
 
+	err := c.client.Status().Update(ctx, updated)
+	if err != nil && !apierrors.IsNotFound(err) {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		return
+	}
+
 	st.Dispatch(NewCmdUpdateStatusAction(updated))
 }
 
@@ -230,7 +237,7 @@ func (c *Controller) resetStatus(st store.RStore, name types.NamespacedName, cmd
 // In a real K8s controller, this would be a queue to make sure we don't miss updates.
 //
 // update() -> a pure function that applies a delta to the status object.
-func (c *Controller) updateStatus(st store.RStore, name types.NamespacedName, update func(status *CmdStatus)) {
+func (c *Controller) updateStatus(ctx context.Context, st store.RStore, name types.NamespacedName, update func(status *CmdStatus)) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -240,6 +247,13 @@ func (c *Controller) updateStatus(st store.RStore, name types.NamespacedName, up
 	}
 
 	update(&cmd.Status)
+
+	err := c.client.Status().Update(ctx, cmd)
+	if err != nil && !apierrors.IsNotFound(err) {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		return
+	}
+
 	st.Dispatch(NewCmdUpdateStatusAction(cmd))
 }
 
@@ -260,7 +274,7 @@ func (c *Controller) processStatuses(
 		}
 
 		if sm.status == Error || sm.status == Done {
-			c.updateStatus(st, name, func(status *CmdStatus) {
+			c.updateStatus(ctx, st, name, func(status *CmdStatus) {
 				status.Waiting = nil
 				status.Running = nil
 				status.Terminated = &CmdStateTerminated{
@@ -278,7 +292,7 @@ func (c *Controller) processStatuses(
 				})
 			}
 
-			c.updateStatus(st, name, func(status *CmdStatus) {
+			c.updateStatus(ctx, st, name, func(status *CmdStatus) {
 				status.Waiting = nil
 				status.Running = &CmdStateRunning{
 					PID:       int32(sm.pid),

@@ -7,6 +7,7 @@ import (
 )
 
 type Cmd = v1alpha1.Cmd
+type CmdList = v1alpha1.CmdList
 type CmdStatus = v1alpha1.CmdStatus
 type CmdSpec = v1alpha1.CmdSpec
 type CmdStateWaiting = v1alpha1.CmdStateWaiting
