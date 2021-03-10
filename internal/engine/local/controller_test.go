@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -10,6 +11,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -27,7 +31,7 @@ func TestNoop(t *testing.T) {
 	defer f.teardown()
 
 	f.step()
-	assert.Equal(t, 0, f.st.CmdCount())
+	f.assertCmdCount(0)
 }
 
 func TestUpdate(t *testing.T) {
@@ -44,9 +48,7 @@ func TestUpdate(t *testing.T) {
 	t2 := time.Unix(2, 0)
 	f.resource("foo", "false", ".", t2)
 	f.step()
-	f.assertCmdMatches("foo-serve-1", func(cmd *Cmd) bool {
-		return cmd.DeletionTimestamp != nil
-	})
+	f.assertCmdDeleted("foo-serve-1")
 
 	f.step()
 	f.assertCmdMatches("foo-serve-2", func(cmd *Cmd) bool {
@@ -56,7 +58,7 @@ func TestUpdate(t *testing.T) {
 	f.fe.RequireNoKnownProcess(t, "true")
 	f.assertLogMessage("foo", "Starting cmd false")
 	f.assertLogMessage("foo", "cmd true canceled")
-	assert.Equal(t, 2, f.st.CmdCount())
+	f.assertCmdCount(1)
 }
 
 func TestServe(t *testing.T) {
@@ -201,7 +203,13 @@ func (s *testStore) Cmd(name string) *Cmd {
 func (s *testStore) CmdCount() int {
 	st := s.RLockState()
 	defer s.RUnlockState()
-	return len(st.Cmds)
+	count := 0
+	for _, cmd := range st.Cmds {
+		if cmd.DeletionTimestamp != nil {
+			count++
+		}
+	}
+	return count
 }
 
 func (s *testStore) Dispatch(action store.Action) {
@@ -211,6 +219,9 @@ func (s *testStore) Dispatch(action store.Action) {
 	defer s.UnlockMutableState()
 
 	switch action := action.(type) {
+	case store.ErrorAction:
+		panic(fmt.Sprintf("no error action allowed: %s", action.Error))
+
 	case store.LogAction:
 		_, _ = s.out.Write(action.Message())
 
@@ -234,6 +245,7 @@ type fixture struct {
 	fe     *FakeExecer
 	fpm    *FakeProberManager
 	sc     *ServerController
+	client ctrlclient.Client
 	c      *Controller
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -250,7 +262,7 @@ func newFixture(t *testing.T) *fixture {
 	fe := NewFakeExecer()
 	fpm := NewFakeProberManager()
 	fc := fake.NewTiltClient()
-	sc := NewServerController()
+	sc := NewServerController(fc)
 	c := NewController(fe, fpm, fc)
 
 	return &fixture{
@@ -263,6 +275,7 @@ func newFixture(t *testing.T) *fixture {
 		c:      c,
 		ctx:    ctx,
 		cancel: cancel,
+		client: fc,
 	}
 }
 
@@ -335,4 +348,30 @@ func (f *fixture) assertCmdMatches(name string, matcher func(cmd *Cmd) bool) {
 		}
 		return matcher(cmd)
 	}, timeout, interval)
+
+	var cmd Cmd
+	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, &cmd)
+	require.NoError(f.t, err)
+	assert.True(f.t, matcher(&cmd))
+}
+
+func (f *fixture) assertCmdDeleted(name string) {
+	assert.Eventually(f.t, func() bool {
+		cmd := f.st.Cmd(name)
+		return cmd == nil || cmd.DeletionTimestamp != nil
+	}, timeout, interval)
+
+	var cmd Cmd
+	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, &cmd)
+	assert.Error(f.t, err)
+	assert.True(f.t, apierrors.IsNotFound(err))
+}
+
+func (f *fixture) assertCmdCount(count int) {
+	assert.Equal(f.t, count, f.st.CmdCount())
+
+	var list CmdList
+	err := f.client.List(f.ctx, &list)
+	require.NoError(f.t, err)
+	assert.Equal(f.t, count, len(list.Items))
 }

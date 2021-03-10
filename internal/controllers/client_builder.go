@@ -8,19 +8,24 @@ import (
 )
 
 type ClientBuilder struct {
-	cluster.ClientBuilder
+	delegate cluster.ClientBuilder
 	deferred *DeferredClient
 }
 
 func NewClientBuilder(deferred *DeferredClient) cluster.ClientBuilder {
-	return &ClientBuilder{
-		ClientBuilder: cluster.NewClientBuilder(),
-		deferred:      deferred,
+	return ClientBuilder{
+		delegate: cluster.NewClientBuilder(),
+		deferred: deferred,
 	}
 }
 
-func (b *ClientBuilder) Build(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
-	c, err := b.ClientBuilder.Build(cache, config, options)
+func (b ClientBuilder) WithUncached(objs ...client.Object) cluster.ClientBuilder {
+	b.delegate = b.delegate.WithUncached(objs...)
+	return b
+}
+
+func (b ClientBuilder) Build(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
+	c, err := b.delegate.Build(cache, config, options)
 	if err != nil {
 		return nil, err
 	}

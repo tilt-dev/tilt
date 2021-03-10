@@ -6,11 +6,16 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
+
+const AnnotationOwnerName = "tilt.dev/owner-name"
+const AnnotationOwnerKind = "tilt.dev/owner-kind"
 
 // A controller that reads the Tilt data model and creates new Cmd objects.
 //
@@ -27,17 +32,19 @@ type ServerController struct {
 	createdCmds        map[string]*Cmd
 	createdTriggerTime map[string]time.Time
 	deletingCmds       map[string]bool
+	client             ctrlclient.Client
 
 	cmdCount int
 }
 
 var _ store.Subscriber = &ServerController{}
 
-func NewServerController() *ServerController {
+func NewServerController(client ctrlclient.Client) *ServerController {
 	return &ServerController{
 		createdCmds:        make(map[string]*Cmd),
 		createdTriggerTime: make(map[string]time.Time),
 		deletingCmds:       make(map[string]bool),
+		client:             client,
 	}
 }
 
@@ -61,13 +68,13 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 	// Simulates controller-runtime's notion of Owns().
 	ownedCmds := make(map[string]*Cmd)
 	for _, cmd := range state.Cmds {
-		for _, ref := range cmd.ObjectMeta.OwnerReferences {
-			if ref.Kind != "CmdServer" {
-				continue
-			}
-
-			ownedCmds[ref.Name] = cmd
+		ownerName := cmd.Annotations[AnnotationOwnerName]
+		ownerKind := cmd.Annotations[AnnotationOwnerKind]
+		if ownerKind != "CmdServer" {
+			continue
 		}
+
+		ownedCmds[ownerName] = cmd
 	}
 
 	var r []CmdServer
@@ -138,6 +145,13 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, st s
 	if isCreated && server.Status.CmdStatus.Terminated == nil {
 		if !c.deletingCmds[name] {
 			c.deletingCmds[name] = true
+
+			err := c.client.Delete(ctx, created)
+			if err != nil && !apierrors.IsNotFound(err) {
+				st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+				return
+			}
+
 			st.Dispatch(CmdDeleteAction{Name: server.Status.CmdName})
 		}
 		return
@@ -154,13 +168,12 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, st s
 	cmd := &Cmd{
 		ObjectMeta: ObjectMeta{
 			Name: cmdName,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Name: name,
-					Kind: "CmdServer",
-				},
-			},
 			Annotations: map[string]string{
+				// TODO(nick): This should be an owner reference once CmdServer is a
+				// full-fledged type.
+				AnnotationOwnerName: name,
+				AnnotationOwnerKind: "CmdServer",
+
 				v1alpha1.AnnotationSpanID: string(spanID),
 			},
 			Labels: map[string]string{
@@ -170,6 +183,13 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, st s
 		Spec: cmdSpec,
 	}
 	c.createdCmds[name] = cmd
+
+	err := c.client.Create(ctx, cmd)
+	if err != nil && !apierrors.IsNotFound(err) {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		return
+	}
+
 	st.Dispatch(CmdCreateAction{Cmd: cmd})
 }
 
