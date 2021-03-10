@@ -91,17 +91,17 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan stat
 	defer close(doneCh)
 	defer close(statusCh)
 
-	_, _ = fmt.Fprintf(w, "Starting cmd %v", cmd)
+	_, _ = fmt.Fprintf(w, "Starting cmd %v\n", cmd)
 
 	statusCh <- statusAndMetadata{status: Running}
 
 	select {
 	case <-ctx.Done():
-		_, _ = fmt.Fprintf(w, "cmd %v canceled", cmd)
+		_, _ = fmt.Fprintf(w, "cmd %v canceled\n", cmd)
 		// this was cleaned up by the controller, so it's not an error
 		statusCh <- statusAndMetadata{status: Done, exitCode: 0}
 	case exitCode := <-exitCh:
-		_, _ = fmt.Fprintf(w, "cmd %v exited with code %d", cmd, exitCode)
+		_, _ = fmt.Fprintf(w, "cmd %v exited with code %d\n", cmd, exitCode)
 		// even an exit code of 0 is an error, because services aren't supposed to exit!
 		statusCh <- statusAndMetadata{status: Error, exitCode: exitCode}
 	}

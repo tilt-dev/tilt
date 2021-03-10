@@ -10,6 +10,9 @@ type ChangeSummary struct {
 
 	// True if this change added logs.
 	Log bool
+
+	// Cmds with their specs changed.
+	CmdSpecs map[string]bool
 }
 
 func (s ChangeSummary) IsLogOnly() bool {

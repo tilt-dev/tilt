@@ -3774,7 +3774,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fc := fake.NewTiltClient()
 	fcb := fake.NewClientBuilder(fc)
 	lc := local.NewController(fe, fpm, fc)
-
+	lsc := local.NewServerController()
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
@@ -3823,7 +3823,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lc, lsc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

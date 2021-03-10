@@ -9,6 +9,7 @@ import (
 type Cmd = v1alpha1.Cmd
 type CmdStatus = v1alpha1.CmdStatus
 type CmdSpec = v1alpha1.CmdSpec
+type CmdStateWaiting = v1alpha1.CmdStateWaiting
 type CmdStateTerminated = v1alpha1.CmdStateTerminated
 type CmdStateRunning = v1alpha1.CmdStateRunning
 type ObjectMeta = metav1.ObjectMeta
