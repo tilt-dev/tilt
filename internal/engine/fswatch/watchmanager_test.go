@@ -36,7 +36,7 @@ func TestWatchManager_basic(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
-	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{f.Path()}})
 
 	f.ChangeFile(t, "foo.txt")
 
@@ -72,9 +72,9 @@ func TestWatchManager_IgnoredLocalDirectories(t *testing.T) {
 	f.SetManifestTarget(target)
 
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
-		WatchedPaths: []string{"."},
+		WatchedPaths: []string{f.Path()},
 		Ignores: []filewatches.IgnoreDef{
-			{BasePath: "bar"},
+			{BasePath: f.JoinPath("bar")},
 		},
 	})
 
@@ -94,9 +94,9 @@ func TestWatchManager_Dockerignore(t *testing.T) {
 	f.SetManifestTarget(target)
 
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
-		WatchedPaths: []string{"."},
+		WatchedPaths: []string{f.Path()},
 		Ignores: []filewatches.IgnoreDef{
-			{BasePath: ".", Patterns: []string{"bar"}},
+			{BasePath: f.Path(), Patterns: []string{"bar"}},
 		},
 	})
 
@@ -150,14 +150,14 @@ func TestWatchManager_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target.WithIgnoredLocalDirectories([]string{"bar"}))
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
-		WatchedPaths: []string{"."},
+		WatchedPaths: []string{f.Path()},
 		Ignores: []filewatches.IgnoreDef{
-			{BasePath: "bar"},
+			{BasePath: f.JoinPath("bar")},
 		},
 	})
 
 	f.SetManifestTarget(target)
-	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{f.Path()}})
 
 	f.ChangeFile(t, "bar")
 
@@ -175,14 +175,14 @@ func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target.WithDockerignores([]model.Dockerignore{{LocalPath: ".", Patterns: []string{"bar"}}}))
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
-		WatchedPaths: []string{"."},
+		WatchedPaths: []string{f.Path()},
 		Ignores: []filewatches.IgnoreDef{
-			{BasePath: ".", Patterns: []string{"bar"}},
+			{BasePath: f.Path(), Patterns: []string{"bar"}},
 		},
 	})
 
 	f.SetManifestTarget(target)
-	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{f.Path()}})
 
 	f.ChangeFile(t, "bar")
 
@@ -201,7 +201,7 @@ func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
-		WatchedPaths: []string{"."},
+		WatchedPaths: []string{f.Path()},
 		Ignores: []filewatches.IgnoreDef{
 			{BasePath: f.Path(), Patterns: []string{"**/foo"}},
 		},
@@ -231,7 +231,7 @@ func TestWatchManager_IgnoreWatchSettings(t *testing.T) {
 	f.store.Dispatch(configs.ConfigsReloadedAction{})
 
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
-		WatchedPaths: []string{"."},
+		WatchedPaths: []string{f.Path()},
 		Ignores: []filewatches.IgnoreDef{
 			{BasePath: f.Path(), Patterns: []string{"**/foo"}},
 		},
@@ -252,7 +252,7 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
-		WatchedPaths: []string{"."},
+		WatchedPaths: []string{f.Path()},
 		Ignores: []filewatches.IgnoreDef{
 			{BasePath: f.Path(), Patterns: []string{"**/foo"}},
 		},
@@ -261,7 +261,7 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 
 	f.SetTiltIgnoreContents("**foo\n!bar/baz/foo")
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
-		WatchedPaths: []string{"."},
+		WatchedPaths: []string{f.Path()},
 		Ignores: []filewatches.IgnoreDef{
 			{BasePath: f.Path(), Patterns: []string{"**foo", "!bar/baz/foo"}},
 		},
@@ -280,7 +280,7 @@ func TestWatchManagerShortRead(t *testing.T) {
 	target := model.DockerComposeTarget{Name: "foo"}.
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
-	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{f.Path()}})
 
 	f.fakeMultiWatcher.Errors <- fmt.Errorf("short read on readEvents()")
 

@@ -3910,7 +3910,7 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
-	expectedWatchCount := len(fswatch.SpecsForManifests(state.Manifests(), nil))
+	expectedWatchCount := len(fswatch.SpecsForManifests(f.ctx, state.Manifests(), nil, f.store))
 	if len(state.ConfigFiles) > 0 {
 		// watchmanager also creates a watcher for config files
 		expectedWatchCount++

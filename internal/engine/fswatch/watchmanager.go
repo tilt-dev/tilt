@@ -19,6 +19,7 @@ import (
 	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 // When we see a file change, wait this long to see if any other files have changed, and bundle all changes together.
@@ -39,6 +40,10 @@ var ConfigsTargetID = model.TargetID{
 	Name: "singleton",
 }
 
+type dispatcher interface {
+	Dispatch(action store.Action)
+}
+
 // If you modify this interface, you might also need to update the watchRulesMatch function below.
 type WatchableTarget interface {
 	ignore.IgnorableTarget
@@ -48,9 +53,94 @@ type WatchableTarget interface {
 
 var _ WatchableTarget = model.ImageTarget{}
 var _ WatchableTarget = model.LocalTarget{}
+var _ WatchableTarget = model.DockerComposeTarget{}
+
+func absPath(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("could not determine absolute path for %q: %v", path, err)
+	}
+	return absPath, nil
+}
+
+func specForTarget(ctx context.Context, mn model.ManifestName, t WatchableTarget, globalIgnores []model.Dockerignore, dispatcher dispatcher) filewatches.FileWatchSpec {
+	logValidationError := func(err error) {
+		dispatcher.Dispatch(store.NewLogAction(
+			mn,
+			logstore.SpanID(fmt.Sprintf("filewatch:%s", t.ID().String())),
+			logger.WarnLvl,
+			nil,
+			[]byte(err.Error()+"\n")))
+	}
+
+	// FileWatchSpec expects absolute paths for WatchedPaths and BasePath for ignores - in the future, this will
+	// be the responsibility of each type to create specs with absolute paths (or apiserver validation will reject
+	// them); for now, any relative paths from the target types are resolved here
+	var watchedPaths []string
+	for _, p := range t.Dependencies() {
+		var err error
+		absPath, err := absPath(p)
+		if err != nil {
+			logValidationError(err)
+		} else {
+			watchedPaths = append(watchedPaths, absPath)
+		}
+	}
+
+	spec := filewatches.FileWatchSpec{
+		WatchedPaths: watchedPaths,
+	}
+	for _, di := range t.Dockerignores() {
+		if di.Empty() {
+			continue
+		}
+		absBasePath, err := absPath(di.LocalPath)
+		if err != nil {
+			logValidationError(err)
+		} else {
+			spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
+				BasePath: absBasePath,
+				Patterns: di.Patterns,
+			})
+		}
+	}
+	for _, ild := range t.IgnoredLocalDirectories() {
+		absLocalDir, err := absPath(ild)
+		if err != nil {
+			logValidationError(err)
+		} else {
+			spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
+				BasePath: absLocalDir,
+			})
+		}
+	}
+
+	// process global ignores last
+	for _, gi := range globalIgnores {
+		absBasePath, err := absPath(gi.LocalPath)
+		if err != nil {
+			logValidationError(err)
+		} else {
+			spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
+				BasePath: absBasePath,
+				Patterns: gi.Patterns,
+			})
+		}
+	}
+
+	// HACK: until these are actually stored in the API server, manually validate them
+	//		 (this isn't done in HandleFileWatchCreateAction so that it can log warnings to the appropriate manifest)
+	fw := filewatches.FileWatch{Spec: spec}
+	validationErrs := fw.Validate(ctx)
+	for _, validationErr := range validationErrs {
+		logValidationError(fmt.Errorf("validation error for field %q: %s", validationErr.Field, validationErr.ErrorBody()))
+	}
+
+	return spec
+}
 
 // SpecsForManifests creates FileWatch specs from Tilt manifests.
-func SpecsForManifests(manifests []model.Manifest, globalIgnores []model.Dockerignore) map[model.TargetID]filewatches.FileWatchSpec {
+func SpecsForManifests(ctx context.Context, manifests []model.Manifest, globalIgnores []model.Dockerignore, dispatcher dispatcher) map[model.TargetID]filewatches.FileWatchSpec {
 	fileWatches := make(map[model.TargetID]filewatches.FileWatchSpec)
 	for _, m := range manifests {
 		for _, t := range m.TargetSpecs() {
@@ -60,33 +150,7 @@ func SpecsForManifests(manifests []model.Manifest, globalIgnores []model.Dockeri
 			if seen || !ok {
 				continue
 			}
-
-			spec := filewatches.FileWatchSpec{
-				WatchedPaths: t.Dependencies(),
-			}
-			for _, di := range t.Dockerignores() {
-				if di.Empty() {
-					continue
-				}
-				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-					BasePath: di.LocalPath,
-					Patterns: di.Patterns,
-				})
-			}
-			for _, ild := range t.IgnoredLocalDirectories() {
-				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-					BasePath: ild,
-				})
-			}
-
-			// process global ignores last
-			for _, gi := range globalIgnores {
-				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-					BasePath: gi.LocalPath,
-					Patterns: gi.Patterns,
-				})
-			}
-			fileWatches[t.ID()] = spec
+			fileWatches[t.ID()] = specForTarget(ctx, m.Name, t, globalIgnores, dispatcher)
 		}
 	}
 	return fileWatches
@@ -173,7 +237,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, _ store.Ch
 
 	// TODO(milas): how can global ignores fit into the API model more cleanly?
 	newGlobalIgnores := globalIgnores(state)
-	specsToProcess := SpecsForManifests(state.Manifests(), newGlobalIgnores)
+	specsToProcess := SpecsForManifests(ctx, state.Manifests(), newGlobalIgnores, st)
 
 	if len(state.ConfigFiles) > 0 {
 		specsToProcess[ConfigsTargetID] = filewatches.FileWatchSpec{
