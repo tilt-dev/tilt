@@ -96,6 +96,18 @@ jobs:
       - slack/notify-on-failure:
           only_for_branches: master
 
+  test-extensions:
+    docker:
+      - image: tiltdev/tilt-extensions-ci:latest
+    steps:
+      - checkout
+      - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
+      - setup_remote_docker:
+          version: 19.03.12
+      - run: with-kind-cluster.sh make install test-extensions
+      - slack/notify-on-failure:
+          only_for_branches: master
+
   build-macos:
     macos:
       xcode: "12.3.0"
@@ -192,6 +204,9 @@ workflows:
           requires:
             - build-linux
       - build-integration:
+          requires:
+            - build-linux
+      - test-extensions:
           requires:
             - build-linux
       - build-windows:

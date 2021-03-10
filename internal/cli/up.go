@@ -208,6 +208,13 @@ func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	case model.LocalWebMode, model.ProdWebMode, model.PrecompiledWebMode:
 		return webModeFlag, nil
 	case model.DefaultWebMode:
+		// Set prod web mode from an environment variable. Useful for
+		// running integration tests against dev tilt.
+		webMode := os.Getenv("TILT_WEB_MODE")
+		if webMode == "prod" {
+			return model.ProdWebMode, nil
+		}
+
 		if b.Dev {
 			return model.LocalWebMode, nil
 		} else {
