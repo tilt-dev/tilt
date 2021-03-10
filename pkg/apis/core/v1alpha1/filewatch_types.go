@@ -65,7 +65,7 @@ type IgnoreDef struct {
 	//
 	// If no patterns are specified, everything under it will be recursively ignored.
 	BasePath string `json:"basePath"`
-	// Patterns are dockerignore style rules relative to the base path.
+	// Patterns are dockerignore style rules; they are always rooted by the base path.
 	//
 	// See https://docs.docker.com/engine/reference/builder/#dockerignore-file.
 	Patterns []string `json:"patterns,omitempty"`
@@ -118,13 +118,10 @@ func (in *FileWatch) Validate(_ context.Context) field.ErrorList {
 		if !filepath.IsAbs(ignoreDef.BasePath) {
 			fieldErrors = append(fieldErrors, field.Invalid(ignoreDefPath, ignoreDef.BasePath, "must be an absolute file path"))
 		}
-		// patterns can be empty, which means ignore the entire directory
-		for ignorePatternIndex, ignorePattern := range ignoreDef.Patterns {
-			ingorePatternPath := ignoreDefPath.Child("patterns").Index(ignorePatternIndex)
-			if filepath.IsAbs(ignorePattern) {
-				fieldErrors = append(fieldErrors, field.Invalid(ingorePatternPath, ignorePattern, "must be a relative file path"))
-			}
-		}
+		// no validation is done on the patterns:
+		// patterns can be empty, which means ignore the entire directory; they can also be "absolute" or relative,
+		// but are always rooted by the base path, e.g. base of /base with patterns [/foo, foo] means /base/foo in
+		// both cases
 	}
 	return fieldErrors
 }
