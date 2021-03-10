@@ -4,23 +4,27 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/docker/docker/builder/dockerignore"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
-	"github.com/tilt-dev/tilt/internal/testutils"
-	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/watch"
+	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -32,10 +36,12 @@ func TestWatchManager_basic(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
+
 	f.ChangeFile(t, "foo.txt")
 
-	actions := f.Stop(t)
-	f.AssertActionsContain(actions, "foo.txt")
+	seenPaths := f.Stop()
+	assert.Contains(t, seenPaths, "foo.txt")
 }
 
 func TestWatchManager_disabledOnCIMode(t *testing.T) {
@@ -52,7 +58,8 @@ func TestWatchManager_disabledOnCIMode(t *testing.T) {
 
 	f.ChangeFile(t, "foo.txt")
 
-	store.AssertNoActionOfType(t, reflect.TypeOf(FileWatchUpdateAction{}), f.store.Actions)
+	seenPaths := f.seenPaths()
+	assert.NotContains(t, seenPaths, "foo.txt")
 }
 
 func TestWatchManager_IgnoredLocalDirectories(t *testing.T) {
@@ -64,10 +71,17 @@ func TestWatchManager_IgnoredLocalDirectories(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: "bar"},
+		},
+	})
+
 	f.ChangeFile(t, filepath.Join("bar", "baz"))
 
-	actions := f.Stop(t)
-	f.AssertActionsNotContain(actions, filepath.Join("bar", "baz"))
+	seenPaths := f.Stop()
+	assert.NotContains(t, seenPaths, filepath.Join("bar", "baz"))
 }
 
 func TestWatchManager_Dockerignore(t *testing.T) {
@@ -79,35 +93,53 @@ func TestWatchManager_Dockerignore(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: ".", Patterns: []string{"bar"}},
+		},
+	})
+
 	f.ChangeFile(t, filepath.Join("bar", "baz"))
 
-	actions := f.Stop(t)
-
-	f.AssertActionsNotContain(actions, filepath.Join("bar", "baz"))
+	seenPaths := f.Stop()
+	assert.NotContains(t, seenPaths, filepath.Join("bar", "baz"))
 }
 
 func TestWatchManager_IgnoreOutputsImageRefs(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
-	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "sancho").
-			WithK8sYAML(testyaml.SanchoYAML).
-			WithImageTarget(
-				model.ImageTarget{}.WithBuildDetails(model.CustomBuild{
-					Deps:              []string{f.Path()},
-					OutputsImageRefTo: f.JoinPath("ref.txt"),
-				})).
-			Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
+	target := model.ImageTarget{}.WithBuildDetails(model.CustomBuild{
+		Deps:              []string{f.Path()},
+		OutputsImageRefTo: f.JoinPath("ref.txt"),
 	})
-	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithImageTarget(target).
+		Build()
+
+	st := f.store.LockMutableStateForTesting()
+	st.UpsertManifestTarget(store.NewManifestTarget(m))
+	f.store.UnlockMutableState()
+
+	// simulate an action to ensure subscribers see changes
+	f.store.Dispatch(configs.ConfigsReloadedAction{})
+
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{f.Path()},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: f.Path(), Patterns: []string{"ref.txt"}},
+		},
+	})
 
 	f.ChangeFile(t, "included.txt")
 	f.ChangeFile(t, "ref.txt")
-	actions := f.Stop(t)
-	f.AssertActionsNotContain(actions, "ref.txt")
-	f.AssertActionsContain(actions, "included.txt")
+
+	seenPaths := f.Stop()
+	assert.Contains(t, seenPaths, "included.txt")
+	assert.NotContains(t, seenPaths, "ref.txt")
 }
 
 func TestWatchManager_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
@@ -117,15 +149,22 @@ func TestWatchManager_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
 	target := model.DockerComposeTarget{Name: "foo"}.
 		WithBuildPath(".")
 	f.SetManifestTarget(target.WithIgnoredLocalDirectories([]string{"bar"}))
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: "bar"},
+		},
+	})
+
 	f.SetManifestTarget(target)
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
 
 	f.ChangeFile(t, "bar")
 
-	actions := f.Stop(t)
-
+	seenPaths := f.Stop()
 	// not asserting exact contents because we can end up with duplicates since the old watch loop isn't stopped
 	// until after the new watch loop is started
-	f.AssertActionsContain(actions, "bar")
+	assert.Contains(t, seenPaths, "bar")
 }
 
 func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
@@ -135,15 +174,22 @@ func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
 	target := model.DockerComposeTarget{Name: "foo"}.
 		WithBuildPath(".")
 	f.SetManifestTarget(target.WithDockerignores([]model.Dockerignore{{LocalPath: ".", Patterns: []string{"bar"}}}))
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: ".", Patterns: []string{"bar"}},
+		},
+	})
+
 	f.SetManifestTarget(target)
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
 
 	f.ChangeFile(t, "bar")
 
-	actions := f.Stop(t)
-
+	seenPaths := f.Stop()
 	// not asserting exact contents because we can end up with duplicates since the old watch loop isn't stopped
 	// until after the new watch loop is started
-	f.AssertActionsContain(actions, "bar")
+	assert.Contains(t, seenPaths, "bar")
 }
 
 func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
@@ -154,12 +200,17 @@ func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: f.Path(), Patterns: []string{"**/foo"}},
+		},
+	})
 
 	f.ChangeFile(t, filepath.Join("bar", "foo"))
 
-	actions := f.Stop(t)
-
-	f.AssertActionsNotContain(actions, filepath.Join("bar", "foo"))
+	seenPaths := f.Stop()
+	assert.NotContains(t, seenPaths, filepath.Join("bar", "foo"))
 }
 
 func TestWatchManager_IgnoreWatchSettings(t *testing.T) {
@@ -170,19 +221,26 @@ func TestWatchManager_IgnoreWatchSettings(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 
-	f.store.WithState(func(es *store.EngineState) {
-		es.WatchSettings.Ignores = append(es.WatchSettings.Ignores, model.Dockerignore{
-			LocalPath: f.Path(),
-			Patterns:  []string{"**/foo"},
-		})
+	st := f.store.LockMutableStateForTesting()
+	st.WatchSettings.Ignores = append(st.WatchSettings.Ignores, model.Dockerignore{
+		LocalPath: f.Path(),
+		Patterns:  []string{"**/foo"},
 	})
-	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.UnlockMutableState()
+	// simulate an action to ensure subscribers see changes
+	f.store.Dispatch(configs.ConfigsReloadedAction{})
+
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: f.Path(), Patterns: []string{"**/foo"}},
+		},
+	})
 
 	f.ChangeFile(t, filepath.Join("bar", "foo"))
 
-	actions := f.Stop(t)
-
-	f.AssertActionsNotContain(actions, filepath.Join("bar", "foo"))
+	seenPaths := f.Stop()
+	assert.NotContains(t, seenPaths, filepath.Join("bar", "foo"))
 }
 
 func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
@@ -193,13 +251,26 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: f.Path(), Patterns: []string{"**/foo"}},
+		},
+	})
 	f.ChangeFile(t, filepath.Join("bar", "foo"))
+
 	f.SetTiltIgnoreContents("**foo\n!bar/baz/foo")
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: f.Path(), Patterns: []string{"**foo", "!bar/baz/foo"}},
+		},
+	})
 	f.ChangeFile(t, filepath.Join("bar", "baz", "foo"))
 
-	actions := f.Stop(t)
-	f.AssertActionsNotContain(actions, filepath.Join("bar", "foo"))
-	f.AssertActionsContain(actions, filepath.Join("bar", "baz", "foo"))
+	seenPaths := f.Stop()
+	assert.NotContains(t, seenPaths, filepath.Join("bar", "foo"))
+	assert.Contains(t, seenPaths, filepath.Join("bar", "baz", "foo"))
 }
 
 func TestWatchManagerShortRead(t *testing.T) {
@@ -209,22 +280,28 @@ func TestWatchManagerShortRead(t *testing.T) {
 	target := model.DockerComposeTarget{Name: "foo"}.
 		WithBuildPath(".")
 	f.SetManifestTarget(target)
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
 
 	f.fakeMultiWatcher.Errors <- fmt.Errorf("short read on readEvents()")
 
-	action := f.store.WaitForAction(t, reflect.TypeOf(store.ErrorAction{}))
-	msg := action.(store.ErrorAction).Error.Error()
-	assert.Contains(t, msg, "short read")
-	if runtime.GOOS == "windows" {
-		assert.Contains(t, msg, "https://github.com/tilt-dev/tilt/issues/3556")
-	}
-	f.store.ClearActions()
+	assert.Eventually(t, func() bool {
+		storeErr := f.storeError()
+		if storeErr == nil {
+			return false
+		}
+		isShortRead := strings.Contains(storeErr.Error(), "short read")
+		if isShortRead && runtime.GOOS == "windows" {
+			isShortRead = strings.Contains(storeErr.Error(), "https://github.com/tilt-dev/tilt/issues/3556")
+		}
+		return isShortRead
+	}, time.Second, 10*time.Millisecond, "Short read error was not found")
 }
 
 type wmFixture struct {
+	t                testing.TB
 	ctx              context.Context
-	cancel           func()
-	store            *store.TestingStore
+	store            *store.Store
+	storeErr         atomic.Value
 	wm               *WatchManager
 	fakeMultiWatcher *FakeMultiWatcher
 	fakeTimerMaker   FakeTimerMaker
@@ -232,7 +309,6 @@ type wmFixture struct {
 }
 
 func newWMFixture(t *testing.T) *wmFixture {
-	st := store.NewTestingStore()
 	timerMaker := MakeFakeTimerMaker(t)
 	fakeMultiWatcher := NewFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.NewSub, timerMaker.Maker())
@@ -240,27 +316,53 @@ func newWMFixture(t *testing.T) *wmFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	f := tempdir.NewTempDirFixture(t)
-	f.Chdir()
+	tmpdir := tempdir.NewTempDirFixture(t)
+	tmpdir.Chdir()
 
-	return &wmFixture{
+	f := &wmFixture{
+		t:                t,
 		ctx:              ctx,
-		cancel:           cancel,
-		store:            st,
 		wm:               wm,
 		fakeMultiWatcher: fakeMultiWatcher,
 		fakeTimerMaker:   timerMaker,
-		TempDirFixture:   f,
+		TempDirFixture:   tmpdir,
+	}
+
+	f.store = store.NewStore(f.reducer, false)
+	require.NoError(t, f.store.AddSubscriber(f.ctx, wm))
+
+	go func() {
+		if err := f.store.Loop(ctx); err != nil && err != context.Canceled {
+			f.storeErr.Store(err)
+		}
+	}()
+
+	t.Cleanup(func() {
+		tmpdir.TearDown()
+		cancel()
+	})
+
+	return f
+}
+
+func (f *wmFixture) reducer(ctx context.Context, st *store.EngineState, action store.Action) {
+	switch a := action.(type) {
+	case store.ErrorAction:
+		f.storeErr.Store(a.Error)
+	case store.LogAction:
+		f.t.Log(a.String())
+	case FileWatchCreateAction:
+		HandleFileWatchCreateEvent(ctx, st, a)
+	case FileWatchUpdateAction:
+		HandleFileWatchUpdateEvent(ctx, st, a)
+	case FileWatchUpdateStatusAction:
+		HandleFileWatchUpdateStatusEvent(ctx, st, a)
+	case FileWatchDeleteAction:
+		HandleFileWatchDeleteEvent(ctx, st, a)
 	}
 }
 
-func (f *wmFixture) TearDown() {
-	f.TempDirFixture.TearDown()
-	f.cancel()
-	f.store.AssertNoErrorActions(f.T())
-}
-
-func (f *wmFixture) ChangeFile(t *testing.T, path string) {
+func (f *wmFixture) ChangeFile(t testing.TB, path string) {
 	path, _ = filepath.Abs(path)
 
 	select {
@@ -270,59 +372,91 @@ func (f *wmFixture) ChangeFile(t *testing.T, path string) {
 	}
 }
 
-func (f *wmFixture) AssertActionsContain(actions []store.Action, path string) {
-	path, _ = filepath.Abs(path)
-	observedPaths := extractSeenPathsFromFileWatchActions(actions)
-	assert.Contains(f.T(), observedPaths, path)
-}
+func (f *wmFixture) seenPaths() []string {
+	st := f.store.RLockState()
+	defer f.store.RUnlockState()
 
-func (f *wmFixture) AssertActionsNotContain(actions []store.Action, path string) {
-	path, _ = filepath.Abs(path)
-	observedPaths := extractSeenPathsFromFileWatchActions(actions)
-	assert.NotContains(f.T(), observedPaths, path)
-}
+	var seen []string
 
-func (f *wmFixture) ReadActionsUntil(lastFile string) ([]store.Action, error) {
-	lastFile, _ = filepath.Abs(lastFile)
-	startTime := time.Now()
-	timeout := 5 * time.Second
-	var actions []store.Action
-	for time.Since(startTime) < timeout {
-		actions = f.store.Actions()
-		seenPaths := extractSeenPathsFromFileWatchActions(actions)
-		for _, p := range seenPaths {
-			if lastFile == p {
-				return actions, nil
+	for _, fw := range st.FileWatches {
+		for _, e := range fw.Status.FileEvents {
+			for _, p := range e.SeenFiles {
+				p, _ = filepath.Rel(f.TempDirFixture.Path(), p)
+				seen = append(seen, p)
 			}
 		}
 	}
-	return nil, fmt.Errorf("timed out waiting for actions. received so far: %v", actions)
+	return seen
 }
 
-func (f *wmFixture) Stop(t *testing.T) []store.Action {
-	t.Helper()
-	f.ChangeFile(t, "stop")
+type fileWatchDiffer struct {
+	expected filewatches.FileWatchSpec
+	actual   *filewatches.FileWatchSpec
+}
 
-	actions, err := f.ReadActionsUntil("stop")
+func (f fileWatchDiffer) String() string {
+	return cmp.Diff(f.actual, &f.expected)
+}
+
+func (f *wmFixture) RequireFileWatchSpecEqual(targetID model.TargetID, spec filewatches.FileWatchSpec) {
+	f.t.Helper()
+	fwd := &fileWatchDiffer{expected: spec}
+	require.Eventuallyf(f.t, func() bool {
+		fwd.actual = nil
+		st := f.store.RLockState()
+		defer f.store.RUnlockState()
+		fw, ok := st.FileWatches[types.NamespacedName{Name: targetID.String()}]
+		if !ok {
+			return false
+		}
+		fwd.actual = fw.Spec.DeepCopy()
+		return equality.Semantic.DeepEqual(fw.Spec, spec)
+	}, time.Second, 10*time.Millisecond, "FileWatch spec was not equal: %v", fwd)
+}
+
+func (f *wmFixture) WaitForSeenFile(path string) []string {
+	f.t.Helper()
+	var seenPaths []string
+	require.Eventuallyf(f.t, func() bool {
+		seenPaths = f.seenPaths()
+		for _, p := range seenPaths {
+			if p == path {
+				return true
+			}
+		}
+		return false
+	}, time.Second, 10*time.Millisecond, "Did not find path %q, seen: %v", path, seenPaths)
+	return seenPaths
+}
+
+func (f *wmFixture) storeError() error {
+	err := f.storeErr.Load()
 	if err != nil {
-		fmt.Printf("This is due to something funky in the test itself, not the code being tested.\n")
-		t.Fatal(err)
+		return err.(error)
 	}
-	return actions
+	return nil
+}
+
+func (f *wmFixture) Stop() []string {
+	f.t.Helper()
+	f.ChangeFile(f.t, "stop")
+	seenPaths := f.WaitForSeenFile("stop")
+	require.NoError(f.t, f.storeError(), "Store encountered error action")
+	return seenPaths
 }
 
 func (f *wmFixture) SetManifestTarget(target model.DockerComposeTarget) {
 	m := model.Manifest{Name: "foo"}.WithDeployTarget(target)
-	mt := store.ManifestTarget{Manifest: m}
+	mt := store.NewManifestTarget(m)
 	state := f.store.LockMutableStateForTesting()
-	state.UpsertManifestTarget(&mt)
+	state.UpsertManifestTarget(mt)
 	f.store.UnlockMutableState()
-	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	// simulate an action to ensure subscribers see changes
+	f.store.Dispatch(configs.ConfigsReloadedAction{})
 }
 
 func (f *wmFixture) SetTiltIgnoreContents(s string) {
 	state := f.store.LockMutableStateForTesting()
-
 	patterns, err := dockerignore.ReadAll(strings.NewReader(s))
 	assert.NoError(f.T(), err)
 	state.Tiltignore = model.Dockerignore{
@@ -330,27 +464,6 @@ func (f *wmFixture) SetTiltIgnoreContents(s string) {
 		Patterns:  patterns,
 	}
 	f.store.UnlockMutableState()
-	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-}
-
-func extractSeenPathsFromFileWatchActions(actions []store.Action) []string {
-	var paths []string
-	for _, a := range actions {
-		var actionStatus *filewatches.FileWatchStatus
-		switch action := a.(type) {
-		case FileWatchCreateAction:
-			actionStatus = &action.FileWatch.Status
-		case FileWatchUpdateAction:
-			actionStatus = &action.FileWatch.Status
-		case FileWatchUpdateStatusAction:
-			actionStatus = action.Status
-		case FileWatchDeleteAction:
-		}
-		if actionStatus != nil {
-			for _, e := range actionStatus.FileEvents {
-				paths = append(paths, e.SeenFiles...)
-			}
-		}
-	}
-	return paths
+	// simulate an action to ensure subscribers see changes
+	f.store.Dispatch(configs.ConfigsReloadedAction{})
 }

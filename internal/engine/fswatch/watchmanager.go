@@ -137,22 +137,18 @@ func globalIgnores(es store.EngineState) []model.Dockerignore {
 	}
 	ignores = append(ignores, es.WatchSettings.Ignores...)
 
-	outputs := []string{}
 	for _, manifest := range es.Manifests() {
 		for _, iTarget := range manifest.ImageTargets {
 			customBuild := iTarget.CustomBuildInfo()
 			if customBuild.OutputsImageRefTo != "" {
-				outputs = append(outputs, customBuild.OutputsImageRefTo)
+				// this could be smarter and try to group by local path
+				ignores = append(ignores, model.Dockerignore{
+					LocalPath: filepath.Dir(customBuild.OutputsImageRefTo),
+					Source:    "outputs_image_ref_to",
+					Patterns:  []string{filepath.Base(customBuild.OutputsImageRefTo)},
+				})
 			}
 		}
-	}
-
-	if len(outputs) > 0 {
-		ignores = append(ignores, model.Dockerignore{
-			LocalPath: filepath.Dir(es.TiltfilePath),
-			Source:    "outputs_image_ref_to",
-			Patterns:  outputs,
-		})
 	}
 
 	return ignores
@@ -189,7 +185,7 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, _ store.Ch
 	for targetID, spec := range specsToProcess {
 		name := types.NamespacedName{Name: targetID.String()}
 		watchesToKeep[name] = true
-		res, fwStatus, err := w.addOrUpdate(ctx, st, name, spec)
+		res, fwStatus, err := w.addOrUpdate(ctx, st, name, *spec.DeepCopy())
 		if err != nil {
 			logger.Get(ctx).Debugf("Error adding/updating watch for %q: %v", name.String(), err)
 			continue
@@ -241,7 +237,9 @@ func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name ty
 	var ignoreMatchers []model.PathMatcher
 	for _, ignoreDef := range spec.Ignores {
 		if len(ignoreDef.Patterns) != 0 {
-			m, err := dockerignore.NewDockerPatternMatcher(ignoreDef.BasePath, ignoreDef.Patterns)
+			m, err := dockerignore.NewDockerPatternMatcher(
+				ignoreDef.BasePath,
+				append([]string{}, ignoreDef.Patterns...))
 			if err != nil {
 				return resultUnknown, nil, fmt.Errorf("invalid ignore def: %v", err)
 			}
@@ -257,7 +255,10 @@ func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name ty
 	// ephemeral OS/IDE stuff is not part of the spec but always included
 	ignoreMatchers = append(ignoreMatchers, ignore.EphemeralPathMatcher)
 
-	notify, err := w.fsWatcherMaker(spec.WatchedPaths, model.NewCompositeMatcher(ignoreMatchers), logger.Get(ctx))
+	notify, err := w.fsWatcherMaker(
+		append([]string{}, spec.WatchedPaths...),
+		model.NewCompositeMatcher(ignoreMatchers),
+		logger.Get(ctx))
 	if err != nil {
 		return resultUnknown, nil, fmt.Errorf("failed to initialize filesystem watch: %v", err)
 	}
