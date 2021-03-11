@@ -126,7 +126,7 @@ func (l *JSONPathImageLocator) Inject(e K8sEntity, selector container.RefSelecto
 			val.Set(reflect.ValueOf(container.FamiliarString(injectRef)))
 			modified = true
 
-			if pullPolicyVal, ok := val.Sibling(imagePullPolicyKey); ok {
+			if pullPolicyVal, ok := val.Sibling(imagePullPolicyKey); ok && pullPolicyVal.CanSet() {
 				pullPolicyVal.Set(reflect.ValueOf(string(pullPolicy)))
 			}
 		}

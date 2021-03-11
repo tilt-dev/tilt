@@ -42,9 +42,13 @@ func (v *Value) Set(newV reflect.Value) {
 }
 
 func (v *Value) Sibling(name string) (val Value, ok bool) {
+	if !v.parentMap.IsValid() {
+		return Value{}, false
+	}
+
 	key := reflect.ValueOf(name)
 	sib := v.parentMap.MapIndex(key)
-	if sib == (reflect.Value{}) {
+	if !sib.IsValid() {
 		return Value{}, false
 	}
 
