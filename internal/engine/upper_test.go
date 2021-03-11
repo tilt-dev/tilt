@@ -3756,8 +3756,10 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
-	fwms := fswatch.NewManifestSubscriber()
-	fwm := fswatch.NewWatchManager(watcher.NewSub, timerMaker.Maker())
+	cdc := controllers.ProvideDeferredClient()
+	ccb := controllers.NewClientBuilder(cdc)
+	fwms := fswatch.NewManifestSubscriber(cdc)
+	fwm := fswatch.NewWatchManager(watcher.NewSub, timerMaker.Maker(), cdc)
 	pfc := portforward.NewController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
@@ -3777,8 +3779,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
-	cdc := controllers.ProvideDeferredClient()
-	ccb := controllers.NewClientBuilder(cdc)
 	fwc := filewatch.NewController(st)
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st)
 	lsc := local.NewServerController(cdc)
@@ -3922,7 +3922,7 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
-	expectedWatchCount := len(fswatch.SpecsFromState(*state))
+	expectedWatchCount := len(fswatch.FileWatchesFromManifests(*state))
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}
@@ -4030,9 +4030,13 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 	for {
 		state := f.upper.store.RLockState()
 		done := isDone(state)
+		fatalErr := state.FatalError
 		f.upper.store.RUnlockState()
 		if done {
 			return
+		}
+		if fatalErr != nil {
+			f.T().Fatalf("Store had fatal error: %v", fatalErr)
 		}
 
 		if isCanceled {
@@ -4278,6 +4282,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart(initOptions ...initOption) {
+	f.t.Helper()
 	ia := InitAction{
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
@@ -4397,15 +4402,23 @@ func (f *testFixture) completeBuildForManifest(m model.Manifest) {
 
 func (f *testFixture) triggerFileChange(targetID model.TargetID, paths ...string) {
 	now := metav1.NowMicro()
-	f.store.Dispatch(fswatch.FileWatchUpdateStatusAction{
-		Name: types.NamespacedName{Name: apis.SanitizeName(targetID.String())},
-		Status: &filewatches.FileWatchStatus{
-			LastEventTime: now.DeepCopy(),
-			FileEvents: []filewatches.FileEvent{
-				{Time: *now.DeepCopy(), SeenFiles: paths},
-			},
-		},
+	key := types.NamespacedName{Name: apis.SanitizeName(targetID.String())}
+
+	st := f.store.RLockState()
+	fw := st.FileWatches[key]
+	if fw == nil {
+		f.t.Fatalf("Cannot trigger file change for %q - does not exist in store", targetID.String())
+	}
+	fw = fw.DeepCopy()
+	f.store.RUnlockState()
+
+	fw.Status.LastEventTime = now.DeepCopy()
+	fw.Status.FileEvents = append(fw.Status.FileEvents, filewatches.FileEvent{
+		Time:      *now.DeepCopy(),
+		SeenFiles: append([]string{}, paths...),
 	})
+
+	f.store.Dispatch(fswatch.NewFileWatchUpdateStatusAction(fw))
 }
 
 func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {

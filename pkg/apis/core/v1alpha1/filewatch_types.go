@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"path/filepath"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,18 +53,18 @@ type FileWatchList struct {
 
 // FileWatchSpec defines the desired state of FileWatch
 type FileWatchSpec struct {
-	// WatchedPaths are absolute paths of directories or files to watch for changes to. It cannot be empty.
+	// WatchedPaths are paths of directories or files to watch for changes to. It cannot be empty.
 	WatchedPaths []string `json:"watchedPaths"`
 	// Ignores are optional rules to filter out a subset of changes matched by WatchedPaths.
 	Ignores []IgnoreDef `json:"ignores,omitempty"`
 }
 
 type IgnoreDef struct {
-	// BasePath is the absolute root path for the patterns. It cannot be empty.
+	// BasePath is the base path for the patterns. It cannot be empty.
 	//
 	// If no patterns are specified, everything under it will be recursively ignored.
 	BasePath string `json:"basePath"`
-	// Patterns are dockerignore style rules relative to the base path.
+	// Patterns are dockerignore style rules. Absolute-style patterns will be rooted to the BasePath.
 	//
 	// See https://docs.docker.com/engine/reference/builder/#dockerignore-file.
 	Patterns []string `json:"patterns,omitempty"`
@@ -104,27 +103,10 @@ func (in *FileWatch) IsStorageVersion() bool {
 
 func (in *FileWatch) Validate(_ context.Context) field.ErrorList {
 	var fieldErrors field.ErrorList
-	watchedPathsPath := field.NewPath("spec", "watchedPaths")
 	if len(in.Spec.WatchedPaths) == 0 {
-		fieldErrors = append(fieldErrors, field.Required(watchedPathsPath, "cannot be an empty list"))
-	}
-	for watchedPathIndex, watchedPath := range in.Spec.WatchedPaths {
-		if !filepath.IsAbs(watchedPath) {
-			fieldErrors = append(fieldErrors, field.Invalid(watchedPathsPath.Index(watchedPathIndex), watchedPath, "must be an absolute file path"))
-		}
-	}
-	for ignoreDefIndex, ignoreDef := range in.Spec.Ignores {
-		ignoreDefPath := field.NewPath("spec", "ignores").Index(ignoreDefIndex)
-		if !filepath.IsAbs(ignoreDef.BasePath) {
-			fieldErrors = append(fieldErrors, field.Invalid(ignoreDefPath, ignoreDef.BasePath, "must be an absolute file path"))
-		}
-		// patterns can be empty, which means ignore the entire directory
-		for ignorePatternIndex, ignorePattern := range ignoreDef.Patterns {
-			ingorePatternPath := ignoreDefPath.Child("patterns").Index(ignorePatternIndex)
-			if filepath.IsAbs(ignorePattern) {
-				fieldErrors = append(fieldErrors, field.Invalid(ingorePatternPath, ignorePattern, "must be a relative file path"))
-			}
-		}
+		fieldErrors = append(fieldErrors, field.Required(
+			field.NewPath("spec", "watchedPaths"),
+			"cannot be an empty list"))
 	}
 	return fieldErrors
 }
@@ -144,7 +126,7 @@ type FileWatchStatus struct {
 	LastEventTime *metav1.MicroTime `json:"lastEventTime,omitempty"`
 	// FileEvents summarizes batches of file changes (create, modify, or delete) that have been seen in ascending
 	// chronological order. Only the most recent 20 events are included.
-	FileEvents []FileEvent `json:"fileEvents"`
+	FileEvents []FileEvent `json:"fileEvents,omitempty"`
 	// Error is set if there is a problem with the filesystem watch. If non-empty, consumers should assume that
 	// no filesystem events will be seen and that the file watcher is in a failed state.
 	Error string `json:"error,omitempty"`

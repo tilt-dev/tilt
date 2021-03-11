@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -52,14 +53,18 @@ func NewFileWatchUpdateAction(fw *filewatches.FileWatch) FileWatchUpdateAction {
 }
 
 type FileWatchUpdateStatusAction struct {
-	Name   types.NamespacedName
-	Status *filewatches.FileWatchStatus
+	ObjectMeta *metav1.ObjectMeta
+	Status     *filewatches.FileWatchStatus
+}
+
+func (a FileWatchUpdateStatusAction) Summarize(_ *store.ChangeSummary) {
+	// do nothing - we only care about _spec_ changes on the summary
 }
 
 func (FileWatchUpdateStatusAction) Action() {}
 
-func NewFileWatchUpdateStatusAction(name types.NamespacedName, fwStatus *filewatches.FileWatchStatus) FileWatchUpdateStatusAction {
-	return FileWatchUpdateStatusAction{Name: name, Status: fwStatus.DeepCopy()}
+func NewFileWatchUpdateStatusAction(fw *filewatches.FileWatch) FileWatchUpdateStatusAction {
+	return FileWatchUpdateStatusAction{ObjectMeta: fw.GetObjectMeta().DeepCopy(), Status: fw.Status.DeepCopy()}
 }
 
 type FileWatchDeleteAction struct {
@@ -95,10 +100,12 @@ func HandleFileWatchUpdateEvent(ctx context.Context, state *store.EngineState, a
 }
 
 func HandleFileWatchUpdateStatusEvent(ctx context.Context, state *store.EngineState, action FileWatchUpdateStatusAction) {
-	fw := state.FileWatches[action.Name]
+	key := types.NamespacedName{Namespace: action.ObjectMeta.GetNamespace(), Name: action.ObjectMeta.GetName()}
+	fw := state.FileWatches[key]
 	if fw == nil {
 		return
 	}
+	action.ObjectMeta.DeepCopyInto(&fw.ObjectMeta)
 	action.Status.DeepCopyInto(&fw.Status)
 	processFileWatchStatus(ctx, state, fw)
 }

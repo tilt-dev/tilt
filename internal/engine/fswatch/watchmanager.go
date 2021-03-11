@@ -8,8 +8,10 @@ import (
 
 	"github.com/tilt-dev/fsnotify"
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/dockerignore"
 	"github.com/tilt-dev/tilt/internal/ignore"
@@ -33,6 +35,9 @@ const BufferMaxDuration = 10 * time.Second
 
 const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install#system-specific-preparation`
 
+// MaxFileEventHistory is the maximum number of file events that will be retained on the FileWatch status.
+const MaxFileEventHistory = 20
+
 var ConfigsTargetID = model.TargetID{
 	Type: model.TargetTypeConfigs,
 	Name: "singleton",
@@ -53,22 +58,26 @@ type targetNotifyCancel struct {
 	name   types.NamespacedName
 	spec   filewatches.FileWatchSpec
 	status *filewatches.FileWatchStatus
+	mu     sync.Mutex
+	done   bool
 	notify watch.Notify
 	cancel func()
 }
 
 type WatchManager struct {
-	targetWatches  map[types.NamespacedName]targetNotifyCancel
+	targetWatches  map[types.NamespacedName]*targetNotifyCancel
 	fsWatcherMaker FsWatcherMaker
 	timerMaker     TimerMaker
+	client         ctrlclient.Client
 	mu             sync.Mutex
 }
 
-func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchManager {
+func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker, client ctrlclient.Client) *WatchManager {
 	return &WatchManager{
-		targetWatches:  make(map[types.NamespacedName]targetNotifyCancel),
+		targetWatches:  make(map[types.NamespacedName]*targetNotifyCancel),
 		fsWatcherMaker: watcherMaker,
 		timerMaker:     timerMaker,
+		client:         client,
 	}
 }
 
@@ -88,7 +97,11 @@ func (w *WatchManager) diff(st store.RStore, summary store.ChangeSummary) map[ty
 
 	result := make(map[types.NamespacedName]*filewatches.FileWatch)
 	for key := range summary.FileWatchSpecs {
-		result[key] = state.FileWatches[key]
+		if fw, ok := state.FileWatches[key]; ok {
+			result[key] = fw.DeepCopy()
+		} else {
+			result[key] = nil
+		}
 	}
 	return result
 }
@@ -98,7 +111,7 @@ func (w *WatchManager) reconcile(ctx context.Context, st store.RStore, name type
 
 	if fw == nil || fw.GetObjectMeta().GetDeletionTimestamp() != nil {
 		if hasExisting {
-			w.cleanupWatch(ctx, existing)
+			existing.cleanupWatch(ctx)
 			delete(w.targetWatches, name)
 		}
 		return
@@ -108,7 +121,7 @@ func (w *WatchManager) reconcile(ctx context.Context, st store.RStore, name type
 		return
 	}
 
-	if err := w.addOrReplace(ctx, st, name, *fw.Spec.DeepCopy()); err != nil {
+	if err := w.addOrReplace(ctx, st, name, *fw); err != nil {
 		logger.Get(ctx).Debugf("Failed to create/update filesystem watch for FileWatch %q: %v", name.String(), err)
 	}
 }
@@ -123,9 +136,9 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, summary st
 	}
 }
 
-func (w *WatchManager) addOrReplace(ctx context.Context, st store.RStore, name types.NamespacedName, spec filewatches.FileWatchSpec) error {
+func (w *WatchManager) addOrReplace(ctx context.Context, st store.RStore, name types.NamespacedName, fw filewatches.FileWatch) error {
 	var ignoreMatchers []model.PathMatcher
-	for _, ignoreDef := range spec.Ignores {
+	for _, ignoreDef := range fw.Spec.Ignores {
 		if len(ignoreDef.Patterns) != 0 {
 			m, err := dockerignore.NewDockerPatternMatcher(
 				ignoreDef.BasePath,
@@ -146,7 +159,7 @@ func (w *WatchManager) addOrReplace(ctx context.Context, st store.RStore, name t
 	ignoreMatchers = append(ignoreMatchers, ignore.EphemeralPathMatcher)
 
 	notify, err := w.fsWatcherMaker(
-		append([]string{}, spec.WatchedPaths...),
+		append([]string{}, fw.Spec.WatchedPaths...),
 		model.NewCompositeMatcher(ignoreMatchers),
 		logger.Get(ctx))
 	if err != nil {
@@ -157,19 +170,19 @@ func (w *WatchManager) addOrReplace(ctx context.Context, st store.RStore, name t
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	tw := targetNotifyCancel{
+	tw := &targetNotifyCancel{
 		name:   name,
-		spec:   *spec.DeepCopy(),
-		status: &filewatches.FileWatchStatus{},
+		spec:   *fw.Spec.DeepCopy(),
+		status: fw.Status.DeepCopy(),
 		notify: notify,
 		cancel: cancel,
 	}
 
-	go w.dispatchFileChangesLoop(ctx, name, notify, st)
+	go w.dispatchFileChangesLoop(ctx, st, tw)
 
 	if existing, ok := w.targetWatches[name]; ok {
 		// no need to remove from map, will be overwritten
-		w.cleanupWatch(ctx, existing)
+		existing.cleanupWatch(ctx)
 	}
 
 	w.targetWatches[name] = tw
@@ -177,26 +190,79 @@ func (w *WatchManager) addOrReplace(ctx context.Context, st store.RStore, name t
 }
 
 // cleanupWatch stops watching for changes and frees up resources.
-//
-// It does NOT remove the entry from the map - to avoid missed updates, entries are typically just overwritten.
-func (w *WatchManager) cleanupWatch(ctx context.Context, tw targetNotifyCancel) {
+func (tw *targetNotifyCancel) cleanupWatch(ctx context.Context) {
+	tw.mu.Lock()
+	defer tw.mu.Unlock()
+	if tw.done {
+		return
+	}
 	if err := tw.notify.Close(); err != nil {
 		logger.Get(ctx).Debugf("Failed to close notifier for %q: %v", tw.name.String(), err)
 	}
 	tw.cancel()
+	tw.done = true
 }
 
-func (w *WatchManager) dispatchFileChangesLoop(
-	ctx context.Context,
-	name types.NamespacedName,
-	watcher watch.Notify,
-	st store.RStore) {
+func (tw *targetNotifyCancel) recordEvent(ctx context.Context, client ctrlclient.Client, st store.RStore, fsEvents []watch.FileEvent) error {
+	now := metav1.NowMicro()
+	tw.mu.Lock()
+	defer tw.mu.Unlock()
+	event := filewatches.FileEvent{Time: *now.DeepCopy()}
+	for _, fsEvent := range fsEvents {
+		event.SeenFiles = append(event.SeenFiles, fsEvent.Path())
+	}
+	if len(event.SeenFiles) != 0 {
+		tw.status.LastEventTime = now.DeepCopy()
+		tw.status.FileEvents = append(tw.status.FileEvents, event)
+		if len(tw.status.FileEvents) > MaxFileEventHistory {
+			tw.status.FileEvents = tw.status.FileEvents[len(tw.status.FileEvents)-MaxFileEventHistory:]
+		}
 
-	eventsCh := coalesceEvents(w.timerMaker, watcher.Events())
+		var fw filewatches.FileWatch
+		err := client.Get(ctx, tw.name, &fw)
+		if err != nil {
+			// status is updated internally so will become eventually consistent, but if there's no file
+			// changes for a while after this, the updates aren't going to appear; retry logic is probably
+			// warranted here
+			return nil
+		}
+
+		tw.status.DeepCopyInto(&fw.Status)
+		err = client.Status().Update(ctx, &fw)
+		if err == nil {
+			st.Dispatch(NewFileWatchUpdateStatusAction(&fw))
+		} else if !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
+			// can safely ignore not found/conflict errors - because this work loop is the only updater of
+			// status, any conflict errors means the spec was changed since fetching it, and as a result,
+			// these events are no longer useful anyway
+			return fmt.Errorf("apiserver update status error: %v", err)
+		}
+	}
+	return nil
+}
+
+// removeWatch removes a watch from the map. It does NOT stop the watcher or free up resources.
+//
+// mu must be held before calling.
+func (w *WatchManager) removeWatch(tw *targetNotifyCancel) {
+	if entry, ok := w.targetWatches[tw.name]; ok && tw == entry {
+		delete(w.targetWatches, tw.name)
+	}
+}
+
+func (w *WatchManager) dispatchFileChangesLoop(ctx context.Context, st store.RStore, tw *targetNotifyCancel) {
+	eventsCh := coalesceEvents(w.timerMaker, tw.notify.Events())
+
+	defer func() {
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		tw.cleanupWatch(ctx)
+		w.removeWatch(tw)
+	}()
 
 	for {
 		select {
-		case err, ok := <-watcher.Errors():
+		case err, ok := <-tw.notify.Errors():
 			if !ok {
 				return
 			}
@@ -223,21 +289,10 @@ func (w *WatchManager) dispatchFileChangesLoop(
 			if !ok {
 				return
 			}
-
-			now := metav1.NowMicro()
-			w.mu.Lock()
-			event := filewatches.FileEvent{Time: *now.DeepCopy()}
-			for _, fsEvent := range fsEvents {
-				event.SeenFiles = append(event.SeenFiles, fsEvent.Path())
+			if err := tw.recordEvent(ctx, w.client, st, fsEvents); err != nil {
+				st.Dispatch(store.NewErrorAction(err))
+				return
 			}
-			if len(event.SeenFiles) != 0 {
-				status := w.targetWatches[name].status
-				status.LastEventTime = now.DeepCopy()
-				// TODO(milas): cap max event history
-				status.FileEvents = append(status.FileEvents, event)
-				st.Dispatch(NewFileWatchUpdateStatusAction(name, status))
-			}
-			w.mu.Unlock()
 		}
 	}
 }
