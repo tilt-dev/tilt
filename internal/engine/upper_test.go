@@ -34,7 +34,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
-	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -74,6 +74,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -3765,24 +3766,29 @@ func newTestFixture(t *testing.T) *testFixture {
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
-	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, server.ProvideMemConn())
+	memconn := server.ProvideMemConn()
+	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
 	require.NoError(t, err)
 	hudsc := server.ProvideHeadsUpServerController(0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := local.NewFakeExecer()
 	fpm := local.NewFakeProberManager()
-	fc := fake.NewTiltClient()
-	fcb := fake.NewClientBuilder(fc)
-	lc := local.NewController(fe, fpm, fc)
-	lsc := local.NewServerController(fc)
+	cdc := controllers.ProvideDeferredClient()
+	ccb := controllers.NewClientBuilder(cdc)
+	fwc := filewatch.NewController(st)
+	lc := local.NewController(ctx, fe, fpm, cdc, st)
+	lsc := local.NewServerController(cdc)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, controllers.NewScheme(), fcb)
+	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, v1alpha1.NewScheme(), ccb)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	cb := controllers.NewControllerBuilder(tscm, nil)
+	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
+		fwc,
+		lc,
+	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)

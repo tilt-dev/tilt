@@ -56,6 +56,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/user"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -177,7 +178,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
-	scheme := controllers.NewScheme()
+	scheme := v1alpha1.NewScheme()
 	deferredClient := controllers.ProvideDeferredClient()
 	clientBuilder := controllers.NewClientBuilder(deferredClient)
 	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
@@ -185,7 +186,10 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	controller := filewatch.NewController(storeStore)
-	v := controllers.ProvideControllers(controller)
+	execer := local.ProvideExecer()
+	proberManager := local.ProvideProberManager()
+	localController := local.NewController(ctx, execer, proberManager, deferredClient, storeStore)
+	v := controllers.ProvideControllers(controller, localController)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -274,9 +278,6 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clockworkClock)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	telemetryController := telemetry.NewController(clock, spanCollector)
-	execer := local.ProvideExecer()
-	proberManager := local.ProvideProberManager()
-	localController := local.NewController(execer, proberManager, deferredClient)
 	serverController := local.NewServerController(deferredClient)
 	podMonitor := k8srollout.NewPodMonitor()
 	exitController := exit.NewController()
@@ -349,7 +350,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
-	scheme := controllers.NewScheme()
+	scheme := v1alpha1.NewScheme()
 	deferredClient := controllers.ProvideDeferredClient()
 	clientBuilder := controllers.NewClientBuilder(deferredClient)
 	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
@@ -357,7 +358,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	controller := filewatch.NewController(storeStore)
-	v := controllers.ProvideControllers(controller)
+	execer := local.ProvideExecer()
+	proberManager := local.ProvideProberManager()
+	localController := local.NewController(ctx, execer, proberManager, deferredClient, storeStore)
+	v := controllers.ProvideControllers(controller, localController)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -447,9 +451,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clockworkClock)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	telemetryController := telemetry.NewController(clock, spanCollector)
-	execer := local.ProvideExecer()
-	proberManager := local.ProvideProberManager()
-	localController := local.NewController(execer, proberManager, deferredClient)
 	serverController := local.NewServerController(deferredClient)
 	podMonitor := k8srollout.NewPodMonitor()
 	exitController := exit.NewController()

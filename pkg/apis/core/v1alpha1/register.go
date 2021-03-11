@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 )
@@ -82,4 +83,11 @@ var AddToScheme = func(scheme *runtime.Scheme) error {
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
 func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
+// A new scheme with just this package's types.
+func NewScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(AddToScheme(scheme))
+	return scheme
 }

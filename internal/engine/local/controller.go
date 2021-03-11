@@ -15,6 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/store"
@@ -26,43 +27,37 @@ import (
 
 // A controller that reads CmdSpec and writes CmdStatus
 type Controller struct {
+	globalCtx     context.Context
 	execer        Execer
 	procs         map[types.NamespacedName]*currentProcess
 	proberManager ProberManager
 	updateCmds    map[types.NamespacedName]*Cmd
 	mu            sync.Mutex
 	client        ctrlclient.Client
+	st            store.RStore
 }
 
-var _ store.Subscriber = &Controller{}
 var _ store.TearDowner = &Controller{}
 
-func NewController(execer Execer, proberManager ProberManager, client ctrlclient.Client) *Controller {
+func NewController(ctx context.Context, execer Execer, proberManager ProberManager, client ctrlclient.Client, st store.RStore) *Controller {
 	return &Controller{
+		globalCtx:     ctx,
 		execer:        execer,
 		procs:         make(map[types.NamespacedName]*currentProcess),
 		proberManager: proberManager,
 		client:        client,
 		updateCmds:    make(map[types.NamespacedName]*Cmd),
+		st:            st,
 	}
 }
 
-func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
-	toReconcile := c.diff(ctx, st, summary)
-	for name, update := range toReconcile {
-		c.reconcile(ctx, st, name, update)
-	}
+func (c *Controller) SetClient(client ctrlclient.Client) {
+	c.client = client
 }
 
-func (c *Controller) diff(ctx context.Context, st store.RStore, summary store.ChangeSummary) map[types.NamespacedName]*Cmd {
-	state := st.RLockState()
-	defer st.RUnlockState()
-
-	result := map[types.NamespacedName]*Cmd{}
-	for key := range summary.CmdSpecs {
-		result[types.NamespacedName{Name: key}] = state.Cmds[key]
-	}
-	return result
+func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	err := c.reconcile(ctx, req.NamespacedName)
+	return ctrl.Result{}, err
 }
 
 // Stop the command, and wait for it to finish before continuing.
@@ -88,17 +83,23 @@ func (c *Controller) TearDown(ctx context.Context) {
 	}
 }
 
-func (c *Controller) reconcile(ctx context.Context, st store.RStore, name types.NamespacedName, cmd *Cmd) {
-	if cmd == nil || cmd.ObjectMeta.DeletionTimestamp != nil {
+func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) error {
+	cmd := &Cmd{}
+	err := c.client.Get(ctx, name, cmd)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("cmd reconcile: %v", err)
+	}
+
+	if apierrors.IsNotFound(err) || cmd.ObjectMeta.DeletionTimestamp != nil {
 		c.stop(name)
 		delete(c.procs, name)
-		return
+		return nil
 	}
 
 	proc, ok := c.procs[name]
 	if ok {
 		if equality.Semantic.DeepEqual(proc.spec, cmd.Spec) {
-			return
+			return nil
 		}
 
 		// change the process's current number so that any further events received
@@ -114,16 +115,16 @@ func (c *Controller) reconcile(ctx context.Context, st store.RStore, name types.
 	proc.spec = cmd.Spec
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
-	c.resetStatus(ctx, st, name, cmd)
+	c.resetStatus(name, cmd)
 
 	statusCh := make(chan statusAndMetadata)
 
-	ctx = store.MustObjectLogHandler(ctx, st, cmd)
+	ctx = store.MustObjectLogHandler(ctx, c.st, cmd)
 	spec := cmd.Spec
 	spanID := model.LogSpanID(cmd.ObjectMeta.Annotations[v1alpha1.AnnotationSpanID])
 
 	if spec.ReadinessProbe != nil {
-		statusChangeFunc := c.processReadinessProbeStatusChange(ctx, st, name, proc.stillHasSameProcNum())
+		statusChangeFunc := c.processReadinessProbeStatusChange(ctx, name, proc.stillHasSameProcNum())
 		resultLoggerFunc := processReadinessProbeResultLogger(ctx, proc.stillHasSameProcNum())
 		probeWorker, err := probeWorkerFromSpec(
 			c.proberManager,
@@ -132,7 +133,7 @@ func (c *Controller) reconcile(ctx context.Context, st store.RStore, name types.
 			resultLoggerFunc)
 		if err != nil {
 			logger.Get(ctx).Errorf("Invalid readiness probe: %v", err)
-			c.updateStatus(ctx, st, name, func(status *CmdStatus) {
+			c.updateStatus(name, func(status *CmdStatus) {
 				*status = CmdStatus{
 					Terminated: &CmdStateTerminated{
 						ExitCode: 1,
@@ -140,13 +141,13 @@ func (c *Controller) reconcile(ctx context.Context, st store.RStore, name types.
 					},
 				}
 			})
-			return
+			return nil
 		}
 		proc.probeWorker = probeWorker
 	}
 
 	startedAt := metav1.Now()
-	go c.processStatuses(ctx, statusCh, st, proc, name, startedAt)
+	go c.processStatuses(ctx, statusCh, proc, name, startedAt)
 
 	serveCmd := model.Cmd{
 		Argv: spec.Args,
@@ -154,9 +155,10 @@ func (c *Controller) reconcile(ctx context.Context, st store.RStore, name types.
 		Env:  spec.Env,
 	}
 	proc.doneCh = c.execer.Start(ctx, serveCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
+	return nil
 }
 
-func (c *Controller) processReadinessProbeStatusChange(ctx context.Context, st store.RStore, name types.NamespacedName, stillHasSameProcNum func() bool) probe.StatusChangedFunc {
+func (c *Controller) processReadinessProbeStatusChange(ctx context.Context, name types.NamespacedName, stillHasSameProcNum func() bool) probe.StatusChangedFunc {
 	existingReady := false
 
 	return func(status prober.Result, output string) {
@@ -172,7 +174,7 @@ func (c *Controller) processReadinessProbeStatusChange(ctx context.Context, st s
 		ready := status == prober.Success || status == prober.Warning
 		if existingReady != ready {
 			existingReady = ready
-			c.updateStatus(ctx, st, name, func(status *CmdStatus) { status.Ready = ready })
+			c.updateStatus(name, func(status *CmdStatus) { status.Ready = ready })
 		}
 	}
 }
@@ -213,7 +215,7 @@ func processReadinessProbeResultLogger(ctx context.Context, stillHasSameProcNum 
 	}
 }
 
-func (c *Controller) resetStatus(ctx context.Context, st store.RStore, name types.NamespacedName, cmd *Cmd) {
+func (c *Controller) resetStatus(name types.NamespacedName, cmd *Cmd) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -223,13 +225,13 @@ func (c *Controller) resetStatus(ctx context.Context, st store.RStore, name type
 	}
 	c.updateCmds[name] = updated
 
-	err := c.client.Status().Update(ctx, updated)
+	err := c.client.Status().Update(c.globalCtx, updated)
 	if err != nil && !apierrors.IsNotFound(err) {
-		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
 		return
 	}
 
-	st.Dispatch(NewCmdUpdateStatusAction(updated))
+	c.st.Dispatch(NewCmdUpdateStatusAction(updated))
 }
 
 // Update the stored status.
@@ -237,7 +239,7 @@ func (c *Controller) resetStatus(ctx context.Context, st store.RStore, name type
 // In a real K8s controller, this would be a queue to make sure we don't miss updates.
 //
 // update() -> a pure function that applies a delta to the status object.
-func (c *Controller) updateStatus(ctx context.Context, st store.RStore, name types.NamespacedName, update func(status *CmdStatus)) {
+func (c *Controller) updateStatus(name types.NamespacedName, update func(status *CmdStatus)) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -248,19 +250,18 @@ func (c *Controller) updateStatus(ctx context.Context, st store.RStore, name typ
 
 	update(&cmd.Status)
 
-	err := c.client.Status().Update(ctx, cmd)
+	err := c.client.Status().Update(c.globalCtx, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
-		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
 		return
 	}
 
-	st.Dispatch(NewCmdUpdateStatusAction(cmd))
+	c.st.Dispatch(NewCmdUpdateStatusAction(cmd))
 }
 
 func (c *Controller) processStatuses(
 	ctx context.Context,
 	statusCh chan statusAndMetadata,
-	st store.RStore,
 	proc *currentProcess,
 	name types.NamespacedName,
 	startedAt metav1.Time) {
@@ -274,7 +275,7 @@ func (c *Controller) processStatuses(
 		}
 
 		if sm.status == Error || sm.status == Done {
-			c.updateStatus(ctx, st, name, func(status *CmdStatus) {
+			c.updateStatus(name, func(status *CmdStatus) {
 				status.Waiting = nil
 				status.Running = nil
 				status.Terminated = &CmdStateTerminated{
@@ -292,7 +293,7 @@ func (c *Controller) processStatuses(
 				})
 			}
 
-			c.updateStatus(ctx, st, name, func(status *CmdStatus) {
+			c.updateStatus(name, func(status *CmdStatus) {
 				status.Waiting = nil
 				status.Running = &CmdStateRunning{
 					PID:       int32(sm.pid),
@@ -305,6 +306,12 @@ func (c *Controller) processStatuses(
 			})
 		}
 	}
+}
+
+func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&Cmd{}).
+		Complete(r)
 }
 
 // currentProcess represents the current process for a Manifest, so that Controller can
