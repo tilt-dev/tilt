@@ -112,10 +112,10 @@ func (l *subscriberList) NotifyAll(ctx context.Context, store *Store, summary Ch
 
 	for _, s := range subscribers {
 		s := s
-		isPending := s.claimPending()
+		isPending := s.claimPending(summary)
 		if isPending {
 			SafeGo(store, func() {
-				s.notify(ctx, store, summary)
+				s.notify(ctx, store)
 			})
 		}
 	}
@@ -126,8 +126,8 @@ type subscriberEntry struct {
 
 	// At any given time, there are at most two goroutines
 	// notifying the subscriber: a pending goroutine and an active goroutine.
-	hasPending bool
-	hasActive  bool
+	pendingChange *ChangeSummary
+	activeChange  *ChangeSummary
 
 	// The active mutex is held by the goroutine currently notifying the
 	// subscriber. It may be held for a long time if the subscriber
@@ -141,38 +141,42 @@ type subscriberEntry struct {
 
 // Returns true if this is the pending goroutine.
 // Returns false to do nothing.
-func (e *subscriberEntry) claimPending() bool {
+// If there's a pending change, we merge the passed summary.
+func (e *subscriberEntry) claimPending(s ChangeSummary) bool {
 	e.stateMu.Lock()
 	defer e.stateMu.Unlock()
 
-	if e.hasPending {
+	if e.pendingChange != nil {
+		e.pendingChange.Add(s)
 		return false
 	}
-	e.hasPending = true
+	e.pendingChange = &ChangeSummary{}
+	e.pendingChange.Add(s)
 	return true
 }
 
-func (e *subscriberEntry) movePendingToActive() {
+func (e *subscriberEntry) movePendingToActive() *ChangeSummary {
 	e.stateMu.Lock()
 	defer e.stateMu.Unlock()
 
-	e.hasPending = false
-	e.hasActive = true
+	e.activeChange = e.pendingChange
+	e.pendingChange = nil
+	return e.activeChange
 }
 
 func (e *subscriberEntry) clearActive() {
 	e.stateMu.Lock()
 	defer e.stateMu.Unlock()
 
-	e.hasActive = false
+	e.activeChange = nil
 }
 
-func (e *subscriberEntry) notify(ctx context.Context, store *Store, summary ChangeSummary) {
+func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 	e.activeMu.Lock()
 	defer e.activeMu.Unlock()
 
-	e.movePendingToActive()
-	e.subscriber.OnChange(ctx, store, summary)
+	activeChange := e.movePendingToActive()
+	e.subscriber.OnChange(ctx, store, *activeChange)
 	e.clearActive()
 }
 
