@@ -1,6 +1,9 @@
 package store
 
-import "github.com/google/go-cmp/cmp"
+import (
+	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/types"
+)
 
 // Summarize the changes to the EngineState since the last change.
 type ChangeSummary struct {
@@ -13,6 +16,9 @@ type ChangeSummary struct {
 
 	// Cmds with their specs changed.
 	CmdSpecs map[string]bool
+
+	// FileWatches with their specs changed.
+	FileWatchSpecs map[types.NamespacedName]bool
 }
 
 func (s ChangeSummary) IsLogOnly() bool {
@@ -28,6 +34,14 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 		}
 		for k, v := range other.CmdSpecs {
 			s.CmdSpecs[k] = v
+		}
+	}
+	if len(other.FileWatchSpecs) > 0 {
+		if s.FileWatchSpecs == nil {
+			s.FileWatchSpecs = make(map[types.NamespacedName]bool)
+		}
+		for k, v := range other.FileWatchSpecs {
+			s.FileWatchSpecs[k] = v
 		}
 	}
 }

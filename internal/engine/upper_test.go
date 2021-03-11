@@ -3913,12 +3913,7 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
-
-	expectedWatchCount := len(fswatch.SpecsForManifests(state.Manifests(), nil))
-	if len(state.ConfigFiles) > 0 {
-		// watchmanager also creates a watcher for config files
-		expectedWatchCount++
-	}
+	expectedWatchCount := len(fswatch.SpecsFromState(*state))
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}

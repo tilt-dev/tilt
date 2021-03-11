@@ -20,7 +20,11 @@ func NewManifestSubscriber() *ManifestSubscriber {
 	return &ManifestSubscriber{}
 }
 
-func (w ManifestSubscriber) OnChange(_ context.Context, st store.RStore, _ store.ChangeSummary) {
+func (w ManifestSubscriber) OnChange(_ context.Context, st store.RStore, summary store.ChangeSummary) {
+	if summary.IsLogOnly() || !summary.Legacy {
+		return
+	}
+
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -28,16 +32,7 @@ func (w ManifestSubscriber) OnChange(_ context.Context, st store.RStore, _ store
 		return
 	}
 
-	// TODO(milas): how can global ignores fit into the API model more cleanly?
-	newGlobalIgnores := globalIgnores(state)
-	manifests := state.Manifests()
-	specsToProcess := SpecsForManifests(manifests, newGlobalIgnores)
-
-	if len(state.ConfigFiles) > 0 {
-		specsToProcess[ConfigsTargetID] = filewatches.FileWatchSpec{
-			WatchedPaths: state.ConfigFiles,
-		}
-	}
+	specsToProcess := SpecsFromState(state)
 
 	watchesToKeep := make(map[types.NamespacedName]bool)
 	for targetID, spec := range specsToProcess {
@@ -107,10 +102,12 @@ func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) filewa
 	return spec
 }
 
-// SpecsForManifests creates FileWatch specs from Tilt manifests.
-func SpecsForManifests(manifests []model.Manifest, globalIgnores []model.Dockerignore) map[model.TargetID]filewatches.FileWatchSpec {
+// SpecsFromState creates FileWatch specs from Tilt manifests.
+func SpecsFromState(state store.EngineState) map[model.TargetID]filewatches.FileWatchSpec {
+	// TODO(milas): how can global ignores fit into the API model more cleanly?
+	globalIgnores := globalIgnores(state)
 	fileWatches := make(map[model.TargetID]filewatches.FileWatchSpec)
-	for _, m := range manifests {
+	for _, m := range state.Manifests() {
 		for _, t := range m.TargetSpecs() {
 			// ignore targets that have already been processed or aren't watchable
 			_, seen := fileWatches[t.ID()]
@@ -121,6 +118,13 @@ func SpecsForManifests(manifests []model.Manifest, globalIgnores []model.Dockeri
 			fileWatches[t.ID()] = specForTarget(t, globalIgnores)
 		}
 	}
+
+	if len(state.ConfigFiles) > 0 {
+		fileWatches[ConfigsTargetID] = filewatches.FileWatchSpec{
+			WatchedPaths: state.ConfigFiles,
+		}
+	}
+
 	return fileWatches
 }
 

@@ -19,6 +19,14 @@ type FileWatchCreateAction struct {
 	FileWatch *filewatches.FileWatch
 }
 
+func (a FileWatchCreateAction) Summarize(summary *store.ChangeSummary) {
+	if summary.FileWatchSpecs == nil {
+		summary.FileWatchSpecs = make(map[types.NamespacedName]bool)
+	}
+	key := types.NamespacedName{Namespace: a.FileWatch.GetNamespace(), Name: a.FileWatch.GetName()}
+	summary.FileWatchSpecs[key] = true
+}
+
 func (FileWatchCreateAction) Action() {}
 
 func NewFileWatchCreateAction(fw *filewatches.FileWatch) FileWatchCreateAction {
@@ -27,6 +35,14 @@ func NewFileWatchCreateAction(fw *filewatches.FileWatch) FileWatchCreateAction {
 
 type FileWatchUpdateAction struct {
 	FileWatch *filewatches.FileWatch
+}
+
+func (a FileWatchUpdateAction) Summarize(summary *store.ChangeSummary) {
+	if summary.FileWatchSpecs == nil {
+		summary.FileWatchSpecs = make(map[types.NamespacedName]bool)
+	}
+	key := types.NamespacedName{Namespace: a.FileWatch.GetNamespace(), Name: a.FileWatch.GetName()}
+	summary.FileWatchSpecs[key] = true
 }
 
 func (FileWatchUpdateAction) Action() {}
@@ -48,6 +64,13 @@ func NewFileWatchUpdateStatusAction(name types.NamespacedName, fwStatus *filewat
 
 type FileWatchDeleteAction struct {
 	Name types.NamespacedName
+}
+
+func (a FileWatchDeleteAction) Summarize(summary *store.ChangeSummary) {
+	if summary.FileWatchSpecs == nil {
+		summary.FileWatchSpecs = make(map[types.NamespacedName]bool)
+	}
+	summary.FileWatchSpecs[a.Name] = true
 }
 
 func (FileWatchDeleteAction) Action() {}
