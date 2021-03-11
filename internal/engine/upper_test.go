@@ -3752,6 +3752,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
+	fwms := fswatch.NewManifestSubscriber()
 	fwm := fswatch.NewWatchManager(watcher.NewSub, timerMaker.Maker())
 	pfc := portforward.NewController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
@@ -3823,7 +3824,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lc, lsc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, fwm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lc, lsc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -3849,6 +3850,7 @@ func (f *testFixture) fakeHud() *hud.FakeHud {
 
 // starts the upper with the given manifests, bypassing normal tiltfile loading
 func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOption) {
+	f.t.Helper()
 	f.setManifests(manifests)
 
 	ia := InitAction{
@@ -3887,6 +3889,7 @@ func (f *testFixture) disableEnvAnalyticsOpt() {
 type initOption func(ia InitAction) InitAction
 
 func (f *testFixture) Init(action InitAction) {
+	f.t.Helper()
 	watchFiles := action.EngineMode.WatchesFiles()
 	f.upperInitResult = make(chan error, 10)
 
@@ -3910,6 +3913,7 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
+
 	expectedWatchCount := len(fswatch.SpecsForManifests(state.Manifests(), nil))
 	if len(state.ConfigFiles) > 0 {
 		// watchmanager also creates a watcher for config files
@@ -3921,6 +3925,19 @@ func (f *testFixture) Init(action InitAction) {
 	f.store.UnlockMutableState()
 
 	f.PollUntil("watches set up", func() bool {
+		select {
+		case x := <-f.upperInitResult:
+			// this is a weird case - if there was an error early on,
+			// the file watches might never have been set up, but this
+			// isn't a useful place for the test to fail, so just put
+			// the error we stole back on the channel (nobody else can
+			// be listening for it yet, so there's no race here) and
+			// pretend everything is okay with file watching
+			f.upperInitResult <- x
+			return true
+		default:
+		}
+
 		return !watchFiles || f.fwm.TargetWatchCount() == expectedWatchCount
 	})
 }
@@ -4052,6 +4069,7 @@ func (f *testFixture) withManifestState(name model.ManifestName, tf func(ms stor
 // Poll until the given state passes. This should be used for checking things outside
 // the state loop. Don't use this to check state inside the state loop.
 func (f *testFixture) PollUntil(msg string, isDone func() bool) {
+	f.t.Helper()
 	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
 	defer cancel()
 

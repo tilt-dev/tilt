@@ -3,7 +3,6 @@ package fswatch
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -48,58 +47,7 @@ type WatchableTarget interface {
 
 var _ WatchableTarget = model.ImageTarget{}
 var _ WatchableTarget = model.LocalTarget{}
-
-// SpecsForManifests creates FileWatch specs from Tilt manifests.
-func SpecsForManifests(manifests []model.Manifest, globalIgnores []model.Dockerignore) map[model.TargetID]filewatches.FileWatchSpec {
-	fileWatches := make(map[model.TargetID]filewatches.FileWatchSpec)
-	for _, m := range manifests {
-		for _, t := range m.TargetSpecs() {
-			// ignore targets that have already been processed or aren't watchable
-			_, seen := fileWatches[t.ID()]
-			t, ok := t.(WatchableTarget)
-			if seen || !ok {
-				continue
-			}
-
-			spec := filewatches.FileWatchSpec{
-				WatchedPaths: t.Dependencies(),
-			}
-			for _, di := range t.Dockerignores() {
-				if di.Empty() {
-					continue
-				}
-				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-					BasePath: di.LocalPath,
-					Patterns: di.Patterns,
-				})
-			}
-			for _, ild := range t.IgnoredLocalDirectories() {
-				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-					BasePath: ild,
-				})
-			}
-
-			// process global ignores last
-			for _, gi := range globalIgnores {
-				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-					BasePath: gi.LocalPath,
-					Patterns: gi.Patterns,
-				})
-			}
-			fileWatches[t.ID()] = spec
-		}
-	}
-	return fileWatches
-}
-
-type result int
-
-const (
-	resultUnknown result = iota
-	resultAdded
-	resultUpdated
-	resultNoChange
-)
+var _ WatchableTarget = model.DockerComposeTarget{}
 
 type targetNotifyCancel struct {
 	name   types.NamespacedName
@@ -110,11 +58,10 @@ type targetNotifyCancel struct {
 }
 
 type WatchManager struct {
-	targetWatches      map[types.NamespacedName]targetNotifyCancel
-	fsWatcherMaker     FsWatcherMaker
-	timerMaker         TimerMaker
-	disabledForTesting bool
-	mu                 sync.Mutex
+	targetWatches  map[types.NamespacedName]targetNotifyCancel
+	fsWatcherMaker FsWatcherMaker
+	timerMaker     TimerMaker
+	mu             sync.Mutex
 }
 
 func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchManager {
@@ -123,35 +70,6 @@ func NewWatchManager(watcherMaker FsWatcherMaker, timerMaker TimerMaker) *WatchM
 		fsWatcherMaker: watcherMaker,
 		timerMaker:     timerMaker,
 	}
-}
-
-func (w *WatchManager) DisableForTesting() {
-	w.disabledForTesting = true
-}
-
-// globalIgnores returns a list of global ignore patterns.
-func globalIgnores(es store.EngineState) []model.Dockerignore {
-	ignores := []model.Dockerignore{}
-	if !es.Tiltignore.Empty() {
-		ignores = append(ignores, es.Tiltignore)
-	}
-	ignores = append(ignores, es.WatchSettings.Ignores...)
-
-	for _, manifest := range es.Manifests() {
-		for _, iTarget := range manifest.ImageTargets {
-			customBuild := iTarget.CustomBuildInfo()
-			if customBuild.OutputsImageRefTo != "" {
-				// this could be smarter and try to group by local path
-				ignores = append(ignores, model.Dockerignore{
-					LocalPath: filepath.Dir(customBuild.OutputsImageRefTo),
-					Source:    "outputs_image_ref_to",
-					Patterns:  []string{filepath.Base(customBuild.OutputsImageRefTo)},
-				})
-			}
-		}
-	}
-
-	return ignores
 }
 
 func (w *WatchManager) TargetWatchCount() int {
@@ -171,67 +89,26 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, _ store.Ch
 		return
 	}
 
-	// TODO(milas): how can global ignores fit into the API model more cleanly?
-	newGlobalIgnores := globalIgnores(state)
-	specsToProcess := SpecsForManifests(state.Manifests(), newGlobalIgnores)
-
-	if len(state.ConfigFiles) > 0 {
-		specsToProcess[ConfigsTargetID] = filewatches.FileWatchSpec{
-			WatchedPaths: state.ConfigFiles,
-		}
-	}
-
 	watchesToKeep := make(map[types.NamespacedName]bool)
-	for targetID, spec := range specsToProcess {
-		name := types.NamespacedName{Name: targetID.String()}
+	for name, fw := range state.FileWatches {
 		watchesToKeep[name] = true
-		res, fwStatus, err := w.addOrUpdate(ctx, st, name, *spec.DeepCopy())
-		if err != nil {
-			logger.Get(ctx).Debugf("Error adding/updating watch for %q: %v", name.String(), err)
-			continue
-		}
-
-		// to avoid race conditions + circular data flow issues with reading + writing, the full entity
-		// is always overwritten with a version generated here (in the future, this "controller" will NOT
-		// be responsible for actually generating FileWatch specs, but will behave more as a reconciler
-		// to start/stop watches based on desired state)
-		fw := &filewatches.FileWatch{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: name.Namespace,
-				Name:      name.Name,
-				Labels: map[string]string{
-					filewatches.LabelTargetID: targetID.String(),
-				},
-			},
-			Spec:   *spec.DeepCopy(),
-			Status: *fwStatus,
-		}
-
-		switch res {
-		case resultNoChange:
-		case resultAdded:
-			st.Dispatch(NewFileWatchCreateAction(fw))
-		case resultUpdated:
-			st.Dispatch(NewFileWatchUpdateAction(fw))
-		default:
-			logger.Get(ctx).Debugf("Unexpected result %d while processing %q", res, name.String())
+		if err := w.addOrUpdate(ctx, st, name, *fw.Spec.DeepCopy()); err != nil {
+			logger.Get(ctx).Debugf("Failed to create/update filesystem watch for FileWatch %q: %v", name.String(), err)
 		}
 	}
 
-	// find and delete any that no longer exist from manifests
 	for name, tw := range w.targetWatches {
 		if _, ok := watchesToKeep[name]; !ok {
 			w.cleanupWatch(ctx, tw)
 			delete(w.targetWatches, name)
-			st.Dispatch(NewFileWatchDeleteAction(name))
 		}
 	}
 }
 
-func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name types.NamespacedName, spec filewatches.FileWatchSpec) (result, *filewatches.FileWatchStatus, error) {
+func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name types.NamespacedName, spec filewatches.FileWatchSpec) error {
 	existing, hasExisting := w.targetWatches[name]
 	if hasExisting && equality.Semantic.DeepEqual(existing.spec, spec) {
-		return resultNoChange, existing.status.DeepCopy(), nil
+		return nil
 	}
 
 	var ignoreMatchers []model.PathMatcher
@@ -241,13 +118,13 @@ func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name ty
 				ignoreDef.BasePath,
 				append([]string{}, ignoreDef.Patterns...))
 			if err != nil {
-				return resultUnknown, nil, fmt.Errorf("invalid ignore def: %v", err)
+				return fmt.Errorf("invalid ignore def: %v", err)
 			}
 			ignoreMatchers = append(ignoreMatchers, m)
 		} else {
 			m, err := ignore.NewDirectoryMatcher(ignoreDef.BasePath)
 			if err != nil {
-				return resultUnknown, nil, fmt.Errorf("invalid ignore def: %v", err)
+				return fmt.Errorf("invalid ignore def: %v", err)
 			}
 			ignoreMatchers = append(ignoreMatchers, m)
 		}
@@ -260,10 +137,10 @@ func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name ty
 		model.NewCompositeMatcher(ignoreMatchers),
 		logger.Get(ctx))
 	if err != nil {
-		return resultUnknown, nil, fmt.Errorf("failed to initialize filesystem watch: %v", err)
+		return fmt.Errorf("failed to initialize filesystem watch: %v", err)
 	}
 	if err := notify.Start(); err != nil {
-		return resultUnknown, nil, fmt.Errorf("failed to initialize filesystem watch: %v", err)
+		return fmt.Errorf("failed to initialize filesystem watch: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -282,10 +159,9 @@ func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name ty
 	if hasExisting {
 		// no need to remove from map, we just overwrote it
 		w.cleanupWatch(ctx, existing)
-		return resultUpdated, tw.status.DeepCopy(), nil
 	}
 
-	return resultAdded, tw.status.DeepCopy(), nil
+	return nil
 }
 
 // cleanupWatch stops watching for changes and frees up resources.

@@ -313,6 +313,8 @@ func newWMFixture(t *testing.T) *wmFixture {
 	fakeMultiWatcher := NewFakeMultiWatcher()
 	wm := NewWatchManager(fakeMultiWatcher.NewSub, timerMaker.Maker())
 
+	manifestSub := NewManifestSubscriber()
+
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -330,6 +332,7 @@ func newWMFixture(t *testing.T) *wmFixture {
 
 	f.store = store.NewStore(f.reducer, false)
 	require.NoError(t, f.store.AddSubscriber(f.ctx, wm))
+	require.NoError(t, f.store.AddSubscriber(f.ctx, manifestSub))
 
 	go func() {
 		if err := f.store.Loop(ctx); err != nil && err != context.Canceled {
