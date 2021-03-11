@@ -184,4 +184,13 @@ describe("tabnav", () => {
     expect(f.nav.tabs).toEqual(["res2", "res3"])
     expect(f.nav.selectedTab).toEqual("res3")
   })
+
+  it("filtering all tabs leaves the all tab", () => {
+    let f = new Fixture(["res2", "res3"])
+    f.validateTab = (res) => res == "res1"
+    f.history.location.pathname = "/"
+    f.mount()
+    expect(f.nav.tabs).toEqual([ResourceName.all])
+    expect(f.nav.selectedTab).toEqual("")
+  })
 })
