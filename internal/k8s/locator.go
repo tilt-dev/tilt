@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -24,11 +25,14 @@ type ImageLocator interface {
 
 	// Find all the images in this entity that match the given selector,
 	// and replace them with the injected ref.
+	// If the injected ref has a pull policy sibling, set it to the given pull policy.
 	//
 	// Returns a new entity with the injected ref.  Returns a boolean indicated
 	// whether there was at least one successful injection.
-	Inject(e K8sEntity, selector container.RefSelector, injectRef reference.Named) (K8sEntity, bool, error)
+	Inject(e K8sEntity, selector container.RefSelector, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error)
 }
+
+const imagePullPolicyKey = "imagePullPolicy"
 
 func LocatorMatchesOne(l ImageLocator, entities []K8sEntity) bool {
 	for _, e := range entities {
@@ -106,7 +110,7 @@ func (l *JSONPathImageLocator) Extract(e K8sEntity) ([]reference.Named, error) {
 	return result, nil
 }
 
-func (l *JSONPathImageLocator) Inject(e K8sEntity, selector container.RefSelector, injectRef reference.Named) (K8sEntity, bool, error) {
+func (l *JSONPathImageLocator) Inject(e K8sEntity, selector container.RefSelector, injectRef reference.Named, pullPolicy v1.PullPolicy) (K8sEntity, bool, error) {
 	if !l.selector.Matches(e) {
 		return e, false, nil
 	}
@@ -121,6 +125,10 @@ func (l *JSONPathImageLocator) Inject(e K8sEntity, selector container.RefSelecto
 		if selector.Matches(ref) {
 			val.Set(reflect.ValueOf(container.FamiliarString(injectRef)))
 			modified = true
+
+			if pullPolicyVal, ok := val.Sibling(imagePullPolicyKey); ok {
+				pullPolicyVal.Set(reflect.ValueOf(string(pullPolicy)))
+			}
 		}
 		return nil
 	})
@@ -223,7 +231,9 @@ func (l *JSONPathImageObjectLocator) Extract(e K8sEntity) ([]reference.Named, er
 	return result, nil
 }
 
-func (l *JSONPathImageObjectLocator) Inject(e K8sEntity, selector container.RefSelector, injectRef reference.Named) (K8sEntity, bool, error) {
+// pullPolicy is ignored for this injector for now, since it's less standard
+// if it turns out there's a demand for this, we can plumb it through to image_object
+func (l *JSONPathImageObjectLocator) Inject(e K8sEntity, selector container.RefSelector, injectRef reference.Named, _ v1.PullPolicy) (K8sEntity, bool, error) {
 	if !l.selector.Matches(e) {
 		return e, false, nil
 	}

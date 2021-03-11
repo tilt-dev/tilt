@@ -19,6 +19,8 @@ spec:
                   type: string
                 nonImage:
                   type: string
+                imagePullPolicy:
+                  type: string
   scope: Namespaced
   names:
     plural: uselessmachines

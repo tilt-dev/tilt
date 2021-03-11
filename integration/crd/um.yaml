@@ -6,3 +6,4 @@ metadata:
 spec:
   image: bobo
   nonImage: bobo
+  imagePullPolicy: Always

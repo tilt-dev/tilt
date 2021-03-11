@@ -34,4 +34,5 @@ func TestCRD(t *testing.T) {
 	assert.Contains(t, contents, "name: bobo\n")
 	assert.Contains(t, contents, "nonImage: bobo\n")
 	assert.NotContains(t, contents, "image: bobo\n")
+	assert.Contains(t, contents, "imagePullPolicy: IfNotPresent\n")
 }
