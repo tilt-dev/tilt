@@ -92,14 +92,18 @@ func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) filewa
 	}
 
 	// process global ignores last
+	addGlobalIgnoresToSpec(&spec, globalIgnores)
+
+	return spec
+}
+
+func addGlobalIgnoresToSpec(spec *filewatches.FileWatchSpec, globalIgnores []model.Dockerignore) {
 	for _, gi := range globalIgnores {
 		spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
 			BasePath: gi.LocalPath,
-			Patterns: gi.Patterns,
+			Patterns: append([]string(nil), gi.Patterns...),
 		})
 	}
-
-	return spec
 }
 
 // SpecsFromState creates FileWatch specs from Tilt manifests.
@@ -120,9 +124,11 @@ func SpecsFromState(state store.EngineState) map[model.TargetID]filewatches.File
 	}
 
 	if len(state.ConfigFiles) > 0 {
-		fileWatches[ConfigsTargetID] = filewatches.FileWatchSpec{
-			WatchedPaths: state.ConfigFiles,
+		configSpec := filewatches.FileWatchSpec{
+			WatchedPaths: append([]string(nil), state.ConfigFiles...),
 		}
+		addGlobalIgnoresToSpec(&configSpec, globalIgnores)
+		fileWatches[ConfigsTargetID] = configSpec
 	}
 
 	return fileWatches
