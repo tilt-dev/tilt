@@ -1,4 +1,4 @@
-package local
+package cmd
 
 import (
 	"bufio"
@@ -18,11 +18,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 // A controller that reads CmdSpec and writes CmdStatus
@@ -231,7 +231,7 @@ func (c *Controller) resetStatus(name types.NamespacedName, cmd *Cmd) {
 		return
 	}
 
-	c.st.Dispatch(NewCmdUpdateStatusAction(updated))
+	c.st.Dispatch(local.NewCmdUpdateStatusAction(updated))
 }
 
 // Update the stored status.
@@ -256,7 +256,7 @@ func (c *Controller) updateStatus(name types.NamespacedName, update func(status 
 		return
 	}
 
-	c.st.Dispatch(NewCmdUpdateStatusAction(cmd))
+	c.st.Dispatch(local.NewCmdUpdateStatusAction(cmd))
 }
 
 func (c *Controller) processStatuses(
@@ -347,10 +347,6 @@ func (p *currentProcess) currentProcNum() int {
 	defer p.mu.Unlock()
 
 	return p.procNum
-}
-
-func SpanIDForServeLog(procNum int) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("localserve:%d", procNum))
 }
 
 type statusAndMetadata struct {

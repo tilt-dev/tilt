@@ -1,4 +1,4 @@
-package local
+package cmd
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -226,15 +227,15 @@ func (s *testStore) Dispatch(action store.Action) {
 	case store.LogAction:
 		_, _ = s.out.Write(action.Message())
 
-	case CmdCreateAction:
-		HandleCmdCreateAction(st, action)
+	case local.CmdCreateAction:
+		local.HandleCmdCreateAction(st, action)
 		action.Summarize(&s.summary)
 
-	case CmdUpdateStatusAction:
-		HandleCmdUpdateStatusAction(st, action)
+	case local.CmdUpdateStatusAction:
+		local.HandleCmdUpdateStatusAction(st, action)
 
-	case CmdDeleteAction:
-		HandleCmdDeleteAction(st, action)
+	case local.CmdDeleteAction:
+		local.HandleCmdDeleteAction(st, action)
 		action.Summarize(&s.summary)
 	}
 }
@@ -245,7 +246,7 @@ type fixture struct {
 	st     *testStore
 	fe     *FakeExecer
 	fpm    *FakeProberManager
-	sc     *ServerController
+	sc     *local.ServerController
 	client ctrlclient.Client
 	c      *Controller
 	ctx    context.Context
@@ -263,7 +264,7 @@ func newFixture(t *testing.T) *fixture {
 	fe := NewFakeExecer()
 	fpm := NewFakeProberManager()
 	fc := fake.NewTiltClient()
-	sc := NewServerController(fc)
+	sc := local.NewServerController(fc)
 	c := NewController(ctx, fe, fpm, fc, st)
 
 	return &fixture{
