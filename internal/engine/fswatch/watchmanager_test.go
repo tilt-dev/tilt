@@ -146,6 +146,26 @@ func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
 	f.AssertActionsContain(actions, "bar")
 }
 
+func TestWatchManager_ConfigFiles(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	f.SetTiltIgnoreContents("**/foo")
+	st := f.store.LockMutableStateForTesting()
+	// N.B. because there's no target for this test watching `.` need to set
+	//	an explicit watch on `stop` for the test fixture
+	st.ConfigFiles = append(st.ConfigFiles, "path_to_watch", "stop")
+	f.store.UnlockMutableState()
+	f.wm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	f.ChangeFile(t, filepath.Join("path_to_watch", "foo"))
+	f.ChangeFile(t, filepath.Join("path_to_watch", "bar"))
+
+	actions := f.Stop(t)
+	f.AssertActionsNotContain(actions, filepath.Join("path_to_watch", "foo"))
+	f.AssertActionsContain(actions, filepath.Join("path_to_watch", "bar"))
+}
+
 func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()

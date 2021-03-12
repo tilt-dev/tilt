@@ -80,16 +80,20 @@ func SpecsForManifests(manifests []model.Manifest, globalIgnores []model.Dockeri
 			}
 
 			// process global ignores last
-			for _, gi := range globalIgnores {
-				spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-					BasePath: gi.LocalPath,
-					Patterns: gi.Patterns,
-				})
-			}
+			addGlobalIgnoresToSpec(&spec, globalIgnores)
 			fileWatches[t.ID()] = spec
 		}
 	}
 	return fileWatches
+}
+
+func addGlobalIgnoresToSpec(spec *filewatches.FileWatchSpec, globalIgnores []model.Dockerignore) {
+	for _, gi := range globalIgnores {
+		spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
+			BasePath: gi.LocalPath,
+			Patterns: append([]string(nil), gi.Patterns...),
+		})
+	}
 }
 
 type result int
@@ -180,9 +184,11 @@ func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, _ store.Ch
 	specsToProcess := SpecsForManifests(state.Manifests(), newGlobalIgnores)
 
 	if len(state.ConfigFiles) > 0 {
-		specsToProcess[ConfigsTargetID] = filewatches.FileWatchSpec{
-			WatchedPaths: state.ConfigFiles,
+		configSpec := filewatches.FileWatchSpec{
+			WatchedPaths: append([]string(nil), state.ConfigFiles...),
 		}
+		addGlobalIgnoresToSpec(&configSpec, newGlobalIgnores)
+		specsToProcess[ConfigsTargetID] = configSpec
 	}
 
 	watchesToKeep := make(map[types.NamespacedName]bool)
