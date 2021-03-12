@@ -78,39 +78,52 @@ func (w *WatchManager) TargetWatchCount() int {
 	return len(w.targetWatches)
 }
 
-func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
+func (w *WatchManager) diff(st store.RStore, summary store.ChangeSummary) map[types.NamespacedName]*filewatches.FileWatch {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	if !state.EngineMode.WatchesFiles() {
-		return
-	}
-
-	watchesToKeep := make(map[types.NamespacedName]bool)
-	for name, fw := range state.FileWatches {
-		watchesToKeep[name] = true
-		if err := w.addOrUpdate(ctx, st, name, *fw.Spec.DeepCopy()); err != nil {
-			logger.Get(ctx).Debugf("Failed to create/update filesystem watch for FileWatch %q: %v", name.String(), err)
-		}
-	}
-
-	for name, tw := range w.targetWatches {
-		if _, ok := watchesToKeep[name]; !ok {
-			w.cleanupWatch(ctx, tw)
-			delete(w.targetWatches, name)
-		}
-	}
-}
-
-func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name types.NamespacedName, spec filewatches.FileWatchSpec) error {
-	existing, hasExisting := w.targetWatches[name]
-	if hasExisting && equality.Semantic.DeepEqual(existing.spec, spec) {
 		return nil
 	}
 
+	result := make(map[types.NamespacedName]*filewatches.FileWatch)
+	for key := range summary.FileWatchSpecs {
+		result[key] = state.FileWatches[key]
+	}
+	return result
+}
+
+func (w *WatchManager) reconcile(ctx context.Context, st store.RStore, name types.NamespacedName, fw *filewatches.FileWatch) {
+	existing, hasExisting := w.targetWatches[name]
+
+	if fw == nil || fw.GetObjectMeta().GetDeletionTimestamp() != nil {
+		if hasExisting {
+			w.cleanupWatch(ctx, existing)
+			delete(w.targetWatches, name)
+		}
+		return
+	}
+
+	if hasExisting && equality.Semantic.DeepEqual(existing.spec, fw.Spec) {
+		return
+	}
+
+	if err := w.addOrReplace(ctx, st, name, *fw.Spec.DeepCopy()); err != nil {
+		logger.Get(ctx).Debugf("Failed to create/update filesystem watch for FileWatch %q: %v", name.String(), err)
+	}
+}
+
+func (w *WatchManager) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	toReconcile := w.diff(st, summary)
+	for name, fw := range toReconcile {
+		w.reconcile(ctx, st, name, fw)
+	}
+}
+
+func (w *WatchManager) addOrReplace(ctx context.Context, st store.RStore, name types.NamespacedName, spec filewatches.FileWatchSpec) error {
 	var ignoreMatchers []model.PathMatcher
 	for _, ignoreDef := range spec.Ignores {
 		if len(ignoreDef.Patterns) != 0 {
@@ -154,13 +167,12 @@ func (w *WatchManager) addOrUpdate(ctx context.Context, st store.RStore, name ty
 
 	go w.dispatchFileChangesLoop(ctx, name, notify, st)
 
-	w.targetWatches[name] = tw
-
-	if hasExisting {
-		// no need to remove from map, we just overwrote it
+	if existing, ok := w.targetWatches[name]; ok {
+		// no need to remove from map, will be overwritten
 		w.cleanupWatch(ctx, existing)
 	}
 
+	w.targetWatches[name] = tw
 	return nil
 }
 
