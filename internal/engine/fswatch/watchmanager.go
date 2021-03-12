@@ -224,7 +224,7 @@ func (w *WatchManager) dispatchFileChangesLoop(
 				return
 			}
 
-			now := metav1.Now()
+			now := metav1.NowMicro()
 			w.mu.Lock()
 			event := filewatches.FileEvent{Time: *now.DeepCopy()}
 			for _, fsEvent := range fsEvents {

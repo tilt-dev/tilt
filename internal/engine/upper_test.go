@@ -4394,7 +4394,7 @@ func (f *testFixture) completeBuildForManifest(m model.Manifest) {
 }
 
 func (f *testFixture) triggerFileChange(targetID model.TargetID, paths ...string) {
-	now := metav1.Now()
+	now := metav1.NowMicro()
 	f.store.Dispatch(fswatch.FileWatchUpdateStatusAction{
 		Name: types.NamespacedName{Name: targetID.String()},
 		Status: &filewatches.FileWatchStatus{
