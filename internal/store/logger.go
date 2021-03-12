@@ -34,19 +34,13 @@ func MustObjectLogHandler(ctx context.Context, st RStore, obj runtime.Object) co
 func WithObjectLogHandler(ctx context.Context, st RStore, obj runtime.Object) (context.Context, error) {
 	meta, err := meta.Accessor(obj)
 	if err != nil {
-		return nil, fmt.Errorf("object missing log info: %T", obj)
+		return nil, fmt.Errorf("object missing metadata: %T", obj)
 	}
 
+	// It's ok if the manifest or span id don't exist, they will just
+	// get dumped in the global log.
 	mn := meta.GetLabels()[v1alpha1.LabelManifest]
-	if mn == "" {
-		return nil, fmt.Errorf("object missing manifest label")
-	}
-
 	spanID := meta.GetAnnotations()[v1alpha1.AnnotationSpanID]
-	if spanID == "" {
-		return nil, fmt.Errorf("object missing span id annotation")
-	}
-
 	w := apiLogWriter{
 		store:        st,
 		manifestName: model.ManifestName(mn),

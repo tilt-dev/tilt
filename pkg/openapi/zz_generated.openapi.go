@@ -48,6 +48,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":            schema_pkg_apis_core_v1alpha1_Handler(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":          schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":              schema_pkg_apis_core_v1alpha1_Probe(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":      schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":    schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                      schema_pkg_apis_meta_v1_APIGroup(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":                  schema_pkg_apis_meta_v1_APIGroupList(ref),
@@ -250,11 +251,17 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe"),
 						},
 					},
+					"on": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicates objects that can trigger a restart of this command.\n\nRestarts can happen even if the command is already done.\n\nLogs of the currently process after the restart are discarded.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
 	}
 }
 
@@ -874,6 +881,35 @@ func schema_pkg_apis_core_v1alpha1_Probe(ref common.ReferenceCallback) common.Op
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "RestartOnSpec indicates the set of objects that can trigger a restart of this object.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"fileWatches": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of file watches that can trigger a restart.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"fileWatches"},
+			},
+		},
 	}
 }
 

@@ -12,14 +12,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -183,6 +186,57 @@ func TestTearDown(t *testing.T) {
 	f.fe.RequireNoKnownProcess(t, "bar.sh")
 }
 
+func TestTrigger(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+	f.resource("cmd", "true", ".", t1)
+	f.step()
+
+	firstStart := f.assertCmdMatches("cmd-serve-1", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+
+	fw := &FileWatch{
+		ObjectMeta: ObjectMeta{
+			Name: "fw-1",
+		},
+		Spec: FileWatchSpec{
+			WatchedPaths: []string{f.Path()},
+		},
+	}
+	err := f.client.Create(f.ctx, fw)
+	require.NoError(t, err)
+
+	time.Sleep(time.Millisecond)
+	f.setRestartOn("cmd-serve-1", &RestartOnSpec{
+		FileWatches: []string{"fw-1"},
+	})
+	f.reconcileCmd("cmd-serve-1")
+
+	secondStart := f.assertCmdMatches("cmd-serve-1", func(cmd *Cmd) bool {
+		running := cmd.Status.Running
+		return running != nil && running.StartedAt.Time.After(firstStart.Status.Running.StartedAt.Time)
+	})
+
+	f.triggerFileWatch("fw-1")
+	f.reconcileCmd("cmd-serve-1")
+
+	f.assertCmdMatches("cmd-serve-1", func(cmd *Cmd) bool {
+		running := cmd.Status.Running
+		return running != nil && running.StartedAt.Time.After(secondStart.Status.Running.StartedAt.Time)
+	})
+
+	// Our fixture doesn't test reconcile.Request triage,
+	// so test it manually here.
+	assert.Equal(f.T(),
+		[]reconcile.Request{
+			reconcile.Request{NamespacedName: types.NamespacedName{Name: "cmd-serve-1"}},
+		},
+		f.c.restartManager.enqueue(fw))
+}
+
 type testStore struct {
 	*store.TestingStore
 	out     io.Writer
@@ -241,6 +295,7 @@ func (s *testStore) Dispatch(action store.Action) {
 }
 
 type fixture struct {
+	*tempdir.TempDirFixture
 	t      *testing.T
 	out    *bufsync.ThreadSafeBuffer
 	st     *testStore
@@ -254,6 +309,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	f := tempdir.NewTempDirFixture(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	out := bufsync.NewThreadSafeBuffer()
 	w := io.MultiWriter(out, os.Stdout)
@@ -268,21 +324,49 @@ func newFixture(t *testing.T) *fixture {
 	c := NewController(ctx, fe, fpm, fc, st)
 
 	return &fixture{
-		t:      t,
-		st:     st,
-		out:    out,
-		fe:     fe,
-		fpm:    fpm,
-		sc:     sc,
-		c:      c,
-		ctx:    ctx,
-		cancel: cancel,
-		client: fc,
+		TempDirFixture: f,
+		t:              t,
+		st:             st,
+		out:            out,
+		fe:             fe,
+		fpm:            fpm,
+		sc:             sc,
+		c:              c,
+		ctx:            ctx,
+		cancel:         cancel,
+		client:         fc,
 	}
 }
 
 func (f *fixture) teardown() {
 	f.cancel()
+	f.TempDirFixture.TearDown()
+}
+
+func (f *fixture) triggerFileWatch(name string) {
+	fw := &FileWatch{}
+	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, fw)
+	require.NoError(f.T(), err)
+
+	now := metav1.NowMicro()
+	fw.Status.LastEventTime = &now
+	err = f.client.Status().Update(f.ctx, fw)
+	require.NoError(f.T(), err)
+}
+
+func (f *fixture) reconcileCmd(name string) {
+	_, err := f.c.Reconcile(f.ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: name}})
+	require.NoError(f.T(), err)
+}
+
+func (f *fixture) setRestartOn(name string, restartOn *RestartOnSpec) {
+	cmd := &Cmd{}
+	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, cmd)
+	require.NoError(f.T(), err)
+
+	cmd.Spec.RestartOn = restartOn
+	err = f.client.Update(f.ctx, cmd)
+	require.NoError(f.T(), err)
 }
 
 func (f *fixture) resource(name string, cmd string, workdir string, lastDeploy time.Time) {
@@ -345,7 +429,7 @@ func (f *fixture) waitForLogEventContaining(message string) store.LogAction {
 	}
 }
 
-func (f *fixture) assertCmdMatches(name string, matcher func(cmd *Cmd) bool) {
+func (f *fixture) assertCmdMatches(name string, matcher func(cmd *Cmd) bool) *Cmd {
 	assert.Eventually(f.t, func() bool {
 		cmd := f.st.Cmd(name)
 		if cmd == nil {
@@ -358,6 +442,7 @@ func (f *fixture) assertCmdMatches(name string, matcher func(cmd *Cmd) bool) {
 	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, &cmd)
 	require.NoError(f.t, err)
 	assert.True(f.t, matcher(&cmd))
+	return &cmd
 }
 
 func (f *fixture) assertCmdDeleted(name string) {
