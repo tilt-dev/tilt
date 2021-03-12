@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
@@ -263,7 +264,7 @@ func newFixture(t *testing.T) *fixture {
 	fpm := NewFakeProberManager()
 	fc := fake.NewTiltClient()
 	sc := NewServerController(fc)
-	c := NewController(fe, fpm, fc)
+	c := NewController(ctx, fe, fpm, fc, st)
 
 	return &fixture{
 		t:      t,
@@ -309,7 +310,10 @@ func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastD
 func (f *fixture) step() {
 	f.st.summary = store.ChangeSummary{}
 	f.sc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
-	f.c.OnChange(f.ctx, f.st, f.st.summary)
+	for name := range f.st.summary.CmdSpecs {
+		_, err := f.c.Reconcile(f.ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: name}})
+		require.NoError(f.t, err)
+	}
 }
 
 func (f *fixture) assertLogMessage(name string, messages ...string) {

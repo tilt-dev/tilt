@@ -3,7 +3,7 @@ package fake
 import (
 	"k8s.io/client-go/rest"
 
-	"github.com/tilt-dev/tilt/internal/controllers"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -13,7 +13,7 @@ import (
 )
 
 func NewTiltClient() ctrlclient.Client {
-	scheme := controllers.NewScheme()
+	scheme := v1alpha1.NewScheme()
 	return fake.NewClientBuilder().
 		WithScheme(scheme).
 		Build()

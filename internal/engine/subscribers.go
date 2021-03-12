@@ -80,7 +80,6 @@ func ProvideSubscribers(
 		tcum,
 		dp,
 		tc,
-		lc,
 		lsc,
 		podm,
 		ec,
