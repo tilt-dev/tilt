@@ -20,10 +20,13 @@ func TestLocalResource(t *testing.T) {
 	f := newFixture(t, "local_resource")
 	defer f.TearDown()
 
-	t.Cleanup(func() {
-		_ = os.Remove(f.testDirPath(cleanupTxt))
-		_ = os.Remove(f.testDirPath("probe-success"))
-	})
+	removeTestFiles := func() {
+		require.NoError(t, os.RemoveAll(f.testDirPath(cleanupTxt)))
+		require.NoError(t, os.RemoveAll(f.testDirPath("greeting")))
+		require.NoError(t, os.RemoveAll(f.testDirPath("probe-success")))
+	}
+	removeTestFiles()
+	t.Cleanup(removeTestFiles)
 
 	f.TiltWatch()
 
@@ -33,8 +36,9 @@ func TestLocalResource(t *testing.T) {
 	require.NoError(t, f.logs.WaitUntilContains("hello! foo #1", 5*time.Second))
 
 	// write a sentinel file for the probe to find and change its result
-	require.NoError(t, ioutil.WriteFile(f.testDirPath("probe-success"), nil, 0777))
-	require.NoError(t, f.logs.WaitUntilContains(readinessProbeSuccessMessage, 5*time.Second))
+	if assert.NoError(t, ioutil.WriteFile(f.testDirPath("probe-success"), nil, 0777)) {
+		assert.NoError(t, f.logs.WaitUntilContains(readinessProbeSuccessMessage, 5*time.Second))
+	}
 
 	// wait for second resource to start and then ensure that the order in the logs is as expected
 	require.NoError(t, f.logs.WaitUntilContains(barServeLogMessage, 5*time.Second))
@@ -43,8 +47,15 @@ func TestLocalResource(t *testing.T) {
 		"dependent resource started BEFORE other resource ready")
 	require.NoError(t, f.logs.WaitUntilContains("hello! bar #1", 5*time.Second))
 
-	require.NoError(t, os.Remove(f.testDirPath("probe-success")))
-	require.NoError(t, f.logs.WaitUntilContains(`[readiness probe: failure] fake probe failure message`, 5*time.Second))
+	// trigger a service restart by changing a watched file
+	if assert.NoError(t, ioutil.WriteFile(f.testDirPath("greeting"), []byte("hola"), 0777)) {
+		assert.NoError(t, f.logs.WaitUntilContains("hola! foo #1", 5*time.Second))
+	}
+
+	// force the probe into a failure state
+	if assert.NoError(t, os.Remove(f.testDirPath("probe-success"))) {
+		assert.NoError(t, f.logs.WaitUntilContains(`[readiness probe: failure] fake probe failure message`, 5*time.Second))
+	}
 
 	// send a SIGTERM and make sure Tilt propagates it to its local_resource processes
 	require.NoError(t, f.activeTiltUp.process.Signal(syscall.SIGTERM))
@@ -57,9 +68,9 @@ func TestLocalResource(t *testing.T) {
 
 	// hello.sh writes to cleanup.txt on SIGTERM
 	b, err := ioutil.ReadFile(f.testDirPath(cleanupTxt))
-	require.NoError(t, err)
-	s := string(b)
-
-	require.Contains(t, s, "cleaning up: foo")
-	require.Contains(t, s, "cleaning up: bar")
+	if assert.NoError(t, err) {
+		s := string(b)
+		require.Contains(t, s, "cleaning up: foo")
+		require.Contains(t, s, "cleaning up: bar")
+	}
 }
