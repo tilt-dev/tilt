@@ -12,6 +12,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 const AnnotationOwnerName = "tilt.dev/owner-name"
@@ -214,4 +215,8 @@ type CmdServerSpec struct {
 type CmdServerStatus struct {
 	CmdName   string
 	CmdStatus CmdStatus
+}
+
+func SpanIDForServeLog(procNum int) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("localserve:%d", procNum))
 }

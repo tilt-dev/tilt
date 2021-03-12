@@ -34,6 +34,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -3711,8 +3712,8 @@ type testFixture struct {
 	tfl                        tiltfile.TiltfileLoader
 	opter                      *tiltanalytics.FakeOpter
 	dp                         *dockerprune.DockerPruner
-	fe                         *local.FakeExecer
-	fpm                        *local.FakeProberManager
+	fe                         *cmd.FakeExecer
+	fpm                        *cmd.FakeProberManager
 	overrideMaxParallelUpdates int
 
 	onchangeCh chan bool
@@ -3772,12 +3773,12 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
-	fe := local.NewFakeExecer()
-	fpm := local.NewFakeProberManager()
+	fe := cmd.NewFakeExecer()
+	fpm := cmd.NewFakeProberManager()
 	cdc := controllers.ProvideDeferredClient()
 	ccb := controllers.NewClientBuilder(cdc)
 	fwc := filewatch.NewController(st)
-	lc := local.NewController(ctx, fe, fpm, cdc, st)
+	cmds := cmd.NewController(ctx, fe, fpm, cdc, st)
 	lsc := local.NewServerController(cdc)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
@@ -3787,7 +3788,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
-		lc,
+		cmds,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -3830,7 +3831,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, fwm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lc, lsc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, fwm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

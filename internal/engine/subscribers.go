@@ -45,7 +45,6 @@ func ProvideSubscribers(
 	tcum *cloud.CloudStatusManager,
 	dp *dockerprune.DockerPruner,
 	tc *telemetry.Controller,
-	lc *local.Controller,
 	lsc *local.ServerController,
 	podm *k8srollout.PodMonitor,
 	ec *exit.Controller,
