@@ -192,6 +192,33 @@ func TestWatchManager_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
 	assert.Contains(t, seenPaths, "bar")
 }
 
+func TestWatchManager_ConfigFiles(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	f.SetTiltIgnoreContents("**/foo")
+	st := f.store.LockMutableStateForTesting()
+	// N.B. because there's no target for this test watching `.` need to set
+	//	an explicit watch on `stop` for the test fixture
+	st.ConfigFiles = append(st.ConfigFiles, "path_to_watch", "stop")
+	f.store.UnlockMutableState()
+	f.store.Dispatch(configs.ConfigsReloadedAction{})
+
+	f.RequireFileWatchSpecEqual(ConfigsTargetID, filewatches.FileWatchSpec{
+		WatchedPaths: []string{"path_to_watch", "stop"},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: f.Path(), Patterns: []string{"**/foo"}},
+		},
+	})
+
+	f.ChangeFile(t, filepath.Join("path_to_watch", "foo"))
+	f.ChangeFile(t, filepath.Join("path_to_watch", "bar"))
+
+	seenPaths := f.Stop()
+	assert.NotContains(t, seenPaths, filepath.Join("path_to_watch", "foo"))
+	assert.Contains(t, seenPaths, filepath.Join("path_to_watch", "bar"))
+}
+
 func TestWatchManager_IgnoreTiltIgnore(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
@@ -428,7 +455,7 @@ func (f *wmFixture) WaitForSeenFile(path string) []string {
 			}
 		}
 		return false
-	}, time.Second, 10*time.Millisecond, "Did not find path %q, seen: %v", path, seenPaths)
+	}, time.Second, 10*time.Millisecond, "Did not find path %q, seen: %v", path, &seenPaths)
 	return seenPaths
 }
 
