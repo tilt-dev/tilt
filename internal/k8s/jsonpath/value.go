@@ -40,3 +40,21 @@ func (v *Value) Set(newV reflect.Value) {
 	}
 	v.Value.Set(newV)
 }
+
+func (v *Value) Sibling(name string) (val Value, ok bool) {
+	if !v.parentMap.IsValid() {
+		return Value{}, false
+	}
+
+	key := reflect.ValueOf(name)
+	sib := v.parentMap.MapIndex(key)
+	if !sib.IsValid() {
+		return Value{}, false
+	}
+
+	return Value{
+		Value:        sib,
+		parentMap:    v.parentMap,
+		parentMapKey: key,
+	}, true
+}

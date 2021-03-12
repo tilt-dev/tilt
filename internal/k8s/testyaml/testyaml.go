@@ -1449,6 +1449,17 @@ spec:
     repo: frontend
 `
 
+const CRDContainerSpecYAML = `apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: um
+spec:
+  containers:
+  - name: frontend
+    image: frontend
+    imagePullPolicy: "Always"
+`
+
 const MyNamespaceYAML = `apiVersion: v1
 kind: Namespace
 metadata:
