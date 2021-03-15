@@ -141,7 +141,7 @@ type FileWatchStatus struct {
 	//
 	// If the specifics of which files changed are not important, this field can be used as a watermark without
 	// needing to inspect FileEvents.
-	LastEventTime *metav1.Time `json:"lastEventTime,omitempty"`
+	LastEventTime *metav1.MicroTime `json:"lastEventTime,omitempty"`
 	// FileEvents summarizes batches of file changes (create, modify, or delete) that have been seen in ascending
 	// chronological order. Only the most recent 20 events are included.
 	FileEvents []FileEvent `json:"fileEvents"`
@@ -155,7 +155,7 @@ type FileEvent struct {
 	//
 	// This will NOT exactly match any inode attributes (e.g. ctime, mtime) at the filesystem level and is purely
 	// informational or for use as an opaque watermark.
-	Time metav1.Time `json:"time"`
+	Time metav1.MicroTime `json:"time"`
 	// SeenFiles is a list of paths which changed (create, modify, or delete).
 	SeenFiles []string `json:"seenFiles"`
 }

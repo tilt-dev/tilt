@@ -7,7 +7,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
@@ -146,7 +145,7 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		proc.probeWorker = probeWorker
 	}
 
-	startedAt := metav1.Now()
+	startedAt := metav1.NowMicro()
 	go c.processStatuses(ctx, statusCh, proc, name, startedAt)
 
 	serveCmd := model.Cmd{
@@ -264,7 +263,7 @@ func (c *Controller) processStatuses(
 	statusCh chan statusAndMetadata,
 	proc *currentProcess,
 	name types.NamespacedName,
-	startedAt metav1.Time) {
+	startedAt metav1.MicroTime) {
 
 	var initProbeWorker sync.Once
 	stillHasSameProcNum := proc.stillHasSameProcNum()
@@ -283,7 +282,7 @@ func (c *Controller) processStatuses(
 					Reason:     sm.reason,
 					ExitCode:   int32(sm.exitCode),
 					StartedAt:  startedAt,
-					FinishedAt: metav1.NewTime(time.Now()),
+					FinishedAt: metav1.NowMicro(),
 				}
 			})
 		} else if sm.status == Running {

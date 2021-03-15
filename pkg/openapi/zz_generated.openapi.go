@@ -277,7 +277,7 @@ func schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref common.ReferenceCallback)
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which the command was last started.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 				},
@@ -285,7 +285,7 @@ func schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -316,14 +316,14 @@ func schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref common.ReferenceCallba
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which previous execution of the command started",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which the command last terminated",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"reason": {
@@ -338,7 +338,7 @@ func schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -438,13 +438,15 @@ func schema_pkg_apis_core_v1alpha1_FileEvent(ref common.ReferenceCallback) commo
 				Properties: map[string]spec.Schema{
 					"time": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Description: "Time is an approximate timestamp for a batch of file changes.\n\nThis will NOT exactly match any inode attributes (e.g. ctime, mtime) at the filesystem level and is purely informational or for use as an opaque watermark.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"seenFiles": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "SeenFiles is a list of paths which changed (create, modify, or delete).",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -461,7 +463,7 @@ func schema_pkg_apis_core_v1alpha1_FileEvent(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -615,12 +617,14 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"lastEventTime": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Description: "LastEventTime is the timestamp of the most recent file event. It is nil if no events have been seen yet.\n\nIf the specifics of which files changed are not important, this field can be used as a watermark without needing to inspect FileEvents.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"fileEvents": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "FileEvents summarizes batches of file changes (create, modify, or delete) that have been seen in ascending chronological order. Only the most recent 20 events are included.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -633,8 +637,9 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 					},
 					"error": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "Error is set if there is a problem with the filesystem watch. If non-empty, consumers should assume that no filesystem events will be seen and that the file watcher is in a failed state.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -642,7 +647,7 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

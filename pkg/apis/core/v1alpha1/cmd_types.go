@@ -161,7 +161,7 @@ type CmdStateRunning struct {
 	PID int32 `json:"pid"`
 
 	// Time at which the command was last started.
-	StartedAt metav1.Time `json:"startedAt,omitempty"`
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty"`
 }
 
 // CmdStateTerminated is a terminated state of a local command.
@@ -173,10 +173,10 @@ type CmdStateTerminated struct {
 	ExitCode int32 `json:"exitCode"`
 
 	// Time at which previous execution of the command started
-	StartedAt metav1.Time `json:"startedAt,omitempty"`
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty"`
 
 	// Time at which the command last terminated
-	FinishedAt metav1.Time `json:"finishedAt,omitempty"`
+	FinishedAt metav1.MicroTime `json:"finishedAt,omitempty"`
 
 	// (brief) reason the process is terminated
 	// +optional
