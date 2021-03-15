@@ -28,7 +28,7 @@ func TestLocalResource(t *testing.T) {
 	removeTestFiles()
 	t.Cleanup(removeTestFiles)
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	const barServeLogMessage = "Running serve cmd: ./hello.sh bar"
 	const readinessProbeSuccessMessage = `[readiness probe: success] fake probe success message`

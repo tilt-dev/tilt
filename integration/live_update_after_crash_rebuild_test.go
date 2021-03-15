@@ -23,7 +23,7 @@ func TestLiveUpdateAfterCrashRebuild(t *testing.T) {
 		withExpectedPhase(v1.PodRunning)
 	initialPods := pw.wait()
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	fmt.Println("> Waiting for pods from initial build")
 

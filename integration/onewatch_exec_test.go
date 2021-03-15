@@ -15,7 +15,7 @@ func TestWatchExec(t *testing.T) {
 	f := newK8sFixture(t, "onewatch_exec")
 	defer f.TearDown()
 
-	f.TiltWatchExec()
+	f.TiltUp("--update-mode=exec")
 
 	fmt.Printf("Wait for pods ready\n")
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)

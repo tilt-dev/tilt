@@ -64,7 +64,7 @@ func (d *TiltDriver) CI(out io.Writer, args ...string) error {
 	return cmd.Run()
 }
 
-func (d *TiltDriver) Up(args []string, out io.Writer) (*TiltUpResponse, error) {
+func (d *TiltDriver) Up(out io.Writer, args ...string) (*TiltUpResponse, error) {
 	mandatoryArgs := []string{"up",
 		// Can't attach a HUD or install browsers in headless mode
 		"--hud=false",

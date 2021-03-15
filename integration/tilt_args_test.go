@@ -14,9 +14,7 @@ func TestTiltArgs(t *testing.T) {
 	f := newFixture(t, "tilt_args")
 	defer f.TearDown()
 
-	f.tiltArgs = []string{"foo"}
-
-	f.TiltWatch()
+	f.TiltUp("foo")
 	require.NotZero(t, f.activeTiltUp.port)
 
 	err := f.logs.WaitUntilContains("foo run", 5*time.Second)

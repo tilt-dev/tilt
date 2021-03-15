@@ -15,7 +15,7 @@ func TestCRD(t *testing.T) {
 	f := newK8sFixture(t, "crd")
 	defer f.TearDown()
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()

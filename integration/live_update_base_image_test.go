@@ -14,7 +14,7 @@ func TestLiveUpdateBaseImage(t *testing.T) {
 	f := newK8sFixture(t, "live_update_base_image")
 	defer f.TearDown()
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	timePerStage := time.Minute
 	ctx, cancel := context.WithTimeout(f.ctx, timePerStage)

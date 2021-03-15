@@ -102,7 +102,7 @@ func TestOptedIn(t *testing.T) {
 
 	f.SetOpt(analytics.OptIn)
 
-	f.TiltUp("analytics")
+	f.TiltCI("analytics")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -121,7 +121,7 @@ func TestOptedIn(t *testing.T) {
 	// just check that a couple metrics were successfully reported rather than asserting an exhaustive list
 	// the goal is to ensure that analytics is working in general, not to test which specific metrics are reported
 	// and we don't want to have to update this every time we change which metrics we report
-	assert.Contains(t, observedEventNames, "tilt.cmd.up")
+	assert.Contains(t, observedEventNames, "tilt.cmd.ci")
 	assert.Contains(t, observedEventNames, "tilt.tiltfile.loaded")
 	assert.Contains(t, observedTimerNames, "tilt.tiltfile.load")
 }
@@ -132,7 +132,7 @@ func TestOptedOut(t *testing.T) {
 
 	f.SetOpt(analytics.OptOut)
 
-	f.TiltUp("analytics")
+	f.TiltCI("analytics")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -147,7 +147,7 @@ func TestOptDefault(t *testing.T) {
 
 	f.SetOpt(analytics.OptDefault)
 
-	f.TiltUp("analytics")
+	f.TiltCI("analytics")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
@@ -166,7 +166,7 @@ func TestOptDefault(t *testing.T) {
 	// just check that a couple metrics were successfully reported rather than asserting an exhaustive list
 	// the goal is to ensure that analytics is working in general, not to test which specific metrics are reported
 	// and we don't want to have to update this every time we change which metrics we report
-	assert.Contains(t, observedEventNames, "tilt.cmd.up")
+	assert.Contains(t, observedEventNames, "tilt.cmd.ci")
 	assert.Contains(t, observedEventNames, "tilt.tiltfile.loaded")
 	assert.Contains(t, observedTimerNames, "tilt.tiltfile.load")
 }

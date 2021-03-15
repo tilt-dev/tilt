@@ -15,7 +15,7 @@ func TestOneWatch(t *testing.T) {
 	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
