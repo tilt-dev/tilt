@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/docker/distribution/reference"
@@ -224,6 +225,10 @@ func (m Manifest) LocalPaths() []string {
 func (m Manifest) Validate() error {
 	if m.Name == "" {
 		return fmt.Errorf("[validate] manifest missing name: %+v", m)
+	}
+
+	if errs := path.ValidatePathSegmentName(m.Name.String(), false); len(errs) != 0 {
+		return fmt.Errorf("invalid value %q: %v", m.Name.String(), errs[0])
 	}
 
 	for _, iTarget := range m.ImageTargets {

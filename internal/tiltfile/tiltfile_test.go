@@ -4790,6 +4790,22 @@ local_resource("b", ["echo", "hi"])
 	assert.False(t, b.LocalTarget().AllowParallel)
 }
 
+func TestLocalResourceInvalidName(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("a/b", ["echo", "hi"])
+`)
+
+	f.loadErrString(
+		// Verify the validation message
+		"invalid value \"a/b\": may not contain '/'",
+
+		// Verify the stack trace points to the local_resource
+		"Tiltfile:2:15: in <toplevel>")
+}
+
 func TestMaxParallelUpdates(t *testing.T) {
 	for _, tc := range []struct {
 		name                       string
