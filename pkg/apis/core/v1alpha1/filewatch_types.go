@@ -119,11 +119,13 @@ func (in *FileWatchList) GetListMeta() *metav1.ListMeta {
 
 // FileWatchStatus defines the observed state of FileWatch
 type FileWatchStatus struct {
+	// MonitorStartTime is the timestamp of when filesystem monitor was started.
+	MonitorStartTime metav1.MicroTime `json:"monitorStartTime,omitempty"`
 	// LastEventTime is the timestamp of the most recent file event. It is nil if no events have been seen yet.
 	//
 	// If the specifics of which files changed are not important, this field can be used as a watermark without
 	// needing to inspect FileEvents.
-	LastEventTime *metav1.MicroTime `json:"lastEventTime,omitempty"`
+	LastEventTime metav1.MicroTime `json:"lastEventTime,omitempty"`
 	// FileEvents summarizes batches of file changes (create, modify, or delete) that have been seen in ascending
 	// chronological order. Only the most recent 20 events are included.
 	FileEvents []FileEvent `json:"fileEvents,omitempty"`

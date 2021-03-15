@@ -7,6 +7,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -118,9 +120,8 @@ var BaseWireSet = wire.NewSet(
 	engineanalytics.ProvideAnalyticsReporter,
 	provideUpdateModeFlag,
 	fswatch.NewManifestSubscriber,
-	fswatch.NewWatchManager,
-	fswatch.ProvideFsWatcherMaker,
-	fswatch.ProvideTimerMaker,
+	fsevent.ProvideWatcherMaker,
+	fsevent.ProvideTimerMaker,
 
 	controllers.WireSet,
 

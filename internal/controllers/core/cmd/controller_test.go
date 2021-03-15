@@ -348,8 +348,7 @@ func (f *fixture) triggerFileWatch(name string) {
 	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, fw)
 	require.NoError(f.T(), err)
 
-	now := metav1.NowMicro()
-	fw.Status.LastEventTime = &now
+	fw.Status.LastEventTime = metav1.NowMicro()
 	err = f.client.Status().Update(f.ctx, fw)
 	require.NoError(f.T(), err)
 }
