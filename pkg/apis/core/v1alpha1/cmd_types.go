@@ -78,6 +78,13 @@ type CmdSpec struct {
 	//
 	// +optional
 	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
+
+	// Indicates objects that can trigger a restart of this command.
+	//
+	// Restarts can happen even if the command is already done.
+	//
+	// Logs of the currently process after the restart are discarded.
+	RestartOn *RestartOnSpec `json:"on,omitempty"`
 }
 
 var _ resource.Object = &Cmd{}
@@ -195,4 +202,10 @@ var _ resource.StatusSubResource = &CmdStatus{}
 
 func (in CmdStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*Cmd).Status = in
+}
+
+// RestartOnSpec indicates the set of objects that can trigger a restart of this object.
+type RestartOnSpec struct {
+	// A list of file watches that can trigger a restart.
+	FileWatches []string `json:"fileWatches"`
 }

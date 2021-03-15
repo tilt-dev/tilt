@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
@@ -15,7 +16,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -26,27 +31,29 @@ import (
 
 // A controller that reads CmdSpec and writes CmdStatus
 type Controller struct {
-	globalCtx     context.Context
-	execer        Execer
-	procs         map[types.NamespacedName]*currentProcess
-	proberManager ProberManager
-	updateCmds    map[types.NamespacedName]*Cmd
-	mu            sync.Mutex
-	client        ctrlclient.Client
-	st            store.RStore
+	globalCtx      context.Context
+	execer         Execer
+	procs          map[types.NamespacedName]*currentProcess
+	proberManager  ProberManager
+	updateCmds     map[types.NamespacedName]*Cmd
+	mu             sync.Mutex
+	client         ctrlclient.Client
+	st             store.RStore
+	restartManager *RestartManager
 }
 
 var _ store.TearDowner = &Controller{}
 
 func NewController(ctx context.Context, execer Execer, proberManager ProberManager, client ctrlclient.Client, st store.RStore) *Controller {
 	return &Controller{
-		globalCtx:     ctx,
-		execer:        execer,
-		procs:         make(map[types.NamespacedName]*currentProcess),
-		proberManager: proberManager,
-		client:        client,
-		updateCmds:    make(map[types.NamespacedName]*Cmd),
-		st:            st,
+		globalCtx:      ctx,
+		execer:         execer,
+		procs:          make(map[types.NamespacedName]*currentProcess),
+		proberManager:  proberManager,
+		client:         client,
+		updateCmds:     make(map[types.NamespacedName]*Cmd),
+		st:             st,
+		restartManager: NewRestartManager(client),
 	}
 }
 
@@ -85,6 +92,7 @@ func (c *Controller) TearDown(ctx context.Context) {
 func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) error {
 	cmd := &Cmd{}
 	err := c.client.Get(ctx, name, cmd)
+	c.restartManager.handleReconcileRequest(name, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("cmd reconcile: %v", err)
 	}
@@ -95,9 +103,16 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
+	lastEventTime, err := c.restartManager.lastEventTime(ctx, cmd.Spec.RestartOn)
+	if err != nil {
+		return err
+	}
+
 	proc, ok := c.procs[name]
 	if ok {
-		if equality.Semantic.DeepEqual(proc.spec, cmd.Spec) {
+		needsRestart := !equality.Semantic.DeepEqual(proc.spec, cmd.Spec) ||
+			lastEventTime.After(proc.lastEventTime)
+		if !needsRestart {
 			return nil
 		}
 
@@ -112,10 +127,12 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	}
 
 	proc.spec = cmd.Spec
+	proc.lastEventTime = lastEventTime
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	c.resetStatus(name, cmd)
 
+	stillHasSameProcNum := proc.stillHasSameProcNum()
 	statusCh := make(chan statusAndMetadata)
 
 	ctx = store.MustObjectLogHandler(ctx, c.st, cmd)
@@ -123,8 +140,8 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	spanID := model.LogSpanID(cmd.ObjectMeta.Annotations[v1alpha1.AnnotationSpanID])
 
 	if spec.ReadinessProbe != nil {
-		statusChangeFunc := c.processReadinessProbeStatusChange(ctx, name, proc.stillHasSameProcNum())
-		resultLoggerFunc := processReadinessProbeResultLogger(ctx, proc.stillHasSameProcNum())
+		statusChangeFunc := c.processReadinessProbeStatusChange(ctx, name, stillHasSameProcNum)
+		resultLoggerFunc := processReadinessProbeResultLogger(ctx, stillHasSameProcNum)
 		probeWorker, err := probeWorkerFromSpec(
 			c.proberManager,
 			spec.ReadinessProbe,
@@ -139,14 +156,14 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 						Reason:   fmt.Sprintf("Invalid readiness probe: %v", err),
 					},
 				}
-			})
+			}, stillHasSameProcNum)
 			return nil
 		}
 		proc.probeWorker = probeWorker
 	}
 
 	startedAt := metav1.NowMicro()
-	go c.processStatuses(ctx, statusCh, proc, name, startedAt)
+	go c.processStatuses(ctx, statusCh, proc, name, startedAt, stillHasSameProcNum)
 
 	serveCmd := model.Cmd{
 		Argv: spec.Args,
@@ -173,7 +190,7 @@ func (c *Controller) processReadinessProbeStatusChange(ctx context.Context, name
 		ready := status == prober.Success || status == prober.Warning
 		if existingReady != ready {
 			existingReady = ready
-			c.updateStatus(name, func(status *CmdStatus) { status.Ready = ready })
+			c.updateStatus(name, func(status *CmdStatus) { status.Ready = ready }, stillHasSameProcNum)
 		}
 	}
 }
@@ -238,9 +255,13 @@ func (c *Controller) resetStatus(name types.NamespacedName, cmd *Cmd) {
 // In a real K8s controller, this would be a queue to make sure we don't miss updates.
 //
 // update() -> a pure function that applies a delta to the status object.
-func (c *Controller) updateStatus(name types.NamespacedName, update func(status *CmdStatus)) {
+func (c *Controller) updateStatus(name types.NamespacedName, update func(status *CmdStatus), stillHasSameProcNum func() bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if !stillHasSameProcNum() {
+		return
+	}
 
 	cmd, ok := c.updateCmds[name]
 	if !ok {
@@ -263,10 +284,10 @@ func (c *Controller) processStatuses(
 	statusCh chan statusAndMetadata,
 	proc *currentProcess,
 	name types.NamespacedName,
-	startedAt metav1.MicroTime) {
+	startedAt metav1.MicroTime,
+	stillHasSameProcNum func() bool) {
 
 	var initProbeWorker sync.Once
-	stillHasSameProcNum := proc.stillHasSameProcNum()
 
 	for sm := range statusCh {
 		if !stillHasSameProcNum() || sm.status == Unknown {
@@ -284,7 +305,7 @@ func (c *Controller) processStatuses(
 					StartedAt:  startedAt,
 					FinishedAt: metav1.NowMicro(),
 				}
-			})
+			}, stillHasSameProcNum)
 		} else if sm.status == Running {
 			if proc.probeWorker != nil {
 				initProbeWorker.Do(func() {
@@ -302,14 +323,25 @@ func (c *Controller) processStatuses(
 				if proc.probeWorker == nil {
 					status.Ready = true
 				}
-			})
+			}, stillHasSameProcNum)
 		}
 	}
+}
+
+func (r *Controller) enqueueFileWatch(obj client.Object) []reconcile.Request {
+	fw, ok := obj.(*FileWatch)
+	if !ok {
+		return nil
+	}
+
+	return r.restartManager.enqueue(fw)
 }
 
 func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&Cmd{}).
+		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
+			handler.EnqueueRequestsFromMapFunc(handler.MapFunc(r.enqueueFileWatch))).
 		Complete(r)
 }
 
@@ -323,6 +355,9 @@ type currentProcess struct {
 	// closed when the process finishes executing, intentionally or not
 	doneCh      chan struct{}
 	probeWorker *probe.Worker
+
+	// tracks the last RestartOn event
+	lastEventTime time.Time
 
 	mu sync.Mutex
 }
