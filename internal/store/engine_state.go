@@ -121,8 +121,8 @@ type EngineState struct {
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds        map[string]*Cmd
-	FileWatches map[types.NamespacedName]*filewatches.FileWatch
+	Cmds        map[string]*Cmd                                 `json:"-"`
+	FileWatches map[types.NamespacedName]*filewatches.FileWatch `json:"-"`
 }
 
 type CloudStatus struct {
