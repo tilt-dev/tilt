@@ -175,10 +175,8 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, st s
 				AnnotationOwnerName: name,
 				AnnotationOwnerKind: "CmdServer",
 
-				v1alpha1.AnnotationSpanID: string(spanID),
-			},
-			Labels: map[string]string{
-				v1alpha1.LabelManifest: name,
+				v1alpha1.AnnotationManifest: name,
+				v1alpha1.AnnotationSpanID:   string(spanID),
 			},
 		},
 		Spec: cmdSpec,

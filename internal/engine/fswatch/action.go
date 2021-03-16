@@ -149,7 +149,7 @@ func targetID(obj runtime.Object) (model.TargetID, error) {
 	if err != nil {
 		return model.TargetID{}, err
 	}
-	labelVal := metaObj.GetLabels()[filewatches.LabelTargetID]
+	labelVal := metaObj.GetAnnotations()[filewatches.AnnotationTargetID]
 	if labelVal == "" {
 		return model.TargetID{}, nil
 	}

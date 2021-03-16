@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -435,7 +437,7 @@ func (f *wmFixture) RequireFileWatchSpecEqual(targetID model.TargetID, spec file
 		fwd.actual = nil
 		st := f.store.RLockState()
 		defer f.store.RUnlockState()
-		fw, ok := st.FileWatches[types.NamespacedName{Name: targetID.String()}]
+		fw, ok := st.FileWatches[types.NamespacedName{Name: apis.SanitizeName(targetID.String())}]
 		if !ok {
 			return false
 		}

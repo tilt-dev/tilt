@@ -39,7 +39,7 @@ func WithObjectLogHandler(ctx context.Context, st RStore, obj runtime.Object) (c
 
 	// It's ok if the manifest or span id don't exist, they will just
 	// get dumped in the global log.
-	mn := meta.GetLabels()[v1alpha1.LabelManifest]
+	mn := meta.GetAnnotations()[v1alpha1.AnnotationManifest]
 	spanID := meta.GetAnnotations()[v1alpha1.AnnotationSpanID]
 	w := apiLogWriter{
 		store:        st,
