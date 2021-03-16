@@ -52,7 +52,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 		t.Fatal(err)
 	}
 
-	client := NewTiltDriver()
+	client := NewTiltDriver(t)
 	client.Environ["TILT_DISABLE_ANALYTICS"] = "true"
 
 	ctx, cancel := context.WithCancel(context.Background())

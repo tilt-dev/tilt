@@ -8,19 +8,31 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type TiltDriver struct {
+	Port    int
 	Environ map[string]string
 }
 
-func NewTiltDriver() *TiltDriver {
+func NewTiltDriver(t testing.TB) *TiltDriver {
+	l, err := net.Listen("tcp", "")
+	require.NoError(t, err, "Could not get a free port")
+	port := l.Addr().(*net.TCPAddr).Port
+	require.NoError(t, l.Close(), "Could not get a free port")
+	return NewTiltDriverWithExplicitPort(port)
+}
+
+func NewTiltDriverWithExplicitPort(port int) *TiltDriver {
 	return &TiltDriver{
+		Port:    port,
 		Environ: make(map[string]string),
 	}
 }
@@ -36,6 +48,16 @@ func (d *TiltDriver) cmd(args []string, out io.Writer) *exec.Cmd {
 	cmd.Env = os.Environ()
 	for k, v := range d.Environ {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+	hasPortArg := false
+	for _, arg := range args {
+		if strings.HasPrefix("--port=", arg) {
+			hasPortArg = true
+			break
+		}
+	}
+	if !hasPortArg && d.Port > 0 {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("TILT_PORT=%d", d.Port))
 	}
 	return cmd
 }
@@ -77,26 +99,6 @@ func (d *TiltDriver) Up(out io.Writer, args ...string) (*TiltUpResponse, error) 
 		"--web-mode=prod",
 	}
 
-	// make an effort to pick a random free port if one wasn't explicitly specified
-	// so that integration tests can be run easily even if there's already a running
-	// Tilt instance on the default port
-	var port int
-	hasPortArg := false
-	for _, arg := range args {
-		if strings.HasPrefix("--port=", arg) {
-			hasPortArg = true
-			port, _ = strconv.Atoi(strings.SplitN(arg, "=", 2)[1])
-			break
-		}
-	}
-	if !hasPortArg {
-		if l, err := net.Listen("tcp", ""); err == nil {
-			port = l.Addr().(*net.TCPAddr).Port
-			_ = l.Close()
-			mandatoryArgs = append(mandatoryArgs, fmt.Sprintf("--port=%d", port))
-		}
-	}
-
 	cmd := d.cmd(append(mandatoryArgs, args...), out)
 	err := cmd.Start()
 	if err != nil {
@@ -107,7 +109,6 @@ func (d *TiltDriver) Up(out io.Writer, args ...string) (*TiltUpResponse, error) 
 	response := &TiltUpResponse{
 		done:    ch,
 		process: cmd.Process,
-		port:    port,
 	}
 	go func() {
 		err := cmd.Wait()
@@ -132,7 +133,6 @@ type TiltUpResponse struct {
 	mu   sync.Mutex
 
 	process *os.Process
-	port    int
 }
 
 func (r *TiltUpResponse) Done() <-chan struct{} {
