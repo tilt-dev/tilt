@@ -18,23 +18,30 @@ import (
 )
 
 type TiltDriver struct {
-	Port    int
 	Environ map[string]string
+
+	t    testing.TB
+	port int
 }
 
-func NewTiltDriver(t testing.TB) *TiltDriver {
+type TiltDriverOption func(t testing.TB, td *TiltDriver)
+
+func TiltDriverUseRandomFreePort(t testing.TB, td *TiltDriver) {
 	l, err := net.Listen("tcp", "")
 	require.NoError(t, err, "Could not get a free port")
-	port := l.Addr().(*net.TCPAddr).Port
+	td.port = l.Addr().(*net.TCPAddr).Port
 	require.NoError(t, l.Close(), "Could not get a free port")
-	return NewTiltDriverWithExplicitPort(port)
 }
 
-func NewTiltDriverWithExplicitPort(port int) *TiltDriver {
-	return &TiltDriver{
-		Port:    port,
+func NewTiltDriver(t testing.TB, options ...TiltDriverOption) *TiltDriver {
+	td := &TiltDriver{
+		t:       t,
 		Environ: make(map[string]string),
 	}
+	for _, opt := range options {
+		opt(t, td)
+	}
+	return td
 }
 
 func (d *TiltDriver) cmd(args []string, out io.Writer) *exec.Cmd {
@@ -49,15 +56,16 @@ func (d *TiltDriver) cmd(args []string, out io.Writer) *exec.Cmd {
 	for k, v := range d.Environ {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
-	hasPortArg := false
-	for _, arg := range args {
-		if strings.HasPrefix("--port=", arg) {
-			hasPortArg = true
-			break
+	if d.port > 0 {
+		for _, arg := range args {
+			if strings.HasPrefix("--port=", arg) {
+				d.t.Fatalf("Cannot specify port argument when using automatic port mode: %s", arg)
+			}
 		}
-	}
-	if !hasPortArg && d.Port > 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("TILT_PORT=%d", d.Port))
+		if _, ok := d.Environ["TILT_PORT"]; ok {
+			d.t.Fatal("Cannot specify TILT_PORT environment variable when using automatic port mode")
+		}
+		cmd.Env = append(cmd.Env, fmt.Sprintf("TILT_PORT=%d", d.port))
 	}
 	return cmd
 }
