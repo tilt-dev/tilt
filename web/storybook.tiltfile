@@ -5,31 +5,31 @@ local_resource(
   readiness_probe=probe(http_get=http_get_action(port=9009)))
 
 local_resource(
-  'check/prettier',
+  'check:prettier',
   'cd .. && make prettier',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
 local_resource(
-  'check/tsc',
+  'check:tsc',
   'node_modules/.bin/tsc -p .',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
 local_resource(
-  'check/check-js',
+  'check:check-js',
   'cd .. && make check-js',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
 test(
-  'test/test-js',
+  'test:test-js',
   'cd .. && make test-js',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
 
 local_resource(
-  'test/update-snapshots',
+  'test:update-snapshots',
   'CI=true yarn test -u',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
