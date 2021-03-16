@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,7 +38,7 @@ func (w ManifestSubscriber) OnChange(_ context.Context, st store.RStore, summary
 
 	watchesToKeep := make(map[types.NamespacedName]bool)
 	for targetID, spec := range specsToProcess {
-		name := types.NamespacedName{Name: targetID.String()}
+		name := types.NamespacedName{Name: apis.SanitizeName(targetID.String())}
 		watchesToKeep[name] = true
 
 		existing := state.FileWatches[name]
@@ -54,8 +56,8 @@ func (w ManifestSubscriber) OnChange(_ context.Context, st store.RStore, summary
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: name.Namespace,
 					Name:      name.Name,
-					Labels: map[string]string{
-						filewatches.LabelTargetID: targetID.String(),
+					Annotations: map[string]string{
+						filewatches.AnnotationTargetID: targetID.String(),
 					},
 				},
 				Spec: *spec.DeepCopy(),

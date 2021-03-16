@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
@@ -4396,7 +4398,7 @@ func (f *testFixture) completeBuildForManifest(m model.Manifest) {
 func (f *testFixture) triggerFileChange(targetID model.TargetID, paths ...string) {
 	now := metav1.NowMicro()
 	f.store.Dispatch(fswatch.FileWatchUpdateStatusAction{
-		Name: types.NamespacedName{Name: targetID.String()},
+		Name: types.NamespacedName{Name: apis.SanitizeName(targetID.String())},
 		Status: &filewatches.FileWatchStatus{
 			LastEventTime: now.DeepCopy(),
 			FileEvents: []filewatches.FileEvent{

@@ -28,7 +28,7 @@ func HandleCmdUpdateStatusAction(state *store.EngineState, action CmdUpdateStatu
 // If the local serve cmd is watching the cmd, update
 // the local runtime state to match the cmd status.
 func updateLocalRuntimeStatus(state *store.EngineState, cmd *v1alpha1.Cmd) {
-	mn := model.ManifestName(cmd.Labels[v1alpha1.LabelManifest])
+	mn := model.ManifestName(cmd.Annotations[v1alpha1.AnnotationManifest])
 	mt, ok := state.ManifestTargets[mn]
 	if !ok {
 		delete(state.Cmds, cmd.Name)
@@ -81,7 +81,7 @@ func updateLocalRuntimeStatus(state *store.EngineState, cmd *v1alpha1.Cmd) {
 // that command to the Local runtime state.
 func HandleCmdCreateAction(state *store.EngineState, action CmdCreateAction) {
 	cmd := action.Cmd
-	mn := model.ManifestName(cmd.Labels[v1alpha1.LabelManifest])
+	mn := model.ManifestName(cmd.Annotations[v1alpha1.AnnotationManifest])
 	mt, ok := state.ManifestTargets[mn]
 	if !ok {
 		return
