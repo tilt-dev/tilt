@@ -84,13 +84,13 @@ jobs:
 
   build-integration:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:f6dd97a7d3c0a5fc7caf9486addf45d59510849927fd3b463a9acac9c6068bdf
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:6049b3ca2b2933122cc5e571ffb4ead2477cd424920d20681685eddd012742f3
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
           version: 19.03.12
-      - run: with-kind-cluster.sh make integration
+      - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
