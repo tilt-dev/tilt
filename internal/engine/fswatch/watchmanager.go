@@ -55,13 +55,13 @@ var _ WatchableTarget = model.LocalTarget{}
 var _ WatchableTarget = model.DockerComposeTarget{}
 
 type targetNotifyCancel struct {
-	name   types.NamespacedName
-	spec   filewatches.FileWatchSpec
-	status *filewatches.FileWatchStatus
-	mu     sync.Mutex
-	done   bool
-	notify watch.Notify
-	cancel func()
+	name      types.NamespacedName
+	spec      filewatches.FileWatchSpec
+	updateObj *filewatches.FileWatch
+	mu        sync.Mutex
+	done      bool
+	notify    watch.Notify
+	cancel    func()
 }
 
 type WatchManager struct {
@@ -171,11 +171,11 @@ func (w *WatchManager) addOrReplace(ctx context.Context, st store.RStore, name t
 
 	ctx, cancel := context.WithCancel(ctx)
 	tw := &targetNotifyCancel{
-		name:   name,
-		spec:   *fw.Spec.DeepCopy(),
-		status: fw.Status.DeepCopy(),
-		notify: notify,
-		cancel: cancel,
+		name:      name,
+		spec:      *fw.Spec.DeepCopy(),
+		updateObj: fw.DeepCopy(),
+		notify:    notify,
+		cancel:    cancel,
 	}
 
 	go w.dispatchFileChangesLoop(ctx, st, tw)
@@ -212,25 +212,15 @@ func (tw *targetNotifyCancel) recordEvent(ctx context.Context, client ctrlclient
 		event.SeenFiles = append(event.SeenFiles, fsEvent.Path())
 	}
 	if len(event.SeenFiles) != 0 {
-		tw.status.LastEventTime = now.DeepCopy()
-		tw.status.FileEvents = append(tw.status.FileEvents, event)
-		if len(tw.status.FileEvents) > MaxFileEventHistory {
-			tw.status.FileEvents = tw.status.FileEvents[len(tw.status.FileEvents)-MaxFileEventHistory:]
+		tw.updateObj.Status.LastEventTime = now.DeepCopy()
+		tw.updateObj.Status.FileEvents = append(tw.updateObj.Status.FileEvents, event)
+		if len(tw.updateObj.Status.FileEvents) > MaxFileEventHistory {
+			tw.updateObj.Status.FileEvents = tw.updateObj.Status.FileEvents[len(tw.updateObj.Status.FileEvents)-MaxFileEventHistory:]
 		}
 
-		var fw filewatches.FileWatch
-		err := client.Get(ctx, tw.name, &fw)
-		if err != nil {
-			// status is updated internally so will become eventually consistent, but if there's no file
-			// changes for a while after this, the updates aren't going to appear; retry logic is probably
-			// warranted here
-			return nil
-		}
-
-		tw.status.DeepCopyInto(&fw.Status)
-		err = client.Status().Update(ctx, &fw)
+		err := client.Status().Update(ctx, tw.updateObj)
 		if err == nil {
-			st.Dispatch(NewFileWatchUpdateStatusAction(&fw))
+			st.Dispatch(NewFileWatchUpdateStatusAction(tw.updateObj))
 		} else if !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
 			// can safely ignore not found/conflict errors - because this work loop is the only updater of
 			// status, any conflict errors means the spec was changed since fetching it, and as a result,
