@@ -50,17 +50,17 @@ endif
 test: test-go test-js
 
 # skip some tests that are slow and not always relevant
-# TODO(matt) skipdockercomposetests only skips the tiltfile DC tests at the moment
+# TODO(matt) skiplargetiltfiletests only skips the tiltfile DC+Helm tests at the moment
 # we might also want to skip the ones in engine
 shorttest:
-	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
+	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s ./...
 
 shorttestsum:
 ifneq ($(CIRCLECI),true)
-	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
+	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s ./...
 else
 	mkdir -p test-results
-	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s
+	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s
 endif
 
 integration:

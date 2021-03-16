@@ -1,13 +1,161 @@
+//+build !skiplargetiltfiletests
+
+// On windows, running Helm can take ~0.5 seconds,
+// which starts to blow up test times.
+
 package tiltfile
 
 import (
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
 )
+
+func TestHelm(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertNextManifestUnresourced("chart-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		".tiltignore",
+		"helm",
+	)
+}
+
+func TestHelmArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace='garnet', values=['./dev/helm/values-dev.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	m := f.assertNextManifestUnresourced("rose-quartz-helloworld-chart")
+	yaml := m.K8sTarget().YAML
+	assert.Contains(t, yaml, "release: rose-quartz")
+	assert.Contains(t, yaml, "namespace: garnet")
+	assert.Contains(t, yaml, "namespaceLabel: garnet")
+	assert.Contains(t, yaml, "name: nginx-dev")
+
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoError(t, err)
+
+	names := k8s.UniqueNames(entities, 2)
+	expectedNames := []string{"rose-quartz-helloworld-chart:service"}
+	assert.ElementsMatch(t, expectedNames, names)
+
+	f.assertConfigFiles("./helm/", "./dev/helm/values-dev.yaml", ".tiltignore", "Tiltfile")
+}
+
+func TestHelmNamespaceFlagDoesNotInsertNSEntityIfNSInChart(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	valuesWithNamespace := `
+namespace:
+  enabled: true
+  name: foobarbaz`
+	f.file("helm/extra_values.yaml", valuesWithNamespace)
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace="foobarbaz", values=['./helm/extra_values.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	m := f.assertNextManifestUnresourced("foobarbaz", "rose-quartz-helloworld-chart")
+	yaml := m.K8sTarget().YAML
+
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoError(t, err)
+	require.Len(t, entities, 2)
+	e := entities[0]
+	require.Equal(t, "Namespace", e.GVK().Kind)
+	assert.Equal(t, "foobarbaz", e.Name())
+	assert.Equal(t, "indeed", e.Labels()["somePersistedLabel"],
+		"label originally specified in chart YAML should persist")
+}
+
+func TestHelmNamespaceFlagInsertsNSEntityIfDifferentNSInChart(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelm()
+
+	valuesWithNamespace := `
+namespace:
+  enabled: true
+  name: not-the-one-specified-in-flag` // what kind of jerk would do this?
+	f.file("helm/extra_values.yaml", valuesWithNamespace)
+
+	f.file("Tiltfile", `
+yml = helm('./helm', name='rose-quartz', namespace="foobarbaz", values=['./helm/extra_values.yaml'])
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertNextManifestUnresourced("not-the-one-specified-in-flag", "rose-quartz-helloworld-chart")
+}
+
+func TestHelmInvalidDirectory(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.loadErrString("Could not read Helm chart directory")
+}
+
+func TestHelmFromRepoPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit(".")
+	f.setupHelm()
+
+	f.file("Tiltfile", `
+r = local_git_repo('.')
+yml = helm(r.paths('helm'))
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertNextManifestUnresourced("chart-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		".tiltignore",
+		"helm",
+	)
+}
 
 func TestHelmMalformedChart(t *testing.T) {
 	f := newFixture(t)
@@ -255,4 +403,76 @@ func assertHelmVersion(t *testing.T, versionOutput string, expectedV helmVersion
 	actualV, err := parseVersion(versionOutput)
 	require.NoError(t, err, "parsing helm version")
 	require.Equal(t, expectedV, actualV)
+}
+
+func TestYamlErrorFromHelm(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.setupHelm()
+	f.file("helm/templates/foo.yaml", "hi")
+	f.file("Tiltfile", `
+k8s_yaml(helm('helm'))
+`)
+
+	// TODO(dmiller): there should be a better assertion here
+
+	version, err := getHelmVersion()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version == helmV2 {
+		f.loadErrString("from helm")
+	} else {
+		f.loadErrString("in helm")
+	}
+}
+
+func TestHelmSkipsTests(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelmWithTest()
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.load()
+
+	f.assertNextManifestUnresourced("chart-helloworld-chart")
+	f.assertConfigFiles(
+		"Tiltfile",
+		".tiltignore",
+		"helm",
+	)
+}
+
+// There's a major helm regression that's breaking everything
+// https://github.com/helm/helm/issues/6708
+func isBuggyHelm(t *testing.T) bool {
+	cmd := exec.Command("helm", "version", "-c", "--short")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Error running helm: %v", err)
+	}
+
+	return strings.Contains(string(out), "v2.15.0")
+}
+
+func TestHelmIncludesRequirements(t *testing.T) {
+	if isBuggyHelm(t) {
+		t.Skipf("Helm v2.15.0 has a major regression, skipping test. See: https://github.com/helm/helm/issues/6708")
+	}
+
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupHelmWithRequirements()
+	f.file("Tiltfile", `
+yml = helm('helm')
+k8s_yaml(yml)
+`)
+
+	f.load()
+	f.assertNextManifest("chart-nginx-ingress-controller")
 }
