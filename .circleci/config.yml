@@ -72,7 +72,8 @@ jobs:
       size: "medium"
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose
-      - run: choco update golang --version=1.14.7
+      - run: helm version -c --short
+      - run: choco upgrade golang --version=1.14.7
       - run: go get -u gotest.tools/gotestsum
       - checkout
       # Check to make sure Windows binaries compile

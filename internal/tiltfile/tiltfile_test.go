@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -3561,23 +3560,7 @@ k8s_yaml(yml)
 	)
 }
 
-// There's a major helm regression that's breaking everything
-// https://github.com/helm/helm/issues/6708
-func isBuggyHelm(t *testing.T) bool {
-	cmd := exec.Command("helm", "version", "-c", "--short")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Error running helm: %v", err)
-	}
-
-	return strings.Contains(string(out), "v2.15.0")
-}
-
 func TestHelmIncludesRequirements(t *testing.T) {
-	if isBuggyHelm(t) {
-		t.Skipf("Helm v2.15.0 has a major regression, skipping test. See: https://github.com/helm/helm/issues/6708")
-	}
-
 	f := newFixture(t)
 	defer f.TearDown()
 
