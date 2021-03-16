@@ -16,14 +16,14 @@ func TestIdempotent(t *testing.T) {
 	f := newK8sFixture(t, "idempotent")
 	defer f.TearDown()
 
-	f.TiltUp("idempotent")
+	f.TiltCI("idempotent")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	firstPods := f.WaitForAllPodsReady(ctx, "app=idempotent")
 
 	// Run it again, this time with a watch()
-	f.TiltWatch()
+	f.TiltUp()
 
 	// Wait until the port-forwarder sets up
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)

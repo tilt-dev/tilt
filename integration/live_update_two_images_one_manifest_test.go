@@ -20,7 +20,7 @@ func TestLiveUpdateTwoImagesOneManifest(t *testing.T) {
 	f := newK8sFixture(t, "live_update_two_images_one_manifest")
 	defer f.TearDown()
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	sparkleURL := "http://localhost:8100"
 	tadaURL := "http://localhost:8101"

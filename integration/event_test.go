@@ -49,7 +49,7 @@ func TestEvent(t *testing.T) {
 	markNodeUnschedulable(f, node)
 	defer markNodeSchedulable(f, node)
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()

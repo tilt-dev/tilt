@@ -14,7 +14,7 @@ func TestRestartProcessDifferentUser(t *testing.T) {
 	f := newK8sFixture(t, "restart_process_different_user")
 	defer f.TearDown()
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
