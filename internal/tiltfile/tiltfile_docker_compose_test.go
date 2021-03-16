@@ -1,4 +1,4 @@
-//+build !skipdockercomposetests
+//+build !skiplargetiltfiletests
 
 package tiltfile
 
