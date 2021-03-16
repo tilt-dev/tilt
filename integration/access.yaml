@@ -1,6 +1,6 @@
 # Grant access to everything in the tilt-integration namespace
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tilt-integration-user-full-access
   namespace: tilt-integration
@@ -15,7 +15,7 @@ rules:
   verbs: ["*"]
 ---
 kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tilt-integration-user-view
   namespace: tilt-integration
@@ -29,7 +29,7 @@ roleRef:
   name: tilt-integration-user-full-access
 ---
 
-# Grant access to nodes accross all namespaces
+# Grant access to nodes across all namespaces
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -51,3 +51,29 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: tilt-integration-user-node-readonly-access
+---
+
+# Grant read-only access to kube-public
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tilt-integration-user-kube-public-readonly-access
+  namespace: kube-public
+rules:
+  - apiGroups: [""]
+    resources: ["*"]
+    verbs: ["get", "watch", "list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tilt-integration-user-kube-public-view
+  namespace: kube-public
+subjects:
+  - kind: ServiceAccount
+    name: tilt-integration-user
+    namespace: tilt-integration
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tilt-integration-user-kube-public-readonly-access
