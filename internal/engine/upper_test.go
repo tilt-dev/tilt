@@ -87,6 +87,8 @@ import (
 
 var originalWD string
 
+const stdTimeout = time.Second
+
 type buildCompletionChannel chan bool
 
 func init() {
@@ -666,7 +668,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	case err := <-f.upperInitResult:
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "doesn't compile")
-	case <-time.After(time.Second):
+	case <-time.After(stdTimeout):
 		t.Fatal("Timed out waiting for exit action")
 	}
 
@@ -3660,7 +3662,7 @@ func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
 		TriggerMode:   model.TriggerModeManualAfterInitial,
 	})
 
-	err := f.log.WaitUntilContains("no such manifest", time.Second)
+	err := f.log.WaitUntilContains("no such manifest", stdTimeout)
 	require.NoError(t, err)
 
 	err = f.Stop()
@@ -3683,7 +3685,7 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 		TriggerMode:   12345,
 	})
 
-	err := f.log.WaitUntilContains("invalid trigger mode", time.Second)
+	err := f.log.WaitUntilContains("invalid trigger mode", stdTimeout)
 	require.NoError(t, err)
 
 	err = f.Stop()
@@ -3958,7 +3960,7 @@ func (f *testFixture) Stop() error {
 
 func (f *testFixture) WaitForExit() error {
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(stdTimeout):
 		f.T().Fatalf("Timed out waiting for upper to exit")
 		return nil
 	case err := <-f.upperInitResult:
@@ -3968,7 +3970,7 @@ func (f *testFixture) WaitForExit() error {
 
 func (f *testFixture) WaitForNoExit() error {
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(stdTimeout):
 		return nil
 	case err := <-f.upperInitResult:
 		f.T().Fatalf("upper exited when it shouldn't have")
@@ -4022,7 +4024,7 @@ func (f *testFixture) WaitUntilHUDResource(msg string, name model.ManifestName, 
 func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool) {
 	f.T().Helper()
 
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	ctx, cancel := context.WithTimeout(f.ctx, stdTimeout)
 	defer cancel()
 
 	isCanceled := false
@@ -4078,7 +4080,7 @@ func (f *testFixture) withManifestState(name model.ManifestName, tf func(ms stor
 // the state loop. Don't use this to check state inside the state loop.
 func (f *testFixture) PollUntil(msg string, isDone func() bool) {
 	f.t.Helper()
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	ctx, cancel := context.WithTimeout(f.ctx, stdTimeout)
 	defer cancel()
 
 	ticker := time.NewTicker(10 * time.Millisecond)
@@ -4137,7 +4139,7 @@ func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 		select {
 		case call := <-f.b.calls:
 			return call
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(stdTimeout):
 			f.T().Fatal(msg)
 		}
 	}
@@ -4153,7 +4155,7 @@ func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
 		select {
 		case <-f.b.calls:
 			f.T().Fatal(msg)
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(stdTimeout):
 			return
 		}
 	}
