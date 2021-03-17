@@ -57,10 +57,10 @@ shorttest:
 
 shorttestsum:
 ifneq ($(CIRCLECI),true)
-	gotestsum --format dots -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s ./...
+	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s ./...
 else
 	mkdir -p test-results
-	gotestsum --format dots --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s
+	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s
 endif
 
 integration:
