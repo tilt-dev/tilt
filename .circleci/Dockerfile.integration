@@ -40,8 +40,5 @@ RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/release
 
 RUN apt update && apt install -y curl ca-certificates liblz4-tool rsync socat
 
-# install circleci helpers from
-# https://github.com/tilt-dev/kind-local/tree/master/.circleci
-COPY --from=tiltdev/circleci-kind:v1.4.0 /usr/local/bin/start-portforward-service.sh /usr/local/bin/
-COPY --from=tiltdev/circleci-kind:v1.4.0 /usr/local/bin/portforward.sh /usr/local/bin/
-COPY --from=tiltdev/circleci-kind:v1.4.0 /usr/local/bin/with-kind-cluster.sh /usr/local/bin/
+# install ctlptl from the ctlptl release image
+COPY --from=tiltdev/ctlptl /usr/local/bin/ctlptl /usr/local/bin/
