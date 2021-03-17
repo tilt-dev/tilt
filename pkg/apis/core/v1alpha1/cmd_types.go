@@ -108,7 +108,7 @@ func (in *Cmd) NewList() runtime.Object {
 
 func (in *Cmd) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
-		Group:    "core.tilt.dev",
+		Group:    "tilt.dev",
 		Version:  "v1alpha1",
 		Resource: "cmds",
 	}

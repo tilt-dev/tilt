@@ -26,7 +26,7 @@ import (
 )
 
 // GroupName is the group name used in this package
-const GroupName = "core.tilt.dev"
+const GroupName = "tilt.dev"
 
 const Version = "v1alpha1"
 

@@ -33,12 +33,12 @@ import (
 
 // FakeCmds implements CmdInterface
 type FakeCmds struct {
-	Fake *FakeCoreV1alpha1
+	Fake *FakeTiltV1alpha1
 }
 
-var cmdsResource = schema.GroupVersionResource{Group: "core.tilt.dev", Version: "v1alpha1", Resource: "cmds"}
+var cmdsResource = schema.GroupVersionResource{Group: "tilt.dev", Version: "v1alpha1", Resource: "cmds"}
 
-var cmdsKind = schema.GroupVersionKind{Group: "core.tilt.dev", Version: "v1alpha1", Kind: "Cmd"}
+var cmdsKind = schema.GroupVersionKind{Group: "tilt.dev", Version: "v1alpha1", Kind: "Cmd"}
 
 // Get takes name of the cmd, and returns the corresponding cmd object, and an error if there is any.
 func (c *FakeCmds) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Cmd, err error) {

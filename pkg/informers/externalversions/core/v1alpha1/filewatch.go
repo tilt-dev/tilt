@@ -62,13 +62,13 @@ func NewFilteredFileWatchInformer(client tiltapi.Interface, resyncPeriod time.Du
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1alpha1().FileWatches().List(context.TODO(), options)
+				return client.TiltV1alpha1().FileWatches().List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1alpha1().FileWatches().Watch(context.TODO(), options)
+				return client.TiltV1alpha1().FileWatches().Watch(context.TODO(), options)
 			},
 		},
 		&corev1alpha1.FileWatch{},

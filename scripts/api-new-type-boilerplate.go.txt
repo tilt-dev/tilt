@@ -76,7 +76,7 @@ func (in *Manifest) NewList() runtime.Object {
 
 func (in *Manifest) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
-		Group:    "core.tilt.dev",
+		Group:    "tilt.dev",
 		Version:  "v1alpha1",
 		Resource: "manifests",
 	}

@@ -57,7 +57,7 @@ type fileWatches struct {
 }
 
 // newFileWatches returns a FileWatches
-func newFileWatches(c *CoreV1alpha1Client) *fileWatches {
+func newFileWatches(c *TiltV1alpha1Client) *fileWatches {
 	return &fileWatches{
 		client: c.RESTClient(),
 	}

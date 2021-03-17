@@ -33,12 +33,12 @@ import (
 
 // FakeFileWatches implements FileWatchInterface
 type FakeFileWatches struct {
-	Fake *FakeCoreV1alpha1
+	Fake *FakeTiltV1alpha1
 }
 
-var filewatchesResource = schema.GroupVersionResource{Group: "core.tilt.dev", Version: "v1alpha1", Resource: "filewatches"}
+var filewatchesResource = schema.GroupVersionResource{Group: "tilt.dev", Version: "v1alpha1", Resource: "filewatches"}
 
-var filewatchesKind = schema.GroupVersionKind{Group: "core.tilt.dev", Version: "v1alpha1", Kind: "FileWatch"}
+var filewatchesKind = schema.GroupVersionKind{Group: "tilt.dev", Version: "v1alpha1", Kind: "FileWatch"}
 
 // Get takes name of the fileWatch, and returns the corresponding fileWatch object, and an error if there is any.
 func (c *FakeFileWatches) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.FileWatch, err error) {
