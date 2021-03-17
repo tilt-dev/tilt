@@ -2,19 +2,24 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/cli/visitor"
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/engine"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/hud"
-	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -23,12 +28,20 @@ import (
 )
 
 type updogCmd struct {
+	*genericclioptions.FileNameFlags
+	genericclioptions.IOStreams
+
+	Filenames []string
 }
 
 var _ tiltCmd = &updogCmd{}
 
 func newUpdogCmd() *updogCmd {
-	return &updogCmd{}
+	c := &updogCmd{
+		IOStreams: genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin},
+	}
+	c.FileNameFlags = &genericclioptions.FileNameFlags{Filenames: &c.Filenames}
+	return c
 }
 
 func (c *updogCmd) name() model.TiltSubcommand { return "updog" }
@@ -44,24 +57,48 @@ Starts a "blank slate" version of Tilt that only uses the new Tilt API.
 Doesn't execute the Tiltfile.
 
 For use in demos where we want to bring up the Tilt apiserver with
-a set of example configs. Here's a youtube video showing it in action:
+a set of configs. Here's a youtube video showing it in action:
 
 https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+See https://github.com/tilt-dev/tilt/tree/master/internal/cli/updog-examples
+for example configs.
 `,
 		Example: "tilt alpha updog -f config.yaml",
 	}
 
 	addStartServerFlags(cmd)
+	c.FileNameFlags.AddFlags(cmd.Flags())
 
 	return cmd
 }
 
 func (c *updogCmd) run(ctx context.Context, args []string) error {
+
 	a := analytics.Get(ctx)
 
 	cmdTags := engineanalytics.CmdTags(map[string]string{})
 	a.Incr("cmd.updog", cmdTags.AsMap())
 	defer a.Flush(time.Second)
+
+	if len(c.Filenames) == 0 {
+		return fmt.Errorf("Expected source files with -f")
+	}
+
+	visitors, err := visitor.FromStrings(c.Filenames, c.In)
+	if err != nil {
+		return fmt.Errorf("Parsing inputs: %v", err)
+	}
+
+	objects, err := visitor.DecodeAll(v1alpha1.NewScheme(), visitors)
+	if err != nil {
+		return fmt.Errorf("Decoding inputs: %v", err)
+	}
+
+	clientObjects, err := convertToClientObjects(objects)
+	if err != nil {
+		return err
+	}
 
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
@@ -71,30 +108,9 @@ func (c *updogCmd) run(ctx context.Context, args []string) error {
 	// Force web-mode to prod
 	webModeFlag = model.ProdWebMode
 
-	webHost := provideWebHost()
-	webURL, _ := provideWebURL(webHost, provideWebPort())
-	startLine := prompt.StartStatusLine(webURL, webHost)
-	log.Print(startLine)
-	log.Print(buildStamp())
+	log.Print("Tilt updog " + buildStamp())
 
-	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
-		log.Printf("Tilt analytics disabled: %s", reason)
-	}
-
-	// TODO(nick): Parse objects from the command line rather than
-	// hard-coding them here. See 'ctlptl apply' for example code.
-	objects := []client.Object{
-		&v1alpha1.Cmd{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "hello-world",
-			},
-			Spec: v1alpha1.CmdSpec{
-				Args: []string{"echo", "hello world"},
-			},
-		},
-	}
-
-	deps, err := wireCmdUpdog(ctx, a, nil, "updog", objects)
+	deps, err := wireCmdUpdog(ctx, a, nil, "updog", clientObjects)
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
@@ -135,10 +151,16 @@ func provideUpdogSubscriber(objects []client.Object, client client.Client) *updo
 
 func (s *updogSubscriber) SetUp(ctx context.Context, _ store.RStore) error {
 	for _, obj := range s.objects {
+		// Create() modifies its object mysteriously, so copy it first
+		kind := obj.GetObjectKind().GroupVersionKind().Kind
+		name := obj.GetName()
+
 		err := s.client.Create(ctx, obj)
 		if err != nil {
 			return err
 		}
+
+		logger.Get(ctx).Infof("loaded %s/%s", strings.ToLower(kind), name)
 	}
 	return nil
 }
@@ -152,4 +174,16 @@ func provideUpdogCmdSubscribers(
 	ts *hud.TerminalStream,
 	us *updogSubscriber) []store.Subscriber {
 	return append(engine.ProvideSubscribersAPIOnly(hudsc, tscm, cb, ts), us)
+}
+
+func convertToClientObjects(objs []runtime.Object) ([]ctrlclient.Object, error) {
+	result := []ctrlclient.Object{}
+	for _, obj := range objs {
+		clientObj, ok := obj.(ctrlclient.Object)
+		if !ok {
+			return nil, fmt.Errorf("Unexpected object type: %T", obj)
+		}
+		result = append(result, clientObj)
+	}
+	return result, nil
 }

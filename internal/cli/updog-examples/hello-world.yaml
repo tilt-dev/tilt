@@ -1,0 +1,7 @@
+apiVersion: tilt.dev/v1alpha1
+kind: Cmd
+metadata:
+  name: hello-world
+spec:
+  args: ["echo", "hello world"]
+
