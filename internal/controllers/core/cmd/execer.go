@@ -144,7 +144,7 @@ func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, s
 func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) {
 	defer close(statusCh)
 
-	logger.Get(ctx).Infof("Running serve cmd: %s", cmd.String())
+	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
 	c := localexec.ExecCmd(cmd, logger.Get(ctx))
 
 	c.SysProcAttr = &syscall.SysProcAttr{}
@@ -178,18 +178,21 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	case err := <-processExitCh:
 		exitCode := 0
 		reason := ""
+		status := Done
 		if err == nil {
-			logger.Get(ctx).Errorf("%s exited with exit code 0", cmd.String())
+			// Use defaults
 		} else if ee, ok := err.(*exec.ExitError); ok {
+			status = Error
 			exitCode = ee.ExitCode()
 			reason = err.Error()
 			logger.Get(ctx).Errorf("%s exited with exit code %d", cmd.String(), ee.ExitCode())
 		} else {
+			status = Error
 			exitCode = 1
 			reason = err.Error()
 			logger.Get(ctx).Errorf("error execing %s: %v", cmd.String(), err)
 		}
-		statusCh <- statusAndMetadata{status: Error, pid: pid, spanID: spanID, exitCode: exitCode, reason: reason}
+		statusCh <- statusAndMetadata{status: status, pid: pid, spanID: spanID, exitCode: exitCode, reason: reason}
 	case <-ctx.Done():
 		e.killProcess(ctx, c, processExitCh)
 		statusCh <- statusAndMetadata{status: Done, pid: pid, spanID: spanID, reason: "killed", exitCode: 137}

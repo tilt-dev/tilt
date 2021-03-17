@@ -127,6 +127,7 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	}
 
 	proc.spec = cmd.Spec
+	proc.isServer = cmd.ObjectMeta.Annotations[local.AnnotationOwnerKind] == "CmdServer"
 	proc.lastEventTime = lastEventTime
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
@@ -295,6 +296,11 @@ func (c *Controller) processStatuses(
 		}
 
 		if sm.status == Error || sm.status == Done {
+			// This is a hack until CmdServer is a real object.
+			if proc.isServer && sm.exitCode == 0 {
+				logger.Get(ctx).Errorf("Server exited with exit code 0")
+			}
+
 			c.updateStatus(name, func(status *CmdStatus) {
 				status.Waiting = nil
 				status.Running = nil
@@ -355,6 +361,7 @@ type currentProcess struct {
 	// closed when the process finishes executing, intentionally or not
 	doneCh      chan struct{}
 	probeWorker *probe.Worker
+	isServer    bool
 
 	// tracks the last RestartOn event
 	lastEventTime time.Time

@@ -3,8 +3,6 @@ package local
 import (
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -97,13 +95,5 @@ func HandleCmdCreateAction(state *store.EngineState, action CmdCreateAction) {
 
 // Mark the command for deletion.
 func HandleCmdDeleteAction(state *store.EngineState, action CmdDeleteAction) {
-	cmd, ok := state.Cmds[action.Name]
-	if !ok {
-		return
-	}
-
-	updated := cmd.DeepCopy()
-	now := metav1.Now()
-	updated.ObjectMeta.DeletionTimestamp = &now
-	state.Cmds[action.Name] = updated
+	delete(state.Cmds, action.Name)
 }

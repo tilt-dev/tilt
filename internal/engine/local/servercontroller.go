@@ -12,11 +12,15 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 const AnnotationOwnerName = "tilt.dev/owner-name"
 const AnnotationOwnerKind = "tilt.dev/owner-kind"
+
+// Expresses the status of a build dependency.
+const AnnotationDepStatus = "tilt.dev/dep-status"
 
 // A controller that reads the Tilt data model and creates new Cmd objects.
 //
@@ -30,7 +34,7 @@ const AnnotationOwnerKind = "tilt.dev/owner-kind"
 // - We report the Cmd status Terminated as an Error state,
 //   and report it in a standard way.
 type ServerController struct {
-	createdCmds        map[string]*Cmd
+	recentlyCreatedCmd map[string]bool
 	createdTriggerTime map[string]time.Time
 	deletingCmds       map[string]bool
 	client             ctrlclient.Client
@@ -42,7 +46,7 @@ var _ store.Subscriber = &ServerController{}
 
 func NewServerController(client ctrlclient.Client) *ServerController {
 	return &ServerController{
-		createdCmds:        make(map[string]*Cmd),
+		recentlyCreatedCmd: make(map[string]bool),
 		createdTriggerTime: make(map[string]time.Time),
 		deletingCmds:       make(map[string]bool),
 		client:             client,
@@ -54,13 +58,14 @@ func (c *ServerController) OnChange(ctx context.Context, st store.RStore, summar
 		return
 	}
 
-	servers := c.determineServers(ctx, st)
-	for _, server := range servers {
-		c.reconcile(ctx, server, st)
+	servers, owned := c.determineServers(ctx, st)
+	for i, server := range servers {
+		c.reconcile(ctx, server, owned[i], st)
 	}
 }
 
-func (c *ServerController) determineServers(ctx context.Context, st store.RStore) []CmdServer {
+// Returns a list of server objects and the Cmd they own (if any).
+func (c *ServerController) determineServers(ctx context.Context, st store.RStore) ([]CmdServer, []*Cmd) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -79,6 +84,7 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 	}
 
 	var r []CmdServer
+	var cmds []*Cmd
 
 	// Infer all the CmdServer objects from the legacy EngineState
 	for _, mt := range state.Targets() {
@@ -86,8 +92,7 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 			continue
 		}
 		lt := mt.Manifest.LocalTarget()
-		if lt.ServeCmd.Empty() ||
-			mt.State.LastSuccessfulDeployTime.IsZero() {
+		if lt.ServeCmd.Empty() {
 			continue
 		}
 
@@ -95,6 +100,9 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 		cmdServer := CmdServer{
 			ObjectMeta: ObjectMeta{
 				Name: name,
+				Annotations: map[string]string{
+					AnnotationDepStatus: string(mt.UpdateStatus()),
+				},
 			},
 			Spec: CmdServerSpec{
 				Args:           lt.ServeCmd.Argv,
@@ -114,12 +122,29 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 		}
 
 		r = append(r, cmdServer)
+		cmds = append(cmds, cmd)
 	}
 
-	return r
+	return r, cmds
 }
 
-func (c *ServerController) reconcile(ctx context.Context, server CmdServer, st store.RStore) {
+func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owned *Cmd, st store.RStore) {
+	// Do not make any changes to the server while the update status is building.
+	// This ensures the old server stays up while any deps are building.
+	depStatus := model.UpdateStatus(server.ObjectMeta.Annotations[AnnotationDepStatus])
+	if depStatus != model.UpdateStatusOK && depStatus != model.UpdateStatusNotApplicable {
+		return
+	}
+
+	// If the command was created recently but hasn't appeared yet, wait until it appears.
+	name := server.Name
+	if c.recentlyCreatedCmd[name] {
+		if owned == nil {
+			return
+		}
+		delete(c.recentlyCreatedCmd, name)
+	}
+
 	cmdSpec := CmdSpec{
 		Args:           server.Spec.Args,
 		Dir:            server.Spec.Dir,
@@ -127,27 +152,20 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, st s
 		ReadinessProbe: server.Spec.ReadinessProbe,
 	}
 
-	name := server.Name
-	created, isCreated := c.createdCmds[name]
 	triggerTime := c.createdTriggerTime[name]
-	if isCreated && equality.Semantic.DeepEqual(created.Spec, cmdSpec) && triggerTime.Equal(server.Spec.TriggerTime) {
+	if owned != nil && equality.Semantic.DeepEqual(owned.Spec, cmdSpec) && triggerTime.Equal(server.Spec.TriggerTime) {
 		// We're in the correct state! Nothing to do.
 		return
 	}
 
 	// Otherwise, we need to create a new command.
 
-	// If the command hasn't appeared yet, wait until it appears.
-	if isCreated && server.Status.CmdName == "" {
-		return // wait for the command to appear
-	}
-
 	// If the command is running, wait until it's deleted
-	if isCreated && server.Status.CmdStatus.Terminated == nil {
+	if owned != nil && owned.Status.Terminated == nil {
 		if !c.deletingCmds[name] {
 			c.deletingCmds[name] = true
 
-			err := c.client.Delete(ctx, created)
+			err := c.client.Delete(ctx, owned)
 			if err != nil && !apierrors.IsNotFound(err) {
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
 				return
@@ -181,7 +199,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, st s
 		},
 		Spec: cmdSpec,
 	}
-	c.createdCmds[name] = cmd
+	c.recentlyCreatedCmd[name] = true
 
 	err := c.client.Create(ctx, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
