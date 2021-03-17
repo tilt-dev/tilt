@@ -55,7 +55,6 @@ func (w *watcher) recordEvent(ctx context.Context, client ctrlclient.Client, st 
 		event.SeenFiles = append(event.SeenFiles, fsEvent.Path())
 	}
 	if len(event.SeenFiles) != 0 {
-		logger.Get(ctx).Debugf("File event for %q: %v", w.name.String(), event.SeenFiles)
 		w.status.LastEventTime = *now.DeepCopy()
 		w.status.FileEvents = append(w.status.FileEvents, event)
 		if len(w.status.FileEvents) > MaxFileEventHistory {
