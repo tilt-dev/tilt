@@ -90,7 +90,10 @@ jobs:
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
           version: 19.03.12
-      - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
+      - run: |
+          set -ex
+          ctlptl create cluster kind --registry=ctlptl-registry
+          exec make integration
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
