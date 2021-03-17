@@ -23,7 +23,7 @@ func NewClientBuilder(client ctrlclient.Client) *fakeClientBuilder {
 	return &fakeClientBuilder{client: client}
 }
 
-// A stub builder that returns a pre-poplated client.
+// A stub builder that returns a pre-populated client.
 type fakeClientBuilder struct {
 	client ctrlclient.Client
 }

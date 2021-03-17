@@ -579,7 +579,7 @@ func schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"watchedPaths": {
 						SchemaProps: spec.SchemaProps{
-							Description: "WatchedPaths are absolute paths of directories or files to watch for changes to. It cannot be empty.",
+							Description: "WatchedPaths are paths of directories or files to watch for changes to. It cannot be empty.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -650,7 +650,6 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 						},
 					},
 				},
-				Required: []string{"fileEvents"},
 			},
 		},
 		Dependencies: []string{
@@ -788,7 +787,7 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 				Properties: map[string]spec.Schema{
 					"basePath": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BasePath is the absolute root path for the patterns. It cannot be empty.\n\nIf no patterns are specified, everything under it will be recursively ignored.",
+							Description: "BasePath is the base path for the patterns. It cannot be empty.\n\nIf no patterns are specified, everything under it will be recursively ignored.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -796,7 +795,7 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 					},
 					"patterns": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Patterns are dockerignore style rules relative to the base path.\n\nSee https://docs.docker.com/engine/reference/builder/#dockerignore-file.",
+							Description: "Patterns are dockerignore style rules. Absolute-style patterns will be rooted to the BasePath.\n\nSee https://docs.docker.com/engine/reference/builder/#dockerignore-file.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

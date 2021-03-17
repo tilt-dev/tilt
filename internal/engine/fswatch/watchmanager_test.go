@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -19,6 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -112,10 +115,11 @@ func TestWatchManager_IgnoreOutputsImageRefs(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
 
-	target := model.ImageTarget{}.WithBuildDetails(model.CustomBuild{
-		Deps:              []string{f.Path()},
-		OutputsImageRefTo: f.JoinPath("ref.txt"),
-	})
+	target := model.MustNewImageTarget(container.MustParseSelector("img")).
+		WithBuildDetails(model.CustomBuild{
+			Deps:              []string{f.Path()},
+			OutputsImageRefTo: f.JoinPath("ref.txt"),
+		})
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoYAML).
@@ -302,6 +306,34 @@ func TestWatchManager_PickUpTiltIgnoreChanges(t *testing.T) {
 	assert.Contains(t, seenPaths, filepath.Join("bar", "baz", "foo"))
 }
 
+func TestWatchManager_LimitFileEventsHistory(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".")
+	f.SetManifestTarget(target)
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
+
+	const eventOverflowCount = 5
+	for i := 0; i < MaxFileEventHistory+eventOverflowCount; i++ {
+		p := strconv.Itoa(i)
+		f.ChangeFile(t, p)
+		// need to wait for each file 1-by-1 to prevent batching
+		f.WaitForSeenFile(p)
+	}
+
+	st := f.store.RLockState()
+	defer f.store.RUnlockState()
+	fw := st.FileWatches[keyForTarget(target.ID())]
+	require.NotNilf(t, fw, "Could not find FileWatch %q in state", target.ID().String())
+	require.Equal(t, MaxFileEventHistory, len(fw.Status.FileEvents), "Wrong number of file events")
+	for i := 0; i < len(fw.Status.FileEvents); i++ {
+		p := f.JoinPath(strconv.Itoa(i + eventOverflowCount))
+		assert.Contains(t, fw.Status.FileEvents[i].SeenFiles, p)
+	}
+}
+
 func TestWatchManagerShortRead(t *testing.T) {
 	f := newWMFixture(t)
 	defer f.TearDown()
@@ -340,9 +372,10 @@ type wmFixture struct {
 func newWMFixture(t *testing.T) *wmFixture {
 	timerMaker := MakeFakeTimerMaker(t)
 	fakeMultiWatcher := NewFakeMultiWatcher()
-	wm := NewWatchManager(fakeMultiWatcher.NewSub, timerMaker.Maker())
 
-	manifestSub := NewManifestSubscriber()
+	cli := fake.NewTiltClient()
+	wm := NewWatchManager(fakeMultiWatcher.NewSub, timerMaker.Maker(), cli)
+	manifestSub := NewManifestSubscriber(cli)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
@@ -430,26 +463,36 @@ func (f fileWatchDiffer) String() string {
 	return cmp.Diff(f.actual, &f.expected)
 }
 
+func (f *wmFixture) RequireEventually(cond func() bool, msg string, args ...interface{}) {
+	require.Eventuallyf(f.t, func() bool {
+		storeErr := f.storeError()
+		if storeErr != nil {
+			assert.FailNow(f.t, fmt.Sprintf("store encountered fatal error: %v", storeErr), append([]interface{}{msg}, args...)...)
+		}
+		return cond()
+	}, time.Second, 10*time.Millisecond, msg, args...)
+}
+
 func (f *wmFixture) RequireFileWatchSpecEqual(targetID model.TargetID, spec filewatches.FileWatchSpec) {
 	f.t.Helper()
 	fwd := &fileWatchDiffer{expected: spec}
-	require.Eventuallyf(f.t, func() bool {
+	f.RequireEventually(func() bool {
 		fwd.actual = nil
 		st := f.store.RLockState()
 		defer f.store.RUnlockState()
-		fw, ok := st.FileWatches[types.NamespacedName{Name: apis.SanitizeName(targetID.String())}]
+		fw, ok := st.FileWatches[keyForTarget(targetID)]
 		if !ok {
 			return false
 		}
 		fwd.actual = fw.Spec.DeepCopy()
 		return equality.Semantic.DeepEqual(fw.Spec, spec)
-	}, time.Second, 10*time.Millisecond, "FileWatch spec was not equal: %v", fwd)
+	}, "FileWatch spec was not equal: %v", fwd)
 }
 
 func (f *wmFixture) WaitForSeenFile(path string) []string {
 	f.t.Helper()
 	var seenPaths []string
-	require.Eventuallyf(f.t, func() bool {
+	f.RequireEventually(func() bool {
 		seenPaths = f.seenPaths()
 		for _, p := range seenPaths {
 			if p == path {
@@ -457,7 +500,7 @@ func (f *wmFixture) WaitForSeenFile(path string) []string {
 			}
 		}
 		return false
-	}, time.Second, 10*time.Millisecond, "Did not find path %q, seen: %v", path, &seenPaths)
+	}, "Did not find path %q, seen: %v", path, &seenPaths)
 	return seenPaths
 }
 
@@ -498,4 +541,8 @@ func (f *wmFixture) SetTiltIgnoreContents(s string) {
 	f.store.UnlockMutableState()
 	// simulate an action to ensure subscribers see changes
 	f.store.Dispatch(configs.ConfigsReloadedAction{})
+}
+
+func keyForTarget(targetID model.TargetID) types.NamespacedName {
+	return types.NamespacedName{Name: apis.SanitizeName(targetID.String())}
 }

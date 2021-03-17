@@ -2,27 +2,35 @@ package fswatch
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // ManifestSubscriber watches the store for changes to manifests and creates/updates/deletes FileWatch objects.
-type ManifestSubscriber struct{}
-
-func NewManifestSubscriber() *ManifestSubscriber {
-	return &ManifestSubscriber{}
+type ManifestSubscriber struct {
+	client ctrlclient.Client
 }
 
-func (w ManifestSubscriber) OnChange(_ context.Context, st store.RStore, summary store.ChangeSummary) {
+func NewManifestSubscriber(client ctrlclient.Client) *ManifestSubscriber {
+	return &ManifestSubscriber{
+		client: client,
+	}
+}
+
+func (w ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
 	if summary.IsLogOnly() || !summary.Legacy {
 		return
 	}
@@ -34,49 +42,70 @@ func (w ManifestSubscriber) OnChange(_ context.Context, st store.RStore, summary
 		return
 	}
 
-	specsToProcess := SpecsFromState(state)
+	watchesToProcess := FileWatchesFromManifests(state)
 
 	watchesToKeep := make(map[types.NamespacedName]bool)
-	for targetID, spec := range specsToProcess {
-		name := types.NamespacedName{Name: apis.SanitizeName(targetID.String())}
+	for _, fw := range watchesToProcess {
+		name := types.NamespacedName{Namespace: fw.GetNamespace(), Name: fw.GetName()}
 		watchesToKeep[name] = true
 
 		existing := state.FileWatches[name]
 		if existing != nil {
-			if equality.Semantic.DeepEqual(existing.Spec, spec) {
+			if equality.Semantic.DeepEqual(existing.Spec, fw.Spec) {
 				// spec has not changed
 				continue
 			}
 
 			updated := existing.DeepCopy()
-			spec.DeepCopyInto(&updated.Spec)
-			st.Dispatch(NewFileWatchUpdateAction(updated))
-		} else {
-			fw := &filewatches.FileWatch{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: name.Namespace,
-					Name:      name.Name,
-					Annotations: map[string]string{
-						filewatches.AnnotationTargetID: targetID.String(),
-					},
-				},
-				Spec: *spec.DeepCopy(),
+			fw.Spec.DeepCopyInto(&updated.Spec)
+			// reset status since the spec changed
+			updated.Status = filewatches.FileWatchStatus{}
+			err := w.client.Update(ctx, updated)
+			if err == nil {
+				st.Dispatch(NewFileWatchUpdateAction(updated))
+			} else if !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
+				// conflict/not found errors are ignored; an update/delete must have happened against apiserver
+				// that hasn't been processed by store yet; once processed, this handler will get run again at
+				// which point things should be consistent (or repeat until such at time)
+				// (if this were a real reconciler, it'd just explicitly request a requeue here)
+				st.Dispatch(store.NewErrorAction(fmt.Errorf("apiserver update error: %v", err)))
+				return
 			}
-			st.Dispatch(NewFileWatchCreateAction(fw))
+
+		} else {
+			err := w.client.Create(ctx, fw)
+			if err == nil {
+				st.Dispatch(NewFileWatchCreateAction(fw))
+			} else if !apierrors.IsAlreadyExists(err) {
+				st.Dispatch(store.NewErrorAction(fmt.Errorf("apiserver create error: %v", err)))
+				return
+			}
 		}
 	}
 
 	// find and delete any that no longer exist from manifests
-	for name := range state.FileWatches {
+	for name, fw := range state.FileWatches {
 		if _, ok := watchesToKeep[name]; !ok {
-			st.Dispatch(NewFileWatchDeleteAction(name))
+			toDelete := fw.DeepCopy()
+			err := w.client.Delete(ctx, toDelete)
+			if err == nil {
+				st.Dispatch(NewFileWatchDeleteAction(name))
+			} else if !apierrors.IsNotFound(err) {
+				st.Dispatch(store.NewErrorAction(fmt.Errorf("apiserver delete error: %v", err)))
+				return
+			}
 		}
 	}
 }
 
-func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) filewatches.FileWatchSpec {
-	spec := filewatches.FileWatchSpec{
-		WatchedPaths: append([]string{}, t.Dependencies()...),
+func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) *filewatches.FileWatchSpec {
+	watchedPaths := append([]string(nil), t.Dependencies()...)
+	if len(watchedPaths) == 0 {
+		return nil
+	}
+
+	spec := &filewatches.FileWatchSpec{
+		WatchedPaths: watchedPaths,
 	}
 	for _, di := range t.Dockerignores() {
 		if di.Empty() {
@@ -84,7 +113,7 @@ func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) filewa
 		}
 		spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
 			BasePath: di.LocalPath,
-			Patterns: di.Patterns,
+			Patterns: append([]string(nil), di.Patterns...),
 		})
 	}
 	for _, ild := range t.IgnoredLocalDirectories() {
@@ -94,7 +123,7 @@ func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) filewa
 	}
 
 	// process global ignores last
-	addGlobalIgnoresToSpec(&spec, globalIgnores)
+	addGlobalIgnoresToSpec(spec, globalIgnores)
 
 	return spec
 }
@@ -108,29 +137,53 @@ func addGlobalIgnoresToSpec(spec *filewatches.FileWatchSpec, globalIgnores []mod
 	}
 }
 
-// SpecsFromState creates FileWatch specs from Tilt manifests.
-func SpecsFromState(state store.EngineState) map[model.TargetID]filewatches.FileWatchSpec {
+// FileWatchesFromManifests creates FileWatch specs from Tilt manifests in the engine state.
+func FileWatchesFromManifests(state store.EngineState) []*filewatches.FileWatch {
 	// TODO(milas): how can global ignores fit into the API model more cleanly?
 	globalIgnores := globalIgnores(state)
-	fileWatches := make(map[model.TargetID]filewatches.FileWatchSpec)
+	var fileWatches []*filewatches.FileWatch
+	processedTargets := make(map[model.TargetID]bool)
 	for _, m := range state.Manifests() {
 		for _, t := range m.TargetSpecs() {
+			targetID := t.ID()
 			// ignore targets that have already been processed or aren't watchable
-			_, seen := fileWatches[t.ID()]
+			_, seen := processedTargets[targetID]
 			t, ok := t.(WatchableTarget)
-			if seen || !ok {
+			if seen || !ok || targetID.Empty() {
 				continue
 			}
-			fileWatches[t.ID()] = specForTarget(t, globalIgnores)
+			processedTargets[targetID] = true
+			spec := specForTarget(t, globalIgnores)
+			if spec != nil {
+				fw := &filewatches.FileWatch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: apis.SanitizeName(targetID.String()),
+						Annotations: map[string]string{
+							v1alpha1.AnnotationManifest: string(m.Name),
+							v1alpha1.AnnotationTargetID: targetID.String(),
+						},
+					},
+					Spec: *spec.DeepCopy(),
+				}
+				fileWatches = append(fileWatches, fw)
+			}
 		}
 	}
 
 	if len(state.ConfigFiles) > 0 {
-		configSpec := filewatches.FileWatchSpec{
-			WatchedPaths: append([]string(nil), state.ConfigFiles...),
+		configFw := &filewatches.FileWatch{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: apis.SanitizeName(ConfigsTargetID.String()),
+				Annotations: map[string]string{
+					v1alpha1.AnnotationTargetID: ConfigsTargetID.String(),
+				},
+			},
+			Spec: filewatches.FileWatchSpec{
+				WatchedPaths: append([]string(nil), state.ConfigFiles...),
+			},
 		}
-		addGlobalIgnoresToSpec(&configSpec, globalIgnores)
-		fileWatches[ConfigsTargetID] = configSpec
+		addGlobalIgnoresToSpec(&configFw.Spec, globalIgnores)
+		fileWatches = append(fileWatches, configFw)
 	}
 
 	return fileWatches

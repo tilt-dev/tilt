@@ -166,7 +166,7 @@ func (f *filepathREST) Create(
 	accessor.SetResourceVersion(fmt.Sprintf("%d", atomic.AddInt64(&f.currentVersion, 1)))
 
 	if f.fs.Exists(filename) {
-		return nil, ErrFileNotExists
+		return nil, apierrors.NewAlreadyExists(f.groupResource, accessor.GetName())
 	}
 
 	if err := f.fs.Write(f.codec, filename, obj); err != nil {
