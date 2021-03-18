@@ -622,9 +622,17 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 				Description: "FileWatchStatus defines the observed state of FileWatch",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"monitorStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MonitorStartTime is the timestamp of when filesystem monitor was started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
 					"lastEventTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastEventTime is the timestamp of the most recent file event. It is nil if no events have been seen yet.\n\nIf the specifics of which files changed are not important, this field can be used as a watermark without needing to inspect FileEvents.",
+							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},

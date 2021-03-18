@@ -17,6 +17,10 @@ import (
 	"testing"
 	"time"
 
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/docker/distribution/reference"
@@ -3700,8 +3704,8 @@ type testFixture struct {
 	clock                      clockwork.Clock
 	upper                      Upper
 	b                          *fakeBuildAndDeployer
-	fsWatcher                  *fswatch.FakeMultiWatcher
-	timerMaker                 *fswatch.FakeTimerMaker
+	fsWatcher                  *fsevent.FakeMultiWatcher
+	timerMaker                 *fsevent.FakeTimerMaker
 	docker                     *docker.FakeClient
 	kClient                    *k8s.FakeK8sClient
 	hud                        hud.HeadsUpDisplay
@@ -3710,7 +3714,6 @@ type testFixture struct {
 	log                        *bufsync.ThreadSafeBuffer
 	store                      *store.Store
 	bc                         *BuildController
-	fwm                        *fswatch.WatchManager
 	cc                         *configs.ConfigsController
 	dcc                        *dockercompose.FakeDCClient
 	tfl                        tiltfile.TiltfileLoader
@@ -3719,6 +3722,7 @@ type testFixture struct {
 	fe                         *cmd.FakeExecer
 	fpm                        *cmd.FakeProberManager
 	overrideMaxParallelUpdates int
+	ctrlClient                 ctrlclient.Client
 
 	onchangeCh chan bool
 }
@@ -3731,10 +3735,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 
-	watcher := fswatch.NewFakeMultiWatcher()
+	watcher := fsevent.NewFakeMultiWatcher()
 	b := newFakeBuildAndDeployer(t)
 
-	timerMaker := fswatch.MakeFakeTimerMaker(t)
+	timerMaker := fsevent.MakeFakeTimerMaker(t)
 
 	dockerClient := docker.NewFakeClient()
 
@@ -3759,9 +3763,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	cdc := controllers.ProvideDeferredClient()
-	ccb := controllers.NewClientBuilder(cdc)
+	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
-	fwm := fswatch.NewWatchManager(watcher.NewSub, timerMaker.Maker(), cdc)
 	pfc := portforward.NewController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
@@ -3781,7 +3784,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
-	fwc := filewatch.NewController(st)
+	fwc := filewatch.NewController(st, watcher.NewSub, timerMaker.Maker())
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st)
 	lsc := local.NewServerController(cdc)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
@@ -3815,7 +3818,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		store:          st,
 		bc:             bc,
 		onchangeCh:     fSub.ch,
-		fwm:            fwm,
 		cc:             cc,
 		dcc:            fakeDcc,
 		tfl:            tfl,
@@ -3823,6 +3825,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		dp:             dp,
 		fe:             fe,
 		fpm:            fpm,
+		ctrlClient:     cdc,
 	}
 
 	ret.disableEnvAnalyticsOpt()
@@ -3835,7 +3838,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, fwm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -3931,6 +3934,10 @@ func (f *testFixture) Init(action InitAction) {
 	f.store.UnlockMutableState()
 
 	f.PollUntil("watches set up", func() bool {
+		if !watchFiles {
+			return true
+		}
+
 		select {
 		case x := <-f.upperInitResult:
 			// this is a weird case - if there was an error early on,
@@ -3944,7 +3951,18 @@ func (f *testFixture) Init(action InitAction) {
 		default:
 		}
 
-		return !watchFiles || f.fwm.TargetWatchCount() == expectedWatchCount
+		// wait for FileWatch objects to exist AND have a status indicating they're running
+		var fwList v1alpha1.FileWatchList
+		if err := f.ctrlClient.List(f.ctx, &fwList); err != nil {
+			return false
+		}
+		activeWatches := 0
+		for _, fw := range fwList.Items {
+			if !fw.Status.MonitorStartTime.IsZero() {
+				activeWatches++
+			}
+		}
+		return activeWatches >= expectedWatchCount
 	})
 }
 
@@ -4219,6 +4237,7 @@ func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestNa
 }
 
 func (f *testFixture) waitForCompletedBuildCount(count int) {
+	f.t.Helper()
 	f.WaitUntil(fmt.Sprintf("%d builds done", count), func(state store.EngineState) bool {
 		return state.CompletedBuildCount >= count
 	})
@@ -4414,9 +4433,9 @@ func (f *testFixture) triggerFileChange(targetID model.TargetID, paths ...string
 	fw = fw.DeepCopy()
 	f.store.RUnlockState()
 
-	fw.Status.LastEventTime = now.DeepCopy()
+	fw.Status.LastEventTime = now
 	fw.Status.FileEvents = append(fw.Status.FileEvents, filewatches.FileEvent{
-		Time:      *now.DeepCopy(),
+		Time:      now,
 		SeenFiles: append([]string{}, paths...),
 	})
 

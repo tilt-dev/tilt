@@ -78,10 +78,8 @@ func (m *RestartManager) lastEventTime(ctx context.Context, restartOn *RestartOn
 			return cur, err
 		}
 		lastEventTime := fw.Status.LastEventTime
-		if lastEventTime != nil {
-			if lastEventTime.Time.After(cur) {
-				cur = lastEventTime.Time
-			}
+		if lastEventTime.Time.After(cur) {
+			cur = lastEventTime.Time
 		}
 	}
 	return cur, nil

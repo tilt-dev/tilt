@@ -1,4 +1,4 @@
-package fswatch
+package fsevent
 
 import (
 	"path/filepath"

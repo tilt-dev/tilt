@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/tilt-dev/tilt/internal/ignore"
+
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -18,6 +20,21 @@ import (
 	v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+var ConfigsTargetID = model.TargetID{
+	Type: model.TargetTypeConfigs,
+	Name: "singleton",
+}
+
+type WatchableTarget interface {
+	ignore.IgnorableTarget
+	Dependencies() []string
+	ID() model.TargetID
+}
+
+var _ WatchableTarget = model.ImageTarget{}
+var _ WatchableTarget = model.LocalTarget{}
+var _ WatchableTarget = model.DockerComposeTarget{}
 
 // ManifestSubscriber watches the store for changes to manifests and creates/updates/deletes FileWatch objects.
 type ManifestSubscriber struct {

@@ -79,14 +79,18 @@ func (s *TestingStore) Actions() []Action {
 	return append([]Action{}, s.actions...)
 }
 
-func (s *TestingStore) AssertNoErrorActions(t testing.TB) {
+func (s *TestingStore) AssertNoErrorActions(t testing.TB) bool {
 	t.Helper()
+	s.actionsMu.RLock()
+	defer s.actionsMu.RUnlock()
 	for _, action := range s.actions {
 		errAction, ok := action.(ErrorAction)
 		if ok {
 			t.Errorf("Error action: %s", errAction)
+			return false
 		}
 	}
+	return true
 }
 
 func (s *TestingStore) WaitForAction(t testing.TB, typ reflect.Type) Action {
