@@ -141,7 +141,10 @@ func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name typ
 		return fmt.Errorf("failed to initialize filesystem watch: %v", err)
 	}
 
-	fw.Status.MonitorStartTime = metav1.NowMicro()
+	// replace the entirety of status to clear out any old events
+	fw.Status = filewatches.FileWatchStatus{
+		MonitorStartTime: metav1.NowMicro(),
+	}
 	if err := c.Client.Status().Update(ctx, fw); err != nil {
 		_ = notify.Close()
 		return fmt.Errorf("failed to update monitor start time: %v", err)
