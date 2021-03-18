@@ -22,6 +22,27 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 )
 
+// Subscribers that only read from the new Tilt API,
+// and run the API server.
+func ProvideSubscribersAPIOnly(
+	hudsc *server.HeadsUpServerController,
+	tscm *controllers.TiltServerControllerManager,
+	cb *controllers.ControllerBuilder,
+	ts *hud.TerminalStream,
+) []store.Subscriber {
+	return []store.Subscriber{
+		// The API server must go before other subscribers,
+		// so that it can run its boot sequence first.
+		hudsc,
+
+		// The controller manager must go after the API server,
+		// so that it can connect to it and make resources available.
+		tscm,
+		cb,
+		ts,
+	}
+}
+
 func ProvideSubscribers(
 	hudsc *server.HeadsUpServerController,
 	tscm *controllers.TiltServerControllerManager,
@@ -50,17 +71,10 @@ func ProvideSubscribers(
 	mc *metrics.Controller,
 	mmc *metrics.ModeController,
 ) []store.Subscriber {
-	return []store.Subscriber{
-		// The API server must go before other subscribers,
-		// so that it can run its boot sequence first.
-		hudsc,
-		// The controller manager must go after the API server,
-		// so that it can connect to it and make resources available.
-		tscm,
-		cb,
+	apiSubscribers := ProvideSubscribersAPIOnly(hudsc, tscm, cb, ts)
 
+	legacySubscribers := []store.Subscriber{
 		hud,
-		ts,
 		tp,
 		pw,
 		sw,
@@ -83,4 +97,5 @@ func ProvideSubscribers(
 		mc,
 		mmc,
 	}
+	return append(apiSubscribers, legacySubscribers...)
 }
