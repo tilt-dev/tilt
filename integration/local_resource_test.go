@@ -30,7 +30,7 @@ func TestLocalResource(t *testing.T) {
 
 	f.TiltUp()
 
-	const barServeLogMessage = "Running serve cmd: ./hello.sh bar"
+	const barServeLogMessage = "Running cmd: ./hello.sh bar"
 	const readinessProbeSuccessMessage = `[readiness probe: success] fake probe success message`
 
 	require.NoError(t, f.logs.WaitUntilContains("hello! foo #1", 5*time.Second))

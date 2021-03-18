@@ -66,6 +66,38 @@ func TestUpdate(t *testing.T) {
 	f.assertCmdCount(1)
 }
 
+func TestUpdateWithCurrentBuild(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+	f.resource("foo", "true", ".", t1)
+	f.step()
+	f.assertCmdMatches("foo-serve-1", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+
+	f.st.WithState(func(s *store.EngineState) {
+		c := model.ToHostCmd("false")
+		localTarget := model.NewLocalTarget(model.TargetName("foo"), c, c, nil)
+		s.ManifestTargets["foo"].Manifest.DeployTarget = localTarget
+		s.ManifestTargets["foo"].State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	})
+
+	f.step()
+
+	assert.Never(f.t, func() bool {
+		return f.st.Cmd("foo-serve-2") != nil
+	}, 20*time.Millisecond, 5*time.Millisecond)
+
+	f.st.WithState(func(s *store.EngineState) {
+		s.ManifestTargets["foo"].State.CurrentBuild = model.BuildRecord{}
+	})
+
+	f.step()
+	f.assertCmdDeleted("foo-serve-1")
+}
+
 func TestServe(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
@@ -261,7 +293,7 @@ func (s *testStore) CmdCount() int {
 	defer s.RUnlockState()
 	count := 0
 	for _, cmd := range st.Cmds {
-		if cmd.DeletionTimestamp != nil {
+		if cmd.DeletionTimestamp == nil {
 			count++
 		}
 	}
@@ -383,11 +415,17 @@ func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastD
 
 	st := f.st.LockMutableStateForTesting()
 	defer f.st.UnlockMutableState()
+
+	state := &store.ManifestState{
+		LastSuccessfulDeployTime: lastDeploy,
+	}
+	state.AddCompletedBuild(model.BuildRecord{
+		StartTime:  lastDeploy,
+		FinishTime: lastDeploy,
+	})
 	st.UpsertManifestTarget(&store.ManifestTarget{
 		Manifest: m,
-		State: &store.ManifestState{
-			LastSuccessfulDeployTime: lastDeploy,
-		},
+		State:    state,
 	})
 }
 
