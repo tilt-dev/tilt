@@ -75,8 +75,6 @@ func (w ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 
 			updated := existing.DeepCopy()
 			fw.Spec.DeepCopyInto(&updated.Spec)
-			// reset status since the spec changed
-			updated.Status = filewatches.FileWatchStatus{}
 			err := w.client.Update(ctx, updated)
 			if err == nil {
 				st.Dispatch(NewFileWatchUpdateAction(updated))

@@ -36,6 +36,7 @@ type object interface {
 type ControllerFixture struct {
 	t          testing.TB
 	ctx        context.Context
+	cancel     context.CancelFunc
 	controller controller
 	Scheme     *runtime.Scheme
 	Client     ctrlclient.Client
@@ -56,10 +57,20 @@ func NewFixture(t testing.TB, c controller) *ControllerFixture {
 	return &ControllerFixture{
 		t:          t,
 		ctx:        ctx,
+		cancel:     cancel,
 		Scheme:     cli.Scheme(),
 		Client:     cli,
 		controller: c,
 	}
+}
+
+// Cancel cancels the internal context used for the controller and client requests.
+//
+// Normally, it's not necessary to call this - the fixture will automatically cancel the context as part of test
+// cleanup to avoid leaking resources. However, if you want to explicitly test how a controller reacts to context
+// cancellation, this method can be used.
+func (f ControllerFixture) Cancel() {
+	f.cancel()
 }
 
 func (f *ControllerFixture) RootContext() context.Context {
@@ -72,17 +83,20 @@ func (f *ControllerFixture) TimeoutContext() context.Context {
 	return ctx
 }
 
-func (f *ControllerFixture) MustReconcile(name string) ctrl.Result {
+func (f *ControllerFixture) KeyForObject(o object) types.NamespacedName {
+	return types.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
+}
+
+func (f *ControllerFixture) MustReconcile(key types.NamespacedName) ctrl.Result {
 	f.t.Helper()
-	key := types.NamespacedName{Name: name}
 	res, err := f.controller.Reconcile(f.TimeoutContext(), ctrl.Request{NamespacedName: key})
 	require.NoError(f.t, err)
 	return res
 }
 
-func (f *ControllerFixture) Get(name string, out object) bool {
+func (f *ControllerFixture) Get(key types.NamespacedName, out object) bool {
 	f.t.Helper()
-	err := f.Client.Get(f.ctx, types.NamespacedName{Name: name}, out)
+	err := f.Client.Get(f.ctx, key, out)
 	if apierrors.IsNotFound(err) {
 		return false
 	}
@@ -90,34 +104,35 @@ func (f *ControllerFixture) Get(name string, out object) bool {
 	return true
 }
 
-func (f *ControllerFixture) MustGet(name string, out object) {
+func (f *ControllerFixture) MustGet(key types.NamespacedName, out object) {
 	f.t.Helper()
-	found := f.Get(name, out)
+	found := f.Get(key, out)
 	if !found {
 		// don't try to read from object Kind, it's probably not properly populated
-		f.t.Fatalf("%T object %q does not exist", out, name)
+		f.t.Fatalf("%T object %q does not exist", out, key.String())
 	}
 }
 
 func (f *ControllerFixture) Create(o object) ctrl.Result {
 	f.t.Helper()
 	require.NoError(f.t, f.Client.Create(f.ctx, o))
-	return f.MustReconcile(o.GetName())
+	return f.MustReconcile(f.KeyForObject(o))
 }
 
+// Update updates the object including Status subresource.
 func (f *ControllerFixture) Update(o object) ctrl.Result {
 	f.t.Helper()
-	// this is a safe cast since we know the original object type met the interface
-	old := o.New().(object)
-	key := types.NamespacedName{Name: o.GetObjectMeta().GetName()}
-	require.NoError(f.t, f.Client.Get(f.ctx, key, old))
-	o.GetObjectMeta().SetResourceVersion(old.GetResourceVersion())
 	require.NoError(f.t, f.Client.Update(f.ctx, o))
-	return f.MustReconcile(o.GetName())
+	return f.MustReconcile(f.KeyForObject(o))
 }
 
-func (f *ControllerFixture) Delete(o object) ctrl.Result {
+func (f *ControllerFixture) Delete(o object) (bool, ctrl.Result) {
 	f.t.Helper()
-	require.NoError(f.t, f.Client.Delete(f.ctx, o))
-	return f.MustReconcile(o.GetName())
+	err := f.Client.Delete(f.ctx, o)
+	require.NoError(f.t, ctrlclient.IgnoreNotFound(err))
+	if apierrors.IsNotFound(err) {
+		// skip reconciliation since no object was deleted
+		return false, ctrl.Result{}
+	}
+	return true, f.MustReconcile(f.KeyForObject(o))
 }
