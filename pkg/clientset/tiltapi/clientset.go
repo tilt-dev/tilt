@@ -25,24 +25,24 @@ import (
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
 
-	corev1alpha1 "github.com/tilt-dev/tilt/pkg/clientset/tiltapi/typed/core/v1alpha1"
+	tiltv1alpha1 "github.com/tilt-dev/tilt/pkg/clientset/tiltapi/typed/core/v1alpha1"
 )
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	CoreV1alpha1() corev1alpha1.CoreV1alpha1Interface
+	TiltV1alpha1() tiltv1alpha1.TiltV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	coreV1alpha1 *corev1alpha1.CoreV1alpha1Client
+	tiltV1alpha1 *tiltv1alpha1.TiltV1alpha1Client
 }
 
-// CoreV1alpha1 retrieves the CoreV1alpha1Client
-func (c *Clientset) CoreV1alpha1() corev1alpha1.CoreV1alpha1Interface {
-	return c.coreV1alpha1
+// TiltV1alpha1 retrieves the TiltV1alpha1Client
+func (c *Clientset) TiltV1alpha1() tiltv1alpha1.TiltV1alpha1Interface {
+	return c.tiltV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -66,7 +66,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.coreV1alpha1, err = corev1alpha1.NewForConfig(&configShallowCopy)
+	cs.tiltV1alpha1, err = tiltv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.coreV1alpha1 = corev1alpha1.NewForConfigOrDie(c)
+	cs.tiltV1alpha1 = tiltv1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -91,7 +91,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.coreV1alpha1 = corev1alpha1.New(c)
+	cs.tiltV1alpha1 = tiltv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

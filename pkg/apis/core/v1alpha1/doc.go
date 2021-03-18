@@ -22,5 +22,5 @@ limitations under the License.
 // +k8s:deepcopy-gen=package,register
 // +k8s:conversion-gen=github.com/tilt-dev/tilt/pkg/apis/core
 // +k8s:defaulter-gen=TypeMeta
-// +groupName=core.tilt.dev
+// +groupName=tilt.dev
 package v1alpha1 // import "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
