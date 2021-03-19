@@ -18,6 +18,10 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+if [[ "$CODEGEN_USER" != "" ]]; then
+    useradd "$CODEGEN_USER"
+fi
+
 GOPATH=$(go env GOPATH)
 export GOPATH
 
@@ -45,3 +49,9 @@ bash "${CODEGEN_PKG}/generate-internal-groups.sh" "deepcopy,defaulter,openapi" \
   "core:v1alpha1" \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
   --go-header-file "${SCRIPT_ROOT}/hack/boilerplate.go.txt"
+
+if [[ "$CODEGEN_USER" != "" ]]; then
+    chown "$CODEGEN_USER" -R pkg/clientset
+    chown "$CODEGEN_USER" -R pkg/informers
+    chown "$CODEGEN_USER" -R pkg/listers
+fi
