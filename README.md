@@ -69,11 +69,15 @@ status of running services, errors, logs, and more.
 
 ## Community & Contributions
 
-**Questions and feedback:** Join [the Kubernetes slack](http://slack.k8s.io) and
+**Questions:** Join [the Kubernetes slack](http://slack.k8s.io) and
  find us in the [#tilt](https://kubernetes.slack.com/messages/CESBL84MV/)
- channel. Or [file an issue](https://github.com/tilt-dev/tilt/issues). For code snippets of Tiltfile functionality shared by the Tilt community, check out [Tilt Extensions](https://github.com/tilt-dev/tilt-extensions).
+ channel. Or [file an issue](https://github.com/tilt-dev/tilt/issues). For code snippets of Tiltfile functionality shared by the Tilt community, check out [Tilt Extensions](https://github.com/tilt-dev/tilt-extensions). 
+ 
+**Roadmap:** Help us figure out what to prioritize. Sign up for [Tilt office
+hours](https://calendly.com/han-yu/user-research). We'll discuss your experience
+with Tilt and ask for reactions on visuals or prototypes we're working on.
 
-**Contribute:** Check out our [guidelines](CONTRIBUTING.md) to contribute to Tilt's source code. To extend the capabilities of Tilt via new Tiltfile functionality, read more about [Extensions](https://docs.tilt.dev/extensions.html). 
+**Contribute:** Check out our [guidelines](CONTRIBUTING.md) to contribute to Tilt's source code. To extend the capabilities of Tilt via new Tiltfile functionality, read more about [Extensions](https://docs.tilt.dev/extensions.html).
 
 **Follow along:** [@tilt_dev](https://twitter.com/tilt_dev) on Twitter. Updates
 and announcements on the [Tilt blog](https://blog.tilt.dev).
