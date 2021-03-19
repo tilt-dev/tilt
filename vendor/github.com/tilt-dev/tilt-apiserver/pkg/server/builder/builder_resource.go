@@ -10,16 +10,17 @@ import (
 // Registers a request handler for the resource that stores it on the file system.
 func (a *Server) WithResourceFileStorage(obj resource.Object, path string) *Server {
 	fs := filepath.RealFS{}
+	ws := filepath.NewWatchSet()
 	strategy := rest.DefaultStrategy{
 		Object:      obj,
 		ObjectTyper: a.scheme,
 	}
-	a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, fs, strategy))
+	a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, fs, ws, strategy))
 
 	// automatically create status subresource if the object implements the status interface
 	if _, ok := obj.(resource.ObjectWithStatusSubResource); ok {
 		a.WithSubResourceAndHandler(obj, "status",
-			filepath.NewJSONFilepathStorageProvider(obj, path, fs, rest.StatusSubResourceStrategy{Strategy: strategy}))
+			filepath.NewJSONFilepathStorageProvider(obj, path, fs, ws, rest.StatusSubResourceStrategy{Strategy: strategy}))
 	}
 	return a
 }
@@ -29,16 +30,17 @@ func (a *Server) WithResourceMemoryStorage(obj resource.Object, path string) *Se
 	if a.memoryFS == nil {
 		a.memoryFS = filepath.NewMemoryFS()
 	}
+	ws := filepath.NewWatchSet()
 	strategy := rest.DefaultStrategy{
 		Object:      obj,
 		ObjectTyper: a.scheme,
 	}
-	a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS, strategy))
+	a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS, ws, strategy))
 
 	// automatically create status subresource if the object implements the status interface
 	if _, ok := obj.(resource.ObjectWithStatusSubResource); ok {
 		a.WithSubResourceAndHandler(obj, "status",
-			filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS, rest.StatusSubResourceStrategy{Strategy: strategy}))
+			filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS, ws, rest.StatusSubResourceStrategy{Strategy: strategy}))
 	}
 	return a
 }

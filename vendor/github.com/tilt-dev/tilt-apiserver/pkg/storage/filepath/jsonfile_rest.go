@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -36,6 +35,7 @@ var _ rest.Storage = &filepathREST{}
 // NewFilepathREST instantiates a new REST storage.
 func NewFilepathREST(
 	fs FS,
+	ws *WatchSet,
 	strategy Strategy,
 	groupResource schema.GroupResource,
 	codec runtime.Codec,
@@ -55,10 +55,10 @@ func NewFilepathREST(
 		objRootPath:    objRoot,
 		newFunc:        newFunc,
 		newListFunc:    newListFunc,
-		watchers:       make(map[int]*jsonWatch, 10),
 		strategy:       strategy,
 		groupResource:  groupResource,
 		fs:             fs,
+		watchSet:       ws,
 	}
 	return rest
 }
@@ -68,24 +68,18 @@ type filepathREST struct {
 	codec       runtime.Codec
 	objRootPath string
 
-	muWatchers sync.RWMutex
-	watchers   map[int]*jsonWatch
-
 	newFunc     func() runtime.Object
 	newListFunc func() runtime.Object
 
 	strategy       Strategy
 	groupResource  schema.GroupResource
 	fs             FS
+	watchSet       *WatchSet
 	currentVersion int64
 }
 
 func (f *filepathREST) notifyWatchers(ev watch.Event) {
-	f.muWatchers.RLock()
-	for _, w := range f.watchers {
-		w.ch <- ev
-	}
-	f.muWatchers.RUnlock()
+	f.watchSet.notifyWatchers(ev)
 }
 
 func (f *filepathREST) New() runtime.Object {
@@ -391,11 +385,8 @@ func getListPrt(listObj runtime.Object) (reflect.Value, error) {
 }
 
 func (f *filepathREST) Watch(ctx context.Context, options *metainternalversion.ListOptions) (watch.Interface, error) {
-	jw := &jsonWatch{
-		id: len(f.watchers),
-		f:  f,
-		ch: make(chan watch.Event, 10),
-	}
+	jw := f.watchSet.newWatch()
+
 	// On initial watch, send all the existing objects
 	list, err := f.List(ctx, options)
 	if err != nil {
@@ -413,25 +404,7 @@ func (f *filepathREST) Watch(ctx context.Context, options *metainternalversion.L
 		}
 	}
 
-	f.muWatchers.Lock()
-	f.watchers[jw.id] = jw
-	f.muWatchers.Unlock()
+	f.watchSet.start(jw)
 
 	return jw, nil
-}
-
-type jsonWatch struct {
-	f  *filepathREST
-	id int
-	ch chan watch.Event
-}
-
-func (w *jsonWatch) Stop() {
-	w.f.muWatchers.Lock()
-	delete(w.f.watchers, w.id)
-	w.f.muWatchers.Unlock()
-}
-
-func (w *jsonWatch) ResultChan() <-chan watch.Event {
-	return w.ch
 }
