@@ -50,7 +50,7 @@ func (m *RestartManager) handleReconcileRequest(cmdName types.NamespacedName, cm
 		return
 	}
 
-	for _, fw := range cmd.Spec.RestartOn.FileWatches {
+	for _, fw := range restartOn.FileWatches {
 		fwn := types.NamespacedName{Name: fw}
 
 		// Record in the filewatch -> cmd map
