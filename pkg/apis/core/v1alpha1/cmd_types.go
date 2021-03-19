@@ -84,7 +84,7 @@ type CmdSpec struct {
 	// Restarts can happen even if the command is already done.
 	//
 	// Logs of the currently process after the restart are discarded.
-	RestartOn *RestartOnSpec `json:"on,omitempty"`
+	RestartOn *RestartOnSpec `json:"restartOn,omitempty"`
 }
 
 var _ resource.Object = &Cmd{}

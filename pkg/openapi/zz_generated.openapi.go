@@ -251,7 +251,7 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe"),
 						},
 					},
-					"on": {
+					"restartOn": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Indicates objects that can trigger a restart of this command.\n\nRestarts can happen even if the command is already done.\n\nLogs of the currently process after the restart are discarded.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
@@ -624,14 +624,14 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"monitorStartTime": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MonitorStartTime is the timestamp of when filesystem monitor was started.",
+							Description: "MonitorStartTime is the timestamp of when filesystem monitor was started. It is zero if the monitor has not been started yet.",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"lastEventTime": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LastEventTime is the timestamp of the most recent file event. It is nil if no events have been seen yet.\n\nIf the specifics of which files changed are not important, this field can be used as a watermark without needing to inspect FileEvents.",
+							Description: "LastEventTime is the timestamp of the most recent file event. It is zero if no events have been seen yet.\n\nIf the specifics of which files changed are not important, this field can be used as a watermark without needing to inspect FileEvents.",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
