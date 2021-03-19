@@ -28,6 +28,7 @@ require (
 	github.com/gdamore/tcell v1.1.3
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-errors/errors v1.1.1 // indirect
+	github.com/go-logr/logr v0.3.0
 	github.com/go-openapi/spec v0.20.1
 	github.com/go-openapi/swag v0.19.13 // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect

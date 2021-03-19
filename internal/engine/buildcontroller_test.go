@@ -454,6 +454,8 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
+
+	t.Fail()
 }
 
 func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {

@@ -10,11 +10,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type TiltServerControllerManager struct {
@@ -51,9 +49,7 @@ func (m *TiltServerControllerManager) GetClient() ctrlclient.Client {
 func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore) error {
 	ctx, m.cancel = context.WithCancel(ctx)
 
-	// TODO(milas): we should provide a logr.Logger facade for our logger rather than using zap
-	w := logger.Get(ctx).Writer(logger.DebugLvl)
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(w)))
+	ctrl.SetLogger(newLogrFacade(store.NewLogActionLogger(ctx, st.Dispatch), "tilt"))
 
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{
 		Scheme: m.scheme,
