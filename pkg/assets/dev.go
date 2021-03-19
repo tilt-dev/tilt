@@ -143,7 +143,7 @@ func (s *devServer) start(ctx context.Context, stdout, stderr io.Writer) (*exec.
 
 func (s *devServer) Serve(ctx context.Context) error {
 	// webpack binds to 0.0.0.0
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", int(s.port)))
+	l, err := net.Listen("tcp4", fmt.Sprintf(":%d", int(s.port)))
 	if err != nil {
 		return errors.Wrapf(err, "Cannot start Tilt dev webpack server. "+
 			"Maybe another process is already running on port %d? "+
