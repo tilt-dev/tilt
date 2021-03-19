@@ -21,3 +21,5 @@ package v1alpha1
 type CmdExpansion interface{}
 
 type FileWatchExpansion interface{}
+
+type PodLogStreamExpansion interface{}

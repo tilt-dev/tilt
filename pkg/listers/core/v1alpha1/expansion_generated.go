@@ -25,3 +25,7 @@ type CmdListerExpansion interface{}
 // FileWatchListerExpansion allows custom methods to be added to
 // FileWatchLister.
 type FileWatchListerExpansion interface{}
+
+// PodLogStreamListerExpansion allows custom methods to be added to
+// PodLogStreamLister.
+type PodLogStreamListerExpansion interface{}
