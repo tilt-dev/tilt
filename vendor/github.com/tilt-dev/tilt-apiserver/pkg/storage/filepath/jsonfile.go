@@ -26,14 +26,12 @@ import (
 //                      --- resource2
 //                      |
 //                      --- resource3
+// Args:
 //
-// An example of storing example resource to local filepath will be:
-//
-//     builder.APIServer.
-//       WithResourceAndHandler(&v1alpha1.ExampleResource{},
-//             jsonfile.NewJsonFileStorageProvider(&v1alpha1.ExampleResource{}, /*the root file-path*/ "data")).
-//       Build()
-func NewJSONFilepathStorageProvider(obj resource.Object, rootPath string, fs FS, strategy Strategy) builderrest.ResourceHandlerProvider {
+// fs: An abstraction over the filesystem, so that the JSON can be stored in memory or on-disk.
+// watchSet: Storage for watchers to be notified of this resource type. Each type should have its own
+//    WatchSet, but subresources (like the status subresource) should share a WatchSet with their parent.
+func NewJSONFilepathStorageProvider(obj resource.Object, rootPath string, fs FS, watchSet *WatchSet, strategy Strategy) builderrest.ResourceHandlerProvider {
 	return func(scheme *runtime.Scheme, getter generic.RESTOptionsGetter) (rest.Storage, error) {
 		gr := obj.GetGroupVersionResource().GroupResource()
 		opt, err := getter.GetRESTOptions(gr)
@@ -43,6 +41,7 @@ func NewJSONFilepathStorageProvider(obj resource.Object, rootPath string, fs FS,
 		codec := opt.StorageConfig.Codec
 		return NewFilepathREST(
 			fs,
+			watchSet,
 			strategy,
 			gr,
 			codec,
