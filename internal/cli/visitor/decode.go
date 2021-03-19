@@ -1,8 +1,9 @@
 package visitor
 
 import (
-	"bufio"
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/pkg/errors"
@@ -40,32 +41,42 @@ func Decode(scheme *runtime.Scheme, v Interface) ([]runtime.Object, error) {
 	return result, nil
 }
 
+// Parses a stream of Tilt configuration objects.
+//
+// In kubectl, the CLI has to get the type information from the server in order
+// to perform validation. In Tilt (today), we don't have to worry about version skew,
+// so we can more aggressively validate up-front for misspelled fields
+// and malformed YAML. So this parser is a bit stricter than the normal kubectl code.
 func ParseStream(scheme *runtime.Scheme, r io.Reader) ([]runtime.Object, error) {
-	var current bytes.Buffer
-	reader := io.TeeReader(bufio.NewReader(r), &current)
-
-	objDecoder := yaml.NewYAMLOrJSONDecoder(&current, 4096)
-	typeDecoder := yaml.NewYAMLOrJSONDecoder(reader, 4096)
+	decoder := yaml.NewYAMLOrJSONDecoder(r, 4096)
 	result := []runtime.Object{}
 	for {
-		tm := metav1.TypeMeta{}
-		if err := typeDecoder.Decode(&tm); err != nil {
+		msg := json.RawMessage{} // First convert into json bytes
+		if err := decoder.Decode(&msg); err != nil {
 			if err == io.EOF {
 				break
 			}
 			return nil, err
 		}
 
+		// Then decode into the type.
+		tm := metav1.TypeMeta{}
+		err := json.Unmarshal([]byte(msg), &tm)
+		if err != nil {
+			return nil, err
+		}
+
+		// Turn the type name into a native go object.
 		obj, err := scheme.New(tm.GroupVersionKind())
 		if err != nil {
 			return nil, err
 		}
 
-		if err := objDecoder.Decode(obj); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, errors.Wrapf(err, "decoding %s", tm)
+		// Then decode the object into its native go object
+		objDecoder := json.NewDecoder(bytes.NewBuffer([]byte(msg)))
+		objDecoder.DisallowUnknownFields()
+		if err := objDecoder.Decode(&obj); err != nil {
+			return nil, fmt.Errorf("decoding %s: %v\nOriginal object:\n%s", tm, err, string([]byte(msg)))
 		}
 
 		result = append(result, obj)
