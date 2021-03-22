@@ -28,6 +28,8 @@ type Interface interface {
 	Cmds() CmdInformer
 	// FileWatches returns a FileWatchInformer.
 	FileWatches() FileWatchInformer
+	// PodLogStreams returns a PodLogStreamInformer.
+	PodLogStreams() PodLogStreamInformer
 }
 
 type version struct {
@@ -49,4 +51,9 @@ func (v *version) Cmds() CmdInformer {
 // FileWatches returns a FileWatchInformer.
 func (v *version) FileWatches() FileWatchInformer {
 	return &fileWatchInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// PodLogStreams returns a PodLogStreamInformer.
+func (v *version) PodLogStreams() PodLogStreamInformer {
+	return &podLogStreamInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

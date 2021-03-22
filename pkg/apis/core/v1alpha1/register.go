@@ -47,6 +47,7 @@ func AllResourceObjects() []resource.Object {
 	return []resource.Object{
 		&FileWatch{},
 		&Cmd{},
+		&PodLogStream{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
 	}
@@ -55,6 +56,7 @@ func AllResourceLists() []runtime.Object {
 	return []runtime.Object{
 		&FileWatchList{},
 		&CmdList{},
+		&PodLogStreamList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.
 	}

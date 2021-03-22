@@ -29,6 +29,7 @@ type TiltV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	CmdsGetter
 	FileWatchesGetter
+	PodLogStreamsGetter
 }
 
 // TiltV1alpha1Client is used to interact with features provided by the tilt.dev group.
@@ -42,6 +43,10 @@ func (c *TiltV1alpha1Client) Cmds() CmdInterface {
 
 func (c *TiltV1alpha1Client) FileWatches() FileWatchInterface {
 	return newFileWatches(c)
+}
+
+func (c *TiltV1alpha1Client) PodLogStreams() PodLogStreamInterface {
+	return newPodLogStreams(c)
 }
 
 // NewForConfig creates a new TiltV1alpha1Client for the given config.
