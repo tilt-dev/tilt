@@ -58,14 +58,19 @@ func (c *ServerController) OnChange(ctx context.Context, st store.RStore, summar
 		return
 	}
 
-	servers, owned := c.determineServers(ctx, st)
+	servers, owned, orphans := c.determineServers(ctx, st)
 	for i, server := range servers {
 		c.reconcile(ctx, server, owned[i], st)
+	}
+
+	// Garbage collect commands where the owner has been deleted.
+	for _, orphan := range orphans {
+		c.deleteCmd(ctx, st, orphan)
 	}
 }
 
 // Returns a list of server objects and the Cmd they own (if any).
-func (c *ServerController) determineServers(ctx context.Context, st store.RStore) ([]CmdServer, []*Cmd) {
+func (c *ServerController) determineServers(ctx context.Context, st store.RStore) (servers []CmdServer, owned, orphaned []*Cmd) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -82,9 +87,6 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 
 		ownedCmds[ownerName] = cmd
 	}
-
-	var r []CmdServer
-	var cmds []*Cmd
 
 	// Infer all the CmdServer objects from the legacy EngineState
 	for _, mt := range state.Targets() {
@@ -113,19 +115,38 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 			},
 		}
 
-		cmd, ok := ownedCmds[mt.Manifest.Name.String()]
+		mn := mt.Manifest.Name.String()
+		cmd, ok := ownedCmds[mn]
 		if ok {
 			cmdServer.Status = CmdServerStatus{
 				CmdName:   cmd.Name,
 				CmdStatus: cmd.Status,
 			}
+			delete(ownedCmds, mn)
 		}
 
-		r = append(r, cmdServer)
-		cmds = append(cmds, cmd)
+		servers = append(servers, cmdServer)
+		owned = append(owned, cmd)
 	}
 
-	return r, cmds
+	for _, orphan := range ownedCmds {
+		orphaned = append(orphaned, orphan)
+	}
+
+	return servers, owned, orphaned
+}
+
+func (c *ServerController) deleteCmd(ctx context.Context, st store.RStore, cmd *Cmd) {
+	err := c.client.Delete(ctx, cmd)
+
+	// We want our reconciler to be idempotent, so it's OK
+	// if it deletes the same resource multiple times
+	if err != nil && !apierrors.IsNotFound(err) {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		return
+	}
+
+	st.Dispatch(CmdDeleteAction{Name: cmd.Name})
 }
 
 func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owned *Cmd, st store.RStore) {
@@ -164,14 +185,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 	if owned != nil && owned.Status.Terminated == nil {
 		if !c.deletingCmds[name] {
 			c.deletingCmds[name] = true
-
-			err := c.client.Delete(ctx, owned)
-			if err != nil && !apierrors.IsNotFound(err) {
-				st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
-				return
-			}
-
-			st.Dispatch(CmdDeleteAction{Name: server.Status.CmdName})
+			c.deleteCmd(ctx, st, owned)
 		}
 		return
 	}
