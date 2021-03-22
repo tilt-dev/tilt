@@ -18,7 +18,7 @@ import LogStore, {
 } from "./LogStore"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
 import { RafContext, useRaf } from "./raf"
-import { Color, SizeUnit } from "./style-helpers"
+import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { LogLevel, LogLine } from "./types"
 
 // The number of lines to display before an error.
@@ -41,6 +41,7 @@ let LogPaneRoot = styled.section`
   height: 100%;
   overflow-y: auto;
   box-sizing: border-box;
+  font-size: ${FontSize.smallest};
 `
 
 const blink = keyframes`
@@ -60,6 +61,7 @@ let LogEnd = styled.div`
   animation-timing-function: ease;
   padding-top: ${SizeUnit(0.25)};
   padding-left: ${SizeUnit(0.625)};
+  font-size: var(--log-font-scale);
 `
 
 let anser = new Anser()

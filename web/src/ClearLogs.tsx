@@ -12,7 +12,7 @@ import { ResourceName } from "./types"
 
 const ClearLogsButton = styled.button`
   ${mixinResetButtonStyle}
-  margin-left: auto;
+  margin-left: 1rem;
   font-size: ${FontSize.small};
   color: ${Color.white};
   transition: color ${AnimDuration.default} ease;

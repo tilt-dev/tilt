@@ -11,8 +11,8 @@ import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
-import ClearLogs from "./ClearLogs"
 import { displayURL } from "./links"
+import LogActions from "./LogActions"
 import { FilterLevel, FilterSet, FilterSource } from "./logfilters"
 import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
@@ -375,6 +375,7 @@ export let ActionBarTopRow = styled.div`
 
 let ActionBarBottomRow = styled.div`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   border-bottom: 1px solid ${Color.grayLighter};
   padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
@@ -483,7 +484,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
           filterSet={props.filterSet}
           alerts={alerts}
         />
-        {isSnapshot || <ClearLogs resourceName={resourceName} />}
+        <LogActions resourceName={resourceName} isSnapshot={isSnapshot} />
       </ActionBarBottomRow>
     </ActionBarRoot>
   )

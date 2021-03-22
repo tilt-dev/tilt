@@ -2,10 +2,18 @@
 // (styled-components wraps each React component with another, adding non-trivial overhead.)
 @import "constants";
 
+:root {
+  // to enable easy programmatic control of font scaling, the LogPaneRoot defines
+  // the absolute font size, and then scaling is controlled via a CSS variable, which
+  // is attached at the root so that it can be trivially manipulated via JS
+  // WARNING: this is relied upon by LogsFontSize component!
+  --log-font-scale: 100%;
+}
+
 .LogPaneLine {
   display: flex;
   position: relative;
-  font-size: $font-size-smallest;  
+  font-size: var(--log-font-scale);
 
   &.is-highlighted {
     background-color: rgba($color-blue, $translucent);
