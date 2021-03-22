@@ -104,7 +104,7 @@ jobs:
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
           version: 19.03.12
-      - run: with-kind-cluster.sh make install test-extensions
+      - run: ctlptl create cluster kind --registry=ctlptl-registry && make install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
 
