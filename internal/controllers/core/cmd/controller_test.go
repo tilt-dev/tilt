@@ -269,6 +269,25 @@ func TestTrigger(t *testing.T) {
 		f.c.restartManager.enqueue(fw))
 }
 
+func TestDisposeOrphans(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	t1 := time.Unix(1, 0)
+	f.resource("foo", "true", ".", t1)
+	f.step()
+	f.assertCmdMatches("foo-serve-1", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+
+	f.st.WithState(func(es *store.EngineState) {
+		es.RemoveManifestTarget("foo")
+	})
+	f.step()
+	f.assertCmdCount(0)
+	f.fe.RequireNoKnownProcess(t, "true")
+}
+
 type testStore struct {
 	*store.TestingStore
 	out     io.Writer
