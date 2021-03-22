@@ -43,7 +43,6 @@ type fixture struct {
 	tilt          *TiltDriver
 	activeTiltUp  *TiltUpResponse
 	tearingDown   bool
-	tiltArgs      []string
 }
 
 func newFixture(t *testing.T, dir string) *fixture {
@@ -53,7 +52,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 		t.Fatal(err)
 	}
 
-	client := NewTiltDriver()
+	client := NewTiltDriver(t, TiltDriverUseRandomFreePort)
 	client.Environ["TILT_DISABLE_ANALYTICS"] = "true"
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -149,29 +148,6 @@ func (f *fixture) LogWriter() io.Writer {
 	return io.MultiWriter(f.logs, os.Stdout)
 }
 
-func (f *fixture) TiltUp(name string) {
-	args := []string{"--watch=false"}
-	if name != "" {
-		args = append(args, name)
-	}
-	response, err := f.tilt.Up(args, f.LogWriter())
-	if err != nil {
-		f.t.Fatalf("TiltUp %s: %v", name, err)
-	}
-	select {
-	case <-response.Done():
-		err := response.Err()
-		if err != nil {
-			f.t.Fatalf("TiltUp %s: %v", name, err)
-		}
-	case <-f.ctx.Done():
-		err := f.ctx.Err()
-		if err != nil {
-			f.t.Fatalf("TiltUp %s: %v", name, err)
-		}
-	}
-}
-
 func (f *fixture) TiltCI(args ...string) {
 	err := f.tilt.CI(f.LogWriter(), args...)
 	if err != nil {
@@ -179,18 +155,10 @@ func (f *fixture) TiltCI(args ...string) {
 	}
 }
 
-func (f *fixture) TiltWatch() {
-	response, err := f.tilt.Up(f.tiltArgs, f.LogWriter())
+func (f *fixture) TiltUp(args ...string) {
+	response, err := f.tilt.Up(f.LogWriter(), args...)
 	if err != nil {
-		f.t.Fatalf("TiltWatch: %v", err)
-	}
-	f.activeTiltUp = response
-}
-
-func (f *fixture) TiltWatchExec() {
-	response, err := f.tilt.Up(append([]string{"--update-mode=exec"}, f.tiltArgs...), f.LogWriter())
-	if err != nil {
-		f.t.Fatalf("TiltWatchExec: %v", err)
+		f.t.Fatalf("TiltUp: %v", err)
 	}
 	f.activeTiltUp = response
 }

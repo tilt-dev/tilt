@@ -248,8 +248,7 @@ func (f *processExecFixture) start(cmd string) {
 }
 
 func (f *processExecFixture) assertCmdSucceeds() {
-	f.waitForStatus(Error)
-	f.assertLogContains("exited with exit code 0")
+	f.waitForStatus(Done)
 }
 
 func (f *processExecFixture) waitForStatus(expectedStatus status) {

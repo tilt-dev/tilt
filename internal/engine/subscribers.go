@@ -22,6 +22,27 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 )
 
+// Subscribers that only read from the new Tilt API,
+// and run the API server.
+func ProvideSubscribersAPIOnly(
+	hudsc *server.HeadsUpServerController,
+	tscm *controllers.TiltServerControllerManager,
+	cb *controllers.ControllerBuilder,
+	ts *hud.TerminalStream,
+) []store.Subscriber {
+	return []store.Subscriber{
+		// The API server must go before other subscribers,
+		// so that it can run its boot sequence first.
+		hudsc,
+
+		// The controller manager must go after the API server,
+		// so that it can connect to it and make resources available.
+		tscm,
+		cb,
+		ts,
+	}
+}
+
 func ProvideSubscribers(
 	hudsc *server.HeadsUpServerController,
 	tscm *controllers.TiltServerControllerManager,
@@ -33,7 +54,7 @@ func ProvideSubscribers(
 	sw *k8swatch.ServiceWatcher,
 	plm *runtimelog.PodLogManager,
 	pfc *portforward.Controller,
-	fwm *fswatch.WatchManager,
+	fsms *fswatch.ManifestSubscriber,
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	dcw *dcwatch.EventWatcher,
@@ -44,29 +65,22 @@ func ProvideSubscribers(
 	tcum *cloud.CloudStatusManager,
 	dp *dockerprune.DockerPruner,
 	tc *telemetry.Controller,
-	lc *local.Controller,
+	lsc *local.ServerController,
 	podm *k8srollout.PodMonitor,
 	ec *exit.Controller,
 	mc *metrics.Controller,
 	mmc *metrics.ModeController,
 ) []store.Subscriber {
-	return []store.Subscriber{
-		// The API server must go before other subscribers,
-		// so that it can run its boot sequence first.
-		hudsc,
-		// The controller manager must go after the API server,
-		// so that it can connect to it and make resources available.
-		tscm,
-		cb,
+	apiSubscribers := ProvideSubscribersAPIOnly(hudsc, tscm, cb, ts)
 
+	legacySubscribers := []store.Subscriber{
 		hud,
-		ts,
 		tp,
 		pw,
 		sw,
 		plm,
 		pfc,
-		fwm,
+		fsms,
 		bc,
 		cc,
 		dcw,
@@ -77,10 +91,11 @@ func ProvideSubscribers(
 		tcum,
 		dp,
 		tc,
-		lc,
+		lsc,
 		podm,
 		ec,
 		mc,
 		mmc,
 	}
+	return append(apiSubscribers, legacySubscribers...)
 }

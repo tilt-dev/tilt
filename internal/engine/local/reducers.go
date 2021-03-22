@@ -9,13 +9,24 @@ import (
 )
 
 // When the Cmd controller updates a command, check to see
-// what parts of the EngineState care about that command.
 //
 // If the local serve cmd is watching the cmd, update
 // the local runtime state to match the cmd status.
-func HandleCmdUpdateAction(state *store.EngineState, action CmdUpdateAction) {
-	cmd := action.Cmd
-	mn := model.ManifestName(cmd.Labels[v1alpha1.LabelManifest])
+func HandleCmdUpdateStatusAction(state *store.EngineState, action CmdUpdateStatusAction) {
+	cmd, ok := state.Cmds[action.Cmd.Name]
+	if !ok {
+		return
+	}
+	cmd = cmd.DeepCopy()
+	cmd.Status = action.Cmd.Status
+	state.Cmds[action.Cmd.Name] = cmd
+	updateLocalRuntimeStatus(state, cmd)
+}
+
+// If the local serve cmd is watching the cmd, update
+// the local runtime state to match the cmd status.
+func updateLocalRuntimeStatus(state *store.EngineState, cmd *v1alpha1.Cmd) {
+	mn := model.ManifestName(cmd.Annotations[v1alpha1.AnnotationManifest])
 	mt, ok := state.ManifestTargets[mn]
 	if !ok {
 		delete(state.Cmds, cmd.Name)
@@ -25,11 +36,10 @@ func HandleCmdUpdateAction(state *store.EngineState, action CmdUpdateAction) {
 	ms := mt.State
 	lrs := ms.LocalRuntimeState()
 	if lrs.CmdName != cmd.Name {
-		delete(state.Cmds, cmd.Name)
 		return
 	}
 
-	state.Cmds[action.Cmd.Name] = cmd
+	state.Cmds[cmd.Name] = cmd
 
 	spec := cmd.Spec
 	status := cmd.Status
@@ -69,7 +79,7 @@ func HandleCmdUpdateAction(state *store.EngineState, action CmdUpdateAction) {
 // that command to the Local runtime state.
 func HandleCmdCreateAction(state *store.EngineState, action CmdCreateAction) {
 	cmd := action.Cmd
-	mn := model.ManifestName(cmd.Labels[v1alpha1.LabelManifest])
+	mn := model.ManifestName(cmd.Annotations[v1alpha1.AnnotationManifest])
 	mt, ok := state.ManifestTargets[mn]
 	if !ok {
 		return
@@ -77,12 +87,13 @@ func HandleCmdCreateAction(state *store.EngineState, action CmdCreateAction) {
 
 	ms := mt.State
 	lrs := ms.LocalRuntimeState()
-	if lrs.CmdName != "" {
-		delete(state.Cmds, lrs.CmdName)
-	}
-
 	lrs.CmdName = cmd.Name
 	ms.RuntimeState = lrs
 
-	HandleCmdUpdateAction(state, CmdUpdateAction{Cmd: cmd})
+	updateLocalRuntimeStatus(state, cmd)
+}
+
+// Mark the command for deletion.
+func HandleCmdDeleteAction(state *store.EngineState, action CmdDeleteAction) {
+	delete(state.Cmds, action.Name)
 }

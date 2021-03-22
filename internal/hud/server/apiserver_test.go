@@ -107,7 +107,7 @@ func TestAPIServerTypedClient(t *testing.T) {
 		{
 			Name: "FileWatch",
 			Create: func(ctx context.Context, name string, annotations map[string]string) error {
-				_, err := clientset.CoreV1alpha1().FileWatches().Create(ctx, &v1alpha1.FileWatch{
+				_, err := clientset.TiltV1alpha1().FileWatches().Create(ctx, &v1alpha1.FileWatch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        name,
 						Annotations: annotations,
@@ -120,10 +120,10 @@ func TestAPIServerTypedClient(t *testing.T) {
 				return err
 			},
 			Get: func(ctx context.Context, name string) (resource.Object, error) {
-				return clientset.CoreV1alpha1().FileWatches().Get(ctx, name, metav1.GetOptions{})
+				return clientset.TiltV1alpha1().FileWatches().Get(ctx, name, metav1.GetOptions{})
 			},
 			Watch: func(ctx context.Context) (watch.Interface, error) {
-				return clientset.CoreV1alpha1().FileWatches().Watch(ctx, metav1.ListOptions{})
+				return clientset.TiltV1alpha1().FileWatches().Watch(ctx, metav1.ListOptions{})
 			},
 		},
 	}

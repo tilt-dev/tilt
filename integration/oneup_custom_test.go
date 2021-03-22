@@ -12,7 +12,7 @@ func TestOneUpCustom(t *testing.T) {
 	f := newK8sFixture(t, "oneup_custom")
 	defer f.TearDown()
 
-	f.TiltUp("oneup-custom")
+	f.TiltCI("oneup-custom")
 
 	// ForwardPort will fail if all the pods are not ready.
 	//

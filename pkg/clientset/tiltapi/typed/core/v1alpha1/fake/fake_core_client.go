@@ -25,21 +25,21 @@ import (
 	v1alpha1 "github.com/tilt-dev/tilt/pkg/clientset/tiltapi/typed/core/v1alpha1"
 )
 
-type FakeCoreV1alpha1 struct {
+type FakeTiltV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCoreV1alpha1) Cmds() v1alpha1.CmdInterface {
+func (c *FakeTiltV1alpha1) Cmds() v1alpha1.CmdInterface {
 	return &FakeCmds{c}
 }
 
-func (c *FakeCoreV1alpha1) FileWatches() v1alpha1.FileWatchInterface {
+func (c *FakeTiltV1alpha1) FileWatches() v1alpha1.FileWatchInterface {
 	return &FakeFileWatches{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeCoreV1alpha1) RESTClient() rest.Interface {
+func (c *FakeTiltV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

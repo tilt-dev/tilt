@@ -50,17 +50,17 @@ endif
 test: test-go test-js
 
 # skip some tests that are slow and not always relevant
-# TODO(matt) skipdockercomposetests only skips the tiltfile DC tests at the moment
+# TODO(matt) skiplargetiltfiletests only skips the tiltfile DC+Helm tests at the moment
 # we might also want to skip the ones in engine
 shorttest:
-	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
+	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s ./...
 
 shorttestsum:
 ifneq ($(CIRCLECI),true)
-	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s ./...
+	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s ./...
 else
 	mkdir -p test-results
-	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skipdockercomposetests -timeout 60s
+	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 60s
 endif
 
 integration:
@@ -68,7 +68,7 @@ ifneq ($(CIRCLECI),true)
 		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
 else
 		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
+		gotestsum --format dots --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
 endif
 
 # Run the integration tests on kind
@@ -76,6 +76,10 @@ integration-kind:
 	KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh
 	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration -count 1
 	kind delete cluster --name=integration
+
+# Run the extension integration tests against the current kubecontext
+test-extensions:
+	scripts/test-extensions.sh
 
 dev-js:
 	cd web && yarn install && yarn run start

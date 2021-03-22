@@ -91,19 +91,19 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan stat
 	defer close(doneCh)
 	defer close(statusCh)
 
-	_, _ = fmt.Fprintf(w, "Starting cmd %v", cmd)
+	_, _ = fmt.Fprintf(w, "Starting cmd %v\n", cmd)
 
 	statusCh <- statusAndMetadata{status: Running}
 
 	select {
 	case <-ctx.Done():
-		_, _ = fmt.Fprintf(w, "cmd %v canceled", cmd)
+		_, _ = fmt.Fprintf(w, "cmd %v canceled\n", cmd)
 		// this was cleaned up by the controller, so it's not an error
-		statusCh <- statusAndMetadata{status: Done}
+		statusCh <- statusAndMetadata{status: Done, exitCode: 0}
 	case exitCode := <-exitCh:
-		_, _ = fmt.Fprintf(w, "cmd %v exited with code %d", cmd, exitCode)
+		_, _ = fmt.Fprintf(w, "cmd %v exited with code %d\n", cmd, exitCode)
 		// even an exit code of 0 is an error, because services aren't supposed to exit!
-		statusCh <- statusAndMetadata{status: Error}
+		statusCh <- statusAndMetadata{status: Error, exitCode: exitCode}
 	}
 }
 
@@ -144,7 +144,7 @@ func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, s
 func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) {
 	defer close(statusCh)
 
-	logger.Get(ctx).Infof("Running serve cmd: %s", cmd.String())
+	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
 	c := localexec.ExecCmd(cmd, logger.Get(ctx))
 
 	c.SysProcAttr = &syscall.SysProcAttr{}
@@ -155,11 +155,17 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	err := c.Start()
 	if err != nil {
 		logger.Get(ctx).Errorf("%s failed to start: %v", cmd.String(), err)
-		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
+		statusCh <- statusAndMetadata{
+			status:   Error,
+			spanID:   spanID,
+			exitCode: 1,
+			reason:   fmt.Sprintf("failed to start: %v", err),
+		}
 		return
 	}
 
-	statusCh <- statusAndMetadata{status: Running, pid: c.Process.Pid, spanID: spanID}
+	pid := c.Process.Pid
+	statusCh <- statusAndMetadata{status: Running, pid: pid, spanID: spanID}
 
 	// This is to prevent this goroutine from blocking, since we know there's only going to be one result
 	processExitCh := make(chan error, 1)
@@ -170,17 +176,26 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 
 	select {
 	case err := <-processExitCh:
+		exitCode := 0
+		reason := ""
+		status := Done
 		if err == nil {
-			logger.Get(ctx).Errorf("%s exited with exit code 0", cmd.String())
+			// Use defaults
 		} else if ee, ok := err.(*exec.ExitError); ok {
+			status = Error
+			exitCode = ee.ExitCode()
+			reason = err.Error()
 			logger.Get(ctx).Errorf("%s exited with exit code %d", cmd.String(), ee.ExitCode())
 		} else {
+			status = Error
+			exitCode = 1
+			reason = err.Error()
 			logger.Get(ctx).Errorf("error execing %s: %v", cmd.String(), err)
 		}
-		statusCh <- statusAndMetadata{status: Error, spanID: spanID}
+		statusCh <- statusAndMetadata{status: status, pid: pid, spanID: spanID, exitCode: exitCode, reason: reason}
 	case <-ctx.Done():
 		e.killProcess(ctx, c, processExitCh)
-		statusCh <- statusAndMetadata{status: Done, spanID: spanID}
+		statusCh <- statusAndMetadata{status: Done, pid: pid, spanID: spanID, reason: "killed", exitCode: 137}
 	}
 }
 

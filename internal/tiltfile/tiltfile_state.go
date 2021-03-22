@@ -282,6 +282,15 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		return nil, starkit.Model{}, err
 	}
 
+	for _, m := range manifests {
+		err := m.Validate()
+		if err != nil {
+			// Even on manifest validation errors, we may be able
+			// to use other kinds of models (e.g., watched files)
+			return manifests, result, err
+		}
+	}
+
 	return manifests, result, nil
 }
 

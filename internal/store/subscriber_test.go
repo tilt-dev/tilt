@@ -44,6 +44,32 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 	}
 }
 
+func TestSubscriberInterleavedCallsSummary(t *testing.T) {
+	st, _ := NewStoreWithFakeReducer()
+	ctx := context.Background()
+	s := newFakeSubscriber()
+	require.NoError(t, st.AddSubscriber(ctx, s))
+
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: map[string]bool{"spec-1": true}})
+	call := <-s.onChange
+	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: map[string]bool{"spec-1": true}})
+
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: map[string]bool{"spec-2": true}})
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: map[string]bool{"spec-3": true}})
+	time.Sleep(10 * time.Millisecond)
+	close(call.done)
+
+	call = <-s.onChange
+	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: map[string]bool{"spec-2": true, "spec-3": true}})
+	close(call.done)
+
+	select {
+	case <-s.onChange:
+		t.Fatal("Expected no more onChange calls")
+	case <-time.After(10 * time.Millisecond):
+	}
+}
+
 func TestAddSubscriberToAlreadySetUpListCallsSetUp(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
 	ctx := context.Background()

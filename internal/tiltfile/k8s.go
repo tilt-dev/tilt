@@ -254,8 +254,8 @@ func (s *tiltfileState) k8sImageLocatorsList() []k8s.ImageLocator {
 }
 
 func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var workload string
-	var newName string
+	var workload value.Name
+	var newName value.Name
 	var portForwardsVal starlark.Value
 	var extraPodSelectorsVal starlark.Value
 	var triggerMode triggerMode
@@ -280,10 +280,10 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	resourceName := workload
+	resourceName := workload.String()
 	manuallyGrouped := false
 	if workload == "" {
-		resourceName = newName
+		resourceName = newName.String()
 		// If a resource doesn't specify an existing workload then it needs to have objects to be valid
 		manuallyGrouped = true
 	}
@@ -323,7 +323,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	// NOTE(nick): right now this overwrites all previously set options on this
 	// resource. Is it worthwhile to make this additive?
 	s.k8sResourceOptions[resourceName] = k8sResourceOptions{
-		newName:           newName,
+		newName:           string(newName),
 		portForwards:      portForwards,
 		extraPodSelectors: extraPodSelectors,
 		tiltfilePosition:  thread.CallFrame(1).Pos,

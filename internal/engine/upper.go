@@ -186,8 +186,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleOverrideTriggerModeAction(ctx, state, action)
 	case local.CmdCreateAction:
 		local.HandleCmdCreateAction(state, action)
-	case local.CmdUpdateAction:
-		local.HandleCmdUpdateAction(state, action)
+	case local.CmdUpdateStatusAction:
+		local.HandleCmdUpdateStatusAction(state, action)
+	case local.CmdDeleteAction:
+		local.HandleCmdDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}

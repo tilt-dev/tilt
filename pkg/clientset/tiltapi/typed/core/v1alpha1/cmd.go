@@ -57,7 +57,7 @@ type cmds struct {
 }
 
 // newCmds returns a Cmds
-func newCmds(c *CoreV1alpha1Client) *cmds {
+func newCmds(c *TiltV1alpha1Client) *cmds {
 	return &cmds{
 		client: c.RESTClient(),
 	}

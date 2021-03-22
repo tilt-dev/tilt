@@ -32,6 +32,7 @@ func NewControllerBuilder(tscm *TiltServerControllerManager, controllers []Contr
 
 var _ store.Subscriber = &ControllerBuilder{}
 var _ store.SetUpper = &ControllerBuilder{}
+var _ store.TearDowner = &ControllerBuilder{}
 
 func (c *ControllerBuilder) OnChange(_ context.Context, _ store.RStore, _ store.ChangeSummary) {}
 
@@ -50,4 +51,14 @@ func (c *ControllerBuilder) SetUp(_ context.Context, _ store.RStore) error {
 		}
 	}
 	return nil
+}
+
+func (c *ControllerBuilder) TearDown(ctx context.Context) {
+	for _, controller := range c.controllers {
+		td, ok := controller.(store.TearDowner)
+		if ok {
+			td.TearDown(ctx)
+		}
+	}
+
 }

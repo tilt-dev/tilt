@@ -75,7 +75,7 @@ func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectR
 	}
 
 	for _, locator := range locators {
-		entity, r, err = locator.Inject(entity, selector, injectRef)
+		entity, r, err = locator.Inject(entity, selector, injectRef, policy)
 		if err != nil {
 			return K8sEntity{}, false, err
 		}

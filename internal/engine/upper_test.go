@@ -17,6 +17,12 @@ import (
 	"testing"
 	"time"
 
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
@@ -34,6 +40,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -73,6 +81,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -81,6 +90,8 @@ import (
 )
 
 var originalWD string
+
+const stdTimeout = time.Second
 
 type buildCompletionChannel chan bool
 
@@ -661,7 +672,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 	case err := <-f.upperInitResult:
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "doesn't compile")
-	case <-time.After(time.Second):
+	case <-time.After(stdTimeout):
 		t.Fatal("Timed out waiting for exit action")
 	}
 
@@ -3655,7 +3666,7 @@ func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
 		TriggerMode:   model.TriggerModeManual_AutoInit,
 	})
 
-	err := f.log.WaitUntilContains("no such manifest", time.Millisecond*100)
+	err := f.log.WaitUntilContains("no such manifest", stdTimeout)
 	require.NoError(t, err)
 
 	err = f.Stop()
@@ -3678,7 +3689,7 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 		TriggerMode:   12345,
 	})
 
-	err := f.log.WaitUntilContains("invalid trigger mode", time.Millisecond*100)
+	err := f.log.WaitUntilContains("invalid trigger mode", stdTimeout)
 	require.NoError(t, err)
 
 	err = f.Stop()
@@ -3693,8 +3704,8 @@ type testFixture struct {
 	clock                      clockwork.Clock
 	upper                      Upper
 	b                          *fakeBuildAndDeployer
-	fsWatcher                  *fswatch.FakeMultiWatcher
-	timerMaker                 *fswatch.FakeTimerMaker
+	fsWatcher                  *fsevent.FakeMultiWatcher
+	timerMaker                 *fsevent.FakeTimerMaker
 	docker                     *docker.FakeClient
 	kClient                    *k8s.FakeK8sClient
 	hud                        hud.HeadsUpDisplay
@@ -3703,15 +3714,15 @@ type testFixture struct {
 	log                        *bufsync.ThreadSafeBuffer
 	store                      *store.Store
 	bc                         *BuildController
-	fwm                        *fswatch.WatchManager
 	cc                         *configs.ConfigsController
 	dcc                        *dockercompose.FakeDCClient
 	tfl                        tiltfile.TiltfileLoader
 	opter                      *tiltanalytics.FakeOpter
 	dp                         *dockerprune.DockerPruner
-	fe                         *local.FakeExecer
-	fpm                        *local.FakeProberManager
+	fe                         *cmd.FakeExecer
+	fpm                        *cmd.FakeProberManager
 	overrideMaxParallelUpdates int
+	ctrlClient                 ctrlclient.Client
 
 	onchangeCh chan bool
 }
@@ -3724,10 +3735,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 
-	watcher := fswatch.NewFakeMultiWatcher()
+	watcher := fsevent.NewFakeMultiWatcher()
 	b := newFakeBuildAndDeployer(t)
 
-	timerMaker := fswatch.MakeFakeTimerMaker(t)
+	timerMaker := fsevent.MakeFakeTimerMaker(t)
 
 	dockerClient := docker.NewFakeClient()
 
@@ -3751,7 +3762,9 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
-	fwm := fswatch.NewWatchManager(watcher.NewSub, timerMaker.Maker())
+	cdc := controllers.ProvideDeferredClient()
+	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
+	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfc := portforward.NewController(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
@@ -3763,21 +3776,27 @@ func newTestFixture(t *testing.T) *testFixture {
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
-	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, server.ProvideMemConn())
+	memconn := server.ProvideMemConn()
+	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
 	require.NoError(t, err)
 	hudsc := server.ProvideHeadsUpServerController(0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
-	fe := local.NewFakeExecer()
-	fpm := local.NewFakeProberManager()
-	lc := local.NewController(fe, fpm)
+	fe := cmd.NewFakeExecer()
+	fpm := cmd.NewFakeProberManager()
+	fwc := filewatch.NewController(st, watcher.NewSub, timerMaker.Maker())
+	cmds := cmd.NewController(ctx, fe, fpm, cdc, st)
+	lsc := local.NewServerController(cdc)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, controllers.NewScheme())
+	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, v1alpha1.NewScheme(), ccb)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	cb := controllers.NewControllerBuilder(tscm, nil)
+	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
+		fwc,
+		cmds,
+	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
@@ -3799,7 +3818,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		store:          st,
 		bc:             bc,
 		onchangeCh:     fSub.ch,
-		fwm:            fwm,
 		cc:             cc,
 		dcc:            fakeDcc,
 		tfl:            tfl,
@@ -3807,6 +3825,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		dp:             dp,
 		fe:             fe,
 		fpm:            fpm,
+		ctrlClient:     cdc,
 	}
 
 	ret.disableEnvAnalyticsOpt()
@@ -3819,7 +3838,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwm, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -3845,6 +3864,7 @@ func (f *testFixture) fakeHud() *hud.FakeHud {
 
 // starts the upper with the given manifests, bypassing normal tiltfile loading
 func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOption) {
+	f.t.Helper()
 	f.setManifests(manifests)
 
 	ia := InitAction{
@@ -3883,6 +3903,7 @@ func (f *testFixture) disableEnvAnalyticsOpt() {
 type initOption func(ia InitAction) InitAction
 
 func (f *testFixture) Init(action InitAction) {
+	f.t.Helper()
 	watchFiles := action.EngineMode.WatchesFiles()
 	f.upperInitResult = make(chan error, 10)
 
@@ -3906,18 +3927,42 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
-	expectedWatchCount := len(fswatch.SpecsForManifests(state.Manifests(), nil))
-	if len(state.ConfigFiles) > 0 {
-		// watchmanager also creates a watcher for config files
-		expectedWatchCount++
-	}
+	expectedWatchCount := len(fswatch.FileWatchesFromManifests(*state))
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}
 	f.store.UnlockMutableState()
 
 	f.PollUntil("watches set up", func() bool {
-		return !watchFiles || f.fwm.TargetWatchCount() == expectedWatchCount
+		if !watchFiles {
+			return true
+		}
+
+		select {
+		case x := <-f.upperInitResult:
+			// this is a weird case - if there was an error early on,
+			// the file watches might never have been set up, but this
+			// isn't a useful place for the test to fail, so just put
+			// the error we stole back on the channel (nobody else can
+			// be listening for it yet, so there's no race here) and
+			// pretend everything is okay with file watching
+			f.upperInitResult <- x
+			return true
+		default:
+		}
+
+		// wait for FileWatch objects to exist AND have a status indicating they're running
+		var fwList v1alpha1.FileWatchList
+		if err := f.ctrlClient.List(f.ctx, &fwList); err != nil {
+			return false
+		}
+		activeWatches := 0
+		for _, fw := range fwList.Items {
+			if !fw.Status.MonitorStartTime.IsZero() {
+				activeWatches++
+			}
+		}
+		return activeWatches >= expectedWatchCount
 	})
 }
 
@@ -3933,7 +3978,7 @@ func (f *testFixture) Stop() error {
 
 func (f *testFixture) WaitForExit() error {
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(stdTimeout):
 		f.T().Fatalf("Timed out waiting for upper to exit")
 		return nil
 	case err := <-f.upperInitResult:
@@ -3943,7 +3988,7 @@ func (f *testFixture) WaitForExit() error {
 
 func (f *testFixture) WaitForNoExit() error {
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(stdTimeout):
 		return nil
 	case err := <-f.upperInitResult:
 		f.T().Fatalf("upper exited when it shouldn't have")
@@ -3997,7 +4042,7 @@ func (f *testFixture) WaitUntilHUDResource(msg string, name model.ManifestName, 
 func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool) {
 	f.T().Helper()
 
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	ctx, cancel := context.WithTimeout(f.ctx, stdTimeout)
 	defer cancel()
 
 	isCanceled := false
@@ -4005,9 +4050,13 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 	for {
 		state := f.upper.store.RLockState()
 		done := isDone(state)
+		fatalErr := state.FatalError
 		f.upper.store.RUnlockState()
 		if done {
 			return
+		}
+		if fatalErr != nil {
+			f.T().Fatalf("Store had fatal error: %v", fatalErr)
 		}
 
 		if isCanceled {
@@ -4048,7 +4097,8 @@ func (f *testFixture) withManifestState(name model.ManifestName, tf func(ms stor
 // Poll until the given state passes. This should be used for checking things outside
 // the state loop. Don't use this to check state inside the state loop.
 func (f *testFixture) PollUntil(msg string, isDone func() bool) {
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	f.t.Helper()
+	ctx, cancel := context.WithTimeout(f.ctx, stdTimeout)
 	defer cancel()
 
 	ticker := time.NewTicker(10 * time.Millisecond)
@@ -4107,7 +4157,7 @@ func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 		select {
 		case call := <-f.b.calls:
 			return call
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(stdTimeout):
 			f.T().Fatal(msg)
 		}
 	}
@@ -4123,7 +4173,7 @@ func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
 		select {
 		case <-f.b.calls:
 			f.T().Fatal(msg)
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(stdTimeout):
 			return
 		}
 	}
@@ -4187,6 +4237,7 @@ func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestNa
 }
 
 func (f *testFixture) waitForCompletedBuildCount(count int) {
+	f.t.Helper()
 	f.WaitUntil(fmt.Sprintf("%d builds done", count), func(state store.EngineState) bool {
 		return state.CompletedBuildCount >= count
 	})
@@ -4252,6 +4303,7 @@ func (f *testFixture) assertAllBuildsConsumed() {
 }
 
 func (f *testFixture) loadAndStart(initOptions ...initOption) {
+	f.t.Helper()
 	ia := InitAction{
 		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
@@ -4370,16 +4422,24 @@ func (f *testFixture) completeBuildForManifest(m model.Manifest) {
 }
 
 func (f *testFixture) triggerFileChange(targetID model.TargetID, paths ...string) {
-	now := metav1.Now()
-	f.store.Dispatch(fswatch.FileWatchUpdateStatusAction{
-		Name: types.NamespacedName{Name: targetID.String()},
-		Status: &filewatches.FileWatchStatus{
-			LastEventTime: now.DeepCopy(),
-			FileEvents: []filewatches.FileEvent{
-				{Time: *now.DeepCopy(), SeenFiles: paths},
-			},
-		},
+	now := metav1.NowMicro()
+	key := types.NamespacedName{Name: apis.SanitizeName(targetID.String())}
+
+	st := f.store.RLockState()
+	fw := st.FileWatches[key]
+	if fw == nil {
+		f.t.Fatalf("Cannot trigger file change for %q - does not exist in store", targetID.String())
+	}
+	fw = fw.DeepCopy()
+	f.store.RUnlockState()
+
+	fw.Status.LastEventTime = now
+	fw.Status.FileEvents = append(fw.Status.FileEvents, filewatches.FileEvent{
+		Time:      now,
+		SeenFiles: append([]string{}, paths...),
 	})
+
+	f.store.Dispatch(fswatch.NewFileWatchUpdateStatusAction(fw))
 }
 
 func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {

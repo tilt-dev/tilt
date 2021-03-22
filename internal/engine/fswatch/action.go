@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -19,6 +21,14 @@ type FileWatchCreateAction struct {
 	FileWatch *filewatches.FileWatch
 }
 
+func (a FileWatchCreateAction) Summarize(summary *store.ChangeSummary) {
+	if summary.FileWatchSpecs == nil {
+		summary.FileWatchSpecs = make(map[types.NamespacedName]bool)
+	}
+	key := types.NamespacedName{Namespace: a.FileWatch.GetNamespace(), Name: a.FileWatch.GetName()}
+	summary.FileWatchSpecs[key] = true
+}
+
 func (FileWatchCreateAction) Action() {}
 
 func NewFileWatchCreateAction(fw *filewatches.FileWatch) FileWatchCreateAction {
@@ -29,6 +39,14 @@ type FileWatchUpdateAction struct {
 	FileWatch *filewatches.FileWatch
 }
 
+func (a FileWatchUpdateAction) Summarize(summary *store.ChangeSummary) {
+	if summary.FileWatchSpecs == nil {
+		summary.FileWatchSpecs = make(map[types.NamespacedName]bool)
+	}
+	key := types.NamespacedName{Namespace: a.FileWatch.GetNamespace(), Name: a.FileWatch.GetName()}
+	summary.FileWatchSpecs[key] = true
+}
+
 func (FileWatchUpdateAction) Action() {}
 
 func NewFileWatchUpdateAction(fw *filewatches.FileWatch) FileWatchUpdateAction {
@@ -36,18 +54,29 @@ func NewFileWatchUpdateAction(fw *filewatches.FileWatch) FileWatchUpdateAction {
 }
 
 type FileWatchUpdateStatusAction struct {
-	Name   types.NamespacedName
-	Status *filewatches.FileWatchStatus
+	ObjectMeta *metav1.ObjectMeta
+	Status     *filewatches.FileWatchStatus
+}
+
+func (a FileWatchUpdateStatusAction) Summarize(_ *store.ChangeSummary) {
+	// do nothing - we only care about _spec_ changes on the summary
 }
 
 func (FileWatchUpdateStatusAction) Action() {}
 
-func NewFileWatchUpdateStatusAction(name types.NamespacedName, fwStatus *filewatches.FileWatchStatus) FileWatchUpdateStatusAction {
-	return FileWatchUpdateStatusAction{Name: name, Status: fwStatus.DeepCopy()}
+func NewFileWatchUpdateStatusAction(fw *filewatches.FileWatch) FileWatchUpdateStatusAction {
+	return FileWatchUpdateStatusAction{ObjectMeta: fw.GetObjectMeta().DeepCopy(), Status: fw.Status.DeepCopy()}
 }
 
 type FileWatchDeleteAction struct {
 	Name types.NamespacedName
+}
+
+func (a FileWatchDeleteAction) Summarize(summary *store.ChangeSummary) {
+	if summary.FileWatchSpecs == nil {
+		summary.FileWatchSpecs = make(map[types.NamespacedName]bool)
+	}
+	summary.FileWatchSpecs[a.Name] = true
 }
 
 func (FileWatchDeleteAction) Action() {}
@@ -72,10 +101,12 @@ func HandleFileWatchUpdateEvent(ctx context.Context, state *store.EngineState, a
 }
 
 func HandleFileWatchUpdateStatusEvent(ctx context.Context, state *store.EngineState, action FileWatchUpdateStatusAction) {
-	fw := state.FileWatches[action.Name]
+	key := types.NamespacedName{Namespace: action.ObjectMeta.GetNamespace(), Name: action.ObjectMeta.GetName()}
+	fw := state.FileWatches[key]
 	if fw == nil {
 		return
 	}
+	action.ObjectMeta.DeepCopyInto(&fw.ObjectMeta)
 	action.Status.DeepCopyInto(&fw.Status)
 	processFileWatchStatus(ctx, state, fw)
 }
@@ -100,9 +131,28 @@ func processFileWatchStatus(ctx context.Context, state *store.EngineState, fw *f
 	} else if targetID.Empty() {
 		return
 	}
+
+	// NOTE(nick): BuildController uses these timestamps to determine which files
+	// to clear after a build. In particular, it:
+	//
+	// 1) Grabs the pending files
+	// 2) Runs a live update
+	// 3) Clears the pending files with timestamps before the live update started.
+	//
+	// Here's the race condition: suppose a file changes, but it doesn't get into
+	// the EngineState until after step (2). That means step (3) will clear the file
+	// even though it wasn't live-updated properly. Because as far as we can tell,
+	// the file must have been in the EngineState before the build started.
+	//
+	// Ideally, BuildController should be do more bookkeeping to keep track of
+	// which files it consumed from which FileWatches. But we're changing
+	// this architecture anyway. For now, we record the time it got into
+	// the EngineState, rather than the time it was originally changed.
+	now := time.Now()
+
 	if targetID.Type == model.TargetTypeConfigs {
 		for _, f := range latestEvent.SeenFiles {
-			state.PendingConfigFileChanges[f] = latestEvent.Time.Time
+			state.PendingConfigFileChanges[f] = now
 		}
 		return
 	}
@@ -116,7 +166,7 @@ func processFileWatchStatus(ctx context.Context, state *store.EngineState, fw *f
 
 		status := ms.MutableBuildStatus(targetID)
 		for _, f := range latestEvent.SeenFiles {
-			status.PendingFileChanges[f] = latestEvent.Time.Time
+			status.PendingFileChanges[f] = now
 		}
 	}
 }
@@ -126,7 +176,7 @@ func targetID(obj runtime.Object) (model.TargetID, error) {
 	if err != nil {
 		return model.TargetID{}, err
 	}
-	labelVal := metaObj.GetLabels()[filewatches.LabelTargetID]
+	labelVal := metaObj.GetAnnotations()[filewatches.AnnotationTargetID]
 	if labelVal == "" {
 		return model.TargetID{}, nil
 	}

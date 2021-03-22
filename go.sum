@@ -1237,8 +1237,8 @@ github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353 h1:lxM1v
 github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
 github.com/tilt-dev/probe v0.2.0 h1:2kLs+xNjv6OYoR7OLCQELV6+/Ce0gqOC856qKfN/TB4=
 github.com/tilt-dev/probe v0.2.0/go.mod h1:N4FSqESyYQuc9GwIaIoHS5cIUDznIUwDkG6y4kQVXQY=
-github.com/tilt-dev/tilt-apiserver v0.2.2 h1:ZzMjWH/oZCpqc294/SocHMm872n9BLZETBAEze8Kz1g=
-github.com/tilt-dev/tilt-apiserver v0.2.2/go.mod h1:5JegGavWDV+CrTD1w9QWFekMQwctZmbkQumHd4aqsT8=
+github.com/tilt-dev/tilt-apiserver v0.2.4 h1:1/FA7BsyktIX+jvIbuWd2mPhUOQHbdN/eSMJeannMJU=
+github.com/tilt-dev/tilt-apiserver v0.2.4/go.mod h1:5JegGavWDV+CrTD1w9QWFekMQwctZmbkQumHd4aqsT8=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc h1:wGkAoZhrvnmq93B4W2v+agiPl7xzqUaxXkxmKrwJ6bc=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc/go.mod h1:n01fG3LbImzxBP3GGCTHkgXuPeJusWg6xv0QYGm9HtE=
 github.com/timakin/bodyclose v0.0.0-20190930140734-f7f2e9bca95e/go.mod h1:Qimiffbc6q9tBWlVV6x0P9sat/ao1xEkREYPPj9hphk=

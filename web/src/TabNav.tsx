@@ -116,10 +116,15 @@ export function OverviewNavProvider(
     tabsForTesting?: string[]
   }>
 ) {
-  let { children, validateTab, tabsForTesting } = props
+  let { children, tabsForTesting } = props
+  let validateTab = (tab: string): boolean => {
+    // The ALL tab should always validate
+    return props.validateTab(tab) || tab === ResourceName.all
+  }
+
   let [tabs, setTabs] = usePersistentState<string[]>(
     "tabs",
-    addAllTabIfEmpty(tabsForTesting || [])
+    tabsForTesting || []
   )
   let history = useHistory()
   let pb = usePathBuilder()
@@ -146,6 +151,7 @@ export function OverviewNavProvider(
   if (selectedTab && !tabs.includes(selectedTab)) {
     tabs = tabs.concat([selectedTab])
   }
+  tabs = addAllTabIfEmpty(tabs)
 
   // Deletes the resource in the tab list.
   // If we're deleting the current tab, navigate to the next reasonable tab.

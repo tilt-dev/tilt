@@ -1,0 +1,19 @@
+# Prints 'hello world' every time the Tiltfile changes
+apiVersion: tilt.dev/v1alpha1
+kind: Cmd
+metadata:
+  name: hello-world
+spec:
+  args: ["echo", "hello world"]
+  restartOn:
+    fileWatches:
+      - tiltfile
+---
+apiVersion: tilt.dev/v1alpha1
+kind: FileWatch
+metadata:
+  name: tiltfile
+spec:
+  watchedPaths:
+    - Tiltfile
+

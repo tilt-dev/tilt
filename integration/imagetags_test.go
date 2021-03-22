@@ -12,7 +12,7 @@ func TestImageTags(t *testing.T) {
 	f := newK8sFixture(t, "imagetags")
 	defer f.TearDown()
 
-	f.TiltWatch()
+	f.TiltUp()
 
 	timePerStage := time.Minute
 	ctx, cancel := context.WithTimeout(f.ctx, timePerStage)

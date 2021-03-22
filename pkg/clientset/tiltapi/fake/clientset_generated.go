@@ -26,8 +26,8 @@ import (
 	"k8s.io/client-go/testing"
 
 	clientset "github.com/tilt-dev/tilt/pkg/clientset/tiltapi"
-	corev1alpha1 "github.com/tilt-dev/tilt/pkg/clientset/tiltapi/typed/core/v1alpha1"
-	fakecorev1alpha1 "github.com/tilt-dev/tilt/pkg/clientset/tiltapi/typed/core/v1alpha1/fake"
+	tiltv1alpha1 "github.com/tilt-dev/tilt/pkg/clientset/tiltapi/typed/core/v1alpha1"
+	faketiltv1alpha1 "github.com/tilt-dev/tilt/pkg/clientset/tiltapi/typed/core/v1alpha1/fake"
 )
 
 // NewSimpleClientset returns a clientset that will respond with the provided objects.
@@ -77,7 +77,7 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// CoreV1alpha1 retrieves the CoreV1alpha1Client
-func (c *Clientset) CoreV1alpha1() corev1alpha1.CoreV1alpha1Interface {
-	return &fakecorev1alpha1.FakeCoreV1alpha1{Fake: &c.Fake}
+// TiltV1alpha1 retrieves the TiltV1alpha1Client
+func (c *Clientset) TiltV1alpha1() tiltv1alpha1.TiltV1alpha1Interface {
+	return &faketiltv1alpha1.FakeTiltV1alpha1{Fake: &c.Fake}
 }

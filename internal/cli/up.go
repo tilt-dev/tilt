@@ -34,7 +34,6 @@ var webDevPort = 0
 var logActionsFlag bool = false
 
 type upCmd struct {
-	watch                bool
 	fileName             string
 	outputSnapshotOnExit string
 
@@ -43,9 +42,6 @@ type upCmd struct {
 	stream bool
 	// whether hud/legacy/stream flags were explicitly set or just got the default value
 	hudFlagExplicitlySet bool
-
-	//whether watch was explicitly set in the cmdline
-	watchFlagExplicitlySet bool
 }
 
 func (c *upCmd) name() model.TiltSubcommand { return "up" }
@@ -75,7 +71,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 `,
 	}
 
-	cmd.Flags().BoolVar(&c.watch, "watch", true, "If true, services will be automatically rebuilt and redeployed when files change. Otherwise, each service will be started once.")
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(buildcontrol.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
@@ -91,7 +86,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
-		c.watchFlagExplicitlySet = cmd.Flag("watch").Changed
 	}
 
 	return cmd
@@ -142,11 +136,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	log.Print(startLine)
 	log.Print(buildStamp())
 
-	//if --watch was set, warn user about deprecation
-	if c.watchFlagExplicitlySet {
-		logger.Get(ctx).Warnf("Flag --watch has been deprecated, it will be removed in future releases.")
-	}
-
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
@@ -175,9 +164,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	defer cancel()
 
 	engineMode := store.EngineModeUp
-	if !c.watch {
-		engineMode = store.EngineModeApply
-	}
 
 	err = upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
 		c.fileName, termMode, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
@@ -208,6 +194,13 @@ func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	case model.LocalWebMode, model.ProdWebMode, model.PrecompiledWebMode:
 		return webModeFlag, nil
 	case model.DefaultWebMode:
+		// Set prod web mode from an environment variable. Useful for
+		// running integration tests against dev tilt.
+		webMode := os.Getenv("TILT_WEB_MODE")
+		if webMode == "prod" {
+			return model.ProdWebMode, nil
+		}
+
 		if b.Dev {
 			return model.LocalWebMode, nil
 		} else {

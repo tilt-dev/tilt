@@ -78,6 +78,13 @@ type CmdSpec struct {
 	//
 	// +optional
 	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
+
+	// Indicates objects that can trigger a restart of this command.
+	//
+	// Restarts can happen even if the command is already done.
+	//
+	// Logs of the currently process after the restart are discarded.
+	RestartOn *RestartOnSpec `json:"restartOn,omitempty"`
 }
 
 var _ resource.Object = &Cmd{}
@@ -101,7 +108,7 @@ func (in *Cmd) NewList() runtime.Object {
 
 func (in *Cmd) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
-		Group:    "core.tilt.dev",
+		Group:    "tilt.dev",
 		Version:  "v1alpha1",
 		Resource: "cmds",
 	}
@@ -161,7 +168,7 @@ type CmdStateRunning struct {
 	PID int32 `json:"pid"`
 
 	// Time at which the command was last started.
-	StartedAt metav1.Time `json:"startedAt,omitempty"`
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty"`
 }
 
 // CmdStateTerminated is a terminated state of a local command.
@@ -173,10 +180,10 @@ type CmdStateTerminated struct {
 	ExitCode int32 `json:"exitCode"`
 
 	// Time at which previous execution of the command started
-	StartedAt metav1.Time `json:"startedAt,omitempty"`
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty"`
 
 	// Time at which the command last terminated
-	FinishedAt metav1.Time `json:"finishedAt,omitempty"`
+	FinishedAt metav1.MicroTime `json:"finishedAt,omitempty"`
 
 	// (brief) reason the process is terminated
 	// +optional
@@ -195,4 +202,10 @@ var _ resource.StatusSubResource = &CmdStatus{}
 
 func (in CmdStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*Cmd).Status = in
+}
+
+// RestartOnSpec indicates the set of objects that can trigger a restart of this object.
+type RestartOnSpec struct {
+	// A list of file watches that can trigger a restart.
+	FileWatches []string `json:"fileWatches"`
 }

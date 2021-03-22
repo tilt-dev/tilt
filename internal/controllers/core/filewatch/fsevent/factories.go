@@ -1,4 +1,4 @@
-package fswatch
+package fsevent
 
 import (
 	"time"
@@ -7,11 +7,11 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-type FsWatcherMaker func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error)
+type WatcherMaker func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error)
 
 type TimerMaker func(d time.Duration) <-chan time.Time
 
-func ProvideFsWatcherMaker() FsWatcherMaker {
+func ProvideWatcherMaker() WatcherMaker {
 	return func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error) {
 		return watch.NewWatcher(paths, ignore, l)
 	}

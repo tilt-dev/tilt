@@ -1,4 +1,4 @@
-package fswatch
+package fsevent
 
 import (
 	"path/filepath"
@@ -69,11 +69,13 @@ func (w *FakeMultiWatcher) loop() {
 			if !ok {
 				return
 			}
+			w.mu.Lock()
 			for _, watcher := range w.watchers {
 				if watcher.matches(e.Path()) {
 					watcher.inboundCh <- e
 				}
 			}
+			w.mu.Unlock()
 		case e, ok := <-w.Errors:
 			if !ok {
 				return

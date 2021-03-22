@@ -20,21 +20,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 )
 
 // GroupName is the group name used in this package
-const GroupName = "core.tilt.dev"
+const GroupName = "tilt.dev"
 
 const Version = "v1alpha1"
 
-// LabelTargetID is an internal Tilt target ID used for the build graph.
-const LabelTargetID = "tilt.dev/target-id"
+// AnnotationTargetID is an internal Tilt target ID used for the build graph.
+const AnnotationTargetID = "tilt.dev/target-id"
 
-// The label on any object that identifies which manifest
-// its logs should appear under.
-const LabelManifest = "tilt.dev/resource"
+// AnnotationManifest identifies which manifest an object's logs should appear under.
+const AnnotationManifest = "tilt.dev/resource"
 
 // An annotation on any object that identifies which span id
 // its logs should appear under.
@@ -82,4 +82,11 @@ var AddToScheme = func(scheme *runtime.Scheme) error {
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
 func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
+// A new scheme with just this package's types.
+func NewScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(AddToScheme(scheme))
+	return scheme
 }

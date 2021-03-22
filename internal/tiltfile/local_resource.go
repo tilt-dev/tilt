@@ -39,7 +39,7 @@ type localResource struct {
 }
 
 func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var name string
+	var name value.Name
 	var updateCmdVal, updateCmdBatVal, serveCmdVal, serveCmdBatVal starlark.Value
 	var updateEnv, serveEnv value.StringStringMap
 	var triggerMode triggerMode
@@ -117,7 +117,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	res := localResource{
-		name:           name,
+		name:           string(name),
 		updateCmd:      updateCmd,
 		serveCmd:       serveCmd,
 		threadDir:      filepath.Dir(starkit.CurrentExecPath(thread)),

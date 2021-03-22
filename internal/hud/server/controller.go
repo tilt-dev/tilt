@@ -102,6 +102,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	r.PathPrefix("/readyz").Handler(apiserverHandler)
 	r.PathPrefix("/swagger").Handler(apiserverHandler)
 	r.PathPrefix("/version").Handler(apiserverHandler)
+	r.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
 	r.PathPrefix("/").Handler(s.hudServer.Router())
 
 	s.apiServer = &http.Server{

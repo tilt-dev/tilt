@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // +k8s:deepcopy-gen=package,register
-// +groupName=core.tilt.dev
+// +groupName=tilt.dev
 
 // Package api is the internal version of the API.
 package core
