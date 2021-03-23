@@ -56,7 +56,7 @@ func (c *Controller) shouldExit(store store.RStore) Action {
 		allOK := true
 		for _, mt := range state.ManifestTargets {
 			// don't wait on resources requiring manual trigger for initial build
-			if mt.Manifest.TriggerMode == model.TriggerModeManual_NoInit {
+			if !mt.Manifest.TriggerMode.AutoInitial() {
 				continue
 			}
 

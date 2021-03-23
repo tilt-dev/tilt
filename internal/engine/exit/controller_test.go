@@ -203,9 +203,13 @@ func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
 		})
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, readyPod("pod-a"))
 
-		manifestAutoInitFalse := manifestbuilder.New(f, "local").WithLocalResource("echo hi", nil).
+		manifestAuto_AutoInitFalse := manifestbuilder.New(f, "auto-auto_init_false").WithLocalResource("echo hi", nil).
+			WithTriggerMode(model.TriggerModeAuto_NoInit).Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(manifestAuto_AutoInitFalse))
+
+		manifestManual_AutoInitFalse := manifestbuilder.New(f, "manual-auto_init_false").WithLocalResource("echo hi", nil).
 			WithTriggerMode(model.TriggerModeManual_NoInit).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitFalse))
+		state.UpsertManifestTarget(store.NewManifestTarget(manifestManual_AutoInitFalse))
 	})
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
