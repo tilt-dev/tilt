@@ -21,7 +21,7 @@ let expectToggleToAuto = function (mode: TriggerMode) {
   expect(mode).toEqual(TriggerMode.TriggerModeAuto)
 }
 let expectToggleToManual = function (mode: TriggerMode) {
-  expect(mode).toEqual(TriggerMode.TriggerModeManualAfterInitial)
+  expect(mode).toEqual(TriggerMode.TriggerModeManual)
 }
 
 describe("SidebarTriggerButton", () => {
@@ -45,13 +45,15 @@ describe("SidebarTriggerButton", () => {
 
   it("shows different icon depending on current trigger mode", () => {
     let resources = [
-      oneResourceTestWithName("auto"),
-      oneResourceTestWithName("manual-after-initial"),
-      oneResourceTestWithName("manual-incl-initial"),
+      oneResourceTestWithName("auto_auto-init"),
+      oneResourceTestWithName("auto_no-init"),
+      oneResourceTestWithName("manual_auto-init"),
+      oneResourceTestWithName("manual_no-init"),
     ]
     resources[0].triggerMode = TriggerMode.TriggerModeAuto
-    resources[1].triggerMode = TriggerMode.TriggerModeManualAfterInitial
-    resources[2].triggerMode = TriggerMode.TriggerModeManualIncludingInitial
+    resources[1].triggerMode = TriggerMode.TriggerModeAutoWithManualInit
+    resources[2].triggerMode = TriggerMode.TriggerModeManualWithAutoInit
+    resources[3].triggerMode = TriggerMode.TriggerModeManual
 
     let view = { resources: resources }
 
@@ -62,13 +64,13 @@ describe("SidebarTriggerButton", () => {
     )
 
     let toggles = root.find(TriggerModeToggleRoot)
-    expect(toggles).toHaveLength(3)
+    expect(toggles).toHaveLength(4)
 
     for (let i = 0; i < toggles.length; i++) {
       let button = toggles.at(i)
       let isManual = button.hasClass("is-manual")
-      if (i == 0) {
-        // Toggle button for a resource with TriggerModeAuto
+      if (i <= 1) {
+        // Toggle button for a resource with TriggerModeAuto...
         expect(button.prop("title")).toEqual(ToggleTriggerModeTooltip.isAuto)
         expect(isManual).toBeFalsy()
       } else {
@@ -102,14 +104,16 @@ describe("SidebarTriggerButton", () => {
     expect(preventDefaulted).toEqual(true)
 
     expect(fetchMock.mock.calls.length).toEqual(2) // 1 call to analytics, one to /override
-    expectIncr(0, "ui.web.toggleTriggerMode", { toMode: "1" })
+    expectIncr(0, "ui.web.toggleTriggerMode", {
+      toMode: TriggerMode.TriggerModeManual.toString(),
+    })
 
     expect(fetchMock.mock.calls[1][0]).toEqual("/api/override/trigger_mode")
     expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
     expect(fetchMock.mock.calls[1][1]?.body).toEqual(
       JSON.stringify({
         manifest_names: ["foobar"],
-        trigger_mode: 1,
+        trigger_mode: TriggerMode.TriggerModeManual,
       })
     )
   })
@@ -131,7 +135,7 @@ describe("SidebarTriggerButton", () => {
   it("toggles manualAfterInitial to auto", () => {
     const root = mount(
       <TriggerModeToggle
-        triggerMode={TriggerMode.TriggerModeManualAfterInitial}
+        triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         onModeToggle={expectToggleToAuto}
       />
     )
@@ -145,7 +149,7 @@ describe("SidebarTriggerButton", () => {
   it("toggles manualIncludingInitial to auto", () => {
     const root = mount(
       <TriggerModeToggle
-        triggerMode={TriggerMode.TriggerModeManualIncludingInitial}
+        triggerMode={TriggerMode.TriggerModeManual}
         onModeToggle={expectToggleToAuto}
       />
     )

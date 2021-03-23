@@ -638,11 +638,11 @@ func TestTriggerModeDC(t *testing.T) {
 	}{
 		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
 		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualAfterInitial},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualWithAutoInit},
 		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualAfterInitial},
+		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualWithAutoInit},
 		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
-		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualAfterInitial},
+		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualWithAutoInit},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)

@@ -57,7 +57,7 @@ function withStatus(status: ResourceStatus): optionFn {
 function withManualTrigger(): optionFn {
   return (props: OverviewItemViewProps) => {
     let item = props.item
-    item.triggerMode = TriggerMode.TriggerModeManualIncludingInitial
+    item.triggerMode = TriggerMode.TriggerModeManual
     item.hasPendingChanges = true
   }
 }
@@ -65,7 +65,7 @@ function withManualTrigger(): optionFn {
 function withQueuedTrigger(): optionFn {
   return (props: OverviewItemViewProps) => {
     let item = props.item
-    item.triggerMode = TriggerMode.TriggerModeManualIncludingInitial
+    item.triggerMode = TriggerMode.TriggerModeManual
     item.hasPendingChanges = true
     item.queued = true
   }

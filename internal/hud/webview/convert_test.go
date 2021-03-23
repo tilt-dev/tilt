@@ -222,7 +222,7 @@ func TestTriggerMode(t *testing.T) {
 	state := newState(nil)
 	m := fooManifest
 	targ := store.NewManifestTarget(m)
-	targ.Manifest.TriggerMode = model.TriggerModeManualAfterInitial
+	targ.Manifest.TriggerMode = model.TriggerModeManualWithAutoInit
 	targ.State = &store.ManifestState{}
 	state.UpsertManifestTarget(targ)
 
@@ -230,7 +230,7 @@ func TestTriggerMode(t *testing.T) {
 	assert.Equal(t, 2, len(v.Resources))
 
 	newM, _ := findResource(model.ManifestName("foo"), v)
-	assert.Equal(t, model.TriggerModeManualAfterInitial, model.TriggerMode(newM.TriggerMode))
+	assert.Equal(t, model.TriggerModeManualWithAutoInit, model.TriggerMode(newM.TriggerMode))
 }
 
 func TestFeatureFlags(t *testing.T) {

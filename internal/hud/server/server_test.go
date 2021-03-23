@@ -182,7 +182,7 @@ func TestSendToTriggerQueue_manualManifest(t *testing.T) {
 	mt := store.ManifestTarget{
 		Manifest: model.Manifest{
 			Name:        "foobar",
-			TriggerMode: model.TriggerModeManualAfterInitial,
+			TriggerMode: model.TriggerModeManualWithAutoInit,
 		},
 	}
 	state := f.st.LockMutableStateForTesting()
@@ -306,7 +306,7 @@ func TestHandleOverrideTriggerModeDispatchesEvent(t *testing.T) {
 	f := newTestFixture(t).withDummyManifests("foo", "bar")
 
 	payload := fmt.Sprintf(`{"manifest_names":["foo", "bar"], "trigger_mode": %d}`,
-		model.TriggerModeManualAfterInitial)
+		model.TriggerModeManualWithAutoInit)
 	status, _ := f.makeReq("/api/override/trigger_mode", f.serv.HandleOverrideTriggerMode, http.MethodPost, payload)
 
 	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
@@ -319,7 +319,7 @@ func TestHandleOverrideTriggerModeDispatchesEvent(t *testing.T) {
 
 	expected := server.OverrideTriggerModeAction{
 		ManifestNames: []model.ManifestName{"foo", "bar"},
-		TriggerMode:   model.TriggerModeManualAfterInitial,
+		TriggerMode:   model.TriggerModeManualWithAutoInit,
 	}
 	assert.Equal(t, expected, action)
 }

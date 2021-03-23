@@ -48,7 +48,7 @@ describe("SidebarTriggerButton", () => {
       <SidebarTriggerButton
         isTiltfile={false}
         isSelected={true}
-        triggerMode={TriggerMode.TriggerModeManualAfterInitial}
+        triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
@@ -88,7 +88,7 @@ describe("SidebarTriggerButton", () => {
       <SidebarTriggerButton
         isTiltfile={false}
         isSelected={true}
-        triggerMode={TriggerMode.TriggerModeManualAfterInitial}
+        triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
@@ -104,14 +104,14 @@ describe("SidebarTriggerButton", () => {
     expect(fetchMock.mock.calls.length).toEqual(0)
   })
 
-  it("shows the button for TriggerModeManualIncludingInitial", () => {
+  it("shows the button for TriggerModeManual", () => {
     fetchMock.mockResponse(JSON.stringify({}))
 
     const root = mount(
       <SidebarTriggerButton
         isSelected={true}
         isTiltfile={false}
-        triggerMode={TriggerMode.TriggerModeManualIncludingInitial}
+        triggerMode={TriggerMode.TriggerModeManual}
         hasBuilt={false}
         isBuilding={false}
         hasPendingChanges={false}
@@ -131,7 +131,7 @@ describe("SidebarTriggerButton", () => {
 
   it("shows clickable + clickMe trigger button for manual resource with pending changes", () => {
     let items = twoResourceView().resources.map((res: Resource, i: number) => {
-      res.triggerMode = TriggerMode.TriggerModeManualAfterInitial // both manual
+      res.triggerMode = TriggerMode.TriggerModeManualWithAutoInit // both manual
       res.currentBuild = {} // not currently building
       if (i == 0) {
         // only first resource has pending changes -- only this one should have class `isDirty`
@@ -175,7 +175,7 @@ describe("SidebarTriggerButton", () => {
 
   it("shows selected trigger button for selected resource", () => {
     let items = twoResourceView().resources.map((res: Resource, i: number) => {
-      res.triggerMode = TriggerMode.TriggerModeManualAfterInitial // both manual
+      res.triggerMode = TriggerMode.TriggerModeManualWithAutoInit // both manual
       res.currentBuild = {} // not currently building
       if (i == 0) {
         res.name = "selected resource"

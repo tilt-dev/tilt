@@ -209,9 +209,14 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 		result[id] = buildState
 	}
 
+	// If the user manually triggers the build and there are no pending changes,
+	// assume they want a full build, since there are there no file changes to sync.
+	// (If there ARE pending changes but the resource is automatic, then a LiveUpdate
+	// (if configured) is already queued, so assume the user wants to trigger a
+	// full build instead.)
 	isLiveUpdateEligibleTrigger := reason.HasTrigger() &&
 		reason.Has(model.BuildReasonFlagChangedFiles) &&
-		manifest.TriggerMode != model.TriggerModeAuto
+		!manifest.TriggerMode.AutoOnChange()
 	isFullBuildTrigger := reason.HasTrigger() && !isLiveUpdateEligibleTrigger
 	if isFullBuildTrigger {
 		for k, v := range result {

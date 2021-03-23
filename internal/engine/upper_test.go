@@ -1085,7 +1085,7 @@ trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
 
 	f.assertNoCall("A change to TriggerMode shouldn't trigger an update (doesn't invalidate current build)")
 	f.WaitUntilManifest("triggerMode has changed on manifest", "snack", func(mt store.ManifestTarget) bool {
-		return mt.Manifest.TriggerMode == model.TriggerModeManualAfterInitial
+		return mt.Manifest.TriggerMode == model.TriggerModeManualWithAutoInit
 	})
 
 	err := f.Stop()
@@ -1112,7 +1112,7 @@ k8s_yaml('snack.yaml')`
 	var imageTargetID model.TargetID
 	f.WaitUntilManifest("manifest has triggerMode = manual_after_initial", "snack", func(mt store.ManifestTarget) bool {
 		imageTargetID = mt.Manifest.ImageTargetAt(0).ID() // grab for later
-		return mt.Manifest.TriggerMode == model.TriggerModeManualAfterInitial
+		return mt.Manifest.TriggerMode == model.TriggerModeManualWithAutoInit
 	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("src/main.go"))
@@ -1144,7 +1144,7 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	foo := f.newManifest("foo").WithTriggerMode(model.TriggerModeManualIncludingInitial)
+	foo := f.newManifest("foo").WithTriggerMode(model.TriggerModeManual)
 	bar := f.newManifest("bar")
 
 	f.Start([]model.Manifest{foo, bar})
@@ -1161,7 +1161,7 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 	})
 
 	// change the trigger mode
-	foo = foo.WithTriggerMode(model.TriggerModeManualAfterInitial)
+	foo = foo.WithTriggerMode(model.TriggerModeManualWithAutoInit)
 	f.store.Dispatch(configs.ConfigsReloadedAction{
 		FinishTime: f.Now(),
 		Manifests:  []model.Manifest{foo, bar},
@@ -3639,11 +3639,11 @@ func TestOverrideTriggerModeEvent(t *testing.T) {
 
 	f.upper.store.Dispatch(server.OverrideTriggerModeAction{
 		ManifestNames: []model.ManifestName{"foo"},
-		TriggerMode:   model.TriggerModeManualAfterInitial,
+		TriggerMode:   model.TriggerModeManualWithAutoInit,
 	})
 
 	f.WaitUntilManifest("triggerMode updated", "foo", func(mt store.ManifestTarget) bool {
-		return mt.Manifest.TriggerMode == model.TriggerModeManualAfterInitial
+		return mt.Manifest.TriggerMode == model.TriggerModeManualWithAutoInit
 	})
 
 	err := f.Stop()
@@ -3663,7 +3663,7 @@ func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
 
 	f.upper.store.Dispatch(server.OverrideTriggerModeAction{
 		ManifestNames: []model.ManifestName{"bar"},
-		TriggerMode:   model.TriggerModeManualAfterInitial,
+		TriggerMode:   model.TriggerModeManualWithAutoInit,
 	})
 
 	err := f.log.WaitUntilContains("no such manifest", stdTimeout)
