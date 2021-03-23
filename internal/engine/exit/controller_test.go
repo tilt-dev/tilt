@@ -2,9 +2,12 @@ package exit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +22,23 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func TestExitControlFirstFailure(t *testing.T) {
+func TestExitControlCI_TiltfileFailure(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	// Tiltfile state is stored independent of resource state within engine
+	f.store.WithState(func(state *store.EngineState) {
+		state.TiltfileState = &store.ManifestState{}
+		state.TiltfileState.AddCompletedBuild(model.BuildRecord{
+			Error: errors.New("fake Tiltfile error"),
+		})
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireExitSignalWithError("fake Tiltfile error")
+}
+
+func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
@@ -32,7 +51,7 @@ func TestExitControlFirstFailure(t *testing.T) {
 	})
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.False(t, f.store.exitSignal)
+	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
@@ -42,12 +61,11 @@ func TestExitControlFirstFailure(t *testing.T) {
 		})
 	})
 
-	// Verify that if one build fails with an error, it fails immediately.
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.True(t, f.store.exitSignal)
+	f.store.requireExitSignalWithError("does not compile")
 }
 
-func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
+func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
@@ -69,7 +87,7 @@ func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
 	})
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.False(t, f.store.exitSignal)
+	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
@@ -82,23 +100,25 @@ func TestExitControlCIFirstRuntimeFailure(t *testing.T) {
 		})
 	})
 
-	// Verify that if one pod fails with an error, it fails immediately.
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.True(t, f.store.exitSignal)
-	require.Error(t, f.store.exitError)
-	assert.Contains(t, f.store.exitError.Error(),
-		"Pod pod-a in error state: ErrImagePull")
+	f.store.requireExitSignalWithError("Pod pod-a in error state: ErrImagePull")
 }
 
-func TestExitControlCISuccess(t *testing.T) {
+func TestExitControlCI_Success(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
 	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+		m := manifestbuilder.New(f, "fe").
+			WithK8sYAML(testyaml.SanchoYAML).
+			WithK8sPodReadiness(model.PodReadinessWait).
+			Build()
 		state.UpsertManifestTarget(store.NewManifestTarget(m))
 
-		m2 := manifestbuilder.New(f, "fe2").WithK8sYAML(testyaml.SanchoYAML).Build()
+		m2 := manifestbuilder.New(f, "fe2").
+			WithK8sYAML(testyaml.SanchoYAML).
+			WithK8sPodReadiness(model.PodReadinessWait).
+			Build()
 		state.UpsertManifestTarget(store.NewManifestTarget(m2))
 
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
@@ -109,24 +129,128 @@ func TestExitControlCISuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, readyPod("pod-a"))
+		// pod-a: ready / pod-b: doesn't exist
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
 	})
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.False(t, f.store.exitSignal)
+	f.store.requireNoExitSignal()
 
+	// pod-a: ready / pod-b: ready
 	f.store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe2"]
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, readyPod("pod-b"))
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-b", true))
 	})
 
-	// Verify that if one pod fails with an error, it fails immediately.
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.True(t, f.store.exitSignal)
-	assert.Nil(t, f.store.exitError)
+	f.store.requireExitSignalWithNoError()
 }
 
-func TestExitControlCIJobSuccess(t *testing.T) {
+func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "fe").
+			WithK8sYAML(testyaml.SanchoYAML).
+			WithK8sPodReadiness(model.PodReadinessWait).
+			Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+
+		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m,
+			pod("pod-a", false))
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireNoExitSignal()
+
+	f.store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+			pod("pod-a", true),
+		)
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireExitSignalWithNoError()
+}
+
+// TestExitControlCI_PodReadinessMode_Ignore_Pods covers the case where you don't care about a Pod's readiness state
+func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "fe").
+			WithK8sYAML(testyaml.SecretYaml).
+			WithK8sPodReadiness(model.PodReadinessIgnore).
+			Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+
+		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+
+		// created but no pods yet
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireNoExitSignal()
+
+	f.store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		// pod deployed, but explicitly not ready - we should not care and exit anyway
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-a", false))
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireExitSignalWithNoError()
+}
+
+// TestExitControlCI_PodReadinessMode_Ignore_NoPods covers the case where there are K8s resources that have no
+// runtime component (i.e. no pods) - this most commonly happens with "uncategorized"
+func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "fe").
+			WithK8sYAML(testyaml.SecretYaml).
+			WithK8sPodReadiness(model.PodReadinessIgnore).
+			Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+
+		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireNoExitSignal()
+
+	f.store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		krs := store.NewK8sRuntimeState(mt.Manifest)
+		// entities were created, but there's no pods in sight!
+		krs.HasEverDeployedSuccessfully = true
+		mt.State.RuntimeState = krs
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireExitSignalWithNoError()
+}
+
+func TestExitControlCI_JobSuccess(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
@@ -138,24 +262,22 @@ func TestExitControlCIJobSuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, readyPod("pod-a"))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
 	})
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.False(t, f.store.exitSignal)
+	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
 	})
 
-	// Verify that if one pod fails with an error, it fails immediately.
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.True(t, f.store.exitSignal)
-	assert.Nil(t, f.store.exitError)
+	f.store.requireExitSignalWithNoError()
 }
 
-func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
+func TestExitControlCI_DontBlockOnAutoInitFalse(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
@@ -168,7 +290,7 @@ func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, readyPod("pod-a"))
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-a", true))
 
 		manifestAuto_AutoInitFalse := manifestbuilder.New(f, "auto-auto_init_false").WithLocalResource("echo hi", nil).
 			WithTriggerMode(model.TriggerModeAutoWithManualInit).Build()
@@ -180,17 +302,15 @@ func TestExitControlCIDontBlockOnAutoInitFalse(t *testing.T) {
 	})
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.False(t, f.store.exitSignal)
+	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
 	})
 
-	// Verify that if one pod fails with an error, it fails immediately.
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.True(t, f.store.exitSignal)
-	assert.Nil(t, f.store.exitError)
+	f.store.requireExitSignalWithNoError()
 }
 
 type fixture struct {
@@ -203,12 +323,19 @@ type fixture struct {
 func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 
-	st := NewTestingStore()
+	st := NewTestingStore(t)
 	st.WithState(func(state *store.EngineState) {
 		state.EngineMode = engineMode
+		state.TiltfilePath = f.JoinPath("Tiltfile")
+		state.TiltfileState.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+			Reason:     model.BuildReasonFlagInit,
+		})
 	})
 
-	c := NewController()
+	cli := fake.NewTiltClient()
+	c := NewController(cli)
 	ctx := context.Background()
 
 	return &fixture{
@@ -221,34 +348,58 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 
 type testStore struct {
 	*store.TestingStore
-	exitSignal bool
-	exitError  error
+	t testing.TB
 }
 
-func NewTestingStore() *testStore {
+func NewTestingStore(t testing.TB) *testStore {
 	return &testStore{
 		TestingStore: store.NewTestingStore(),
+		t:            t,
 	}
 }
 
 func (s *testStore) Dispatch(action store.Action) {
 	s.TestingStore.Dispatch(action)
 
-	exitAction, ok := action.(Action)
+	a, ok := action.(TiltRunUpdateStatusAction)
 	if ok {
-		s.exitSignal = exitAction.ExitSignal
-		s.exitError = exitAction.ExitError
+		state := s.LockMutableStateForTesting()
+		HandleTiltRunUpdateStatusAction(state, a)
+		s.UnlockMutableState()
 	}
 }
 
-func readyPod(podID k8s.PodID) store.Pod {
+func (s *testStore) requireNoExitSignal() {
+	s.t.Helper()
+	state := s.RLockState()
+	defer s.RUnlockState()
+	require.Falsef(s.t, state.ExitSignal, "ExitSignal was not false, ExitError=%v", state.ExitError)
+}
+
+func (s *testStore) requireExitSignalWithError(errString string) {
+	s.t.Helper()
+	state := s.RLockState()
+	defer s.RUnlockState()
+	assert.True(s.t, state.ExitSignal, "ExitSignal was not true")
+	require.EqualError(s.t, state.ExitError, errString)
+}
+
+func (s *testStore) requireExitSignalWithNoError() {
+	s.t.Helper()
+	state := s.RLockState()
+	defer s.RUnlockState()
+	require.True(s.t, state.ExitSignal, "ExitSignal was not true")
+	require.NoError(s.t, state.ExitError)
+}
+
+func pod(podID k8s.PodID, ready bool) store.Pod {
 	return store.Pod{
 		PodID: podID,
 		Phase: v1.PodRunning,
 		Containers: []store.Container{
 			store.Container{
 				ID:    container.ID(podID + "-container"),
-				Ready: true,
+				Ready: ready,
 			},
 		},
 	}

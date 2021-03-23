@@ -45,6 +45,8 @@ func updateLocalRuntimeStatus(state *store.EngineState, cmd *v1alpha1.Cmd) {
 	status := cmd.Status
 	if status.Running != nil {
 		lrs.PID = int(cmd.Status.Running.PID)
+		lrs.StartTime = cmd.Status.Running.StartedAt.Time
+		lrs.FinishTime = time.Time{}
 
 		// Currently, Cmd is only used for servers.
 		// Make the Status OK when the readiness probe passes (if there is one).
@@ -59,9 +61,12 @@ func updateLocalRuntimeStatus(state *store.EngineState, cmd *v1alpha1.Cmd) {
 		// so any termination is an error.
 		lrs.PID = int(status.Terminated.PID)
 		lrs.Status = model.RuntimeStatusError
-
+		lrs.StartTime = status.Terminated.StartedAt.Time
+		lrs.FinishTime = status.Terminated.FinishedAt.Time
 	} else {
 		lrs.Status = model.RuntimeStatusPending
+		lrs.StartTime = time.Time{}
+		lrs.FinishTime = time.Time{}
 	}
 
 	if lrs.Ready != cmd.Status.Ready {

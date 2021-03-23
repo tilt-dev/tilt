@@ -38,12 +38,12 @@ type RuntimeState interface {
 	RuntimeStatusError() error
 }
 
-type ProbeState int
-
 type LocalRuntimeState struct {
 	CmdName                  string
 	Status                   model.RuntimeStatus
 	PID                      int
+	StartTime                time.Time
+	FinishTime               time.Time
 	SpanID                   model.LogSpanID
 	LastReadyOrSucceededTime time.Time
 	Ready                    bool

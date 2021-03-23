@@ -455,7 +455,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	call := f.nextCall()
+	call := f.nextCallComplete()
 	entities, err := k8s.ParseYAMLFromString(call.k8s().YAML)
 	require.NoError(t, err)
 	expectedKindOrder := []string{"PersistentVolume", "PersistentVolumeClaim", "ConfigMap"}
@@ -612,7 +612,7 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestFirstBuildFailsWhileWatching(t *testing.T) {
+func TestFirstBuildFails_Up(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
@@ -634,7 +634,7 @@ func TestFirstBuildFailsWhileWatching(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestFirstBuildCancelsWhileWatching(t *testing.T) {
+func TestFirstBuildCancels_Up(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
@@ -650,7 +650,7 @@ func TestFirstBuildCancelsWhileWatching(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
+func TestFirstBuildFails_CI(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
@@ -3730,6 +3730,7 @@ type testFixture struct {
 	ctrlClient                 ctrlclient.Client
 
 	onchangeCh chan bool
+	ec         *exit.Controller
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -3793,6 +3794,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwc := filewatch.NewController(st, watcher.NewSub, timerMaker.Maker())
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st)
 	lsc := local.NewServerController(cdc)
+	ec := exit.NewController(cdc)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
@@ -3832,13 +3834,13 @@ func newTestFixture(t *testing.T) *testFixture {
 		fe:             fe,
 		fpm:            fpm,
 		ctrlClient:     cdc,
+		ec:             ec,
 	}
 
 	ret.disableEnvAnalyticsOpt()
 
 	tc := telemetry.NewController(clock, tracer.NewSpanCollector(ctx))
 	podm := k8srollout.NewPodMonitor()
-	ec := exit.NewController()
 
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
@@ -4123,6 +4125,7 @@ func (f *testFixture) PollUntil(msg string, isDone func() bool) {
 }
 
 func (f *testFixture) WaitUntilManifest(msg string, name model.ManifestName, isDone func(store.ManifestTarget) bool) {
+	f.t.Helper()
 	f.WaitUntil(msg, func(es store.EngineState) bool {
 		mt, ok := es.ManifestTargets[model.ManifestName(name)]
 		if !ok {
@@ -4133,6 +4136,7 @@ func (f *testFixture) WaitUntilManifest(msg string, name model.ManifestName, isD
 }
 
 func (f *testFixture) WaitUntilManifestState(msg string, name model.ManifestName, isDone func(store.ManifestState) bool) {
+	f.t.Helper()
 	f.WaitUntilManifest(msg, name, func(mt store.ManifestTarget) bool {
 		return isDone(*(mt.State))
 	})
@@ -4140,6 +4144,7 @@ func (f *testFixture) WaitUntilManifestState(msg string, name model.ManifestName
 
 // gets the args for the next BaD call and blocks until that build is reflected in EngineState
 func (f *testFixture) nextCallComplete(msgAndArgs ...interface{}) buildAndDeployCall {
+	f.t.Helper()
 	call := f.nextCall(msgAndArgs...)
 	f.waitForCompletedBuildCount(call.count)
 	return call
@@ -4203,8 +4208,8 @@ func (f *testFixture) lastDeployedUID(manifestName model.ManifestName) types.UID
 }
 
 func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
+	f.t.Helper()
 	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, manifestName, f.lastDeployedUID(manifestName)))
-
 	f.WaitUntilManifestState("pod appears", manifestName, func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().PodID == k8s.PodID(pod.Name)
 	})
