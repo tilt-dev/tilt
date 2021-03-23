@@ -3,7 +3,12 @@ import { useStorageState } from "react-storage-hooks"
 import styled from "styled-components"
 import { incr } from "./analytics"
 import ClearLogs from "./ClearLogs"
-import { Color, FontSize, mixinResetButtonStyle } from "./style-helpers"
+import {
+  AnimDuration,
+  Color,
+  FontSize,
+  mixinResetButtonStyle,
+} from "./style-helpers"
 
 export const LogFontSizeScaleLocalStorageKey = "tilt.global.log-font-scale"
 export const LogFontSizeScaleCSSProperty = "--log-font-scale"
@@ -25,19 +30,18 @@ const FontSizeControls = styled.div`
 
 const FontSizeControlsDivider = styled.div`
   font-size: ${FontSize.default};
-  &:after {
-    content: "|";
-  }
+  user-select: none;
 `
 
 const FontSizeButton = styled.button`
   ${mixinResetButtonStyle}
   color: ${Color.gray6};
-
+  transition: color ${AnimDuration.default} ease;
   padding: 0 4px;
+  user-select: none;
 
-  &:after {
-    content: "A";
+  &:hover {
+    color: ${Color.blue};
   }
 `
 
@@ -88,12 +92,16 @@ export const LogsFontSize: React.FC = () => {
       <FontSizeDecreaseButton
         aria-label={"Decrease log font size"}
         onClick={() => adjustLogFontScale(-zoomStep)}
-      />
-      <FontSizeControlsDivider aria-hidden={true} />
+      >
+        A
+      </FontSizeDecreaseButton>
+      <FontSizeControlsDivider aria-hidden={true}>|</FontSizeControlsDivider>
       <FontSizeIncreaseButton
         aria-label={"Increase log font size"}
         onClick={() => adjustLogFontScale(zoomStep)}
-      />
+      >
+        A
+      </FontSizeIncreaseButton>
     </FontSizeControls>
   )
 }
