@@ -7,14 +7,13 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type TiltServerControllerManager struct {
@@ -51,9 +50,11 @@ func (m *TiltServerControllerManager) GetClient() ctrlclient.Client {
 func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore) error {
 	ctx, m.cancel = context.WithCancel(ctx)
 
-	// TODO(milas): we should provide a logr.Logger facade for our logger rather than using zap
-	w := logger.Get(ctx).Writer(logger.DebugLvl)
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(w)))
+	// controller-runtime internals don't really make use of verbosity levels, so in lieu of a better
+	// all its logs are redirected to klog, for which there is already special handling
+	// V(3) was picked because while controller-runtime is a bit chatty at startup, once steady state
+	// is reached, most of the logging is generally useful (e.g. reconciler errors)
+	ctrl.SetLogger(klogr.New().V(3).WithName("tilt"))
 
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{
 		Scheme: m.scheme,
