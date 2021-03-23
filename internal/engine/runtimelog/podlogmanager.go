@@ -196,7 +196,11 @@ func (m *PodLogManager) shouldStreamContainerLogs(c store.Container, key podLogK
 
 }
 
-func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+	if len(summary.Pods.Changes) == 0 {
+		return
+	}
+
 	setup, teardown := m.diff(ctx, st)
 	for _, watch := range teardown {
 		watch.cancel()
