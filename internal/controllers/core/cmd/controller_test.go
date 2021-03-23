@@ -451,8 +451,8 @@ func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastD
 func (f *fixture) step() {
 	f.st.summary = store.ChangeSummary{}
 	f.sc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
-	for name := range f.st.summary.CmdSpecs {
-		_, err := f.c.Reconcile(f.ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: name}})
+	for name := range f.st.summary.CmdSpecs.Changes {
+		_, err := f.c.Reconcile(f.ctx, ctrl.Request{NamespacedName: name})
 		require.NoError(f.t, err)
 	}
 }
