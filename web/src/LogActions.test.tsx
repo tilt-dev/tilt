@@ -1,6 +1,8 @@
 import { mount } from "enzyme"
 import React from "react"
 import {
+  FontSizeDecreaseButton,
+  FontSizeIncreaseButton,
   LogFontSizeScaleCSSProperty,
   LogFontSizeScaleLocalStorageKey,
   LogFontSizeScaleMinimumPercentage,
@@ -39,7 +41,7 @@ describe("LogsFontSize", () => {
 
   it("decreases font scale", () => {
     const root = mount(<LogsFontSize />)
-    root.find("LogFontSizeDecreaseButton").simulate("click")
+    root.find(FontSizeDecreaseButton).simulate("click")
     expect(getCSSValue()).toEqual("95%")
     expect(getLocalStorageValue()).toEqual(`95%`) // JSON serialized
   })
@@ -47,14 +49,14 @@ describe("LogsFontSize", () => {
   it("has a minimum font scale", () => {
     setLocalStorageValue(`${LogFontSizeScaleMinimumPercentage}%`)
     const root = mount(<LogsFontSize />)
-    root.find("LogFontSizeDecreaseButton").simulate("click")
+    root.find(FontSizeDecreaseButton).simulate("click")
     expect(getCSSValue()).toEqual("10%")
     expect(getLocalStorageValue()).toEqual(`10%`)
   })
 
   it("increases font scale", () => {
     const root = mount(<LogsFontSize />)
-    root.find("LogFontSizeIncreaseButton").simulate("click")
+    root.find(FontSizeIncreaseButton).simulate("click")
     expect(getCSSValue()).toEqual("105%")
     expect(getLocalStorageValue()).toEqual(`105%`)
   })

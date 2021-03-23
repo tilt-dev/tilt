@@ -41,15 +41,13 @@ const FontSizeButton = styled.button`
   }
 `
 
-const FontSizeDecreaseButton = styled(FontSizeButton)`
+export const FontSizeDecreaseButton = styled(FontSizeButton)`
   font-size: ${FontSize.smallest};
 `
-FontSizeDecreaseButton.displayName = "LogFontSizeDecreaseButton"
 
-const FontSizeIncreaseButton = styled(FontSizeButton)`
+export const FontSizeIncreaseButton = styled(FontSizeButton)`
   font-size: ${FontSize.default};
 `
-FontSizeIncreaseButton.displayName = "LogFontSizeIncreaseButton"
 
 export const LogsFontSize: React.FC = () => {
   // this uses `useStorageState` directly vs `usePersistentState` wrapper because it's a global setting
