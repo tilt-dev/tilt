@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,7 +45,7 @@ func TestLogs(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 	f.AssertOutputContains("hello world!")
 	assert.Equal(t, start, f.kClient.LastPodLogStartTime)
 }
@@ -65,7 +66,7 @@ func TestLogActions(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 	f.ConsumeLogActionsUntil("hello world!")
 }
 
@@ -85,8 +86,8 @@ func TestLogsFailed(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
-	f.AssertOutputContains("Error streaming server logs")
+	f.onChange(podID)
+	f.AssertOutputContains("Error streaming pod-id logs")
 	assert.Contains(t, f.out.String(), "my-error")
 }
 
@@ -106,13 +107,13 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 	f.AssertOutputContains("hello world!\n")
 
 	// Previous log stream has finished, so the first pod watch has been canceled,
 	// but not cleaned up; check that we start a new watch .OnChange
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 	f.AssertOutputContains("goodbye world!\n")
 }
 
@@ -136,7 +137,7 @@ func TestMultiContainerLogs(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 	f.AssertOutputContains("hello world!")
 	f.AssertOutputContains("goodbye world!")
 }
@@ -180,7 +181,7 @@ func TestContainerPrefixes(t *testing.T) {
 		podSingleC))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 
 	// Make sure we have expected logs
 	f.AssertOutputContains("hello world!")
@@ -214,8 +215,8 @@ func TestTerminatedContainerLogs(t *testing.T) {
 
 	// Fire OnChange twice, because we used to have a bug where
 	// we'd immediately teardown the log watch on the terminated container.
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
+	f.onChange(podID)
 
 	f.AssertOutputContains("hello world!")
 
@@ -223,7 +224,7 @@ func TestTerminatedContainerLogs(t *testing.T) {
 	// closes the log stream.
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 	f.AssertOutputContains("hello world!")
 	f.AssertOutputDoesNotContain("goodbye world!")
 }
@@ -255,15 +256,15 @@ func TestLogReconnection(t *testing.T) {
 	currentTime := startTime.Add(5 * time.Second)
 	timeCh := make(chan time.Time)
 	ticker := time.Ticker{C: timeCh}
-	f.plm.now = func() time.Time { return currentTime }
-	f.plm.since = func(t time.Time) time.Duration { return currentTime.Sub(t) }
-	f.plm.newTicker = func(d time.Duration) *time.Ticker { return &ticker }
+	f.plsc.now = func() time.Time { return currentTime }
+	f.plsc.since = func(t time.Time) time.Duration { return currentTime.Sub(t) }
+	f.plsc.newTicker = func(d time.Duration) *time.Ticker { return &ticker }
 
 	f.store.WithState(func(state *store.EngineState) {
 		state.TiltStartTime = startTime
 	})
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 
 	_, _ = writer.Write([]byte("hello world!"))
 	f.AssertOutputContains("hello world!")
@@ -331,7 +332,7 @@ func TestInitContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, cNameInit, "init world!")
 	f.kClient.SetLogsForPodContainer(podID, cNameNormal, "hello world!")
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 
 	f.AssertOutputContains(cNameInit.String())
 	f.AssertOutputContains("init world!")
@@ -368,22 +369,20 @@ func TestIstioContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, istioSidecar, "hello istio!")
 	f.kClient.SetLogsForPodContainer(podID, cNormal, "hello world!")
 
-	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.onChange(podID)
 
 	f.AssertOutputDoesNotContain("istio")
 	f.AssertOutputContains("hello world!")
-}
-
-func podChange(podID k8s.PodID) store.ChangeSummary {
-	return store.ChangeSummary{
-		Pods: store.NewChangeSet(types.NamespacedName{Name: string(podID)}),
-	}
 }
 
 type plmStore struct {
 	t *testing.T
 	*store.TestingStore
 	out *bufsync.ThreadSafeBuffer
+
+	mu      sync.Mutex
+	streams map[string]*PodLogStream
+	summary store.ChangeSummary
 }
 
 func newPLMStore(t *testing.T, out *bufsync.ThreadSafeBuffer) *plmStore {
@@ -391,10 +390,40 @@ func newPLMStore(t *testing.T, out *bufsync.ThreadSafeBuffer) *plmStore {
 		t:            t,
 		TestingStore: store.NewTestingStore(),
 		out:          out,
+		streams:      make(map[string]*PodLogStream),
 	}
 }
 
+func (s *plmStore) getSummary() store.ChangeSummary {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.summary
+}
+
+func (s *plmStore) clearSummary() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.summary = store.ChangeSummary{}
+}
+
 func (s *plmStore) Dispatch(action store.Action) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	state := s.LockMutableStateForTesting()
+	defer s.UnlockMutableState()
+
+	switch action := action.(type) {
+	case PodLogStreamCreateAction:
+		state.PodLogStreams[action.PodLogStream.Name] = action.PodLogStream
+		action.Summarize(&s.summary)
+		return
+	case PodLogStreamDeleteAction:
+		delete(state.PodLogStreams, action.Name)
+		action.Summarize(&s.summary)
+		return
+	}
+
 	event, ok := action.(store.LogAction)
 	if !ok {
 		s.t.Errorf("Expected action type LogAction. Actual: %T", action)
@@ -411,6 +440,7 @@ type plmFixture struct {
 	ctx     context.Context
 	kClient *k8s.FakeK8sClient
 	plm     *PodLogManager
+	plsc    *PodLogStreamController
 	cancel  func()
 	out     *bufsync.ThreadSafeBuffer
 	store   *plmStore
@@ -422,7 +452,8 @@ func newPLMFixture(t *testing.T) *plmFixture {
 
 	out := bufsync.NewThreadSafeBuffer()
 	st := newPLMStore(t, out)
-	plm := NewPodLogManager(kClient)
+	plm := NewPodLogManager()
+	plsc := NewPodLogStreamController(st, kClient)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)
@@ -432,11 +463,20 @@ func newPLMFixture(t *testing.T) *plmFixture {
 		TempDirFixture: f,
 		kClient:        kClient,
 		plm:            plm,
+		plsc:           plsc,
 		ctx:            ctx,
 		cancel:         cancel,
 		out:            out,
 		store:          st,
 	}
+}
+
+func (f *plmFixture) onChange(podID k8s.PodID) {
+	f.plm.OnChange(f.ctx, f.store, store.ChangeSummary{
+		Pods: store.NewChangeSet(types.NamespacedName{Name: string(podID)}),
+	})
+	f.plsc.OnChange(f.ctx, f.store, f.store.getSummary())
+	f.store.clearSummary()
 }
 
 func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
