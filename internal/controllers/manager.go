@@ -51,7 +51,7 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 	ctx, m.cancel = context.WithCancel(ctx)
 
 	// controller-runtime internals don't really make use of verbosity levels, so in lieu of a better
-	// all its logs are redirected to klog, for which there is already special handling
+	// mechanism, all its logs are redirected to klog, for which there is already special handling
 	// V(3) was picked because while controller-runtime is a bit chatty at startup, once steady state
 	// is reached, most of the logging is generally useful (e.g. reconciler errors)
 	ctrl.SetLogger(klogr.New().V(3).WithName("tilt"))
