@@ -66,6 +66,8 @@ export const LogsFontSize: React.FC = () => {
   )
   useEffect(() => {
     if (!logFontScale?.endsWith("%")) {
+      // somehow an invalid value ended up in local storage - reset to 100% and let effect run again
+      setLogFontSize("100%")
       return
     }
     document.documentElement.style.setProperty(
@@ -79,9 +81,6 @@ export const LogsFontSize: React.FC = () => {
       parseFloat(logFontScale) + step,
       LogFontSizeScaleMinimumPercentage
     )
-    if (isNaN(val)) {
-      return
-    }
     setLogFontSize(`${val}%`)
     incr("ui.web.zoomLogs", { action: "click", dir: step < 0 ? "out" : "in" })
   }
