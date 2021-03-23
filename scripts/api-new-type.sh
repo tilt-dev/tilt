@@ -19,7 +19,7 @@ fi
 # where the first is used in YAML and the second is used in HTTP endpoints
 #
 # shellcheck disable=SC2001
-TYPE_NAME_LOWER=$(echo "$TYPE_NAME" | sed -e 's/^\(.*\)$/\L\1/g')
+TYPE_NAME_LOWER=$(echo "$TYPE_NAME" | awk '{print tolower($0)}')
 if [[ "$TYPE_NAME" == "$TYPE_NAME_LOWER" ]]; then
     echo "Error: type name must be uppercase"
     exit 1
