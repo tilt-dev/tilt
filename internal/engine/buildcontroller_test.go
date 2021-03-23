@@ -495,8 +495,8 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 		name        string
 		triggerMode model.TriggerMode
 	}{
-		{"manual including initial", model.TriggerModeManual_NoInit},
-		{"manual after initial", model.TriggerModeManual_AutoInit},
+		{"fully manual", model.TriggerModeManual},
+		{"manual with auto init", model.TriggerModeManualWithAutoInit},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
@@ -528,10 +528,10 @@ func TestTriggerModes(t *testing.T) {
 		expectInitialBuild         bool
 		expectBuildWhenFilesChange bool
 	}{
-		{name: "auto with init", triggerMode: model.TriggerModeAuto_AutoInit, expectInitialBuild: true, expectBuildWhenFilesChange: true},
-		{name: "auto without init", triggerMode: model.TriggerModeAuto_NoInit, expectInitialBuild: false, expectBuildWhenFilesChange: true},
-		{name: "manual with init", triggerMode: model.TriggerModeManual_AutoInit, expectInitialBuild: true, expectBuildWhenFilesChange: false},
-		{name: "manual without init", triggerMode: model.TriggerModeManual_NoInit, expectInitialBuild: false, expectBuildWhenFilesChange: false},
+		{name: "fully auto", triggerMode: model.TriggerModeAuto, expectInitialBuild: true, expectBuildWhenFilesChange: true},
+		{name: "auto with manual init", triggerMode: model.TriggerModeAutoWithManualInit, expectInitialBuild: false, expectBuildWhenFilesChange: true},
+		{name: "manual with auto init", triggerMode: model.TriggerModeManualWithAutoInit, expectInitialBuild: true, expectBuildWhenFilesChange: false},
+		{name: "fully manual", triggerMode: model.TriggerModeManual, expectInitialBuild: false, expectBuildWhenFilesChange: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
@@ -574,12 +574,12 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 		filesChanged       bool
 		expectedImageBuild bool
 	}{
-		{name: "manual including initial with change", triggerMode: model.TriggerModeManual_NoInit, filesChanged: true, expectedImageBuild: false},
-		{name: "manual after initial with change", triggerMode: model.TriggerModeManual_AutoInit, filesChanged: true, expectedImageBuild: false},
-		{name: "manual including initial without change", triggerMode: model.TriggerModeManual_NoInit, filesChanged: false, expectedImageBuild: true},
-		{name: "manual after initial without change", triggerMode: model.TriggerModeManual_AutoInit, filesChanged: false, expectedImageBuild: true},
-		{name: "auto without change", triggerMode: model.TriggerModeAuto_AutoInit, filesChanged: false, expectedImageBuild: true},
-		{name: "auto after initial without change", triggerMode: model.TriggerModeAuto_NoInit, filesChanged: false, expectedImageBuild: true},
+		{name: "fully manual with change", triggerMode: model.TriggerModeManual, filesChanged: true, expectedImageBuild: false},
+		{name: "manual with auto init with change", triggerMode: model.TriggerModeManualWithAutoInit, filesChanged: true, expectedImageBuild: false},
+		{name: "fully manual without change", triggerMode: model.TriggerModeManual, filesChanged: false, expectedImageBuild: true},
+		{name: "manual with auto init without change", triggerMode: model.TriggerModeManualWithAutoInit, filesChanged: false, expectedImageBuild: true},
+		{name: "fully auto without change", triggerMode: model.TriggerModeAuto, filesChanged: false, expectedImageBuild: true},
+		{name: "auto with manual init without change", triggerMode: model.TriggerModeAutoWithManualInit, filesChanged: false, expectedImageBuild: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
@@ -718,13 +718,13 @@ func TestBuildQueueOrdering(t *testing.T) {
 	defer f.TearDown()
 
 	m1 := f.newManifestWithRef("manifest1", container.MustParseNamed("manifest1")).
-		WithTriggerMode(model.TriggerModeManual_AutoInit)
+		WithTriggerMode(model.TriggerModeManualWithAutoInit)
 	m2 := f.newManifestWithRef("manifest2", container.MustParseNamed("manifest2")).
-		WithTriggerMode(model.TriggerModeManual_AutoInit)
+		WithTriggerMode(model.TriggerModeManualWithAutoInit)
 	m3 := f.newManifestWithRef("manifest3", container.MustParseNamed("manifest3")).
-		WithTriggerMode(model.TriggerModeManual_NoInit)
+		WithTriggerMode(model.TriggerModeManual)
 	m4 := f.newManifestWithRef("manifest4", container.MustParseNamed("manifest4")).
-		WithTriggerMode(model.TriggerModeManual_NoInit)
+		WithTriggerMode(model.TriggerModeManual)
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m4, m2, m3, m1}
@@ -777,11 +777,11 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	// changes to this dir. will register with our automatic manifests
 	dirAuto := f.JoinPath("dirAuto/")
 
-	m1 := f.newDockerBuildManifestWithBuildPath("manifest1", dirManual).WithTriggerMode(model.TriggerModeManual_AutoInit)
-	m2 := f.newDockerBuildManifestWithBuildPath("manifest2", dirManual).WithTriggerMode(model.TriggerModeManual_AutoInit)
-	m3 := f.newDockerBuildManifestWithBuildPath("manifest3", dirManual).WithTriggerMode(model.TriggerModeManual_NoInit)
-	m4 := f.newDockerBuildManifestWithBuildPath("manifest4", dirManual).WithTriggerMode(model.TriggerModeManual_NoInit)
-	m5 := f.newDockerBuildManifestWithBuildPath("manifest5", dirAuto).WithTriggerMode(model.TriggerModeAuto_AutoInit)
+	m1 := f.newDockerBuildManifestWithBuildPath("manifest1", dirManual).WithTriggerMode(model.TriggerModeManualWithAutoInit)
+	m2 := f.newDockerBuildManifestWithBuildPath("manifest2", dirManual).WithTriggerMode(model.TriggerModeManualWithAutoInit)
+	m3 := f.newDockerBuildManifestWithBuildPath("manifest3", dirManual).WithTriggerMode(model.TriggerModeManual)
+	m4 := f.newDockerBuildManifestWithBuildPath("manifest4", dirManual).WithTriggerMode(model.TriggerModeManual)
+	m5 := f.newDockerBuildManifestWithBuildPath("manifest5", dirAuto).WithTriggerMode(model.TriggerModeAuto)
 
 	// attach to state in different order than we plan to trigger them
 	manifests := []model.Manifest{m5, m4, m2, m3, m1}

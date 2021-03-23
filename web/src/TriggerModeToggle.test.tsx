@@ -18,10 +18,10 @@ import {
 import { TriggerMode } from "./types"
 
 let expectToggleToAuto = function (mode: TriggerMode) {
-  expect(mode).toEqual(TriggerMode.TriggerModeAuto_AutoInit)
+  expect(mode).toEqual(TriggerMode.TriggerModeAuto)
 }
 let expectToggleToManual = function (mode: TriggerMode) {
-  expect(mode).toEqual(TriggerMode.TriggerModeManual_NoInit)
+  expect(mode).toEqual(TriggerMode.TriggerModeManual)
 }
 
 describe("SidebarTriggerButton", () => {
@@ -50,10 +50,10 @@ describe("SidebarTriggerButton", () => {
       oneResourceTestWithName("manual_auto-init"),
       oneResourceTestWithName("manual_no-init"),
     ]
-    resources[0].triggerMode = TriggerMode.TriggerModeAuto_AutoInit
-    resources[1].triggerMode = TriggerMode.TriggerModeAuto_NoInit
-    resources[2].triggerMode = TriggerMode.TriggerModeManual_AutoInit
-    resources[3].triggerMode = TriggerMode.TriggerModeManual_NoInit
+    resources[0].triggerMode = TriggerMode.TriggerModeAuto
+    resources[1].triggerMode = TriggerMode.TriggerModeAutoWithManualInit
+    resources[2].triggerMode = TriggerMode.TriggerModeManualWithAutoInit
+    resources[3].triggerMode = TriggerMode.TriggerModeManual
 
     let view = { resources: resources }
 
@@ -87,7 +87,7 @@ describe("SidebarTriggerButton", () => {
     let toggleFoobar = toggleTriggerMode.bind(null, "foobar")
     const root = mount(
       <TriggerModeToggle
-        triggerMode={TriggerMode.TriggerModeAuto_AutoInit}
+        triggerMode={TriggerMode.TriggerModeAuto}
         onModeToggle={toggleFoobar}
       />
     )
@@ -105,7 +105,7 @@ describe("SidebarTriggerButton", () => {
 
     expect(fetchMock.mock.calls.length).toEqual(2) // 1 call to analytics, one to /override
     expectIncr(0, "ui.web.toggleTriggerMode", {
-      toMode: TriggerMode.TriggerModeManual_NoInit.toString(),
+      toMode: TriggerMode.TriggerModeManual.toString(),
     })
 
     expect(fetchMock.mock.calls[1][0]).toEqual("/api/override/trigger_mode")
@@ -113,7 +113,7 @@ describe("SidebarTriggerButton", () => {
     expect(fetchMock.mock.calls[1][1]?.body).toEqual(
       JSON.stringify({
         manifest_names: ["foobar"],
-        trigger_mode: TriggerMode.TriggerModeManual_NoInit,
+        trigger_mode: TriggerMode.TriggerModeManual,
       })
     )
   })
@@ -121,7 +121,7 @@ describe("SidebarTriggerButton", () => {
   it("toggles auto to manual", () => {
     const root = mount(
       <TriggerModeToggle
-        triggerMode={TriggerMode.TriggerModeAuto_AutoInit}
+        triggerMode={TriggerMode.TriggerModeAuto}
         onModeToggle={expectToggleToManual}
       />
     )
@@ -135,7 +135,7 @@ describe("SidebarTriggerButton", () => {
   it("toggles manualAfterInitial to auto", () => {
     const root = mount(
       <TriggerModeToggle
-        triggerMode={TriggerMode.TriggerModeManual_AutoInit}
+        triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         onModeToggle={expectToggleToAuto}
       />
     )
@@ -149,7 +149,7 @@ describe("SidebarTriggerButton", () => {
   it("toggles manualIncludingInitial to auto", () => {
     const root = mount(
       <TriggerModeToggle
-        triggerMode={TriggerMode.TriggerModeManual_NoInit}
+        triggerMode={TriggerMode.TriggerModeManual}
         onModeToggle={expectToggleToAuto}
       />
     )

@@ -534,7 +534,7 @@ func TestPendingBuildInManualTriggerMode(t *testing.T) {
 		Name:              "vigoda",
 		PendingBuildSince: ts.Add(-5 * time.Second),
 		PendingBuildEdits: []string{"main.go"},
-		TriggerMode:       model.TriggerModeManual_AutoInit,
+		TriggerMode:       model.TriggerModeManualWithAutoInit,
 		ResourceInfo:      view.K8sResourceInfo{},
 	})
 	vs := fakeViewState(1, view.CollapseNo)

@@ -110,7 +110,7 @@ export class OverviewItem {
     this.lastDeployTime = res.lastDeployTime ?? ""
     this.pendingBuildSince = res.pendingBuildSince ?? ""
     this.currentBuildStartTime = res.currentBuild?.startTime ?? ""
-    this.triggerMode = res.triggerMode ?? TriggerMode.TriggerModeAuto_AutoInit
+    this.triggerMode = res.triggerMode ?? TriggerMode.TriggerModeAuto
     this.hasPendingChanges = !!res.hasPendingChanges
     this.queued = !!res.queued
     this.lastBuild = lastBuild

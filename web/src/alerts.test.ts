@@ -409,7 +409,7 @@ function k8sResource(): Resource {
       podRestarts: 0,
     },
     runtimeStatus: "",
-    triggerMode: TriggerMode.TriggerModeAuto_AutoInit,
+    triggerMode: TriggerMode.TriggerModeAuto,
     hasPendingChanges: true,
     queued: false,
   }

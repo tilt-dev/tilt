@@ -636,13 +636,13 @@ func TestTriggerModeDC(t *testing.T) {
 		dcResourceSetting   triggerMode
 		expectedTriggerMode model.TriggerMode
 	}{
-		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto_AutoInit},
-		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto_AutoInit},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManual_AutoInit},
-		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto_AutoInit},
-		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManual_AutoInit},
-		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto_AutoInit},
-		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManual_AutoInit},
+		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualWithAutoInit},
+		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
+		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualWithAutoInit},
+		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
+		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualWithAutoInit},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)

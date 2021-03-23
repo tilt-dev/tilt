@@ -67,13 +67,13 @@ const titleText = (isManual: boolean): string => {
 
 function TriggerModeToggle(props: TriggerModeToggleProps) {
   let isManualTriggerMode =
-    props.triggerMode == TriggerMode.TriggerModeManual_AutoInit ||
-    props.triggerMode == TriggerMode.TriggerModeManual_NoInit
+    props.triggerMode == TriggerMode.TriggerModeManualWithAutoInit ||
+    props.triggerMode == TriggerMode.TriggerModeManual
   let desiredMode = isManualTriggerMode
     ? // if this manifest WAS Manual_NoInit and hadn't built yet, no guarantee that user wants it to initially build now, but seems like an OK guess
-      TriggerMode.TriggerModeAuto_AutoInit
+      TriggerMode.TriggerModeAuto
     : // Either manifest was Auto_AutoInit and has already built and the fact that it's now NoInit doesn't make a diff, or was Auto_NoInit in which case we want to preserve the NoInit behavior
-      TriggerMode.TriggerModeManual_NoInit
+      TriggerMode.TriggerModeManual
   let onClick = (e: any) => {
     // TriggerModeToggle is nested in a link,
     // and preventDefault is the standard way to cancel the navigation.

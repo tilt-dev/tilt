@@ -9,31 +9,33 @@ type TriggerMode int
 // 		or because the user just added the manifest to the Tiltfile.
 // 2. Non-initial - After the initial build, any time one of the manifest's dependencies changes, the manifest is ready
 //      for an update
+// NOTE(maia): These are probably better stored as two different bools (OnFileChange and OnInit
+//   or similar)--but that's a refactor for another day
 const (
-	// Tilt automatically performs initial and non-initial builds without manual intervention
-	TriggerModeAuto_AutoInit TriggerMode = iota
+	// Tilt automatically performs all builds (initial and non-initial) without manual intervention
+	TriggerModeAuto TriggerMode = iota
 	// Tilt automatically performs initial builds without manual intervention, but requires manual intervention for non-initial builds
-	TriggerModeManual_AutoInit TriggerMode = iota
+	TriggerModeManualWithAutoInit TriggerMode = iota
 	// Tilt requires manual intervention for all builds, and never automatically performs a build
-	TriggerModeManual_NoInit TriggerMode = iota
+	TriggerModeManual TriggerMode = iota
 	// Resource does not automatically build on `tilt up`, but builds automatically in response to file changes
-	TriggerModeAuto_NoInit TriggerMode = iota
+	TriggerModeAutoWithManualInit TriggerMode = iota
 )
 
 var TriggerModes = map[TriggerMode]bool{
-	TriggerModeAuto_AutoInit:   true,
-	TriggerModeManual_AutoInit: true,
-	TriggerModeManual_NoInit:   true,
-	TriggerModeAuto_NoInit:     true,
+	TriggerModeAuto:               true,
+	TriggerModeManualWithAutoInit: true,
+	TriggerModeManual:             true,
+	TriggerModeAutoWithManualInit: true,
 }
 
 func ValidTriggerMode(tm TriggerMode) bool {
 	return TriggerModes[tm]
 }
 func (t TriggerMode) AutoOnChange() bool {
-	return t == TriggerModeAuto_AutoInit || t == TriggerModeAuto_NoInit
+	return t == TriggerModeAuto || t == TriggerModeAutoWithManualInit
 }
 
 func (t TriggerMode) AutoInitial() bool {
-	return t == TriggerModeAuto_AutoInit || t == TriggerModeManual_AutoInit
+	return t == TriggerModeAuto || t == TriggerModeManualWithAutoInit
 }

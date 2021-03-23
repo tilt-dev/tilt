@@ -75,7 +75,7 @@ function withStatus(status: ResourceStatus): optionFn {
 function withManualTrigger(): optionFn {
   return (props: SidebarItemViewProps) => {
     let item = props.item
-    item.triggerMode = TriggerMode.TriggerModeManual_NoInit
+    item.triggerMode = TriggerMode.TriggerModeManual
     item.hasPendingChanges = true
   }
 }
@@ -83,7 +83,7 @@ function withManualTrigger(): optionFn {
 function withQueuedTrigger(): optionFn {
   return (props: SidebarItemViewProps) => {
     let item = props.item
-    item.triggerMode = TriggerMode.TriggerModeManual_NoInit
+    item.triggerMode = TriggerMode.TriggerModeManual
     item.hasPendingChanges = true
     item.queued = true
   }
