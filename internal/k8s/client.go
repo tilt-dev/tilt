@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
@@ -104,9 +103,9 @@ type Client interface {
 	//
 	// Over time, we want to remove the ability to watch all namespaces
 	// https://github.com/tilt-dev/tilt/issues/3792
-	WatchPods(ctx context.Context, ns Namespace, lps labels.Selector) (<-chan ObjectUpdate, error)
+	WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error)
 
-	WatchServices(ctx context.Context, ns Namespace, lps labels.Selector) (<-chan *v1.Service, error)
+	WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error)
 
 	WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error)
 

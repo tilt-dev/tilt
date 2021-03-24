@@ -118,7 +118,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 }
 
 func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace) {
-	ch, err := w.kCli.WatchPods(ctx, ns, labels.Everything())
+	ch, err := w.kCli.WatchPods(ctx, ns)
 	if err != nil {
 		err = errors.Wrapf(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods -n %q`", ns)
 		st.Dispatch(store.NewErrorAction(err))

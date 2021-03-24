@@ -8,7 +8,6 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -62,11 +61,11 @@ func (ec *explodingClient) CreatePortForwarder(ctx context.Context, namespace Na
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchPods(ctx context.Context, ns Namespace, lps labels.Selector) (<-chan ObjectUpdate, error) {
+func (ec *explodingClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchServices(ctx context.Context, ns Namespace, lps labels.Selector) (<-chan *v1.Service, error) {
+func (ec *explodingClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
