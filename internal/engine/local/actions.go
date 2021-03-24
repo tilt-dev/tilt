@@ -1,6 +1,10 @@
 package local
 
-import "github.com/tilt-dev/tilt/internal/store"
+import (
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/tilt-dev/tilt/internal/store"
+)
 
 type CmdCreateAction struct {
 	Cmd *Cmd
@@ -15,10 +19,7 @@ var _ store.Summarizer = CmdCreateAction{}
 func (CmdCreateAction) Action() {}
 
 func (a CmdCreateAction) Summarize(s *store.ChangeSummary) {
-	if s.CmdSpecs == nil {
-		s.CmdSpecs = make(map[string]bool)
-	}
-	s.CmdSpecs[a.Cmd.Name] = true
+	s.CmdSpecs.Add(types.NamespacedName{Name: a.Cmd.Name})
 }
 
 type CmdUpdateStatusAction struct {
@@ -38,8 +39,5 @@ type CmdDeleteAction struct {
 func (CmdDeleteAction) Action() {}
 
 func (a CmdDeleteAction) Summarize(s *store.ChangeSummary) {
-	if s.CmdSpecs == nil {
-		s.CmdSpecs = make(map[string]bool)
-	}
-	s.CmdSpecs[a.Name] = true
+	s.CmdSpecs.Add(types.NamespacedName{Name: a.Name})
 }

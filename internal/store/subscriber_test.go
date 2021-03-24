@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestSubscriber(t *testing.T) {
@@ -50,17 +51,22 @@ func TestSubscriberInterleavedCallsSummary(t *testing.T) {
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
-	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: map[string]bool{"spec-1": true}})
-	call := <-s.onChange
-	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: map[string]bool{"spec-1": true}})
+	nn1 := types.NamespacedName{Name: "spec-1"}
 
-	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: map[string]bool{"spec-2": true}})
-	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: map[string]bool{"spec-3": true}})
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: NewChangeSet(nn1)})
+	call := <-s.onChange
+	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: NewChangeSet(nn1)})
+
+	nn2 := types.NamespacedName{Name: "spec-2"}
+	nn3 := types.NamespacedName{Name: "spec-3"}
+
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: NewChangeSet(nn2)})
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: NewChangeSet(nn3)})
 	time.Sleep(10 * time.Millisecond)
 	close(call.done)
 
 	call = <-s.onChange
-	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: map[string]bool{"spec-2": true, "spec-3": true}})
+	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: NewChangeSet(nn2, nn3)})
 	close(call.done)
 
 	select {

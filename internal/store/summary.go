@@ -5,6 +5,40 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// Represents all the IDs of a particular type of resource
+// that have changed.
+type ChangeSet struct {
+	Changes map[types.NamespacedName]bool
+}
+
+func NewChangeSet(names ...types.NamespacedName) ChangeSet {
+	cs := ChangeSet{}
+	for _, name := range names {
+		cs.Add(name)
+	}
+	return cs
+}
+
+// Add a changed resource name.
+func (s *ChangeSet) Add(nn types.NamespacedName) {
+	if s.Changes == nil {
+		s.Changes = make(map[types.NamespacedName]bool)
+	}
+	s.Changes[nn] = true
+}
+
+// Merge another change set into this one.
+func (s *ChangeSet) AddAll(other ChangeSet) {
+	if len(other.Changes) > 0 {
+		if s.Changes == nil {
+			s.Changes = make(map[types.NamespacedName]bool)
+		}
+		for k, v := range other.Changes {
+			s.Changes[k] = v
+		}
+	}
+}
+
 // Summarize the changes to the EngineState since the last change.
 type ChangeSummary struct {
 	// True if we saw one or more legacy actions that don't know how
@@ -15,10 +49,10 @@ type ChangeSummary struct {
 	Log bool
 
 	// Cmds with their specs changed.
-	CmdSpecs map[string]bool
+	CmdSpecs ChangeSet
 
 	// FileWatches with their specs changed.
-	FileWatchSpecs map[types.NamespacedName]bool
+	FileWatchSpecs ChangeSet
 }
 
 func (s ChangeSummary) IsLogOnly() bool {
@@ -28,22 +62,8 @@ func (s ChangeSummary) IsLogOnly() bool {
 func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.Legacy = s.Legacy || other.Legacy
 	s.Log = s.Log || other.Log
-	if len(other.CmdSpecs) > 0 {
-		if s.CmdSpecs == nil {
-			s.CmdSpecs = make(map[string]bool)
-		}
-		for k, v := range other.CmdSpecs {
-			s.CmdSpecs[k] = v
-		}
-	}
-	if len(other.FileWatchSpecs) > 0 {
-		if s.FileWatchSpecs == nil {
-			s.FileWatchSpecs = make(map[types.NamespacedName]bool)
-		}
-		for k, v := range other.FileWatchSpecs {
-			s.FileWatchSpecs[k] = v
-		}
-	}
+	s.CmdSpecs.AddAll(other.CmdSpecs)
+	s.FileWatchSpecs.AddAll(other.FileWatchSpecs)
 }
 
 func LegacyChangeSummary() ChangeSummary {
