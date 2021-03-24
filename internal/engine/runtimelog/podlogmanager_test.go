@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/testutils/manifestutils"
 
@@ -43,7 +44,7 @@ func TestLogs(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 	f.AssertOutputContains("hello world!")
 	assert.Equal(t, start, f.kClient.LastPodLogStartTime)
 }
@@ -64,7 +65,7 @@ func TestLogActions(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 	f.ConsumeLogActionsUntil("hello world!")
 }
 
@@ -84,7 +85,7 @@ func TestLogsFailed(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 	f.AssertOutputContains("Error streaming server logs")
 	assert.Contains(t, f.out.String(), "my-error")
 }
@@ -105,13 +106,13 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 	f.AssertOutputContains("hello world!\n")
 
 	// Previous log stream has finished, so the first pod watch has been canceled,
 	// but not cleaned up; check that we start a new watch .OnChange
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 	f.AssertOutputContains("goodbye world!\n")
 }
 
@@ -135,7 +136,7 @@ func TestMultiContainerLogs(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 	f.AssertOutputContains("hello world!")
 	f.AssertOutputContains("goodbye world!")
 }
@@ -179,7 +180,7 @@ func TestContainerPrefixes(t *testing.T) {
 		podSingleC))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 
 	// Make sure we have expected logs
 	f.AssertOutputContains("hello world!")
@@ -213,8 +214,8 @@ func TestTerminatedContainerLogs(t *testing.T) {
 
 	// Fire OnChange twice, because we used to have a bug where
 	// we'd immediately teardown the log watch on the terminated container.
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 
 	f.AssertOutputContains("hello world!")
 
@@ -222,7 +223,7 @@ func TestTerminatedContainerLogs(t *testing.T) {
 	// closes the log stream.
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 	f.AssertOutputContains("hello world!")
 	f.AssertOutputDoesNotContain("goodbye world!")
 }
@@ -262,7 +263,7 @@ func TestLogReconnection(t *testing.T) {
 		state.TiltStartTime = startTime
 	})
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 
 	_, _ = writer.Write([]byte("hello world!"))
 	f.AssertOutputContains("hello world!")
@@ -330,7 +331,7 @@ func TestInitContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, cNameInit, "init world!")
 	f.kClient.SetLogsForPodContainer(podID, cNameNormal, "hello world!")
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 
 	f.AssertOutputContains(cNameInit.String())
 	f.AssertOutputContains("init world!")
@@ -367,10 +368,16 @@ func TestIstioContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, istioSidecar, "hello istio!")
 	f.kClient.SetLogsForPodContainer(podID, cNormal, "hello world!")
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.plm.OnChange(f.ctx, f.store, podChange(podID))
 
 	f.AssertOutputDoesNotContain("istio")
 	f.AssertOutputContains("hello world!")
+}
+
+func podChange(podID k8s.PodID) store.ChangeSummary {
+	return store.ChangeSummary{
+		Pods: store.NewChangeSet(types.NamespacedName{Name: string(podID)}),
+	}
 }
 
 type plmStore struct {
