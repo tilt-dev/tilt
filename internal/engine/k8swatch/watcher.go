@@ -51,17 +51,15 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 
 		name := mt.Manifest.Name
 
-		if state.EngineMode.WatchesRuntime() {
-			for _, obj := range mt.Manifest.K8sTarget().ObjectRefs {
-				namespace := k8s.Namespace(obj.Namespace)
-				if namespace == "" {
-					namespace = ks.cfgNS
-				}
-				if namespace == "" {
-					namespace = k8s.DefaultNamespace
-				}
-				namespaces[namespace] = true
+		for _, obj := range mt.Manifest.K8sTarget().ObjectRefs {
+			namespace := k8s.Namespace(obj.Namespace)
+			if namespace == "" {
+				namespace = ks.cfgNS
 			}
+			if namespace == "" {
+				namespace = k8s.DefaultNamespace
+			}
+			namespaces[namespace] = true
 		}
 
 		// Collect all the new UIDs

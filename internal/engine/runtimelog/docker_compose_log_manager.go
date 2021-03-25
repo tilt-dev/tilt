@@ -33,10 +33,6 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	if !state.EngineMode.WatchesRuntime() {
-		return nil, nil
-	}
-
 	for _, mt := range state.ManifestTargets {
 		manifest := mt.Manifest
 		if !manifest.IsDC() {

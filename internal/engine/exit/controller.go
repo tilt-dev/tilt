@@ -22,68 +22,58 @@ func (c *Controller) shouldExit(store store.RStore) Action {
 	state := store.RLockState()
 	defer store.RUnlockState()
 
-	// Already processing the exit
-	if state.ExitSignal {
+	// If state already has an ExitSignal or engine is NOT in CI mode (i.e. it's in interactive "Up" mode),
+	// there's nothing to do
+	if state.ExitSignal || !state.EngineMode.IsCIMode() {
 		return Action{}
 	}
 
-	if state.EngineMode.IsApplyMode() || state.EngineMode.IsCIMode() {
-		// If the tiltfile failed, exit immediately.
-		err := state.TiltfileState.LastBuild().Error
+	// If the tiltfile failed, exit immediately.
+	err := state.TiltfileState.LastBuild().Error
+	if err != nil {
+		return Action{ExitSignal: true, ExitError: err}
+	}
+
+	// If any of the individual builds failed, exit immediately.
+	for _, mt := range state.ManifestTargets {
+		err := mt.State.LastBuild().Error
 		if err != nil {
 			return Action{ExitSignal: true, ExitError: err}
 		}
+	}
 
-		// If any of the individual builds failed, exit immediately.
-		for _, mt := range state.ManifestTargets {
-			err := mt.State.LastBuild().Error
-			if err != nil {
-				return Action{ExitSignal: true, ExitError: err}
+	// Check the runtime state of all resources.
+	// If any of the resources are in error, exit.
+	allOK := true
+	for _, mt := range state.ManifestTargets {
+		// don't wait on resources requiring manual trigger for initial build
+		if !mt.Manifest.TriggerMode.AutoInitial() {
+			continue
+		}
+
+		rs := mt.State.RuntimeState
+		if rs == nil {
+			allOK = false
+			continue
+		}
+
+		status := rs.RuntimeStatus()
+		if status == model.RuntimeStatusError {
+			return Action{
+				ExitSignal: true,
+				ExitError:  rs.RuntimeStatusError(),
 			}
+		}
+
+		if !c.isRuntimeDone(mt) {
+			allOK = false
 		}
 	}
 
-	if state.EngineMode.IsApplyMode() {
-		// If all builds completed, we're done!
-		if len(state.ManifestTargets) > 0 && state.InitialBuildsCompleted() {
-			return Action{ExitSignal: true}
-		}
-	}
-
-	if state.EngineMode.IsCIMode() {
-		// Check the runtime state of all resources.
-		// If any of the resources are in error, exit.
-		allOK := true
-		for _, mt := range state.ManifestTargets {
-			// don't wait on resources requiring manual trigger for initial build
-			if !mt.Manifest.TriggerMode.AutoInitial() {
-				continue
-			}
-
-			rs := mt.State.RuntimeState
-			if rs == nil {
-				allOK = false
-				continue
-			}
-
-			status := rs.RuntimeStatus()
-			if status == model.RuntimeStatusError {
-				return Action{
-					ExitSignal: true,
-					ExitError:  rs.RuntimeStatusError(),
-				}
-			}
-
-			if !c.isRuntimeDone(mt) {
-				allOK = false
-			}
-		}
-
-		// If all the resources are OK, we're done.
-		if len(state.ManifestTargets) > 0 &&
-			state.InitialBuildsCompleted() && allOK {
-			return Action{ExitSignal: true}
-		}
+	// If all the resources are OK, we're done.
+	if len(state.ManifestTargets) > 0 &&
+		state.InitialBuildsCompleted() && allOK {
+		return Action{ExitSignal: true}
 	}
 
 	return Action{}

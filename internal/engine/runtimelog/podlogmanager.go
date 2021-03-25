@@ -77,10 +77,6 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []PodL
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	if !state.EngineMode.WatchesRuntime() {
-		return nil, nil
-	}
-
 	stateWatches := make(map[podLogKey]bool)
 	for _, mt := range state.Targets() {
 		man := mt.Manifest
