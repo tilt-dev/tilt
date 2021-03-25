@@ -9,7 +9,6 @@ import (
 	"time"
 
 	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
-	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
@@ -37,13 +36,6 @@ import (
 )
 
 const FileName = "Tiltfile"
-
-func init() {
-	resolve.AllowLambda = true
-	resolve.AllowNestedDef = true
-	resolve.AllowGlobalReassign = true
-	resolve.AllowRecursion = true
-}
 
 type TiltfileLoadResult struct {
 	Manifests           []model.Manifest
