@@ -3,7 +3,6 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/blang/semver"
@@ -11,12 +10,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/metadata/metadatainformer"
 	"k8s.io/client-go/tools/cache"
@@ -72,48 +69,6 @@ func (r ObjectUpdate) AsDeletedKey() (Namespace, string, bool) {
 	return Namespace(ns), name, true
 }
 
-type watcherFactory func(namespace string) watcher
-type watcher interface {
-	Watch(ctx context.Context, options metav1.ListOptions) (watch.Interface, error)
-}
-
-func (kCli K8sClient) makeWatcher(ctx context.Context, f watcherFactory, ls labels.Selector) (watch.Interface, Namespace, error) {
-	// passing "" gets us all namespaces
-	w := f("")
-	if w == nil {
-		return nil, "", nil
-	}
-
-	watcher, err := w.Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
-	if err == nil {
-		return watcher, "", nil
-	}
-
-	// If the request failed, we might be able to recover.
-	statusErr, isStatusErr := err.(*apiErrors.StatusError)
-	if !isStatusErr {
-		return nil, "", err
-	}
-
-	status := statusErr.ErrStatus
-	if status.Code == http.StatusForbidden {
-		// If this is a forbidden error, maybe the user just isn't allowed to watch this namespace.
-		// Let's narrow our request to just the config namespace, and see if that helps.
-		w := f(kCli.configNamespace.String())
-		if w == nil {
-			return nil, "", nil
-		}
-
-		watcher, err := w.Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
-		if err == nil {
-			return watcher, kCli.configNamespace, nil
-		}
-
-		// ugh, it still failed. return the original error.
-	}
-	return nil, "", fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
-}
-
 func maybeUnpackStatusError(err error) error {
 	statusErr, isStatusErr := err.(*apiErrors.StatusError)
 	if !isStatusErr {
@@ -126,38 +81,23 @@ func maybeUnpackStatusError(err error) error {
 func (kCli K8sClient) makeInformer(
 	ctx context.Context,
 	ns Namespace,
-	gvr schema.GroupVersionResource,
-	ls labels.Selector) (cache.SharedInformer, error) {
+	gvr schema.GroupVersionResource) (cache.SharedInformer, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("makeInformer no longer supports watching all namespaces")
+	}
 
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
 	// throw it away.
-	if ns == "" {
-		watcher, narrowNS, err := kCli.makeWatcher(ctx, func(ns string) watcher {
-			return kCli.dynamic.Resource(gvr).Namespace(ns)
-		}, ls)
-		if err != nil {
-			return nil, errors.Wrap(err, "makeInformer")
-		}
-		watcher.Stop()
-		ns = narrowNS
-	} else {
-		watcher, err := kCli.dynamic.Resource(gvr).Namespace(ns.String()).
-			Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
-		if err != nil {
-			return nil, errors.Wrap(maybeUnpackStatusError(err), "makeInformer")
-		}
-		watcher.Stop()
+	watcher, err := kCli.dynamic.Resource(gvr).Namespace(ns.String()).
+		Watch(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, errors.Wrap(maybeUnpackStatusError(err), "makeInformer")
 	}
+	watcher.Stop()
 
-	options := []informers.SharedInformerOption{}
-	if !ls.Empty() {
-		options = append(options, informers.WithTweakListOptions(func(o *metav1.ListOptions) {
-			o.LabelSelector = ls.String()
-		}))
-	}
-	if ns != "" {
-		options = append(options, informers.WithNamespace(ns.String()))
+	options := []informers.SharedInformerOption{
+		informers.WithNamespace(ns.String()),
 	}
 
 	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientset, resyncPeriod, options...)
@@ -171,7 +111,7 @@ func (kCli K8sClient) makeInformer(
 
 func (kCli K8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error) {
 	gvr := EventGVR
-	informer, err := kCli.makeInformer(ctx, ns, gvr, labels.Everything())
+	informer, err := kCli.makeInformer(ctx, ns, gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchEvents")
 	}
@@ -205,9 +145,9 @@ func (kCli K8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan ObjectUpdate, error) {
+func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
 	gvr := PodGVR
-	informer, err := kCli.makeInformer(ctx, ns, gvr, ls)
+	informer, err := kCli.makeInformer(ctx, ns, gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchPods")
 	}
@@ -249,9 +189,9 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Sel
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan *v1.Service, error) {
+func (kCli K8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
 	gvr := ServiceGVR
-	informer, err := kCli.makeInformer(ctx, ns, gvr, ls)
+	informer, err := kCli.makeInformer(ctx, ns, gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchServices")
 	}

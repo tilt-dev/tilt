@@ -87,13 +87,11 @@ type ExecCall struct {
 
 type fakeServiceWatch struct {
 	ns Namespace
-	ls labels.Selector
 	ch chan *v1.Service
 }
 
 type fakePodWatch struct {
 	ns Namespace
-	ls labels.Selector
 	ch chan ObjectUpdate
 }
 
@@ -106,11 +104,7 @@ func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, w := range c.serviceWatches {
-		if !SelectorEqual(ls, w.ls) {
-			continue
-		}
-
-		if w.ns != "" && w.ns != Namespace(s.Namespace) {
+		if w.ns != Namespace(s.Namespace) {
 			continue
 		}
 
@@ -118,10 +112,10 @@ func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
 	}
 }
 
-func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan *v1.Service, error) {
+func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
 	c.mu.Lock()
 	ch := make(chan *v1.Service, 20)
-	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ns, ls, ch})
+	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ns, ch})
 	c.mu.Unlock()
 
 	go func() {
@@ -130,7 +124,7 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace, ls labe
 		c.mu.Lock()
 		var newWatches []fakeServiceWatch
 		for _, e := range c.serviceWatches {
-			if e.ns != ns || !SelectorEqual(e.ls, ls) {
+			if e.ns != ns {
 				newWatches = append(newWatches, e)
 			}
 		}
@@ -184,25 +178,11 @@ func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
 	}
 }
 
-func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	var ret []labels.Selector
-	for _, w := range c.podWatches {
-		ret = append(ret, w.ls)
-	}
-	return ret
-}
-
 func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, w := range c.podWatches {
-		if w.ns != "" && w.ns != Namespace(p.Namespace) {
-			continue
-		}
-
-		if !SelectorEqual(w.ls, ls) {
+		if w.ns != Namespace(p.Namespace) {
 			continue
 		}
 
@@ -214,11 +194,7 @@ func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, w := range c.podWatches {
-		if w.ns != "" && w.ns != Namespace(p.Namespace) {
-			continue
-		}
-
-		if !SelectorEqual(w.ls, ls) {
+		if w.ns != Namespace(p.Namespace) {
 			continue
 		}
 
@@ -226,10 +202,10 @@ func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
 	}
 }
 
-func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan ObjectUpdate, error) {
+func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
 	c.mu.Lock()
 	ch := make(chan ObjectUpdate, 20)
-	c.podWatches = append(c.podWatches, fakePodWatch{ns, ls, ch})
+	c.podWatches = append(c.podWatches, fakePodWatch{ns, ch})
 	c.mu.Unlock()
 
 	go func() {
@@ -238,7 +214,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.S
 		c.mu.Lock()
 		var newWatches []fakePodWatch
 		for _, e := range c.podWatches {
-			if e.ns != ns || !SelectorEqual(e.ls, ls) {
+			if e.ns != ns {
 				newWatches = append(newWatches, e)
 			}
 		}
