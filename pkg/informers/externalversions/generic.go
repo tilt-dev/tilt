@@ -60,6 +60,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Tilt().V1alpha1().FileWatches().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("podlogstreams"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Tilt().V1alpha1().PodLogStreams().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("tiltruns"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tilt().V1alpha1().TiltRuns().Informer()}, nil
 
 	}
 
