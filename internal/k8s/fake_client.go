@@ -16,7 +16,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -324,10 +323,6 @@ func (c *FakeK8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKin
 	return result, nil
 }
 
-func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
-	return watch.NewEmptyWatch(), nil
-}
-
 func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, logs string) {
 	c.SetLogReaderForPodContainer(pID, cName, strings.NewReader(logs))
 }
@@ -349,10 +344,6 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 	}
 
 	return ReaderCloser{Reader: bytes.NewBuffer(nil)}, nil
-}
-
-func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
-	return nil, nil
 }
 
 func FakePodStatus(image reference.NamedTagged, phase string) v1.PodStatus {

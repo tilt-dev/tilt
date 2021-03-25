@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -81,12 +80,6 @@ type Client interface {
 
 	GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error)
 	ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error)
-
-	PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error)
-
-	// Creates a channel where all changes to the pod are brodcast.
-	// Takes a pod as input, to indicate the version of the pod where we start watching.
-	WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error)
 
 	// Streams the container logs
 	ContainerLogs(ctx context.Context, podID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error)
