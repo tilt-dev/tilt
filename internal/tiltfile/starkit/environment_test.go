@@ -220,3 +220,16 @@ print_mypath()
 	require.Equal(t, "Tiltfile", filepath.Base(paths[0]))
 	require.Equal(t, "Tiltfile2", filepath.Base(paths[1]))
 }
+
+func TestSupportsSet(t *testing.T) {
+	f := NewFixture(t, PwdExtension{})
+	f.File("Tiltfile", `
+x = set([1, 2, 1])
+print(x)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	assert.Equal(t, "set([1, 2])\n", f.out.String())
+}
