@@ -7,14 +7,10 @@ type EngineMode struct {
 }
 
 var (
-	// "up" is an interactive dev mode that watches files and resources.
+	// EngineModeUp is an interactive dev mode that watches files and resources.
 	EngineModeUp = EngineMode{}
 
-	// "apply" is a dev mode that builds and applies all resources,
-	// but doesn't wait to see if they come up.
-	EngineModeApply = EngineMode{Name: "apply"}
-
-	// "CI" is a mode that builds and applies all resources,
+	// EngineModeCI is a mode that builds and applies all resources,
 	// waits until they come up, then exits.
 	EngineModeCI = EngineMode{Name: "ci"}
 )
@@ -25,10 +21,6 @@ func (m EngineMode) WatchesFiles() bool {
 
 func (m EngineMode) WatchesRuntime() bool {
 	return m == EngineModeUp || m == EngineModeCI
-}
-
-func (m EngineMode) IsApplyMode() bool {
-	return m == EngineModeApply
 }
 
 func (m EngineMode) IsCIMode() bool {

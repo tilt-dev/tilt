@@ -26,14 +26,8 @@ func NewEventWatcher(dcc dockercompose.DockerComposeClient, docker docker.LocalC
 	}
 }
 
-func (w *EventWatcher) needsWatch(st store.RStore) bool {
-	state := st.RLockState()
-	defer st.RUnlockState()
-	return state.EngineMode.WatchesRuntime() && !w.watching
-}
-
 func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
-	if !w.needsWatch(st) {
+	if !w.watching {
 		return
 	}
 

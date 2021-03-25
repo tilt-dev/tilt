@@ -411,18 +411,23 @@ func TestUpper_Up(t *testing.T) {
 	manifest := f.newManifest("foobar")
 
 	f.setManifests([]model.Manifest{manifest})
-	err := f.upper.Init(f.ctx, InitAction{
-		EngineMode:   store.EngineModeApply,
-		TiltfilePath: f.JoinPath("Tiltfile"),
-		StartTime:    f.Now(),
-	})
+
+	storeErr := make(chan error, 1)
+	go func() {
+		storeErr <- f.upper.Init(f.ctx, InitAction{
+			EngineMode:   store.EngineModeUp,
+			TiltfilePath: f.JoinPath("Tiltfile"),
+			StartTime:    f.Now(),
+		})
+	}()
+
+	call := f.nextCallComplete()
+	assert.Equal(t, manifest.K8sTarget().ID(), call.k8s().ID())
 	close(f.b.calls)
-	require.NoError(t, err)
-	var started []model.TargetID
-	for call := range f.b.calls {
-		started = append(started, call.k8s().ID())
-	}
-	require.Equal(t, []model.TargetID{manifest.K8sTarget().ID()}, started)
+
+	// cancel the context to simulate a Ctrl-C
+	f.cancel()
+	assert.ErrorIs(t, <-storeErr, context.Canceled, "Upper returned unexpected error")
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
@@ -444,7 +449,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f.WriteFile("postgres.yaml", yaml)
 
 	err = f.upper.Init(f.ctx, InitAction{
-		EngineMode:   store.EngineModeApply,
+		EngineMode:   store.EngineModeCI,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		StartTime:    f.Now(),
 	})
@@ -464,33 +469,29 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
+func TestUpper_CI(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", simpleTiltfile)
-	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
-	f.WriteFile("snack.yaml", simpleYAML)
+	manifest := f.newManifest("foobar")
+	f.setManifests([]model.Manifest{manifest})
 
-	err := f.upper.Init(f.ctx, InitAction{
-		EngineMode:   store.EngineModeApply,
-		TiltfilePath: f.JoinPath("Tiltfile"),
-		UserArgs:     nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
-		StartTime:    f.Now(),
-	})
+	storeErr := make(chan error, 1)
+	go func() {
+		storeErr <- f.upper.Init(f.ctx, InitAction{
+			EngineMode:   store.EngineModeCI,
+			TiltfilePath: f.JoinPath("Tiltfile"),
+			UserArgs:     nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
+			StartTime:    f.Now(),
+		})
+	}()
+
+	call := f.nextCallComplete()
 	close(f.b.calls)
+	assert.Equal(t, "foobar", call.k8s().ID().Name.String())
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var built []model.TargetID
-	for call := range f.b.calls {
-		built = append(built, call.k8s().ID())
-	}
-	if assert.Equal(t, 1, len(built)) {
-		assert.Equal(t, "snack", built[0].Name.String())
-	}
+	f.startPod(podbuilder.New(t, manifest).WithPhase(string(v1.PodRunning)).Build(), manifest.Name)
+	require.NoError(t, <-storeErr)
 }
 
 func TestUpper_UpWatchError(t *testing.T) {
@@ -658,7 +659,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 
 	f.setManifests([]model.Manifest{manifest})
 	f.Init(InitAction{
-		EngineMode:   store.EngineModeApply,
+		EngineMode:   store.EngineModeCI,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
