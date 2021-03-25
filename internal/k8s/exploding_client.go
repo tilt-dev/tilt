@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -42,14 +41,6 @@ func (ec *explodingClient) PodsWithImage(ctx context.Context, image reference.Na
 }
 
 func (ec *explodingClient) PollForPodsWithImage(ctx context.Context, image reference.NamedTagged, n Namespace, lp []model.LabelPair, timeout time.Duration) ([]v1.Pod, error) {
-	return nil, errors.Wrap(ec.err, "could not set up k8s client")
-}
-
-func (ec *explodingClient) PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error) {
-	return nil, errors.Wrap(ec.err, "could not set up k8s client")
-}
-
-func (ec *explodingClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

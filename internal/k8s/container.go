@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -9,97 +8,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 const ContainerIDPrefix = "docker://"
-
-func WaitForContainerReady(ctx context.Context, client Client, pod *v1.Pod, ref container.RefSelector) (v1.ContainerStatus, error) {
-	cStatus, err := waitForContainerReadyHelper(pod, ref)
-	if err != nil {
-		return v1.ContainerStatus{}, err
-	} else if cStatus != (v1.ContainerStatus{}) {
-		return cStatus, nil
-	}
-
-	watch, err := client.WatchPod(ctx, pod)
-	if err != nil {
-		return v1.ContainerStatus{}, errors.Wrap(err, "WaitForContainerReady")
-	}
-	defer watch.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return v1.ContainerStatus{}, errors.Wrap(ctx.Err(), "WaitForContainerReady")
-		case event, ok := <-watch.ResultChan():
-			if !ok {
-				return v1.ContainerStatus{}, fmt.Errorf("Container watch closed: %s", ref)
-			}
-
-			obj := event.Object
-			pod, ok := obj.(*v1.Pod)
-			if !ok {
-				logger.Get(ctx).Debugf("Unexpected watch notification: %T", obj)
-				continue
-			}
-
-			FixContainerStatusImages(pod)
-
-			cStatus, err := waitForContainerReadyHelper(pod, ref)
-			if err != nil {
-				return v1.ContainerStatus{}, err
-			} else if cStatus != (v1.ContainerStatus{}) {
-				return cStatus, nil
-			}
-		}
-	}
-}
-
-func waitForContainerReadyHelper(pod *v1.Pod, ref container.RefSelector) (v1.ContainerStatus, error) {
-	cStatus, err := ContainerMatching(pod, ref)
-	if err != nil {
-		return v1.ContainerStatus{}, errors.Wrap(err, "WaitForContainerReadyHelper")
-	}
-
-	unschedulable, msg := IsUnschedulable(pod.Status)
-	if unschedulable {
-		return v1.ContainerStatus{}, fmt.Errorf("Container will never be ready: %s", msg)
-	}
-
-	if IsContainerExited(pod.Status, cStatus) {
-		return v1.ContainerStatus{}, fmt.Errorf("Container will never be ready: %s", ref)
-	}
-
-	if !cStatus.Ready {
-		return v1.ContainerStatus{}, nil
-	}
-
-	return cStatus, nil
-}
-
-// If true, this means the container is gone and will never recover.
-func IsContainerExited(pod v1.PodStatus, container v1.ContainerStatus) bool {
-	if pod.Phase == v1.PodSucceeded || pod.Phase == v1.PodFailed {
-		return true
-	}
-
-	if container.State.Terminated != nil {
-		return true
-	}
-
-	return false
-}
-
-// Returns the error message if the pod is unschedulable
-func IsUnschedulable(pod v1.PodStatus) (bool, string) {
-	for _, cond := range pod.Conditions {
-		if cond.Reason == v1.PodReasonUnschedulable {
-			return true, cond.Message
-		}
-	}
-	return false, ""
-}
 
 // Kubernetes has a bug where the image ref in the container status
 // can be wrong (though this does not mean the container is running
