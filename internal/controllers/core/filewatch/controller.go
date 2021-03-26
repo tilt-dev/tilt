@@ -109,6 +109,7 @@ func (c *Controller) removeWatch(tw *watcher) {
 }
 
 func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name types.NamespacedName, fw *filewatches.FileWatch) error {
+	// TODO(nick): Reconcile this with ignore.CreateFileChangeFilter
 	var ignoreMatchers []model.PathMatcher
 	for _, ignoreDef := range fw.Spec.Ignores {
 		if len(ignoreDef.Patterns) != 0 {

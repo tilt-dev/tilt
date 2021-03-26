@@ -3,6 +3,7 @@ package fswatch
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -40,6 +41,23 @@ func TestWatchManager_basic(t *testing.T) {
 	f.SetManifestTarget(target)
 
 	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{WatchedPaths: []string{"."}})
+}
+
+func TestWatchManager_localRepo(t *testing.T) {
+	f := newWMFixture(t)
+	defer f.TearDown()
+
+	target := model.DockerComposeTarget{Name: "foo"}.
+		WithBuildPath(".").
+		WithRepos([]model.LocalGitRepo{model.LocalGitRepo{LocalPath: "."}})
+	f.SetManifestTarget(target)
+
+	f.RequireFileWatchSpecEqual(target.ID(), filewatches.FileWatchSpec{
+		WatchedPaths: []string{"."},
+		Ignores: []filewatches.IgnoreDef{
+			{BasePath: filepath.Join(".", ".git")},
+		},
+	})
 }
 
 func TestWatchManager_disabledOnCIMode(t *testing.T) {
