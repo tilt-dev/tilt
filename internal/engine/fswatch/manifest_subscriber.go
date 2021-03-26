@@ -121,27 +121,7 @@ func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) *filew
 
 	spec := &filewatches.FileWatchSpec{
 		WatchedPaths: watchedPaths,
-	}
-
-	for _, r := range t.LocalRepos() {
-		spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-			BasePath: filepath.Join(r.LocalPath, ".git"),
-		})
-	}
-
-	for _, di := range t.Dockerignores() {
-		if di.Empty() {
-			continue
-		}
-		spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-			BasePath: di.LocalPath,
-			Patterns: append([]string(nil), di.Patterns...),
-		})
-	}
-	for _, ild := range t.IgnoredLocalDirectories() {
-		spec.Ignores = append(spec.Ignores, filewatches.IgnoreDef{
-			BasePath: ild,
-		})
+		Ignores:      ignore.TargetToFileWatchIgnores(t),
 	}
 
 	// process global ignores last

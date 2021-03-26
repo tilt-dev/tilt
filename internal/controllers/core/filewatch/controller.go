@@ -28,11 +28,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/dockerignore"
 	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -109,31 +107,13 @@ func (c *Controller) removeWatch(tw *watcher) {
 }
 
 func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name types.NamespacedName, fw *filewatches.FileWatch) error {
-	// TODO(nick): Reconcile this with ignore.CreateFileChangeFilter
-	var ignoreMatchers []model.PathMatcher
-	for _, ignoreDef := range fw.Spec.Ignores {
-		if len(ignoreDef.Patterns) != 0 {
-			m, err := dockerignore.NewDockerPatternMatcher(
-				ignoreDef.BasePath,
-				append([]string{}, ignoreDef.Patterns...))
-			if err != nil {
-				return fmt.Errorf("invalid ignore def: %v", err)
-			}
-			ignoreMatchers = append(ignoreMatchers, m)
-		} else {
-			m, err := ignore.NewDirectoryMatcher(ignoreDef.BasePath)
-			if err != nil {
-				return fmt.Errorf("invalid ignore def: %v", err)
-			}
-			ignoreMatchers = append(ignoreMatchers, m)
-		}
+	ignoreMatcher, err := ignore.IgnoresToMatcher(fw.Spec.Ignores)
+	if err != nil {
+		return err
 	}
-	// ephemeral OS/IDE stuff is not part of the spec but always included
-	ignoreMatchers = append(ignoreMatchers, ignore.EphemeralPathMatcher)
-
 	notify, err := c.fsWatcherMaker(
 		append([]string{}, fw.Spec.WatchedPaths...),
-		model.NewCompositeMatcher(ignoreMatchers),
+		ignoreMatcher,
 		logger.Get(ctx))
 	if err != nil {
 		return fmt.Errorf("failed to initialize filesystem watch: %v", err)
