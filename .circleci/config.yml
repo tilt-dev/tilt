@@ -110,13 +110,13 @@ jobs:
 
   build-macos:
     macos:
-      xcode: "12.3.0"
+      xcode: "12.4.0"
 
     steps:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v12
+            - homebrew_cache_v13
       # Bump cache version when changing this.
       - run: echo 'export HOMEBREW_PACKAGES="go@1.16"' >> $BASH_ENV
       # Only update when brew doesn't know about some of the packages because:
@@ -127,7 +127,7 @@ jobs:
       - save_cache:
           paths:
             - /usr/local/Homebrew
-          key: homebrew_cache_v12
+          key: homebrew_cache_v13
       - run: echo 'export PATH="/usr/local/opt/go@1.16/bin:$PATH"' >> $BASH_ENV
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
