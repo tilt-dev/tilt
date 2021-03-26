@@ -3652,6 +3652,10 @@ func TestOverrideTriggerModeEvent(t *testing.T) {
 }
 
 func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): Investigate")
+	}
+
 	f := newTestFixture(t)
 	defer f.TearDown()
 
