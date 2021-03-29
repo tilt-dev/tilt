@@ -104,7 +104,7 @@ func (m *Controller) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 
 	for _, entry := range toStart {
 		// Treat port-forwarding errors as part of the pod log
-		ctx := logger.CtxWithLogHandler(entry.ctx, runtimelog.PodLogActionWriter{
+		ctx := logger.CtxWithLogHandler(entry.ctx, PodLogActionWriter{
 			Store:        st,
 			PodID:        entry.podID,
 			ManifestName: entry.name,
@@ -209,4 +209,15 @@ func PortForwardsAreValid(m model.Manifest, pod store.Pod) bool {
 	expectedFwds := m.K8sTarget().PortForwards
 	actualFwds := populatePortForwards(m, pod)
 	return len(actualFwds) == len(expectedFwds)
+}
+
+type PodLogActionWriter struct {
+	Store        store.RStore
+	PodID        k8s.PodID
+	ManifestName model.ManifestName
+}
+
+func (w PodLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
+	w.Store.Dispatch(store.NewLogAction(w.ManifestName, runtimelog.SpanIDForPod(w.PodID), level, fields, p))
+	return nil
 }

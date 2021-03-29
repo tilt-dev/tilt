@@ -3757,7 +3757,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	require.NoError(t, st.AddSubscriber(ctx, fSub))
 
-	plm := runtimelog.NewPodLogManager(kCli)
 	bc := NewBuildController(b)
 
 	err := os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
@@ -3768,6 +3767,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	cdc := controllers.ProvideDeferredClient()
+	plm := runtimelog.NewPodLogManager()
+	plsc := runtimelog.NewPodLogStreamController(st, kCli)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfc := portforward.NewController(kCli)
@@ -3843,7 +3844,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, plsc, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

@@ -56,6 +56,9 @@ type ChangeSummary struct {
 
 	// Pods that have changed.
 	Pods ChangeSet
+
+	// PodLogStreams with their specs changed
+	PodLogStreams ChangeSet
 }
 
 func (s ChangeSummary) IsLogOnly() bool {
@@ -68,6 +71,7 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.CmdSpecs.AddAll(other.CmdSpecs)
 	s.FileWatchSpecs.AddAll(other.FileWatchSpecs)
 	s.Pods.AddAll(other.Pods)
+	s.PodLogStreams.AddAll(other.PodLogStreams)
 }
 
 func LegacyChangeSummary() ChangeSummary {
