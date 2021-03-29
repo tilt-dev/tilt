@@ -121,8 +121,9 @@ type EngineState struct {
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds        map[string]*Cmd                                 `json:"-"`
-	FileWatches map[types.NamespacedName]*filewatches.FileWatch `json:"-"`
+	Cmds          map[string]*Cmd                                 `json:"-"`
+	FileWatches   map[types.NamespacedName]*filewatches.FileWatch `json:"-"`
+	PodLogStreams map[string]*PodLogStream                        `json:"-"`
 }
 
 type CloudStatus struct {
@@ -482,6 +483,7 @@ func NewState() *EngineState {
 
 	ret.Cmds = make(map[string]*Cmd)
 	ret.FileWatches = make(map[types.NamespacedName]*filewatches.FileWatch)
+	ret.PodLogStreams = make(map[string]*PodLogStream)
 
 	return ret
 }

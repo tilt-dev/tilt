@@ -1,4 +1,4 @@
-FROM golang:1.14
+FROM golang:1.16
 
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template

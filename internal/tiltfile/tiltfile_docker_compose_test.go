@@ -66,12 +66,13 @@ services:
 
 // YAML for Foo config looks a little different from the above after being read into
 // a struct and YAML'd back out...
-func (f *fixture) simpleConfigFooYAML() string {
+func (f *fixture) simpleConfigAfterParse() string {
 	return fmt.Sprintf(`build:
   context: %s
 command: sleep 100
 ports:
-- 12312:80/tcp`, f.JoinPath("foo"))
+- published: 12312
+  target: 80`, f.JoinPath("foo"))
 }
 
 func TestDockerComposeManifest(t *testing.T) {
@@ -86,7 +87,7 @@ func TestDockerComposeManifest(t *testing.T) {
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(f.simpleConfigFooYAML()),
+		dcYAMLRaw(f.simpleConfigAfterParse()),
 		dcDfRaw(simpleDockerfile),
 		dcPublishedPorts(12312),
 		// TODO(maia): assert m.tiltFilename
@@ -279,7 +280,7 @@ RUN echo hi`
 	configPath := f.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(f.simpleConfigFooYAML()),
+		dcYAMLRaw(f.simpleConfigAfterParse()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
 		// TODO(maia): assert m.tiltFilename
@@ -321,7 +322,7 @@ services:
 	configPath := f.JoinPath("foo", "docker-compose.yml")
 	f.assertDcManifest("foo",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(f.simpleConfigFooYAML()),
+		dcYAMLRaw(f.simpleConfigAfterParse()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
 		dcPublishedPorts(12312),

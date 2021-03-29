@@ -190,6 +190,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		local.HandleCmdUpdateStatusAction(state, action)
 	case local.CmdDeleteAction:
 		local.HandleCmdDeleteAction(state, action)
+	case runtimelog.PodLogStreamCreateAction:
+		runtimelog.HandlePodLogStreamCreateAction(state, action)
+	case runtimelog.PodLogStreamDeleteAction:
+		runtimelog.HandlePodLogStreamDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}

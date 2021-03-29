@@ -1,6 +1,7 @@
 package ignore
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -8,6 +9,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerignore"
 	"github.com/tilt-dev/tilt/internal/git"
 	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -47,29 +49,60 @@ type IgnorableTarget interface {
 	IgnoredLocalDirectories() []string
 }
 
+// Interpret the FileWatch Ignores as a path matcher.
+func IgnoresToMatcher(ignores []v1alpha1.IgnoreDef) (model.PathMatcher, error) {
+	var ignoreMatchers []model.PathMatcher
+	for _, ignoreDef := range ignores {
+		if len(ignoreDef.Patterns) != 0 {
+			m, err := dockerignore.NewDockerPatternMatcher(
+				ignoreDef.BasePath,
+				append([]string{}, ignoreDef.Patterns...))
+			if err != nil {
+				return nil, fmt.Errorf("invalid ignore def: %v", err)
+			}
+			ignoreMatchers = append(ignoreMatchers, m)
+		} else {
+			m, err := NewDirectoryMatcher(ignoreDef.BasePath)
+			if err != nil {
+				return nil, fmt.Errorf("invalid ignore def: %v", err)
+			}
+			ignoreMatchers = append(ignoreMatchers, m)
+		}
+	}
+	// ephemeral OS/IDE stuff is not part of the spec but always included
+	ignoreMatchers = append(ignoreMatchers, EphemeralPathMatcher)
+
+	return model.NewCompositeMatcher(ignoreMatchers), nil
+}
+
+// Pull the FileWatch Ignores out of the old manifest target data model.
+func TargetToFileWatchIgnores(t IgnorableTarget) (ignores []v1alpha1.IgnoreDef) {
+	for _, r := range t.LocalRepos() {
+		ignores = append(ignores, v1alpha1.IgnoreDef{
+			BasePath: filepath.Join(r.LocalPath, ".git"),
+		})
+	}
+
+	for _, di := range t.Dockerignores() {
+		if di.Empty() {
+			continue
+		}
+		ignores = append(ignores, v1alpha1.IgnoreDef{
+			BasePath: di.LocalPath,
+			Patterns: append([]string(nil), di.Patterns...),
+		})
+	}
+	for _, ild := range t.IgnoredLocalDirectories() {
+		ignores = append(ignores, v1alpha1.IgnoreDef{
+			BasePath: ild,
+		})
+	}
+	return ignores
+}
+
 // Filter out files that should not trigger new builds.
 func CreateFileChangeFilter(m IgnorableTarget) (model.PathMatcher, error) {
-	matchers := []model.PathMatcher{}
-	for _, r := range m.LocalRepos() {
-		matchers = append(matchers, git.NewRepoIgnoreTester(r.LocalPath))
-	}
-	for _, di := range m.Dockerignores() {
-		dim, err := dockerignore.NewDockerPatternMatcher(di.LocalPath, di.Patterns)
-		if err == nil {
-			matchers = append(matchers, dim)
-		}
-	}
-	for _, p := range m.IgnoredLocalDirectories() {
-		dm, err := NewDirectoryMatcher(p)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating directory matcher")
-		}
-		matchers = append(matchers, dm)
-	}
-
-	matchers = append(matchers, EphemeralPathMatcher)
-
-	return model.NewCompositeMatcher(matchers), nil
+	return IgnoresToMatcher(TargetToFileWatchIgnores(m))
 }
 
 type DirectoryMatcher struct {
