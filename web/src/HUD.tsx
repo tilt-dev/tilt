@@ -1,3 +1,4 @@
+import { StylesProvider } from "@material-ui/core/styles"
 import { History, UnregisterCallback } from "history"
 import React, { Component } from "react"
 import ReactOutlineManager from "react-outline-manager"
@@ -295,21 +296,24 @@ export default class HUD extends Component<HudProps, HudState> {
     }
 
     return (
-      <SnapshotActionProvider value={snapshotAction}>
-        <PathBuilderProvider value={this.pathBuilder}>
-          <LogStoreProvider value={this.state.logStore || new LogStore()}>
-            <Switch>
-              <Route
-                path={this.path("/r/:name/overview")}
-                render={(props: RouteComponentProps<any>) => (
-                  <OverviewResourcePane view={this.state.view} />
-                )}
-              />
-              <Route render={() => <OverviewPane view={this.state.view} />} />
-            </Switch>
-          </LogStoreProvider>
-        </PathBuilderProvider>
-      </SnapshotActionProvider>
+      /* allow Styled Components to override MUI - https://material-ui.com/guides/interoperability/#controlling-priority-3*/
+      <StylesProvider injectFirst>
+        <SnapshotActionProvider value={snapshotAction}>
+          <PathBuilderProvider value={this.pathBuilder}>
+            <LogStoreProvider value={this.state.logStore || new LogStore()}>
+              <Switch>
+                <Route
+                  path={this.path("/r/:name/overview")}
+                  render={(props: RouteComponentProps<any>) => (
+                    <OverviewResourcePane view={this.state.view} />
+                  )}
+                />
+                <Route render={() => <OverviewPane view={this.state.view} />} />
+              </Switch>
+            </LogStoreProvider>
+          </PathBuilderProvider>
+        </SnapshotActionProvider>
+      </StylesProvider>
     )
   }
 

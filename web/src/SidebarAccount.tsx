@@ -6,6 +6,7 @@ import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import FloatDialog from "./FloatDialog"
+import { isTargetEditable } from "./shortcut"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { AnimDuration, Color, SizeUnit } from "./style-helpers"
 import UpdateDialog from "./UpdateDialog"
@@ -84,6 +85,10 @@ class SidebarAccountShortcuts extends Component<{
   }
 
   onKeydown(e: KeyboardEvent) {
+    if (isTargetEditable(e)) {
+      return
+    }
+
     if (e.metaKey || e.altKey || e.ctrlKey || e.isComposing) {
       return
     }

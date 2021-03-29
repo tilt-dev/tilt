@@ -15,6 +15,7 @@ import FloatDialog from "./FloatDialog"
 import { FilterLevel } from "./logfilters"
 import MetricsDialog from "./MetricsDialog"
 import { usePathBuilder } from "./PathBuilder"
+import { isTargetEditable } from "./shortcut"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotAction, useSnapshotAction } from "./snapshot"
 import { combinedStatus } from "./status"
@@ -289,7 +290,7 @@ function ResourceBarStatus(props: ResourceBarStatusProps) {
 }
 
 export let MenuButton = styled.button`
-  ${mixinResetButtonStyle}
+  ${mixinResetButtonStyle};
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -371,9 +372,14 @@ class ResourceBarShortcuts extends Component<ResourceBarShortcutsProps> {
   }
 
   onKeydown(e: KeyboardEvent) {
-    if (e.metaKey || e.altKey || e.ctrlKey || e.isComposing) {
+    if (isTargetEditable(e)) {
       return
     }
+
+    if (e.metaKey || e.altKey || e.ctrlKey || e.isComposing) {
+      return true
+    }
+
     if (e.key === "?") {
       this.props.toggleShortcutsDialog()
       e.preventDefault()

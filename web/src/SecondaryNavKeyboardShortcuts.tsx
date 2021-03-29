@@ -1,6 +1,7 @@
 import { History } from "history"
 import React, { Component } from "react"
 import { useHistory } from "react-router"
+import { isTargetEditable } from "./shortcut"
 
 type Props = {
   logUrl: string
@@ -27,6 +28,10 @@ class SecondaryNavKeyboardShortcuts extends Component<Props> {
   }
 
   onKeydown(e: KeyboardEvent) {
+    if (isTargetEditable(e)) {
+      return
+    }
+
     let key = e.key
     if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey || e.isComposing) {
       return
