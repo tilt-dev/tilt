@@ -55,7 +55,7 @@ func AllResourceObjects() []resource.Object {
 }
 func AllResourceLists() []runtime.Object {
 	return []runtime.Object{
-		&TiltRun{},
+		&TiltRunList{},
 		&FileWatchList{},
 		&CmdList{},
 		&PodLogStreamList{},

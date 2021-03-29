@@ -30,101 +30,133 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ActiveBuild":        schema_pkg_apis_core_v1alpha1_ActiveBuild(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildState":         schema_pkg_apis_core_v1alpha1_BuildState(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cmd":                schema_pkg_apis_core_v1alpha1_Cmd(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdList":            schema_pkg_apis_core_v1alpha1_CmdList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec":            schema_pkg_apis_core_v1alpha1_CmdSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateRunning":    schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateTerminated": schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting":    schema_pkg_apis_core_v1alpha1_CmdStateWaiting(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus":          schema_pkg_apis_core_v1alpha1_CmdStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":         schema_pkg_apis_core_v1alpha1_ExecAction(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent":          schema_pkg_apis_core_v1alpha1_FileEvent(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":          schema_pkg_apis_core_v1alpha1_FileWatch(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":      schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec":      schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus":    schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":      schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":         schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":            schema_pkg_apis_core_v1alpha1_Handler(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":          schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PendingBuild":       schema_pkg_apis_core_v1alpha1_PendingBuild(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStream":       schema_pkg_apis_core_v1alpha1_PodLogStream(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamList":   schema_pkg_apis_core_v1alpha1_PodLogStreamList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec":   schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamStatus": schema_pkg_apis_core_v1alpha1_PodLogStreamStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":              schema_pkg_apis_core_v1alpha1_Probe(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ResourceState":      schema_pkg_apis_core_v1alpha1_ResourceState(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":      schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RuntimeState":       schema_pkg_apis_core_v1alpha1_RuntimeState(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":    schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TerminatedBuild":    schema_pkg_apis_core_v1alpha1_TerminatedBuild(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltRun":            schema_pkg_apis_core_v1alpha1_TiltRun(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltRunList":        schema_pkg_apis_core_v1alpha1_TiltRunList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltRunSpec":        schema_pkg_apis_core_v1alpha1_TiltRunSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltRunStatus":      schema_pkg_apis_core_v1alpha1_TiltRunStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileState":      schema_pkg_apis_core_v1alpha1_TiltfileState(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                      schema_pkg_apis_meta_v1_APIGroup(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":                  schema_pkg_apis_meta_v1_APIGroupList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResource":                   schema_pkg_apis_meta_v1_APIResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResourceList":               schema_pkg_apis_meta_v1_APIResourceList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIVersions":                   schema_pkg_apis_meta_v1_APIVersions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Condition":                     schema_pkg_apis_meta_v1_Condition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.CreateOptions":                 schema_pkg_apis_meta_v1_CreateOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.DeleteOptions":                 schema_pkg_apis_meta_v1_DeleteOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Duration":                      schema_pkg_apis_meta_v1_Duration(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ExportOptions":                 schema_pkg_apis_meta_v1_ExportOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.FieldsV1":                      schema_pkg_apis_meta_v1_FieldsV1(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GetOptions":                    schema_pkg_apis_meta_v1_GetOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupKind":                     schema_pkg_apis_meta_v1_GroupKind(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupResource":                 schema_pkg_apis_meta_v1_GroupResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersion":                  schema_pkg_apis_meta_v1_GroupVersion(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionForDiscovery":      schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind":              schema_pkg_apis_meta_v1_GroupVersionKind(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionResource":          schema_pkg_apis_meta_v1_GroupVersionResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.InternalEvent":                 schema_pkg_apis_meta_v1_InternalEvent(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector":                 schema_pkg_apis_meta_v1_LabelSelector(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelectorRequirement":      schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.List":                          schema_pkg_apis_meta_v1_List(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta":                      schema_pkg_apis_meta_v1_ListMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ListOptions":                   schema_pkg_apis_meta_v1_ListOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ManagedFieldsEntry":            schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime":                     schema_pkg_apis_meta_v1_MicroTime(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta":                    schema_pkg_apis_meta_v1_ObjectMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.OwnerReference":                schema_pkg_apis_meta_v1_OwnerReference(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadata":         schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadataList":     schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Patch":                         schema_pkg_apis_meta_v1_Patch(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PatchOptions":                  schema_pkg_apis_meta_v1_PatchOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Preconditions":                 schema_pkg_apis_meta_v1_Preconditions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.RootPaths":                     schema_pkg_apis_meta_v1_RootPaths(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR":     schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Status":                        schema_pkg_apis_meta_v1_Status(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusCause":                   schema_pkg_apis_meta_v1_StatusCause(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusDetails":                 schema_pkg_apis_meta_v1_StatusDetails(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Table":                         schema_pkg_apis_meta_v1_Table(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableColumnDefinition":         schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableOptions":                  schema_pkg_apis_meta_v1_TableOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRow":                      schema_pkg_apis_meta_v1_TableRow(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRowCondition":             schema_pkg_apis_meta_v1_TableRowCondition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Time":                          schema_pkg_apis_meta_v1_Time(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Timestamp":                     schema_pkg_apis_meta_v1_Timestamp(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TypeMeta":                      schema_pkg_apis_meta_v1_TypeMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.UpdateOptions":                 schema_pkg_apis_meta_v1_UpdateOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.WatchEvent":                    schema_pkg_apis_meta_v1_WatchEvent(ref),
-		"k8s.io/apimachinery/pkg/runtime.RawExtension":                       schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
-		"k8s.io/apimachinery/pkg/runtime.TypeMeta":                           schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
-		"k8s.io/apimachinery/pkg/runtime.Unknown":                            schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
-		"k8s.io/apimachinery/pkg/version.Info":                               schema_k8sio_apimachinery_pkg_version_Info(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildState":           schema_pkg_apis_core_v1alpha1_BuildState(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStateActive":     schema_pkg_apis_core_v1alpha1_BuildStateActive(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStatePending":    schema_pkg_apis_core_v1alpha1_BuildStatePending(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStateTerminated": schema_pkg_apis_core_v1alpha1_BuildStateTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cmd":                  schema_pkg_apis_core_v1alpha1_Cmd(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdList":              schema_pkg_apis_core_v1alpha1_CmdList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec":              schema_pkg_apis_core_v1alpha1_CmdSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateRunning":      schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateTerminated":   schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting":      schema_pkg_apis_core_v1alpha1_CmdStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus":            schema_pkg_apis_core_v1alpha1_CmdStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":           schema_pkg_apis_core_v1alpha1_ExecAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent":            schema_pkg_apis_core_v1alpha1_FileEvent(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":            schema_pkg_apis_core_v1alpha1_FileWatch(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":        schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec":        schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus":      schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":        schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":           schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":              schema_pkg_apis_core_v1alpha1_Handler(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":            schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStream":         schema_pkg_apis_core_v1alpha1_PodLogStream(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamList":     schema_pkg_apis_core_v1alpha1_PodLogStreamList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec":     schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamStatus":   schema_pkg_apis_core_v1alpha1_PodLogStreamStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":                schema_pkg_apis_core_v1alpha1_Probe(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ResourceState":        schema_pkg_apis_core_v1alpha1_ResourceState(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":        schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RuntimeState":         schema_pkg_apis_core_v1alpha1_RuntimeState(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":      schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltRun":              schema_pkg_apis_core_v1alpha1_TiltRun(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltRunList":          schema_pkg_apis_core_v1alpha1_TiltRunList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltRunSpec":          schema_pkg_apis_core_v1alpha1_TiltRunSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltRunStatus":        schema_pkg_apis_core_v1alpha1_TiltRunStatus(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                        schema_pkg_apis_meta_v1_APIGroup(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":                    schema_pkg_apis_meta_v1_APIGroupList(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResource":                     schema_pkg_apis_meta_v1_APIResource(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResourceList":                 schema_pkg_apis_meta_v1_APIResourceList(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIVersions":                     schema_pkg_apis_meta_v1_APIVersions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Condition":                       schema_pkg_apis_meta_v1_Condition(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.CreateOptions":                   schema_pkg_apis_meta_v1_CreateOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.DeleteOptions":                   schema_pkg_apis_meta_v1_DeleteOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Duration":                        schema_pkg_apis_meta_v1_Duration(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ExportOptions":                   schema_pkg_apis_meta_v1_ExportOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.FieldsV1":                        schema_pkg_apis_meta_v1_FieldsV1(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GetOptions":                      schema_pkg_apis_meta_v1_GetOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupKind":                       schema_pkg_apis_meta_v1_GroupKind(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupResource":                   schema_pkg_apis_meta_v1_GroupResource(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersion":                    schema_pkg_apis_meta_v1_GroupVersion(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionForDiscovery":        schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind":                schema_pkg_apis_meta_v1_GroupVersionKind(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionResource":            schema_pkg_apis_meta_v1_GroupVersionResource(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.InternalEvent":                   schema_pkg_apis_meta_v1_InternalEvent(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector":                   schema_pkg_apis_meta_v1_LabelSelector(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelectorRequirement":        schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.List":                            schema_pkg_apis_meta_v1_List(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta":                        schema_pkg_apis_meta_v1_ListMeta(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ListOptions":                     schema_pkg_apis_meta_v1_ListOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ManagedFieldsEntry":              schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime":                       schema_pkg_apis_meta_v1_MicroTime(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta":                      schema_pkg_apis_meta_v1_ObjectMeta(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.OwnerReference":                  schema_pkg_apis_meta_v1_OwnerReference(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadata":           schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadataList":       schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Patch":                           schema_pkg_apis_meta_v1_Patch(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.PatchOptions":                    schema_pkg_apis_meta_v1_PatchOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Preconditions":                   schema_pkg_apis_meta_v1_Preconditions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.RootPaths":                       schema_pkg_apis_meta_v1_RootPaths(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR":       schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Status":                          schema_pkg_apis_meta_v1_Status(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusCause":                     schema_pkg_apis_meta_v1_StatusCause(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusDetails":                   schema_pkg_apis_meta_v1_StatusDetails(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Table":                           schema_pkg_apis_meta_v1_Table(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TableColumnDefinition":           schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TableOptions":                    schema_pkg_apis_meta_v1_TableOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRow":                        schema_pkg_apis_meta_v1_TableRow(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRowCondition":               schema_pkg_apis_meta_v1_TableRowCondition(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Time":                            schema_pkg_apis_meta_v1_Time(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Timestamp":                       schema_pkg_apis_meta_v1_Timestamp(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TypeMeta":                        schema_pkg_apis_meta_v1_TypeMeta(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.UpdateOptions":                   schema_pkg_apis_meta_v1_UpdateOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.WatchEvent":                      schema_pkg_apis_meta_v1_WatchEvent(ref),
+		"k8s.io/apimachinery/pkg/runtime.RawExtension":                         schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
+		"k8s.io/apimachinery/pkg/runtime.TypeMeta":                             schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
+		"k8s.io/apimachinery/pkg/runtime.Unknown":                              schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
+		"k8s.io/apimachinery/pkg/version.Info":                                 schema_k8sio_apimachinery_pkg_version_Info(ref),
 	}
 }
 
-func schema_pkg_apis_core_v1alpha1_ActiveBuild(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_core_v1alpha1_BuildState(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ActiveBuild is a build that is currently running but has not yet finished.",
+				Description: "BuildState includes details about a currently pending build, currently active build, and (last) terminated build.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"pending": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Pending gives details about the currently enqueued build (if any).",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStatePending"),
+						},
+					},
+					"active": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Active gives details about the currently running build (if any).",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStateActive"),
+						},
+					},
+					"terminated": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Terminated gives details about the last finished build (if any).",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStateTerminated"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStateActive", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStatePending", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildStateTerminated"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_BuildStateActive(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "BuildStateActive is a build that is currently running but has not yet finished.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"startTime": {
@@ -143,36 +175,71 @@ func schema_pkg_apis_core_v1alpha1_ActiveBuild(ref common.ReferenceCallback) com
 	}
 }
 
-func schema_pkg_apis_core_v1alpha1_BuildState(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_core_v1alpha1_BuildStatePending(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "BuildState includes details about a currently pending build, currently active build, and (last) terminated build.",
+				Description: "BuildStatePending is a build that has been enqueued for execution but has not yet started.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"pending": {
+					"triggerTime": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Pending gives details about the currently enqueued build (if any).",
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PendingBuild"),
+							Description: "TriggerTime is when the earliest event occurred (e.g. file change) occurred that resulted in a build being enqueued.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
-					"active": {
+					"reason": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Active gives details about the currently running build (if any).",
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ActiveBuild"),
-						},
-					},
-					"terminated": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Terminated gives details about the last finished build (if any).",
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TerminatedBuild"),
+							Description: "Reason is a description for why the build is being triggered. There may be more than one cause, but only a single reason is provided.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
+				Required: []string{"triggerTime", "reason"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ActiveBuild", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PendingBuild", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TerminatedBuild"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_BuildStateTerminated(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "BuildStateTerminated is a build that finished running, either because it completed successfully or encountered an error.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartTime is when the build began.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"finishTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FinishTime is when the build stopped.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Error is a non-empty string if the build did not complete successfully.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"startTime", "finishTime"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -894,37 +961,6 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 	}
 }
 
-func schema_pkg_apis_core_v1alpha1_PendingBuild(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "PendingBuild is a build that has been enqueued for execution but has not yet started.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"triggerTime": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TriggerTime is when the earliest event occurred (e.g. file change) occurred that resulted in a build being enqueued.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
-						},
-					},
-					"reason": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Reason is a description for why the build is being triggered. There may be more than one cause, but only a single reason is provided.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"triggerTime", "reason"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
-	}
-}
-
 func schema_pkg_apis_core_v1alpha1_PodLogStream(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1313,43 +1349,6 @@ func schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref common.ReferenceCallback)
 	}
 }
 
-func schema_pkg_apis_core_v1alpha1_TerminatedBuild(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TerminatedBuild is a build that finished running, either because it completed successfully or encountered an error.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"startTime": {
-						SchemaProps: spec.SchemaProps{
-							Description: "StartTime is when the build began.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
-						},
-					},
-					"finishTime": {
-						SchemaProps: spec.SchemaProps{
-							Description: "FinishTime is when the build stopped.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
-						},
-					},
-					"error": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Error is a non-empty string if the build did not complete successfully.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"startTime", "finishTime"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
-	}
-}
-
 func schema_pkg_apis_core_v1alpha1_TiltRun(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1498,13 +1497,6 @@ func schema_pkg_apis_core_v1alpha1_TiltRunStatus(ref common.ReferenceCallback) c
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
-					"tiltfile": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Tiltfile is the current state of the Tilt engine including details about the last time the Tiltfile was processed and any build errors (e.g. syntax errors) encountered.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileState"),
-						},
-					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Resources are normalized state representations of the servers/jobs managed by this TiltRun.",
@@ -1535,34 +1527,11 @@ func schema_pkg_apis_core_v1alpha1_TiltRunStatus(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"pid", "startTime", "tiltfile", "resources", "done"},
+				Required: []string{"pid", "startTime", "resources", "done"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ResourceState", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileState", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_TiltfileState(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TiltfileState includes details about the engine.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"Build": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Build includes the active Tiltfile build (if any) as well as the last build (if any). Pending is always nil, as Tiltfile changes are currently processed immediately.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildState"),
-						},
-					},
-				},
-				Required: []string{"Build"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.BuildState"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ResourceState", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

@@ -64,14 +64,17 @@ type ExitCondition string
 
 const (
 	// ExitConditionManual cedes control to the user and will not exit based on resource status.
+	//
 	// This is used by `tilt up`.
 	ExitConditionManual ExitCondition = "manual"
-	// ExitConditionFirstFailure terminates upon the first encountered build or runtime failure.
+	// ExitConditionCI terminates upon the first encountered build or runtime failure or after all resources have been
+	// started successfully.
+	//
 	// This is used by `tilt ci`.
-	ExitConditionFirstFailure ExitCondition = "first-failure"
+	ExitConditionCI ExitCondition = "ci"
 )
 
-var exitConditions = []ExitCondition{ExitConditionManual, ExitConditionFirstFailure}
+var exitConditions = []ExitCondition{ExitConditionManual, ExitConditionCI}
 
 var _ resource.Object = &TiltRun{}
 var _ resourcestrategy.Validater = &TiltRun{}
@@ -146,9 +149,6 @@ type TiltRunStatus struct {
 	PID int64 `json:"pid"`
 	// StartTime is when the Tilt engine was first started and began processing resources.
 	StartTime metav1.MicroTime `json:"startTime"`
-	// Tiltfile is the current state of the Tilt engine including details about the last time the Tiltfile was
-	// processed and any build errors (e.g. syntax errors) encountered.
-	Tiltfile TiltfileState `json:"tiltfile"`
 	// Resources are normalized state representations of the servers/jobs managed by this TiltRun.
 	Resources []ResourceState `json:"resources"`
 
@@ -157,13 +157,6 @@ type TiltRunStatus struct {
 	// Error is a non-empty string when the TiltRun is Done but encountered a failure as defined by the ExitCondition
 	// from the TiltRunSpec.
 	Error string `json:"error,omitempty"`
-}
-
-// TiltfileState includes details about the engine.
-type TiltfileState struct {
-	// Build includes the active Tiltfile build (if any) as well as the last build (if any). Pending is always nil, as
-	// Tiltfile changes are currently processed immediately.
-	Build BuildState
 }
 
 // ResourceState contains a normalized representation of build and runtime state for a resource managed by this TiltRun.
@@ -181,15 +174,15 @@ type ResourceState struct {
 // BuildState includes details about a currently pending build, currently active build, and (last) terminated build.
 type BuildState struct {
 	// Pending gives details about the currently enqueued build (if any).
-	Pending *PendingBuild `json:"pending,omitempty"`
+	Pending *BuildStatePending `json:"pending,omitempty"`
 	// Active gives details about the currently running build (if any).
-	Active *ActiveBuild `json:"active,omitempty"`
+	Active *BuildStateActive `json:"active,omitempty"`
 	// Terminated gives details about the last finished build (if any).
-	Terminated *TerminatedBuild `json:"terminated,omitempty"`
+	Terminated *BuildStateTerminated `json:"terminated,omitempty"`
 }
 
-// PendingBuild is a build that has been enqueued for execution but has not yet started.
-type PendingBuild struct {
+// BuildStatePending is a build that has been enqueued for execution but has not yet started.
+type BuildStatePending struct {
 	// TriggerTime is when the earliest event occurred (e.g. file change) occurred that resulted in a build being
 	// enqueued.
 	TriggerTime metav1.MicroTime `json:"triggerTime"`
@@ -198,14 +191,14 @@ type PendingBuild struct {
 	Reason string `json:"reason"`
 }
 
-// ActiveBuild is a build that is currently running but has not yet finished.
-type ActiveBuild struct {
+// BuildStateActive is a build that is currently running but has not yet finished.
+type BuildStateActive struct {
 	// StartTime is when the build began.
 	StartTime metav1.MicroTime `json:"startTime"`
 }
 
-// TerminatedBuild is a build that finished running, either because it completed successfully or encountered an error.
-type TerminatedBuild struct {
+// BuildStateTerminated is a build that finished running, either because it completed successfully or encountered an error.
+type BuildStateTerminated struct {
 	// StartTime is when the build began.
 	StartTime metav1.MicroTime `json:"startTime"`
 	// FinishTime is when the build stopped.
@@ -229,8 +222,8 @@ const (
 	RuntimeStatusSucceeded RuntimeStatus = "succeeded"
 	// RuntimeStatusFailed indicates that the resource encountered an error during execution.
 	RuntimeStatusFailed RuntimeStatus = "failed"
-	// RuntimeStatusInactive indicates that the resource has been requested to not execute at this time.
-	RuntimeStatusInactive RuntimeStatus = "inactive"
+	// RuntimeStatusDisabled indicates that the resource has been requested to not execute at this time.
+	RuntimeStatusDisabled RuntimeStatus = "disabled"
 	// RuntimeStatusUnknown indicates that the status is not currently known; this can occur during initialization.
 	RuntimeStatusUnknown RuntimeStatus = "unknown"
 )
