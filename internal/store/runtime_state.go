@@ -140,6 +140,12 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 		return model.RuntimeStatusError
 	}
 
+	for _, condition := range pod.Conditions {
+		if condition.Type == v1.PodScheduled && condition.Reason == v1.PodReasonUnschedulable {
+			return model.RuntimeStatusError
+		}
+	}
+
 	for _, container := range pod.AllContainers() {
 		if container.Status == model.RuntimeStatusError {
 			return model.RuntimeStatusError
