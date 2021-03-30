@@ -63,6 +63,8 @@ func (n Namespace) String() string {
 }
 
 type Client interface {
+	InformerSet
+
 	// Updates the entities, creating them if necessary.
 	//
 	// Tries to update them in-place if possible. But for certain resource types,
@@ -87,21 +89,6 @@ type Client interface {
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
 	CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error)
 
-	// Currently, WatchPods, WatchServices, and WatchEvents all take a namespace.
-	//
-	// If the namespace is "", they will try to watch all namespaces. If that fails, they will watch
-	// the config namespace only.
-	//
-	// Otherwise, they will only try to watch the specified namespace.
-	//
-	// Over time, we want to remove the ability to watch all namespaces
-	// https://github.com/tilt-dev/tilt/issues/3792
-	WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error)
-
-	WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error)
-
-	WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error)
-
 	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error)
 
 	ContainerRuntime(ctx context.Context) container.Runtime
@@ -121,6 +108,8 @@ type RESTMapper interface {
 }
 
 type K8sClient struct {
+	InformerSet
+
 	env               Env
 	core              apiv1.CoreV1Interface
 	restConfig        *rest.Config
@@ -138,7 +127,7 @@ type K8sClient struct {
 	helmKubeClient    HelmKubeClient
 }
 
-var _ Client = K8sClient{}
+var _ Client = &K8sClient{}
 
 func ProvideK8sClient(
 	ctx context.Context,
@@ -193,7 +182,9 @@ func ProvideK8sClient(
 	browser.Stdout = writer
 	browser.Stderr = writer
 
-	c := K8sClient{
+	c := &K8sClient{
+		InformerSet: newInformerSet(clientset, di),
+
 		env:               env,
 		core:              core,
 		restConfig:        restConfig,
@@ -268,20 +259,20 @@ func timeoutError(timeout time.Duration) error {
 	return errors.New(fmt.Sprintf("Killed kubectl. Hit timeout of %v.", timeout))
 }
 
-func (k K8sClient) ToRESTConfig() (*rest.Config, error) {
+func (k *K8sClient) ToRESTConfig() (*rest.Config, error) {
 	return k.restConfig, nil
 }
-func (k K8sClient) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
+func (k *K8sClient) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
 	return k.discovery, nil
 }
-func (k K8sClient) ToRESTMapper() (meta.RESTMapper, error) {
+func (k *K8sClient) ToRESTMapper() (meta.RESTMapper, error) {
 	return k.drm, nil
 }
-func (k K8sClient) ToRawKubeConfigLoader() clientcmd.ClientConfig {
+func (k *K8sClient) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	return k.clientLoader
 }
 
-func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
+func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	result := make([]K8sEntity, 0, len(entities))
 
 	mutable, immutable := MutableAndImmutableEntities(entities)
@@ -317,7 +308,7 @@ func (k K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout tim
 	return result, nil
 }
 
-func (k K8sClient) forceReplaceEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+func (k *K8sClient) forceReplaceEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
 	resources, err := k.prepareUpdate(ctx, []K8sEntity{entity})
 	if err != nil {
 		return nil, errors.Wrap(err, "kubernetes replace")
@@ -331,7 +322,7 @@ func (k K8sClient) forceReplaceEntity(ctx context.Context, entity K8sEntity) ([]
 	return k.helmResultToEntities(result)
 }
 
-func (k K8sClient) prepareUpdate(ctx context.Context, entities []K8sEntity) (kube.ResourceList, error) {
+func (k *K8sClient) prepareUpdate(ctx context.Context, entities []K8sEntity) (kube.ResourceList, error) {
 	// Make sure that we've discovered the REST mapping for all these entities.
 	for _, e := range entities {
 		_, _ = k.gvr(ctx, e.GVK())
@@ -350,7 +341,7 @@ func (k K8sClient) prepareUpdate(ctx context.Context, entities []K8sEntity) (kub
 	return resources, nil
 }
 
-func (k K8sClient) helmResultToEntities(result *kube.Result) ([]K8sEntity, error) {
+func (k *K8sClient) helmResultToEntities(result *kube.Result) ([]K8sEntity, error) {
 	entities := []K8sEntity{}
 	for _, info := range result.Created {
 		entities = append(entities, NewK8sEntity(info.Object))
@@ -373,7 +364,7 @@ func (k K8sClient) helmResultToEntities(result *kube.Result) ([]K8sEntity, error
 	return parsed, nil
 }
 
-func (k K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error) {
+func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error) {
 	// Delete is destructive, so clone first.
 	toDelete := kube.ResourceList{}
 	for _, r := range list {
@@ -404,7 +395,7 @@ func (k K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error)
 
 // applyEntityAndMaybeForce `kubectl apply`'s the given entity, and if the call fails with
 // an immutible field error, attempts to `replace --force` it.
-func (k K8sClient) applyEntityAndMaybeForce(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+func (k *K8sClient) applyEntityAndMaybeForce(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
 	resources, err := k.prepareUpdate(ctx, []K8sEntity{entity})
 	if err != nil {
 		return nil, errors.Wrap(err, "kubernetes apply")
@@ -478,7 +469,7 @@ func maybeShouldTryReplaceReason(stderr string) (string, bool) {
 //
 // Currently ignores any "not found" errors, because that seems like the correct
 // behavior for our use cases.
-func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
+func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	l := logger.Get(ctx)
 	l.Infof("Deleting kubernetes objects:")
 	for _, e := range entities {
@@ -509,7 +500,7 @@ func (k K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 	return nil
 }
 
-func (k K8sClient) gvr(ctx context.Context, gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
+func (k *K8sClient) gvr(ctx context.Context, gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
 	rm, err := k.drm.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		// The REST mapper doesn't have any sort of internal invalidation
@@ -531,7 +522,7 @@ func (k K8sClient) gvr(ctx context.Context, gvk schema.GroupVersionKind) (schema
 	return rm.Resource, nil
 }
 
-func (k K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
+func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
 	gvr, err := k.gvr(ctx, gvk)
 	if err != nil {
 		return nil, err
@@ -551,7 +542,7 @@ func (k K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns
 	return result, nil
 }
 
-func (k K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+func (k *K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
 	gvk := ReferenceGVK(ref)
 	gvr, err := k.gvr(ctx, gvk)
 	if err != nil {
