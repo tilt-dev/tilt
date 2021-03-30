@@ -90,7 +90,12 @@ jobs:
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
           version: 19.03.12
-      - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
+      - run:
+          name: Execute integration tests
+          command: |
+            ctlptl create cluster kind --registry=ctlptl-registry
+            kubectl wait --for=condition=ready node --all --timeout=60s
+            make integration
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
@@ -104,7 +109,12 @@ jobs:
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
           version: 19.03.12
-      - run: ctlptl create cluster kind --registry=ctlptl-registry && make install test-extensions
+      - run:
+          name: Execute extension tests
+          command: |
+            ctlptl create cluster kind --registry=ctlptl-registry
+            kubectl wait --for=condition=ready node --all --timeout=60s
+            make install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
 
