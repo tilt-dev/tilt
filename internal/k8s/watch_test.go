@@ -18,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
 	difake "k8s.io/client-go/discovery/fake"
@@ -51,11 +52,11 @@ func TestPodFromInformerCacheAfterWatch(t *testing.T) {
 	tf.addObjects(pods...)
 	tf.assertPods(pods, ch)
 
-	pod1Cache, err := tf.kCli.PodFromInformerCache(tf.ctx, PodID("abcd"), "default")
+	pod1Cache, err := tf.kCli.PodFromInformerCache(tf.ctx, types.NamespacedName{Name: "abcd", Namespace: "default"})
 	require.NoError(t, err)
 	assert.Equal(t, "abcd", pod1Cache.Name)
 
-	_, err = tf.kCli.PodFromInformerCache(tf.ctx, PodID("missing"), "default")
+	_, err = tf.kCli.PodFromInformerCache(tf.ctx, types.NamespacedName{Name: "missing", Namespace: "default"})
 	if assert.Error(t, err) {
 		assert.True(t, apierrors.IsNotFound(err))
 	}
@@ -69,12 +70,13 @@ func TestPodFromInformerCacheBeforeWatch(t *testing.T) {
 	pods := []runtime.Object{pod1}
 	tf.addObjects(pods...)
 
+	nn := types.NamespacedName{Name: "abcd", Namespace: "default"}
 	assert.Eventually(t, func() bool {
-		_, err := tf.kCli.PodFromInformerCache(tf.ctx, PodID("abcd"), "default")
+		_, err := tf.kCli.PodFromInformerCache(tf.ctx, nn)
 		return err == nil
 	}, time.Second, 5*time.Millisecond)
 
-	pod1Cache, err := tf.kCli.PodFromInformerCache(tf.ctx, PodID("abcd"), "default")
+	pod1Cache, err := tf.kCli.PodFromInformerCache(tf.ctx, nn)
 	require.NoError(t, err)
 	assert.Equal(t, "abcd", pod1Cache.Name)
 

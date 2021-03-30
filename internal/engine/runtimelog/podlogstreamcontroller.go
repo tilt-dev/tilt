@@ -6,11 +6,13 @@ import (
 	"io"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -44,33 +46,38 @@ func NewPodLogStreamController(st store.RStore, kClient k8s.Client) *PodLogStrea
 	}
 }
 
-// Always ignore the istio-init container.
-// TODO(nick): Make this configurable and read from PodLogStream object.
-// See https://github.com/tilt-dev/tilt/issues/3814
-func (m *PodLogStreamController) initContainersWithWatchedLogs(pod store.Pod) []store.Container {
-	result := []store.Container{}
-	for _, c := range pod.InitContainers {
-		if c.Name == IstioInitContainerName {
-			continue
+// Filter containers based on the inclusions/exclusions in the PodLogStream spec.
+func (m *PodLogStreamController) filterContainers(stream *PodLogStream, containers []store.Container) []store.Container {
+	if len(stream.Spec.OnlyContainers) > 0 {
+		only := make(map[container.Name]bool, len(stream.Spec.OnlyContainers))
+		for _, name := range stream.Spec.OnlyContainers {
+			only[container.Name(name)] = true
 		}
-		result = append(result, c)
-	}
-	return result
-}
 
-// Always ignore the istio-sidecar container.
-// TODO(nick): Make this configurable and read from PodLogStream object.
-// See https://github.com/tilt-dev/tilt/issues/3814
-func (m *PodLogStreamController) runContainersWithWatchedLogs(pod store.Pod) []store.Container {
-	result := []store.Container{}
-	for _, c := range pod.Containers {
-		if c.Name == IstioSidecarContainerName {
-			continue
+		result := []store.Container{}
+		for _, c := range containers {
+			if only[c.Name] {
+				result = append(result, c)
+			}
 		}
-		result = append(result, c)
+		return result
 	}
-	return result
 
+	if len(stream.Spec.IgnoreContainers) > 0 {
+		ignore := make(map[container.Name]bool, len(stream.Spec.IgnoreContainers))
+		for _, name := range stream.Spec.IgnoreContainers {
+			ignore[container.Name(name)] = true
+		}
+
+		result := []store.Container{}
+		for _, c := range containers {
+			if !ignore[c.Name] {
+				result = append(result, c)
+			}
+		}
+		return result
+	}
+	return containers
 }
 
 // Determine which PodLogStreams to reconcile, and all the Pods in the engine state.
@@ -78,7 +85,7 @@ func (m *PodLogStreamController) runContainersWithWatchedLogs(pod store.Pod) []s
 // Currently grabs all the PodLogStreams from the EngineStore.
 // When we switch to the reconciler API, the apiserver infrastructure
 // will do this for us and we'll fetch our own Pods.
-func (c *PodLogStreamController) toReconcile(ctx context.Context, st store.RStore) (map[string]*PodLogStream, map[types.NamespacedName]store.Pod) {
+func (c *PodLogStreamController) toReconcile(ctx context.Context, st store.RStore) map[string]*PodLogStream {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -95,23 +102,7 @@ func (c *PodLogStreamController) toReconcile(ctx context.Context, st store.RStor
 		}
 	}
 
-	pods := make(map[types.NamespacedName]store.Pod)
-	for _, mt := range state.Targets() {
-		ms := mt.State
-		runtime := ms.K8sRuntimeState()
-		for _, pod := range runtime.PodList() {
-			if pod.PodID == "" {
-				continue
-			}
-			nn := types.NamespacedName{
-				Name:      string(pod.PodID),
-				Namespace: string(pod.Namespace),
-			}
-			pods[nn] = pod
-		}
-	}
-
-	return result, pods
+	return result
 }
 
 func (m *PodLogStreamController) shouldStreamContainerLogs(c store.Container, key podLogKey) bool {
@@ -136,30 +127,36 @@ func (c *PodLogStreamController) OnChange(ctx context.Context, st store.RStore, 
 		return
 	}
 
-	reconcileMap, pods := c.toReconcile(ctx, st)
+	reconcileMap := c.toReconcile(ctx, st)
 	for k, v := range reconcileMap {
-		c.reconcile(ctx, st, k, v, pods)
+		c.reconcile(ctx, st, k, v)
 	}
 }
 
 // Reconcile the given stream against what we're currently tracking.
-func (r *PodLogStreamController) reconcile(ctx context.Context, st store.RStore, streamName string, stream *PodLogStream, pods map[types.NamespacedName]store.Pod) {
+func (r *PodLogStreamController) reconcile(ctx context.Context, st store.RStore, streamName string, stream *PodLogStream) {
 	if stream == nil {
 		r.deleteStreams(streamName)
 		return
 	}
 
-	// TODO(nick): Fetch the pod from a cached indexer like a reconciler would,
-	// rather than fetching it from EngineState
+	ctx = store.MustObjectLogHandler(ctx, r.st, stream)
 	podNN := types.NamespacedName{Name: stream.Spec.Pod, Namespace: stream.Spec.Namespace}
-	pod, ok := pods[podNN]
-	if !ok {
+	pod, err := r.kClient.PodFromInformerCache(ctx, podNN)
+	if (err != nil && apierrors.IsNotFound(err)) ||
+		(pod != nil && pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()) {
 		r.deleteStreams(streamName)
+		return
+	} else if err != nil {
+		logger.Get(ctx).Debugf("streaming logs: %v", err)
+		return
+	} else if pod == nil {
+		logger.Get(ctx).Debugf("streaming logs: pod not found: %s", podNN)
 		return
 	}
 
-	initContainers := r.initContainersWithWatchedLogs(pod)
-	runContainers := r.runContainersWithWatchedLogs(pod)
+	initContainers := r.filterContainers(stream, k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses))
+	runContainers := r.filterContainers(stream, k8sconv.PodContainers(ctx, pod, pod.Status.ContainerStatuses))
 	containers := []store.Container{}
 	containers = append(containers, initContainers...)
 	containers = append(containers, runContainers...)
@@ -170,7 +167,7 @@ func (r *PodLogStreamController) reconcile(ctx context.Context, st store.RStore,
 		// watching if the container crashes.
 		key := podLogKey{
 			streamName: streamName,
-			podID:      pod.PodID,
+			podID:      k8s.PodID(podNN.Name),
 			cID:        c.ID,
 		}
 		if !r.shouldStreamContainerLogs(c, key) {
@@ -216,14 +213,13 @@ func (r *PodLogStreamController) reconcile(ctx context.Context, st store.RStore,
 			}
 		}
 
-		ctx := store.MustObjectLogHandler(ctx, r.st, stream)
 		ctx, cancel := context.WithCancel(ctx)
 		w := PodLogWatch{
 			ctx:             ctx,
 			cancel:          cancel,
-			podID:           pod.PodID,
+			podID:           k8s.PodID(podNN.Name),
 			cName:           c.Name,
-			namespace:       pod.Namespace,
+			namespace:       k8s.Namespace(podNN.Namespace),
 			startWatchTime:  startWatchTime,
 			terminationTime: make(chan time.Time, 1),
 			shouldPrefix:    shouldPrefix,

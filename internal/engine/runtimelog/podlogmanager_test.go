@@ -10,8 +10,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestutils"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -37,12 +40,11 @@ func TestLogs(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 	state.TiltStartTime = start
 
-	p := store.Pod{
-		PodID:      podID,
-		Containers: []store.Container{NewRunningContainer(cName, cID)},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.onChange(podID)
@@ -58,12 +60,11 @@ func TestLogActions(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	p := store.Pod{
-		PodID:      podID,
-		Containers: []store.Container{NewRunningContainer(cName, cID)},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.onChange(podID)
@@ -78,12 +79,10 @@ func TestLogsFailed(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	p := store.Pod{
-		PodID:      podID,
-		Containers: []store.Container{NewRunningContainer(cName, cID)},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.onChange(podID)
@@ -99,12 +98,10 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	p := store.Pod{
-		PodID:      podID,
-		Containers: []store.Container{NewRunningContainer(cName, cID)},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.onChange(podID)
@@ -126,15 +123,12 @@ func TestMultiContainerLogs(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	p := store.Pod{
-		PodID: podID,
-		Containers: []store.Container{
-			NewRunningContainer("cont1", "cid1"),
-			NewRunningContainer("cont2", "cid2"),
-		},
-	}
+	pb := newPodBuilder(podID).
+		addRunningContainer("cont1", "cid1").
+		addRunningContainer("cont2", "cid2")
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.onChange(podID)
@@ -158,27 +152,23 @@ func TestContainerPrefixes(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	podMultiC := store.Pod{
-		PodID: pID1,
-		Containers: []store.Container{
-			// Pod with multiple containers -- logs should be prefixed with container name
-			NewRunningContainer(cNamePrefix1, "cid1"),
-			NewRunningContainer(cNamePrefix2, "cid2"),
-		},
-	}
-	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "multiContainer"}, podMultiC))
+	pbMultiC := newPodBuilder(pID1).
+		// Pod with multiple containers -- logs should be prefixed with container name
+		addRunningContainer(cNamePrefix1, "cid1").
+		addRunningContainer(cNamePrefix2, "cid2")
+	f.kClient.UpsertPod(pbMultiC.toPod())
 
-	podSingleC := store.Pod{
-		PodID: pID2,
-		Containers: []store.Container{
-			// Pod with just one container -- logs should NOT be prefixed with container name
-			NewRunningContainer(cNameNoPrefix, "cid3"),
-		},
-	}
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "multiContainer"}, pbMultiC.toStorePod(f.ctx)))
+
+	pbSingleC := newPodBuilder(pID2).
+		// Pod with just one container -- logs should NOT be prefixed with container name
+		addRunningContainer(cNameNoPrefix, "cid3")
+	f.kClient.UpsertPod(pbSingleC.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "singleContainer"},
-		podSingleC))
+		pbSingleC.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.onChange(podID)
@@ -201,14 +191,10 @@ func TestTerminatedContainerLogs(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 
 	cName := container.Name("cName")
-	p := store.Pod{
-		PodID: podID,
-		Containers: []store.Container{
-			NewTerminatedContainer(cName, "cID"),
-		},
-	}
+	pb := newPodBuilder(podID).addTerminatedContainer(cName, "cID")
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
@@ -237,14 +223,10 @@ func TestLogReconnection(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 
 	cName := container.Name("cName")
-	p := store.Pod{
-		PodID: podID,
-		Containers: []store.Container{
-			NewRunningContainer(cName, "cID"),
-		},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, "cID")
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	reader, writer := io.Pipe()
@@ -316,17 +298,13 @@ func TestInitContainerLogs(t *testing.T) {
 
 	cNameInit := container.Name("cNameInit")
 	cNameNormal := container.Name("cNameNormal")
-	p := store.Pod{
-		PodID: podID,
-		InitContainers: []store.Container{
-			NewTerminatedContainer(cNameInit, "cID-init"),
-		},
-		Containers: []store.Container{
-			NewRunningContainer(cNameNormal, "cID-normal"),
-		},
-	}
+	pb := newPodBuilder(podID).
+		addTerminatedInitContainer(cNameInit, "cID-init").
+		addRunningContainer(cNameNormal, "cID-normal")
+	f.kClient.UpsertPod(pb.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.kClient.SetLogsForPodContainer(podID, cNameInit, "init world!")
@@ -351,18 +329,14 @@ func TestIstioContainerLogs(t *testing.T) {
 	istioInit := IstioInitContainerName
 	istioSidecar := IstioSidecarContainerName
 	cNormal := container.Name("cNameNormal")
-	p := store.Pod{
-		PodID: podID,
-		InitContainers: []store.Container{
-			NewTerminatedContainer(istioInit, "cID-init"),
-		},
-		Containers: []store.Container{
-			NewRunningContainer(istioSidecar, "cID-sidecar"),
-			NewRunningContainer(cNormal, "cID-normal"),
-		},
-	}
+	pb := newPodBuilder(podID).
+		addTerminatedInitContainer(istioInit, "cID-init").
+		addRunningContainer(istioSidecar, "cID-sidecar").
+		addRunningContainer(cNormal, "cID-normal")
+	f.kClient.UpsertPod(pb.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.kClient.SetLogsForPodContainer(podID, istioInit, "init istio!")
@@ -514,9 +488,85 @@ func (f *plmFixture) AssertOutputDoesNotContain(s string) {
 	assert.NotContains(f.T(), f.out.String(), s)
 }
 
-func NewRunningContainer(name container.Name, id container.ID) store.Container {
-	return store.Container{Name: name, ID: id, Running: true}
+type podBuilder v1.Pod
+
+func newPodBuilder(id k8s.PodID) *podBuilder {
+	return (*podBuilder)(&v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      string(id),
+			Namespace: "default",
+		},
+	})
 }
-func NewTerminatedContainer(name container.Name, id container.ID) store.Container {
-	return store.Container{Name: name, ID: id, Terminated: true}
+
+func (pb *podBuilder) addRunningContainer(name container.Name, id container.ID) *podBuilder {
+	pb.Spec.Containers = append(pb.Spec.Containers, v1.Container{
+		Name: string(name),
+	})
+	pb.Status.ContainerStatuses = append(pb.Status.ContainerStatuses, v1.ContainerStatus{
+		Name:        string(name),
+		ContainerID: fmt.Sprintf("containerd://%s", id),
+		Image:       fmt.Sprintf("image-%s", strings.ToLower(string(name))),
+		ImageID:     fmt.Sprintf("image-%s", strings.ToLower(string(name))),
+		Ready:       true,
+		State: v1.ContainerState{
+			Running: &v1.ContainerStateRunning{
+				StartedAt: metav1.Now(),
+			},
+		},
+	})
+	return pb
+}
+
+func (pb *podBuilder) addRunningInitContainer(name container.Name, id container.ID) *podBuilder {
+	pb.Spec.InitContainers = append(pb.Spec.InitContainers, v1.Container{
+		Name: string(name),
+	})
+	pb.Status.InitContainerStatuses = append(pb.Status.InitContainerStatuses, v1.ContainerStatus{
+		Name:        string(name),
+		ContainerID: fmt.Sprintf("containerd://%s", id),
+		Image:       fmt.Sprintf("image-%s", strings.ToLower(string(name))),
+		ImageID:     fmt.Sprintf("image-%s", strings.ToLower(string(name))),
+		Ready:       true,
+		State: v1.ContainerState{
+			Running: &v1.ContainerStateRunning{
+				StartedAt: metav1.Now(),
+			},
+		},
+	})
+	return pb
+}
+
+func (pb *podBuilder) addTerminatedContainer(name container.Name, id container.ID) *podBuilder {
+	pb.addRunningContainer(name, id)
+	statuses := pb.Status.ContainerStatuses
+	statuses[len(statuses)-1].State.Running = nil
+	statuses[len(statuses)-1].State.Terminated = &v1.ContainerStateTerminated{
+		StartedAt: metav1.Now(),
+	}
+	return pb
+}
+
+func (pb *podBuilder) addTerminatedInitContainer(name container.Name, id container.ID) *podBuilder {
+	pb.addRunningInitContainer(name, id)
+	statuses := pb.Status.InitContainerStatuses
+	statuses[len(statuses)-1].State.Running = nil
+	statuses[len(statuses)-1].State.Terminated = &v1.ContainerStateTerminated{
+		StartedAt: metav1.Now(),
+	}
+	return pb
+}
+
+func (pb *podBuilder) toPod() *v1.Pod {
+	return (*v1.Pod)(pb)
+}
+
+func (pb *podBuilder) toStorePod(ctx context.Context) store.Pod {
+	pod := (*v1.Pod)(pb)
+	return store.Pod{
+		PodID:          k8s.PodID(pb.Name),
+		Namespace:      k8s.Namespace(pb.Namespace),
+		InitContainers: k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses),
+		Containers:     k8sconv.PodContainers(ctx, pod, pod.Status.ContainerStatuses),
+	}
 }

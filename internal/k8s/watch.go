@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/dynamic"
@@ -39,7 +40,7 @@ type InformerSet interface {
 	// If no informer has started, start one now on the given ctx.
 	//
 	// The pod should be treated as immutable (since it's a pointer to a shared cache reference).
-	PodFromInformerCache(ctx context.Context, podID PodID, ns Namespace) (*v1.Pod, error)
+	PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error)
 }
 
 type informerSet struct {
@@ -223,20 +224,20 @@ func (s *informerSet) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1
 // If no informer has started, start one now on the given ctx.
 //
 // The pod should be treated as immutable (since it's a pointer to a shared cache reference).
-func (s *informerSet) PodFromInformerCache(ctx context.Context, podID PodID, ns Namespace) (*v1.Pod, error) {
+func (s *informerSet) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
 	gvr := PodGVR
-	informer, err := s.makeInformer(ctx, ns, gvr)
+	informer, err := s.makeInformer(ctx, Namespace(nn.Namespace), gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "PodFromInformer")
 	}
 	pod, exists, err := informer.GetStore().Get(&v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: string(podID), Namespace: string(ns)},
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
 	})
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, apierrors.NewNotFound(gvr.GroupResource(), string(podID))
+		return nil, apierrors.NewNotFound(gvr.GroupResource(), nn.Name)
 	}
 	return pod.(*v1.Pod), nil
 }
