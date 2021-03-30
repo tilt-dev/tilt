@@ -41,6 +41,10 @@ func (c *FakeTiltV1alpha1) PodLogStreams() v1alpha1.PodLogStreamInterface {
 	return &FakePodLogStreams{c}
 }
 
+func (c *FakeTiltV1alpha1) TiltRuns() v1alpha1.TiltRunInterface {
+	return &FakeTiltRuns{c}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeTiltV1alpha1) RESTClient() rest.Interface {
