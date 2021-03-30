@@ -30,6 +30,8 @@ type Interface interface {
 	FileWatches() FileWatchInformer
 	// PodLogStreams returns a PodLogStreamInformer.
 	PodLogStreams() PodLogStreamInformer
+	// TiltRuns returns a TiltRunInformer.
+	TiltRuns() TiltRunInformer
 }
 
 type version struct {
@@ -56,4 +58,9 @@ func (v *version) FileWatches() FileWatchInformer {
 // PodLogStreams returns a PodLogStreamInformer.
 func (v *version) PodLogStreams() PodLogStreamInformer {
 	return &podLogStreamInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// TiltRuns returns a TiltRunInformer.
+func (v *version) TiltRuns() TiltRunInformer {
+	return &tiltRunInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

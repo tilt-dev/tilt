@@ -23,3 +23,5 @@ type CmdExpansion interface{}
 type FileWatchExpansion interface{}
 
 type PodLogStreamExpansion interface{}
+
+type TiltRunExpansion interface{}

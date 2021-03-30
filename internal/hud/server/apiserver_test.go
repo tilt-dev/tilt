@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -44,6 +45,10 @@ func TestAPIServerDynamicClient(t *testing.T) {
 		"FileWatch": map[string]interface{}{
 			// this needs to include a valid absolute path for the current GOOS
 			"watchedPaths": []string{mustCwd(t)},
+		},
+		"TiltRun": map[string]interface{}{
+			"tiltfilePath":  filepath.Join(mustCwd(t), "Tiltfile"),
+			"exitCondition": "manual",
 		},
 	}
 

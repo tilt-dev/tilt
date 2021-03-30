@@ -29,3 +29,7 @@ type FileWatchListerExpansion interface{}
 // PodLogStreamListerExpansion allows custom methods to be added to
 // PodLogStreamLister.
 type PodLogStreamListerExpansion interface{}
+
+// TiltRunListerExpansion allows custom methods to be added to
+// TiltRunLister.
+type TiltRunListerExpansion interface{}
