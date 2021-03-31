@@ -1,10 +1,10 @@
 import React from "react"
 import styled from "styled-components"
+import { GlobalNav } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceStatusSummary } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
 import { SizeUnit } from "./style-helpers"
-import { TiltMenu } from "./TiltMenu"
 import { TargetType } from "./types"
 import { showUpdate } from "./UpdateDialog"
 
@@ -49,7 +49,7 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   return (
     <OverviewResourceBarRoot>
       <ResourceStatusSummary view={props.view} />
-      <TiltMenu {...tiltMenuProps} />
+      <GlobalNav {...tiltMenuProps} />
     </OverviewResourceBarRoot>
   )
 }

@@ -3,11 +3,11 @@ import { mount } from "enzyme"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
+import { MenuButton } from "./GlobalNav"
 import MetricsDialog from "./MetricsDialog"
 import { TwoResources } from "./OverviewResourceBar.stories"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotActionProvider } from "./snapshot"
-import { MenuButton } from "./TiltMenu"
 
 it("renders shortcuts dialog on ?", () => {
   const root = mount(

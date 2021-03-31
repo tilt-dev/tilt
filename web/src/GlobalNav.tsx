@@ -20,7 +20,7 @@ import {
 } from "./style-helpers"
 import UpdateDialog from "./UpdateDialog"
 
-const TiltMenuRoot = styled.div`
+const GlobalNavRoot = styled.div`
   flex-grow: 1;
   display: flex;
   align-items: stretch;
@@ -84,7 +84,7 @@ const UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
   }
 `
 
-type TiltMenuShortcutsProps = {
+type GlobalNavShortcutsProps = {
   toggleShortcutsDialog: () => void
   snapshot: SnapshotAction
 }
@@ -92,8 +92,8 @@ type TiltMenuShortcutsProps = {
 /**
  * Sets up keyboard shortcuts that depend on the tilt menu.
  */
-class TiltMenuShortcuts extends Component<TiltMenuShortcutsProps> {
-  constructor(props: TiltMenuShortcutsProps) {
+class GlobalNavShortcuts extends Component<GlobalNavShortcutsProps> {
+  constructor(props: GlobalNavShortcutsProps) {
     super(props)
     this.onKeydown = this.onKeydown.bind(this)
   }
@@ -126,7 +126,7 @@ class TiltMenuShortcuts extends Component<TiltMenuShortcutsProps> {
 
 type MetricsServing = Proto.webviewMetricsServing
 
-type TiltMenuProps = {
+type GlobalNavProps = {
   isSnapshot: boolean
   tiltCloudUsername: string
   tiltCloudSchemeHost: string
@@ -140,7 +140,7 @@ type TiltMenuProps = {
   metricsServing: MetricsServing | null | undefined
 }
 
-export function TiltMenu(props: TiltMenuProps) {
+export function GlobalNav(props: GlobalNavProps) {
   const shortcutButton = useRef(null as any)
   const accountButton = useRef(null as any)
   const updateButton = useRef(null as any)
@@ -223,7 +223,7 @@ export function TiltMenu(props: TiltMenuProps) {
   ) : null
 
   return (
-    <TiltMenuRoot>
+    <GlobalNavRoot>
       <MenuButton
         ref={updateButton}
         onClick={() => toggleUpdateDialog("click")}
@@ -288,10 +288,10 @@ export function TiltMenu(props: TiltMenuProps) {
         suggestedVersion={props.suggestedVersion}
         isNewInterface={true}
       />
-      <TiltMenuShortcuts
+      <GlobalNavShortcuts
         toggleShortcutsDialog={() => toggleShortcutsDialog("shortcut")}
         snapshot={props.snapshot}
       />
-    </TiltMenuRoot>
+    </GlobalNavRoot>
   )
 }
