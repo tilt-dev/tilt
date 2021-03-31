@@ -56,6 +56,10 @@ func (ec *explodingClient) WatchPods(ctx context.Context, ns Namespace) (<-chan 
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
+func (ec *explodingClient) PodFromInformerCache(ctx context.Context, podID PodID, ns Namespace) (*v1.Pod, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
 func (ec *explodingClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }

@@ -66,7 +66,7 @@ func (c *helmKubeClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 	return &kube.Result{Updated: target}, nil
 }
 
-func newHelmKubeClient(c K8sClient) HelmKubeClient {
+func newHelmKubeClient(c *K8sClient) HelmKubeClient {
 	return &helmKubeClient{
 		Client:  kube.New(c),
 		factory: cmdutil.NewFactory(c),

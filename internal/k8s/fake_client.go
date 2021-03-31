@@ -111,6 +111,10 @@ func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
 	}
 }
 
+func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, podID PodID, ns Namespace) (*v1.Pod, error) {
+	return nil, nil
+}
+
 func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
 	c.mu.Lock()
 	ch := make(chan *v1.Service, 20)
