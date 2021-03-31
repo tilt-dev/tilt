@@ -4,10 +4,10 @@ import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
 import MetricsDialog from "./MetricsDialog"
-import { MenuButton } from "./OverviewResourceBar"
 import { TwoResources } from "./OverviewResourceBar.stories"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotActionProvider } from "./snapshot"
+import { MenuButton } from "./TiltMenu"
 
 it("renders shortcuts dialog on ?", () => {
   const root = mount(
