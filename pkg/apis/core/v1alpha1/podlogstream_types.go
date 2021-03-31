@@ -139,6 +139,8 @@ func (in *PodLogStreamList) GetListMeta() *metav1.ListMeta {
 }
 
 // PodLogStreamStatus defines the observed state of PodLogStream
+//
+// TODO(nick): rewrite this status field, i don't think this is quite right.
 type PodLogStreamStatus struct {
 	// True when the stream is set up and streaming logs properly.
 	Active bool `json:"active,omitempty"`
