@@ -8,6 +8,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -23,6 +24,7 @@ var podLogReconnectGap = 2 * time.Second
 //
 // Collects logs from deployed containers.
 type PodLogStreamController struct {
+	client  ctrlclient.Client
 	st      store.RStore
 	kClient k8s.Client
 
@@ -34,8 +36,9 @@ type PodLogStreamController struct {
 	now       func() time.Time
 }
 
-func NewPodLogStreamController(st store.RStore, kClient k8s.Client) *PodLogStreamController {
+func NewPodLogStreamController(client ctrlclient.Client, st store.RStore, kClient k8s.Client) *PodLogStreamController {
 	return &PodLogStreamController{
+		client:          client,
 		st:              st,
 		kClient:         kClient,
 		watches:         make(map[podLogKey]PodLogWatch),

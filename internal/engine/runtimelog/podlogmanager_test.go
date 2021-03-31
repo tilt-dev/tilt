@@ -14,13 +14,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-	"github.com/tilt-dev/tilt/internal/testutils/manifestutils"
-
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -426,8 +426,9 @@ func newPLMFixture(t *testing.T) *plmFixture {
 
 	out := bufsync.NewThreadSafeBuffer()
 	st := newPLMStore(t, out)
-	plm := NewPodLogManager()
-	plsc := NewPodLogStreamController(st, kClient)
+	fc := fake.NewTiltClient()
+	plm := NewPodLogManager(fc)
+	plsc := NewPodLogStreamController(fc, st, kClient)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)

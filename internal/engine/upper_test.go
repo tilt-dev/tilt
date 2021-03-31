@@ -3767,8 +3767,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	cdc := controllers.ProvideDeferredClient()
-	plm := runtimelog.NewPodLogManager()
-	plsc := runtimelog.NewPodLogStreamController(st, kCli)
+	plm := runtimelog.NewPodLogManager(cdc)
+	plsc := runtimelog.NewPodLogStreamController(cdc, st, kCli)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfc := portforward.NewController(kCli)
