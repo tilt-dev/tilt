@@ -40,6 +40,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []*Pod
 	for _, pls := range state.PodLogStreams {
 		current[types.NamespacedName{Name: pls.Spec.Pod, Namespace: pls.Spec.Namespace}] = pls
 	}
+	seen := map[types.NamespacedName]bool{}
 
 	for _, mt := range state.Targets() {
 		man := mt.Manifest
@@ -80,13 +81,17 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []*Pod
 				Spec: spec,
 			}
 
-			setup = append(setup, obj)
-			delete(current, nn)
+			if _, ok := current[nn]; !ok {
+				setup = append(setup, obj)
+			}
+			seen[nn] = true
 		}
 	}
 
-	for _, pls := range current {
-		teardown = append(teardown, pls)
+	for key, pls := range current {
+		if !seen[key] {
+			teardown = append(teardown, pls)
+		}
 	}
 	return setup, teardown
 }
