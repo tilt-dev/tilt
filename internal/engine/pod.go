@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -14,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -54,7 +54,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 
 	prunePods(ms)
 
-	initContainers := podContainers(ctx, pod, pod.Status.InitContainerStatuses)
+	initContainers := k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses)
 	if !isNew {
 		names := restartedContainerNames(podInfo.InitContainers, initContainers)
 		for _, name := range names {
@@ -64,7 +64,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	}
 	podInfo.InitContainers = initContainers
 
-	containers := podContainers(ctx, pod, pod.Status.ContainerStatuses)
+	containers := k8sconv.PodContainers(ctx, pod, pod.Status.ContainerStatuses)
 	if !isNew {
 		names := restartedContainerNames(podInfo.Containers, containers)
 		for _, name := range names {
@@ -192,67 +192,6 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 
 	// CASE 3: This pod is already in the PodSet, nothing to do.
 	return podInfo, false
-}
-
-// Convert a Kubernetes Pod into a list if simpler Container models to store in the engine state.
-func podContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.ContainerStatus) []store.Container {
-	result := make([]store.Container, 0, len(containerStatuses))
-	for _, cStatus := range containerStatuses {
-		c, err := containerForStatus(ctx, pod, cStatus)
-		if err != nil {
-			logger.Get(ctx).Debugf("%s", err.Error())
-			continue
-		}
-
-		if !c.Empty() {
-			result = append(result, c)
-		}
-	}
-	return result
-}
-
-// Convert a Kubernetes Pod and ContainerStatus into a simpler Container model to store in the engine state.
-func containerForStatus(ctx context.Context, pod *v1.Pod, cStatus v1.ContainerStatus) (store.Container, error) {
-	cName := k8s.ContainerNameFromContainerStatus(cStatus)
-
-	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
-	if err != nil {
-		return store.Container{}, errors.Wrap(err, "Error parsing container ID")
-	}
-
-	cRef, err := container.ParseNamed(cStatus.Image)
-	if err != nil {
-		return store.Container{}, errors.Wrap(err, "Error parsing container image ID")
-
-	}
-
-	ports := make([]int32, 0)
-	cSpec := k8s.ContainerSpecOf(pod, cStatus)
-	for _, cPort := range cSpec.Ports {
-		ports = append(ports, cPort.ContainerPort)
-	}
-
-	isRunning := false
-	if cStatus.State.Running != nil && !cStatus.State.Running.StartedAt.IsZero() {
-		isRunning = true
-	}
-
-	isTerminated := false
-	if cStatus.State.Terminated != nil && !cStatus.State.Terminated.StartedAt.IsZero() {
-		isTerminated = true
-	}
-
-	return store.Container{
-		Name:       cName,
-		ID:         cID,
-		Ports:      ports,
-		Ready:      cStatus.Ready,
-		Running:    isRunning,
-		Terminated: isTerminated,
-		ImageRef:   cRef,
-		Restarts:   int(cStatus.RestartCount),
-		Status:     k8swatch.ContainerStatusToRuntimeState(cStatus),
-	}, nil
 }
 
 func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *store.ManifestTarget) {
