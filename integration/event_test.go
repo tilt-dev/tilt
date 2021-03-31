@@ -43,7 +43,7 @@ func markNodeSchedulable(f *k8sFixture, name string) {
 
 // TestUnschedulableEvent is testing two things:
 //	1) Important K8s events (such as unschedulable pods) are propagated to logs (at least until #3532 is done)
-//	2) Unschedulable pods are continued to be monitored by Tilt after the situation is resolved
+//	2) Unschedulable pods continue to be monitored by Tilt after the situation is resolved
 //		(see comments on assertions - this is hacky right now!)
 func TestUnschedulableEvent(t *testing.T) {
 	f := newK8sFixture(t, "event")
