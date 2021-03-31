@@ -2,9 +2,11 @@ package store_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -62,11 +64,27 @@ func TestK8sRuntimeState_RuntimeStatus(t *testing.T) {
 			pod:            store.Pod{Phase: v1.PodFailed},
 		},
 		{
-			name:           "Conditions_Unschedulable",
+			name:           "Conditions_Unschedulable_WithinThreshold",
+			expectedStatus: model.RuntimeStatusPending,
+			pod: store.Pod{
+				Phase: v1.PodPending,
+				Conditions: []v1.PodCondition{{
+					Type:               v1.PodScheduled,
+					Reason:             v1.PodReasonUnschedulable,
+					LastTransitionTime: metav1.Now(),
+				}},
+			},
+		},
+		{
+			name:           "Conditions_Unschedulable_ExceededThreshold",
 			expectedStatus: model.RuntimeStatusError,
 			pod: store.Pod{
-				Phase:      v1.PodPending,
-				Conditions: []v1.PodCondition{{Type: v1.PodScheduled, Reason: v1.PodReasonUnschedulable}},
+				Phase: v1.PodPending,
+				Conditions: []v1.PodCondition{{
+					Type:               v1.PodScheduled,
+					Reason:             v1.PodReasonUnschedulable,
+					LastTransitionTime: metav1.NewTime(time.Now().Add(-1 * time.Hour)),
+				}},
 			},
 		},
 		{
