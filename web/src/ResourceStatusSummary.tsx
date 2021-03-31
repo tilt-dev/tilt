@@ -104,7 +104,7 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
         <ResourceGroupStatusSummaryItem
           className={props.counts.unhealthy >= 1 ? "is-highlightError" : ""}
         >
-          <CloseSvg width="11" title={props.unhealthyLabel}/>
+          <CloseSvg width="11" title={props.unhealthyLabel} />
           <Link to={errorLink}>
             <ResourceGroupStatusSummaryItemCount>
               {props.counts.unhealthy}
@@ -115,7 +115,7 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
         <ResourceGroupStatusSummaryItem
           className={props.counts.warning >= 1 ? "is-highlightWarning" : ""}
         >
-          <WarningSvg width="7" title={props.warningLabel}/>
+          <WarningSvg width="7" title={props.warningLabel} />
           <Link to={warnLink}>
             <ResourceGroupStatusSummaryItemCount>
               {props.counts.warning}
@@ -130,7 +130,7 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
               : ""
           }
         >
-          <CheckmarkSmallSvg title={props.healthyLabel}/>
+          <CheckmarkSmallSvg title={props.healthyLabel} />
           <ResourceGroupStatusSummaryItemCount>
             {props.counts.healthy}
           </ResourceGroupStatusSummaryItemCount>

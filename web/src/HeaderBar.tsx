@@ -1,14 +1,14 @@
 import React from "react"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
 import { GlobalNav } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceStatusSummary } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
-import {AnimDuration, Color, Font, FontSize, SizeUnit} from "./style-helpers"
+import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { TargetType } from "./types"
 import { showUpdate } from "./UpdateDialog"
-import { Link } from "react-router-dom"
 
 const HeaderBarRoot = styled.div`
   display: flex;
@@ -84,11 +84,13 @@ export default function HeaderBar(props: HeaderBarProps) {
 
   return (
     <HeaderBarRoot>
-      <Link to='/overview'>
+      <Link to="/overview">
         <Logo width="57px" />
       </Link>
       <HeaderDivider />
-      <AllResourcesLink to={pb.encpath`/r/(all)/overview`} >All Resources</AllResourcesLink>
+      <AllResourcesLink to={pb.encpath`/r/(all)/overview`}>
+        All Resources
+      </AllResourcesLink>
       <ResourceStatusSummaryContainer>
         <ResourceStatusSummary view={props.view} showStatusLabels={false} />
       </ResourceStatusSummaryContainer>
