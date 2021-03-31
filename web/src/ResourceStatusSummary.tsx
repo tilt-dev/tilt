@@ -77,6 +77,8 @@ const ResourceGroupStatusSummaryItemCount = styled.span`
 type ResourceGroupStatusProps = {
   counts: StatusCounts
   label: string
+  // TODO(matt) once we've removed OverviewResourceBar, remove this prop
+  showStatusLabels: boolean
   healthyLabel: string
   unhealthyLabel: string
   warningLabel: string
@@ -102,23 +104,23 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
         <ResourceGroupStatusSummaryItem
           className={props.counts.unhealthy >= 1 ? "is-highlightError" : ""}
         >
-          <CloseSvg width="11" />
+          <CloseSvg width="11" title={props.unhealthyLabel}/>
           <Link to={errorLink}>
             <ResourceGroupStatusSummaryItemCount>
               {props.counts.unhealthy}
             </ResourceGroupStatusSummaryItemCount>{" "}
-            {props.unhealthyLabel}
+            {props.showStatusLabels ? props.unhealthyLabel : null}
           </Link>
         </ResourceGroupStatusSummaryItem>
         <ResourceGroupStatusSummaryItem
           className={props.counts.warning >= 1 ? "is-highlightWarning" : ""}
         >
-          <WarningSvg width="7" />
+          <WarningSvg width="7" title={props.warningLabel}/>
           <Link to={warnLink}>
             <ResourceGroupStatusSummaryItemCount>
               {props.counts.warning}
             </ResourceGroupStatusSummaryItemCount>{" "}
-            {props.warningLabel}
+            {props.showStatusLabels ? props.warningLabel : null}
           </Link>
         </ResourceGroupStatusSummaryItem>
         <ResourceGroupStatusSummaryItem
@@ -128,7 +130,7 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
               : ""
           }
         >
-          <CheckmarkSmallSvg />
+          <CheckmarkSmallSvg title={props.healthyLabel}/>
           <ResourceGroupStatusSummaryItemCount>
             {props.counts.healthy}
           </ResourceGroupStatusSummaryItemCount>
@@ -136,7 +138,7 @@ function ResourceGroupStatus(props: ResourceGroupStatusProps) {
           <ResourceGroupStatusSummaryItemCount>
             {props.counts.total}
           </ResourceGroupStatusSummaryItemCount>{" "}
-          {props.healthyLabel}
+          {props.showStatusLabels ? props.healthyLabel : null}
         </ResourceGroupStatusSummaryItem>
       </ResourceGroupStatusSummaryList>
     </ResourceGroupStatusRoot>
@@ -217,6 +219,7 @@ function ResourceMetadata(props: { counts: StatusCounts }) {
 
 type ResourceStatusSummaryProps = {
   view: Proto.webviewView
+  showStatusLabels: boolean
 }
 
 export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
@@ -239,6 +242,7 @@ export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
       <ResourceGroupStatus
         counts={statusCounts(otherResources)}
         label={"Resources"}
+        showStatusLabels={props.showStatusLabels}
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
         warningLabel={"warn"}
@@ -246,6 +250,7 @@ export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
       <ResourceGroupStatus
         counts={statusCounts(testResources)}
         label={"Tests"}
+        showStatusLabels={props.showStatusLabels}
         healthyLabel={"pass"}
         unhealthyLabel={"fail"}
         warningLabel={"warn"}

@@ -12,10 +12,16 @@ type OverviewResourceBarProps = {
   view: Proto.webviewView
 }
 
-let OverviewResourceBarRoot = styled.div`
+const OverviewResourceBarRoot = styled.div`
   display: flex;
   align-items: stretch;
   padding-left: ${SizeUnit(1)};
+`
+
+const GlobalNavContainer = styled.div`
+  justify-content: flex-end;
+  flex-grow: 1;
+  display: flex;
 `
 
 export default function OverviewResourceBar(props: OverviewResourceBarProps) {
@@ -32,7 +38,7 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   let showMetricsButton = !!(hasK8s || view?.metricsServing?.mode)
   let metricsServing = view?.metricsServing
 
-  let tiltMenuProps = {
+  let globalNavProps = {
     isSnapshot,
     snapshot,
     showUpdate: showUpdate(view),
@@ -48,8 +54,10 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
 
   return (
     <OverviewResourceBarRoot>
-      <ResourceStatusSummary view={props.view} />
-      <GlobalNav {...tiltMenuProps} />
+      <ResourceStatusSummary view={props.view} showStatusLabels={true} />
+      <GlobalNavContainer>
+        <GlobalNav {...globalNavProps} />
+      </GlobalNavContainer>
     </OverviewResourceBarRoot>
   )
 }

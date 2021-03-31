@@ -21,10 +21,8 @@ import {
 import UpdateDialog from "./UpdateDialog"
 
 const GlobalNavRoot = styled.div`
-  flex-grow: 1;
   display: flex;
   align-items: stretch;
-  justify-content: flex-end;
 `
 export const MenuButton = styled.button`
   ${mixinResetButtonStyle};
