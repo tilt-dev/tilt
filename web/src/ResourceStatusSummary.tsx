@@ -73,6 +73,9 @@ const ResourceGroupStatusSummaryItemCount = styled.span`
   padding-left: 4px;
   padding-right: 4px;
 `
+export const ResourceStatusSummaryRoot = styled.div`
+  display: flex;
+`
 
 type ResourceGroupStatusProps = {
   counts: StatusCounts
@@ -237,7 +240,7 @@ export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   })
 
   return (
-    <>
+    <ResourceStatusSummaryRoot>
       <ResourceMetadata counts={statusCounts(resources)} />
       <ResourceGroupStatus
         counts={statusCounts(otherResources)}
@@ -255,6 +258,6 @@ export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
         unhealthyLabel={"fail"}
         warningLabel={"warn"}
       />
-    </>
+    </ResourceStatusSummaryRoot>
   )
 }

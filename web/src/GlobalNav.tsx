@@ -20,7 +20,7 @@ import {
 } from "./style-helpers"
 import UpdateDialog from "./UpdateDialog"
 
-const GlobalNavRoot = styled.div`
+export const GlobalNavRoot = styled.div`
   display: flex;
   align-items: stretch;
 `

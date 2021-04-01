@@ -1,6 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import { GlobalNav } from "./GlobalNav"
+import { GlobalNav, GlobalNavRoot } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceStatusSummary } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
@@ -16,12 +16,12 @@ const OverviewResourceBarRoot = styled.div`
   display: flex;
   align-items: stretch;
   padding-left: ${SizeUnit(1)};
-`
 
-const GlobalNavContainer = styled.div`
-  justify-content: flex-end;
-  flex-grow: 1;
-  display: flex;
+  ${GlobalNavRoot} {
+    justify-content: flex-end;
+    flex-grow: 1;
+    display: flex;
+  }
 `
 
 export default function OverviewResourceBar(props: OverviewResourceBarProps) {
@@ -55,9 +55,7 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   return (
     <OverviewResourceBarRoot>
       <ResourceStatusSummary view={props.view} showStatusLabels={true} />
-      <GlobalNavContainer>
-        <GlobalNav {...globalNavProps} />
-      </GlobalNavContainer>
+      <GlobalNav {...globalNavProps} />
     </OverviewResourceBarRoot>
   )
 }

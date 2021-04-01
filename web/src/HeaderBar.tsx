@@ -4,7 +4,10 @@ import styled from "styled-components"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
 import { GlobalNav } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
-import { ResourceStatusSummary } from "./ResourceStatusSummary"
+import {
+  ResourceStatusSummary,
+  ResourceStatusSummaryRoot,
+} from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { TargetType } from "./types"
@@ -14,6 +17,12 @@ const HeaderBarRoot = styled.div`
   display: flex;
   align-items: center;
   padding-left: ${SizeUnit(1)};
+
+  ${ResourceStatusSummaryRoot} {
+    justify-self: center;
+    flex-grow: 1;
+    justify-content: center;
+  }
 `
 
 const Logo = styled(LogoWordmarkSvg)`
@@ -29,12 +38,6 @@ const Logo = styled(LogoWordmarkSvg)`
   display: block;
 `
 
-const ResourceStatusSummaryContainer = styled.div`
-  justify-self: center;
-  flex-grow: 1;
-  display: flex;
-  justify-content: center;
-`
 const HeaderDivider = styled.div`
   border-left: 1px solid ${Color.grayLighter};
   height: ${SizeUnit(1)};
@@ -91,9 +94,7 @@ export default function HeaderBar(props: HeaderBarProps) {
       <AllResourcesLink to={pb.encpath`/r/(all)/overview`}>
         All Resources
       </AllResourcesLink>
-      <ResourceStatusSummaryContainer>
-        <ResourceStatusSummary view={props.view} showStatusLabels={false} />
-      </ResourceStatusSummaryContainer>
+      <ResourceStatusSummary view={props.view} showStatusLabels={false} />
       <GlobalNav {...globalNavProps} />
     </HeaderBarRoot>
   )
