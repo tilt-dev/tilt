@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -53,6 +54,10 @@ func (ec *explodingClient) CreatePortForwarder(ctx context.Context, namespace Na
 }
 
 func (ec *explodingClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
+func (ec *explodingClient) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

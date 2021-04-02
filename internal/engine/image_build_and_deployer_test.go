@@ -70,6 +70,39 @@ func TestForceUpdate(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(f.k8s.DeletedYaml, "Deployment"))
 }
 
+func TestForceUpdateDoesNotDeleteNamespace(t *testing.T) {
+	f := newIBDFixture(t, k8s.EnvGKE)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML + `
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-namespace
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+  namespace: my-namespace
+`).
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		Build()
+
+	iTargetID1 := m.ImageTargets[0].ID()
+	stateSet := store.BuildStateSet{
+		iTargetID1: store.BuildState{FullBuildTriggered: true},
+	}
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, buildTargets(m), stateSet)
+	require.NoError(t, err)
+
+	// A force rebuild should delete the ConfigMap but not the Namespace.
+	assert.Equal(t, 1, strings.Count(f.k8s.DeletedYaml, "kind: ConfigMap"))
+	assert.Equal(t, 0, strings.Count(f.k8s.DeletedYaml, "kind: Namespace"))
+}
+
 func TestDeleteShouldHappenInReverseOrder(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()

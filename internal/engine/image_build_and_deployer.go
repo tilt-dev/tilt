@@ -10,6 +10,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -299,8 +300,20 @@ func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) context.Cont
 	return logger.WithLogger(ctx, newL)
 }
 
+// Delete all the resources in the Kubernetes target, to ensure that they restart when
+// we re-apply them.
+//
+// Namespaces are not deleted by default. Similar to `tilt down`, deleting namespaces
+// is likely to be more destructive than most users want from this operation.
 func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8sTarget) error {
 	entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
+	if err != nil {
+		return err
+	}
+
+	entities, _, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
+		return e.GVK() != schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, nil
+	})
 	if err != nil {
 		return err
 	}

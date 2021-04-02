@@ -23,7 +23,6 @@ import ShareSnapshotModal from "./ShareSnapshotModal"
 import { SidebarPinContextProvider } from "./SidebarPin"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
-import { StatusItem } from "./Statusbar"
 import { OverviewNavProvider } from "./TabNav"
 import {
   ShowErrorModal,
@@ -248,7 +247,6 @@ export default class HUD extends Component<HudProps, HudState> {
     if (!resources?.length || !view?.tiltfileKey) {
       return <HeroScreen message={"Loading…"} />
     }
-    let statusItems = resources.map((res) => new StatusItem(res))
 
     let runningBuild = view?.runningTiltBuild
     let suggestedVersion = view?.suggestedTiltVersion

@@ -13,10 +13,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
 	difake "k8s.io/client-go/discovery/fake"
@@ -38,6 +40,48 @@ func TestK8sClient_WatchPods(t *testing.T) {
 	pod3 := fakePod(PodID("754"), "efgh")
 	pods := []runtime.Object{pod1, pod2, pod3}
 	tf.runPods(pods, pods)
+}
+
+func TestPodFromInformerCacheAfterWatch(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	pod1 := fakePod(PodID("abcd"), "efgh")
+	pods := []runtime.Object{pod1}
+	ch := tf.watchPods()
+	tf.addObjects(pods...)
+	tf.assertPods(pods, ch)
+
+	pod1Cache, err := tf.kCli.PodFromInformerCache(tf.ctx, types.NamespacedName{Name: "abcd", Namespace: "default"})
+	require.NoError(t, err)
+	assert.Equal(t, "abcd", pod1Cache.Name)
+
+	_, err = tf.kCli.PodFromInformerCache(tf.ctx, types.NamespacedName{Name: "missing", Namespace: "default"})
+	if assert.Error(t, err) {
+		assert.True(t, apierrors.IsNotFound(err))
+	}
+}
+
+func TestPodFromInformerCacheBeforeWatch(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	pod1 := fakePod(PodID("abcd"), "efgh")
+	pods := []runtime.Object{pod1}
+	tf.addObjects(pods...)
+
+	nn := types.NamespacedName{Name: "abcd", Namespace: "default"}
+	assert.Eventually(t, func() bool {
+		_, err := tf.kCli.PodFromInformerCache(tf.ctx, nn)
+		return err == nil
+	}, time.Second, 5*time.Millisecond)
+
+	pod1Cache, err := tf.kCli.PodFromInformerCache(tf.ctx, nn)
+	require.NoError(t, err)
+	assert.Equal(t, "abcd", pod1Cache.Name)
+
+	ch := tf.watchPods()
+	tf.assertPods(pods, ch)
 }
 
 func TestK8sClient_WatchPodsNamespaces(t *testing.T) {
@@ -346,7 +390,7 @@ func (fakeDiscovery) Invalidate() {}
 
 type watchTestFixture struct {
 	t    *testing.T
-	kCli K8sClient
+	kCli *K8sClient
 
 	tracker           ktesting.ObjectTracker
 	watchRestrictions ktesting.WatchRestrictions
@@ -413,7 +457,8 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 		},
 	}
 
-	ret.kCli = K8sClient{
+	ret.kCli = &K8sClient{
+		InformerSet:     newInformerSet(cs, dcs),
 		env:             EnvUnknown,
 		drm:             fakeRESTMapper{},
 		dynamic:         dcs,

@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -20,10 +22,11 @@ const IstioSidecarContainerName = container.Name("istio-proxy")
 
 // Translates EngineState into PodLogWatch API objects
 type PodLogManager struct {
+	client ctrlclient.Client
 }
 
-func NewPodLogManager() *PodLogManager {
-	return &PodLogManager{}
+func NewPodLogManager(client ctrlclient.Client) *PodLogManager {
+	return &PodLogManager{client: client}
 }
 
 // Diff the current watches against the state store of what
@@ -98,18 +101,32 @@ func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore, summary s
 		m.deletePls(ctx, st, pls)
 	}
 
-	for _, nn := range setup {
-		m.createPls(ctx, st, nn)
+	for _, pls := range setup {
+		m.createPls(ctx, st, pls)
 	}
 }
 
 // Delete the PodLogStream API object. Should be idempotent.
 func (m *PodLogManager) deletePls(ctx context.Context, st store.RStore, pls *PodLogStream) {
+	err := m.client.Delete(ctx, pls)
+	if err != nil &&
+		!apierrors.IsNotFound(err) {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		return
+	}
 	st.Dispatch(PodLogStreamDeleteAction{Name: pls.Name})
 }
 
 // Create a PodLogStream API object, if necessary. Should be idempotent.
 func (m *PodLogManager) createPls(ctx context.Context, st store.RStore, pls *PodLogStream) {
+	err := m.client.Create(ctx, pls)
+	if err != nil &&
+		!apierrors.IsNotFound(err) &&
+		!apierrors.IsConflict(err) &&
+		!apierrors.IsAlreadyExists(err) {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		return
+	}
 	st.Dispatch(PodLogStreamCreateAction{PodLogStream: pls})
 }
 

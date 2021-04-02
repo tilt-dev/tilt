@@ -11,7 +11,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 )
 
-func (k K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startWatchTime time.Time) (io.ReadCloser, error) {
+func (k *K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startWatchTime time.Time) (io.ReadCloser, error) {
 	options := &v1.PodLogOptions{
 		Container: cName.String(),
 		Follow:    true,

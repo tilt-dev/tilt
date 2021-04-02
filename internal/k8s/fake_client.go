@@ -16,6 +16,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -55,6 +56,7 @@ type FakeK8sClient struct {
 	podWatches     []fakePodWatch
 	serviceWatches []fakeServiceWatch
 	eventWatches   []fakeEventWatch
+	pods           map[types.NamespacedName]*v1.Pod
 
 	EventsWatchErr error
 
@@ -109,6 +111,22 @@ func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
 
 		w.ch <- s
 	}
+}
+
+func (c *FakeK8sClient) UpsertPod(pod *v1.Pod) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.pods[types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}] = pod
+}
+
+func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	pod, ok := c.pods[nn]
+	if !ok {
+		return nil, apierrors.NewNotFound(PodGVR.GroupResource(), nn.Name)
+	}
+	return pod, nil
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
@@ -226,6 +244,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan Obj
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
 		PodLogsByPodAndContainer: make(map[PodAndCName]ReaderCloser),
+		pods:                     make(map[types.NamespacedName]*v1.Pod),
 	}
 }
 
