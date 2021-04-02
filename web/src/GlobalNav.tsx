@@ -20,11 +20,9 @@ import {
 } from "./style-helpers"
 import UpdateDialog from "./UpdateDialog"
 
-const GlobalNavRoot = styled.div`
-  flex-grow: 1;
+export const GlobalNavRoot = styled.div`
   display: flex;
   align-items: stretch;
-  justify-content: flex-end;
 `
 export const MenuButton = styled.button`
   ${mixinResetButtonStyle};

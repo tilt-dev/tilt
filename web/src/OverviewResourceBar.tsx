@@ -1,6 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import { GlobalNav } from "./GlobalNav"
+import { GlobalNav, GlobalNavRoot } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceStatusSummary } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
@@ -12,10 +12,16 @@ type OverviewResourceBarProps = {
   view: Proto.webviewView
 }
 
-let OverviewResourceBarRoot = styled.div`
+const OverviewResourceBarRoot = styled.div`
   display: flex;
   align-items: stretch;
   padding-left: ${SizeUnit(1)};
+
+  ${GlobalNavRoot} {
+    justify-content: flex-end;
+    flex-grow: 1;
+    display: flex;
+  }
 `
 
 export default function OverviewResourceBar(props: OverviewResourceBarProps) {
@@ -32,7 +38,7 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   let showMetricsButton = !!(hasK8s || view?.metricsServing?.mode)
   let metricsServing = view?.metricsServing
 
-  let tiltMenuProps = {
+  let globalNavProps = {
     isSnapshot,
     snapshot,
     showUpdate: showUpdate(view),
@@ -48,8 +54,8 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
 
   return (
     <OverviewResourceBarRoot>
-      <ResourceStatusSummary view={props.view} />
-      <GlobalNav {...tiltMenuProps} />
+      <ResourceStatusSummary view={props.view} showStatusLabels={true} />
+      <GlobalNav {...globalNavProps} />
     </OverviewResourceBarRoot>
   )
 }
