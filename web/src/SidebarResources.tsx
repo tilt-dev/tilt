@@ -69,7 +69,7 @@ export const defaultOptions: SidebarOptions = {
   resourceNameFilter: "",
 }
 
-function PrepareSavedSidebarOptions(o: SidebarOptions) {
+function MaybeUpgradeSavedSidebarOptions(o: SidebarOptions) {
   // non-nullable fields added to SidebarOptions after its initial release need to have default values
   // filled in here
   return { ...o, resourceNameFilter: o.resourceNameFilter ?? "" }
@@ -178,7 +178,10 @@ export class SidebarResources extends React.Component<SidebarProps> {
         ? "isOverview"
         : ""
 
-    if (listItems.length === 0 && options.resourceNameFilter) {
+    // only say no matches if there were actually items that got filtered out
+    // otherwise, there might just be 0 resources because there are 0 resources
+    // (though technically there's probably always at least a Tiltfile resource)
+    if (listItems.length === 0 && this.props.items.length !== 0) {
       listItems = [
         <NoMatchesFound key={"no-matches"}>
           No matching resources
@@ -218,7 +221,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
       <PersistentStateProvider
         defaultValue={defaultOptions}
         name={"sidebar_options"}
-        prepareSavedState={PrepareSavedSidebarOptions}
+        maybeUpgradeSavedState={MaybeUpgradeSavedSidebarOptions}
       >
         {(value: SidebarOptions, set) => this.renderWithOptions(value, set)}
       </PersistentStateProvider>
