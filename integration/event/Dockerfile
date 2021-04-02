@@ -1,4 +1,4 @@
 FROM busybox
 
 ADD . .
-ENTRYPOINT busybox httpd -f -p 8000
+ENTRYPOINT echo "Starting HTTP server..." && busybox httpd -f -p 8000
