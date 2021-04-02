@@ -596,10 +596,7 @@ func (ms *ManifestState) PodWithID(pid k8s.PodID) (*Pod, bool) {
 }
 
 func (ms *ManifestState) AddPendingFileChange(targetID model.TargetID, file string, timestamp time.Time) {
-	if timestamp.Before(ms.LastBuild().StartTime) {
-		// this file change occurred before the last build even started, so it's stale and was already processed
-		return
-	} else if !ms.CurrentBuild.Empty() {
+	if !ms.CurrentBuild.Empty() {
 		if timestamp.Before(ms.CurrentBuild.StartTime) {
 			// this file change occurred before the build started, but if the current build already knows
 			// about it (from another target or rapid successive changes that weren't de-duped), it can be ignored
