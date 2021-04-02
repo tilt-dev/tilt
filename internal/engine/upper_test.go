@@ -21,8 +21,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 
-	"github.com/tilt-dev/tilt/pkg/apis"
-
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
@@ -82,7 +80,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -1565,7 +1562,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
@@ -1616,7 +1613,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
 
 	// Start a fake build
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1657,7 +1654,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.Start([]model.Manifest{manifest})
 
 	// Start and end a normal build
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1687,7 +1684,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	// Start another fake build
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
@@ -2096,7 +2093,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.startPod(pod, name)
 	f.podLog(pod, name, "first string")
 
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a.go")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 
 	f.waitForCompletedBuildCount(2)
 	f.podLog(pod, name, "second string")
@@ -4328,28 +4325,19 @@ func (f *testFixture) loadAndStart(initOptions ...initOption) {
 }
 
 func (f *testFixture) WriteConfigFiles(args ...string) {
+	f.t.Helper()
 	if (len(args) % 2) != 0 {
 		f.T().Fatalf("WriteConfigFiles needs an even number of arguments; got %d", len(args))
 	}
 
-	filenames := []string{}
 	for i := 0; i < len(args); i += 2 {
 		filename := f.JoinPath(args[i])
 		contents := args[i+1]
 		f.WriteFile(filename, contents)
-		filenames = append(filenames, filename)
 
 		// Fire an FS event thru the normal pipeline, so that manifests get marked dirty.
 		f.fsWatcher.Events <- watch.NewFileEvent(filename)
 	}
-
-	// The test harness was written for a time when most tests didn't
-	// have a Tiltfile. So
-	// 1) Tiltfile execution doesn't happen at test startup
-	// 2) Because the Tiltfile isn't executed, ConfigFiles isn't populated
-	// 3) Because ConfigFiles isn't populated, ConfigsTargetID watches aren't set up properly
-	// So just fire a change action manually.
-	f.triggerFileChange(fswatch.ConfigsTargetID, filenames...)
 }
 
 func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
@@ -4430,27 +4418,6 @@ func (f *testFixture) registerDeployedPodTemplateSpecHashToManifest(name model.M
 
 func (f *testFixture) completeBuildForManifest(m model.Manifest) {
 	f.b.completeBuild(targetIDStringForManifest(m))
-}
-
-func (f *testFixture) triggerFileChange(targetID model.TargetID, paths ...string) {
-	now := metav1.NowMicro()
-	key := types.NamespacedName{Name: apis.SanitizeName(targetID.String())}
-
-	st := f.store.RLockState()
-	fw := st.FileWatches[key]
-	if fw == nil {
-		f.t.Fatalf("Cannot trigger file change for %q - does not exist in store", targetID.String())
-	}
-	fw = fw.DeepCopy()
-	f.store.RUnlockState()
-
-	fw.Status.LastEventTime = now
-	fw.Status.FileEvents = append(fw.Status.FileEvents, filewatches.FileEvent{
-		Time:      now,
-		SeenFiles: append([]string{}, paths...),
-	})
-
-	f.store.Dispatch(fswatch.NewFileWatchUpdateStatusAction(fw))
 }
 
 func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {
