@@ -3765,7 +3765,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	env := k8s.EnvDockerDesktop
 	cdc := controllers.ProvideDeferredClient()
 	plm := runtimelog.NewPodLogManager(cdc)
-	plsc := runtimelog.NewPodLogStreamController(cdc, st, kCli)
+	plsc := runtimelog.NewPodLogStreamController(ctx, cdc, st, kCli)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfc := portforward.NewController(kCli)
@@ -3799,6 +3799,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
+		plsc,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -3841,7 +3842,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, plsc, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

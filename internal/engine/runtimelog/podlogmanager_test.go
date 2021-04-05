@@ -13,6 +13,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
@@ -49,7 +50,13 @@ func TestLogs(t *testing.T) {
 
 	f.onChange(podID)
 	f.AssertOutputContains("hello world!")
-	assert.Equal(t, start, f.kClient.LastPodLogStartTime)
+	assert.Equal(t, start.Truncate(time.Second), f.kClient.LastPodLogStartTime)
+
+	// Check to make sure that we're enqueuing pod changes as Reconcile() calls.
+	podNN := types.NamespacedName{Name: string(podID), Namespace: "default"}
+	assert.Equal(t, []reconcile.Request{
+		reconcile.Request{NamespacedName: types.NamespacedName{Name: fmt.Sprintf("default-%s", podID)}},
+	}, f.plsc.podSource.mapPodNameToEnqueue(podNN))
 }
 
 func TestLogActions(t *testing.T) {
@@ -171,7 +178,8 @@ func TestContainerPrefixes(t *testing.T) {
 		pbSingleC.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.onChange(podID)
+	f.onChange(pID1)
+	f.onChange(pID2)
 
 	// Make sure we have expected logs
 	f.AssertOutputContains("hello world!")
@@ -250,7 +258,7 @@ func TestLogReconnection(t *testing.T) {
 
 	_, _ = writer.Write([]byte("hello world!"))
 	f.AssertOutputContains("hello world!")
-	assert.Equal(t, startTime, f.kClient.LastPodLogStartTime)
+	assert.Equal(t, startTime.Truncate(time.Second), f.kClient.LastPodLogStartTime)
 
 	currentTime = currentTime.Add(20 * time.Second)
 	lastRead := currentTime
@@ -273,7 +281,7 @@ func TestLogReconnection(t *testing.T) {
 	currentTime = currentTime.Add(5 * time.Second)
 	timeCh <- currentTime
 	f.AssertOutputDoesNotContain("goodbye world!")
-	assert.Equal(t, startTime, f.kClient.LastPodLogStartTime)
+	assert.Equal(t, startTime.Truncate(time.Second), f.kClient.LastPodLogStartTime)
 
 	// simulate 15s since we last read a log; this triggers a reconnect
 	currentTime = currentTime.Add(5 * time.Second)
@@ -285,7 +293,9 @@ func TestLogReconnection(t *testing.T) {
 	f.AssertOutputContains("goodbye world!")
 
 	// Make sure the start time was adjusted for when the last read happened.
-	assert.Equal(t, lastRead.Add(podLogReconnectGap), f.kClient.LastPodLogStartTime)
+	assert.Equal(t,
+		lastRead.Add(podLogReconnectGap).Truncate(time.Second).String(),
+		f.kClient.LastPodLogStartTime.Truncate(time.Second).String())
 }
 
 func TestInitContainerLogs(t *testing.T) {
@@ -425,14 +435,14 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	kClient := k8s.NewFakeK8sClient()
 
 	out := bufsync.NewThreadSafeBuffer()
-	st := newPLMStore(t, out)
-	fc := fake.NewTiltClient()
-	plm := NewPodLogManager(fc)
-	plsc := NewPodLogStreamController(fc, st, kClient)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx = logger.WithLogger(ctx, l)
+
+	st := newPLMStore(t, out)
+	fc := fake.NewTiltClient()
+	plm := NewPodLogManager(fc)
+	plsc := NewPodLogStreamController(ctx, fc, st, kClient)
 
 	return &plmFixture{
 		TempDirFixture: f,
@@ -447,10 +457,23 @@ func newPLMFixture(t *testing.T) *plmFixture {
 }
 
 func (f *plmFixture) onChange(podID k8s.PodID) {
+	podNN := types.NamespacedName{Name: string(podID), Namespace: "default"}
 	f.plm.OnChange(f.ctx, f.store, store.ChangeSummary{
-		Pods: store.NewChangeSet(types.NamespacedName{Name: string(podID)}),
+		Pods: store.NewChangeSet(podNN),
 	})
-	f.plsc.OnChange(f.ctx, f.store, f.store.getSummary())
+
+	// Reconcile any PodLogStreams
+	summary := f.store.getSummary()
+	for streamName := range summary.PodLogStreams.Changes {
+		_, err := f.plsc.Reconcile(f.ctx, reconcile.Request{NamespacedName: streamName})
+		assert.NoError(f.T(), err)
+	}
+
+	for _, req := range f.plsc.podSource.mapPodNameToEnqueue(podNN) {
+		_, err := f.plsc.Reconcile(f.ctx, req)
+		assert.NoError(f.T(), err)
+	}
+
 	f.store.clearSummary()
 }
 
@@ -478,6 +501,7 @@ func (f *plmFixture) TearDown() {
 }
 
 func (f *plmFixture) AssertOutputContains(s string) {
+	f.T().Helper()
 	err := f.out.WaitUntilContains(s, time.Second)
 	if err != nil {
 		f.T().Fatal(err)
