@@ -33,8 +33,10 @@ export const SidebarItemRoot = styled.li`
   & + & {
     margin-top: ${SizeUnit(0.35)};
   }
+  // smaller margin-left since the pin icon takes up space
+  margin-left: ${SizeUnit(0.25)};
+  margin-right: ${SizeUnit(0.5)};
   display: flex;
-  flex-direction: column;
 `
 
 const barberpole = keyframes`
@@ -43,13 +45,11 @@ const barberpole = keyframes`
   }
 `
 
-// Flexbox (row) containing:
-// - `SidebarItemInnerBox` - (column) with runtime + build boxes
-// - `SidebarItemActions` - (column) with trigger + trigger mode
 export let SidebarItemBox = styled.div`
   color: ${Color.white};
   background-color: ${Color.gray};
   display: flex;
+  flex-grow: 1;
   transition: color ${AnimDuration.default} linear,
     background-color ${AnimDuration.default} linear;
   border-radius: ${overviewItemBorderRadius};
@@ -59,7 +59,6 @@ export let SidebarItemBox = styled.div`
   text-decoration: none;
   font-size: ${FontSize.small};
   font-family: ${Font.monospace};
-  margin: 0 ${SizeUnit(0.5)};
   cursor: pointer;
 
   &:hover {
@@ -103,6 +102,7 @@ let SidebarItemInnerBox = styled.div`
 
 let SidebarItemRuntimeBox = styled.div`
   display: flex;
+  flex-grow: 1;
   align-items: stretch;
   height: ${SizeUnit(1)};
   border-bottom: 1px solid ${Color.grayLighter};
@@ -112,11 +112,6 @@ let SidebarItemRuntimeBox = styled.div`
   .isSelected & {
     border-bottom-color: ${Color.grayLightest};
   }
-`
-let SidebarPinBox = styled.div`
-  display: flex;
-  align-items: stretch;
-  flex-grow: 1;
 `
 
 let SidebarItemBuildBox = styled.div`
@@ -135,6 +130,8 @@ let SidebarItemText = styled.div`
 
 let SidebarItemAllRoot = styled(SidebarItemRoot)`
   text-transform: uppercase;
+  // SidebarItemRoot's margin-left of 0.25 plus the pin icon's width of 0.75
+  margin-left: ${SizeUnit(1)};
 `
 let SidebarItemAllBox = styled(SidebarItemBox)`
   flex-direction: row;
@@ -198,6 +195,7 @@ let SidebarItemTimeAgo = styled.span`
   opacity: ${ColorAlpha.almostOpaque};
   display: flex;
   justify-content: flex-end;
+  flex-grow: 1;
   align-items: center;
   text-align: right;
   white-space: nowrap;
@@ -322,6 +320,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
       key={item.name}
       className={`u-showPinOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass}`}
     >
+      <SidebarPinButton resourceName={item.name} />
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
         tabIndex={-1}
@@ -341,9 +340,6 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
               alertCount={item.runtimeAlertCount}
             />
             <SidebarItemName name={item.name} />
-            <SidebarPinBox>
-              <SidebarPinButton resourceName={item.name} />
-            </SidebarPinBox>
             <SidebarItemTimeAgo>
               {hasSuccessfullyDeployed ? timeAgo : "—"}
             </SidebarItemTimeAgo>
