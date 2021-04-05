@@ -100,10 +100,7 @@ func TestLogsFailed(t *testing.T) {
 	assert.Contains(t, f.out.String(), "my-error")
 
 	// Check to make sure the status has an error.
-	stream := &PodLogStream{}
-	streamNN := types.NamespacedName{Name: fmt.Sprintf("default-%s", podID)}
-	err := f.client.Get(f.ctx, streamNN, stream)
-	require.NoError(t, err)
+	stream := f.getPodLogStream(podID)
 	assert.Equal(t, stream.Status, PodLogStreamStatus{
 		ContainerStatuses: []ContainerLogStreamStatus{
 			ContainerLogStreamStatus{
@@ -131,8 +128,17 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	f.onChange(podID)
 	f.AssertOutputContains("hello world!\n")
 
-	// Previous log stream has finished, so the first pod watch has been canceled,
-	// but not cleaned up; check that we start a new watch .OnChange
+	// Wait until the previous log stream finishes.
+	assert.Eventually(f.T(), func() bool {
+		stream := f.getPodLogStream(podID)
+		statuses := stream.Status.ContainerStatuses
+		if len(statuses) != 1 {
+			return false
+		}
+		return !statuses[0].Active
+	}, time.Second, 5*time.Millisecond)
+
+	// Set new logs, as if the pod restarted.
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
 	f.onChange(podID)
 	f.AssertOutputContains("goodbye world!\n")
@@ -494,6 +500,14 @@ func (f *plmFixture) onChange(podID k8s.PodID) {
 	}
 
 	f.store.clearSummary()
+}
+
+func (f *plmFixture) getPodLogStream(id k8s.PodID) *PodLogStream {
+	stream := &PodLogStream{}
+	streamNN := types.NamespacedName{Name: fmt.Sprintf("default-%s", id)}
+	err := f.client.Get(f.ctx, streamNN, stream)
+	require.NoError(f.T(), err)
+	return stream
 }
 
 func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
