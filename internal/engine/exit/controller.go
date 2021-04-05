@@ -143,7 +143,7 @@ func (c *Controller) makeLatestStatus(st store.RStore) *tiltruns.TiltRunStatus {
 }
 
 func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *tiltruns.TiltRunStatus) error {
-	if equality.Semantic.DeepEqual(c.tiltRun.Status, newStatus) {
+	if equality.Semantic.DeepEqual(&c.tiltRun.Status, newStatus) {
 		return nil
 	}
 
