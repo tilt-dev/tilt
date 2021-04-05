@@ -116,7 +116,7 @@ func (m *PodLogManager) deletePls(ctx context.Context, st store.RStore, pls *Pod
 	err := m.client.Delete(ctx, pls)
 	if err != nil &&
 		!apierrors.IsNotFound(err) {
-		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("deleting PodLogStream from apiserver: %v", err)))
 		return
 	}
 	st.Dispatch(PodLogStreamDeleteAction{Name: pls.Name})
@@ -129,7 +129,7 @@ func (m *PodLogManager) createPls(ctx context.Context, st store.RStore, pls *Pod
 		!apierrors.IsNotFound(err) &&
 		!apierrors.IsConflict(err) &&
 		!apierrors.IsAlreadyExists(err) {
-		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("creating PodLogStream on apiserver: %v", err)))
 		return
 	}
 	st.Dispatch(PodLogStreamCreateAction{PodLogStream: pls})

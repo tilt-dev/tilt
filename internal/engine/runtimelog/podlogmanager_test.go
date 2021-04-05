@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -54,8 +56,9 @@ func TestLogs(t *testing.T) {
 
 	// Check to make sure that we're enqueuing pod changes as Reconcile() calls.
 	podNN := types.NamespacedName{Name: string(podID), Namespace: "default"}
+	streamNN := types.NamespacedName{Name: fmt.Sprintf("default-%s", podID)}
 	assert.Equal(t, []reconcile.Request{
-		reconcile.Request{NamespacedName: types.NamespacedName{Name: fmt.Sprintf("default-%s", podID)}},
+		reconcile.Request{NamespacedName: streamNN},
 	}, f.plsc.podSource.mapPodNameToEnqueue(podNN))
 }
 
@@ -95,6 +98,20 @@ func TestLogsFailed(t *testing.T) {
 	f.onChange(podID)
 	f.AssertOutputContains("Error streaming pod-id logs")
 	assert.Contains(t, f.out.String(), "my-error")
+
+	// Check to make sure the status has an error.
+	stream := &PodLogStream{}
+	streamNN := types.NamespacedName{Name: fmt.Sprintf("default-%s", podID)}
+	err := f.client.Get(f.ctx, streamNN, stream)
+	require.NoError(t, err)
+	assert.Equal(t, stream.Status, PodLogStreamStatus{
+		ContainerStatuses: []ContainerLogStreamStatus{
+			ContainerLogStreamStatus{
+				Name:  "cname",
+				Error: "my-error",
+			},
+		},
+	})
 }
 
 func TestLogsCanceledUnexpectedly(t *testing.T) {
@@ -422,6 +439,7 @@ func (s *plmStore) Dispatch(action store.Action) {
 type plmFixture struct {
 	*tempdir.TempDirFixture
 	ctx     context.Context
+	client  ctrlclient.Client
 	kClient *k8s.FakeK8sClient
 	plm     *PodLogManager
 	plsc    *PodLogStreamController
@@ -447,6 +465,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	return &plmFixture{
 		TempDirFixture: f,
 		kClient:        kClient,
+		client:         fc,
 		plm:            plm,
 		plsc:           plsc,
 		ctx:            ctx,
