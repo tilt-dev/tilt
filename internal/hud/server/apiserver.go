@@ -9,7 +9,6 @@ import (
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder"
-	"github.com/tilt-dev/tilt/pkg/clientset/tiltapi"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -22,7 +21,6 @@ import (
 type APIServerConfig = apiserver.Config
 
 type DynamicInterface = dynamic.Interface
-type Interface = tiltapi.Interface
 
 func ProvideMemConn() apiserver.ConnProvider {
 	return apiserver.NetworkConnProvider(&memconn.Provider{}, "memu")
@@ -72,11 +70,6 @@ func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port mode
 		return nil, err
 	}
 	return o.Config()
-}
-
-// Provide a typed API client for the Tilt server.
-func ProvideTiltInterface(config *APIServerConfig) (Interface, error) {
-	return tiltapi.NewForConfig(config.GenericConfig.LoopbackClientConfig)
 }
 
 // Provide a dynamic API client for the Tilt server.
