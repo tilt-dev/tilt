@@ -53,6 +53,7 @@ require (
 	github.com/moby/buildkit v0.7.1-0.20200925001807-2b6cccb9b3e9
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/opencontainers/go-digest v1.0.0
+	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
