@@ -9,12 +9,11 @@ builds:
   - darwin
   goarch:
   - amd64
-  - arm
   - arm64
   env:
   # Compiles against the MacOS FSEvents system libraries.
   - CGO_ENABLED=1
-  - CC=/osxcross/target/bin/x86_64h-apple-darwin14-clang
+  - CC=/osxcross/target/bin/x86_64h-apple-darwin20.2-clang
 - main: ./cmd/tilt/main.go
   id: tilt
   flags:

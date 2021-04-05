@@ -7,7 +7,6 @@ import (
 var WireSet = wire.NewSet(
 	ProvideMemConn,
 	ProvideTiltServerOptions,
-	ProvideTiltInterface,
 	ProvideTiltDynamic,
 	ProvideHeadsUpServer,
 	ProvideHeadsUpServerController,

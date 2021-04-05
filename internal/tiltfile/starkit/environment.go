@@ -8,8 +8,17 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 )
+
+func init() {
+	resolve.AllowSet = true
+	resolve.AllowLambda = true
+	resolve.AllowNestedDef = true
+	resolve.AllowGlobalReassign = true
+	resolve.AllowRecursion = true
+}
 
 // The main entrypoint to starkit.
 // Execute a file with a set of starlark extensions.

@@ -12,20 +12,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 )
-
-var errorWaitingReasons = map[string]bool{
-	"CrashLoopBackOff":  true,
-	"ErrImagePull":      true,
-	"ImagePullBackOff":  true,
-	"RunContainerError": true,
-	"StartError":        true,
-	"Error":             true,
-}
 
 type PodWatcher struct {
 	kCli         k8s.Client
@@ -118,7 +110,7 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 }
 
 func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace) {
-	ch, err := w.kCli.WatchPods(ctx, ns, labels.Everything())
+	ch, err := w.kCli.WatchPods(ctx, ns)
 	if err != nil {
 		err = errors.Wrapf(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods -n %q`", ns)
 		st.Dispatch(store.NewErrorAction(err))
@@ -318,30 +310,6 @@ func PodStatusToString(pod v1.Pod) string {
 	return reason
 }
 
-func ContainerStatusToRuntimeState(status v1.ContainerStatus) model.RuntimeStatus {
-	state := status.State
-	if state.Terminated != nil {
-		if state.Terminated.ExitCode == 0 {
-			return model.RuntimeStatusOK
-		} else {
-			return model.RuntimeStatusError
-		}
-	}
-
-	if state.Waiting != nil {
-		if errorWaitingReasons[state.Waiting.Reason] {
-			return model.RuntimeStatusError
-		}
-		return model.RuntimeStatusPending
-	}
-
-	if state.Running != nil {
-		return model.RuntimeStatusOK
-	}
-
-	return model.RuntimeStatusUnknown
-}
-
 // Pull out interesting error messages from the pod status
 func PodStatusErrorMessages(pod v1.Pod) []string {
 	result := []string{}
@@ -371,7 +339,7 @@ func containerStatusErrorMessages(container v1.ContainerStatus) []string {
 		// If we're in an error mode, also include the error message.
 		// Many error modes put important information in the error message,
 		// like when the pod will get rescheduled.
-		if state.Waiting.Message != "" && errorWaitingReasons[state.Waiting.Reason] {
+		if state.Waiting.Message != "" && k8sconv.ErrorWaitingReasons[state.Waiting.Reason] {
 			result = append(result, state.Waiting.Message)
 		}
 	} else if state.Terminated != nil &&

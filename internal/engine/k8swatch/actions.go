@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -19,7 +20,13 @@ type PodChangeAction struct {
 	MatchedAncestorUID types.UID
 }
 
+var _ store.Summarizer = PodChangeAction{}
+
 func (PodChangeAction) Action() {}
+
+func (a PodChangeAction) Summarize(s *store.ChangeSummary) {
+	s.Pods.Add(types.NamespacedName{Name: string(a.Pod.Name), Namespace: string(a.Pod.Namespace)})
+}
 
 func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName, matchedAncestorUID types.UID) PodChangeAction {
 	return PodChangeAction{
@@ -34,7 +41,13 @@ type PodDeleteAction struct {
 	Namespace k8s.Namespace
 }
 
+var _ store.Summarizer = PodDeleteAction{}
+
 func (PodDeleteAction) Action() {}
+
+func (a PodDeleteAction) Summarize(s *store.ChangeSummary) {
+	s.Pods.Add(types.NamespacedName{Name: string(a.PodID), Namespace: string(a.Namespace)})
+}
 
 func NewPodDeleteAction(podID k8s.PodID, namespace k8s.Namespace) PodDeleteAction {
 	return PodDeleteAction{

@@ -14,6 +14,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+// UnschedulablePodGracePeriod is the maximum amount of time a pod can be in the Unschedulable state
+// before we consider it to be an error rather than just pending.
+const UnschedulablePodGracePeriod = 15 * time.Second
+
 type RuntimeState interface {
 	RuntimeState()
 
@@ -138,6 +142,18 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 
 	case v1.PodFailed:
 		return model.RuntimeStatusError
+	}
+
+	for _, condition := range pod.Conditions {
+		if condition.Type == v1.PodScheduled && condition.Reason == v1.PodReasonUnschedulable {
+			// some wiggle room is provided to reduce the likelihood that in a CI workflow where
+			// a local K8s cluster is created just before `tilt ci` that things immediately error
+			// out due to the node not being ready just yet
+			unschedulableDeadline := condition.LastTransitionTime.Add(UnschedulablePodGracePeriod)
+			if time.Now().After(unschedulableDeadline) {
+				return model.RuntimeStatusError
+			}
+		}
 	}
 
 	for _, container := range pod.AllContainers() {

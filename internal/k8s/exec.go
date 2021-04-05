@@ -11,7 +11,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 )
 
-func (k K8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+func (k *K8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	req := k.core.RESTClient().Post().
 		Resource("pods").
 		Namespace(n.String()).

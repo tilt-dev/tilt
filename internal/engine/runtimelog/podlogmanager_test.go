@@ -5,17 +5,25 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/tilt-dev/tilt/internal/testutils/manifestutils"
+	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -35,17 +43,23 @@ func TestLogs(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 	state.TiltStartTime = start
 
-	p := store.Pod{
-		PodID:      podID,
-		Containers: []store.Container{NewRunningContainer(cName, cID)},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 	f.AssertOutputContains("hello world!")
-	assert.Equal(t, start, f.kClient.LastPodLogStartTime)
+	assert.Equal(t, start.Truncate(time.Second), f.kClient.LastPodLogStartTime)
+
+	// Check to make sure that we're enqueuing pod changes as Reconcile() calls.
+	podNN := types.NamespacedName{Name: string(podID), Namespace: "default"}
+	streamNN := types.NamespacedName{Name: fmt.Sprintf("default-%s", podID)}
+	assert.Equal(t, []reconcile.Request{
+		reconcile.Request{NamespacedName: streamNN},
+	}, f.plsc.podSource.mapPodNameToEnqueue(podNN))
 }
 
 func TestLogActions(t *testing.T) {
@@ -56,15 +70,14 @@ func TestLogActions(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	p := store.Pod{
-		PodID:      podID,
-		Containers: []store.Container{NewRunningContainer(cName, cID)},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 	f.ConsumeLogActionsUntil("hello world!")
 }
 
@@ -76,17 +89,29 @@ func TestLogsFailed(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	p := store.Pod{
-		PodID:      podID,
-		Containers: []store.Container{NewRunningContainer(cName, cID)},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.AssertOutputContains("Error streaming server logs")
+	f.onChange(podID)
+	f.AssertOutputContains("Error streaming pod-id logs")
 	assert.Contains(t, f.out.String(), "my-error")
+
+	// Check to make sure the status has an error.
+	stream := &PodLogStream{}
+	streamNN := types.NamespacedName{Name: fmt.Sprintf("default-%s", podID)}
+	err := f.client.Get(f.ctx, streamNN, stream)
+	require.NoError(t, err)
+	assert.Equal(t, stream.Status, PodLogStreamStatus{
+		ContainerStatuses: []ContainerLogStreamStatus{
+			ContainerLogStreamStatus{
+				Name:  "cname",
+				Error: "my-error",
+			},
+		},
+	})
 }
 
 func TestLogsCanceledUnexpectedly(t *testing.T) {
@@ -97,21 +122,19 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	p := store.Pod{
-		PodID:      podID,
-		Containers: []store.Container{NewRunningContainer(cName, cID)},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 	f.AssertOutputContains("hello world!\n")
 
 	// Previous log stream has finished, so the first pod watch has been canceled,
 	// but not cleaned up; check that we start a new watch .OnChange
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 	f.AssertOutputContains("goodbye world!\n")
 }
 
@@ -124,18 +147,15 @@ func TestMultiContainerLogs(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	p := store.Pod{
-		PodID: podID,
-		Containers: []store.Container{
-			NewRunningContainer("cont1", "cid1"),
-			NewRunningContainer("cont2", "cid2"),
-		},
-	}
+	pb := newPodBuilder(podID).
+		addRunningContainer("cont1", "cid1").
+		addRunningContainer("cont2", "cid2")
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 	f.AssertOutputContains("hello world!")
 	f.AssertOutputContains("goodbye world!")
 }
@@ -156,30 +176,27 @@ func TestContainerPrefixes(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	podMultiC := store.Pod{
-		PodID: pID1,
-		Containers: []store.Container{
-			// Pod with multiple containers -- logs should be prefixed with container name
-			NewRunningContainer(cNamePrefix1, "cid1"),
-			NewRunningContainer(cNamePrefix2, "cid2"),
-		},
-	}
-	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "multiContainer"}, podMultiC))
+	pbMultiC := newPodBuilder(pID1).
+		// Pod with multiple containers -- logs should be prefixed with container name
+		addRunningContainer(cNamePrefix1, "cid1").
+		addRunningContainer(cNamePrefix2, "cid2")
+	f.kClient.UpsertPod(pbMultiC.toPod())
 
-	podSingleC := store.Pod{
-		PodID: pID2,
-		Containers: []store.Container{
-			// Pod with just one container -- logs should NOT be prefixed with container name
-			NewRunningContainer(cNameNoPrefix, "cid3"),
-		},
-	}
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "multiContainer"}, pbMultiC.toStorePod(f.ctx)))
+
+	pbSingleC := newPodBuilder(pID2).
+		// Pod with just one container -- logs should NOT be prefixed with container name
+		addRunningContainer(cNameNoPrefix, "cid3")
+	f.kClient.UpsertPod(pbSingleC.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
 		model.Manifest{Name: "singleContainer"},
-		podSingleC))
+		pbSingleC.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(pID1)
+	f.onChange(pID2)
 
 	// Make sure we have expected logs
 	f.AssertOutputContains("hello world!")
@@ -199,22 +216,18 @@ func TestTerminatedContainerLogs(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 
 	cName := container.Name("cName")
-	p := store.Pod{
-		PodID: podID,
-		Containers: []store.Container{
-			NewTerminatedContainer(cName, "cID"),
-		},
-	}
+	pb := newPodBuilder(podID).addTerminatedContainer(cName, "cID")
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
 	// Fire OnChange twice, because we used to have a bug where
 	// we'd immediately teardown the log watch on the terminated container.
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
+	f.onChange(podID)
 
 	f.AssertOutputContains("hello world!")
 
@@ -222,7 +235,7 @@ func TestTerminatedContainerLogs(t *testing.T) {
 	// closes the log stream.
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 	f.AssertOutputContains("hello world!")
 	f.AssertOutputDoesNotContain("goodbye world!")
 }
@@ -235,14 +248,10 @@ func TestLogReconnection(t *testing.T) {
 	state := f.store.LockMutableStateForTesting()
 
 	cName := container.Name("cName")
-	p := store.Pod{
-		PodID: podID,
-		Containers: []store.Container{
-			NewRunningContainer(cName, "cID"),
-		},
-	}
+	pb := newPodBuilder(podID).addRunningContainer(cName, "cID")
+	f.kClient.UpsertPod(pb.toPod())
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	reader, writer := io.Pipe()
@@ -254,19 +263,19 @@ func TestLogReconnection(t *testing.T) {
 	currentTime := startTime.Add(5 * time.Second)
 	timeCh := make(chan time.Time)
 	ticker := time.Ticker{C: timeCh}
-	f.plm.now = func() time.Time { return currentTime }
-	f.plm.since = func(t time.Time) time.Duration { return currentTime.Sub(t) }
-	f.plm.newTicker = func(d time.Duration) *time.Ticker { return &ticker }
+	f.plsc.now = func() time.Time { return currentTime }
+	f.plsc.since = func(t time.Time) time.Duration { return currentTime.Sub(t) }
+	f.plsc.newTicker = func(d time.Duration) *time.Ticker { return &ticker }
 
 	f.store.WithState(func(state *store.EngineState) {
 		state.TiltStartTime = startTime
 	})
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 
 	_, _ = writer.Write([]byte("hello world!"))
 	f.AssertOutputContains("hello world!")
-	assert.Equal(t, startTime, f.kClient.LastPodLogStartTime)
+	assert.Equal(t, startTime.Truncate(time.Second), f.kClient.LastPodLogStartTime)
 
 	currentTime = currentTime.Add(20 * time.Second)
 	lastRead := currentTime
@@ -289,7 +298,7 @@ func TestLogReconnection(t *testing.T) {
 	currentTime = currentTime.Add(5 * time.Second)
 	timeCh <- currentTime
 	f.AssertOutputDoesNotContain("goodbye world!")
-	assert.Equal(t, startTime, f.kClient.LastPodLogStartTime)
+	assert.Equal(t, startTime.Truncate(time.Second), f.kClient.LastPodLogStartTime)
 
 	// simulate 15s since we last read a log; this triggers a reconnect
 	currentTime = currentTime.Add(5 * time.Second)
@@ -301,7 +310,9 @@ func TestLogReconnection(t *testing.T) {
 	f.AssertOutputContains("goodbye world!")
 
 	// Make sure the start time was adjusted for when the last read happened.
-	assert.Equal(t, lastRead.Add(podLogReconnectGap), f.kClient.LastPodLogStartTime)
+	assert.Equal(t,
+		lastRead.Add(podLogReconnectGap).Truncate(time.Second).String(),
+		f.kClient.LastPodLogStartTime.Truncate(time.Second).String())
 }
 
 func TestInitContainerLogs(t *testing.T) {
@@ -314,23 +325,19 @@ func TestInitContainerLogs(t *testing.T) {
 
 	cNameInit := container.Name("cNameInit")
 	cNameNormal := container.Name("cNameNormal")
-	p := store.Pod{
-		PodID: podID,
-		InitContainers: []store.Container{
-			NewTerminatedContainer(cNameInit, "cID-init"),
-		},
-		Containers: []store.Container{
-			NewRunningContainer(cNameNormal, "cID-normal"),
-		},
-	}
+	pb := newPodBuilder(podID).
+		addTerminatedInitContainer(cNameInit, "cID-init").
+		addRunningContainer(cNameNormal, "cID-normal")
+	f.kClient.UpsertPod(pb.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.kClient.SetLogsForPodContainer(podID, cNameInit, "init world!")
 	f.kClient.SetLogsForPodContainer(podID, cNameNormal, "hello world!")
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 
 	f.AssertOutputContains(cNameInit.String())
 	f.AssertOutputContains("init world!")
@@ -349,25 +356,21 @@ func TestIstioContainerLogs(t *testing.T) {
 	istioInit := IstioInitContainerName
 	istioSidecar := IstioSidecarContainerName
 	cNormal := container.Name("cNameNormal")
-	p := store.Pod{
-		PodID: podID,
-		InitContainers: []store.Container{
-			NewTerminatedContainer(istioInit, "cID-init"),
-		},
-		Containers: []store.Container{
-			NewRunningContainer(istioSidecar, "cID-sidecar"),
-			NewRunningContainer(cNormal, "cID-normal"),
-		},
-	}
+	pb := newPodBuilder(podID).
+		addTerminatedInitContainer(istioInit, "cID-init").
+		addRunningContainer(istioSidecar, "cID-sidecar").
+		addRunningContainer(cNormal, "cID-normal")
+	f.kClient.UpsertPod(pb.toPod())
+
 	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
-		model.Manifest{Name: "server"}, p))
+		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
 	f.kClient.SetLogsForPodContainer(podID, istioInit, "init istio!")
 	f.kClient.SetLogsForPodContainer(podID, istioSidecar, "hello istio!")
 	f.kClient.SetLogsForPodContainer(podID, cNormal, "hello world!")
 
-	f.plm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.onChange(podID)
 
 	f.AssertOutputDoesNotContain("istio")
 	f.AssertOutputContains("hello world!")
@@ -377,6 +380,10 @@ type plmStore struct {
 	t *testing.T
 	*store.TestingStore
 	out *bufsync.ThreadSafeBuffer
+
+	mu      sync.Mutex
+	streams map[string]*PodLogStream
+	summary store.ChangeSummary
 }
 
 func newPLMStore(t *testing.T, out *bufsync.ThreadSafeBuffer) *plmStore {
@@ -384,10 +391,40 @@ func newPLMStore(t *testing.T, out *bufsync.ThreadSafeBuffer) *plmStore {
 		t:            t,
 		TestingStore: store.NewTestingStore(),
 		out:          out,
+		streams:      make(map[string]*PodLogStream),
 	}
 }
 
+func (s *plmStore) getSummary() store.ChangeSummary {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.summary
+}
+
+func (s *plmStore) clearSummary() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.summary = store.ChangeSummary{}
+}
+
 func (s *plmStore) Dispatch(action store.Action) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	state := s.LockMutableStateForTesting()
+	defer s.UnlockMutableState()
+
+	switch action := action.(type) {
+	case PodLogStreamCreateAction:
+		state.PodLogStreams[action.PodLogStream.Name] = action.PodLogStream
+		action.Summarize(&s.summary)
+		return
+	case PodLogStreamDeleteAction:
+		delete(state.PodLogStreams, action.Name)
+		action.Summarize(&s.summary)
+		return
+	}
+
 	event, ok := action.(store.LogAction)
 	if !ok {
 		s.t.Errorf("Expected action type LogAction. Actual: %T", action)
@@ -402,8 +439,10 @@ func (s *plmStore) Dispatch(action store.Action) {
 type plmFixture struct {
 	*tempdir.TempDirFixture
 	ctx     context.Context
+	client  ctrlclient.Client
 	kClient *k8s.FakeK8sClient
 	plm     *PodLogManager
+	plsc    *PodLogStreamController
 	cancel  func()
 	out     *bufsync.ThreadSafeBuffer
 	store   *plmStore
@@ -414,22 +453,47 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	kClient := k8s.NewFakeK8sClient()
 
 	out := bufsync.NewThreadSafeBuffer()
-	st := newPLMStore(t, out)
-	plm := NewPodLogManager(kClient)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx = logger.WithLogger(ctx, l)
 
+	st := newPLMStore(t, out)
+	fc := fake.NewTiltClient()
+	plm := NewPodLogManager(fc)
+	plsc := NewPodLogStreamController(ctx, fc, st, kClient)
+
 	return &plmFixture{
 		TempDirFixture: f,
 		kClient:        kClient,
+		client:         fc,
 		plm:            plm,
+		plsc:           plsc,
 		ctx:            ctx,
 		cancel:         cancel,
 		out:            out,
 		store:          st,
 	}
+}
+
+func (f *plmFixture) onChange(podID k8s.PodID) {
+	podNN := types.NamespacedName{Name: string(podID), Namespace: "default"}
+	f.plm.OnChange(f.ctx, f.store, store.ChangeSummary{
+		Pods: store.NewChangeSet(podNN),
+	})
+
+	// Reconcile any PodLogStreams
+	summary := f.store.getSummary()
+	for streamName := range summary.PodLogStreams.Changes {
+		_, err := f.plsc.Reconcile(f.ctx, reconcile.Request{NamespacedName: streamName})
+		assert.NoError(f.T(), err)
+	}
+
+	for _, req := range f.plsc.podSource.mapPodNameToEnqueue(podNN) {
+		_, err := f.plsc.Reconcile(f.ctx, req)
+		assert.NoError(f.T(), err)
+	}
+
+	f.store.clearSummary()
 }
 
 func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
@@ -456,6 +520,7 @@ func (f *plmFixture) TearDown() {
 }
 
 func (f *plmFixture) AssertOutputContains(s string) {
+	f.T().Helper()
 	err := f.out.WaitUntilContains(s, time.Second)
 	if err != nil {
 		f.T().Fatal(err)
@@ -467,9 +532,85 @@ func (f *plmFixture) AssertOutputDoesNotContain(s string) {
 	assert.NotContains(f.T(), f.out.String(), s)
 }
 
-func NewRunningContainer(name container.Name, id container.ID) store.Container {
-	return store.Container{Name: name, ID: id, Running: true}
+type podBuilder v1.Pod
+
+func newPodBuilder(id k8s.PodID) *podBuilder {
+	return (*podBuilder)(&v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      string(id),
+			Namespace: "default",
+		},
+	})
 }
-func NewTerminatedContainer(name container.Name, id container.ID) store.Container {
-	return store.Container{Name: name, ID: id, Terminated: true}
+
+func (pb *podBuilder) addRunningContainer(name container.Name, id container.ID) *podBuilder {
+	pb.Spec.Containers = append(pb.Spec.Containers, v1.Container{
+		Name: string(name),
+	})
+	pb.Status.ContainerStatuses = append(pb.Status.ContainerStatuses, v1.ContainerStatus{
+		Name:        string(name),
+		ContainerID: fmt.Sprintf("containerd://%s", id),
+		Image:       fmt.Sprintf("image-%s", strings.ToLower(string(name))),
+		ImageID:     fmt.Sprintf("image-%s", strings.ToLower(string(name))),
+		Ready:       true,
+		State: v1.ContainerState{
+			Running: &v1.ContainerStateRunning{
+				StartedAt: metav1.Now(),
+			},
+		},
+	})
+	return pb
+}
+
+func (pb *podBuilder) addRunningInitContainer(name container.Name, id container.ID) *podBuilder {
+	pb.Spec.InitContainers = append(pb.Spec.InitContainers, v1.Container{
+		Name: string(name),
+	})
+	pb.Status.InitContainerStatuses = append(pb.Status.InitContainerStatuses, v1.ContainerStatus{
+		Name:        string(name),
+		ContainerID: fmt.Sprintf("containerd://%s", id),
+		Image:       fmt.Sprintf("image-%s", strings.ToLower(string(name))),
+		ImageID:     fmt.Sprintf("image-%s", strings.ToLower(string(name))),
+		Ready:       true,
+		State: v1.ContainerState{
+			Running: &v1.ContainerStateRunning{
+				StartedAt: metav1.Now(),
+			},
+		},
+	})
+	return pb
+}
+
+func (pb *podBuilder) addTerminatedContainer(name container.Name, id container.ID) *podBuilder {
+	pb.addRunningContainer(name, id)
+	statuses := pb.Status.ContainerStatuses
+	statuses[len(statuses)-1].State.Running = nil
+	statuses[len(statuses)-1].State.Terminated = &v1.ContainerStateTerminated{
+		StartedAt: metav1.Now(),
+	}
+	return pb
+}
+
+func (pb *podBuilder) addTerminatedInitContainer(name container.Name, id container.ID) *podBuilder {
+	pb.addRunningInitContainer(name, id)
+	statuses := pb.Status.InitContainerStatuses
+	statuses[len(statuses)-1].State.Running = nil
+	statuses[len(statuses)-1].State.Terminated = &v1.ContainerStateTerminated{
+		StartedAt: metav1.Now(),
+	}
+	return pb
+}
+
+func (pb *podBuilder) toPod() *v1.Pod {
+	return (*v1.Pod)(pb)
+}
+
+func (pb *podBuilder) toStorePod(ctx context.Context) store.Pod {
+	pod := (*v1.Pod)(pb)
+	return store.Pod{
+		PodID:          k8s.PodID(pb.Name),
+		Namespace:      k8s.Namespace(pb.Namespace),
+		InitContainers: k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses),
+		Containers:     k8sconv.PodContainers(ctx, pod, pod.Status.ContainerStatuses),
+	}
 }

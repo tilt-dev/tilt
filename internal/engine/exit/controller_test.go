@@ -19,41 +19,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func TestExitControlAllSuccess(t *testing.T) {
-	f := newFixture(t, store.EngineModeApply)
-	defer f.TearDown()
-
-	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
-		m2 := manifestbuilder.New(f, "fe2").WithK8sYAML(testyaml.SanchoYAML).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m2))
-
-		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
-		})
-	})
-
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.False(t, f.store.exitSignal)
-
-	f.store.WithState(func(state *store.EngineState) {
-		state.ManifestTargets["fe2"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
-		})
-	})
-
-	// Verify that completing the second build causes an exit
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.True(t, f.store.exitSignal)
-	assert.Nil(t, f.store.exitError)
-}
-
 func TestExitControlFirstFailure(t *testing.T) {
-	f := newFixture(t, store.EngineModeApply)
+	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
 	f.store.WithState(func(state *store.EngineState) {

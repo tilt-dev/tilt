@@ -4,13 +4,9 @@
 # 1) Better leverage OS-specific C headers
 # 2) Be able to do releases from a CI job
 
-FROM gcr.io/windmill-public-containers/golang-cross:1.14.12
+FROM gcr.io/windmill-public-containers/golang-cross:1.16.2
 
-ENV GORELEASER_VERSION=0.127.0
-ENV GORELEASER_SHA=bf7e0f34d1d46041f302a0dd773a5c70ff7476c147d3a30659a5a11e823bccbd
-
-ENV GORELEASER_DOWNLOAD_FILE=goreleaser_Linux_x86_64.tar.gz
-ENV GORELEASER_DOWNLOAD_URL=https://github.com/goreleaser/goreleaser/releases/download/v${GORELEASER_VERSION}/${GORELEASER_DOWNLOAD_FILE}
+ENV GORELEASER_VERSION=v0.161.1
 
 RUN apt-get update && \
     apt-get install -y \
@@ -35,7 +31,6 @@ RUN set -exu \
   && which docker \
   && (docker version || true)
 
-ENV GORELEASER_VERSION=v0.141.0
 RUN set -exu \
   && URL="https://github.com/goreleaser/goreleaser/releases/download/${GORELEASER_VERSION}/goreleaser_Linux_x86_64.tar.gz" \
   && echo goreleaser URL: $URL \

@@ -21,8 +21,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 
-	"github.com/tilt-dev/tilt/pkg/apis"
-
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
@@ -82,7 +80,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -411,18 +408,23 @@ func TestUpper_Up(t *testing.T) {
 	manifest := f.newManifest("foobar")
 
 	f.setManifests([]model.Manifest{manifest})
-	err := f.upper.Init(f.ctx, InitAction{
-		EngineMode:   store.EngineModeApply,
-		TiltfilePath: f.JoinPath("Tiltfile"),
-		StartTime:    f.Now(),
-	})
+
+	storeErr := make(chan error, 1)
+	go func() {
+		storeErr <- f.upper.Init(f.ctx, InitAction{
+			EngineMode:   store.EngineModeUp,
+			TiltfilePath: f.JoinPath("Tiltfile"),
+			StartTime:    f.Now(),
+		})
+	}()
+
+	call := f.nextCallComplete()
+	assert.Equal(t, manifest.K8sTarget().ID(), call.k8s().ID())
 	close(f.b.calls)
-	require.NoError(t, err)
-	var started []model.TargetID
-	for call := range f.b.calls {
-		started = append(started, call.k8s().ID())
-	}
-	require.Equal(t, []model.TargetID{manifest.K8sTarget().ID()}, started)
+
+	// cancel the context to simulate a Ctrl-C
+	f.cancel()
+	assert.ErrorIs(t, <-storeErr, context.Canceled, "Upper returned unexpected error")
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
@@ -444,7 +446,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f.WriteFile("postgres.yaml", yaml)
 
 	err = f.upper.Init(f.ctx, InitAction{
-		EngineMode:   store.EngineModeApply,
+		EngineMode:   store.EngineModeCI,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		StartTime:    f.Now(),
 	})
@@ -464,33 +466,29 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestUpper_WatchFalseNoManifestsExplicitlyNamed(t *testing.T) {
+func TestUpper_CI(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	f.WriteFile("Tiltfile", simpleTiltfile)
-	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
-	f.WriteFile("snack.yaml", simpleYAML)
+	manifest := f.newManifest("foobar")
+	f.setManifests([]model.Manifest{manifest})
 
-	err := f.upper.Init(f.ctx, InitAction{
-		EngineMode:   store.EngineModeApply,
-		TiltfilePath: f.JoinPath("Tiltfile"),
-		UserArgs:     nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
-		StartTime:    f.Now(),
-	})
+	storeErr := make(chan error, 1)
+	go func() {
+		storeErr <- f.upper.Init(f.ctx, InitAction{
+			EngineMode:   store.EngineModeCI,
+			TiltfilePath: f.JoinPath("Tiltfile"),
+			UserArgs:     nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
+			StartTime:    f.Now(),
+		})
+	}()
+
+	call := f.nextCallComplete()
 	close(f.b.calls)
+	assert.Equal(t, "foobar", call.k8s().ID().Name.String())
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var built []model.TargetID
-	for call := range f.b.calls {
-		built = append(built, call.k8s().ID())
-	}
-	if assert.Equal(t, 1, len(built)) {
-		assert.Equal(t, "snack", built[0].Name.String())
-	}
+	f.startPod(podbuilder.New(t, manifest).WithPhase(string(v1.PodRunning)).Build(), manifest.Name)
+	require.NoError(t, <-storeErr)
 }
 
 func TestUpper_UpWatchError(t *testing.T) {
@@ -658,7 +656,7 @@ func TestFirstBuildFailsWhileNotWatching(t *testing.T) {
 
 	f.setManifests([]model.Manifest{manifest})
 	f.Init(InitAction{
-		EngineMode:   store.EngineModeApply,
+		EngineMode:   store.EngineModeCI,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
@@ -1564,7 +1562,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
@@ -1615,7 +1613,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
 
 	// Start a fake build
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1656,7 +1654,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.Start([]model.Manifest{manifest})
 
 	// Start and end a normal build
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
 		ms, _ := st.ManifestState(manifest.Name)
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
@@ -1686,7 +1684,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	// Start another fake build
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
 	})
@@ -2095,7 +2093,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.startPod(pod, name)
 	f.podLog(pod, name, "first string")
 
-	f.triggerFileChange(manifest.ImageTargetAt(0).ID(), "/go/a.go")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
 
 	f.waitForCompletedBuildCount(2)
 	f.podLog(pod, name, "second string")
@@ -3651,6 +3649,10 @@ func TestOverrideTriggerModeEvent(t *testing.T) {
 }
 
 func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): Investigate")
+	}
+
 	f := newTestFixture(t)
 	defer f.TearDown()
 
@@ -3752,7 +3754,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	require.NoError(t, st.AddSubscriber(ctx, fSub))
 
-	plm := runtimelog.NewPodLogManager(kCli)
 	bc := NewBuildController(b)
 
 	err := os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
@@ -3763,6 +3764,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	cdc := controllers.ProvideDeferredClient()
+	plm := runtimelog.NewPodLogManager(cdc)
+	plsc := runtimelog.NewPodLogStreamController(ctx, cdc, st, kCli)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfc := portforward.NewController(kCli)
@@ -3796,6 +3799,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
+		plsc,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -4317,28 +4321,19 @@ func (f *testFixture) loadAndStart(initOptions ...initOption) {
 }
 
 func (f *testFixture) WriteConfigFiles(args ...string) {
+	f.t.Helper()
 	if (len(args) % 2) != 0 {
 		f.T().Fatalf("WriteConfigFiles needs an even number of arguments; got %d", len(args))
 	}
 
-	filenames := []string{}
 	for i := 0; i < len(args); i += 2 {
 		filename := f.JoinPath(args[i])
 		contents := args[i+1]
 		f.WriteFile(filename, contents)
-		filenames = append(filenames, filename)
 
 		// Fire an FS event thru the normal pipeline, so that manifests get marked dirty.
 		f.fsWatcher.Events <- watch.NewFileEvent(filename)
 	}
-
-	// The test harness was written for a time when most tests didn't
-	// have a Tiltfile. So
-	// 1) Tiltfile execution doesn't happen at test startup
-	// 2) Because the Tiltfile isn't executed, ConfigFiles isn't populated
-	// 3) Because ConfigFiles isn't populated, ConfigsTargetID watches aren't set up properly
-	// So just fire a change action manually.
-	f.triggerFileChange(fswatch.ConfigsTargetID, filenames...)
 }
 
 func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
@@ -4419,27 +4414,6 @@ func (f *testFixture) registerDeployedPodTemplateSpecHashToManifest(name model.M
 
 func (f *testFixture) completeBuildForManifest(m model.Manifest) {
 	f.b.completeBuild(targetIDStringForManifest(m))
-}
-
-func (f *testFixture) triggerFileChange(targetID model.TargetID, paths ...string) {
-	now := metav1.NowMicro()
-	key := types.NamespacedName{Name: apis.SanitizeName(targetID.String())}
-
-	st := f.store.RLockState()
-	fw := st.FileWatches[key]
-	if fw == nil {
-		f.t.Fatalf("Cannot trigger file change for %q - does not exist in store", targetID.String())
-	}
-	fw = fw.DeepCopy()
-	f.store.RUnlockState()
-
-	fw.Status.LastEventTime = now
-	fw.Status.FileEvents = append(fw.Status.FileEvents, filewatches.FileEvent{
-		Time:      now,
-		SeenFiles: append([]string{}, paths...),
-	})
-
-	f.store.Dispatch(fswatch.NewFileWatchUpdateStatusAction(fw))
 }
 
 func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {

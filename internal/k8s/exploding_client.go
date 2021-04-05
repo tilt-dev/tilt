@@ -8,9 +8,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -46,14 +45,6 @@ func (ec *explodingClient) PollForPodsWithImage(ctx context.Context, image refer
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) PodByID(ctx context.Context, podID PodID, n Namespace) (*v1.Pod, error) {
-	return nil, errors.Wrap(ec.err, "could not set up k8s client")
-}
-
-func (ec *explodingClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
-	return nil, errors.Wrap(ec.err, "could not set up k8s client")
-}
-
 func (ec *explodingClient) ContainerLogs(ctx context.Context, podID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
@@ -62,11 +53,15 @@ func (ec *explodingClient) CreatePortForwarder(ctx context.Context, namespace Na
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchPods(ctx context.Context, ns Namespace, lps labels.Selector) (<-chan ObjectUpdate, error) {
+func (ec *explodingClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchServices(ctx context.Context, ns Namespace, lps labels.Selector) (<-chan *v1.Service, error) {
+func (ec *explodingClient) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
+	return nil, errors.Wrap(ec.err, "could not set up k8s client")
+}
+
+func (ec *explodingClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

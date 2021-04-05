@@ -13,12 +13,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
 	difake "k8s.io/client-go/discovery/fake"
@@ -40,6 +40,48 @@ func TestK8sClient_WatchPods(t *testing.T) {
 	pod3 := fakePod(PodID("754"), "efgh")
 	pods := []runtime.Object{pod1, pod2, pod3}
 	tf.runPods(pods, pods)
+}
+
+func TestPodFromInformerCacheAfterWatch(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	pod1 := fakePod(PodID("abcd"), "efgh")
+	pods := []runtime.Object{pod1}
+	ch := tf.watchPods()
+	tf.addObjects(pods...)
+	tf.assertPods(pods, ch)
+
+	pod1Cache, err := tf.kCli.PodFromInformerCache(tf.ctx, types.NamespacedName{Name: "abcd", Namespace: "default"})
+	require.NoError(t, err)
+	assert.Equal(t, "abcd", pod1Cache.Name)
+
+	_, err = tf.kCli.PodFromInformerCache(tf.ctx, types.NamespacedName{Name: "missing", Namespace: "default"})
+	if assert.Error(t, err) {
+		assert.True(t, apierrors.IsNotFound(err))
+	}
+}
+
+func TestPodFromInformerCacheBeforeWatch(t *testing.T) {
+	tf := newWatchTestFixture(t)
+	defer tf.TearDown()
+
+	pod1 := fakePod(PodID("abcd"), "efgh")
+	pods := []runtime.Object{pod1}
+	tf.addObjects(pods...)
+
+	nn := types.NamespacedName{Name: "abcd", Namespace: "default"}
+	assert.Eventually(t, func() bool {
+		_, err := tf.kCli.PodFromInformerCache(tf.ctx, nn)
+		return err == nil
+	}, time.Second, 5*time.Millisecond)
+
+	pod1Cache, err := tf.kCli.PodFromInformerCache(tf.ctx, nn)
+	require.NoError(t, err)
+	assert.Equal(t, "abcd", pod1Cache.Name)
+
+	ch := tf.watchPods()
+	tf.assertPods(pods, ch)
 }
 
 func TestK8sClient_WatchPodsNamespaces(t *testing.T) {
@@ -98,14 +140,6 @@ func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
 	tf.runPods(input, pods)
 }
 
-func TestK8sClient_WatchPodsLabelsPassed(t *testing.T) {
-	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
-
-	ls := labels.Set{"foo": "bar", "baz": "quu"}
-	tf.testPodLabels(ls, ls)
-}
-
 func TestK8sClient_WatchServices(t *testing.T) {
 	if goRuntime.GOOS == "windows" {
 		t.Skip("TODO(nick): investigate")
@@ -132,20 +166,12 @@ func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 	tf.runServices(input, svcs)
 }
 
-func TestK8sClient_WatchServicesLabelsPassed(t *testing.T) {
-	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
-
-	lps := labels.Set{"foo": "bar", "baz": "quu"}
-	tf.testServiceLabels(lps, lps)
-}
-
 func TestK8sClient_WatchPodsError(t *testing.T) {
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
 
 	tf.watchErr = newForbiddenError()
-	_, err := tf.kCli.WatchPods(tf.ctx, "", labels.Everything())
+	_, err := tf.kCli.WatchPods(tf.ctx, "default")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Forbidden")
 	}
@@ -173,7 +199,7 @@ func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
-	_, err := tf.kCli.WatchPods(tf.ctx, "", labels.Everything())
+	_, err := tf.kCli.WatchPods(tf.ctx, "default")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Code: 403")
 	}
@@ -201,7 +227,7 @@ func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
 
-	_, err := tf.kCli.WatchServices(tf.ctx, "", labels.Everything())
+	_, err := tf.kCli.WatchServices(tf.ctx, "default")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Code: 403")
 	}
@@ -222,7 +248,7 @@ func TestK8sClient_WatchEventsNamespaced(t *testing.T) {
 	tf := newWatchTestFixture(t)
 	defer tf.TearDown()
 
-	tf.kCli.configNamespace = "default"
+	tf.kCli.configNamespace = "sandbox"
 
 	event1 := fakeEvent("event1", "hello1", 1)
 	event1.Namespace = "sandbox"
@@ -364,7 +390,7 @@ func (fakeDiscovery) Invalidate() {}
 
 type watchTestFixture struct {
 	t    *testing.T
-	kCli K8sClient
+	kCli *K8sClient
 
 	tracker           ktesting.ObjectTracker
 	watchRestrictions ktesting.WatchRestrictions
@@ -431,14 +457,16 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 		},
 	}
 
-	ret.kCli = K8sClient{
-		env:       EnvUnknown,
-		drm:       fakeRESTMapper{},
-		dynamic:   dcs,
-		clientset: cs,
-		metadata:  mcs,
-		core:      cs.CoreV1(),
-		discovery: di,
+	ret.kCli = &K8sClient{
+		InformerSet:     newInformerSet(cs, dcs),
+		env:             EnvUnknown,
+		drm:             fakeRESTMapper{},
+		dynamic:         dcs,
+		clientset:       cs,
+		metadata:        mcs,
+		core:            cs.CoreV1(),
+		discovery:       di,
+		configNamespace: "default",
 	}
 	ret.version = version
 
@@ -450,7 +478,7 @@ func (tf *watchTestFixture) TearDown() {
 }
 
 func (tf *watchTestFixture) watchPods() <-chan ObjectUpdate {
-	ch, err := tf.kCli.WatchPods(tf.ctx, "", labels.Everything())
+	ch, err := tf.kCli.WatchPods(tf.ctx, tf.kCli.configNamespace)
 	if err != nil {
 		tf.t.Fatalf("watchPods: %v", err)
 	}
@@ -458,7 +486,7 @@ func (tf *watchTestFixture) watchPods() <-chan ObjectUpdate {
 }
 
 func (tf *watchTestFixture) watchPodsNS(ns Namespace) <-chan ObjectUpdate {
-	ch, err := tf.kCli.WatchPods(tf.ctx, ns, labels.Everything())
+	ch, err := tf.kCli.WatchPods(tf.ctx, ns)
 	if err != nil {
 		tf.t.Fatalf("watchPods: %v", err)
 	}
@@ -466,7 +494,7 @@ func (tf *watchTestFixture) watchPodsNS(ns Namespace) <-chan ObjectUpdate {
 }
 
 func (tf *watchTestFixture) watchServices() <-chan *v1.Service {
-	ch, err := tf.kCli.WatchServices(tf.ctx, "", labels.Everything())
+	ch, err := tf.kCli.WatchServices(tf.ctx, tf.kCli.configNamespace)
 	if err != nil {
 		tf.t.Fatalf("watchServices: %v", err)
 	}
@@ -474,7 +502,7 @@ func (tf *watchTestFixture) watchServices() <-chan *v1.Service {
 }
 
 func (tf *watchTestFixture) watchEvents() <-chan *v1.Event {
-	ch, err := tf.kCli.WatchEvents(tf.ctx, "")
+	ch, err := tf.kCli.WatchEvents(tf.ctx, tf.kCli.configNamespace)
 	if err != nil {
 		tf.t.Fatalf("watchEvents: %v", err)
 	}
@@ -482,7 +510,7 @@ func (tf *watchTestFixture) watchEvents() <-chan *v1.Event {
 }
 
 func (tf *watchTestFixture) watchMeta(gvr schema.GroupVersionKind) <-chan ObjectMeta {
-	ch, err := tf.kCli.WatchMeta(tf.ctx, gvr, "default")
+	ch, err := tf.kCli.WatchMeta(tf.ctx, gvr, tf.kCli.configNamespace)
 	if err != nil {
 		tf.t.Fatalf("watchMeta: %v", err)
 	}
@@ -608,27 +636,6 @@ func (tf *watchTestFixture) assertMeta(expected []*metav1.ObjectMeta, ch <-chan 
 
 	// Our k8s simulation library does not guarantee event order.
 	assert.ElementsMatch(tf.t, expected, observed)
-}
-
-func (tf *watchTestFixture) testPodLabels(input labels.Set, expectedLabels labels.Set) {
-	_, err := tf.kCli.WatchPods(tf.ctx, "", input.AsSelector())
-	if !assert.NoError(tf.t, err) {
-		return
-	}
-
-	assert.Equal(tf.t, expectedLabels.String(), input.String())
-}
-
-func (tf *watchTestFixture) testServiceLabels(input labels.Set, expectedLabels labels.Set) {
-	_, err := tf.kCli.WatchServices(tf.ctx, "", input.AsSelector())
-	if !assert.NoError(tf.t, err) {
-		return
-	}
-
-	assert.Equal(tf.t, fields.Everything(), tf.watchRestrictions.Fields)
-
-	expectedLabelSelector := expectedLabels.AsSelector()
-	assert.Equal(tf.t, expectedLabelSelector, tf.watchRestrictions.Labels)
 }
 
 type fakeRESTMapper struct {

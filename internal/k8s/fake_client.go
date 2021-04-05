@@ -16,7 +16,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -56,6 +56,7 @@ type FakeK8sClient struct {
 	podWatches     []fakePodWatch
 	serviceWatches []fakeServiceWatch
 	eventWatches   []fakeEventWatch
+	pods           map[types.NamespacedName]*v1.Pod
 
 	EventsWatchErr error
 
@@ -87,13 +88,11 @@ type ExecCall struct {
 
 type fakeServiceWatch struct {
 	ns Namespace
-	ls labels.Selector
 	ch chan *v1.Service
 }
 
 type fakePodWatch struct {
 	ns Namespace
-	ls labels.Selector
 	ch chan ObjectUpdate
 }
 
@@ -106,11 +105,7 @@ func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, w := range c.serviceWatches {
-		if !SelectorEqual(ls, w.ls) {
-			continue
-		}
-
-		if w.ns != "" && w.ns != Namespace(s.Namespace) {
+		if w.ns != Namespace(s.Namespace) {
 			continue
 		}
 
@@ -118,10 +113,26 @@ func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
 	}
 }
 
-func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan *v1.Service, error) {
+func (c *FakeK8sClient) UpsertPod(pod *v1.Pod) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.pods[types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}] = pod
+}
+
+func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	pod, ok := c.pods[nn]
+	if !ok {
+		return nil, apierrors.NewNotFound(PodGVR.GroupResource(), nn.Name)
+	}
+	return pod, nil
+}
+
+func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
 	c.mu.Lock()
 	ch := make(chan *v1.Service, 20)
-	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ns, ls, ch})
+	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ns, ch})
 	c.mu.Unlock()
 
 	go func() {
@@ -130,7 +141,7 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace, ls labe
 		c.mu.Lock()
 		var newWatches []fakeServiceWatch
 		for _, e := range c.serviceWatches {
-			if e.ns != ns || !SelectorEqual(e.ls, ls) {
+			if e.ns != ns {
 				newWatches = append(newWatches, e)
 			}
 		}
@@ -184,25 +195,11 @@ func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
 	}
 }
 
-func (c *FakeK8sClient) WatchedSelectors() []labels.Selector {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	var ret []labels.Selector
-	for _, w := range c.podWatches {
-		ret = append(ret, w.ls)
-	}
-	return ret
-}
-
 func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, w := range c.podWatches {
-		if w.ns != "" && w.ns != Namespace(p.Namespace) {
-			continue
-		}
-
-		if !SelectorEqual(w.ls, ls) {
+		if w.ns != Namespace(p.Namespace) {
 			continue
 		}
 
@@ -214,11 +211,7 @@ func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, w := range c.podWatches {
-		if w.ns != "" && w.ns != Namespace(p.Namespace) {
-			continue
-		}
-
-		if !SelectorEqual(w.ls, ls) {
+		if w.ns != Namespace(p.Namespace) {
 			continue
 		}
 
@@ -226,10 +219,10 @@ func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
 	}
 }
 
-func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan ObjectUpdate, error) {
+func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
 	c.mu.Lock()
 	ch := make(chan ObjectUpdate, 20)
-	c.podWatches = append(c.podWatches, fakePodWatch{ns, ls, ch})
+	c.podWatches = append(c.podWatches, fakePodWatch{ns, ch})
 	c.mu.Unlock()
 
 	go func() {
@@ -238,7 +231,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.S
 		c.mu.Lock()
 		var newWatches []fakePodWatch
 		for _, e := range c.podWatches {
-			if e.ns != ns || !SelectorEqual(e.ls, ls) {
+			if e.ns != ns {
 				newWatches = append(newWatches, e)
 			}
 		}
@@ -251,6 +244,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.S
 func NewFakeK8sClient() *FakeK8sClient {
 	return &FakeK8sClient{
 		PodLogsByPodAndContainer: make(map[PodAndCName]ReaderCloser),
+		pods:                     make(map[types.NamespacedName]*v1.Pod),
 	}
 }
 
@@ -348,10 +342,6 @@ func (c *FakeK8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKin
 	return result, nil
 }
 
-func (c *FakeK8sClient) WatchPod(ctx context.Context, pod *v1.Pod) (watch.Interface, error) {
-	return watch.NewEmptyWatch(), nil
-}
-
 func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, logs string) {
 	c.SetLogReaderForPodContainer(pID, cName, strings.NewReader(logs))
 }
@@ -373,10 +363,6 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 	}
 
 	return ReaderCloser{Reader: bytes.NewBuffer(nil)}, nil
-}
-
-func (c *FakeK8sClient) PodByID(ctx context.Context, pID PodID, n Namespace) (*v1.Pod, error) {
-	return nil, nil
 }
 
 func FakePodStatus(image reference.NamedTagged, phase string) v1.PodStatus {

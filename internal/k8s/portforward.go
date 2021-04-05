@@ -50,7 +50,7 @@ func (pf portForwarder) LocalPort() int {
 	return pf.localPort
 }
 
-func (k K8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
+func (k *K8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
 	localPort := optionalLocalPort
 	if localPort == 0 {
 		// preferably, we'd set the localport to 0, and let the underlying function pick a port for us,

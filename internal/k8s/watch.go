@@ -3,26 +3,64 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"sync"
 	"time"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/singleflight"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/metadata/metadatainformer"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
+
+type InformerSet interface {
+	// For all watchers, a namespace must be specified.
+	WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error)
+
+	WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error)
+
+	WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error)
+
+	// Fetch a pod from the informer cache.
+	//
+	// If no informer has started, start one now on the given ctx.
+	//
+	// The pod should be treated as immutable (since it's a pointer to a shared cache reference).
+	PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error)
+}
+
+type informerSet struct {
+	clientset kubernetes.Interface
+	dynamic   dynamic.Interface
+
+	// singleflight and mu protects access to the shared informers
+	mu           sync.Mutex
+	singleflight *singleflight.Group
+	informers    map[string]cache.SharedInformer
+}
+
+func newInformerSet(clientset kubernetes.Interface, dynamic dynamic.Interface) *informerSet {
+	return &informerSet{
+		clientset:    clientset,
+		dynamic:      dynamic,
+		singleflight: &singleflight.Group{},
+		informers:    make(map[string]cache.SharedInformer),
+	}
+}
 
 var PodGVR = v1.SchemeGroupVersion.WithResource("pods")
 var ServiceGVR = v1.SchemeGroupVersion.WithResource("services")
@@ -46,6 +84,21 @@ func (r ObjectUpdate) AsPod() (*v1.Pod, bool) {
 	}
 	pod, ok := r.obj.(*v1.Pod)
 	return pod, ok
+}
+
+// Returns the object update as the NamespacedName of the pod.
+func (r ObjectUpdate) AsNamespacedName() (types.NamespacedName, bool) {
+	pod, ok := r.AsPod()
+	if ok {
+		return types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, true
+	}
+
+	ns, name, ok := r.AsDeletedKey()
+	if ok {
+		return types.NamespacedName{Name: name, Namespace: string(ns)}, true
+	}
+
+	return types.NamespacedName{}, false
 }
 
 // Returns (namespace, name, isDelete).
@@ -72,48 +125,6 @@ func (r ObjectUpdate) AsDeletedKey() (Namespace, string, bool) {
 	return Namespace(ns), name, true
 }
 
-type watcherFactory func(namespace string) watcher
-type watcher interface {
-	Watch(ctx context.Context, options metav1.ListOptions) (watch.Interface, error)
-}
-
-func (kCli K8sClient) makeWatcher(ctx context.Context, f watcherFactory, ls labels.Selector) (watch.Interface, Namespace, error) {
-	// passing "" gets us all namespaces
-	w := f("")
-	if w == nil {
-		return nil, "", nil
-	}
-
-	watcher, err := w.Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
-	if err == nil {
-		return watcher, "", nil
-	}
-
-	// If the request failed, we might be able to recover.
-	statusErr, isStatusErr := err.(*apiErrors.StatusError)
-	if !isStatusErr {
-		return nil, "", err
-	}
-
-	status := statusErr.ErrStatus
-	if status.Code == http.StatusForbidden {
-		// If this is a forbidden error, maybe the user just isn't allowed to watch this namespace.
-		// Let's narrow our request to just the config namespace, and see if that helps.
-		w := f(kCli.configNamespace.String())
-		if w == nil {
-			return nil, "", nil
-		}
-
-		watcher, err := w.Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
-		if err == nil {
-			return watcher, kCli.configNamespace, nil
-		}
-
-		// ugh, it still failed. return the original error.
-	}
-	return nil, "", fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
-}
-
 func maybeUnpackStatusError(err error) error {
 	statusErr, isStatusErr := err.(*apiErrors.StatusError)
 	if !isStatusErr {
@@ -123,55 +134,75 @@ func maybeUnpackStatusError(err error) error {
 	return fmt.Errorf("%s, Reason: %s, Code: %d", status.Message, status.Reason, status.Code)
 }
 
-func (kCli K8sClient) makeInformer(
+// Make a new informer, and start it.
+func (s *informerSet) makeInformer(
 	ctx context.Context,
 	ns Namespace,
-	gvr schema.GroupVersionResource,
-	ls labels.Selector) (cache.SharedInformer, error) {
+	gvr schema.GroupVersionResource) (cache.SharedInformer, error) {
+	key := fmt.Sprintf("%s/%s", ns, gvr)
+	result, err, _ := s.singleflight.Do(key, func() (interface{}, error) {
+		s.mu.Lock()
+		cached, ok := s.informers[key]
+		s.mu.Unlock()
+		if ok {
+			return cached, nil
+		}
+
+		newInformer, err := s.makeInformerHelper(ctx, ns, gvr)
+		if err != nil {
+			return nil, err
+		}
+		s.mu.Lock()
+		s.informers[key] = newInformer
+		s.mu.Unlock()
+		return newInformer, err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return result.(cache.SharedInformer), nil
+}
+
+// Make a new informer, and start it.
+func (s *informerSet) makeInformerHelper(
+	ctx context.Context,
+	ns Namespace,
+	gvr schema.GroupVersionResource) (cache.SharedInformer, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("makeInformer no longer supports watching all namespaces")
+	}
 
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
 	// throw it away.
-	if ns == "" {
-		watcher, narrowNS, err := kCli.makeWatcher(ctx, func(ns string) watcher {
-			return kCli.dynamic.Resource(gvr).Namespace(ns)
-		}, ls)
-		if err != nil {
-			return nil, errors.Wrap(err, "makeInformer")
-		}
-		watcher.Stop()
-		ns = narrowNS
-	} else {
-		watcher, err := kCli.dynamic.Resource(gvr).Namespace(ns.String()).
-			Watch(ctx, metav1.ListOptions{LabelSelector: ls.String()})
-		if err != nil {
-			return nil, errors.Wrap(maybeUnpackStatusError(err), "makeInformer")
-		}
-		watcher.Stop()
+	watcher, err := s.dynamic.Resource(gvr).Namespace(ns.String()).
+		Watch(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, errors.Wrap(maybeUnpackStatusError(err), "makeInformer")
+	}
+	watcher.Stop()
+
+	options := []informers.SharedInformerOption{
+		informers.WithNamespace(ns.String()),
 	}
 
-	options := []informers.SharedInformerOption{}
-	if !ls.Empty() {
-		options = append(options, informers.WithTweakListOptions(func(o *metav1.ListOptions) {
-			o.LabelSelector = ls.String()
-		}))
-	}
-	if ns != "" {
-		options = append(options, informers.WithNamespace(ns.String()))
-	}
-
-	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientset, resyncPeriod, options...)
+	factory := informers.NewSharedInformerFactoryWithOptions(s.clientset, resyncPeriod, options...)
 	resFactory, err := factory.ForResource(gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "makeInformer")
 	}
 
+	informer := resFactory.Informer()
+
+	go runInformer(ctx, gvr.Resource, informer)
+
 	return resFactory.Informer(), nil
 }
 
-func (kCli K8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error) {
+func (s *informerSet) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error) {
 	gvr := EventGVR
-	informer, err := kCli.makeInformer(ctx, ns, gvr, labels.Everything())
+	informer, err := s.makeInformer(ctx, ns, gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchEvents")
 	}
@@ -200,14 +231,35 @@ func (kCli K8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1
 		},
 	})
 
-	go runInformer(ctx, "events", informer)
-
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan ObjectUpdate, error) {
+// Fetch a pod from the informer cache.
+//
+// If no informer has started, start one now on the given ctx.
+//
+// The pod should be treated as immutable (since it's a pointer to a shared cache reference).
+func (s *informerSet) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
 	gvr := PodGVR
-	informer, err := kCli.makeInformer(ctx, ns, gvr, ls)
+	informer, err := s.makeInformer(ctx, Namespace(nn.Namespace), gvr)
+	if err != nil {
+		return nil, errors.Wrap(err, "PodFromInformer")
+	}
+	pod, exists, err := informer.GetStore().Get(&v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, apierrors.NewNotFound(gvr.GroupResource(), nn.Name)
+	}
+	return pod.(*v1.Pod), nil
+}
+
+func (s *informerSet) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
+	gvr := PodGVR
+	informer, err := s.makeInformer(ctx, ns, gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchPods")
 	}
@@ -244,14 +296,12 @@ func (kCli K8sClient) WatchPods(ctx context.Context, ns Namespace, ls labels.Sel
 		},
 	})
 
-	go runInformer(ctx, "pods", informer)
-
 	return ch, nil
 }
 
-func (kCli K8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels.Selector) (<-chan *v1.Service, error) {
+func (s *informerSet) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
 	gvr := ServiceGVR
-	informer, err := kCli.makeInformer(ctx, ns, gvr, ls)
+	informer, err := s.makeInformer(ctx, ns, gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchServices")
 	}
@@ -272,8 +322,6 @@ func (kCli K8sClient) WatchServices(ctx context.Context, ns Namespace, ls labels
 		},
 	})
 
-	go runInformer(ctx, "services", informer)
-
 	return ch, nil
 }
 
@@ -291,7 +339,7 @@ func supportsPartialMetadata(v *version.Info) bool {
 	return version.GTE(k1dot15)
 }
 
-func (kCli K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error) {
+func (kCli *K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error) {
 	gvr, err := kCli.gvr(ctx, gvk)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchMeta")
@@ -310,7 +358,7 @@ func (kCli K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind
 
 // workaround a bug in client-go
 // https://github.com/kubernetes/client-go/issues/882
-func (kCli K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan ObjectMeta, error) {
+func (kCli *K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan ObjectMeta, error) {
 	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientset, resyncPeriod, informers.WithNamespace(ns.String()))
 	resFactory, err := factory.ForResource(gvr)
 	if err != nil {
@@ -344,7 +392,7 @@ func (kCli K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVers
 	return ch, nil
 }
 
-func (kCli K8sClient) watchMeta15Plus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan ObjectMeta, error) {
+func (kCli *K8sClient) watchMeta15Plus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan ObjectMeta, error) {
 	factory := metadatainformer.NewFilteredSharedInformerFactory(kCli.metadata, resyncPeriod, ns.String(), func(*metav1.ListOptions) {})
 	informer := factory.ForResource(gvr).Informer()
 

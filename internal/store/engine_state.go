@@ -121,8 +121,9 @@ type EngineState struct {
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds        map[string]*Cmd                                 `json:"-"`
-	FileWatches map[types.NamespacedName]*filewatches.FileWatch `json:"-"`
+	Cmds          map[string]*Cmd                                 `json:"-"`
+	FileWatches   map[types.NamespacedName]*filewatches.FileWatch `json:"-"`
+	PodLogStreams map[string]*PodLogStream                        `json:"-"`
 }
 
 type CloudStatus struct {
@@ -482,6 +483,7 @@ func NewState() *EngineState {
 
 	ret.Cmds = make(map[string]*Cmd)
 	ret.FileWatches = make(map[types.NamespacedName]*filewatches.FileWatch)
+	ret.PodLogStreams = make(map[string]*PodLogStream)
 
 	return ret
 }
@@ -591,6 +593,40 @@ func (ms *ManifestState) PodWithID(pid k8s.PodID) (*Pod, bool) {
 		}
 	}
 	return nil, false
+}
+
+func (ms *ManifestState) AddPendingFileChange(targetID model.TargetID, file string, timestamp time.Time) {
+	if !ms.CurrentBuild.Empty() {
+		if timestamp.Before(ms.CurrentBuild.StartTime) {
+			// this file change occurred before the build started, but if the current build already knows
+			// about it (from another target or rapid successive changes that weren't de-duped), it can be ignored
+			for _, edit := range ms.CurrentBuild.Edits {
+				if edit == file {
+					return
+				}
+			}
+		}
+		// NOTE(nick): BuildController uses these timestamps to determine which files
+		// to clear after a build. In particular, it:
+		//
+		// 1) Grabs the pending files
+		// 2) Runs a live update
+		// 3) Clears the pending files with timestamps before the live update started.
+		//
+		// Here's the race condition: suppose a file changes, but it doesn't get into
+		// the EngineState until after step (2). That means step (3) will clear the file
+		// even though it wasn't live-updated properly. Because as far as we can tell,
+		// the file must have been in the EngineState before the build started.
+		//
+		// Ideally, BuildController should be do more bookkeeping to keep track of
+		// which files it consumed from which FileWatches. But we're changing
+		// this architecture anyway. For now, we record the time it got into
+		// the EngineState, rather than the time it was originally changed.
+		timestamp = time.Now()
+	}
+
+	bs := ms.MutableBuildStatus(targetID)
+	bs.PendingFileChanges[file] = timestamp
 }
 
 func (ms *ManifestState) HasPendingFileChanges() bool {

@@ -15,8 +15,6 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/fake"
@@ -256,38 +254,4 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 
 func (c clientTestFixture) k8sUpsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
 	return c.client.Upsert(ctx, entities, time.Minute)
-}
-
-func (c clientTestFixture) addObject(obj runtime.Object) {
-	err := c.tracker.Add(obj)
-	if err != nil {
-		c.t.Fatal(err)
-	}
-}
-
-func (c clientTestFixture) getPod(id PodID) *v1.Pod {
-	c.t.Helper()
-
-	pod, err := c.client.core.Pods(DefaultNamespace.String()).Get(c.ctx, id.String(), metav1.GetOptions{})
-	if err != nil {
-		c.t.Fatal(err)
-	}
-
-	return pod
-}
-
-func (c clientTestFixture) updatePod(pod *v1.Pod) {
-	gvks, _, err := scheme.Scheme.ObjectKinds(pod)
-	if err != nil {
-		c.t.Fatalf("updatePod: %v", err)
-	} else if len(gvks) == 0 {
-		c.t.Fatal("Could not parse pod into k8s schema")
-	}
-	for _, gvk := range gvks {
-		gvr, _ := meta.UnsafeGuessKindToResource(gvk)
-		err = c.tracker.Update(gvr, pod, NamespaceFromPod(pod).String())
-		if err != nil {
-			c.t.Fatal(err)
-		}
-	}
 }

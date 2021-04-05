@@ -1,13 +1,12 @@
 module github.com/tilt-dev/tilt
 
-go 1.14
+go 1.16
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/akutz/memconn v0.1.0
 	github.com/alessio/shellescape v1.2.2
-	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bugsnag/bugsnag-go v1.5.3 // indirect
 	github.com/bugsnag/panicwrap v1.2.0 // indirect
@@ -48,7 +47,6 @@ require (
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/mattn/go-colorable v0.1.7
 	github.com/mattn/go-isatty v0.0.12
-	github.com/mattn/go-sqlite3 v2.0.2+incompatible // indirect
 	github.com/mattn/go-tty v0.0.3
 	github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e // indirect
 	github.com/mitchellh/go-homedir v1.1.0
@@ -69,7 +67,7 @@ require (
 	github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.2.0
-	github.com/tilt-dev/tilt-apiserver v0.2.4
+	github.com/tilt-dev/tilt-apiserver v0.2.5
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
