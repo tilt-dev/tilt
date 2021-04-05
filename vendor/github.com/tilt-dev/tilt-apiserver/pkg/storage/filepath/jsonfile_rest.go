@@ -274,10 +274,6 @@ func (f *filepathREST) Delete(
 	deleteValidation rest.ValidateObjectFunc,
 	options *metav1.DeleteOptions) (runtime.Object, bool, error) {
 	filename := f.objectFileName(ctx, name)
-	if !f.fs.Exists(filename) {
-		return nil, false, ErrFileNotExists
-	}
-
 	oldObj, err := f.Get(ctx, name, nil)
 	if err != nil {
 		return nil, false, err

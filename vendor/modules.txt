@@ -44,8 +44,6 @@ github.com/akutz/memconn
 github.com/alessio/shellescape
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
-# github.com/bitly/go-hostpool v0.1.0
-## explicit
 # github.com/blang/semver v3.5.1+incompatible
 ## explicit
 github.com/blang/semver
@@ -356,8 +354,6 @@ github.com/mattn/go-colorable
 github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.6
 github.com/mattn/go-runewidth
-# github.com/mattn/go-sqlite3 v2.0.2+incompatible
-## explicit
 # github.com/mattn/go-tty v0.0.3
 ## explicit
 github.com/mattn/go-tty
@@ -516,7 +512,7 @@ github.com/tilt-dev/localregistry-go
 ## explicit
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober
-# github.com/tilt-dev/tilt-apiserver v0.2.4
+# github.com/tilt-dev/tilt-apiserver v0.2.5
 ## explicit
 github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder
