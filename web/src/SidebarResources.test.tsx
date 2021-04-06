@@ -6,6 +6,7 @@ import { expectIncr } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   AlertsOnTopToggle,
+  ResourceNameFilterTextField,
   TestsHiddenToggle,
   TestsOnlyToggle,
 } from "./OverviewSidebarOptions"
@@ -142,20 +143,29 @@ describe("SidebarResources", () => {
     expect(pinnedItemsAccessor.get()).toEqual(["vigoda"])
   })
 
-  const loadCases: [string, SidebarOptions, string[]][] = [
+  const falseyOptions: SidebarOptions = {
+    testsHidden: false,
+    testsOnly: false,
+    alertsOnTop: false,
+    resourceNameFilter: "",
+  }
+
+  const loadCases: [string, any, string[]][] = [
+    ["tests only", { ...falseyOptions, testsOnly: true }, ["a", "b"]],
+    ["tests hidden", { ...falseyOptions, testsHidden: true }, ["vigoda"]],
     [
-      "tests only",
-      { testsHidden: false, testsOnly: true, alertsOnTop: false },
-      ["a", "b"],
+      "alertsOnTop",
+      { ...falseyOptions, alertsOnTop: true },
+      ["vigoda", "a", "b"],
     ],
     [
-      "tests hidden",
-      { testsHidden: true, testsOnly: false, alertsOnTop: false },
+      "resourceNameFilter",
+      { ...falseyOptions, resourceNameFilter: "vig" },
       ["vigoda"],
     ],
     [
-      "alertsOnTop",
-      { testsHidden: false, testsOnly: false, alertsOnTop: true },
+      "resourceNameFilter undefined",
+      { ...falseyOptions, resourceNameFilter: undefined },
       ["vigoda", "a", "b"],
     ],
   ]
@@ -194,12 +204,10 @@ describe("SidebarResources", () => {
   )
 
   const saveCases: [string, SidebarOptions][] = [
-    ["testsHidden", { testsHidden: true, testsOnly: false, alertsOnTop: true }],
-    ["testsOnly", { testsHidden: false, testsOnly: true, alertsOnTop: true }],
-    [
-      "alertsOnTop",
-      { testsHidden: false, testsOnly: false, alertsOnTop: false },
-    ],
+    ["testsHidden", { ...falseyOptions, testsHidden: true }],
+    ["testsOnly", { ...falseyOptions, testsOnly: true }],
+    ["alertsOnTop", { ...falseyOptions, alertsOnTop: true }],
+    ["resourceNameFilter", { ...falseyOptions, resourceNameFilter: "foo" }],
   ]
   test.each(saveCases)(
     "saves option %s to localStorage",
@@ -225,21 +233,32 @@ describe("SidebarResources", () => {
 
       let testsHiddenControl = root.find(TestsHiddenToggle)
       if (
-        testsHiddenControl.hasClass("is-enabled") != expectedOptions.testsHidden
+        testsHiddenControl.hasClass("is-enabled") !==
+        expectedOptions.testsHidden
       ) {
         testsHiddenControl.simulate("click")
       }
 
       let testsOnlyControl = root.find(TestsOnlyToggle)
       if (
-        testsOnlyControl.hasClass("is-enabled") != expectedOptions.testsOnly
+        testsOnlyControl.hasClass("is-enabled") !== expectedOptions.testsOnly
       ) {
         testsOnlyControl.simulate("click")
       }
 
       let aotToggle = root.find(AlertsOnTopToggle)
-      if (aotToggle.hasClass("is-enabled") != expectedOptions.alertsOnTop) {
+      if (aotToggle.hasClass("is-enabled") !== expectedOptions.alertsOnTop) {
         aotToggle.simulate("click")
+      }
+
+      let resourceNameFilterTextField = root.find(ResourceNameFilterTextField)
+      if (
+        resourceNameFilterTextField.props().value !==
+        expectedOptions.resourceNameFilter
+      ) {
+        resourceNameFilterTextField.find("input").simulate("change", {
+          target: { value: expectedOptions.resourceNameFilter },
+        })
       }
 
       const observedOptions = sidebarOptionsAccessor.get()

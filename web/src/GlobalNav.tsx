@@ -9,6 +9,7 @@ import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import FloatDialog from "./FloatDialog"
 import MetricsDialog from "./MetricsDialog"
+import { isTargetEditable } from "./shortcut"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotAction } from "./snapshot"
 import {
@@ -20,11 +21,9 @@ import {
 } from "./style-helpers"
 import UpdateDialog from "./UpdateDialog"
 
-const GlobalNavRoot = styled.div`
-  flex-grow: 1;
+export const GlobalNavRoot = styled.div`
   display: flex;
   align-items: stretch;
-  justify-content: flex-end;
 `
 export const MenuButton = styled.button`
   ${mixinResetButtonStyle};
@@ -107,6 +106,9 @@ class GlobalNavShortcuts extends Component<GlobalNavShortcutsProps> {
   }
 
   onKeydown(e: KeyboardEvent) {
+    if (isTargetEditable(e)) {
+      return
+    }
     if (e.metaKey || e.altKey || e.ctrlKey || e.isComposing) {
       return
     }

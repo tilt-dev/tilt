@@ -194,17 +194,6 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	execer := cmd.ProvideExecer()
 	proberManager := cmd.ProvideProberManager()
 	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore)
-	v := controllers.ProvideControllers(controller, cmdController)
-	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
-	v2 := provideClock()
-	renderer := hud.NewRenderer(v2)
-	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
-	stdout := hud.ProvideStdout()
-	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
-	openInput := _wireOpenInputValue
-	openURL := _wireOpenURLValue
-	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
@@ -222,11 +211,22 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	podLogStreamController := runtimelog.NewPodLogStreamController(ctx, deferredClient, storeStore, client)
+	v := controllers.ProvideControllers(controller, cmdController, podLogStreamController)
+	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
+	v2 := provideClock()
+	renderer := hud.NewRenderer(v2)
+	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
+	stdout := hud.ProvideStdout()
+	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
+	openInput := _wireOpenInputValue
+	openURL := _wireOpenURLValue
+	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	podWatcher := k8swatch.NewPodWatcher(client, ownerFetcher, namespace)
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, namespace)
 	podLogManager := runtimelog.NewPodLogManager(deferredClient)
-	podLogStreamController := runtimelog.NewPodLogStreamController(deferredClient, storeStore, client)
 	portforwardController := portforward.NewController(client)
 	manifestSubscriber := fswatch.NewManifestSubscriber(deferredClient)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -287,7 +287,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, podLogStreamController, portforwardController, manifestSubscriber, buildController, configsController, eventWatcher, dockerComposeLogManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, exitController, metricsController, modeController)
+	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, portforwardController, manifestSubscriber, buildController, configsController, eventWatcher, dockerComposeLogManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, exitController, metricsController, modeController)
 	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -366,17 +366,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	execer := cmd.ProvideExecer()
 	proberManager := cmd.ProvideProberManager()
 	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore)
-	v := controllers.ProvideControllers(controller, cmdController)
-	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
-	v2 := provideClock()
-	renderer := hud.NewRenderer(v2)
-	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
-	stdout := hud.ProvideStdout()
-	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
-	openInput := _wireOpenInputValue
-	openURL := _wireOpenURLValue
-	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
@@ -394,11 +383,22 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	podLogStreamController := runtimelog.NewPodLogStreamController(ctx, deferredClient, storeStore, client)
+	v := controllers.ProvideControllers(controller, cmdController, podLogStreamController)
+	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
+	v2 := provideClock()
+	renderer := hud.NewRenderer(v2)
+	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3)
+	stdout := hud.ProvideStdout()
+	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
+	openInput := _wireOpenInputValue
+	openURL := _wireOpenURLValue
+	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	podWatcher := k8swatch.NewPodWatcher(client, ownerFetcher, namespace)
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, namespace)
 	podLogManager := runtimelog.NewPodLogManager(deferredClient)
-	podLogStreamController := runtimelog.NewPodLogStreamController(deferredClient, storeStore, client)
 	portforwardController := portforward.NewController(client)
 	manifestSubscriber := fswatch.NewManifestSubscriber(deferredClient)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -460,7 +460,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
-	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, podLogStreamController, portforwardController, manifestSubscriber, buildController, configsController, eventWatcher, dockerComposeLogManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, exitController, metricsController, modeController)
+	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, podWatcher, serviceWatcher, podLogManager, portforwardController, manifestSubscriber, buildController, configsController, eventWatcher, dockerComposeLogManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, exitController, metricsController, modeController)
 	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
 		return CmdCIDeps{}, err
@@ -535,7 +535,25 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	execer := cmd.ProvideExecer()
 	proberManager := cmd.ProvideProberManager()
 	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore)
-	v := controllers.ProvideControllers(controller, cmdController)
+	k8sKubeContextOverride := ProvideKubeContextOverride()
+	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
+	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	env := k8s.ProvideEnv(ctx, apiConfig)
+	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
+	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
+	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
+	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	podLogStreamController := runtimelog.NewPodLogStreamController(ctx, deferredClient, storeStore, k8sClient)
+	v := controllers.ProvideControllers(controller, cmdController, podLogStreamController)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)

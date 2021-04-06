@@ -5,12 +5,10 @@ import { useSidebarPin } from "./SidebarPin"
 import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 
 let PinButton = styled.button`
-  ${mixinResetButtonStyle}
-  display: flex;
+  ${mixinResetButtonStyle};
   padding: 0;
   background-color: transparent;
   align-items: center;
-  margin-right: 5px;
 `
 
 let PinnedPinIcon = styled(PinResourceFilledSvg)`

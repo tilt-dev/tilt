@@ -34,20 +34,35 @@ export function accessorsForTesting<S>(name: string) {
 }
 
 // Like `useState`, but backed by localStorage and namespaced by the tiltfileKey
-export function usePersistentState<S>(name: string, defaultValue: S) {
+// maybeUpgradeSavedState: transforms any state read from storage - allows, e.g., filling in default values for
+//                         fields added since the state was saved
+export function usePersistentState<S>(
+  name: string,
+  defaultValue: S,
+  maybeUpgradeSavedState?: (state: S) => S
+): [state: S, setState: Dispatch<SetStateAction<S>>] {
   const tiltfileKey = useContext(tiltfileKeyContext)
-  return useStorageState<S>(
+  let [state, setState] = useStorageState<S>(
     localStorage,
     makeKey(tiltfileKey, name),
     defaultValue
   )
+  if (maybeUpgradeSavedState) {
+    state = maybeUpgradeSavedState(state)
+  }
+  return [state, setState]
 }
 
 export function PersistentStateProvider<S>(props: {
   name: string
   defaultValue: S
+  maybeUpgradeSavedState?: (state: S) => S
   children: (state: S, setState: Dispatch<SetStateAction<S>>) => JSX.Element
 }) {
-  const [state, setState] = usePersistentState(props.name, props.defaultValue)
+  let [state, setState] = usePersistentState(
+    props.name,
+    props.defaultValue,
+    props.maybeUpgradeSavedState
+  )
   return props.children(state, setState)
 }

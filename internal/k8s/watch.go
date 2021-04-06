@@ -86,6 +86,21 @@ func (r ObjectUpdate) AsPod() (*v1.Pod, bool) {
 	return pod, ok
 }
 
+// Returns the object update as the NamespacedName of the pod.
+func (r ObjectUpdate) AsNamespacedName() (types.NamespacedName, bool) {
+	pod, ok := r.AsPod()
+	if ok {
+		return types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, true
+	}
+
+	ns, name, ok := r.AsDeletedKey()
+	if ok {
+		return types.NamespacedName{Name: name, Namespace: string(ns)}, true
+	}
+
+	return types.NamespacedName{}, false
+}
+
 // Returns (namespace, name, isDelete).
 //
 // The informer's OnDelete handler sometimes gives us a structured object, and

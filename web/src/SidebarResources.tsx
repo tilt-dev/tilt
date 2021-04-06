@@ -36,6 +36,11 @@ const SidebarListSectionItems = styled.ul`
   list-style: none;
 `
 
+const NoMatchesFound = styled.li`
+  margin-left: ${SizeUnit(0.5)};
+  color: ${Color.grayLightest};
+`
+
 export function SidebarListSection(
   props: React.PropsWithChildren<{ name: string }>
 ): JSX.Element {
@@ -61,6 +66,13 @@ export const defaultOptions: SidebarOptions = {
   testsHidden: false,
   testsOnly: false,
   alertsOnTop: false,
+  resourceNameFilter: "",
+}
+
+function MaybeUpgradeSavedSidebarOptions(o: SidebarOptions) {
+  // non-nullable fields added to SidebarOptions after its initial release need to have default values
+  // filled in here
+  return { ...o, resourceNameFilter: o.resourceNameFilter ?? "" }
 }
 
 function PinnedItems(props: SidebarProps) {
@@ -92,6 +104,18 @@ function hasAlerts(item: SidebarItem): boolean {
 
 function sortByHasAlerts(itemA: SidebarItem, itemB: SidebarItem): number {
   return Number(hasAlerts(itemB)) - Number(hasAlerts(itemA))
+}
+
+function matchesResourceName(item: SidebarItem, filter: string): boolean {
+  filter = filter.trim()
+  // this is functionally redundant but probably an important enough case to make its own thing
+  if (filter === "") {
+    return true
+  }
+  // a resource matches the query if the resource name contains all tokens in the query
+  return filter
+    .split(" ")
+    .every((token) => item.name.toLowerCase().includes(token.toLowerCase()))
 }
 
 export class SidebarResources extends React.Component<SidebarProps> {
@@ -130,6 +154,10 @@ export class SidebarResources extends React.Component<SidebarProps> {
       filteredItems = this.props.items.filter((item) => item.isTest)
     }
 
+    filteredItems = filteredItems.filter((item) =>
+      matchesResourceName(item, options.resourceNameFilter)
+    )
+
     if (options.alertsOnTop) {
       filteredItems.sort(sortByHasAlerts)
     }
@@ -149,6 +177,17 @@ export class SidebarResources extends React.Component<SidebarProps> {
       this.props.resourceView === ResourceView.OverviewDetail
         ? "isOverview"
         : ""
+
+    // only say no matches if there were actually items that got filtered out
+    // otherwise, there might just be 0 resources because there are 0 resources
+    // (though technically there's probably always at least a Tiltfile resource)
+    if (listItems.length === 0 && this.props.items.length !== 0) {
+      listItems = [
+        <NoMatchesFound key={"no-matches"}>
+          No matching resources
+        </NoMatchesFound>,
+      ]
+    }
 
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
@@ -182,6 +221,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
       <PersistentStateProvider
         defaultValue={defaultOptions}
         name={"sidebar_options"}
+        maybeUpgradeSavedState={MaybeUpgradeSavedSidebarOptions}
       >
         {(value: SidebarOptions, set) => this.renderWithOptions(value, set)}
       </PersistentStateProvider>
