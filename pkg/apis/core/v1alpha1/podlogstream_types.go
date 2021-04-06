@@ -142,12 +142,33 @@ func (in *PodLogStreamList) GetListMeta() *metav1.ListMeta {
 //
 // TODO(nick): rewrite this status field, i don't think this is quite right.
 type PodLogStreamStatus struct {
+	// A list of containers being watched.
+	//
+	// +optional
+	ContainerStatuses []ContainerLogStreamStatus `json:"containerStatuses,omitempty"`
+}
+
+// ContainerLogStreamStatus defines the current status of each individual
+// container log stream.
+type ContainerLogStreamStatus struct {
+	// The name of the container.
+	Name string `json:"name,omitempty"`
+
 	// True when the stream is set up and streaming logs properly.
+	//
+	// +optional
 	Active bool `json:"active,omitempty"`
+
+	// True when the logs are done stream and the container is terminated.
+	//
+	// +optional
+	Terminated bool `json:"terminated,omitempty"`
 
 	// The last error message encountered while streaming.
 	//
-	// Empty when the stream is active and healthy.
+	// Empty when the stream is actively streaming or successfully terminated.
+	//
+	// +optional
 	Error string `json:"error,omitempty"`
 }
 

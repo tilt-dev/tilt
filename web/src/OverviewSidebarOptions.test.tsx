@@ -11,10 +11,10 @@ import {
   AlertsOnTopToggle,
   FilterOptionList,
   OverviewSidebarOptions,
+  ResourceNameFilterTextField,
   TestsHiddenToggle,
   TestsOnlyToggle,
 } from "./OverviewSidebarOptions"
-import PathBuilder from "./PathBuilder"
 import SidebarItemView from "./SidebarItemView"
 import { SidebarPinContextProvider } from "./SidebarPin"
 import SidebarResources, {
@@ -22,8 +22,6 @@ import SidebarResources, {
   SidebarListSection,
 } from "./SidebarResources"
 import { SidebarOptions } from "./types"
-
-let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
   "sidebar_options"
@@ -37,7 +35,8 @@ export function assertSidebarItemsAndOptions(
   names: string[],
   expectTestsHidden: boolean,
   expectTestsOnly: boolean,
-  expectAlertsOnTop: boolean
+  expectAlertsOnTop: boolean,
+  expectedResourceNameFilter?: string
 ) {
   let sidebar = root.find(SidebarResources)
   expect(sidebar).toHaveLength(1)
@@ -60,6 +59,11 @@ export function assertSidebarItemsAndOptions(
   expect(optSetter.find(AlertsOnTopToggle).hasClass("is-enabled")).toEqual(
     expectAlertsOnTop
   )
+  if (expectedResourceNameFilter !== undefined) {
+    expect(optSetter.find(ResourceNameFilterTextField).props().value).toEqual(
+      expectedResourceNameFilter
+    )
+  }
 }
 
 function clickTestsHiddenControl(root: ReactWrapper) {
@@ -198,6 +202,53 @@ describe("overview sidebar options", () => {
       .find(SidebarItemView)
     expect(pinned).toHaveLength(1)
     expect(pinned.at(0).props().item.name).toEqual("beep")
+  })
+
+  it("applies the name filter", () => {
+    // 'B p' tests both case insensitivity and a multi-term query
+    sidebarOptionsAccessor.set({ ...defaultOptions, resourceNameFilter: "B p" })
+    const root = mount(
+      <MemoryRouter>
+        <tiltfileKeyContext.Provider value="test">
+          <SidebarPinContextProvider>
+            {TwoResourcesTwoTests()}
+          </SidebarPinContextProvider>
+        </tiltfileKeyContext.Provider>
+      </MemoryRouter>
+    )
+
+    assertSidebarItemsAndOptions(
+      root,
+      ["beep", "boop"],
+      defaultOptions.testsHidden,
+      defaultOptions.testsOnly,
+      defaultOptions.alertsOnTop,
+      "B p"
+    )
+  })
+
+  it("says no matches found", () => {
+    sidebarOptionsAccessor.set({
+      ...defaultOptions,
+      resourceNameFilter: "asdfawfwef",
+    })
+    const root = mount(
+      <MemoryRouter>
+        <tiltfileKeyContext.Provider value="test">
+          <SidebarPinContextProvider>
+            {TwoResourcesTwoTests()}
+          </SidebarPinContextProvider>
+        </tiltfileKeyContext.Provider>
+      </MemoryRouter>
+    )
+
+    const resourceSectionItems = root
+      .find(SidebarListSection)
+      .find({ name: "resources" })
+      .find("li")
+    expect(resourceSectionItems.map((n) => n.text())).toEqual([
+      "No matching resources",
+    ])
   })
 })
 

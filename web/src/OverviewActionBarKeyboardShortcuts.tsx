@@ -2,6 +2,7 @@ import React, { Component } from "react"
 import { incr } from "./analytics"
 import { clearLogs } from "./ClearLogs"
 import LogStore from "./LogStore"
+import { isTargetEditable } from "./shortcut"
 
 type Link = Proto.webviewLink
 
@@ -33,6 +34,10 @@ class OverviewActionBarKeyboardShortcuts extends Component<Props> {
   }
 
   onKeydown(e: KeyboardEvent) {
+    if (isTargetEditable(e)) {
+      return
+    }
+
     if (e.altKey || e.isComposing) {
       return
     }

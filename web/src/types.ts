@@ -148,4 +148,6 @@ export type SidebarOptions = {
 
   // Sorting options
   alertsOnTop: boolean
+
+  resourceNameFilter: string
 }

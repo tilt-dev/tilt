@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -24,25 +29,35 @@ var podLogReconnectGap = 2 * time.Second
 //
 // Collects logs from deployed containers.
 type PodLogStreamController struct {
-	client  ctrlclient.Client
-	st      store.RStore
-	kClient k8s.Client
+	ctx       context.Context
+	client    ctrlclient.Client
+	st        store.RStore
+	kClient   k8s.Client
+	podSource *PodSource
+	mu        sync.Mutex
 
 	watches         map[podLogKey]PodLogWatch
 	hasClosedStream map[podLogKey]bool
+	statuses        map[types.NamespacedName]*PodLogStreamStatus
 
 	newTicker func(d time.Duration) *time.Ticker
 	since     func(t time.Time) time.Duration
 	now       func() time.Time
 }
 
-func NewPodLogStreamController(client ctrlclient.Client, st store.RStore, kClient k8s.Client) *PodLogStreamController {
+var _ reconcile.Reconciler = &PodLogStreamController{}
+var _ store.TearDowner = &PodLogStreamController{}
+
+func NewPodLogStreamController(ctx context.Context, client ctrlclient.Client, st store.RStore, kClient k8s.Client) *PodLogStreamController {
 	return &PodLogStreamController{
+		ctx:             ctx,
 		client:          client,
 		st:              st,
 		kClient:         kClient,
+		podSource:       NewPodSource(ctx, kClient),
 		watches:         make(map[podLogKey]PodLogWatch),
 		hasClosedStream: make(map[podLogKey]bool),
+		statuses:        make(map[types.NamespacedName]*PodLogStreamStatus),
 		newTicker:       time.NewTicker,
 		since:           time.Since,
 		now:             time.Now,
@@ -83,29 +98,12 @@ func (m *PodLogStreamController) filterContainers(stream *PodLogStream, containe
 	return containers
 }
 
-// Determine which PodLogStreams to reconcile, and all the Pods in the engine state.
-//
-// Currently grabs all the PodLogStreams from the EngineStore.
-// When we switch to the reconciler API, the apiserver infrastructure
-// will do this for us and we'll fetch our own Pods.
-func (c *PodLogStreamController) toReconcile(ctx context.Context, st store.RStore) map[string]*PodLogStream {
-	state := st.RLockState()
-	defer st.RUnlockState()
+func (c *PodLogStreamController) SetClient(client ctrlclient.Client) {
+	c.client = client
+}
 
-	result := make(map[string]*PodLogStream)
-	for k, v := range state.PodLogStreams {
-		result[k] = v
-	}
-
-	for k := range c.watches {
-		if _, ok := result[k.streamName]; !ok {
-			// Record that we're currently streaming from a pod,
-			// but the API object has been deleted.
-			result[k.streamName] = nil
-		}
-	}
-
-	return result
+func (c *PodLogStreamController) TearDown(ctx context.Context) {
+	c.podSource.TearDown()
 }
 
 func (m *PodLogStreamController) shouldStreamContainerLogs(c store.Container, key podLogKey) bool {
@@ -125,37 +123,34 @@ func (m *PodLogStreamController) shouldStreamContainerLogs(c store.Container, ke
 
 }
 
-func (c *PodLogStreamController) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
-	if len(summary.Pods.Changes) == 0 && len(summary.PodLogStreams.Changes) == 0 {
-		return
-	}
-
-	reconcileMap := c.toReconcile(ctx, st)
-	for k, v := range reconcileMap {
-		c.reconcile(ctx, st, k, v)
-	}
-}
-
 // Reconcile the given stream against what we're currently tracking.
-func (r *PodLogStreamController) reconcile(ctx context.Context, st store.RStore, streamName string, stream *PodLogStream) {
-	if stream == nil {
+func (r *PodLogStreamController) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	stream := &PodLogStream{}
+	streamName := req.NamespacedName
+	err := r.client.Get(ctx, req.NamespacedName, stream)
+	if apierrors.IsNotFound(err) {
+		r.podSource.handleReconcileRequest(ctx, req.NamespacedName, stream)
 		r.deleteStreams(streamName)
-		return
+		return reconcile.Result{}, nil
+	} else if err != nil {
+		return reconcile.Result{}, err
 	}
 
 	ctx = store.MustObjectLogHandler(ctx, r.st, stream)
+	r.podSource.handleReconcileRequest(ctx, req.NamespacedName, stream)
+
 	podNN := types.NamespacedName{Name: stream.Spec.Pod, Namespace: stream.Spec.Namespace}
 	pod, err := r.kClient.PodFromInformerCache(ctx, podNN)
 	if (err != nil && apierrors.IsNotFound(err)) ||
 		(pod != nil && pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()) {
 		r.deleteStreams(streamName)
-		return
+		return reconcile.Result{}, nil
 	} else if err != nil {
 		logger.Get(ctx).Debugf("streaming logs: %v", err)
-		return
+		return reconcile.Result{}, err
 	} else if pod == nil {
 		logger.Get(ctx).Debugf("streaming logs: pod not found: %s", podNN)
-		return
+		return reconcile.Result{}, nil
 	}
 
 	initContainers := r.filterContainers(stream, k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses))
@@ -163,6 +158,7 @@ func (r *PodLogStreamController) reconcile(ctx context.Context, st store.RStore,
 	containers := []store.Container{}
 	containers = append(containers, initContainers...)
 	containers = append(containers, runContainers...)
+	r.ensureStatus(streamName, containers)
 
 	containerWatches := make(map[podLogKey]bool)
 	for i, c := range containers {
@@ -212,12 +208,18 @@ func (r *PodLogStreamController) reconcile(ctx context.Context, st store.RStore,
 			startWatchTime = <-existing.terminationTime
 			r.hasClosedStream[key] = true
 			if c.Terminated {
+				r.mutateStatus(streamName, c.Name, func(cs *ContainerLogStreamStatus) {
+					cs.Terminated = true
+					cs.Active = false
+					cs.Error = ""
+				})
 				continue
 			}
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
 		w := PodLogWatch{
+			streamName:      streamName,
 			ctx:             ctx,
 			cancel:          cancel,
 			podID:           k8s.PodID(podNN.Name),
@@ -239,10 +241,14 @@ func (r *PodLogStreamController) reconcile(ctx context.Context, st store.RStore,
 			delete(r.watches, key)
 		}
 	}
+
+	r.updateStatus(streamName)
+
+	return reconcile.Result{}, nil
 }
 
 // Delete all the streams generated by the named API object
-func (c *PodLogStreamController) deleteStreams(streamName string) {
+func (c *PodLogStreamController) deleteStreams(streamName types.NamespacedName) {
 	for k, watch := range c.watches {
 		if k.streamName != streamName {
 			continue
@@ -250,19 +256,42 @@ func (c *PodLogStreamController) deleteStreams(streamName string) {
 		watch.cancel()
 		delete(c.watches, k)
 	}
+
+	c.mu.Lock()
+	delete(c.statuses, streamName)
+	c.mu.Unlock()
 }
 
 func (m *PodLogStreamController) consumeLogs(watch PodLogWatch, st store.RStore) {
+	pID := watch.podID
+	ctx := watch.ctx
+	containerName := watch.cName
+	var exitError error
+
 	defer func() {
+		// When the log streaming ends, log it and report the status change to the
+		// apiserver.
+		m.mutateStatus(watch.streamName, containerName, func(cs *ContainerLogStreamStatus) {
+			cs.Active = false
+			if exitError == nil {
+				cs.Error = ""
+			} else {
+				cs.Error = exitError.Error()
+			}
+		})
+		m.updateStatus(watch.streamName)
+
+		if exitError != nil {
+			// TODO(nick): Should this be Warnf/Errorf?
+			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, exitError)
+		}
+
 		watch.terminationTime <- m.now()
 		watch.cancel()
 	}()
 
-	pID := watch.podID
-	containerName := watch.cName
 	ns := watch.namespace
 	startReadTime := watch.startWatchTime
-	ctx := watch.ctx
 	if watch.shouldPrefix {
 		prefix := fmt.Sprintf("[%s] ", watch.cName)
 		ctx = logger.WithLogger(ctx, logger.NewPrefixedLogger(prefix, logger.Get(ctx)))
@@ -275,9 +304,7 @@ func (m *PodLogStreamController) consumeLogs(watch PodLogWatch, st store.RStore)
 		readCloser, err := m.kClient.ContainerLogs(ctx, pID, containerName, ns, startReadTime)
 		if err != nil {
 			cancel()
-
-			// TODO(nick): Should this be Warnf/Errorf?
-			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, err)
+			exitError = err
 			return
 		}
 
@@ -319,23 +346,111 @@ func (m *PodLogStreamController) consumeLogs(watch PodLogWatch, st store.RStore)
 			}
 		}()
 
+		m.mutateStatus(watch.streamName, containerName, func(cs *ContainerLogStreamStatus) {
+			cs.Active = true
+			cs.Error = ""
+		})
+		m.updateStatus(watch.streamName)
+
 		_, err = io.Copy(logger.Get(ctx).Writer(logger.InfoLvl), reader)
 		_ = readCloser.Close()
 		close(done)
 		cancel()
 
 		if !retry && err != nil && ctx.Err() == nil {
-			// TODO(nick): Should this be Warnf/Errorf?
-			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, err)
+			exitError = err
 			return
 		}
 	}
+}
+
+// Set up the status object for a particular stream, tracking each container individually.
+func (r *PodLogStreamController) ensureStatus(streamName types.NamespacedName, containers []store.Container) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	status, ok := r.statuses[streamName]
+	if !ok {
+		status = &PodLogStreamStatus{}
+		r.statuses[streamName] = status
+	}
+
+	// Make sure the container names are right. If they're not, delete everything and recreate.
+	isMatching := len(containers) == len(status.ContainerStatuses)
+	if isMatching {
+		for i, cs := range status.ContainerStatuses {
+			if string(containers[i].Name) != cs.Name {
+				isMatching = false
+				break
+			}
+		}
+	}
+
+	if isMatching {
+		return
+	}
+
+	statuses := make([]ContainerLogStreamStatus, 0, len(containers))
+	for _, c := range containers {
+		statuses = append(statuses, ContainerLogStreamStatus{
+			Name: string(c.Name),
+		})
+	}
+	status.ContainerStatuses = statuses
+}
+
+// Modify the status of a container log stream.
+func (r *PodLogStreamController) mutateStatus(streamName types.NamespacedName, containerName container.Name, mutate func(*ContainerLogStreamStatus)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	status, ok := r.statuses[streamName]
+	if !ok {
+		return
+	}
+
+	for i, cs := range status.ContainerStatuses {
+		if cs.Name != string(containerName) {
+			continue
+		}
+
+		mutate(&cs)
+		status.ContainerStatuses[i] = cs
+	}
+}
+
+// Update the server with the current container status.
+func (r *PodLogStreamController) updateStatus(streamName types.NamespacedName) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	status, ok := r.statuses[streamName]
+	if !ok {
+		return
+	}
+
+	stream := &PodLogStream{}
+	err := r.client.Get(r.ctx, streamName, stream)
+	if err != nil || cmp.Equal(stream.Status, status) {
+		return
+	}
+
+	status.DeepCopyInto(&stream.Status)
+	_ = r.client.Status().Update(r.ctx, stream)
+}
+
+func (c *PodLogStreamController) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&PodLogStream{}).
+		Watches(c.podSource, handler.Funcs{}).
+		Complete(c)
 }
 
 type PodLogWatch struct {
 	ctx    context.Context
 	cancel func()
 
+	streamName      types.NamespacedName
 	podID           k8s.PodID
 	namespace       k8s.Namespace
 	cName           container.Name
@@ -346,9 +461,7 @@ type PodLogWatch struct {
 }
 
 type podLogKey struct {
-	streamName string
+	streamName types.NamespacedName
 	podID      k8s.PodID
 	cID        container.ID
 }
-
-var _ store.Subscriber = &PodLogStreamController{}

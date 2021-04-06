@@ -1,4 +1,5 @@
 import React, { Component } from "react"
+import { isTargetEditable } from "./shortcut"
 import SidebarItem from "./SidebarItem"
 import { TabNav, useTabNav } from "./TabNav"
 import { ResourceName, ResourceView } from "./types"
@@ -29,6 +30,10 @@ class SidebarKeyboardShortcuts extends Component<Props> {
   }
 
   onKeydown(e: KeyboardEvent) {
+    if (isTargetEditable(e)) {
+      return
+    }
+
     if (e.shiftKey || e.altKey || e.isComposing) {
       return
     }

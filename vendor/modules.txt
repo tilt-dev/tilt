@@ -44,8 +44,6 @@ github.com/akutz/memconn
 github.com/alessio/shellescape
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
-# github.com/bitly/go-hostpool v0.1.0
-## explicit
 # github.com/blang/semver v3.5.1+incompatible
 ## explicit
 github.com/blang/semver
@@ -222,6 +220,8 @@ github.com/fatih/color
 github.com/form3tech-oss/jwt-go
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
+# github.com/fvbommel/sortorder v1.0.1
+github.com/fvbommel/sortorder
 # github.com/gdamore/encoding v1.0.0
 github.com/gdamore/encoding
 # github.com/gdamore/tcell v1.1.3
@@ -356,8 +356,6 @@ github.com/mattn/go-colorable
 github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.6
 github.com/mattn/go-runewidth
-# github.com/mattn/go-sqlite3 v2.0.2+incompatible
-## explicit
 # github.com/mattn/go-tty v0.0.3
 ## explicit
 github.com/mattn/go-tty
@@ -430,6 +428,9 @@ github.com/opentracing/opentracing-go/ext
 github.com/opentracing/opentracing-go/log
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
+# github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
+## explicit
+github.com/phayes/freeport
 # github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 ## explicit
 github.com/pkg/browser
@@ -516,7 +517,7 @@ github.com/tilt-dev/localregistry-go
 ## explicit
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober
-# github.com/tilt-dev/tilt-apiserver v0.2.4
+# github.com/tilt-dev/tilt-apiserver v0.2.5
 ## explicit
 github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder
@@ -1394,6 +1395,7 @@ k8s.io/kube-openapi/pkg/util/sets
 ## explicit
 k8s.io/kubectl/pkg/cmd/apply
 k8s.io/kubectl/pkg/cmd/delete
+k8s.io/kubectl/pkg/cmd/get
 k8s.io/kubectl/pkg/cmd/util
 k8s.io/kubectl/pkg/cmd/util/editor
 k8s.io/kubectl/pkg/cmd/util/editor/crlf
