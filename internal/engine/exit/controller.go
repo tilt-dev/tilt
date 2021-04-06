@@ -104,6 +104,8 @@ func (c *Controller) makeTiltRun(st store.RStore) *tiltruns.TiltRun {
 		},
 	}
 
+	// currently, manual + CI are the only supported modes; the apiserver will validate this field and reject
+	// the object on creation if it doesn't conform, so there's no additional validation/error-handling here
 	switch state.EngineMode {
 	case store.EngineModeUp:
 		tiltRun.Spec.ExitCondition = tiltruns.ExitConditionManual
