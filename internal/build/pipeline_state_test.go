@@ -56,6 +56,26 @@ func TestPipelineMultilinePrint(t *testing.T) {
 	assertSnapshot(t, out.String())
 }
 
+func TestPipelineMultistep(t *testing.T) {
+	var err error
+	out := &bytes.Buffer{}
+	ctx := logger.WithLogger(context.Background(), logger.NewLogger(logger.InfoLvl, out))
+	ps := NewPipelineState(ctx, 3, fakeClock{})
+	ps.StartPipelineStep(ctx, "%s %s", "hello", "world")
+	ps.Printf(ctx, "in ur step")
+	ps.EndPipelineStep(ctx)
+	ps.StartPipelineStep(ctx, "doing stuff")
+	ps.Printf(ctx, "here is some stuff!")
+	ps.EndPipelineStep(ctx)
+	ps.StartPipelineStep(ctx, "different stuff")
+	ps.Printf(ctx, "even more stuff")
+	ps.Printf(ctx, "i can't believe it's not stuff")
+	ps.EndPipelineStep(ctx)
+	ps.End(ctx, err)
+
+	assertSnapshot(t, out.String())
+}
+
 func assertSnapshot(t *testing.T, output string) {
 	d1 := []byte(output)
 	gmPath := fmt.Sprintf("testdata/%s_master", t.Name())
