@@ -17,7 +17,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/store"
-	tiltruns "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	tiltrun "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 // Controller handles normal process termination. Either Tilt completed all its work,
@@ -28,7 +28,7 @@ type Controller struct {
 	client    ctrlclient.Client
 
 	mu      sync.Mutex
-	tiltRun *tiltruns.TiltRun
+	tiltRun *tiltrun.TiltRun
 }
 
 var _ store.Subscriber = &Controller{}
@@ -82,7 +82,7 @@ func (c *Controller) initialize(ctx context.Context, st store.RStore) (bool, err
 	return true, nil
 }
 
-func (c *Controller) makeTiltRun(st store.RStore) *tiltruns.TiltRun {
+func (c *Controller) makeTiltRun(st store.RStore) *tiltrun.TiltRun {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -91,14 +91,14 @@ func (c *Controller) makeTiltRun(st store.RStore) *tiltruns.TiltRun {
 		return nil
 	}
 
-	tiltRun := &tiltruns.TiltRun{
+	tiltRun := &tiltrun.TiltRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "Tiltfile",
 		},
-		Spec: tiltruns.TiltRunSpec{
+		Spec: tiltrun.TiltRunSpec{
 			TiltfilePath: state.TiltfilePath,
 		},
-		Status: tiltruns.TiltRunStatus{
+		Status: tiltrun.TiltRunStatus{
 			PID:       c.pid,
 			StartTime: metav1.NewMicroTime(c.startTime),
 		},
@@ -108,19 +108,19 @@ func (c *Controller) makeTiltRun(st store.RStore) *tiltruns.TiltRun {
 	// the object on creation if it doesn't conform, so there's no additional validation/error-handling here
 	switch state.EngineMode {
 	case store.EngineModeUp:
-		tiltRun.Spec.ExitCondition = tiltruns.ExitConditionManual
+		tiltRun.Spec.ExitCondition = tiltrun.ExitConditionManual
 	case store.EngineModeCI:
-		tiltRun.Spec.ExitCondition = tiltruns.ExitConditionCI
+		tiltRun.Spec.ExitCondition = tiltrun.ExitConditionCI
 	}
 
 	return tiltRun
 }
 
-func (c *Controller) makeLatestStatus(st store.RStore) *tiltruns.TiltRunStatus {
+func (c *Controller) makeLatestStatus(st store.RStore) *tiltrun.TiltRunStatus {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	status := &tiltruns.TiltRunStatus{
+	status := &tiltrun.TiltRunStatus{
 		PID:       c.pid,
 		StartTime: metav1.NewMicroTime(c.startTime),
 	}
@@ -129,7 +129,7 @@ func (c *Controller) makeLatestStatus(st store.RStore) *tiltruns.TiltRunStatus {
 
 	_, holds := buildcontrol.NextTargetToBuild(state)
 
-	var targetResources []tiltruns.Target
+	var targetResources []tiltrun.Target
 	for _, mt := range state.ManifestTargets {
 		targetResources = append(targetResources, targetsForResource(mt, holds)...)
 	}
@@ -138,13 +138,13 @@ func (c *Controller) makeLatestStatus(st store.RStore) *tiltruns.TiltRunStatus {
 		return targetResources[i].Name < targetResources[j].Name
 	})
 
-	status.Targets = append([]tiltruns.Target{tiltfileResource}, targetResources...)
+	status.Targets = append([]tiltrun.Target{tiltfileResource}, targetResources...)
 
 	processExitCondition(c.tiltRun.Spec.ExitCondition, status)
 	return status
 }
 
-func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *tiltruns.TiltRunStatus) error {
+func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *tiltrun.TiltRunStatus) error {
 	if equality.Semantic.DeepEqual(&c.tiltRun.Status, newStatus) {
 		return nil
 	}
@@ -163,10 +163,10 @@ func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, ne
 	return nil
 }
 
-func processExitCondition(exitCondition tiltruns.ExitCondition, status *tiltruns.TiltRunStatus) {
-	if exitCondition == tiltruns.ExitConditionManual {
+func processExitCondition(exitCondition tiltrun.ExitCondition, status *tiltrun.TiltRunStatus) {
+	if exitCondition == tiltrun.ExitConditionManual {
 		return
-	} else if exitCondition != tiltruns.ExitConditionCI {
+	} else if exitCondition != tiltrun.ExitConditionCI {
 		status.Done = true
 		status.Error = fmt.Sprintf("unsupported exit condition: %s", exitCondition)
 	}
@@ -184,7 +184,7 @@ func processExitCondition(exitCondition tiltruns.ExitCondition, status *tiltruns
 		}
 		if res.State.Waiting != nil {
 			allResourcesOK = false
-		} else if res.State.Active != nil && (!res.State.Active.Ready || res.Type == tiltruns.TargetTypeJob) {
+		} else if res.State.Active != nil && (!res.State.Active.Ready || res.Type == tiltrun.TargetTypeJob) {
 			// jobs must run to completion
 			allResourcesOK = false
 		}

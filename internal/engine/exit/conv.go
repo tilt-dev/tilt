@@ -11,12 +11,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/store"
-	tiltruns "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	tiltrun "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []tiltruns.Target {
-	var resources []tiltruns.Target
+func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []tiltrun.Target {
+	var resources []tiltrun.Target
 
 	buildResource := buildTarget(mt, holds)
 	if buildResource != nil {
@@ -31,7 +31,7 @@ func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []
 	return resources
 }
 
-func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltruns.Target {
+func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 	krs := mt.State.K8sRuntimeState()
 	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore && krs.HasEverDeployedSuccessfully && len(krs.Pods) == 0 {
 		// HACK: engine assumes anything with an image will create a pod; PodReadinessIgnore is used in these
@@ -43,15 +43,15 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltruns.Target {
 		return nil
 	}
 
-	target := &tiltruns.Target{
+	target := &tiltrun.Target{
 		Name:      fmt.Sprintf("%s:runtime", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
 	}
 
 	if mt.Manifest.IsK8s() && mt.Manifest.K8sTarget().HasJob() {
-		target.Type = tiltruns.TargetTypeJob
+		target.Type = tiltrun.TargetTypeJob
 	} else {
-		target.Type = tiltruns.TargetTypeServer
+		target.Type = tiltrun.TargetTypeServer
 	}
 
 	// a lot of this logic is duplicated from K8sRuntimeState::RuntimeStatus()
@@ -60,12 +60,12 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltruns.Target {
 	pod := krs.MostRecentPod()
 	switch pod.Phase {
 	case v1.PodRunning:
-		target.State.Active = &tiltruns.TargetStateActive{
+		target.State.Active = &tiltrun.TargetStateActive{
 			StartTime: metav1.NewMicroTime(pod.StartedAt),
 			Ready:     mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore || pod.AllContainersReady(),
 		}
 	case v1.PodSucceeded:
-		target.State.Terminated = &tiltruns.TargetStateTerminated{
+		target.State.Terminated = &tiltrun.TargetStateTerminated{
 			StartTime: metav1.NewMicroTime(pod.StartedAt),
 		}
 	case v1.PodFailed:
@@ -73,7 +73,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltruns.Target {
 		if podErr == "" {
 			podErr = fmt.Sprintf("Pod %q failed", pod.PodID.String())
 		}
-		target.State.Terminated = &tiltruns.TargetStateTerminated{
+		target.State.Terminated = &tiltrun.TargetStateTerminated{
 			StartTime: metav1.NewMicroTime(pod.StartedAt),
 			Error:     podErr,
 		}
@@ -82,7 +82,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltruns.Target {
 	if target.State.Terminated == nil || target.State.Terminated.Error == "" {
 		for _, ctr := range pod.AllContainers() {
 			if ctr.Status == model.RuntimeStatusError {
-				target.State.Terminated = &tiltruns.TargetStateTerminated{
+				target.State.Terminated = &tiltrun.TargetStateTerminated{
 					StartTime: metav1.NewMicroTime(pod.StartedAt),
 					Error:     fmt.Sprintf("Pod %s in error state: %s", pod.PodID, pod.Status),
 				}
@@ -92,7 +92,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltruns.Target {
 
 	// default to pending
 	if target.State.Active == nil && target.State.Terminated == nil {
-		target.State.Waiting = &tiltruns.TargetStateWaiting{
+		target.State.Waiting = &tiltrun.TargetStateWaiting{
 			Reason: pod.Status,
 		}
 	}
@@ -100,27 +100,27 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltruns.Target {
 	return target
 }
 
-func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltruns.Target {
+func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
 	if mt.Manifest.LocalTarget().ServeCmd.Empty() {
 		// there is no runtime target
 		return nil
 	}
 
-	target := &tiltruns.Target{
+	target := &tiltrun.Target{
 		Name:      fmt.Sprintf("%s:serve", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
-		Type:      tiltruns.TargetTypeServer,
+		Type:      tiltrun.TargetTypeServer,
 	}
 
 	lrs := mt.State.LocalRuntimeState()
 	if runtimeErr := lrs.RuntimeStatusError(); runtimeErr != nil {
-		target.State.Terminated = &tiltruns.TargetStateTerminated{
+		target.State.Terminated = &tiltrun.TargetStateTerminated{
 			StartTime:  metav1.NewMicroTime(lrs.StartTime),
 			FinishTime: metav1.NewMicroTime(lrs.FinishTime),
 			Error:      errToString(runtimeErr),
 		}
 	} else if lrs.PID != 0 {
-		target.State.Active = &tiltruns.TargetStateActive{
+		target.State.Active = &tiltrun.TargetStateActive{
 			StartTime: metav1.NewMicroTime(lrs.StartTime),
 			Ready:     lrs.Ready,
 		}
@@ -131,11 +131,11 @@ func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *til
 	return target
 }
 
-func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltruns.Target {
-	target := &tiltruns.Target{
+func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
+	target := &tiltrun.Target{
 		Name:      fmt.Sprintf("%s:runtime", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
-		Type:      tiltruns.TargetTypeServer,
+		Type:      tiltrun.TargetTypeServer,
 	}
 
 	// HACK: RuntimeState is not populated until engine starts builds in some cases; to avoid weird race conditions,
@@ -151,7 +151,7 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 	case model.RuntimeStatusPending:
 		target.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
 	case model.RuntimeStatusOK:
-		target.State.Active = &tiltruns.TargetStateActive{
+		target.State.Active = &tiltrun.TargetStateActive{
 			StartTime: metav1.NewMicroTime(mt.State.LastSuccessfulDeployTime),
 			// generic resources have no readiness concept so they're just ready by default
 			// (this also applies to Docker Compose, since we don't support its health checks)
@@ -162,7 +162,7 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 		if errMsg == "" {
 			errMsg = "Server target %q failed"
 		}
-		target.State.Terminated = &tiltruns.TargetStateTerminated{
+		target.State.Terminated = &tiltrun.TargetStateTerminated{
 			Error: errMsg,
 		}
 	}
@@ -170,7 +170,7 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 	return target
 }
 
-func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltruns.Target {
+func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
 	if mt.Manifest.IsK8s() {
 		return k8sRuntimeTarget(mt)
 	} else if mt.Manifest.IsLocal() {
@@ -180,27 +180,27 @@ func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltru
 	}
 }
 
-func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltruns.Target {
+func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
 	if mt.Manifest.IsLocal() && mt.Manifest.LocalTarget().UpdateCmd.Empty() {
 		return nil
 	}
 
-	res := &tiltruns.Target{
+	res := &tiltrun.Target{
 		Name:      fmt.Sprintf("%s:build", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
-		Type:      tiltruns.TargetTypeJob,
+		Type:      tiltrun.TargetTypeJob,
 	}
 
 	pendingBuildReason := mt.NextBuildReason()
 	if pendingBuildReason != model.BuildReasonNone {
 		res.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
 	} else if !mt.State.CurrentBuild.Empty() {
-		res.State.Active = &tiltruns.TargetStateActive{
+		res.State.Active = &tiltrun.TargetStateActive{
 			StartTime: metav1.NewMicroTime(mt.State.CurrentBuild.StartTime),
 		}
 	} else if len(mt.State.BuildHistory) != 0 {
 		lastBuild := mt.State.LastBuild()
-		res.State.Terminated = &tiltruns.TargetStateTerminated{
+		res.State.Terminated = &tiltrun.TargetStateTerminated{
 			StartTime:  metav1.NewMicroTime(lastBuild.StartTime),
 			FinishTime: metav1.NewMicroTime(lastBuild.FinishTime),
 			Error:      errToString(lastBuild.Error),
@@ -210,14 +210,14 @@ func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltruns
 	return res
 }
 
-func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *tiltruns.TargetStateWaiting {
+func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *tiltrun.TargetStateWaiting {
 	// in the API, the reason is not _why_ the target "exists", but rather an explanation for why it's not yet
 	// active and is in a pending state (e.g. waitingFromHolds for dependencies)
 	waitReason := "unknown"
 	if hold, ok := holds[mn]; ok && hold != store.HoldNone {
 		waitReason = string(hold)
 	}
-	return &tiltruns.TargetStateWaiting{
+	return &tiltrun.TargetStateWaiting{
 		Reason: waitReason,
 	}
 }
@@ -227,23 +227,23 @@ func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *tiltru
 //
 // This is slightly different from generic resource handling because there is no ManifestTarget in the engine
 // for the Tiltfile, just ManifestState, but a lot of the logic is shared/duplicated.
-func tiltfileTarget(ms *store.ManifestState) tiltruns.Target {
-	tfState := tiltruns.Target{
+func tiltfileTarget(ms *store.ManifestState) tiltrun.Target {
+	tfState := tiltrun.Target{
 		Name:      "tiltfile:build",
 		Resources: []string{model.TiltfileManifestName.String()},
-		Type:      tiltruns.TargetTypeJob,
+		Type:      tiltrun.TargetTypeJob,
 	}
 
 	// Tiltfile is special in engine state and doesn't have a target, just state, so
 	// this logic is largely duplicated from the generic resource build logic
 	// N.B. there is currently no concept of a pending Tiltfile build
 	if !ms.CurrentBuild.Empty() {
-		tfState.State.Active = &tiltruns.TargetStateActive{
+		tfState.State.Active = &tiltrun.TargetStateActive{
 			StartTime: metav1.NewMicroTime(ms.CurrentBuild.StartTime),
 		}
 	} else if len(ms.BuildHistory) != 0 {
 		lastBuild := ms.LastBuild()
-		tfState.State.Terminated = &tiltruns.TargetStateTerminated{
+		tfState.State.Terminated = &tiltrun.TargetStateTerminated{
 			StartTime:  metav1.NewMicroTime(lastBuild.StartTime),
 			FinishTime: metav1.NewMicroTime(lastBuild.FinishTime),
 			Error:      errToString(lastBuild.Error),
