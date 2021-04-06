@@ -52,7 +52,7 @@ func TestLogs(t *testing.T) {
 
 	f.onChange(podID)
 	f.AssertOutputContains("hello world!")
-	assert.Equal(t, start.Truncate(time.Second), f.kClient.LastPodLogStartTime)
+	f.AssertLogStartTime(start)
 
 	// Check to make sure that we're enqueuing pod changes as Reconcile() calls.
 	podNN := types.NamespacedName{Name: string(podID), Namespace: "default"}
@@ -281,7 +281,7 @@ func TestLogReconnection(t *testing.T) {
 
 	_, _ = writer.Write([]byte("hello world!"))
 	f.AssertOutputContains("hello world!")
-	assert.Equal(t, startTime.Truncate(time.Second), f.kClient.LastPodLogStartTime)
+	f.AssertLogStartTime(startTime)
 
 	currentTime = currentTime.Add(20 * time.Second)
 	lastRead := currentTime
@@ -304,7 +304,7 @@ func TestLogReconnection(t *testing.T) {
 	currentTime = currentTime.Add(5 * time.Second)
 	timeCh <- currentTime
 	f.AssertOutputDoesNotContain("goodbye world!")
-	assert.Equal(t, startTime.Truncate(time.Second), f.kClient.LastPodLogStartTime)
+	f.AssertLogStartTime(startTime)
 
 	// simulate 15s since we last read a log; this triggers a reconnect
 	currentTime = currentTime.Add(5 * time.Second)
@@ -316,9 +316,7 @@ func TestLogReconnection(t *testing.T) {
 	f.AssertOutputContains("goodbye world!")
 
 	// Make sure the start time was adjusted for when the last read happened.
-	assert.Equal(t,
-		lastRead.Add(podLogReconnectGap).Truncate(time.Second).String(),
-		f.kClient.LastPodLogStartTime.Truncate(time.Second).String())
+	f.AssertLogStartTime(lastRead.Add(podLogReconnectGap))
 }
 
 func TestInitContainerLogs(t *testing.T) {
@@ -544,6 +542,13 @@ func (f *plmFixture) AssertOutputContains(s string) {
 func (f *plmFixture) AssertOutputDoesNotContain(s string) {
 	time.Sleep(10 * time.Millisecond)
 	assert.NotContains(f.T(), f.out.String(), s)
+}
+
+func (f *plmFixture) AssertLogStartTime(t time.Time) {
+	f.T().Helper()
+
+	// Truncate the time to match the behavior of metav1.Time
+	assert.Equal(f.T(), t.Truncate(time.Second), f.kClient.LastPodLogStartTime)
 }
 
 type podBuilder v1.Pod
