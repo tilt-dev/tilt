@@ -263,16 +263,35 @@ func (c *PodLogStreamController) deleteStreams(streamName types.NamespacedName) 
 }
 
 func (m *PodLogStreamController) consumeLogs(watch PodLogWatch, st store.RStore) {
+	pID := watch.podID
+	ctx := watch.ctx
+	containerName := watch.cName
+	var exitError error
+
 	defer func() {
+		// When the log streaming ends, log it and report the status change to the
+		// apiserver.
+		m.mutateStatus(watch.streamName, containerName, func(cs *ContainerLogStreamStatus) {
+			cs.Active = false
+			if exitError == nil {
+				cs.Error = ""
+			} else {
+				cs.Error = exitError.Error()
+			}
+		})
+		m.updateStatus(watch.streamName)
+
+		if exitError != nil {
+			// TODO(nick): Should this be Warnf/Errorf?
+			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, exitError)
+		}
+
 		watch.terminationTime <- m.now()
 		watch.cancel()
 	}()
 
-	pID := watch.podID
-	containerName := watch.cName
 	ns := watch.namespace
 	startReadTime := watch.startWatchTime
-	ctx := watch.ctx
 	if watch.shouldPrefix {
 		prefix := fmt.Sprintf("[%s] ", watch.cName)
 		ctx = logger.WithLogger(ctx, logger.NewPrefixedLogger(prefix, logger.Get(ctx)))
@@ -285,15 +304,7 @@ func (m *PodLogStreamController) consumeLogs(watch PodLogWatch, st store.RStore)
 		readCloser, err := m.kClient.ContainerLogs(ctx, pID, containerName, ns, startReadTime)
 		if err != nil {
 			cancel()
-
-			m.mutateStatus(watch.streamName, containerName, func(cs *ContainerLogStreamStatus) {
-				cs.Active = false
-				cs.Error = err.Error()
-			})
-			m.updateStatus(watch.streamName)
-
-			// TODO(nick): Should this be Warnf/Errorf?
-			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, err)
+			exitError = err
 			return
 		}
 
@@ -347,14 +358,7 @@ func (m *PodLogStreamController) consumeLogs(watch PodLogWatch, st store.RStore)
 		cancel()
 
 		if !retry && err != nil && ctx.Err() == nil {
-			m.mutateStatus(watch.streamName, containerName, func(cs *ContainerLogStreamStatus) {
-				cs.Active = false
-				cs.Error = err.Error()
-			})
-			m.updateStatus(watch.streamName)
-
-			// TODO(nick): Should this be Warnf/Errorf?
-			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, err)
+			exitError = err
 			return
 		}
 	}
