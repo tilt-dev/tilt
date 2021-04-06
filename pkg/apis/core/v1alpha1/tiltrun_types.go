@@ -226,7 +226,8 @@ type TargetStateTerminated struct {
 	FinishTime metav1.MicroTime `json:"finishTime"`
 	// Error is a non-empty string if the target encountered a failure during execution that caused it to stop.
 	//
-	// For targets of type TargetTypeServer, this is always populated, as the target is expected to run indefinitely.
+	// For targets of type TargetTypeServer, this is always populated, as the target is expected to run indefinitely,
+	// and thus any termination is an error.
 	Error string `json:"error,omitempty"`
 }
 

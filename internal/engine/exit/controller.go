@@ -125,20 +125,19 @@ func (c *Controller) makeLatestStatus(st store.RStore) *tiltrun.TiltRunStatus {
 		StartTime: metav1.NewMicroTime(c.startTime),
 	}
 
-	tiltfileResource := tiltfileTarget(state)
+	status.Targets = append(status.Targets, tiltfileTarget(state))
 
+	// determine the reason any resources (and thus all of their targets) are waiting (aka "holds")
+	// N.B. we don't actually care about what's "next" to build, but the info comes alongside that
 	_, holds := buildcontrol.NextTargetToBuild(state)
 
-	var targetResources []tiltrun.Target
 	for _, mt := range state.ManifestTargets {
-		targetResources = append(targetResources, targetsForResource(mt, holds)...)
+		status.Targets = append(status.Targets, targetsForResource(mt, holds)...)
 	}
 	// ensure consistent ordering to avoid unnecessary updates
-	sort.SliceStable(targetResources, func(i, j int) bool {
-		return targetResources[i].Name < targetResources[j].Name
+	sort.SliceStable(status.Targets, func(i, j int) bool {
+		return status.Targets[i].Name < status.Targets[j].Name
 	})
-
-	status.Targets = append([]tiltrun.Target{tiltfileResource}, targetResources...)
 
 	processExitCondition(c.tiltRun.Spec.ExitCondition, status)
 	return status

@@ -101,7 +101,7 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 	})
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithError("Pod pod-a in error state: ErrImagePull")
+	f.store.requireExitSignalWithError("Pod pod-a in error state due to container c1: ErrImagePull")
 }
 
 func TestExitControlCI_Success(t *testing.T) {

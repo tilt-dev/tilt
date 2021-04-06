@@ -16,19 +16,17 @@ import (
 )
 
 func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []tiltrun.Target {
-	var resources []tiltrun.Target
+	var targets []tiltrun.Target
 
-	buildResource := buildTarget(mt, holds)
-	if buildResource != nil {
-		resources = append(resources, *buildResource)
+	if bt := buildTarget(mt, holds); bt != nil {
+		targets = append(targets, *bt)
 	}
 
-	runtimeResource := runtimeTarget(mt, holds)
-	if runtimeResource != nil {
-		resources = append(resources, *runtimeResource)
+	if rt := runtimeTarget(mt, holds); rt != nil {
+		targets = append(targets, *rt)
 	}
 
-	return resources
+	return targets
 }
 
 func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
@@ -84,7 +82,8 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 			if ctr.Status == model.RuntimeStatusError {
 				target.State.Terminated = &tiltrun.TargetStateTerminated{
 					StartTime: metav1.NewMicroTime(pod.StartedAt),
-					Error:     fmt.Sprintf("Pod %s in error state: %s", pod.PodID, pod.Status),
+					Error: fmt.Sprintf("Pod %s in error state due to container %s: %s",
+						pod.PodID, ctr.Name, pod.Status),
 				}
 			}
 		}
@@ -92,8 +91,16 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 
 	// default to pending
 	if target.State.Active == nil && target.State.Terminated == nil {
+		waitReason := pod.Status
+		if waitReason == "" {
+			if pod.Empty() {
+				waitReason = "waiting-for-pod"
+			} else {
+				waitReason = "unknown"
+			}
+		}
 		target.State.Waiting = &tiltrun.TargetStateWaiting{
-			Reason: pod.Status,
+			Reason: waitReason,
 		}
 	}
 
@@ -131,6 +138,10 @@ func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *til
 	return target
 }
 
+// genericRuntimeTarget creates a target from the RuntimeState interface without any domain-specific considerations.
+//
+// This is both used for target types that don't require specialized logic (Docker Compose) as well as a fallback for
+// any new types that don't have deeper support here.
 func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
 	target := &tiltrun.Target{
 		Name:      fmt.Sprintf("%s:runtime", mt.Manifest.Name.String()),
@@ -180,19 +191,26 @@ func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltru
 	}
 }
 
+// buildTarget creates a "build" (or update) target for the resource.
+//
+// Currently, the engine aggregates many different targets into a single build record, and that's reflected here.
+// Ideally, as the internals change, more granularity will provided and this might actually return a slice of targets
+// rather than a single target. For example, a K8s resource might have an image build step and then a deployment (i.e.
+// kubectl apply) step - currently, both of these will be aggregated together, which can make it harder to diagnose
+// where something is stuck or slow.
 func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
 	if mt.Manifest.IsLocal() && mt.Manifest.LocalTarget().UpdateCmd.Empty() {
 		return nil
 	}
 
 	res := &tiltrun.Target{
-		Name:      fmt.Sprintf("%s:build", mt.Manifest.Name.String()),
+		Name:      fmt.Sprintf("%s:update", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
 		Type:      tiltrun.TargetTypeJob,
 	}
 
-	pendingBuildReason := mt.NextBuildReason()
-	if pendingBuildReason != model.BuildReasonNone {
+	isPending := mt.NextBuildReason() != model.BuildReasonNone
+	if isPending {
 		res.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
 	} else if !mt.State.CurrentBuild.Empty() {
 		res.State.Active = &tiltrun.TargetStateActive{
@@ -229,7 +247,7 @@ func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *tiltru
 // for the Tiltfile, just ManifestState, but a lot of the logic is shared/duplicated.
 func tiltfileTarget(state store.EngineState) tiltrun.Target {
 	tfState := tiltrun.Target{
-		Name:      "tiltfile:build",
+		Name:      "tiltfile:update",
 		Resources: []string{model.TiltfileManifestName.String()},
 		Type:      tiltrun.TargetTypeJob,
 	}
