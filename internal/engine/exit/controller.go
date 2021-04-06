@@ -125,7 +125,7 @@ func (c *Controller) makeLatestStatus(st store.RStore) *tiltrun.TiltRunStatus {
 		StartTime: metav1.NewMicroTime(c.startTime),
 	}
 
-	tiltfileResource := tiltfileTarget(state.TiltfileState)
+	tiltfileResource := tiltfileTarget(state)
 
 	_, holds := buildcontrol.NextTargetToBuild(state)
 

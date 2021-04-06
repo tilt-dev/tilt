@@ -227,7 +227,7 @@ func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *tiltru
 //
 // This is slightly different from generic resource handling because there is no ManifestTarget in the engine
 // for the Tiltfile, just ManifestState, but a lot of the logic is shared/duplicated.
-func tiltfileTarget(ms *store.ManifestState) tiltrun.Target {
+func tiltfileTarget(state store.EngineState) tiltrun.Target {
 	tfState := tiltrun.Target{
 		Name:      "tiltfile:build",
 		Resources: []string{model.TiltfileManifestName.String()},
@@ -236,17 +236,26 @@ func tiltfileTarget(ms *store.ManifestState) tiltrun.Target {
 
 	// Tiltfile is special in engine state and doesn't have a target, just state, so
 	// this logic is largely duplicated from the generic resource build logic
-	// N.B. there is currently no concept of a pending Tiltfile build
-	if !ms.CurrentBuild.Empty() {
+	if !state.TiltfileState.CurrentBuild.Empty() {
 		tfState.State.Active = &tiltrun.TargetStateActive{
-			StartTime: metav1.NewMicroTime(ms.CurrentBuild.StartTime),
+			StartTime: metav1.NewMicroTime(state.TiltfileState.CurrentBuild.StartTime),
 		}
-	} else if len(ms.BuildHistory) != 0 {
-		lastBuild := ms.LastBuild()
+	} else if len(state.PendingConfigFileChanges) != 0 {
+		tfState.State.Waiting = &tiltrun.TargetStateWaiting{
+			Reason: "config-changed",
+		}
+	} else if len(state.TiltfileState.BuildHistory) != 0 {
+		lastBuild := state.TiltfileState.LastBuild()
 		tfState.State.Terminated = &tiltrun.TargetStateTerminated{
 			StartTime:  metav1.NewMicroTime(lastBuild.StartTime),
 			FinishTime: metav1.NewMicroTime(lastBuild.FinishTime),
 			Error:      errToString(lastBuild.Error),
+		}
+	} else {
+		// given the current engine behavior, this doesn't actually occur because
+		// the first build happens as part of initialization
+		tfState.State.Waiting = &tiltrun.TargetStateWaiting{
+			Reason: "initial-build",
 		}
 	}
 
