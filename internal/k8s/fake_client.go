@@ -355,9 +355,12 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 		return nil, c.ContainerLogsError
 	}
 
-	// If we have specific logs for this pod/container combo, return those
-	c.LastPodLogStartTime = startTime
+	// metav1.Time truncates to the nearest second when serializing across the
+	// wire, so truncate here to replicate that behavior.
+	c.LastPodLogStartTime = startTime.Truncate(time.Second)
 	c.LastPodLogContext = ctx
+
+	// If we have specific logs for this pod/container combo, return those
 	if buf, ok := c.PodLogsByPodAndContainer[PodAndCName{pID, cName}]; ok {
 		return buf, nil
 	}
