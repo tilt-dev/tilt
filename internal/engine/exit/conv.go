@@ -89,18 +89,22 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 		}
 	}
 
-	// default to pending
 	if target.State.Active == nil && target.State.Terminated == nil {
-		waitReason := pod.Status
-		if waitReason == "" {
-			if pod.Empty() {
-				waitReason = "waiting-for-pod"
-			} else {
-				waitReason = "unknown"
+		// for resources with auto_init=True that aren't yet active/terminated, fake a fallback waiting state
+		// for resources with auto_init=False that aren't active/terminated (i.e. the user has never triggered it),
+		// 	don't populate anything to signal that the target is _intentionally_ in an "inactive" state
+		if mt.Manifest.TriggerMode.AutoInitial() {
+			waitReason := pod.Status
+			if waitReason == "" {
+				if pod.Empty() {
+					waitReason = "waiting-for-pod"
+				} else {
+					waitReason = "unknown"
+				}
 			}
-		}
-		target.State.Waiting = &tiltrun.TargetStateWaiting{
-			Reason: waitReason,
+			target.State.Waiting = &tiltrun.TargetStateWaiting{
+				Reason: waitReason,
+			}
 		}
 	}
 

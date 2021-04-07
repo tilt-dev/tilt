@@ -277,40 +277,84 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 	f.store.requireExitSignalWithNoError()
 }
 
-func TestExitControlCI_DontBlockOnAutoInitFalse(t *testing.T) {
-	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
+func TestExitControlCI_TriggerMode_Local(t *testing.T) {
+	for triggerMode := range model.TriggerModes {
+		t.Run(triggerModeString(triggerMode), func(t *testing.T) {
+			f := newFixture(t, store.EngineModeCI)
+			defer f.TearDown()
 
-	f.store.WithState(func(state *store.EngineState) {
-		manifestAutoInitTrue := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.JobYAML).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(manifestAutoInitTrue))
+			f.store.WithState(func(state *store.EngineState) {
+				manifest := manifestbuilder.New(f, "fe").
+					WithLocalResource("echo hi", nil).
+					WithTriggerMode(triggerMode).Build()
+				state.UpsertManifestTarget(store.NewManifestTarget(manifest))
+			})
 
-		mt := state.ManifestTargets["fe"]
-		mt.State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			if triggerMode.AutoInitial() {
+				// because this resource SHOULD start automatically, no exit signal should be received until it's ready
+				f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+				f.store.requireNoExitSignal()
+
+				f.store.WithState(func(state *store.EngineState) {
+					mt := state.ManifestTargets["fe"]
+					mt.State.AddCompletedBuild(model.BuildRecord{
+						StartTime:  time.Now(),
+						FinishTime: time.Now(),
+					})
+					mt.State.RuntimeState = store.LocalRuntimeState{
+						CmdName:                  "echo hi",
+						Status:                   model.RuntimeStatusOK,
+						PID:                      1234,
+						StartTime:                time.Now(),
+						LastReadyOrSucceededTime: time.Now(),
+						Ready:                    true,
+					}
+				})
+			}
+
+			// for auto_init=True, it's now ready, so can exit
+			// for auto_init=False, it should NOT block on it, so can exit
+			f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+			f.store.requireExitSignalWithNoError()
 		})
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-a", true))
+	}
+}
 
-		manifestAuto_AutoInitFalse := manifestbuilder.New(f, "auto-auto_init_false").WithLocalResource("echo hi", nil).
-			WithTriggerMode(model.TriggerModeAutoWithManualInit).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(manifestAuto_AutoInitFalse))
+func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
+	for triggerMode := range model.TriggerModes {
+		t.Run(triggerModeString(triggerMode), func(t *testing.T) {
+			f := newFixture(t, store.EngineModeCI)
+			defer f.TearDown()
 
-		manifestManual_AutoInitFalse := manifestbuilder.New(f, "manual-auto_init_false").WithLocalResource("echo hi", nil).
-			WithTriggerMode(model.TriggerModeManual).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(manifestManual_AutoInitFalse))
-	})
+			f.store.WithState(func(state *store.EngineState) {
+				manifest := manifestbuilder.New(f, "fe").
+					WithK8sYAML(testyaml.JobYAML).
+					WithTriggerMode(triggerMode).
+					Build()
+				state.UpsertManifestTarget(store.NewManifestTarget(manifest))
+			})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+			if triggerMode.AutoInitial() {
+				// because this resource SHOULD start automatically, no exit signal should be received until it's ready
+				f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+				f.store.requireNoExitSignal()
 
-	f.store.WithState(func(state *store.EngineState) {
-		mt := state.ManifestTargets["fe"]
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
-	})
+				f.store.WithState(func(state *store.EngineState) {
+					mt := state.ManifestTargets["fe"]
+					mt.State.AddCompletedBuild(model.BuildRecord{
+						StartTime:  time.Now(),
+						FinishTime: time.Now(),
+					})
+					mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
+				})
+			}
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithNoError()
+			// for auto_init=True, it's now ready, so can exit
+			// for auto_init=False, it should NOT block on it, so can exit
+			f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+			f.store.requireExitSignalWithNoError()
+		})
+	}
 }
 
 type fixture struct {
@@ -415,5 +459,20 @@ func successPod(podID k8s.PodID) store.Pod {
 				ID: container.ID(podID + "-container"),
 			},
 		},
+	}
+}
+
+func triggerModeString(v model.TriggerMode) string {
+	switch v {
+	case model.TriggerModeAuto:
+		return "TriggerModeAuto"
+	case model.TriggerModeAutoWithManualInit:
+		return "TriggerModeAutoWithManualInit"
+	case model.TriggerModeManual:
+		return "TriggerModeManual"
+	case model.TriggerModeManualWithAutoInit:
+		return "TriggerModeManualWithAutoInit"
+	default:
+		panic(fmt.Errorf("unknown trigger mode value: %v", v))
 	}
 }
