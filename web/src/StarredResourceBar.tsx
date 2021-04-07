@@ -12,15 +12,12 @@ import {
   ColorRGBA,
   Font,
   FontSize,
-  Glow,
+  Glow, mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
 import { ResourceStatus } from "./types"
+import TiltTooltip from "./Tooltip"
 
-const StarredResourceBarRoot = styled.div`
-  margin-left: ${SizeUnit(0.5)};
-  margin-right: ${SizeUnit(0.5)};
-`
 export const StarredResourceLabel = styled.div`
   max-width: ${SizeUnit(4.5)};
   overflow: hidden;
@@ -33,25 +30,33 @@ export const StarredResourceLabel = styled.div`
 
   user-select: none;
 `
-export const StarButton = styled(StarSvg)`
+const ResourceButton = styled.button`
+  ${mixinResetButtonStyle};
+  color: inherit;
+`
+const StarIcon = styled(StarSvg)`
   height: ${SizeUnit(0.5)};
   width: ${SizeUnit(0.5)};
-  fill: ${Color.grayLight};
+`
+export const StarButton = styled.button`
+  ${mixinResetButtonStyle};
+  ${StarIcon} {
+    fill: ${Color.grayLight};
+  }
   &:hover {
-    fill: ${Color.grayLightest};
+    ${StarIcon} {
+      fill: ${Color.grayLightest};
+    }
   }
 `
 const StarredResourceRoot = styled.div`
   border-width: 1px;
   border-style: solid;
   border-radius: ${SizeUnit(0.125)};
-  padding-left: ${SizeUnit(0.25)};
-  padding-right: ${SizeUnit(0.25)};
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   background-color: ${Color.gray};
-  position: relative;
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -93,10 +98,25 @@ const StarredResourceRoot = styled.div`
     transition: border-color ${AnimDuration.default} linear;
   }
 
+  // implement margins as padding on child buttons, to ensure the buttons consume the
+  // whole bounding box
   ${StarButton} {
     margin-left: ${SizeUnit(0.25)};
+    padding-right: ${SizeUnit(0.25)};
+  }
+  ${ResourceButton} {
+    padding-left: ${SizeUnit(0.25)};
   }
 `
+const StarredResourceBarRoot = styled.div`
+  margin-left: ${SizeUnit(0.5)};
+  margin-right: ${SizeUnit(0.5)};
+
+  ${StarredResourceRoot} {
+    margin-right: ${SizeUnit(0.25)};
+  }
+`
+
 export type ResourceNameAndStatus = {
   name: string
   status: ResourceStatus
@@ -127,17 +147,18 @@ export function StarredResource(props: {
   }
 
   return (
-    <Tooltip title={props.resource.name}>
-      <StarredResourceRoot
-        className={classes.join(" ")}
-        onClick={() => {
-          history.push(href)
-        }}
-      >
-        <StarredResourceLabel>{props.resource.name}</StarredResourceLabel>
-        <StarButton onClick={onClick} />
+    <TiltTooltip title={props.resource.name}>
+      <StarredResourceRoot className={classes.join(" ")}>
+          <ResourceButton onClick={() => {
+            history.push(href)
+          }}>
+            <StarredResourceLabel>{props.resource.name}</StarredResourceLabel>
+          </ResourceButton>
+        <StarButton onClick={onClick}>
+          <StarIcon />
+        </StarButton>
       </StarredResourceRoot>
-    </Tooltip>
+    </TiltTooltip>
   )
 }
 
