@@ -3781,9 +3781,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	memconn := server.ProvideMemConn()
-	serverOptions, err := server.ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
+	serverOptions, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn)
 	require.NoError(t, err)
-	hudsc := server.ProvideHeadsUpServerController(0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	hudsc := server.ProvideHeadsUpServerController(
+		"localhost", 0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
