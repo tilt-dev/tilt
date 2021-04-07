@@ -23,8 +23,7 @@ import (
 // Controller summarizes engine state of resources for the active Tilt session (i.e. invocation of up/ci).
 //
 // Part of the Session spec includes an exit condition, which is evaluated here and reflected on the Session status.
-// Additionally, the engine is signaled to exit (either with success or with error) based on the result of the exit
-// condition evaluation.
+// The engine will react to changes in the status and exit once Done is true, propagating the error if one exists.
 //
 // While using an apiserver type and updating the corresponding entity in the apiserver itself, this is not currently
 // a reconciler due to heavy dependence on engine internals. It's very likely this will look very different once it
