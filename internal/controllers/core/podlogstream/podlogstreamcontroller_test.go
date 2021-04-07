@@ -1,4 +1,4 @@
-package runtimelog
+package podlogstream
 
 import (
 	"context"
@@ -19,6 +19,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -357,8 +358,8 @@ func TestIstioContainerLogs(t *testing.T) {
 
 	state := f.store.LockMutableStateForTesting()
 
-	istioInit := IstioInitContainerName
-	istioSidecar := IstioSidecarContainerName
+	istioInit := runtimelog.IstioInitContainerName
+	istioSidecar := runtimelog.IstioSidecarContainerName
 	cNormal := container.Name("cNameNormal")
 	pb := newPodBuilder(podID).
 		addTerminatedInitContainer(istioInit, "cID-init").
@@ -419,11 +420,11 @@ func (s *plmStore) Dispatch(action store.Action) {
 	defer s.UnlockMutableState()
 
 	switch action := action.(type) {
-	case PodLogStreamCreateAction:
+	case runtimelog.PodLogStreamCreateAction:
 		state.PodLogStreams[action.PodLogStream.Name] = action.PodLogStream
 		action.Summarize(&s.summary)
 		return
-	case PodLogStreamDeleteAction:
+	case runtimelog.PodLogStreamDeleteAction:
 		delete(state.PodLogStreams, action.Name)
 		action.Summarize(&s.summary)
 		return
@@ -445,8 +446,8 @@ type plmFixture struct {
 	ctx     context.Context
 	client  ctrlclient.Client
 	kClient *k8s.FakeK8sClient
-	plm     *PodLogManager
-	plsc    *PodLogStreamController
+	plm     *runtimelog.PodLogManager
+	plsc    *Controller
 	cancel  func()
 	out     *bufsync.ThreadSafeBuffer
 	store   *plmStore
@@ -463,8 +464,8 @@ func newPLMFixture(t *testing.T) *plmFixture {
 
 	st := newPLMStore(t, out)
 	fc := fake.NewTiltClient()
-	plm := NewPodLogManager(fc)
-	plsc := NewPodLogStreamController(ctx, fc, st, kClient)
+	plm := runtimelog.NewPodLogManager(fc)
+	plsc := NewController(ctx, fc, st, kClient)
 
 	return &plmFixture{
 		TempDirFixture: f,

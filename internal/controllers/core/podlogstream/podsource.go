@@ -1,4 +1,4 @@
-package runtimelog
+package podlogstream
 
 import (
 	"context"
