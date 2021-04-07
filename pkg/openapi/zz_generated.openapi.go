@@ -1313,7 +1313,7 @@ func schema_pkg_apis_core_v1alpha1_SessionStatus(ref common.ReferenceCallback) c
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
-					"resources": {
+					"targets": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Targets are normalized representations of the servers/jobs managed by this Session.\n\nA resource from a Tiltfile might produce one or more targets. A target can also be shared across multiple resources (e.g. an image referenced by multiple K8s pods).",
 							Type:        []string{"array"},
@@ -1343,7 +1343,7 @@ func schema_pkg_apis_core_v1alpha1_SessionStatus(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"pid", "startTime", "resources", "done"},
+				Required: []string{"pid", "startTime", "targets", "done"},
 			},
 		},
 		Dependencies: []string{
@@ -1418,7 +1418,7 @@ func schema_pkg_apis_core_v1alpha1_Target(ref common.ReferenceCallback) common.O
 							},
 						},
 					},
-					"runtime": {
+					"state": {
 						SchemaProps: spec.SchemaProps{
 							Description: "State provides information about the current status of the target.",
 							Default:     map[string]interface{}{},
@@ -1426,7 +1426,7 @@ func schema_pkg_apis_core_v1alpha1_Target(ref common.ReferenceCallback) common.O
 						},
 					},
 				},
-				Required: []string{"name", "type"},
+				Required: []string{"name", "type", "resources", "state"},
 			},
 		},
 		Dependencies: []string{
@@ -1441,7 +1441,7 @@ func schema_pkg_apis_core_v1alpha1_TargetState(ref common.ReferenceCallback) com
 				Description: "TargetState describes the current execution status for a target.\n\nEither EXACTLY one of Waiting, Active, or Terminated will be populated or NONE of them will be. In the event that all states are null, the target is currently inactive or disabled and should not be expected to execute.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"pending": {
+					"waiting": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Waiting being non-nil indicates that the next execution of the target has been queued but not yet started.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting"),
@@ -1481,16 +1481,16 @@ func schema_pkg_apis_core_v1alpha1_TargetStateActive(ref common.ReferenceCallbac
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
-					"Ready": {
+					"ready": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Ready indicates that the target has passed readiness checks.\n\nIf the target does not use readiness checks, this is always true.",
+							Description: "Ready indicates that the target has passed readiness checks.\n\nIf the target does not use or support readiness checks, this is always true.",
 							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"startTime", "Ready"},
+				Required: []string{"startTime", "ready"},
 			},
 		},
 		Dependencies: []string{
@@ -1542,16 +1542,16 @@ func schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref common.ReferenceCallba
 				Description: "TargetStateWaiting is a target that has been enqueued for execution but has not yet started.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"reason": {
+					"waitReason": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Reason is a description for why the target is waiting and not yet active.",
+							Description: "WaitReason is a description for why the target is waiting and not yet active.\n\nThis is NOT the \"cause\" or \"trigger\" for the target being invoked.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"reason"},
+				Required: []string{"waitReason"},
 			},
 		},
 	}

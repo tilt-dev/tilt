@@ -153,12 +153,14 @@ type SessionStatus struct {
 	//
 	// A resource from a Tiltfile might produce one or more targets. A target can also be shared across
 	// multiple resources (e.g. an image referenced by multiple K8s pods).
-	Targets []Target `json:"resources"`
+	Targets []Target `json:"targets"`
 
 	// Done indicates whether this Session has completed its work and is ready to exit.
 	Done bool `json:"done"`
 	// Error is a non-empty string when the Session is Done but encountered a failure as defined by the ExitCondition
 	// from the SessionSpec.
+	//
+	// +optional
 	Error string `json:"error,omitempty"`
 }
 
@@ -172,9 +174,9 @@ type Target struct {
 	// Server targets run indefinitely (e.g. an HTTP server).
 	Type TargetType `json:"type"`
 	// Resources are one or more Tiltfile resources that this target is associated with.
-	Resources []string `json:"resources,omitempty"`
+	Resources []string `json:"resources"`
 	// State provides information about the current status of the target.
-	State TargetState `json:"runtime,omitempty"`
+	State TargetState `json:"state"`
 }
 
 // TargetType describes a high-level categorization about the expected execution behavior for the target.
@@ -194,17 +196,25 @@ const (
 // be expected to execute.
 type TargetState struct {
 	// Waiting being non-nil indicates that the next execution of the target has been queued but not yet started.
-	Waiting *TargetStateWaiting `json:"pending,omitempty"`
+	//
+	// +optional
+	Waiting *TargetStateWaiting `json:"waiting,omitempty"`
 	// Active being non-nil indicates that the target is currently executing.
+	//
+	// +optional
 	Active *TargetStateActive `json:"active,omitempty"`
 	// Terminated being non-nil indicates that the target finished execution either normally or due to failure.
+	//
+	// +optional
 	Terminated *TargetStateTerminated `json:"terminated,omitempty"`
 }
 
 // TargetStateWaiting is a target that has been enqueued for execution but has not yet started.
 type TargetStateWaiting struct {
-	// Reason is a description for why the target is waiting and not yet active.
-	Reason string `json:"reason"`
+	// WaitReason is a description for why the target is waiting and not yet active.
+	//
+	// This is NOT the "cause" or "trigger" for the target being invoked.
+	WaitReason string `json:"waitReason"`
 }
 
 // TargetStateActive is a target that is currently running but has not yet finished.
@@ -213,8 +223,8 @@ type TargetStateActive struct {
 	StartTime metav1.MicroTime `json:"startTime"`
 	// Ready indicates that the target has passed readiness checks.
 	//
-	// If the target does not use readiness checks, this is always true.
-	Ready bool
+	// If the target does not use or support readiness checks, this is always true.
+	Ready bool `json:"ready"`
 }
 
 // TargetStateTerminated is a target that finished running, either because it completed successfully or
@@ -228,6 +238,8 @@ type TargetStateTerminated struct {
 	//
 	// For targets of type TargetTypeServer, this is always populated, as the target is expected to run indefinitely,
 	// and thus any termination is an error.
+	//
+	// +optional
 	Error string `json:"error,omitempty"`
 }
 

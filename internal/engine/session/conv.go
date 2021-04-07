@@ -103,7 +103,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 				}
 			}
 			target.State.Waiting = &session.TargetStateWaiting{
-				Reason: waitReason,
+				WaitReason: waitReason,
 			}
 		}
 	}
@@ -240,17 +240,17 @@ func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *sessio
 		waitReason = string(hold)
 	}
 	return &session.TargetStateWaiting{
-		Reason: waitReason,
+		WaitReason: waitReason,
 	}
 }
 
-// tiltfileTarget creates a session.Target object from the store.ManifestState for the current
-// Tiltfile.
+// tiltfileTarget creates a session.Target object from the engine state for the current Tiltfile.
 //
 // This is slightly different from generic resource handling because there is no ManifestTarget in the engine
-// for the Tiltfile, just ManifestState, but a lot of the logic is shared/duplicated.
+// for the Tiltfile (just ManifestState) and config file changes are stored stop level on state, but conceptually
+// it does similar things.
 func tiltfileTarget(state store.EngineState) session.Target {
-	tfState := session.Target{
+	target := session.Target{
 		Name:      "tiltfile:update",
 		Resources: []string{model.TiltfileManifestName.String()},
 		Type:      session.TargetTypeJob,
@@ -259,16 +259,16 @@ func tiltfileTarget(state store.EngineState) session.Target {
 	// Tiltfile is special in engine state and doesn't have a target, just state, so
 	// this logic is largely duplicated from the generic resource build logic
 	if !state.TiltfileState.CurrentBuild.Empty() {
-		tfState.State.Active = &session.TargetStateActive{
+		target.State.Active = &session.TargetStateActive{
 			StartTime: metav1.NewMicroTime(state.TiltfileState.CurrentBuild.StartTime),
 		}
 	} else if len(state.PendingConfigFileChanges) != 0 {
-		tfState.State.Waiting = &session.TargetStateWaiting{
-			Reason: "config-changed",
+		target.State.Waiting = &session.TargetStateWaiting{
+			WaitReason: "config-changed",
 		}
 	} else if len(state.TiltfileState.BuildHistory) != 0 {
 		lastBuild := state.TiltfileState.LastBuild()
-		tfState.State.Terminated = &session.TargetStateTerminated{
+		target.State.Terminated = &session.TargetStateTerminated{
 			StartTime:  metav1.NewMicroTime(lastBuild.StartTime),
 			FinishTime: metav1.NewMicroTime(lastBuild.FinishTime),
 			Error:      errToString(lastBuild.Error),
@@ -276,10 +276,10 @@ func tiltfileTarget(state store.EngineState) session.Target {
 	} else {
 		// given the current engine behavior, this doesn't actually occur because
 		// the first build happens as part of initialization
-		tfState.State.Waiting = &session.TargetStateWaiting{
-			Reason: "initial-build",
+		target.State.Waiting = &session.TargetStateWaiting{
+			WaitReason: "initial-build",
 		}
 	}
 
-	return tfState
+	return target
 }
