@@ -1,4 +1,3 @@
-import { Tooltip } from "@material-ui/core"
 import React from "react"
 import { useHistory } from "react-router"
 import styled from "styled-components"
@@ -12,11 +11,12 @@ import {
   ColorRGBA,
   Font,
   FontSize,
-  Glow, mixinResetButtonStyle,
+  Glow,
+  mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
-import { ResourceStatus } from "./types"
 import TiltTooltip from "./Tooltip"
+import { ResourceStatus } from "./types"
 
 export const StarredResourceLabel = styled.div`
   max-width: ${SizeUnit(4.5)};
@@ -149,11 +149,13 @@ export function StarredResource(props: {
   return (
     <TiltTooltip title={props.resource.name}>
       <StarredResourceRoot className={classes.join(" ")}>
-          <ResourceButton onClick={() => {
+        <ResourceButton
+          onClick={() => {
             history.push(href)
-          }}>
-            <StarredResourceLabel>{props.resource.name}</StarredResourceLabel>
-          </ResourceButton>
+          }}
+        >
+          <StarredResourceLabel>{props.resource.name}</StarredResourceLabel>
+        </ResourceButton>
         <StarButton onClick={onClick}>
           <StarIcon />
         </StarButton>
