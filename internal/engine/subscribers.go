@@ -7,7 +7,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
-	"github.com/tilt-dev/tilt/internal/engine/exit"
 	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
@@ -15,6 +14,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
@@ -67,7 +67,7 @@ func ProvideSubscribers(
 	tc *telemetry.Controller,
 	lsc *local.ServerController,
 	podm *k8srollout.PodMonitor,
-	ec *exit.Controller,
+	sc *session.Controller,
 	mc *metrics.Controller,
 	mmc *metrics.ModeController,
 ) []store.Subscriber {
@@ -93,7 +93,7 @@ func ProvideSubscribers(
 		tc,
 		lsc,
 		podm,
-		ec,
+		sc,
 		mc,
 		mmc,
 	}

@@ -1,4 +1,4 @@
-package exit
+package session
 
 import (
 	"context"
@@ -17,18 +17,25 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/store"
-	tiltrun "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	session "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-// Controller handles normal process termination. Either Tilt completed all its work,
-// or it determined that it was unable to complete the work it was assigned.
+// Controller summarizes engine state of resources for the active Tilt session (i.e. invocation of up/ci).
+//
+// Part of the Session spec includes an exit condition, which is evaluated here and reflected on the Session status.
+// The engine will react to changes in the status and exit once Done is true, propagating the error if one exists.
+//
+// While using an apiserver type and updating the corresponding entity in the apiserver itself, this is not currently
+// a reconciler due to heavy dependence on engine internals. It's very likely this will look very different once it
+// has been converted to a reconciler. (Ideally, there will also be much less special case conversion logic as the data
+// models on which this controller depends evolve during migration to apiserver.)
 type Controller struct {
 	pid       int64
 	startTime time.Time
 	client    ctrlclient.Client
 
 	mu      sync.Mutex
-	tiltRun *tiltrun.TiltRun
+	session *session.Session
 }
 
 var _ store.Subscriber = &Controller{}
@@ -49,9 +56,9 @@ func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary stor
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.tiltRun == nil {
+	if c.session == nil {
 		if initialized, err := c.initialize(ctx, st); err != nil {
-			st.Dispatch(store.NewErrorAction(fmt.Errorf("failed to initialize ExitController: %v", err)))
+			st.Dispatch(store.NewErrorAction(fmt.Errorf("failed to initialize Session controller: %v", err)))
 			return
 		} else if !initialized {
 			// engine is still starting up, no-op until ready for initialization
@@ -61,28 +68,28 @@ func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary stor
 
 	newStatus := c.makeLatestStatus(st)
 	if err := c.handleLatestStatus(ctx, st, newStatus); err != nil {
-		logger.Get(ctx).Debugf("failed to update TiltRun status: %v", err)
+		logger.Get(ctx).Debugf("failed to update Session status: %v", err)
 	}
 }
 
 func (c *Controller) initialize(ctx context.Context, st store.RStore) (bool, error) {
-	tiltRun := c.makeTiltRun(st)
-	if tiltRun == nil {
+	s := c.makeSession(st)
+	if s == nil {
 		return false, nil
 	}
 
-	// TODO(milas): rather than implicitly creating the TiltRun object here, it should
+	// TODO(milas): rather than implicitly creating the Session object here, it should
 	// 	be created explicitly as part of loading the Tiltfile
-	if err := c.client.Create(ctx, tiltRun); err != nil {
-		return false, fmt.Errorf("failed to create TiltRun API object: %v", err)
+	if err := c.client.Create(ctx, s); err != nil {
+		return false, fmt.Errorf("failed to create Session API object: %v", err)
 	}
 
-	c.tiltRun = tiltRun
+	c.session = s
 
 	return true, nil
 }
 
-func (c *Controller) makeTiltRun(st store.RStore) *tiltrun.TiltRun {
+func (c *Controller) makeSession(st store.RStore) *session.Session {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -91,14 +98,14 @@ func (c *Controller) makeTiltRun(st store.RStore) *tiltrun.TiltRun {
 		return nil
 	}
 
-	tiltRun := &tiltrun.TiltRun{
+	s := &session.Session{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "Tiltfile",
 		},
-		Spec: tiltrun.TiltRunSpec{
+		Spec: session.SessionSpec{
 			TiltfilePath: state.TiltfilePath,
 		},
-		Status: tiltrun.TiltRunStatus{
+		Status: session.SessionStatus{
 			PID:       c.pid,
 			StartTime: metav1.NewMicroTime(c.startTime),
 		},
@@ -108,19 +115,19 @@ func (c *Controller) makeTiltRun(st store.RStore) *tiltrun.TiltRun {
 	// the object on creation if it doesn't conform, so there's no additional validation/error-handling here
 	switch state.EngineMode {
 	case store.EngineModeUp:
-		tiltRun.Spec.ExitCondition = tiltrun.ExitConditionManual
+		s.Spec.ExitCondition = session.ExitConditionManual
 	case store.EngineModeCI:
-		tiltRun.Spec.ExitCondition = tiltrun.ExitConditionCI
+		s.Spec.ExitCondition = session.ExitConditionCI
 	}
 
-	return tiltRun
+	return s
 }
 
-func (c *Controller) makeLatestStatus(st store.RStore) *tiltrun.TiltRunStatus {
+func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	status := &tiltrun.TiltRunStatus{
+	status := &session.SessionStatus{
 		PID:       c.pid,
 		StartTime: metav1.NewMicroTime(c.startTime),
 	}
@@ -139,33 +146,33 @@ func (c *Controller) makeLatestStatus(st store.RStore) *tiltrun.TiltRunStatus {
 		return status.Targets[i].Name < status.Targets[j].Name
 	})
 
-	processExitCondition(c.tiltRun.Spec.ExitCondition, status)
+	processExitCondition(c.session.Spec.ExitCondition, status)
 	return status
 }
 
-func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *tiltrun.TiltRunStatus) error {
-	if equality.Semantic.DeepEqual(&c.tiltRun.Status, newStatus) {
+func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *session.SessionStatus) error {
+	if equality.Semantic.DeepEqual(&c.session.Status, newStatus) {
 		return nil
 	}
 
 	// deep copy is made to avoid tainting local version on failure
-	updated := c.tiltRun.DeepCopy()
+	updated := c.session.DeepCopy()
 	updated.Status = *newStatus
 
 	if err := c.client.Status().Update(ctx, updated); err != nil {
 		return err
 	}
 
-	c.tiltRun = updated
-	st.Dispatch(NewTiltRunUpdateStatusAction(updated))
+	c.session = updated
+	st.Dispatch(NewSessionUpdateStatusAction(updated))
 
 	return nil
 }
 
-func processExitCondition(exitCondition tiltrun.ExitCondition, status *tiltrun.TiltRunStatus) {
-	if exitCondition == tiltrun.ExitConditionManual {
+func processExitCondition(exitCondition session.ExitCondition, status *session.SessionStatus) {
+	if exitCondition == session.ExitConditionManual {
 		return
-	} else if exitCondition != tiltrun.ExitConditionCI {
+	} else if exitCondition != session.ExitConditionCI {
 		status.Done = true
 		status.Error = fmt.Sprintf("unsupported exit condition: %s", exitCondition)
 	}
@@ -183,7 +190,7 @@ func processExitCondition(exitCondition tiltrun.ExitCondition, status *tiltrun.T
 		}
 		if res.State.Waiting != nil {
 			allResourcesOK = false
-		} else if res.State.Active != nil && (!res.State.Active.Ready || res.Type == tiltrun.TargetTypeJob) {
+		} else if res.State.Active != nil && (!res.State.Active.Ready || res.Type == session.TargetTypeJob) {
 			// jobs must run to completion
 			allResourcesOK = false
 		}

@@ -1,4 +1,4 @@
-package exit
+package session
 
 import (
 	"fmt"
@@ -11,12 +11,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/store"
-	tiltrun "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	session "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []tiltrun.Target {
-	var targets []tiltrun.Target
+func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []session.Target {
+	var targets []session.Target
 
 	if bt := buildTarget(mt, holds); bt != nil {
 		targets = append(targets, *bt)
@@ -29,7 +29,7 @@ func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []
 	return targets
 }
 
-func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
+func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 	krs := mt.State.K8sRuntimeState()
 	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore && krs.HasEverDeployedSuccessfully && len(krs.Pods) == 0 {
 		// HACK: engine assumes anything with an image will create a pod; PodReadinessIgnore is used in these
@@ -41,15 +41,15 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 		return nil
 	}
 
-	target := &tiltrun.Target{
+	target := &session.Target{
 		Name:      fmt.Sprintf("%s:runtime", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
 	}
 
 	if mt.Manifest.IsK8s() && mt.Manifest.K8sTarget().HasJob() {
-		target.Type = tiltrun.TargetTypeJob
+		target.Type = session.TargetTypeJob
 	} else {
-		target.Type = tiltrun.TargetTypeServer
+		target.Type = session.TargetTypeServer
 	}
 
 	// a lot of this logic is duplicated from K8sRuntimeState::RuntimeStatus()
@@ -58,12 +58,12 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 	pod := krs.MostRecentPod()
 	switch pod.Phase {
 	case v1.PodRunning:
-		target.State.Active = &tiltrun.TargetStateActive{
+		target.State.Active = &session.TargetStateActive{
 			StartTime: metav1.NewMicroTime(pod.StartedAt),
 			Ready:     mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore || pod.AllContainersReady(),
 		}
 	case v1.PodSucceeded:
-		target.State.Terminated = &tiltrun.TargetStateTerminated{
+		target.State.Terminated = &session.TargetStateTerminated{
 			StartTime: metav1.NewMicroTime(pod.StartedAt),
 		}
 	case v1.PodFailed:
@@ -71,7 +71,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 		if podErr == "" {
 			podErr = fmt.Sprintf("Pod %q failed", pod.PodID.String())
 		}
-		target.State.Terminated = &tiltrun.TargetStateTerminated{
+		target.State.Terminated = &session.TargetStateTerminated{
 			StartTime: metav1.NewMicroTime(pod.StartedAt),
 			Error:     podErr,
 		}
@@ -80,7 +80,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 	if target.State.Terminated == nil || target.State.Terminated.Error == "" {
 		for _, ctr := range pod.AllContainers() {
 			if ctr.Status == model.RuntimeStatusError {
-				target.State.Terminated = &tiltrun.TargetStateTerminated{
+				target.State.Terminated = &session.TargetStateTerminated{
 					StartTime: metav1.NewMicroTime(pod.StartedAt),
 					Error: fmt.Sprintf("Pod %s in error state due to container %s: %s",
 						pod.PodID, ctr.Name, pod.Status),
@@ -102,7 +102,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 					waitReason = "unknown"
 				}
 			}
-			target.State.Waiting = &tiltrun.TargetStateWaiting{
+			target.State.Waiting = &session.TargetStateWaiting{
 				Reason: waitReason,
 			}
 		}
@@ -111,27 +111,27 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *tiltrun.Target {
 	return target
 }
 
-func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
+func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
 	if mt.Manifest.LocalTarget().ServeCmd.Empty() {
 		// there is no runtime target
 		return nil
 	}
 
-	target := &tiltrun.Target{
+	target := &session.Target{
 		Name:      fmt.Sprintf("%s:serve", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
-		Type:      tiltrun.TargetTypeServer,
+		Type:      session.TargetTypeServer,
 	}
 
 	lrs := mt.State.LocalRuntimeState()
 	if runtimeErr := lrs.RuntimeStatusError(); runtimeErr != nil {
-		target.State.Terminated = &tiltrun.TargetStateTerminated{
+		target.State.Terminated = &session.TargetStateTerminated{
 			StartTime:  metav1.NewMicroTime(lrs.StartTime),
 			FinishTime: metav1.NewMicroTime(lrs.FinishTime),
 			Error:      errToString(runtimeErr),
 		}
 	} else if lrs.PID != 0 {
-		target.State.Active = &tiltrun.TargetStateActive{
+		target.State.Active = &session.TargetStateActive{
 			StartTime: metav1.NewMicroTime(lrs.StartTime),
 			Ready:     lrs.Ready,
 		}
@@ -146,11 +146,11 @@ func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *til
 //
 // This is both used for target types that don't require specialized logic (Docker Compose) as well as a fallback for
 // any new types that don't have deeper support here.
-func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
-	target := &tiltrun.Target{
+func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
+	target := &session.Target{
 		Name:      fmt.Sprintf("%s:runtime", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
-		Type:      tiltrun.TargetTypeServer,
+		Type:      session.TargetTypeServer,
 	}
 
 	// HACK: RuntimeState is not populated until engine starts builds in some cases; to avoid weird race conditions,
@@ -166,7 +166,7 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 	case model.RuntimeStatusPending:
 		target.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
 	case model.RuntimeStatusOK:
-		target.State.Active = &tiltrun.TargetStateActive{
+		target.State.Active = &session.TargetStateActive{
 			StartTime: metav1.NewMicroTime(mt.State.LastSuccessfulDeployTime),
 			// generic resources have no readiness concept so they're just ready by default
 			// (this also applies to Docker Compose, since we don't support its health checks)
@@ -177,7 +177,7 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 		if errMsg == "" {
 			errMsg = "Server target %q failed"
 		}
-		target.State.Terminated = &tiltrun.TargetStateTerminated{
+		target.State.Terminated = &session.TargetStateTerminated{
 			Error: errMsg,
 		}
 	}
@@ -185,7 +185,7 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 	return target
 }
 
-func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
+func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
 	if mt.Manifest.IsK8s() {
 		return k8sRuntimeTarget(mt)
 	} else if mt.Manifest.IsLocal() {
@@ -202,27 +202,27 @@ func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltru
 // rather than a single target. For example, a K8s resource might have an image build step and then a deployment (i.e.
 // kubectl apply) step - currently, both of these will be aggregated together, which can make it harder to diagnose
 // where something is stuck or slow.
-func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.Target {
+func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
 	if mt.Manifest.IsLocal() && mt.Manifest.LocalTarget().UpdateCmd.Empty() {
 		return nil
 	}
 
-	res := &tiltrun.Target{
+	res := &session.Target{
 		Name:      fmt.Sprintf("%s:update", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
-		Type:      tiltrun.TargetTypeJob,
+		Type:      session.TargetTypeJob,
 	}
 
 	isPending := mt.NextBuildReason() != model.BuildReasonNone
 	if isPending {
 		res.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
 	} else if !mt.State.CurrentBuild.Empty() {
-		res.State.Active = &tiltrun.TargetStateActive{
+		res.State.Active = &session.TargetStateActive{
 			StartTime: metav1.NewMicroTime(mt.State.CurrentBuild.StartTime),
 		}
 	} else if len(mt.State.BuildHistory) != 0 {
 		lastBuild := mt.State.LastBuild()
-		res.State.Terminated = &tiltrun.TargetStateTerminated{
+		res.State.Terminated = &session.TargetStateTerminated{
 			StartTime:  metav1.NewMicroTime(lastBuild.StartTime),
 			FinishTime: metav1.NewMicroTime(lastBuild.FinishTime),
 			Error:      errToString(lastBuild.Error),
@@ -232,43 +232,43 @@ func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *tiltrun.
 	return res
 }
 
-func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *tiltrun.TargetStateWaiting {
+func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *session.TargetStateWaiting {
 	// in the API, the reason is not _why_ the target "exists", but rather an explanation for why it's not yet
 	// active and is in a pending state (e.g. waitingFromHolds for dependencies)
 	waitReason := "unknown"
 	if hold, ok := holds[mn]; ok && hold != store.HoldNone {
 		waitReason = string(hold)
 	}
-	return &tiltrun.TargetStateWaiting{
+	return &session.TargetStateWaiting{
 		Reason: waitReason,
 	}
 }
 
-// tiltfileTarget creates a tiltruns.Target object from the store.ManifestState for the current
+// tiltfileTarget creates a session.Target object from the store.ManifestState for the current
 // Tiltfile.
 //
 // This is slightly different from generic resource handling because there is no ManifestTarget in the engine
 // for the Tiltfile, just ManifestState, but a lot of the logic is shared/duplicated.
-func tiltfileTarget(state store.EngineState) tiltrun.Target {
-	tfState := tiltrun.Target{
+func tiltfileTarget(state store.EngineState) session.Target {
+	tfState := session.Target{
 		Name:      "tiltfile:update",
 		Resources: []string{model.TiltfileManifestName.String()},
-		Type:      tiltrun.TargetTypeJob,
+		Type:      session.TargetTypeJob,
 	}
 
 	// Tiltfile is special in engine state and doesn't have a target, just state, so
 	// this logic is largely duplicated from the generic resource build logic
 	if !state.TiltfileState.CurrentBuild.Empty() {
-		tfState.State.Active = &tiltrun.TargetStateActive{
+		tfState.State.Active = &session.TargetStateActive{
 			StartTime: metav1.NewMicroTime(state.TiltfileState.CurrentBuild.StartTime),
 		}
 	} else if len(state.PendingConfigFileChanges) != 0 {
-		tfState.State.Waiting = &tiltrun.TargetStateWaiting{
+		tfState.State.Waiting = &session.TargetStateWaiting{
 			Reason: "config-changed",
 		}
 	} else if len(state.TiltfileState.BuildHistory) != 0 {
 		lastBuild := state.TiltfileState.LastBuild()
-		tfState.State.Terminated = &tiltrun.TargetStateTerminated{
+		tfState.State.Terminated = &session.TargetStateTerminated{
 			StartTime:  metav1.NewMicroTime(lastBuild.StartTime),
 			FinishTime: metav1.NewMicroTime(lastBuild.FinishTime),
 			Error:      errToString(lastBuild.Error),
@@ -276,7 +276,7 @@ func tiltfileTarget(state store.EngineState) tiltrun.Target {
 	} else {
 		// given the current engine behavior, this doesn't actually occur because
 		// the first build happens as part of initialization
-		tfState.State.Waiting = &tiltrun.TargetStateWaiting{
+		tfState.State.Waiting = &session.TargetStateWaiting{
 			Reason: "initial-build",
 		}
 	}

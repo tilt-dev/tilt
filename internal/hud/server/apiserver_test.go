@@ -42,7 +42,7 @@ func TestAPIServerDynamicClient(t *testing.T) {
 			// this needs to include a valid absolute path for the current GOOS
 			"watchedPaths": []string{mustCwd(t)},
 		},
-		"TiltRun": map[string]interface{}{
+		"Session": map[string]interface{}{
 			"tiltfilePath":  filepath.Join(mustCwd(t), "Tiltfile"),
 			"exitCondition": "manual",
 		},

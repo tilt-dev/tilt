@@ -17,12 +17,12 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
-	"github.com/tilt-dev/tilt/internal/engine/exit"
 	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -174,8 +174,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleSetTiltfileArgsAction(state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
-	case exit.TiltRunUpdateStatusAction:
-		exit.HandleTiltRunUpdateStatusAction(state, action)
+	case session.SessionUpdateStatusAction:
+		session.HandleSessionUpdateStatusAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
 	case metrics.MetricsModeAction:
