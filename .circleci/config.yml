@@ -10,6 +10,8 @@ jobs:
     resource_class: medium+
     docker:
       - image: gcr.io/windmill-public-containers/tilt-ci@sha256:6cff318d4e9ac8904b97945c6fb73eae8330004a3782ce1c9406863f64f71eab
+    # apiserver code generation scripts require being in GOPATH
+    working_directory: /go/src/github.com/tilt-dev/tilt
 
     steps:
       - checkout
@@ -21,6 +23,7 @@ jobs:
       - run: make lint
       - run: make test_install_version_check
       - run: make wire-check
+      - run: ./scripts/check-codegen.sh
       - run: make test-go
       - store_test_results:
           path: test-results
