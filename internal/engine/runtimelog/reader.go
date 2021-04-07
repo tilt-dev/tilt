@@ -13,13 +13,13 @@ import (
 type HardCancelReader struct {
 	ctx      context.Context
 	reader   io.Reader
-	now      func() time.Time
+	Now      func() time.Time
 	mu       sync.Mutex
 	lastRead time.Time
 }
 
 func NewHardCancelReader(ctx context.Context, reader io.Reader) *HardCancelReader {
-	return &HardCancelReader{ctx: ctx, reader: reader, now: time.Now}
+	return &HardCancelReader{ctx: ctx, reader: reader, Now: time.Now}
 }
 
 func (r *HardCancelReader) LastReadTime() time.Time {
@@ -40,7 +40,7 @@ func (r *HardCancelReader) Read(b []byte) (int, error) {
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.lastRead = r.now()
+	r.lastRead = r.Now()
 
 	return n, err
 }

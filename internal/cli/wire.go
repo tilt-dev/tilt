@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
@@ -87,7 +88,7 @@ var BaseWireSet = wire.NewSet(
 	clockwork.NewRealClock,
 	engine.DeployerWireSet,
 	runtimelog.NewPodLogManager,
-	runtimelog.NewPodLogStreamController,
+	podlogstream.NewController,
 	portforward.NewController,
 	engine.NewBuildController,
 	cmd.WireSet,

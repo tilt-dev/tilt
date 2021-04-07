@@ -6,7 +6,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -19,7 +19,7 @@ var controllerSet = wire.NewSet(
 func ProvideControllers(
 	fileWatch *filewatch.Controller,
 	cmds *cmd.Controller,
-	podlogstreams *runtimelog.PodLogStreamController) []Controller {
+	podlogstreams *podlogstream.Controller) []Controller {
 	return []Controller{
 		fileWatch,
 		cmds,

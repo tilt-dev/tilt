@@ -20,6 +20,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
@@ -3766,7 +3767,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	env := k8s.EnvDockerDesktop
 	cdc := controllers.ProvideDeferredClient()
 	plm := runtimelog.NewPodLogManager(cdc)
-	plsc := runtimelog.NewPodLogStreamController(ctx, cdc, st, kCli)
+	plsc := podlogstream.NewController(ctx, cdc, st, kCli)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfc := portforward.NewController(kCli)
