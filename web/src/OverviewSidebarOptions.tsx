@@ -224,7 +224,7 @@ function ResourceNameFilter(props: OverviewSidebarOptionsProps) {
     inputProps.endAdornment = (
       <InputAdornment position="end">
         <ClearResourceNameFilterButton onClick={onClearClick}>
-          <CloseSvg fill={Color.grayLightest}/>
+          <CloseSvg fill={Color.grayLightest} />
         </ClearResourceNameFilterButton>
       </InputAdornment>
     )
