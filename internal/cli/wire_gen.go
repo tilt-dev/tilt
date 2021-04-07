@@ -146,11 +146,11 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
-	webPort := provideWebPort()
 	webHost := provideWebHost()
+	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild, connProvider)
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -180,7 +180,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(webHost, webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
 	deferredClient := controllers.ProvideDeferredClient()
 	clientBuilder := controllers.NewClientBuilder(deferredClient)
@@ -318,11 +318,11 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
-	webPort := provideWebPort()
 	webHost := provideWebHost()
+	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild, connProvider)
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -352,7 +352,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(webHost, webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
 	deferredClient := controllers.ProvideDeferredClient()
 	clientBuilder := controllers.NewClientBuilder(deferredClient)
@@ -487,11 +487,11 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
-	webPort := provideWebPort()
 	webHost := provideWebHost()
+	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, webHost, webPort, tiltBuild, connProvider)
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -521,7 +521,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
-	headsUpServerController := server.ProvideHeadsUpServerController(webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(webHost, webPort, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
 	deferredClient := controllers.ProvideDeferredClient()
 	clientBuilder := controllers.NewClientBuilder(deferredClient)

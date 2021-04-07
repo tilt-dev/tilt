@@ -25,10 +25,10 @@ import (
 func TestAPIServerDynamicClient(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	memconn := ProvideMemConn()
-	cfg, err := ProvideTiltServerOptions(ctx, "localhost", 0, model.TiltBuild{}, memconn)
+	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn)
 	require.NoError(t, err)
 
-	hudsc := ProvideHeadsUpServerController(0, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	hudsc := ProvideHeadsUpServerController("localhost", 0, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	st := store.NewTestingStore()
 	require.NoError(t, hudsc.SetUp(ctx, st))
 	defer hudsc.TearDown(ctx)

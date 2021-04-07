@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
-	"net"
 
 	"k8s.io/client-go/dynamic"
 
@@ -27,7 +25,7 @@ func ProvideMemConn() apiserver.ConnProvider {
 }
 
 // Configures the Tilt API server.
-func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port model.WebPort, tiltBuild model.TiltBuild, memconn apiserver.ConnProvider) (*APIServerConfig, error) {
+func ProvideTiltServerOptions(ctx context.Context, tiltBuild model.TiltBuild, memconn apiserver.ConnProvider) (*APIServerConfig, error) {
 	w := logger.Get(ctx).Writer(logger.DebugLvl)
 	builder := builder.NewServerBuilder().
 		WithOutputWriter(w)
@@ -36,30 +34,19 @@ func ProvideTiltServerOptions(ctx context.Context, host model.WebHost, port mode
 		builder = builder.WithResourceMemoryStorage(obj, "data")
 	}
 	builder = builder.WithOpenAPIDefinitions("tilt", tiltBuild.Version, openapi.GetOpenAPIDefinitions)
-	if port == 0 {
-		builder = builder.WithConnProvider(memconn)
-	} else {
-		builder = builder.WithBindPort(int(port))
-	}
+
+	// TODO(nick): We're going to split the APIServer into a separate port
+	// that speaks HTTPS instead of HTTP. For the transition period,
+	// we'll use the in-memory connection.
+	builder = builder.WithConnProvider(memconn)
 
 	o, err := builder.ToServerOptions()
 	if err != nil {
 		return nil, err
 	}
 
-	if port == 0 {
-		// Fake bind port
-		o.ServingOptions.BindPort = 1
-	} else {
-		l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), int(port)))
-		if err != nil {
-			return nil, fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
-				"If you want to run multiple Tilt instances simultaneously,\n"+
-				"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
-				port, err)
-		}
-		o.ServingOptions.Listener = l
-	}
+	// Fake bind port
+	o.ServingOptions.BindPort = 1
 
 	err = o.Complete()
 	if err != nil {

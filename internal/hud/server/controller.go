@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -15,10 +16,12 @@ import (
 )
 
 type HeadsUpServerController struct {
+	host            model.WebHost
 	port            model.WebPort
 	hudServer       *HeadsUpServer
 	assetServer     assets.Server
 	apiServer       *http.Server
+	webServer       *http.Server
 	webURL          model.WebURL
 	apiServerConfig *APIServerConfig
 
@@ -26,6 +29,7 @@ type HeadsUpServerController struct {
 }
 
 func ProvideHeadsUpServerController(
+	host model.WebHost,
 	port model.WebPort,
 	apiServerConfig *APIServerConfig,
 	hudServer *HeadsUpServer,
@@ -36,6 +40,7 @@ func ProvideHeadsUpServerController(
 	close(emptyCh)
 
 	return &HeadsUpServerController{
+		host:            host,
 		port:            port,
 		hudServer:       hudServer,
 		assetServer:     assetServer,
@@ -49,9 +54,13 @@ func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 	s.shutdown()
 	s.assetServer.TearDown(ctx)
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
-	defer cancel()
-	_ = s.apiServer.Shutdown(ctx)
+	ctxWeb, cancelWeb := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancelWeb()
+	_ = s.webServer.Shutdown(ctxWeb)
+
+	ctxApi, cancelApi := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancelApi()
+	_ = s.apiServer.Shutdown(ctxApi)
 }
 
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
@@ -104,6 +113,20 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	r.PathPrefix("/version").Handler(apiserverHandler)
 	r.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
 	r.PathPrefix("/").Handler(s.hudServer.Router())
+
+	webListener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(s.host), int(s.port)))
+	if err != nil {
+		return fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
+			"If you want to run multiple Tilt instances simultaneously,\n"+
+			"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
+			s.port, err)
+	}
+
+	s.webServer = &http.Server{
+		Addr:    webListener.Addr().String(),
+		Handler: s.hudServer.Router(),
+	}
+	runServer(ctx, s.webServer, webListener)
 
 	s.apiServer = &http.Server{
 		Addr:           serving.Listener.Addr().String(),
