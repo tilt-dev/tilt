@@ -147,10 +147,13 @@ func (in *TiltRunList) GetListMeta() *metav1.ListMeta {
 type TiltRunStatus struct {
 	// PID is the process identifier for this instance of Tilt.
 	PID int64 `json:"pid"`
-	// StartTime is when the Tilt engine was first started and began processing resources.
+	// StartTime is when the Tilt engine was first started.
 	StartTime metav1.MicroTime `json:"startTime"`
-	// Resources are normalized state representations of the servers/jobs managed by this TiltRun.
-	Resources []ResourceState `json:"resources"`
+	// Targets are normalized representations of the servers/jobs managed by this TiltRun.
+	//
+	// A resource from a Tiltfile might produce one or more targets. A target can also be shared across
+	// multiple resources (e.g. an image referenced by multiple K8s pods).
+	Targets []Target `json:"resources"`
 
 	// Done indicates whether this TiltRun has completed its work and is ready to exit.
 	Done bool `json:"done"`
@@ -159,97 +162,73 @@ type TiltRunStatus struct {
 	Error string `json:"error,omitempty"`
 }
 
-// ResourceState contains a normalized representation of build and runtime state for a resource managed by this TiltRun.
-type ResourceState struct {
-	// Name is the name of the resource, typically defined via a call to a resource function in the Tiltfile.
+// Target is a server or job whose execution is managed as part of this TiltRun.
+type Target struct {
+	// Name is the name of the target; this is auto-generated from Tiltfile resources.
 	Name string `json:"name"`
-	// Build provides information about pending/active/terminated build(s) for the resource.
+	// Type is the execution profile for this resource.
 	//
-	// If nil, the resource does not perform builds (for example, a local resource without a serve_cmd).
-	Build *BuildState `json:"build,omitempty"`
-	// Runtime provides information about the current execution of the resource.
-	Runtime RuntimeState `json:"runtime,omitempty"`
+	// Job targets run to completion (e.g. a build script or database migration script).
+	// Server targets run indefinitely (e.g. an HTTP server).
+	Type TargetType `json:"type"`
+	// Resources are one or more Tiltfile resources that this target is associated with.
+	Resources []string `json:"resources,omitempty"`
+	// State provides information about the current status of the target.
+	State TargetState `json:"runtime,omitempty"`
 }
 
-// BuildState includes details about a currently pending build, currently active build, and (last) terminated build.
-type BuildState struct {
-	// Pending gives details about the currently enqueued build (if any).
-	Pending *BuildStatePending `json:"pending,omitempty"`
-	// Active gives details about the currently running build (if any).
-	Active *BuildStateActive `json:"active,omitempty"`
-	// Terminated gives details about the last finished build (if any).
-	Terminated *BuildStateTerminated `json:"terminated,omitempty"`
+// TargetType describes a high-level categorization about the expected execution behavior for the target.
+type TargetType string
+
+const (
+	// TargetTypeJob is a target that is expected to run to completion.
+	TargetTypeJob TargetType = "job"
+	// TargetTypeServer is a target that runs indefinitely.
+	TargetTypeServer TargetType = "server"
+)
+
+// TargetState describes the current execution status for a target.
+//
+// Either EXACTLY one of Waiting, Active, or Terminated will be populated or NONE of them will be.
+// In the event that all states are null, the target is currently inactive or disabled and should not
+// be expected to execute.
+type TargetState struct {
+	// Waiting being non-nil indicates that the next execution of the target has been queued but not yet started.
+	Waiting *TargetStateWaiting `json:"pending,omitempty"`
+	// Active being non-nil indicates that the target is currently executing.
+	Active *TargetStateActive `json:"active,omitempty"`
+	// Terminated being non-nil indicates that the target finished execution either normally or due to failure.
+	Terminated *TargetStateTerminated `json:"terminated,omitempty"`
 }
 
-// BuildStatePending is a build that has been enqueued for execution but has not yet started.
-type BuildStatePending struct {
-	// TriggerTime is when the earliest event occurred (e.g. file change) occurred that resulted in a build being
-	// enqueued.
-	TriggerTime metav1.MicroTime `json:"triggerTime"`
-	// Reason is a description for why the build is being triggered. There may be more than one cause, but only a
-	// single reason is provided.
+// TargetStateWaiting is a target that has been enqueued for execution but has not yet started.
+type TargetStateWaiting struct {
+	// Reason is a description for why the target is waiting and not yet active.
 	Reason string `json:"reason"`
 }
 
-// BuildStateActive is a build that is currently running but has not yet finished.
-type BuildStateActive struct {
-	// StartTime is when the build began.
+// TargetStateActive is a target that is currently running but has not yet finished.
+type TargetStateActive struct {
+	// StartTime is when execution began.
 	StartTime metav1.MicroTime `json:"startTime"`
-}
-
-// BuildStateTerminated is a build that finished running, either because it completed successfully or encountered an error.
-type BuildStateTerminated struct {
-	// StartTime is when the build began.
-	StartTime metav1.MicroTime `json:"startTime"`
-	// FinishTime is when the build stopped.
-	FinishTime metav1.MicroTime `json:"finishTime"`
-	// Error is a non-empty string if the build did not complete successfully.
-	Error string `json:"error,omitempty"`
-}
-
-// RuntimeStatus describes the current state of resource execution. Some values might not be used by every RuntimeType.
-type RuntimeStatus string
-
-const (
-	// RuntimeStatusPending indicates that the resource has not yet been started because it is waiting on another
-	// resource.
-	RuntimeStatusPending RuntimeStatus = "pending"
-	// RuntimeStatusRunning indicates that the resource is currently executing.
-	RuntimeStatusRunning RuntimeStatus = "running"
-	// RuntimeStatusSucceeded indicates that the resource ran to completion successfully.
+	// Ready indicates that the target has passed readiness checks.
 	//
-	// This is only used for a RuntimeType of "job"; "server" resources never exit during normal operation.
-	RuntimeStatusSucceeded RuntimeStatus = "succeeded"
-	// RuntimeStatusFailed indicates that the resource encountered an error during execution.
-	RuntimeStatusFailed RuntimeStatus = "failed"
-	// RuntimeStatusDisabled indicates that the resource has been requested to not execute at this time.
-	RuntimeStatusDisabled RuntimeStatus = "disabled"
-	// RuntimeStatusUnknown indicates that the status is not currently known; this can occur during initialization.
-	RuntimeStatusUnknown RuntimeStatus = "unknown"
-)
+	// If the target does not use readiness checks, this is always true.
+	Ready bool
+}
 
-// RuntimeType describes a high-level categorization about the expected behavior for the resource.
-//
-// This can be used in conjunction with RuntimeStatus to fully understand the resource's runtime state.
-type RuntimeType string
-
-const (
-	// RuntimeTypeJob is a resource that is expected to run to completion.
-	RuntimeTypeJob RuntimeType = "job"
-	// RuntimeTypeServer is a resource that runs indefinitely.
-	RuntimeTypeServer RuntimeType = "server"
-)
-
-// RuntimeState describes the current execution state for a resource.
-type RuntimeState struct {
-	// Type is the execution profile for this resource to be used in conjunction with Status.
-	Type RuntimeType `json:"type"`
-	// Status is the current execution status for this resource.
-	Status RuntimeStatus `json:"status"`
-	// Error is a non-empty string describing the failure if Status is "failed".
+// TargetStateTerminated is a target that finished running, either because it completed successfully or
+// encountered an error.
+type TargetStateTerminated struct {
+	// StartTime is when the target began executing.
+	StartTime metav1.MicroTime `json:"startTime"`
+	// FinishTime is when the target stopped executing.
+	FinishTime metav1.MicroTime `json:"finishTime"`
+	// Error is a non-empty string if the target encountered a failure during execution that caused it to stop.
+	//
+	// For targets of type TargetTypeServer, this is always populated, as the target is expected to run indefinitely,
+	// and thus any termination is an error.
 	Error string `json:"error,omitempty"`
-
-	// TODO(milas): this should probably have *StartTime/*EndTime but we don't have that available right now
 }
 
 // TiltRun implements ObjectWithStatusSubResource interface.

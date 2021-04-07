@@ -174,8 +174,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleSetTiltfileArgsAction(state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
-	case exit.Action:
-		handleExitAction(state, action)
+	case exit.TiltRunUpdateStatusAction:
+		exit.HandleTiltRunUpdateStatusAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
 	case metrics.MetricsModeAction:
@@ -666,13 +666,6 @@ func handleLogAction(state *store.EngineState, action store.LogAction) {
 		return
 	}
 	state.LogStore.Append(action, state.Secrets)
-}
-
-func handleExitAction(state *store.EngineState, action exit.Action) {
-	if action.ExitSignal {
-		state.ExitSignal = action.ExitSignal
-		state.ExitError = action.ExitError
-	}
 }
 
 func handleSwitchTerminalModeAction(state *store.EngineState, action prompt.SwitchTerminalModeAction) {
