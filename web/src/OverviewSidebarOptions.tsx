@@ -1,7 +1,8 @@
-import { InputAdornment, TextField } from "@material-ui/core"
+import { debounce, InputAdornment, TextField } from "@material-ui/core"
 import { InputProps as StandardInputProps } from "@material-ui/core/Input/Input"
 import React, { Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
+import { incr } from "./analytics"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as SearchSvg } from "./assets/svg/search.svg"
 import {
@@ -118,6 +119,12 @@ export const ResourceNameFilterTextField = styled(TextField)`
   }
 `
 
+export const ClearResourceNameFilterButton = styled.button`
+  ${mixinResetButtonStyle};
+  display: flex;
+  align-items: center;
+`
+
 type OverviewSidebarOptionsProps = {
   showFilters: boolean
   options: SidebarOptions
@@ -191,31 +198,47 @@ function filterOptions(props: OverviewSidebarOptionsProps) {
   )
 }
 
+const resourceNameFilterEventName = "ui.web.resourceNameFilter"
+
+// debounce so we don't send for every single keypress
+let incrResourceNameFilterEdit = debounce(() => {
+  incr("ui.web.resourceNameFilter", { action: "edit" })
+}, 5000)
+
 function ResourceNameFilter(props: OverviewSidebarOptionsProps) {
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (
       <InputAdornment position="start">
-        <SearchSvg style={{ fill: Color.grayLightest }} />
+        <SearchSvg fill={Color.grayLightest} />
       </InputAdornment>
     ),
   }
 
   // only show the "x" to clear if there's any input to clear
   if (props.options.resourceNameFilter) {
+    const onClearClick = () => {
+      incr(resourceNameFilterEventName, { action: "clear" })
+      setResourceNameFilter("", props)
+    }
+
     inputProps.endAdornment = (
       <InputAdornment position="end">
-        <CloseSvg
-          style={{ fill: Color.grayLightest, cursor: "pointer" }}
-          onClick={() => setResourceNameFilter("", props)}
-        />
+        <ClearResourceNameFilterButton onClick={onClearClick}>
+          <CloseSvg fill={Color.grayLightest} />
+        </ClearResourceNameFilterButton>
       </InputAdornment>
     )
+  }
+
+  const onChange = (e: any) => {
+    incrResourceNameFilterEdit()
+    setResourceNameFilter(e.target.value, props)
   }
 
   return (
     <ResourceNameFilterTextField
       value={props.options.resourceNameFilter ?? ""}
-      onChange={(e) => setResourceNameFilter(e.target.value, props)}
+      onChange={onChange}
       placeholder="Filter resources by name"
       InputProps={inputProps}
       variant="outlined"

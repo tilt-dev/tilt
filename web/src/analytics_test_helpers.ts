@@ -16,3 +16,17 @@ export function expectIncr(fetchMockIndex: number, name: string, tags: Tags) {
     ])
   )
 }
+
+export function expectIncrs(...incrs: { name: string; tags: Tags }[]) {
+  const expectedRequestBodies = incrs.map((i) =>
+    JSON.stringify([
+      {
+        verb: "incr",
+        name: i.name,
+        tags: i.tags,
+      },
+    ])
+  )
+  const actualRequestBodies = fetchMock.mock.calls.map((e) => e[1]?.body)
+  expect(actualRequestBodies).toEqual(expectedRequestBodies)
+}

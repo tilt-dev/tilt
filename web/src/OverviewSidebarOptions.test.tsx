@@ -1,6 +1,8 @@
 import { mount, ReactWrapper } from "enzyme"
+import fetchMock from "jest-fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { expectIncrs } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   TestsWithErrors,
@@ -9,6 +11,7 @@ import {
 } from "./OverviewResourceSidebar.stories"
 import {
   AlertsOnTopToggle,
+  ClearResourceNameFilterButton,
   FilterOptionList,
   OverviewSidebarOptions,
   ResourceNameFilterTextField,
@@ -76,8 +79,16 @@ function clickTestsOnlyControl(root: ReactWrapper) {
 const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
 
 describe("overview sidebar options", () => {
+  beforeEach(() => {
+    fetchMock.resetMocks()
+    fetchMock.mockResponse(JSON.stringify({}))
+    jest.useFakeTimers()
+  })
+
   afterEach(() => {
+    fetchMock.resetMocks()
     localStorage.clear()
+    jest.useRealTimers()
   })
 
   it("shows all resources by default", () => {
@@ -249,6 +260,40 @@ describe("overview sidebar options", () => {
     expect(resourceSectionItems.map((n) => n.text())).toEqual([
       "No matching resources",
     ])
+  })
+
+  it("reports analytics, debounced, when search bar edited", () => {
+    const root = mount(
+      <OverviewSidebarOptions
+        options={defaultOptions}
+        setOptions={() => {}}
+        showFilters={true}
+      />
+    )
+    const tf = root.find(ResourceNameFilterTextField)
+    // two changes in rapid succession should result in only one analytics event
+    tf.props().onChange({ target: { value: "foo" } })
+    tf.props().onChange({ target: { value: "foobar" } })
+    expectIncrs(...[])
+    jest.runTimersToTime(10000)
+    expectIncrs({ name: "ui.web.resourceNameFilter", tags: { action: "edit" } })
+  })
+
+  it("reports analytics when search bar cleared", () => {
+    const root = mount(
+      <OverviewSidebarOptions
+        options={{ ...defaultOptions, resourceNameFilter: "foo" }}
+        setOptions={() => {}}
+        showFilters={true}
+      />
+    )
+    const button = root.find(ClearResourceNameFilterButton)
+
+    button.simulate("click")
+    expectIncrs({
+      name: "ui.web.resourceNameFilter",
+      tags: { action: "clear" },
+    })
   })
 })
 
