@@ -1,3 +1,5 @@
+import { keyframes } from "styled-components"
+
 export enum Color {
   // Brand Colors
   green = "#20ba31",
@@ -123,3 +125,23 @@ export const mixinTruncateText = `
   overflow: hidden;
   text-overflow: ellipsis;
 `
+
+export namespace Glow {
+  export const white = keyframes`
+  0% {
+    background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
+  }
+  50% {
+    background-color: ${ColorRGBA(Color.white, ColorAlpha.almostTransparent)};
+  }
+`
+
+  export const dark = keyframes`
+  0% {
+    background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+  }
+  50% {
+    background-color: ${ColorRGBA(Color.gray, ColorAlpha.almostTransparent)};
+  }
+`
+}
