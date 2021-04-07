@@ -1,4 +1,4 @@
-package exit
+package session
 
 import (
 	"context"
@@ -405,10 +405,10 @@ func NewTestingStore(t testing.TB) *testStore {
 func (s *testStore) Dispatch(action store.Action) {
 	s.TestingStore.Dispatch(action)
 
-	a, ok := action.(TiltRunUpdateStatusAction)
+	a, ok := action.(SessionUpdateStatusAction)
 	if ok {
 		state := s.LockMutableStateForTesting()
-		HandleTiltRunUpdateStatusAction(state, a)
+		HandleSessionUpdateStatusAction(state, a)
 		s.UnlockMutableState()
 	}
 }

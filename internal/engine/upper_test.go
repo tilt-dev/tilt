@@ -47,7 +47,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
-	"github.com/tilt-dev/tilt/internal/engine/exit"
 	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
@@ -55,6 +54,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -3726,8 +3726,8 @@ type testFixture struct {
 	overrideMaxParallelUpdates int
 	ctrlClient                 ctrlclient.Client
 
-	onchangeCh chan bool
-	ec         *exit.Controller
+	onchangeCh        chan bool
+	sessionController *session.Controller
 }
 
 func newTestFixture(t *testing.T) *testFixture {
@@ -3791,7 +3791,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwc := filewatch.NewController(st, watcher.NewSub, timerMaker.Maker())
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st)
 	lsc := local.NewServerController(cdc)
-	ec := exit.NewController(cdc)
+	sessionController := session.NewController(cdc)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
 		log, "localhost", model.WebURL{})
@@ -3808,31 +3808,31 @@ func newTestFixture(t *testing.T) *testFixture {
 	dp.DisabledForTesting(true)
 
 	ret := &testFixture{
-		TempDirFixture: f,
-		t:              t,
-		ctx:            ctx,
-		cancel:         cancel,
-		clock:          clock,
-		b:              b,
-		fsWatcher:      watcher,
-		timerMaker:     &timerMaker,
-		docker:         dockerClient,
-		kClient:        kCli,
-		hud:            h,
-		ts:             ts,
-		log:            log,
-		store:          st,
-		bc:             bc,
-		onchangeCh:     fSub.ch,
-		cc:             cc,
-		dcc:            fakeDcc,
-		tfl:            tfl,
-		opter:          to,
-		dp:             dp,
-		fe:             fe,
-		fpm:            fpm,
-		ctrlClient:     cdc,
-		ec:             ec,
+		TempDirFixture:    f,
+		t:                 t,
+		ctx:               ctx,
+		cancel:            cancel,
+		clock:             clock,
+		b:                 b,
+		fsWatcher:         watcher,
+		timerMaker:        &timerMaker,
+		docker:            dockerClient,
+		kClient:           kCli,
+		hud:               h,
+		ts:                ts,
+		log:               log,
+		store:             st,
+		bc:                bc,
+		onchangeCh:        fSub.ch,
+		cc:                cc,
+		dcc:               fakeDcc,
+		tfl:               tfl,
+		opter:             to,
+		dp:                dp,
+		fe:                fe,
+		fpm:               fpm,
+		ctrlClient:        cdc,
+		sessionController: sessionController,
 	}
 
 	ret.disableEnvAnalyticsOpt()
@@ -3844,7 +3844,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, ec, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

@@ -33,27 +33,27 @@ import (
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// TiltRun provides introspective data about the status of the Tilt process.
+// Session provides introspective data about the status of the Tilt process.
 // +k8s:openapi-gen=true
-type TiltRun struct {
+type Session struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TiltRunSpec   `json:"spec,omitempty"`
-	Status TiltRunStatus `json:"status,omitempty"`
+	Spec   SessionSpec   `json:"spec,omitempty"`
+	Status SessionStatus `json:"status,omitempty"`
 }
 
-// TiltRunList is a list of TiltRun objects.
+// SessionList is a list of Session objects.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type TiltRunList struct {
+type SessionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []TiltRun `json:"items"`
+	Items []Session `json:"items"`
 }
 
-// TiltRunSpec defines the desired state of TiltRun
-type TiltRunSpec struct {
+// SessionSpec defines the desired state of Session
+type SessionSpec struct {
 	// TiltfilePath is the path to the Tiltfile for the run. It cannot be empty.
 	TiltfilePath string `json:"tiltfilePath"`
 	// ExitCondition defines the criteria for Tilt to exit.
@@ -76,38 +76,38 @@ const (
 
 var exitConditions = []ExitCondition{ExitConditionManual, ExitConditionCI}
 
-var _ resource.Object = &TiltRun{}
-var _ resourcestrategy.Validater = &TiltRun{}
+var _ resource.Object = &Session{}
+var _ resourcestrategy.Validater = &Session{}
 
-func (in *TiltRun) GetObjectMeta() *metav1.ObjectMeta {
+func (in *Session) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
 
-func (in *TiltRun) NamespaceScoped() bool {
+func (in *Session) NamespaceScoped() bool {
 	return false
 }
 
-func (in *TiltRun) New() runtime.Object {
-	return &TiltRun{}
+func (in *Session) New() runtime.Object {
+	return &Session{}
 }
 
-func (in *TiltRun) NewList() runtime.Object {
-	return &TiltRunList{}
+func (in *Session) NewList() runtime.Object {
+	return &SessionList{}
 }
 
-func (in *TiltRun) GetGroupVersionResource() schema.GroupVersionResource {
+func (in *Session) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "tilt.dev",
 		Version:  "v1alpha1",
-		Resource: "tiltruns",
+		Resource: "sessions",
 	}
 }
 
-func (in *TiltRun) IsStorageVersion() bool {
+func (in *Session) IsStorageVersion() bool {
 	return true
 }
 
-func (in *TiltRun) Validate(_ context.Context) field.ErrorList {
+func (in *Session) Validate(_ context.Context) field.ErrorList {
 	var fieldErrors field.ErrorList
 	if in.Spec.TiltfilePath == "" {
 		fieldErrors = append(fieldErrors, field.Required(field.NewPath("tiltfilePath"), "cannot be empty"))
@@ -137,32 +137,32 @@ func (in *TiltRun) Validate(_ context.Context) field.ErrorList {
 	return fieldErrors
 }
 
-var _ resource.ObjectList = &TiltRunList{}
+var _ resource.ObjectList = &SessionList{}
 
-func (in *TiltRunList) GetListMeta() *metav1.ListMeta {
+func (in *SessionList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
-// TiltRunStatus defines the observed state of TiltRun
-type TiltRunStatus struct {
+// SessionStatus defines the observed state of Session
+type SessionStatus struct {
 	// PID is the process identifier for this instance of Tilt.
 	PID int64 `json:"pid"`
 	// StartTime is when the Tilt engine was first started.
 	StartTime metav1.MicroTime `json:"startTime"`
-	// Targets are normalized representations of the servers/jobs managed by this TiltRun.
+	// Targets are normalized representations of the servers/jobs managed by this Session.
 	//
 	// A resource from a Tiltfile might produce one or more targets. A target can also be shared across
 	// multiple resources (e.g. an image referenced by multiple K8s pods).
 	Targets []Target `json:"resources"`
 
-	// Done indicates whether this TiltRun has completed its work and is ready to exit.
+	// Done indicates whether this Session has completed its work and is ready to exit.
 	Done bool `json:"done"`
-	// Error is a non-empty string when the TiltRun is Done but encountered a failure as defined by the ExitCondition
-	// from the TiltRunSpec.
+	// Error is a non-empty string when the Session is Done but encountered a failure as defined by the ExitCondition
+	// from the SessionSpec.
 	Error string `json:"error,omitempty"`
 }
 
-// Target is a server or job whose execution is managed as part of this TiltRun.
+// Target is a server or job whose execution is managed as part of this Session.
 type Target struct {
 	// Name is the name of the target; this is auto-generated from Tiltfile resources.
 	Name string `json:"name"`
@@ -231,16 +231,16 @@ type TargetStateTerminated struct {
 	Error string `json:"error,omitempty"`
 }
 
-// TiltRun implements ObjectWithStatusSubResource interface.
-var _ resource.ObjectWithStatusSubResource = &TiltRun{}
+// Session implements ObjectWithStatusSubResource interface.
+var _ resource.ObjectWithStatusSubResource = &Session{}
 
-func (in *TiltRun) GetStatus() resource.StatusSubResource {
+func (in *Session) GetStatus() resource.StatusSubResource {
 	return in.Status
 }
 
-// TiltRunStatus{} implements StatusSubResource interface.
-var _ resource.StatusSubResource = &TiltRunStatus{}
+// SessionStatus{} implements StatusSubResource interface.
+var _ resource.StatusSubResource = &SessionStatus{}
 
-func (in TiltRunStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
-	parent.(*TiltRun).Status = in
+func (in SessionStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
+	parent.(*Session).Status = in
 }

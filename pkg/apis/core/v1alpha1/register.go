@@ -45,7 +45,7 @@ var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
 
 func AllResourceObjects() []resource.Object {
 	return []resource.Object{
-		&TiltRun{},
+		&Session{},
 		&FileWatch{},
 		&Cmd{},
 		&PodLogStream{},
@@ -55,7 +55,7 @@ func AllResourceObjects() []resource.Object {
 }
 func AllResourceLists() []runtime.Object {
 	return []runtime.Object{
-		&TiltRunList{},
+		&SessionList{},
 		&FileWatchList{},
 		&CmdList{},
 		&PodLogStreamList{},
