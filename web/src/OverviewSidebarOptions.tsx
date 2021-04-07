@@ -119,9 +119,10 @@ export const ResourceNameFilterTextField = styled(TextField)`
   }
 `
 
-export const ClearResourceNameFilterButton = styled(CloseSvg)`
-  fill: ${Color.grayLightest};
-  cursor: pointer;
+export const ClearResourceNameFilterButton = styled.button`
+  ${mixinResetButtonStyle};
+  display: flex;
+  align-items: center;
 `
 
 type OverviewSidebarOptionsProps = {
@@ -208,7 +209,7 @@ function ResourceNameFilter(props: OverviewSidebarOptionsProps) {
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (
       <InputAdornment position="start">
-        <SearchSvg style={{ fill: Color.grayLightest }} />
+        <SearchSvg fill={Color.grayLightest} />
       </InputAdornment>
     ),
   }
@@ -222,7 +223,9 @@ function ResourceNameFilter(props: OverviewSidebarOptionsProps) {
 
     inputProps.endAdornment = (
       <InputAdornment position="end">
-        <ClearResourceNameFilterButton onClick={onClearClick} />
+        <ClearResourceNameFilterButton onClick={onClearClick}>
+          <CloseSvg fill={Color.grayLightest}/>
+        </ClearResourceNameFilterButton>
       </InputAdornment>
     )
   }
