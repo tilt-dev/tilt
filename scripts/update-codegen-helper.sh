@@ -18,6 +18,11 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+if [ "${BASH_VERSINFO:-0}" -lt 5 ]; then
+  >&2 printf "This script requires Bash 5.0+.\n\nOn macOS, run brew install bash and relaunch your terminal.\n"
+  exit 2
+fi
+
 if [[ -n "${CODEGEN_USER-}" ]]; then
     useradd "$CODEGEN_USER"
 fi
@@ -29,7 +34,7 @@ SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 
 if [[ "$(pwd)" != "${GOPATH}"* ]]; then
-    echo "ERROR: update-codegen.sh does not work correctly outside of GOPATH: $GOPATH $(pwd)"
+    >&2 echo "ERROR: update-codegen.sh does not work correctly outside of GOPATH: $GOPATH $(pwd)"
     exit 1
 fi
 
