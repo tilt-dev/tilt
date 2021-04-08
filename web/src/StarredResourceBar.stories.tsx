@@ -29,10 +29,10 @@ export const OneItem = () =>
   story([{ name: "foo", status: ResourceStatus.Healthy }])
 
 export const ThreeItems = () =>
-  story(Array(3).fill(["foo", ResourceStatus.Healthy]))
+  story(Array(3).fill({ name: "foo", status: ResourceStatus.Healthy }))
 
 export const TwentyItems = () =>
-  story(Array(20).fill(["foobar", ResourceStatus.Healthy]))
+  story(Array(20).fill({ name: "foobar", status: ResourceStatus.Healthy }))
 
 export const LongName = () =>
   story([
