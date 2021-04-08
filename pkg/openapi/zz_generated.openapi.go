@@ -1174,6 +1174,47 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 			SchemaProps: spec.SchemaProps{
 				Description: "PortForwardSpec defines the desired state of PortForward",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"pod": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the pod to port forward to/from. Required.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The namespace of the pod to port forward to/from. Defaults to the kubecontext default namespace.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"ContainerPort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port on the Kubernetes pod to connect to.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"LocalPort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port to expose on the current machine.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"Host": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional host to bind to on the current machine (localhost by default)",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"ContainerPort", "LocalPort"},
 			},
 		},
 	}
@@ -1185,8 +1226,19 @@ func schema_pkg_apis_core_v1alpha1_PortForwardStatus(ref common.ReferenceCallbac
 			SchemaProps: spec.SchemaProps{
 				Description: "PortForwardStatus defines the observed state of PortForward",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time at which we started trying to run the Port Forward (potentially distinct from the time the Port Forward successfully connected)",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
