@@ -94,7 +94,7 @@ export default function HeaderBar(props: HeaderBarProps) {
       <AllResourcesLink to={pb.encpath`/r/(all)/overview`}>
         All Resources
       </AllResourcesLink>
-      <ResourceStatusSummary view={props.view} showStatusLabels={false} />
+      <ResourceStatusSummary view={props.view} />
       <GlobalNav {...globalNavProps} />
     </HeaderBarRoot>
   )
