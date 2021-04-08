@@ -49,8 +49,8 @@ it("shows the counts it's given", () => {
   // "healthy" gets the denominator (total)
   // 0 counts are not rendered, except for "healthy"
   expectStatusCounts(root, [
+    { label: "unhealthy", counts: [4] },
     { label: "warning", counts: [2] },
     { label: "healthy", counts: [0, 11] },
-    { label: "unhealthy", counts: [4] },
   ])
 })
