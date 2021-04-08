@@ -1,5 +1,10 @@
 import { mount } from "enzyme"
 import React from "react"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import ClearLogs from "./ClearLogs"
 import { logLinesToString } from "./logs"
 import LogStore, { LogStoreProvider } from "./LogStore"
@@ -7,6 +12,14 @@ import { appendLinesForManifestAndSpan } from "./testlogs"
 import { ResourceName } from "./types"
 
 describe("ClearLogs", () => {
+  beforeEach(() => {
+    mockAnalyticsCalls()
+  })
+
+  afterEach(() => {
+    cleanupMockAnalyticsCalls()
+  })
+
   const createPopulatedLogStore = (): LogStore => {
     const logStore = new LogStore()
     appendLinesForManifestAndSpan(logStore, "", "", [
@@ -42,6 +55,11 @@ describe("ClearLogs", () => {
     root.find(ClearLogs).simulate("click")
     expect(logStore.spans).toEqual({})
     expect(logStore.allLog()).toHaveLength(0)
+
+    expectIncrs({
+      name: "ui.web.clearLogs",
+      tags: { action: "click", all: "true" },
+    })
   })
 
   it("clears a specific resource", () => {
@@ -60,5 +78,10 @@ describe("ClearLogs", () => {
     expect(logLinesToString(logStore.allLog(), false)).toEqual(
       "global 1\nglobal 2\nm2 build line 1\nm2 runtime line 1"
     )
+
+    expectIncrs({
+      name: "ui.web.clearLogs",
+      tags: { action: "click", all: "false" },
+    })
   })
 })

@@ -2,6 +2,7 @@ import React from "react"
 import { useHistory } from "react-router"
 import styled from "styled-components"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
+import { InstrumentedButton } from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
 import { ClassNameFromResourceStatus } from "./ResourceStatus"
 import {
@@ -30,7 +31,7 @@ export const StarredResourceLabel = styled.div`
 
   user-select: none;
 `
-const ResourceButton = styled.button`
+const ResourceButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   color: inherit;
 `
@@ -38,7 +39,7 @@ const StarIcon = styled(StarSvg)`
   height: ${SizeUnit(0.5)};
   width: ${SizeUnit(0.5)};
 `
-export const StarButton = styled.button`
+export const StarButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   ${StarIcon} {
     fill: ${Color.grayLight};
@@ -153,10 +154,14 @@ export function StarredResource(props: {
           onClick={() => {
             history.push(href)
           }}
+          analyticsName="ui.web.starredResourceBarResource"
         >
           <StarredResourceLabel>{props.resource.name}</StarredResourceLabel>
         </ResourceButton>
-        <StarButton onClick={onClick}>
+        <StarButton
+          onClick={onClick}
+          analyticsName="ui.web.starredResourceBarUnstar"
+        >
           <StarIcon />
         </StarButton>
       </StarredResourceRoot>

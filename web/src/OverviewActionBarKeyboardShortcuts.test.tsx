@@ -1,10 +1,22 @@
 import { fireEvent } from "@testing-library/dom"
 import { mount } from "enzyme"
 import React from "react"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import { logLinesToString } from "./logs"
 import LogStore from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { appendLinesForManifestAndSpan } from "./testlogs"
+
+beforeEach(() => {
+  mockAnalyticsCalls()
+})
+afterEach(() => {
+  cleanupMockAnalyticsCalls()
+})
 
 function numKeyCode(num: number): number {
   return num + 48
@@ -70,6 +82,10 @@ describe("clears logs", () => {
     ])
     fireEvent.keyDown(document.body, { key: "Backspace", metaKey: true })
     expect(logLinesToString(logStore!.allLog(), false)).toEqual("")
+    expectIncrs({
+      name: "ui.web.clearLogs",
+      tags: { action: "shortcut", all: "false" },
+    })
   })
 
   it("ctrl key", () => {
@@ -79,5 +95,9 @@ describe("clears logs", () => {
     ])
     fireEvent.keyDown(document.body, { key: "Backspace", ctrlKey: true })
     expect(logLinesToString(logStore!.allLog(), false)).toEqual("")
+    expectIncrs({
+      name: "ui.web.clearLogs",
+      tags: { action: "shortcut", all: "false" },
+    })
   })
 })

@@ -1,8 +1,11 @@
 import { mount, ReactWrapper } from "enzyme"
-import fetchMock from "jest-fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { expectIncrs } from "./analytics_test_helpers"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   TestsWithErrors,
@@ -80,13 +83,12 @@ const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
 
 describe("overview sidebar options", () => {
   beforeEach(() => {
-    fetchMock.resetMocks()
-    fetchMock.mockResponse(JSON.stringify({}))
+    mockAnalyticsCalls()
     jest.useFakeTimers()
   })
 
   afterEach(() => {
-    fetchMock.resetMocks()
+    cleanupMockAnalyticsCalls()
     localStorage.clear()
     jest.useRealTimers()
   })
@@ -109,6 +111,11 @@ describe("overview sidebar options", () => {
       false
     )
 
+    expectIncrs({
+      name: "ui.web.testsHiddenToggle",
+      tags: { action: "click", newTestsHiddenState: "true" },
+    })
+
     // re-check and make sure everything is visible
     clickTestsHiddenControl(root)
     assertSidebarItemsAndOptions(root, allNames, false, false, false)
@@ -120,6 +127,11 @@ describe("overview sidebar options", () => {
 
     clickTestsOnlyControl(root)
     assertSidebarItemsAndOptions(root, ["beep", "boop"], false, true, false)
+
+    expectIncrs({
+      name: "ui.web.testsOnlyToggle",
+      tags: { action: "click", newTestsOnlyState: "true" },
+    })
 
     // re-check and make sure tests are visible
     clickTestsOnlyControl(root)
@@ -291,8 +303,8 @@ describe("overview sidebar options", () => {
 
     button.simulate("click")
     expectIncrs({
-      name: "ui.web.resourceNameFilter",
-      tags: { action: "clear" },
+      name: "ui.web.clearResourceNameFilter",
+      tags: { action: "click" },
     })
   })
 })

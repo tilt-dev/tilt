@@ -1,10 +1,11 @@
 import React from "react"
 import styled from "styled-components"
 import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin.svg"
+import { InstrumentedButton } from "./instrumentedComponents"
 import { useSidebarPin } from "./SidebarPin"
 import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 
-let PinButton = styled.button`
+let PinButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   padding: 0;
   background-color: transparent;
@@ -77,7 +78,13 @@ export default function SidebarPinButton(
     className = "u-persistShow"
   }
   return (
-    <PinButton title={title} onClick={onClick} className={className}>
+    <PinButton
+      title={title}
+      onClick={onClick}
+      className={className}
+      analyticsName="ui.web.sidebarPinButton"
+      analyticsTags={{ newPinState: (!isPinned).toString() }}
+    >
       {icon}
     </PinButton>
   )

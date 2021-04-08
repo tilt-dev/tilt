@@ -1,4 +1,5 @@
 import React, { Component } from "react"
+import { incr } from "./analytics"
 import { isTargetEditable } from "./shortcut"
 import SidebarItem from "./SidebarItem"
 import { TabNav, useTabNav } from "./TabNav"
@@ -9,7 +10,7 @@ type Props = {
   selected: string
   tabNav: TabNav
   resourceView: ResourceView
-  onTrigger: (action: string) => void
+  onTrigger: () => void
 }
 
 /**
@@ -63,7 +64,8 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         if (e.metaKey || e.ctrlKey) {
           return
         }
-        this.props.onTrigger("shortcut")
+        this.props.onTrigger()
+        incr("ui.web.triggerResource", { action: "shortcut" })
         e.preventDefault()
         break
     }
@@ -77,7 +79,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
 type PublicProps = {
   items: SidebarItem[]
   selected: string
-  onTrigger: (action: string) => void
+  onTrigger: () => void
   resourceView: ResourceView
 }
 

@@ -1,7 +1,6 @@
 import React from "react"
 import TimeAgo from "react-timeago"
 import styled, { keyframes } from "styled-components"
-import { incr } from "./analytics"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
@@ -202,9 +201,7 @@ let SidebarItemTimeAgo = styled.span`
   padding-right: ${SizeUnit(0.25)};
 `
 
-export function triggerUpdate(name: string, action: string) {
-  incr("ui.web.triggerResource", { action })
-
+export function triggerUpdate(name: string) {
   let url = `//${window.location.host}/api/trigger`
 
   fetch(url, {
@@ -221,8 +218,6 @@ export function triggerUpdate(name: string, action: string) {
 }
 
 export function toggleTriggerMode(name: string, mode: TriggerMode) {
-  incr("ui.web.toggleTriggerMode", { toMode: mode.toString() })
-
   let url = "/api/override/trigger_mode"
 
   fetch(url, {

@@ -53,7 +53,7 @@ describe("SidebarTriggerButton", () => {
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
-        onTrigger={() => triggerUpdate("doggos", "click")}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 
@@ -93,7 +93,7 @@ describe("SidebarTriggerButton", () => {
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={true}
-        onTrigger={() => triggerUpdate("doggos", "click")}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 
@@ -116,7 +116,7 @@ describe("SidebarTriggerButton", () => {
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
-        onTrigger={() => triggerUpdate("doggos", "click")}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 

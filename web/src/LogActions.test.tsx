@@ -1,6 +1,11 @@
 import { mount } from "enzyme"
 import React from "react"
 import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
+import {
   FontSizeDecreaseButton,
   FontSizeIncreaseButton,
   LogFontSizeScaleCSSProperty,
@@ -13,12 +18,14 @@ describe("LogsFontSize", () => {
   const cleanup = () => {
     localStorage.clear()
     document.documentElement.style.removeProperty("--log-font-scale")
+    cleanupMockAnalyticsCalls()
   }
 
   beforeEach(() => {
     cleanup()
     // CSS won't be loaded in test context, so just explicitly set it
     document.documentElement.style.setProperty("--log-font-scale", "100%")
+    mockAnalyticsCalls()
   })
   afterEach(cleanup)
 
@@ -44,6 +51,10 @@ describe("LogsFontSize", () => {
     root.find(FontSizeDecreaseButton).simulate("click")
     expect(getCSSValue()).toEqual("95%")
     expect(getLocalStorageValue()).toEqual(`95%`) // JSON serialized
+    expectIncrs({
+      name: "ui.web.zoomLogs",
+      tags: { action: "click", dir: "out" },
+    })
   })
 
   it("has a minimum font scale", () => {
@@ -59,5 +70,9 @@ describe("LogsFontSize", () => {
     root.find(FontSizeIncreaseButton).simulate("click")
     expect(getCSSValue()).toEqual("105%")
     expect(getLocalStorageValue()).toEqual(`105%`)
+    expectIncrs({
+      name: "ui.web.zoomLogs",
+      tags: { action: "click", dir: "in" },
+    })
   })
 })

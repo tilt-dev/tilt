@@ -2,7 +2,11 @@ import { mount } from "enzyme"
 import fetchMock from "jest-fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { expectIncr } from "./analytics_test_helpers"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import { toggleTriggerMode } from "./OverviewItemView"
 import OverviewPane from "./OverviewPane"
 import {
@@ -27,6 +31,11 @@ let expectToggleToManual = function (mode: TriggerMode) {
 describe("SidebarTriggerButton", () => {
   beforeEach(() => {
     fetchMock.resetMocks()
+    mockAnalyticsCalls()
+  })
+
+  afterEach(() => {
+    cleanupMockAnalyticsCalls()
   })
 
   it("shows toggle button only for test cards", () => {
@@ -104,8 +113,12 @@ describe("SidebarTriggerButton", () => {
     expect(preventDefaulted).toEqual(true)
 
     expect(fetchMock.mock.calls.length).toEqual(2) // 1 call to analytics, one to /override
-    expectIncr(0, "ui.web.toggleTriggerMode", {
-      toMode: TriggerMode.TriggerModeManual.toString(),
+    expectIncrs({
+      name: "ui.web.toggleTriggerMode",
+      tags: {
+        action: "click",
+        toMode: TriggerMode.TriggerModeManual.toString(),
+      },
     })
 
     expect(fetchMock.mock.calls[1][0]).toEqual("/api/override/trigger_mode")
