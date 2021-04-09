@@ -14,7 +14,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var _ BuildAndDeployer = &LocalTargetBuildAndDeployer{}
+var _ buildcontrol.BuildAndDeployer = &LocalTargetBuildAndDeployer{}
 
 // TODO(maia): CommandRunner interface for testability
 type LocalTargetBuildAndDeployer struct {

@@ -14,7 +14,7 @@ import (
 )
 
 type BuildController struct {
-	b                  BuildAndDeployer
+	b                  buildcontrol.BuildAndDeployer
 	buildsStartedCount int // used to synchronize with state
 	disabledForTesting bool
 }
@@ -32,7 +32,7 @@ func (e buildEntry) Name() model.ManifestName       { return e.name }
 func (e buildEntry) FilesChanged() []string         { return e.filesChanged }
 func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
 
-func NewBuildController(b BuildAndDeployer) *BuildController {
+func NewBuildController(b buildcontrol.BuildAndDeployer) *BuildController {
 	return &BuildController{
 		b: b,
 	}

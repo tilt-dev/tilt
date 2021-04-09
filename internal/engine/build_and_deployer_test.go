@@ -758,7 +758,7 @@ type bdFixture struct {
 	cancel func()
 	docker *docker.FakeClient
 	k8s    *k8s.FakeK8sClient
-	bd     BuildAndDeployer
+	bd     buildcontrol.BuildAndDeployer
 	st     *store.TestingStore
 	dcCli  *dockercompose.FakeDCClient
 	logs   *bytes.Buffer

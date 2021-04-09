@@ -45,7 +45,7 @@ var DeployerBaseWireSet = wire.NewSet(
 
 	tracer.InitOpenTelemetry,
 
-	wire.Bind(new(BuildAndDeployer), new(*CompositeBuildAndDeployer)),
+	wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,
 	buildcontrol.ProvideUpdateMode,
 )
@@ -69,7 +69,7 @@ func provideBuildAndDeployer(
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
 	kp KINDLoader,
-	analytics *analytics.TiltAnalytics) (BuildAndDeployer, error) {
+	analytics *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		k8s.ProvideContainerRuntime,

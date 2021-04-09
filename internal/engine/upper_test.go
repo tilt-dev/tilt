@@ -226,7 +226,7 @@ type fakeBuildAndDeployer struct {
 	resultsByID store.BuildResultSet
 }
 
-var _ BuildAndDeployer = &fakeBuildAndDeployer{}
+var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)

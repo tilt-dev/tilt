@@ -27,7 +27,7 @@ type DockerComposeBuildAndDeployer struct {
 	clock build.Clock
 }
 
-var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
+var _ buildcontrol.BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
 func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
 	ib *imageBuilder, c build.Clock) *DockerComposeBuildAndDeployer {

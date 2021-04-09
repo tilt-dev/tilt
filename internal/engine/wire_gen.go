@@ -25,7 +25,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
 	dockerUpdater := containerupdate.NewDockerUpdater(docker2)
 	execUpdater := containerupdate.NewExecUpdater(kClient)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
@@ -122,7 +122,7 @@ var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Valu
 	NewImageBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
 	NewImageBuilder,
-	DefaultBuildOrder, tracer.InitOpenTelemetry, wire.Bind(new(BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer, buildcontrol.ProvideUpdateMode,
+	DefaultBuildOrder, tracer.InitOpenTelemetry, wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer, buildcontrol.ProvideUpdateMode,
 )
 
 var DeployerWireSetTest = wire.NewSet(

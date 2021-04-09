@@ -25,7 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
+var _ buildcontrol.BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
 	dcu     *containerupdate.DockerUpdater

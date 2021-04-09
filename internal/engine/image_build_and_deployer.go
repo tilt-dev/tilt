@@ -24,7 +24,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var _ BuildAndDeployer = &ImageBuildAndDeployer{}
+var _ buildcontrol.BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type KINDLoader interface {
 	LoadToKIND(ctx context.Context, ref reference.NamedTagged) error
