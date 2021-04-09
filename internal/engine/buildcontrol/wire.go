@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tracer"
@@ -29,6 +30,7 @@ var BaseWireSet = wire.NewSet(
 	wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)),
 
 	// BuildOrder
+	NewDockerComposeBuildAndDeployer,
 	NewImageBuildAndDeployer,
 	containerupdate.NewDockerUpdater,
 	containerupdate.NewExecUpdater,
@@ -52,6 +54,33 @@ func ProvideImageBuildAndDeployer(
 		BaseWireSet,
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		k8s.ProvideContainerRuntime,
+	)
+
+	return nil, nil
+}
+
+func ProvideDockerComposeBuildAndDeployer(
+	ctx context.Context,
+	dcCli dockercompose.DockerComposeClient,
+	dCli docker.Client,
+	dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
+	wire.Build(
+		BaseWireSet,
+		wire.Value(UpdateModeFlag(UpdateModeAuto)),
+		build.ProvideClock,
+
+		// EnvNone ensures that we get an exploding k8s client.
+		wire.Value(k8s.Env(k8s.EnvNone)),
+		wire.Value(k8s.KubeContextOverride("")),
+		k8s.ProvideClientConfig,
+		k8s.ProvideConfigNamespace,
+		k8s.ProvideKubeContext,
+		k8s.ProvideK8sClient,
+		k8s.ProvideRESTConfig,
+		k8s.ProvideClientset,
+		k8s.ProvidePortForwardClient,
+		k8s.ProvideContainerRuntime,
+		k8s.ProvideKubeConfig,
 	)
 
 	return nil, nil

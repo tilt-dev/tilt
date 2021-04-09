@@ -40,7 +40,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, analytics2, buildcontrolUpdateMode, clock, runtime, kp)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
-	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
+	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
 	localTargetBuildAndDeployer := NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, buildcontrolUpdateMode, env, runtime)
 	spanProcessor := _wireSpanProcessorValue
@@ -57,51 +57,10 @@ var (
 	_wireSpanProcessorValue = (trace.SpanProcessor)(nil)
 )
 
-func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
-	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(dCli, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	clock := build.ProvideClock()
-	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
-	updateModeFlag := _wireUpdateModeFlagValue
-	env := _wireEnvValue
-	kubeContextOverride := _wireKubeContextOverrideValue
-	clientConfig := k8s.ProvideClientConfig(kubeContextOverride)
-	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
-	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
-	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	config, err := k8s.ProvideKubeConfig(clientConfig, kubeContextOverride)
-	if err != nil {
-		return nil, err
-	}
-	kubeContext, err := k8s.ProvideKubeContext(config)
-	if err != nil {
-		return nil, err
-	}
-	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	updateMode, err := buildcontrol.ProvideUpdateMode(updateModeFlag, env, runtime)
-	if err != nil {
-		return nil, err
-	}
-	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
-	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, imageBuilder, clock)
-	return dockerComposeBuildAndDeployer, nil
-}
-
-var (
-	_wireUpdateModeFlagValue      = buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)
-	_wireEnvValue                 = k8s.Env(k8s.EnvNone)
-	_wireKubeContextOverrideValue = k8s.KubeContextOverride("")
-)
-
 // wire.go:
 
 var DeployerBaseWireSet = wire.NewSet(buildcontrol.BaseWireSet, wire.Value(UpperReducer), NewLocalTargetBuildAndDeployer,
 	NewLiveUpdateBuildAndDeployer,
-	NewDockerComposeBuildAndDeployer,
 	DefaultBuildOrder, wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
 )
 

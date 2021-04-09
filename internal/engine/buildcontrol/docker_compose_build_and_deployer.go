@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -23,14 +22,14 @@ import (
 type DockerComposeBuildAndDeployer struct {
 	dcc   dockercompose.DockerComposeClient
 	dc    docker.Client
-	ib    *buildcontrol.ImageBuilder
+	ib    *ImageBuilder
 	clock build.Clock
 }
 
-var _ buildcontrol.BuildAndDeployer = &DockerComposeBuildAndDeployer{}
+var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
 func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
-	ib *buildcontrol.ImageBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
+	ib *ImageBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
 		dcc:   dcc,
 		dc:    dc,
@@ -61,7 +60,7 @@ func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) ([]mo
 func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (res store.BuildResultSet, err error) {
 	iTargets, dcTargets := bd.extract(specs)
 	if len(dcTargets) != 1 {
-		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf(
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf(
 			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
 	}
 	dcTarget := dcTargets[0]
@@ -73,7 +72,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		})
 	}()
 
-	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, currentState, bd.ib.CanReuseRef)
+	q, err := NewImageTargetQueue(ctx, iTargets, currentState, bd.ib.CanReuseRef)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -107,7 +106,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return nil, fmt.Errorf("Not an image target: %T", target)
 		}
 
-		iTarget, err := buildcontrol.InjectImageDependencies(iTarget, iTargetMap, depResults)
+		iTarget, err := InjectImageDependencies(iTarget, iTargetMap, depResults)
 		if err != nil {
 			return nil, err
 		}

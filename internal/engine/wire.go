@@ -26,7 +26,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	// BuildOrder
 	NewLocalTargetBuildAndDeployer,
 	NewLiveUpdateBuildAndDeployer,
-	NewDockerComposeBuildAndDeployer,
 	DefaultBuildOrder,
 
 	wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)),
@@ -56,33 +55,6 @@ func provideBuildAndDeployer(
 	wire.Build(
 		DeployerWireSetTest,
 		k8s.ProvideContainerRuntime,
-	)
-
-	return nil, nil
-}
-
-func provideDockerComposeBuildAndDeployer(
-	ctx context.Context,
-	dcCli dockercompose.DockerComposeClient,
-	dCli docker.Client,
-	dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
-	wire.Build(
-		DeployerWireSetTest,
-		wire.Value(buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)),
-		build.ProvideClock,
-
-		// EnvNone ensures that we get an exploding k8s client.
-		wire.Value(k8s.Env(k8s.EnvNone)),
-		wire.Value(k8s.KubeContextOverride("")),
-		k8s.ProvideClientConfig,
-		k8s.ProvideConfigNamespace,
-		k8s.ProvideKubeContext,
-		k8s.ProvideK8sClient,
-		k8s.ProvideRESTConfig,
-		k8s.ProvideClientset,
-		k8s.ProvidePortForwardClient,
-		k8s.ProvideContainerRuntime,
-		k8s.ProvideKubeConfig,
 	)
 
 	return nil, nil
