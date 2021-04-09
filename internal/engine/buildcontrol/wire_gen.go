@@ -86,5 +86,6 @@ var (
 // wire.go:
 
 var BaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), k8s.ProvideMinikubeClient, build.DefaultDockerBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)), NewDockerComposeBuildAndDeployer,
-	NewImageBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewImageBuilder, tracer.InitOpenTelemetry, ProvideUpdateMode,
+	NewImageBuildAndDeployer,
+	NewLocalTargetBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewImageBuilder, tracer.InitOpenTelemetry, ProvideUpdateMode,
 )

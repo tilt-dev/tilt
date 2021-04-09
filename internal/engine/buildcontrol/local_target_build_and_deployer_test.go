@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"bytes"
@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 
 	"github.com/tilt-dev/tilt/internal/store"
@@ -116,7 +115,7 @@ func TestFailedCommand(t *testing.T) {
 	require.NotNil(t, err, "failed cmd should throw error")
 	assert.Contains(t, err.Error(),
 		"Command \"echo oh no && exit 1\" failed: exit status 1")
-	assert.True(t, buildcontrol.IsDontFallBackError(err), "expect DontFallBackError")
+	assert.True(t, IsDontFallBackError(err), "expect DontFallBackError")
 
 	assert.Contains(t, f.out.String(), "oh no", "expect cmd stdout in logs")
 }

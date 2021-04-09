@@ -24,7 +24,6 @@ var DeployerBaseWireSet = wire.NewSet(
 	wire.Value(UpperReducer),
 
 	// BuildOrder
-	NewLocalTargetBuildAndDeployer,
 	NewLiveUpdateBuildAndDeployer,
 	DefaultBuildOrder,
 

@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"context"
@@ -7,14 +7,13 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var _ buildcontrol.BuildAndDeployer = &LocalTargetBuildAndDeployer{}
+var _ BuildAndDeployer = &LocalTargetBuildAndDeployer{}
 
 // TODO(maia): CommandRunner interface for testability
 type LocalTargetBuildAndDeployer struct {
@@ -28,7 +27,7 @@ func NewLocalTargetBuildAndDeployer(c build.Clock) *LocalTargetBuildAndDeployer 
 func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
 	targets := bd.extract(specs)
 	if len(targets) != 1 {
-		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf(
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf(
 			"LocalTargetBuildAndDeployer requires exactly one LocalTarget (got %d)", len(targets))
 	}
 
@@ -49,7 +48,7 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 	err = bd.run(ctx, targ.UpdateCmd)
 	if err != nil {
 		// (Never fall back from the LocalTargetBaD, none of our other BaDs can handle this target)
-		return store.BuildResultSet{}, buildcontrol.DontFallBackErrorf("Command %q failed: %v", targ.UpdateCmd.String(), err)
+		return store.BuildResultSet{}, DontFallBackErrorf("Command %q failed: %v", targ.UpdateCmd.String(), err)
 	}
 
 	// HACK(maia) Suppose target A modifies file X and target B depends on file X.

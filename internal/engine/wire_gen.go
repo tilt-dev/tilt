@@ -41,7 +41,7 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, analytics2, buildcontrolUpdateMode, clock, runtime, kp)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
-	localTargetBuildAndDeployer := NewLocalTargetBuildAndDeployer(clock)
+	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, buildcontrolUpdateMode, env, runtime)
 	spanProcessor := _wireSpanProcessorValue
 	traceTracer, err := tracer.InitOpenTelemetry(ctx, spanProcessor)
@@ -59,8 +59,7 @@ var (
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(buildcontrol.BaseWireSet, wire.Value(UpperReducer), NewLocalTargetBuildAndDeployer,
-	NewLiveUpdateBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(buildcontrol.BaseWireSet, wire.Value(UpperReducer), NewLiveUpdateBuildAndDeployer,
 	DefaultBuildOrder, wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
 )
 
