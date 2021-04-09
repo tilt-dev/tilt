@@ -91,7 +91,7 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("POSTs to endpoint when clicked", () => {
-    fetchMock.mockResponse(JSON.stringify({}))
+    fetchMock.doMock(JSON.stringify({}))
 
     let toggleFoobar = toggleTriggerMode.bind(null, "foobar")
     const root = mount(

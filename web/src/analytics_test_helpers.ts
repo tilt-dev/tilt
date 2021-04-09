@@ -1,10 +1,9 @@
 import fetchMock from "jest-fetch-mock"
 import { Tags } from "./analytics"
 
-// at some point we might want to be clever about this and only mock the responses of calls to /api/analytics
 export function mockAnalyticsCalls() {
   fetchMock.resetMocks()
-  fetchMock.mockResponse(JSON.stringify({}))
+  fetchMock.mockIf("//localhost/api/analytics", JSON.stringify({}))
 }
 export function cleanupMockAnalyticsCalls() {
   fetchMock.resetMocks()
