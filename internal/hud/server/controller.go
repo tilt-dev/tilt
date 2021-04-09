@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 	genericapiserver "k8s.io/apiserver/pkg/server"
@@ -54,13 +53,11 @@ func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 	s.shutdown()
 	s.assetServer.TearDown(ctx)
 
-	ctxWeb, cancelWeb := context.WithTimeout(ctx, 10*time.Millisecond)
-	defer cancelWeb()
-	_ = s.webServer.Shutdown(ctxWeb)
-
-	ctxApi, cancelApi := context.WithTimeout(ctx, 10*time.Millisecond)
-	defer cancelApi()
-	_ = s.apiServer.Shutdown(ctxApi)
+	// Close all active connections immediately.
+	// Tilt is deleting all its state, so there's no good
+	// reason to handle graceful shutdown.
+	_ = s.webServer.Close()
+	_ = s.apiServer.Close()
 }
 
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {

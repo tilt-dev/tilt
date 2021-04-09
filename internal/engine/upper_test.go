@@ -2490,6 +2490,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 
 func TestHudExitNoError(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.Start([]model.Manifest{})
 	f.store.Dispatch(hud.NewExitAction(nil))
 	err := f.WaitForExit()
@@ -2498,6 +2499,7 @@ func TestHudExitNoError(t *testing.T) {
 
 func TestHudExitWithError(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.Start([]model.Manifest{})
 	e := errors.New("helllllo")
 	f.store.Dispatch(hud.NewExitAction(e))
@@ -2506,6 +2508,7 @@ func TestHudExitWithError(t *testing.T) {
 
 func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.loadAndStart()
 
 	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
@@ -2521,6 +2524,7 @@ func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 
 func TestDockerComposeUp(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	redis, server := f.setupDCFixture()
 
 	f.Start([]model.Manifest{redis, server})
@@ -2536,6 +2540,7 @@ func TestDockerComposeUp(t *testing.T) {
 
 func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	f.Start([]model.Manifest{m})
@@ -2554,6 +2559,7 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 
 func TestDockerComposeEventSetsStatus(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	f.Start([]model.Manifest{m})
@@ -2591,6 +2597,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 
 func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	// Actual behavior is that we init with zero manifests, and add in manifests
@@ -2614,6 +2621,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 
 func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m, _ := f.setupDCFixture()
 	expected := "yarn install"
 	f.setBuildLogOutput(m.DockerComposeTarget().ID(), expected)
@@ -2633,6 +2641,7 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 
 func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m, _ := f.setupDCFixture()
 	expected := "hello world"
 	output := make(chan string, 1)
@@ -2660,6 +2669,7 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 
 func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m, _ := f.setupDCFixture()
 	expected := "Attaching to snack\n"
 	output := make(chan string, 1)
@@ -2682,6 +2692,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 // we inferred crash from ContainerState rather than sequences of events.
 func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, m2 := f.setupDCFixture()
 
 	f.loadAndStart()
@@ -2739,6 +2750,7 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 
 func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, _ := f.setupDCFixture()
 
 	expected := container.ID("aaaaaa")
@@ -2763,6 +2775,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.WriteFile("Tiltfile", "")
 
 	closeCh := make(chan error)
@@ -2827,6 +2840,7 @@ func TestUpperStart(t *testing.T) {
 
 func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, m2 := NewManifestsWithCommonAncestor(f)
 	f.Start([]model.Manifest{m1, m2})
 
@@ -2948,6 +2962,7 @@ func TestSetAnalyticsOpt(t *testing.T) {
 
 func TestFeatureFlagsStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 
@@ -2972,6 +2987,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 
 func TestTeamIDStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 
