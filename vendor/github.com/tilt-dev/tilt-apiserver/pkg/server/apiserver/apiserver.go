@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 )
 
@@ -50,7 +49,7 @@ type ExtraConfig struct {
 	Scheme      *runtime.Scheme
 	Codecs      serializer.CodecFactory
 	APIs        map[schema.GroupVersionResource]StorageProvider
-	ServingInfo *genericapiserver.DeprecatedInsecureServingInfo
+	ServingInfo *genericapiserver.SecureServingInfo
 	Version     *version.Info
 }
 
@@ -82,12 +81,6 @@ func (cfg *Config) Complete() CompletedConfig {
 		&cfg.ExtraConfig,
 	}
 
-	c.GenericConfig.Authorization = genericapiserver.AuthorizationInfo{
-		Authorizer: authorizerfactory.NewAlwaysAllowAuthorizer(),
-	}
-	c.GenericConfig.Authentication = genericapiserver.AuthenticationInfo{
-		Authenticator: genericapiserver.InsecureSuperuser{},
-	}
 	c.GenericConfig.Version = &version.Info{
 		Major: "1",
 		Minor: "0",

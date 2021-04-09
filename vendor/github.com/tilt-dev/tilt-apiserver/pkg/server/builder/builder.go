@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/options"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
 	"github.com/tilt-dev/tilt-apiserver/pkg/storage/filepath"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/sets"
 	genericapiserver "k8s.io/apiserver/pkg/server"
-	genericoptions "k8s.io/apiserver/pkg/server/options"
 )
 
 // NewServerBuilder builds an apiserver to server Kubernetes resources and sub resources.
@@ -44,7 +44,7 @@ func NewServerBuilder() *Server {
 		codecs:  serializer.NewCodecFactory(scheme),
 		storage: map[schema.GroupResource]*singletonProvider{},
 		apis:    map[schema.GroupVersionResource]apiserver.StorageProvider{},
-		serving: &genericoptions.DeprecatedInsecureServingOptions{
+		serving: &options.SecureServingOptions{
 			BindAddress: net.ParseIP("127.0.0.1"),
 		},
 	}
@@ -64,7 +64,7 @@ type Server struct {
 	groupVersions        map[schema.GroupVersion]bool
 	orderedGroupVersions []schema.GroupVersion
 	schemeBuilder        runtime.SchemeBuilder
-	serving              *genericoptions.DeprecatedInsecureServingOptions
+	serving              *options.SecureServingOptions
 	connProvider         apiserver.ConnProvider
 }
 

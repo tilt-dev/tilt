@@ -517,7 +517,7 @@ github.com/tilt-dev/localregistry-go
 ## explicit
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober
-# github.com/tilt-dev/tilt-apiserver v0.2.5
+# github.com/tilt-dev/tilt-apiserver v0.3.1
 ## explicit
 github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder
@@ -525,7 +525,9 @@ github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/util
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder/rest
+github.com/tilt-dev/tilt-apiserver/pkg/server/options
 github.com/tilt-dev/tilt-apiserver/pkg/server/start
+github.com/tilt-dev/tilt-apiserver/pkg/server/testdata
 github.com/tilt-dev/tilt-apiserver/pkg/storage/filepath
 # github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 ## explicit
@@ -609,18 +611,14 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 # golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 golang.org/x/crypto/chacha20
-golang.org/x/crypto/cryptobyte
-golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/subtle
-golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/poly1305
-golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/terminal
@@ -799,8 +797,6 @@ gopkg.in/d4l3k/messagediff.v1
 ## explicit
 # gopkg.in/inf.v0 v0.9.1
 gopkg.in/inf.v0
-# gopkg.in/natefinch/lumberjack.v2 v2.0.0
-gopkg.in/natefinch/lumberjack.v2
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit
 gopkg.in/yaml.v2
@@ -950,14 +946,10 @@ k8s.io/apiserver/pkg/apis/apiserver/v1
 k8s.io/apiserver/pkg/apis/apiserver/v1alpha1
 k8s.io/apiserver/pkg/apis/apiserver/v1beta1
 k8s.io/apiserver/pkg/apis/audit
-k8s.io/apiserver/pkg/apis/audit/install
 k8s.io/apiserver/pkg/apis/audit/v1
 k8s.io/apiserver/pkg/apis/audit/v1alpha1
 k8s.io/apiserver/pkg/apis/audit/v1beta1
 k8s.io/apiserver/pkg/apis/audit/validation
-k8s.io/apiserver/pkg/apis/config
-k8s.io/apiserver/pkg/apis/config/v1
-k8s.io/apiserver/pkg/apis/config/validation
 k8s.io/apiserver/pkg/apis/flowcontrol/bootstrap
 k8s.io/apiserver/pkg/audit
 k8s.io/apiserver/pkg/audit/policy
@@ -976,7 +968,6 @@ k8s.io/apiserver/pkg/authentication/token/tokenfile
 k8s.io/apiserver/pkg/authentication/user
 k8s.io/apiserver/pkg/authorization/authorizer
 k8s.io/apiserver/pkg/authorization/authorizerfactory
-k8s.io/apiserver/pkg/authorization/path
 k8s.io/apiserver/pkg/authorization/union
 k8s.io/apiserver/pkg/endpoints
 k8s.io/apiserver/pkg/endpoints/deprecation
@@ -1005,9 +996,6 @@ k8s.io/apiserver/pkg/server/filters
 k8s.io/apiserver/pkg/server/healthz
 k8s.io/apiserver/pkg/server/httplog
 k8s.io/apiserver/pkg/server/mux
-k8s.io/apiserver/pkg/server/options
-k8s.io/apiserver/pkg/server/options/encryptionconfig
-k8s.io/apiserver/pkg/server/resourceconfig
 k8s.io/apiserver/pkg/server/routes
 k8s.io/apiserver/pkg/server/storage
 k8s.io/apiserver/pkg/storage
@@ -1019,11 +1007,6 @@ k8s.io/apiserver/pkg/storage/names
 k8s.io/apiserver/pkg/storage/storagebackend
 k8s.io/apiserver/pkg/storage/storagebackend/factory
 k8s.io/apiserver/pkg/storage/value
-k8s.io/apiserver/pkg/storage/value/encrypt/aes
-k8s.io/apiserver/pkg/storage/value/encrypt/envelope
-k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1
-k8s.io/apiserver/pkg/storage/value/encrypt/identity
-k8s.io/apiserver/pkg/storage/value/encrypt/secretbox
 k8s.io/apiserver/pkg/storageversion
 k8s.io/apiserver/pkg/util/apihelpers
 k8s.io/apiserver/pkg/util/dryrun
@@ -1043,10 +1026,6 @@ k8s.io/apiserver/pkg/util/shufflesharding
 k8s.io/apiserver/pkg/util/webhook
 k8s.io/apiserver/pkg/util/wsstream
 k8s.io/apiserver/pkg/warning
-k8s.io/apiserver/plugin/pkg/audit/buffered
-k8s.io/apiserver/plugin/pkg/audit/log
-k8s.io/apiserver/plugin/pkg/audit/truncate
-k8s.io/apiserver/plugin/pkg/audit/webhook
 k8s.io/apiserver/plugin/pkg/authenticator/token/webhook
 k8s.io/apiserver/plugin/pkg/authorizer/webhook
 # k8s.io/cli-runtime v0.20.2
@@ -1372,8 +1351,6 @@ k8s.io/gengo/generator
 k8s.io/gengo/namer
 k8s.io/gengo/parser
 k8s.io/gengo/types
-# k8s.io/klog v1.0.0
-k8s.io/klog
 # k8s.io/klog/v2 v2.8.0
 ## explicit
 k8s.io/klog/v2
