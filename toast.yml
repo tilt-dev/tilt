@@ -46,4 +46,5 @@ tasks:
     output_paths:
       - ./internal/cli/wire_gen.go
       - ./internal/engine/wire_gen.go
-    command: wire ./internal/engine && wire ./internal/cli && make goimports
+      - ./internal/engine/buildcontrol/wire_gen.go
+    command: wire ./internal/engine && wire ./internal/engine/buildcontrol && wire ./internal/cli && make goimports

@@ -25,7 +25,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
+func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
 	dockerUpdater := containerupdate.NewDockerUpdater(docker2)
 	execUpdater := containerupdate.NewExecUpdater(kClient)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
@@ -38,9 +38,9 @@ func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, analytics2, buildcontrolUpdateMode, clock, runtime, kp)
-	engineImageBuilder := NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
-	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, engineImageBuilder, clock)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, analytics2, buildcontrolUpdateMode, clock, runtime, kp)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
 	localTargetBuildAndDeployer := NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, buildcontrolUpdateMode, env, runtime)
 	spanProcessor := _wireSpanProcessorValue
@@ -57,32 +57,13 @@ var (
 	_wireSpanProcessorValue = (trace.SpanProcessor)(nil)
 )
 
-func provideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
-	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
-	updateModeFlag := _wireUpdateModeFlagValue
-	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	updateMode, err := buildcontrol.ProvideUpdateMode(updateModeFlag, env, runtime)
-	if err != nil {
-		return nil, err
-	}
-	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, analytics2, updateMode, clock, runtime, kp)
-	return imageBuildAndDeployer, nil
-}
-
-var (
-	_wireUpdateModeFlagValue = buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)
-)
-
 func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(dCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
-	updateModeFlag := _wireBuildcontrolUpdateModeFlagValue
+	updateModeFlag := _wireUpdateModeFlagValue
 	env := _wireEnvValue
 	kubeContextOverride := _wireKubeContextOverrideValue
 	clientConfig := k8s.ProvideClientConfig(kubeContextOverride)
@@ -105,24 +86,23 @@ func provideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	if err != nil {
 		return nil, err
 	}
-	engineImageBuilder := NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
-	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, engineImageBuilder, clock)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, imageBuilder, clock)
 	return dockerComposeBuildAndDeployer, nil
 }
 
 var (
-	_wireBuildcontrolUpdateModeFlagValue = buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)
-	_wireEnvValue                        = k8s.Env(k8s.EnvNone)
-	_wireKubeContextOverrideValue        = k8s.KubeContextOverride("")
+	_wireUpdateModeFlagValue      = buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)
+	_wireEnvValue                 = k8s.Env(k8s.EnvNone)
+	_wireKubeContextOverrideValue = k8s.KubeContextOverride("")
 )
 
 // wire.go:
 
-var DeployerBaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), wire.Value(UpperReducer), k8s.ProvideMinikubeClient, build.DefaultDockerBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)), NewLocalTargetBuildAndDeployer,
-	NewImageBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewLiveUpdateBuildAndDeployer,
+var DeployerBaseWireSet = wire.NewSet(buildcontrol.BaseWireSet, wire.Value(UpperReducer), NewLocalTargetBuildAndDeployer,
+	NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
-	NewImageBuilder,
-	DefaultBuildOrder, tracer.InitOpenTelemetry, wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer, buildcontrol.ProvideUpdateMode,
+	DefaultBuildOrder, wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer,
 )
 
 var DeployerWireSetTest = wire.NewSet(

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
@@ -59,7 +60,7 @@ func TestGKEDeploy(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +85,7 @@ func TestDockerForMacDeploy(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +111,7 @@ func TestYamlManifestDeploy(t *testing.T) {
 
 	manifest := manifestbuilder.New(f, "some_yaml").
 		WithK8sYAML(testyaml.TracerYAML).Build()
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +132,7 @@ func TestLiveUpdateTaskKilled(t *testing.T) {
 	f.docker.SetExecError(docker.ExitError{ExitCode: build.TaskKillExitCode})
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +155,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +176,7 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err == nil {
 		t.Errorf("Expected this error to fail fallback tester and propagate back up")
@@ -205,7 +206,7 @@ func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 	changed := f.WriteFile("fall_back.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
@@ -230,7 +231,7 @@ func TestLiveUpdateFallbackMessagingUnexpectedError(t *testing.T) {
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if err != nil {
 		t.Fatal(err)
@@ -250,7 +251,7 @@ func TestLiveUpdateTwice(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
 
@@ -288,7 +289,7 @@ func TestLiveUpdateTwiceDeadPod(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
 
@@ -339,7 +340,7 @@ func TestIgnoredFiles(t *testing.T) {
 	f.WriteFile("a.txt", "a")
 	f.WriteFile(".git/index", "garbage")
 
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -369,7 +370,7 @@ func TestCustomBuild(t *testing.T) {
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
 
 	manifest := NewSanchoCustomBuildManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
@@ -393,7 +394,7 @@ func TestCustomBuildDeterministicTag(t *testing.T) {
 	f.docker.Images[refStr] = types.ImageInspect{ID: string(sha)}
 
 	manifest := NewSanchoCustomBuildManifestWithTag(f, "deterministic-tag")
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
@@ -414,7 +415,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateMultiStageManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
@@ -452,7 +453,7 @@ func TestDockerComposeImageBuild(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateDCManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 
 	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
 	if err != nil {
@@ -470,7 +471,7 @@ func TestDockerComposeLiveUpdate(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateDCManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 
@@ -498,7 +499,7 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 	f.docker.BuildErrorToThrow = fmt.Errorf("no one expects the unexpected error")
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), store.BuildStateSet{})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "no one expects the unexpected error")
 	}
@@ -514,7 +515,7 @@ func TestDockerBuildErrorNotLogged(t *testing.T) {
 	f.docker.BuildErrorToThrow = fmt.Errorf("no one expects the unexpected error")
 
 	manifest := NewSanchoDockerBuildManifest(f)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), store.BuildStateSet{})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "no one expects the unexpected error")
 	}
@@ -531,7 +532,7 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 	f.docker.SetExecError(userFailureErrDocker)
 
 	manifest := NewSanchoLiveUpdateManifest(f)
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
 	resultSet, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
@@ -558,7 +559,7 @@ func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
 	defer f.TearDown()
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -603,7 +604,7 @@ func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
 
 	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
 
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -625,7 +626,7 @@ func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntIm
 	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker}
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
-	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), bs)
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "Run step \"go install github.com/tilt-dev/sancho\" failed with exit code: 123")
 
@@ -653,7 +654,7 @@ func TestLiveUpdateMultipleImagesOneUpdateErrorFallsBackToImageBuild(t *testing.
 	f.docker.ExecErrorsToThrow = []error{nil, fmt.Errorf("whelp ¯\\_(ツ)_/¯")}
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -674,7 +675,7 @@ func TestLiveUpdateMultipleImagesOneWithUnsyncedChangeFileFallsBackToImageBuild(
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
 	bs[manifest.ImageTargetAt(1).ID()].FilesChangedSet["/not/synced"] = true // changed file not in a sync --> fall back to image build
-	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), bs)
+	_, err := f.bd.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), bs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -900,3 +901,12 @@ type fakeClock struct {
 }
 
 func (c fakeClock) Now() time.Time { return c.now }
+
+type fakeKINDLoader struct {
+	loadCount int
+}
+
+func (kl *fakeKINDLoader) LoadToKIND(ctx context.Context, ref reference.NamedTagged) error {
+	kl.loadCount++
+	return nil
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/util/exec"
 
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -92,7 +93,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		bs[targID] = bs[targID].WithRunningContainers(cInfos)
 	}
 
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 
 	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
 	if tCase.expectErrorContains != "" {

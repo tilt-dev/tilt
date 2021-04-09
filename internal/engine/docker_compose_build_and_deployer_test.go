@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
@@ -30,7 +31,7 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 	manifest := manifestbuilder.New(f, "fe").WithDockerCompose().Build()
 	dcTarg := manifest.DockerComposeTarget()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +57,7 @@ func TestTiltBuildsImage(t *testing.T) {
 		Build()
 	dcTarg := manifest.DockerComposeTarget()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +89,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 		WithImageTarget(iTarget).
 		Build()
 
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +116,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 		WithDeployTarget(defaultDockerComposeTarget(f, "sancho"))
 
 	stateSet := store.BuildStateSet{}
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +147,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	result := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	state := store.NewBuildState(result, nil, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildcontrol.BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}

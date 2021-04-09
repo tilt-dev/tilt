@@ -253,10 +253,10 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
-	kindLoader := engine.NewKINDLoader(env, clusterName)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader)
+	kindLoader := buildcontrol.NewKINDLoader(env, clusterName)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	imageBuilder := engine.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, clock)
 	localTargetBuildAndDeployer := engine.NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, env, runtime)
@@ -425,10 +425,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
-	kindLoader := engine.NewKINDLoader(env, clusterName)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader)
+	kindLoader := buildcontrol.NewKINDLoader(env, clusterName)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	imageBuilder := engine.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, clock)
 	localTargetBuildAndDeployer := engine.NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, env, runtime)
@@ -843,7 +843,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, token.GetOrCreateToken, engine.NewKINDLoader, wire.Value(feature.MainDefaults),
+	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, token.GetOrCreateToken, buildcontrol.NewKINDLoader, wire.Value(feature.MainDefaults),
 )
 
 var UpWireSet = wire.NewSet(

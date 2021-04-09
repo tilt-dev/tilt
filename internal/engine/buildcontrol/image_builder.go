@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -53,21 +52,21 @@ var ImageBuildCount = &view.View{
 	TagKeys:     []tag.Key{KeyImageRef, KeyBuildError},
 }
 
-type imageBuilder struct {
+type ImageBuilder struct {
 	db         build.DockerBuilder
 	custb      build.CustomBuilder
-	updateMode buildcontrol.UpdateMode
+	updateMode UpdateMode
 }
 
-func NewImageBuilder(db build.DockerBuilder, custb build.CustomBuilder, updateMode buildcontrol.UpdateMode) *imageBuilder {
-	return &imageBuilder{
+func NewImageBuilder(db build.DockerBuilder, custb build.CustomBuilder, updateMode UpdateMode) *ImageBuilder {
+	return &ImageBuilder{
 		db:         db,
 		custb:      custb,
 		updateMode: updateMode,
 	}
 }
 
-func (icb *imageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTarget, ref reference.NamedTagged) (bool, error) {
+func (icb *ImageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTarget, ref reference.NamedTagged) (bool, error) {
 	switch iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
 		return icb.db.ImageExists(ctx, ref)
@@ -80,7 +79,7 @@ func (icb *imageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTar
 		"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
 }
 
-func (icb *imageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
+func (icb *ImageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
 	ps *build.PipelineState) (refs container.TaggedRefs, err error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
 	startTime := time.Now()
@@ -99,7 +98,7 @@ func (icb *imageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
 			[]tag.Mutator{tag.Upsert(KeyBuildError, errorTag)},
 			ImageBuildDuration.M(latencyMs))
 		if recErr != nil {
-			logger.Get(ctx).Debugf("imageBuilder stats: %v", recErr)
+			logger.Get(ctx).Debugf("ImageBuilder stats: %v", recErr)
 		}
 	}()
 

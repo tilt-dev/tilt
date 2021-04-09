@@ -10,44 +10,27 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/tracer"
 )
 
 var DeployerBaseWireSet = wire.NewSet(
-	// dockerImageBuilder ( = ImageBuilder)
-	wire.Value(dockerfile.Labels{}),
+	buildcontrol.BaseWireSet,
 	wire.Value(UpperReducer),
-
-	k8s.ProvideMinikubeClient,
-	build.DefaultDockerBuilder,
-	build.NewDockerImageBuilder,
-	build.NewExecCustomBuilder,
-	wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)),
 
 	// BuildOrder
 	NewLocalTargetBuildAndDeployer,
-	NewImageBuildAndDeployer,
-	containerupdate.NewDockerUpdater,
-	containerupdate.NewExecUpdater,
 	NewLiveUpdateBuildAndDeployer,
 	NewDockerComposeBuildAndDeployer,
-	NewImageBuilder,
 	DefaultBuildOrder,
-
-	tracer.InitOpenTelemetry,
 
 	wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)),
 	NewCompositeBuildAndDeployer,
-	buildcontrol.ProvideUpdateMode,
 )
 
 var DeployerWireSetTest = wire.NewSet(
@@ -68,28 +51,10 @@ func provideBuildAndDeployer(
 	updateMode buildcontrol.UpdateModeFlag,
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
-	kp KINDLoader,
+	kp buildcontrol.KINDLoader,
 	analytics *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		k8s.ProvideContainerRuntime,
-	)
-
-	return nil, nil
-}
-
-func provideImageBuildAndDeployer(
-	ctx context.Context,
-	docker docker.Client,
-	kClient k8s.Client,
-	env k8s.Env,
-	dir *dirs.TiltDevDir,
-	clock build.Clock,
-	kp KINDLoader,
-	analytics *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
-	wire.Build(
-		DeployerWireSetTest,
-		wire.Value(buildcontrol.UpdateModeFlag(buildcontrol.UpdateModeAuto)),
 		k8s.ProvideContainerRuntime,
 	)
 

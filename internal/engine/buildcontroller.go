@@ -63,7 +63,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	manifest := mt.Manifest
 
 	buildReason := mt.NextBuildReason()
-	targets := buildTargets(manifest)
+	targets := buildcontrol.BuildTargets(manifest)
 	buildStateSet := buildStateSet(ctx, manifest, targets, ms, buildReason)
 
 	return buildEntry{
@@ -138,25 +138,6 @@ func (w BuildLogActionWriter) Write(level logger.Level, fields logger.Fields, p 
 
 func SpanIDForBuildLog(buildCount int) logstore.SpanID {
 	return logstore.SpanID(fmt.Sprintf("build:%d", buildCount))
-}
-
-// Extract target specs from a manifest for BuildAndDeploy.
-func buildTargets(manifest model.Manifest) []model.TargetSpec {
-	var result []model.TargetSpec
-
-	for _, iTarget := range manifest.ImageTargets {
-		result = append(result, iTarget)
-	}
-
-	if manifest.IsDC() {
-		result = append(result, manifest.DockerComposeTarget())
-	} else if manifest.IsK8s() {
-		result = append(result, manifest.K8sTarget())
-	} else if manifest.IsLocal() {
-		result = append(result, manifest.LocalTarget())
-	}
-
-	return result
 }
 
 // Extract a set of build states from a manifest for BuildAndDeploy.

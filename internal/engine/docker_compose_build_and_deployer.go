@@ -23,14 +23,14 @@ import (
 type DockerComposeBuildAndDeployer struct {
 	dcc   dockercompose.DockerComposeClient
 	dc    docker.Client
-	ib    *imageBuilder
+	ib    *buildcontrol.ImageBuilder
 	clock build.Clock
 }
 
 var _ buildcontrol.BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
 func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
-	ib *imageBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
+	ib *buildcontrol.ImageBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
 		dcc:   dcc,
 		dc:    dc,
@@ -107,7 +107,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return nil, fmt.Errorf("Not an image target: %T", target)
 		}
 
-		iTarget, err := injectImageDependencies(iTarget, iTargetMap, depResults)
+		iTarget, err := buildcontrol.InjectImageDependencies(iTarget, iTargetMap, depResults)
 		if err != nil {
 			return nil, err
 		}
