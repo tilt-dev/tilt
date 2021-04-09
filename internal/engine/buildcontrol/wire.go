@@ -32,6 +32,7 @@ var BaseWireSet = wire.NewSet(
 	// BuildOrder
 	NewDockerComposeBuildAndDeployer,
 	NewImageBuildAndDeployer,
+	NewLiveUpdateBuildAndDeployer,
 	NewLocalTargetBuildAndDeployer,
 	containerupdate.NewDockerUpdater,
 	containerupdate.NewExecUpdater,

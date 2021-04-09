@@ -78,7 +78,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			return br, err
 		}
 
-		_, isLiveUpdate := builder.(*LiveUpdateBuildAndDeployer)
+		_, isLiveUpdate := builder.(*buildcontrol.LiveUpdateBuildAndDeployer)
 		l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
 
 		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
@@ -109,7 +109,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	return store.BuildResultSet{}, lastErr
 }
 
-func DefaultBuildOrder(lubad *LiveUpdateBuildAndDeployer, ibad *buildcontrol.ImageBuildAndDeployer, dcbad *buildcontrol.DockerComposeBuildAndDeployer,
+func DefaultBuildOrder(lubad *buildcontrol.LiveUpdateBuildAndDeployer, ibad *buildcontrol.ImageBuildAndDeployer, dcbad *buildcontrol.DockerComposeBuildAndDeployer,
 	ltbad *buildcontrol.LocalTargetBuildAndDeployer, updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
 	if updMode == buildcontrol.UpdateModeImage {
 		return BuildOrder{dcbad, ibad, ltbad}
