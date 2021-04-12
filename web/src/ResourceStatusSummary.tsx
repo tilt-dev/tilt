@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
+import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { FilterLevel } from "./logfilters"
 import { usePathBuilder } from "./PathBuilder"
@@ -13,7 +14,9 @@ import {
   FontSize,
   mixinResetListStyle,
   SizeUnit,
+  spin,
 } from "./style-helpers"
+import Tooltip from "./Tooltip"
 import { ResourceName, ResourceStatus } from "./types"
 
 const ResourceGroupStatusRoot = styled.div`
@@ -40,7 +43,7 @@ const ResourceGroupStatusSummaryList = styled.ul`
   display: flex;
   ${mixinResetListStyle}
 `
-const ResourceGroupStatusSummaryItem = styled.li`
+const ResourceGroupStatusSummaryItemRoot = styled.div`
   display: flex;
   align-items: center;
 
@@ -61,6 +64,13 @@ const ResourceGroupStatusSummaryItem = styled.li`
       fill: ${Color.yellow};
     }
   }
+  &.is-highlightPending {
+    color: ${Color.gray7};
+    stroke: ${Color.gray7};
+    .fillStd {
+      fill: ${Color.gray7};
+    }
+  }
   &.is-highlightHealthy {
     color: ${Color.green};
     .fillStd {
@@ -68,7 +78,7 @@ const ResourceGroupStatusSummaryItem = styled.li`
     }
   }
 `
-const ResourceGroupStatusSummaryItemCount = styled.span`
+export const ResourceGroupStatusSummaryItemCount = styled.div`
   font-weight: bold;
   padding-left: 4px;
   padding-right: 4px;
@@ -76,79 +86,125 @@ const ResourceGroupStatusSummaryItemCount = styled.span`
 export const ResourceStatusSummaryRoot = styled.div`
   display: flex;
 `
+export const PendingIcon = styled(PendingSvg)`
+  animation: ${spin} 4s linear infinite;
+`
+
+type ResourceGroupStatusItemProps = {
+  label: string
+  icon: JSX.Element
+  className: string
+  count: number
+  countOutOf?: number
+  href?: string
+}
+export function ResourceGroupStatusItem(props: ResourceGroupStatusItemProps) {
+  const count = (
+    <>
+      <ResourceGroupStatusSummaryItemCount>
+        {props.count}
+      </ResourceGroupStatusSummaryItemCount>
+      {props.countOutOf && (
+        <>
+          /
+          <ResourceGroupStatusSummaryItemCount>
+            {props.countOutOf}
+          </ResourceGroupStatusSummaryItemCount>
+        </>
+      )}
+    </>
+  )
+
+  let inner = count
+  if (props.href) {
+    inner = <Link to={props.href}>{count}</Link>
+  }
+
+  return (
+    <Tooltip title={props.label}>
+      <ResourceGroupStatusSummaryItemRoot className={props.className}>
+        {props.icon}
+        {inner}
+      </ResourceGroupStatusSummaryItemRoot>
+    </Tooltip>
+  )
+}
 
 type ResourceGroupStatusProps = {
   counts: StatusCounts
   label: string
-  // TODO(matt) once we've removed OverviewResourceBar, remove this prop
-  showStatusLabels: boolean
   healthyLabel: string
   unhealthyLabel: string
   warningLabel: string
 }
 
-function ResourceGroupStatus(props: ResourceGroupStatusProps) {
+export function ResourceGroupStatus(props: ResourceGroupStatusProps) {
   if (props.counts.total === 0) {
     return null
   }
   let pb = usePathBuilder()
 
-  let errorLink = pb.path(
-    `/r/${ResourceName.all}/overview?level=${FilterLevel.error}`
-  )
-  let warnLink = pb.path(
-    `/r/${ResourceName.all}/overview?level=${FilterLevel.warn}`
+  let items = new Array<JSX.Element>()
+
+  if (props.counts.unhealthy) {
+    items.push(
+      <ResourceGroupStatusItem
+        key={props.unhealthyLabel}
+        label={props.unhealthyLabel}
+        count={props.counts.unhealthy}
+        href={pb.encpath`/r/${ResourceName.all}/overview?level=${FilterLevel.error}`}
+        className="is-highlightError"
+        icon={<CloseSvg width="11" key="icon" />}
+      />
+    )
+  }
+
+  if (props.counts.warning) {
+    items.push(
+      <ResourceGroupStatusItem
+        key={props.warningLabel}
+        label={props.warningLabel}
+        count={props.counts.warning}
+        href={pb.encpath`/r/${ResourceName.all}/overview?level=${FilterLevel.warn}`}
+        className="is-highlightWarning"
+        icon={<WarningSvg width="7" key="icon" />}
+      />
+    )
+  }
+
+  if (props.counts.pending) {
+    items.push(
+      <ResourceGroupStatusItem
+        key="pending"
+        label="pending"
+        count={props.counts.pending}
+        className="is-highlightPending"
+        icon={<PendingIcon width="8" key="icon" />}
+      />
+    )
+  }
+
+  // always show healthy count
+  items.push(
+    <ResourceGroupStatusItem
+      key={props.healthyLabel}
+      label={props.healthyLabel}
+      count={props.counts.healthy}
+      countOutOf={props.counts.total}
+      className="is-highlightHealthy"
+      icon={<CheckmarkSmallSvg key="icon" />}
+    />
   )
 
   return (
     <ResourceGroupStatusRoot>
       <ResourceGroupStatusLabel>{props.label}</ResourceGroupStatusLabel>
-      <ResourceGroupStatusSummaryList>
-        <ResourceGroupStatusSummaryItem
-          className={props.counts.unhealthy >= 1 ? "is-highlightError" : ""}
-        >
-          <CloseSvg width="11" title={props.unhealthyLabel} />
-          <Link to={errorLink}>
-            <ResourceGroupStatusSummaryItemCount>
-              {props.counts.unhealthy}
-            </ResourceGroupStatusSummaryItemCount>{" "}
-            {props.showStatusLabels ? props.unhealthyLabel : null}
-          </Link>
-        </ResourceGroupStatusSummaryItem>
-        <ResourceGroupStatusSummaryItem
-          className={props.counts.warning >= 1 ? "is-highlightWarning" : ""}
-        >
-          <WarningSvg width="7" title={props.warningLabel} />
-          <Link to={warnLink}>
-            <ResourceGroupStatusSummaryItemCount>
-              {props.counts.warning}
-            </ResourceGroupStatusSummaryItemCount>{" "}
-            {props.showStatusLabels ? props.warningLabel : null}
-          </Link>
-        </ResourceGroupStatusSummaryItem>
-        <ResourceGroupStatusSummaryItem
-          className={
-            props.counts.healthy === props.counts.total
-              ? "is-highlightHealthy"
-              : ""
-          }
-        >
-          <CheckmarkSmallSvg title={props.healthyLabel} />
-          <ResourceGroupStatusSummaryItemCount>
-            {props.counts.healthy}
-          </ResourceGroupStatusSummaryItemCount>
-          /
-          <ResourceGroupStatusSummaryItemCount>
-            {props.counts.total}
-          </ResourceGroupStatusSummaryItemCount>{" "}
-          {props.showStatusLabels ? props.healthyLabel : null}
-        </ResourceGroupStatusSummaryItem>
-      </ResourceGroupStatusSummaryList>
+      <ResourceGroupStatusSummaryList>{items}</ResourceGroupStatusSummaryList>
     </ResourceGroupStatusRoot>
   )
 }
 
-type StatusCounts = {
+export type StatusCounts = {
   total: number
   healthy: number
   unhealthy: number
@@ -222,7 +278,6 @@ function ResourceMetadata(props: { counts: StatusCounts }) {
 
 type ResourceStatusSummaryProps = {
   view: Proto.webviewView
-  showStatusLabels: boolean
 }
 
 export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
@@ -245,7 +300,6 @@ export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
       <ResourceGroupStatus
         counts={statusCounts(otherResources)}
         label={"Resources"}
-        showStatusLabels={props.showStatusLabels}
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
         warningLabel={"warn"}
@@ -253,7 +307,6 @@ export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
       <ResourceGroupStatus
         counts={statusCounts(testResources)}
         label={"Tests"}
-        showStatusLabels={props.showStatusLabels}
         healthyLabel={"pass"}
         unhealthyLabel={"fail"}
         warningLabel={"warn"}

@@ -54,7 +54,7 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
 
   return (
     <OverviewResourceBarRoot>
-      <ResourceStatusSummary view={props.view} showStatusLabels={true} />
+      <ResourceStatusSummary view={props.view} />
       <GlobalNav {...globalNavProps} />
     </OverviewResourceBarRoot>
   )
