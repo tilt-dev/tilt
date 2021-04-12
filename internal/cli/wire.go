@@ -30,6 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
@@ -143,7 +144,7 @@ var BaseWireSet = wire.NewSet(
 	dirs.UseTiltDevDir,
 	token.GetOrCreateToken,
 
-	engine.NewKINDLoader,
+	buildcontrol.NewKINDLoader,
 
 	wire.Value(feature.MainDefaults),
 )

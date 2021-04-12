@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"context"
@@ -17,7 +17,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -60,7 +59,7 @@ func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
 
 type ImageBuildAndDeployer struct {
 	db        build.DockerBuilder
-	ib        *imageBuilder
+	ib        *ImageBuilder
 	k8sClient k8s.Client
 	env       k8s.Env
 	runtime   container.Runtime
@@ -75,7 +74,7 @@ func NewImageBuildAndDeployer(
 	k8sClient k8s.Client,
 	env k8s.Env,
 	analytics *analytics.TiltAnalytics,
-	updMode buildcontrol.UpdateMode,
+	updMode UpdateMode,
 	c build.Clock,
 	runtime container.Runtime,
 	kl KINDLoader,
@@ -95,7 +94,7 @@ func NewImageBuildAndDeployer(
 func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	if len(kTargets) != 1 {
-		return store.BuildResultSet{}, buildcontrol.SilentRedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
+		return store.BuildResultSet{}, SilentRedirectToNextBuilderf("ImageBuildAndDeployer does not support these specs")
 	}
 
 	kTarget := kTargets[0]
@@ -107,7 +106,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		})
 	}()
 
-	q, err := buildcontrol.NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.CanReuseRef)
+	q, err := NewImageTargetQueue(ctx, iTargets, stateSet, ibd.ib.CanReuseRef)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
@@ -133,7 +132,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ps.StartPipelineStep(ctx, "Force update")
 		err = ibd.delete(ps.AttachLogger(ctx), kTarget)
 		if err != nil {
-			return store.BuildResultSet{}, buildcontrol.WrapDontFallBackError(err)
+			return store.BuildResultSet{}, WrapDontFallBackError(err)
 		}
 		ps.EndPipelineStep(ctx)
 	}
@@ -154,7 +153,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return nil, fmt.Errorf("Not an image target: %T", target)
 		}
 
-		iTarget, err := injectImageDependencies(iTarget, iTargetMap, depResults)
+		iTarget, err := InjectImageDependencies(iTarget, iTargetMap, depResults)
 		if err != nil {
 			return nil, err
 		}
@@ -174,7 +173,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	newResults := q.NewResults()
 	if err != nil {
-		return newResults, buildcontrol.WrapDontFallBackError(err)
+		return newResults, WrapDontFallBackError(err)
 	}
 
 	startDeployTime := time.Now()
@@ -184,7 +183,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	k8sResult, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.AllResults())
 	reportK8sDeployMetrics(ctx, kTarget, time.Since(startDeployTime), err != nil)
 	if err != nil {
-		return newResults, buildcontrol.WrapDontFallBackError(err)
+		return newResults, WrapDontFallBackError(err)
 	}
 	newResults[kTarget.ID()] = k8sResult
 	return newResults, nil
@@ -201,7 +200,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 
 	// We can also skip the push of the image if it isn't used
 	// in any k8s resources! (e.g., it's consumed by another image).
-	if ibd.canAlwaysSkipPush() || !isImageDeployedToK8s(iTarget, kTarget) || cbSkip {
+	if ibd.canAlwaysSkipPush() || !IsImageDeployedToK8s(iTarget, kTarget) || cbSkip {
 		ps.Printf(ctx, "Skipping push")
 		return nil
 	}
@@ -428,7 +427,7 @@ func (ibd *ImageBuildAndDeployer) canAlwaysSkipPush() bool {
 }
 
 // Create a new ImageTarget with the Dockerfiles rewritten with the injected images.
-func injectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.TargetID]model.ImageTarget, deps []store.BuildResult) (model.ImageTarget, error) {
+func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.TargetID]model.ImageTarget, deps []store.BuildResult) (model.ImageTarget, error) {
 	if len(deps) == 0 {
 		return iTarget, nil
 	}

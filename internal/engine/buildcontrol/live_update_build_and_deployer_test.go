@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"archive/tar"
@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
 
 	"github.com/tilt-dev/tilt/internal/build"
@@ -96,7 +95,7 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 	expectedToDelete := []string{"/src/does-not-exist"}
 	assert.Equal(t, expectedToDelete, call.ToDelete)
 
-	expected := []expectedFile{
+	expected := []testutils.ExpectedFile{
 		expectFile("src/hi", "hello"),
 		expectFile("src/planets/earth", "world"),
 		expectMissing("src/does-not-exist"),
@@ -112,7 +111,7 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, TestBuildState, nil, nil, false)
 	if assert.NotNil(t, err) {
-		assert.IsType(t, buildcontrol.DontFallBackError{}, err)
+		assert.IsType(t, DontFallBackError{}, err)
 	}
 }
 
@@ -250,7 +249,7 @@ func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 		build.PathMapping{LocalPath: f.JoinPath("hi"), ContainerPath: "/src/hi"},
 		build.PathMapping{LocalPath: f.JoinPath("planets/earth"), ContainerPath: "/src/planets/earth"},
 	}
-	expected := []expectedFile{
+	expected := []testutils.ExpectedFile{
 		expectFile("src/hi", "hello"),
 		expectFile("src/planets/earth", "world"),
 	}
@@ -300,7 +299,7 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 		build.PathMapping{LocalPath: f.JoinPath("hi"), ContainerPath: "/src/hi"},
 		build.PathMapping{LocalPath: f.JoinPath("planets/earth"), ContainerPath: "/src/planets/earth"},
 	}
-	expected := []expectedFile{
+	expected := []testutils.ExpectedFile{
 		expectFile("src/hi", "hello"),
 		expectFile("src/planets/earth", "world"),
 	}
@@ -357,7 +356,7 @@ type lcbadFixture struct {
 func newFixture(t testing.TB) *lcbadFixture {
 	// HACK(maia): we don't need any real container updaters on this LiveUpdBaD since we're testing
 	// a func further down the flow that takes a ContainerUpdater as an arg, so just pass nils
-	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, buildcontrol.UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker, fakeClock{})
+	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker, fakeClock{})
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st := store.NewTestingStore()
@@ -380,7 +379,7 @@ func (f *lcbadFixture) newPathSet(paths ...string) model.PathSet {
 	return model.NewPathSet(paths, f.Path())
 }
 
-func expectFile(path, contents string) expectedFile {
+func expectFile(path, contents string) testutils.ExpectedFile {
 	return testutils.ExpectedFile{
 		Path:     path,
 		Contents: contents,
@@ -388,7 +387,7 @@ func expectFile(path, contents string) expectedFile {
 	}
 }
 
-func expectMissing(path string) expectedFile {
+func expectMissing(path string) testutils.ExpectedFile {
 	return testutils.ExpectedFile{
 		Path:    path,
 		Missing: true,

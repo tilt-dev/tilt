@@ -125,7 +125,7 @@ wire:
 	toast wire
 
 wire-dev:
-	wire ./internal/engine && wire ./internal/cli
+	wire ./internal/engine && wire ./internal/engine/buildcontrol && wire ./internal/cli
 
 wire-check:
 	wire check ./internal/engine

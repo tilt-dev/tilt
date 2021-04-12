@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/ospath"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -30,7 +29,7 @@ var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 type LiveUpdateBuildAndDeployer struct {
 	dcu     *containerupdate.DockerUpdater
 	ecu     *containerupdate.ExecUpdater
-	updMode buildcontrol.UpdateMode
+	updMode UpdateMode
 	env     k8s.Env
 	runtime container.Runtime
 	clock   build.Clock
@@ -38,7 +37,7 @@ type LiveUpdateBuildAndDeployer struct {
 
 func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
 	ecu *containerupdate.ExecUpdater,
-	updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime, c build.Clock) *LiveUpdateBuildAndDeployer {
+	updMode UpdateMode, env k8s.Env, runtime container.Runtime, c build.Clock) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
 		dcu:     dcu,
 		ecu:     ecu,
@@ -70,7 +69,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	liveUpdInfos := make([]liveUpdInfo, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
-		return nil, buildcontrol.SilentRedirectToNextBuilderf("no targets for Live Update found")
+		return nil, SilentRedirectToNextBuilderf("no targets for Live Update found")
 	}
 
 	for _, luStateTree := range liveUpdateStateSet {
@@ -95,7 +94,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		ps.StartPipelineStep(ctx, "updating image %s", reference.FamiliarName(info.iTarget.Refs.ClusterRef()))
 		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
 		if err != nil {
-			if !buildcontrol.IsDontFallBackError(err) {
+			if !IsDontFallBackError(err) {
 				// something went wrong, we want to fall back -- bail and
 				// let the next builder take care of it
 				ps.EndPipelineStep(ctx)
@@ -184,7 +183,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 		}
 	}
 	if lastUserBuildFailure != nil {
-		return buildcontrol.WrapDontFallBackError(lastUserBuildFailure)
+		return WrapDontFallBackError(lastUserBuildFailure)
 	}
 	return nil
 }
@@ -209,7 +208,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		}
 		if len(pathsMatchingNoSync) > 0 {
 			prettyPaths := ospath.FileListDisplayNames(iTarget.LocalPaths(), pathsMatchingNoSync)
-			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
+			return liveUpdInfo{}, RedirectToNextBuilderInfof(
 				"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(), strings.Join(prettyPaths, ", "))
 		}
 
@@ -220,7 +219,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		}
 		if anyMatch {
 			prettyFile := ospath.FileListDisplayNames(iTarget.LocalPaths(), []string{file})[0]
-			return liveUpdInfo{}, buildcontrol.RedirectToNextBuilderInfof(
+			return liveUpdInfo{}, RedirectToNextBuilderInfof(
 				"Detected change to fall_back_on file %q", prettyFile)
 		}
 
@@ -248,11 +247,11 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 
 func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec) containerupdate.ContainerUpdater {
 	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
-	if isDC || lubad.updMode == buildcontrol.UpdateModeContainer {
+	if isDC || lubad.updMode == UpdateModeContainer {
 		return lubad.dcu
 	}
 
-	if lubad.updMode == buildcontrol.UpdateModeKubectlExec {
+	if lubad.updMode == UpdateModeKubectlExec {
 		return lubad.ecu
 	}
 

@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"github.com/tilt-dev/tilt/internal/container"

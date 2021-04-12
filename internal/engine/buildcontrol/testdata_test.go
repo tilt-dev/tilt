@@ -1,18 +1,27 @@
-package engine
+package buildcontrol
 
 import (
-	"fmt"
-
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type Fixture = manifestbuilder.Fixture
 
+var testImageRef = container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
+var imageTargetID = model.TargetID{
+	Type: model.TargetTypeImage,
+	Name: "gcr.io/some-project-162817/sancho",
+}
+
+var alreadyBuilt = store.NewImageBuildResultSingleRef(imageTargetID, testImageRef)
+
 const SanchoYAML = testyaml.SanchoYAML
+
+const SanchoTwinYAML = testyaml.SanchoTwinYAML
 
 const SanchoDockerfile = `
 FROM go:1.10
@@ -25,22 +34,6 @@ var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 var SanchoBaseRef = container.MustParseSelector("sancho-base")
 var SanchoSidecarRef = container.MustParseSelector(testyaml.SanchoSidecarImage)
 
-func SyncStepsForApp(app string, fixture Fixture) []model.LiveUpdateSyncStep {
-	return []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: fixture.Path(),
-		Dest:   fmt.Sprintf("/go/src/github.com/tilt-dev/%s", app),
-	}}
-}
-func SanchoSyncSteps(fixture Fixture) []model.LiveUpdateSyncStep {
-	return SyncStepsForApp("sancho", fixture)
-}
-
-func RunStepsForApp(app string) []model.LiveUpdateRunStep {
-	return []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", fmt.Sprintf("github.com/tilt-dev/%s", app)}}}}
-}
-
-var SanchoRunSteps = RunStepsForApp("sancho")
-
 func NewSanchoLiveUpdateManifest(f Fixture) model.Manifest {
 	return manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -48,19 +41,20 @@ func NewSanchoLiveUpdateManifest(f Fixture) model.Manifest {
 		Build()
 }
 
-func NewSanchoLiveUpdateDCManifest(f Fixture) model.Manifest {
+func NewSanchoManifestWithImageInEnvVar(f Fixture) model.Manifest {
+	it2 := model.MustNewImageTarget(container.MustParseSelector(SanchoRef.String() + "2")).WithBuildDetails(model.DockerBuild{
+		Dockerfile: SanchoDockerfile,
+		BuildPath:  f.Path(),
+	})
+	it2.MatchInEnvVars = true
 	return manifestbuilder.New(f, "sancho").
-		WithDockerCompose().
-		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		WithK8sYAML(testyaml.SanchoImageInEnvYAML).
+		WithImageTargets(NewSanchoDockerBuildImageTarget(f), it2).
 		Build()
 }
 
 func NewSanchoCustomBuildManifest(fixture Fixture) model.Manifest {
 	return NewSanchoCustomBuildManifestWithTag(fixture, "")
-}
-
-func NewSanchoCustomBuildImageTarget(fixture Fixture) model.ImageTarget {
-	return NewSanchoCustomBuildImageTargetWithTag(fixture, "")
 }
 
 func NewSanchoCustomBuildImageTargetWithTag(fixture Fixture, tag string) model.ImageTarget {
@@ -76,6 +70,20 @@ func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Mani
 	return manifestbuilder.New(fixture, "sancho").
 		WithK8sYAML(SanchoYAML).
 		WithImageTarget(NewSanchoCustomBuildImageTargetWithTag(fixture, tag)).
+		Build()
+}
+
+func NewSanchoCustomBuildManifestWithPushDisabled(fixture Fixture) model.Manifest {
+	cb := model.CustomBuild{
+		Command:     model.ToHostCmd("exit 0"),
+		Deps:        []string{fixture.JoinPath("app")},
+		DisablePush: true,
+		Tag:         "tilt-build",
+	}
+
+	return manifestbuilder.New(fixture, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithImageTarget(model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)).
 		Build()
 }
 
@@ -129,7 +137,7 @@ func NewSanchoDockerBuildManifestWithYaml(f Fixture, yaml string) model.Manifest
 		Build()
 }
 
-func NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(fixture Fixture, lu model.LiveUpdate) model.Manifest {
+func NewSanchoDockerBuildMultiStageManifest(fixture Fixture) model.Manifest {
 	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  fixture.JoinPath("sancho-base"),
@@ -148,7 +156,6 @@ ENTRYPOINT /go/bin/sancho
 	return manifestbuilder.New(fixture, "sancho").
 		WithK8sYAML(SanchoYAML).
 		WithImageTargets(baseImage, srcImage).
-		WithLiveUpdateAtIndex(lu, 1).
 		Build()
 }
 

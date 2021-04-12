@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"archive/tar"
@@ -30,7 +30,7 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 	manifest := manifestbuilder.New(f, "fe").WithDockerCompose().Build()
 	dcTarg := manifest.DockerComposeTarget()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestTiltBuildsImage(t *testing.T) {
 		Build()
 	dcTarg := manifest.DockerComposeTarget()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 		WithImageTarget(iTarget).
 		Build()
 
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), store.BuildStateSet{})
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 		WithDeployTarget(defaultDockerComposeTarget(f, "sancho"))
 
 	stateSet := store.BuildStateSet{}
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 	assert.Equal(t, 2, f.dCli.BuildCount)
 	assert.Equal(t, 0, f.dCli.PushCount)
 
-	expected := expectedFile{
+	expected := testutils.ExpectedFile{
 		Path: "Dockerfile",
 		Contents: `
 FROM sancho-base:latest
@@ -146,7 +146,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	result := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	state := store.NewBuildState(result, nil, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, buildTargets(manifest), stateSet)
+	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	assert.Equal(t, 1, f.dCli.BuildCount)
 	assert.Equal(t, 0, f.dCli.PushCount)
 
-	expected := expectedFile{
+	expected := testutils.ExpectedFile{
 		Path: "Dockerfile",
 		Contents: `
 FROM sancho-base:tilt-prebuilt
@@ -188,7 +188,7 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	// when testing the BuildAndDeployers.
 	dCli.ImageAlwaysExists = true
 
-	dcbad, err := provideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, dir)
+	dcbad, err := ProvideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, dir)
 	if err != nil {
 		t.Fatal(err)
 	}

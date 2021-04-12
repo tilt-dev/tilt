@@ -226,7 +226,7 @@ type fakeBuildAndDeployer struct {
 	resultsByID store.BuildResultSet
 }
 
-var _ BuildAndDeployer = &fakeBuildAndDeployer{}
+var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
@@ -305,11 +305,11 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		iTarget := target.(model.ImageTarget)
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
-			if isImageDeployedToDC(iTarget, call.dc()) {
+			if buildcontrol.IsImageDeployedToDC(iTarget, call.dc()) {
 				deployTarget = call.dc()
 			}
 		} else {
-			if isImageDeployedToK8s(iTarget, call.k8s()) {
+			if buildcontrol.IsImageDeployedToK8s(iTarget, call.k8s()) {
 				deployTarget = call.k8s()
 			}
 		}

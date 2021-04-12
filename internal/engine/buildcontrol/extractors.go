@@ -1,4 +1,4 @@
-package engine
+package buildcontrol
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -45,18 +44,18 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 	for _, iTarget := range deployedImages {
 		state := stateSet[iTarget.ID()]
 		if state.IsEmpty() {
-			return nil, buildcontrol.SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
+			return nil, SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
 		if state.FullBuildTriggered {
-			return nil, buildcontrol.SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
+			return nil, SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
 		}
 
 		if len(state.DepsChangedSet) > 0 {
-			return nil, buildcontrol.SilentRedirectToNextBuilderf("Pending dependencies")
+			return nil, SilentRedirectToNextBuilderf("Pending dependencies")
 		}
 
-		hasFileChangesIDs, err := hasFileChangesTree(g, iTarget, stateSet)
+		hasFileChangesIDs, err := HasFileChangesTree(g, iTarget, stateSet)
 		if err != nil {
 			return nil, errors.Wrap(err, "extractImageTargetsForLiveUpdates")
 		}
@@ -69,18 +68,18 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 
 		luInfo := iTarget.LiveUpdateInfo()
 		if luInfo.Empty() {
-			return nil, buildcontrol.SilentRedirectToNextBuilderf("LiveUpdate requires that LiveUpdate details be specified")
+			return nil, SilentRedirectToNextBuilderf("LiveUpdate requires that LiveUpdate details be specified")
 		}
 
 		if state.RunningContainerError != nil {
-			return nil, buildcontrol.RedirectToNextBuilderInfof("Error retrieving container info: %v", state.RunningContainerError)
+			return nil, RedirectToNextBuilderInfof("Error retrieving container info: %v", state.RunningContainerError)
 		}
 
 		// Now that we have live update information, we know this CAN be updated in
 		// a container(s). Check to see if we have enough information about the
 		// container(s) that would need to be updated.
 		if len(state.RunningContainers) == 0 {
-			return nil, buildcontrol.RedirectToNextBuilderInfof("Don't have info for running container of image %q "+
+			return nil, RedirectToNextBuilderInfof("Don't have info for running container of image %q "+
 				"(often a result of the deployment not yet being ready)", container.FamiliarString(iTarget.Refs.ClusterRef()))
 		}
 
@@ -102,7 +101,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 
 // Returns true if the given image is deployed to one of the given k8s targets.
 // Note that some images are injected into other images, so may never be deployed.
-func isImageDeployedToK8s(iTarget model.ImageTarget, kTarget model.K8sTarget) bool {
+func IsImageDeployedToK8s(iTarget model.ImageTarget, kTarget model.K8sTarget) bool {
 	id := iTarget.ID()
 	for _, depID := range kTarget.DependencyIDs() {
 		if depID == id {
@@ -114,7 +113,7 @@ func isImageDeployedToK8s(iTarget model.ImageTarget, kTarget model.K8sTarget) bo
 
 // Returns true if the given image is deployed to one of the given docker-compose targets.
 // Note that some images are injected into other images, so may never be deployed.
-func isImageDeployedToDC(iTarget model.ImageTarget, dcTarget model.DockerComposeTarget) bool {
+func IsImageDeployedToDC(iTarget model.ImageTarget, dcTarget model.DockerComposeTarget) bool {
 	id := iTarget.ID()
 	for _, depID := range dcTarget.DependencyIDs() {
 		if depID == id {
@@ -126,7 +125,7 @@ func isImageDeployedToDC(iTarget model.ImageTarget, dcTarget model.DockerCompose
 
 // Given a target, return all the target IDs in its tree of dependencies that
 // have changed files.
-func hasFileChangesTree(g model.TargetGraph, target model.TargetSpec, stateSet store.BuildStateSet) ([]model.TargetID, error) {
+func HasFileChangesTree(g model.TargetGraph, target model.TargetSpec, stateSet store.BuildStateSet) ([]model.TargetID, error) {
 	result := []model.TargetID{}
 	err := g.VisitTree(target, func(current model.TargetSpec) error {
 		state := stateSet[current.ID()]
