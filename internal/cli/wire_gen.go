@@ -151,7 +151,12 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
+	bearerToken, err := server.NewBearerToken()
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	generatableKeyCert := server.ProvideKeyCert()
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -323,7 +328,12 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
+	bearerToken, err := server.NewBearerToken()
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	generatableKeyCert := server.ProvideKeyCert()
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -492,7 +502,12 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
+	bearerToken, err := server.NewBearerToken()
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	generatableKeyCert := server.ProvideKeyCert()
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}

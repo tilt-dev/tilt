@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -98,18 +99,22 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	apiserverHandler := prepared.Handler
 	serving := config.ExtraConfig.ServingInfo
 
-	r := mux.NewRouter()
-	r.Path("/api").Handler(http.NotFoundHandler())
-	r.PathPrefix("/apis").Handler(apiserverHandler)
-	r.PathPrefix("/healthz").Handler(apiserverHandler)
-	r.PathPrefix("/livez").Handler(apiserverHandler)
-	r.PathPrefix("/metrics").Handler(apiserverHandler)
-	r.PathPrefix("/openapi").Handler(apiserverHandler)
-	r.PathPrefix("/readyz").Handler(apiserverHandler)
-	r.PathPrefix("/swagger").Handler(apiserverHandler)
-	r.PathPrefix("/version").Handler(apiserverHandler)
-	r.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
-	r.PathPrefix("/").Handler(s.hudServer.Router())
+	apiRouter := mux.NewRouter()
+	apiRouter.Path("/api").Handler(http.NotFoundHandler())
+	apiRouter.PathPrefix("/apis").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/healthz").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/livez").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/metrics").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/openapi").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/readyz").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/swagger").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/version").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
+
+	apiTLSConfig, err := start.TLSConfig(serving)
+	if err != nil {
+		return fmt.Errorf("Starting apiserver: %v", err)
+	}
 
 	webListener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(s.host), int(s.port)))
 	if err != nil {
@@ -119,16 +124,21 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 			s.port, err)
 	}
 
+	webRouter := mux.NewRouter()
+	webRouter.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
+	webRouter.PathPrefix("/").Handler(s.hudServer.Router())
+
 	s.webServer = &http.Server{
 		Addr:    webListener.Addr().String(),
-		Handler: s.hudServer.Router(),
+		Handler: webRouter,
 	}
 	runServer(ctx, s.webServer, webListener)
 
 	s.apiServer = &http.Server{
 		Addr:           serving.Listener.Addr().String(),
-		Handler:        r,
+		Handler:        apiRouter,
 		MaxHeaderBytes: 1 << 20,
+		TLSConfig:      apiTLSConfig,
 	}
 	runServer(ctx, s.apiServer, serving.Listener)
 	server.GenericAPIServer.RunPostStartHooks(stopCh)

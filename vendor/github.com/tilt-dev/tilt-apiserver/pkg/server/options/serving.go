@@ -1,3 +1,9 @@
+/**
+ * Fork of
+ * https://github.com/kubernetes/apiserver/blob/master/pkg/server/options/serving.go
+ * but with support for non-tcp in-memory connections
+ */
+
 /*
 Copyright 2016 The Kubernetes Authors.
 
@@ -25,7 +31,6 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
-	"k8s.io/klog/v2"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/server"
@@ -71,6 +76,9 @@ type SecureServingOptions struct {
 	// PermitPortSharing controls if SO_REUSEPORT is used when binding the port, which allows
 	// more than one instance to bind on the same address and port.
 	PermitPortSharing bool
+
+	// A token required for all requests.
+	BearerToken string
 }
 
 type CertKey struct {
@@ -107,8 +115,8 @@ func NewSecureServingOptions() *SecureServingOptions {
 		BindAddress: net.ParseIP("0.0.0.0"),
 		BindPort:    443,
 		ServerCert: GeneratableKeyCert{
-			PairName:      "apiserver",
-			CertDirectory: "apiserver.local.config/certificates",
+			PairName:      "tilt-apiserver",
+			CertDirectory: "tilt-apiserver.local.config/certificates",
 		},
 	}
 }
@@ -157,6 +165,7 @@ func (s *SecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 		desc += " If 0, don't serve HTTPS at all."
 	}
 	fs.IntVar(&s.BindPort, "secure-port", s.BindPort, desc)
+	fs.StringVar(&s.BearerToken, "token", s.BearerToken, "Bearer token for authenticating requests")
 
 	fs.StringVar(&s.ServerCert.CertDirectory, "cert-dir", s.ServerCert.CertDirectory, ""+
 		"The directory where the TLS certs are located. "+
@@ -219,21 +228,10 @@ func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error 
 		addr := net.JoinHostPort(s.BindAddress.String(), strconv.Itoa(s.BindPort))
 
 		c := net.ListenConfig{}
-
-		if s.PermitPortSharing {
-			c.Control = permitPortReuse
-		}
-
 		s.Listener, s.BindPort, err = CreateListener(s.BindNetwork, addr, c)
 		if err != nil {
 			return fmt.Errorf("failed to create listener: %v", err)
 		}
-	} else {
-		if _, ok := s.Listener.Addr().(*net.TCPAddr); !ok {
-			return fmt.Errorf("failed to parse ip and port from listener")
-		}
-		s.BindPort = s.Listener.Addr().(*net.TCPAddr).Port
-		s.BindAddress = s.Listener.Addr().(*net.TCPAddr).IP
 	}
 
 	*config = &server.SecureServingInfo{
@@ -322,13 +320,11 @@ func (s *SecureServingOptions) MaybeDefaultWithSelfSignedCerts(publicAddress str
 			if err := keyutil.WriteKey(keyCert.KeyFile, key); err != nil {
 				return err
 			}
-			klog.Infof("Generated self-signed cert (%s, %s)", keyCert.CertFile, keyCert.KeyFile)
 		} else {
 			s.ServerCert.GeneratedCert, err = dynamiccertificates.NewStaticCertKeyContent("Generated self signed cert", cert, key)
 			if err != nil {
 				return err
 			}
-			klog.Infof("Generated self-signed cert in-memory")
 		}
 	}
 

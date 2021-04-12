@@ -7,6 +7,7 @@ import (
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/options"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -24,11 +25,21 @@ func ProvideMemConn() apiserver.ConnProvider {
 	return apiserver.NetworkConnProvider(&memconn.Provider{}, "memu")
 }
 
+func ProvideKeyCert() options.GeneratableKeyCert {
+	return options.GeneratableKeyCert{}
+}
+
 // Configures the Tilt API server.
-func ProvideTiltServerOptions(ctx context.Context, tiltBuild model.TiltBuild, memconn apiserver.ConnProvider) (*APIServerConfig, error) {
+func ProvideTiltServerOptions(ctx context.Context,
+	tiltBuild model.TiltBuild,
+	memconn apiserver.ConnProvider,
+	token BearerToken,
+	certKey options.GeneratableKeyCert) (*APIServerConfig, error) {
 	w := logger.Get(ctx).Writer(logger.DebugLvl)
 	builder := builder.NewServerBuilder().
-		WithOutputWriter(w)
+		WithOutputWriter(w).
+		WithBearerToken(string(token)).
+		WithCertKey(certKey)
 
 	for _, obj := range v1alpha1.AllResourceObjects() {
 		builder = builder.WithResourceMemoryStorage(obj, "data")

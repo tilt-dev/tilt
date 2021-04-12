@@ -19,6 +19,7 @@ import (
 
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 
@@ -3798,7 +3799,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	memconn := server.ProvideMemConn()
-	serverOptions, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn)
+	serverOptions, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey())
 	require.NoError(t, err)
 	hudsc := server.ProvideHeadsUpServerController(
 		"localhost", 0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
