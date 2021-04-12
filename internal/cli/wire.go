@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 
@@ -147,6 +148,11 @@ var BaseWireSet = wire.NewSet(
 	buildcontrol.NewKINDLoader,
 
 	wire.Value(feature.MainDefaults),
+)
+
+var CLIClientWireSet = wire.NewSet(
+	BaseWireSet,
+	cliclient.WireSet,
 )
 
 var UpWireSet = wire.NewSet(
@@ -328,5 +334,10 @@ func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, er
 func wireAnalytics(l logger.Logger, cmdName model.TiltSubcommand) (*tiltanalytics.TiltAnalytics, error) {
 	wire.Build(UpWireSet,
 		newAnalytics)
+	return nil, nil
+}
+
+func wireClientGetter(ctx context.Context) (*cliclient.Getter, error) {
+	wire.Build(CLIClientWireSet)
 	return nil, nil
 }

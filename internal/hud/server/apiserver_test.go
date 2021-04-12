@@ -14,9 +14,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"github.com/tilt-dev/wmclient/pkg/dirs"
+
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -24,12 +27,22 @@ import (
 
 // Ensure creating objects works with the dynamic API clients.
 func TestAPIServerDynamicClient(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	dir := dirs.NewTiltDevDirAt(f.Path())
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	memconn := ProvideMemConn()
-	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey())
+
+	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(), 0)
 	require.NoError(t, err)
 
-	hudsc := ProvideHeadsUpServerController("localhost", 0, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	webListener, err := ProvideWebListener("localhost", 0)
+	require.NoError(t, err)
+
+	configAccess := ProvideConfigAccess(dir)
+	hudsc := ProvideHeadsUpServerController(configAccess, "tilt-default",
+		webListener, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	st := store.NewTestingStore()
 	require.NoError(t, hudsc.SetUp(ctx, st))
 	defer hudsc.TearDown(ctx)

@@ -9,10 +9,11 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var defaultWebHost = "localhost"
-var defaultWebPort = 10350
+var defaultWebPort = model.DefaultWebPort
 var webHostFlag = ""
 var webPortFlag = 0
 
