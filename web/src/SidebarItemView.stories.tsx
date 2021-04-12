@@ -2,10 +2,7 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, {
-  SidebarItemAll,
-  SidebarItemViewProps,
-} from "./SidebarItemView"
+import SidebarItemView, { SidebarItemViewProps } from "./SidebarItemView"
 import { LegacyNavProvider } from "./TabNav"
 import { oneResourceNoAlerts } from "./testdata"
 import {
@@ -159,19 +156,3 @@ export const Tiltfile = (args: Args) =>
     withName(ResourceName.tiltfile),
     withBuildStatusOnly(ResourceStatus.Healthy)
   )
-
-export const AllItemSelected = () => {
-  return (
-    <ItemWrapper>
-      <SidebarItemAll nothingSelected={true} totalAlerts={1} />
-    </ItemWrapper>
-  )
-}
-
-export const AllItemUnselected = () => {
-  return (
-    <ItemWrapper>
-      <SidebarItemAll nothingSelected={false} totalAlerts={1} />
-    </ItemWrapper>
-  )
-}

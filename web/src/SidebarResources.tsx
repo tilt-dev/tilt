@@ -4,10 +4,7 @@ import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, {
-  SidebarItemAll,
-  triggerUpdate,
-} from "./SidebarItemView"
+import SidebarItemView, { triggerUpdate } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { useSidebarPin } from "./SidebarPin"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
@@ -192,13 +189,6 @@ export class SidebarResources extends React.Component<SidebarProps> {
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
-          <SidebarListSection name="">
-            <SidebarItemAll
-              nothingSelected={nothingSelected}
-              totalAlerts={totalAlerts}
-            />
-          </SidebarListSection>
-          <PinnedItems {...this.props} />
           <OverviewSidebarOptions
             showFilters={showFilters}
             options={options}

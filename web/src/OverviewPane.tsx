@@ -3,10 +3,9 @@ import styled from "styled-components"
 import { ReactComponent as GridDividerAllSvg } from "./assets/svg/grid-divider-all.svg"
 import { ReactComponent as GridDividerPinSvg } from "./assets/svg/grid-divider-pin.svg"
 import { ReactComponent as GridDividerTestSvg } from "./assets/svg/grid-divider-test.svg"
+import HeaderBar from "./HeaderBar"
 import OverviewGrid from "./OverviewGrid"
 import { OverviewItem } from "./OverviewItemView"
-import OverviewResourceBar from "./OverviewResourceBar"
-import OverviewTabBar from "./OverviewTabBar"
 import { useSidebarPin } from "./SidebarPin"
 import { Color, Font } from "./style-helpers"
 
@@ -104,8 +103,7 @@ export default function OverviewPane(props: OverviewPaneProps) {
 
   return (
     <OverviewPaneRoot>
-      <OverviewTabBar selectedTab={""} />
-      <OverviewResourceBar view={props.view} />
+      <HeaderBar view={props.view} />
       <ServicesContainer>
         <PinnedResources items={pinnedItems} />
         <AllResources items={allResources} />
