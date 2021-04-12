@@ -1,5 +1,5 @@
 import { mount } from "enzyme"
-import fetchMock from "jest-fetch-mock"
+import fetchMock from "fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import {
@@ -30,7 +30,7 @@ let expectToggleToManual = function (mode: TriggerMode) {
 
 describe("SidebarTriggerButton", () => {
   beforeEach(() => {
-    fetchMock.resetMocks()
+    fetchMock.reset()
     mockAnalyticsCalls()
   })
 
@@ -91,7 +91,7 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("POSTs to endpoint when clicked", () => {
-    fetchMock.doMock(JSON.stringify({}))
+    fetchMock.mock("/api/override/trigger_mode", JSON.stringify({}))
 
     let toggleFoobar = toggleTriggerMode.bind(null, "foobar")
     const root = mount(
@@ -112,7 +112,7 @@ describe("SidebarTriggerButton", () => {
     })
     expect(preventDefaulted).toEqual(true)
 
-    expect(fetchMock.mock.calls.length).toEqual(2) // 1 call to analytics, one to /override
+    expect(fetchMock.calls().length).toEqual(2) // 1 call to analytics, one to /override
     expectIncrs({
       name: "ui.web.toggleTriggerMode",
       tags: {
@@ -121,9 +121,9 @@ describe("SidebarTriggerButton", () => {
       },
     })
 
-    expect(fetchMock.mock.calls[1][0]).toEqual("/api/override/trigger_mode")
-    expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
-    expect(fetchMock.mock.calls[1][1]?.body).toEqual(
+    expect(fetchMock.calls()[1][0]).toEqual("/api/override/trigger_mode")
+    expect(fetchMock.calls()[1][1]?.method).toEqual("post")
+    expect(fetchMock.calls()[1][1]?.body).toEqual(
       JSON.stringify({
         manifest_names: ["foobar"],
         trigger_mode: TriggerMode.TriggerModeManual,
