@@ -151,7 +151,12 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
+	bearerToken, err := server.NewBearerToken()
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	generatableKeyCert := server.ProvideKeyCert()
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -247,18 +252,18 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	clock := build.ProvideClock()
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, updateMode, env, runtime, clock)
+	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, updateMode, env, runtime, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
-	kindLoader := engine.NewKINDLoader(env, clusterName)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader)
+	kindLoader := buildcontrol.NewKINDLoader(env, clusterName)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	imageBuilder := engine.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
-	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, clock)
-	localTargetBuildAndDeployer := engine.NewLocalTargetBuildAndDeployer(clock)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
+	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, clock)
+	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, env, runtime)
 	spanCollector := tracer.NewSpanCollector(ctx)
 	traceTracer, err := tracer.InitOpenTelemetry(ctx, spanCollector)
@@ -323,7 +328,12 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
+	bearerToken, err := server.NewBearerToken()
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	generatableKeyCert := server.ProvideKeyCert()
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -419,18 +429,18 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	clock := build.ProvideClock()
-	liveUpdateBuildAndDeployer := engine.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, updateMode, env, runtime, clock)
+	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, updateMode, env, runtime, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, clock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
-	kindLoader := engine.NewKINDLoader(env, clusterName)
-	imageBuildAndDeployer := engine.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader)
+	kindLoader := buildcontrol.NewKINDLoader(env, clusterName)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, analytics3, updateMode, clock, runtime, kindLoader)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	imageBuilder := engine.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
-	dockerComposeBuildAndDeployer := engine.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, clock)
-	localTargetBuildAndDeployer := engine.NewLocalTargetBuildAndDeployer(clock)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
+	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, clock)
+	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, env, runtime)
 	spanCollector := tracer.NewSpanCollector(ctx)
 	traceTracer, err := tracer.InitOpenTelemetry(ctx, spanCollector)
@@ -492,7 +502,12 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	webPort := provideWebPort()
 	tiltBuild := provideTiltInfo()
 	connProvider := server.ProvideMemConn()
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider)
+	bearerToken, err := server.NewBearerToken()
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	generatableKeyCert := server.ProvideKeyCert()
+	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -843,7 +858,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, token.GetOrCreateToken, engine.NewKINDLoader, wire.Value(feature.MainDefaults),
+	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, token.GetOrCreateToken, buildcontrol.NewKINDLoader, wire.Value(feature.MainDefaults),
 )
 
 var UpWireSet = wire.NewSet(

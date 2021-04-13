@@ -15,7 +15,6 @@ import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
-import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { buildStatus, runtimeStatus } from "./status"
 import {
@@ -370,7 +369,6 @@ function RuntimeBox(props: RuntimeBoxProps) {
       <RuntimeBoxStack>
         <InnerRuntimeBox>
           <OverviewItemType>{item.resourceTypeLabel}</OverviewItemType>
-          <SidebarPinButton resourceName={item.name} />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>

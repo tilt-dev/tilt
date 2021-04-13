@@ -259,7 +259,7 @@ export function OverviewSidebarOptions(
   props: OverviewSidebarOptionsProps
 ): JSX.Element {
   return (
-    <OverviewSidebarOptionsRoot style={{ marginTop: SizeUnit(0.75) }}>
+    <OverviewSidebarOptionsRoot>
       <OverviewSidebarOptionsButtonsRoot
         className={!props.showFilters ? "is-filterButtonsHidden" : ""}
       >

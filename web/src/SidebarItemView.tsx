@@ -4,7 +4,7 @@ import styled, { keyframes } from "styled-components"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
-import SidebarPinButton from "./SidebarPinButton"
+import SidebarPinButton, { PinButton } from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import {
   AnimDuration,
@@ -21,12 +21,7 @@ import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { TriggerModeToggle } from "./TriggerModeToggle"
-import {
-  ResourceName,
-  ResourceStatus,
-  ResourceView,
-  TriggerMode,
-} from "./types"
+import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 
 export const SidebarItemRoot = styled.li`
   & + & {
@@ -36,6 +31,10 @@ export const SidebarItemRoot = styled.li`
   margin-left: ${SizeUnit(0.25)};
   margin-right: ${SizeUnit(0.5)};
   display: flex;
+
+  ${PinButton} {
+    margin-right: ${SizeUnit(1.0 / 12)};
+  }
 `
 
 const barberpole = keyframes`
@@ -126,46 +125,6 @@ let SidebarItemText = styled.div`
   padding-bottom: 4px;
   color: ${Color.grayLightest};
 `
-
-let SidebarItemAllRoot = styled(SidebarItemRoot)`
-  text-transform: uppercase;
-  // SidebarItemRoot's margin-left of 0.25 plus the pin icon's width of 0.75
-  margin-left: ${SizeUnit(1)};
-`
-let SidebarItemAllBox = styled(SidebarItemBox)`
-  flex-direction: row;
-  height: ${SizeUnit(1.25)};
-`
-
-type SidebarItemAllProps = {
-  nothingSelected: boolean
-  totalAlerts: number
-}
-
-export function SidebarItemAll(props: SidebarItemAllProps) {
-  let nav = useTabNav()
-  return (
-    <SidebarItemAllRoot>
-      <SidebarItemAllBox
-        className={props.nothingSelected ? "isSelected" : ""}
-        tabIndex={-1}
-        role="button"
-        onClick={(e) =>
-          nav.openResource(ResourceName.all, {
-            newTab: (e.ctrlKey || e.metaKey) && !e.shiftKey,
-          })
-        }
-      >
-        <SidebarIcon
-          status={ResourceStatus.None}
-          alertCount={props.totalAlerts}
-          tooltipText={""}
-        />
-        <SidebarItemNameRoot>All</SidebarItemNameRoot>
-      </SidebarItemAllBox>
-    </SidebarItemAllRoot>
-  )
-}
 
 let SidebarItemNameRoot = styled.div`
   display: flex;

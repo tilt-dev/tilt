@@ -5,6 +5,8 @@ import (
 )
 
 var WireSet = wire.NewSet(
+	NewBearerToken,
+	ProvideKeyCert,
 	ProvideMemConn,
 	ProvideTiltServerOptions,
 	ProvideTiltDynamic,

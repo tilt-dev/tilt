@@ -25,16 +25,19 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/options"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apiserver/pkg/authentication/request/anonymous"
+	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericapiserver "k8s.io/apiserver/pkg/server"
-	genericoptions "k8s.io/apiserver/pkg/server/options"
+	"k8s.io/apiserver/pkg/server/dynamiccertificates"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // TiltServerOptions contains state for master/api server
@@ -44,7 +47,7 @@ type TiltServerOptions struct {
 	codec                runtime.Codec
 	recommendedConfigFns []RecommendedConfigFn
 	apis                 map[schema.GroupVersionResource]apiserver.StorageProvider
-	ServingOptions       *genericoptions.DeprecatedInsecureServingOptions
+	ServingOptions       *options.SecureServingOptions
 	ConnProvider         apiserver.ConnProvider
 
 	stdout io.Writer
@@ -59,7 +62,7 @@ func NewTiltServerOptions(
 	codec runtime.Codec,
 	recommendedConfigFns []RecommendedConfigFn,
 	apis map[schema.GroupVersionResource]apiserver.StorageProvider,
-	serving *genericoptions.DeprecatedInsecureServingOptions,
+	serving *options.SecureServingOptions,
 	connProvider apiserver.ConnProvider) *TiltServerOptions {
 	// change: apiserver-runtime
 	o := &TiltServerOptions{
@@ -95,7 +98,7 @@ func NewCommandStartTiltServer(defaults *TiltServerOptions, stopCh <-chan struct
 			if err != nil {
 				return err
 			}
-			klog.Infof("Serving tilt-apiserver insecurely on %s", o.ServingOptions.Listener.Addr())
+			klog.Infof("Serving tilt-apiserver on %s", o.ServingOptions.Listener.Addr())
 
 			<-stoppedCh
 			return nil
@@ -125,18 +128,9 @@ func (o *TiltServerOptions) Complete() error {
 
 // Config returns config for the api server given TiltServerOptions
 func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
-	serverConfig := genericapiserver.NewRecommendedConfig(o.codecs)
-	serverConfig = o.ApplyRecommendedConfigFns(serverConfig)
-
-	extraConfig := apiserver.ExtraConfig{
-		Scheme: o.scheme,
-		Codecs: o.codecs,
-		APIs:   o.apis,
-	}
-
 	if o.ConnProvider != nil {
 		if o.ServingOptions.BindPort == 0 {
-			o.ServingOptions.BindPort = 80 // Create a fake port.
+			o.ServingOptions.BindPort = 443 // Create a fake port.
 		}
 
 		l, err := o.ConnProvider.Listen("tcp", fmt.Sprintf("%s:%d", o.ServingOptions.BindAddress, o.ServingOptions.BindPort))
@@ -146,7 +140,24 @@ func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
 		o.ServingOptions.Listener = l
 	}
 
-	err := o.ServingOptions.ApplyTo(&extraConfig.ServingInfo)
+	// Check to see if any certificates have been provided.
+	// If none have been provided, create one now.
+	err := o.ServingOptions.MaybeDefaultWithSelfSignedCerts(
+		"localhost", nil, []net.IP{net.ParseIP("127.0.0.1")})
+	if err != nil {
+		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
+	}
+
+	serverConfig := genericapiserver.NewRecommendedConfig(o.codecs)
+	serverConfig = o.ApplyRecommendedConfigFns(serverConfig)
+
+	extraConfig := apiserver.ExtraConfig{
+		Scheme: o.scheme,
+		Codecs: o.codecs,
+		APIs:   o.apis,
+	}
+
+	err = o.ServingOptions.ApplyTo(&extraConfig.ServingInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +167,19 @@ func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
 		return nil, fmt.Errorf("internal error: no serve config")
 	}
 	serverConfig.ExternalAddress = serving.Listener.Addr().String()
-	serverConfig.LoopbackClientConfig = o.LoopbackClientConfig()
+	serverConfig.Authorization = genericapiserver.AuthorizationInfo{
+		Authorizer: authorizerfactory.NewAlwaysDenyAuthorizer(),
+	}
+	serverConfig.Authentication = genericapiserver.AuthenticationInfo{
+		Authenticator: anonymous.NewAuthenticator(),
+	}
+
+	cert := extraConfig.ServingInfo.Cert
+	if cert == nil {
+		return nil, fmt.Errorf("Unable to generate certificates")
+	}
+
+	serverConfig.LoopbackClientConfig = o.loopbackClientConfig(cert)
 	serverConfig.RESTOptionsGetter = o
 
 	config := &apiserver.Config{
@@ -167,15 +190,21 @@ func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
 	return config, nil
 }
 
-func (o TiltServerOptions) LoopbackClientConfig() *rest.Config {
+func (o TiltServerOptions) loopbackClientConfig(cert dynamiccertificates.CertKeyContentProvider) *rest.Config {
 	if o.ServingOptions.BindPort == 0 {
 		panic("internal error: LoopbackClientConfig() cannot be calculated before BindPort set")
 	}
 
+	caData, _ := cert.CurrentCertKeyContent()
+
 	result := &rest.Config{
-		Host:  fmt.Sprintf("http://%s:%d", o.ServingOptions.BindAddress, o.ServingOptions.BindPort),
+		Host:  fmt.Sprintf("https://%s:%d", o.ServingOptions.BindAddress, o.ServingOptions.BindPort),
 		QPS:   50,
 		Burst: 100,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: caData,
+		},
+		BearerToken: o.ServingOptions.BearerToken,
 	}
 	if o.ConnProvider != nil {
 		result.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -193,14 +222,19 @@ func (o TiltServerOptions) GetRESTOptions(resource schema.GroupResource) (generi
 	}, nil
 }
 
-// RunTiltServer starts a new TiltServer given TiltServerOptions
+// Complete the config and run the Tilt server
 func (o TiltServerOptions) RunTiltServer(stopCh <-chan struct{}) (<-chan struct{}, error) {
 	config, err := o.Config()
 	if err != nil {
 		return nil, err
 	}
 
-	server, err := config.Complete().New()
+	return o.RunTiltServerFromConfig(config.Complete(), stopCh)
+}
+
+// RunTiltServer starts a new TiltServer given TiltServerOptions
+func (o TiltServerOptions) RunTiltServerFromConfig(config apiserver.CompletedConfig, stopCh <-chan struct{}) (<-chan struct{}, error) {
+	server, err := config.New()
 	if err != nil {
 		return nil, err
 	}
@@ -215,10 +249,16 @@ func (o TiltServerOptions) RunTiltServer(stopCh <-chan struct{}) (<-chan struct{
 	prepared := server.GenericAPIServer.PrepareRun()
 	serving := config.ExtraConfig.ServingInfo
 
+	tlsConfig, err := TLSConfig(serving)
+	if err != nil {
+		return nil, err
+	}
+
 	stoppedCh, err := genericapiserver.RunServer(&http.Server{
 		Addr:           serving.Listener.Addr().String(),
 		Handler:        prepared.Handler,
 		MaxHeaderBytes: 1 << 20,
+		TLSConfig:      tlsConfig,
 	}, serving.Listener, prepared.ShutdownTimeout, stopCh)
 	if err != nil {
 		return nil, err

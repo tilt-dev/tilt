@@ -19,8 +19,10 @@ func (a *Server) WithResourceFileStorage(obj resource.Object, path string) *Serv
 
 	// automatically create status subresource if the object implements the status interface
 	if _, ok := obj.(resource.ObjectWithStatusSubResource); ok {
+		provider := filepath.NewJSONFilepathStorageProvider(
+			obj, path, fs, ws, rest.StatusSubResourceStrategy{Strategy: strategy})
 		a.WithSubResourceAndHandler(obj, "status",
-			filepath.NewJSONFilepathStorageProvider(obj, path, fs, ws, rest.StatusSubResourceStrategy{Strategy: strategy}))
+			(&statusProvider{Provider: provider}).Get)
 	}
 	return a
 }
@@ -39,8 +41,10 @@ func (a *Server) WithResourceMemoryStorage(obj resource.Object, path string) *Se
 
 	// automatically create status subresource if the object implements the status interface
 	if _, ok := obj.(resource.ObjectWithStatusSubResource); ok {
+		provider := filepath.NewJSONFilepathStorageProvider(
+			obj, path, a.memoryFS, ws, rest.StatusSubResourceStrategy{Strategy: strategy})
 		a.WithSubResourceAndHandler(obj, "status",
-			filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS, ws, rest.StatusSubResourceStrategy{Strategy: strategy}))
+			(&statusProvider{Provider: provider}).Get)
 	}
 	return a
 }

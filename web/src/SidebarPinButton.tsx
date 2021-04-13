@@ -1,18 +1,26 @@
 import React from "react"
 import styled from "styled-components"
-import { ReactComponent as PinResourceFilledSvg } from "./assets/svg/pin.svg"
+import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { useSidebarPin } from "./SidebarPin"
-import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
+import {
+  AnimDuration,
+  Color,
+  mixinResetButtonStyle,
+  SizeUnit,
+} from "./style-helpers"
 
-let PinButton = styled(InstrumentedButton)`
+export const PinButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   padding: 0;
   background-color: transparent;
   align-items: center;
 `
-
-let PinnedPinIcon = styled(PinResourceFilledSvg)`
+let StarIcon = styled(StarSvg)`
+  width: ${SizeUnit(1.0 / 3)};
+  height: ${SizeUnit(1.0 / 3)};
+`
+let PinnedPinIcon = styled(StarIcon)`
   transition: transform ${AnimDuration.short} ease;
   fill: ${Color.grayLight};
 
@@ -21,7 +29,7 @@ let PinnedPinIcon = styled(PinResourceFilledSvg)`
   }
 `
 
-let UnpinnedPinIcon = styled(PinResourceFilledSvg)`
+let UnpinnedPinIcon = styled(StarIcon)`
   transition: fill ${AnimDuration.default} linear,
     opacity ${AnimDuration.short} linear;
   opacity: 0;
@@ -57,10 +65,10 @@ export default function SidebarPinButton(
 
   if (isPinned) {
     icon = <PinnedPinIcon />
-    title = "Remove Pin"
+    title = "Unstar"
   } else {
     icon = <UnpinnedPinIcon />
-    title = "Pin to Top"
+    title = "Star"
   }
 
   function onClick(e: any) {

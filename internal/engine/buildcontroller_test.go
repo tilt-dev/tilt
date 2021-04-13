@@ -1381,6 +1381,7 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 
 func TestManifestsWithSameTwoImages(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, m2 := NewManifestsWithSameTwoImages(f)
 	f.Start([]model.Manifest{m1, m2})
 
@@ -1426,6 +1427,7 @@ func TestManifestsWithSameTwoImages(t *testing.T) {
 
 func TestManifestsWithTwoCommonAncestors(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
 	f.Start([]model.Manifest{m1, m2})
 
@@ -1511,6 +1513,7 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 
 func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, m2 := NewManifestsWithCommonAncestor(f)
 	f.Start([]model.Manifest{m1, m2})
 

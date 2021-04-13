@@ -11,6 +11,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
+
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -63,7 +65,7 @@ func newServerFixture(t *testing.T) *serverFixture {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	cfg, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn)
+	cfg, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey())
 	require.NoError(t, err)
 
 	hudsc := server.ProvideHeadsUpServerController("localhost",

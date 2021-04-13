@@ -14,8 +14,6 @@ type Fixture = manifestbuilder.Fixture
 
 const SanchoYAML = testyaml.SanchoYAML
 
-const SanchoTwinYAML = testyaml.SanchoTwinYAML
-
 const SanchoDockerfile = `
 FROM go:1.10
 ADD . .
@@ -57,18 +55,6 @@ func NewSanchoLiveUpdateDCManifest(f Fixture) model.Manifest {
 		Build()
 }
 
-func NewSanchoManifestWithImageInEnvVar(f Fixture) model.Manifest {
-	it2 := model.MustNewImageTarget(container.MustParseSelector(SanchoRef.String() + "2")).WithBuildDetails(model.DockerBuild{
-		Dockerfile: SanchoDockerfile,
-		BuildPath:  f.Path(),
-	})
-	it2.MatchInEnvVars = true
-	return manifestbuilder.New(f, "sancho").
-		WithK8sYAML(testyaml.SanchoImageInEnvYAML).
-		WithImageTargets(NewSanchoDockerBuildImageTarget(f), it2).
-		Build()
-}
-
 func NewSanchoCustomBuildManifest(fixture Fixture) model.Manifest {
 	return NewSanchoCustomBuildManifestWithTag(fixture, "")
 }
@@ -90,20 +76,6 @@ func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Mani
 	return manifestbuilder.New(fixture, "sancho").
 		WithK8sYAML(SanchoYAML).
 		WithImageTarget(NewSanchoCustomBuildImageTargetWithTag(fixture, tag)).
-		Build()
-}
-
-func NewSanchoCustomBuildManifestWithPushDisabled(fixture Fixture) model.Manifest {
-	cb := model.CustomBuild{
-		Command:     model.ToHostCmd("exit 0"),
-		Deps:        []string{fixture.JoinPath("app")},
-		DisablePush: true,
-		Tag:         "tilt-build",
-	}
-
-	return manifestbuilder.New(fixture, "sancho").
-		WithK8sYAML(SanchoYAML).
-		WithImageTarget(model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)).
 		Build()
 }
 
@@ -154,28 +126,6 @@ func NewSanchoDockerBuildManifestWithYaml(f Fixture, yaml string) model.Manifest
 	return manifestbuilder.New(f, "sancho").
 		WithK8sYAML(yaml).
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-		Build()
-}
-
-func NewSanchoDockerBuildMultiStageManifest(fixture Fixture) model.Manifest {
-	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  fixture.JoinPath("sancho-base"),
-	})
-
-	srcImage := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `
-FROM sancho-base
-ADD . .
-RUN go install github.com/tilt-dev/sancho
-ENTRYPOINT /go/bin/sancho
-`,
-		BuildPath: fixture.JoinPath("sancho"),
-	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
-
-	return manifestbuilder.New(fixture, "sancho").
-		WithK8sYAML(SanchoYAML).
-		WithImageTargets(baseImage, srcImage).
 		Build()
 }
 

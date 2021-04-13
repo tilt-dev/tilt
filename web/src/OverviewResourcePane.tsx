@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react"
 import styled from "styled-components"
 import { Alert, combinedAlerts } from "./alerts"
+import HeaderBar from "./HeaderBar"
 import { LogUpdateAction, LogUpdateEvent, useLogStore } from "./LogStore"
-import OverviewResourceBar from "./OverviewResourceBar"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
-import OverviewTabBar from "./OverviewTabBar"
+import StarredResourceBar, {
+  starredResourcePropsFromView,
+} from "./StarredResourceBar"
 import { Color } from "./style-helpers"
 import { useTabNav } from "./TabNav"
 import { ResourceName } from "./types"
@@ -79,8 +81,10 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
 
   return (
     <OverviewResourcePaneRoot>
-      <OverviewTabBar selectedTab={selectedTab} />
-      <OverviewResourceBar {...props} />
+      <HeaderBar view={props.view} />
+      <StarredResourceBar
+        {...starredResourcePropsFromView(props.view, selectedTab)}
+      />
       <Main>
         <OverviewResourceSidebar {...props} name={name} />
         <OverviewResourceDetails resource={r} name={name} alerts={alerts} />

@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -25,7 +26,7 @@ import (
 func TestAPIServerDynamicClient(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	memconn := ProvideMemConn()
-	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn)
+	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey())
 	require.NoError(t, err)
 
 	hudsc := ProvideHeadsUpServerController("localhost", 0, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
