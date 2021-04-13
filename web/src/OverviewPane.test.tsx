@@ -3,13 +3,10 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import OverviewItemView from "./OverviewItemView"
-import OverviewPane, {
-  AllResources,
-  PinnedResources,
-  TestResources,
-} from "./OverviewPane"
+import OverviewPane, { AllResources, TestResources } from "./OverviewPane"
 import { TwoResources } from "./OverviewPane.stories"
 import { SidebarPinContextProvider } from "./SidebarPin"
+import { StarredResourceLabel } from "./StarredResourceBar"
 import { oneResourceTest, twoResourceView } from "./testdata"
 
 function assertContainerWithResources(
@@ -27,6 +24,13 @@ function assertContainerWithResources(
   }
 }
 
+function assertStarredResources(root: ReactWrapper, names: string[]) {
+  const renderedStarredResourceNames = root
+    .find(StarredResourceLabel)
+    .map((i) => i.text())
+  expect(renderedStarredResourceNames).toEqual(names)
+}
+
 const pinnedResourcesAccessor = accessorsForTesting<string[]>(
   "pinned-resources"
 )
@@ -36,12 +40,12 @@ it("renders all resources if no pinned and no tests", () => {
     <MemoryRouter initialEntries={["/"]}>{TwoResources()}</MemoryRouter>
   )
 
-  assertContainerWithResources(root, PinnedResources, [])
   assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
   assertContainerWithResources(root, TestResources, [])
+  assertStarredResources(root, [])
 })
 
-it("renders pinned resources", () => {
+it("renders starred resources", () => {
   pinnedResourcesAccessor.set(["snack"])
 
   const root = mount(
@@ -52,9 +56,9 @@ it("renders pinned resources", () => {
     </MemoryRouter>
   )
 
-  assertContainerWithResources(root, PinnedResources, ["snack"])
   assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
   assertContainerWithResources(root, TestResources, [])
+  assertStarredResources(root, ["snack"])
 })
 
 it("renders test resources separate from all resources", () => {
@@ -67,7 +71,7 @@ it("renders test resources separate from all resources", () => {
     </MemoryRouter>
   )
 
-  assertContainerWithResources(root, PinnedResources, [])
   assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
   assertContainerWithResources(root, TestResources, ["boop"])
+  assertStarredResources(root, [])
 })
