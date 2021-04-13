@@ -14,9 +14,12 @@ import (
 
 func NewTiltClient() ctrlclient.Client {
 	scheme := v1alpha1.NewScheme()
-	return fake.NewClientBuilder().
+	c := fake.NewClientBuilder().
 		WithScheme(scheme).
 		Build()
+	return fakeTiltClient{
+		Client: c,
+	}
 }
 
 func NewClientBuilder(client ctrlclient.Client) *fakeClientBuilder {
