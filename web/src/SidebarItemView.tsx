@@ -2,6 +2,7 @@ import React from "react"
 import TimeAgo from "react-timeago"
 import styled, { keyframes } from "styled-components"
 import PathBuilder from "./PathBuilder"
+import { useResourceNav } from "./ResourceNav"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
 import SidebarPinButton, { PinButton } from "./SidebarPinButton"
@@ -17,7 +18,6 @@ import {
   overviewItemBorderRadius,
   SizeUnit,
 } from "./style-helpers"
-import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { TriggerModeToggle } from "./TriggerModeToggle"
@@ -255,7 +255,7 @@ function buildTooltipText(status: ResourceStatus): string {
 }
 
 export default function SidebarItemView(props: SidebarItemViewProps) {
-  let nav = useTabNav()
+  let nav = useResourceNav()
   let item = props.item
   let formatter = timeAgoFormatter
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
@@ -279,11 +279,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
         className={`${isSelectedClass} ${isBuildingClass}`}
         tabIndex={-1}
         role="button"
-        onClick={(e) =>
-          nav.openResource(item.name, {
-            newTab: (e.ctrlKey || e.metaKey) && !e.shiftKey,
-          })
-        }
+        onClick={(e) => nav.openResource(item.name)}
         data-name={item.name}
       >
         <SidebarItemInnerBox>
