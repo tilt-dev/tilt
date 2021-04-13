@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock"
 import AppController from "./AppController"
 import PathBuilder from "./PathBuilder"
 
@@ -15,13 +16,16 @@ function flushPromises() {
 
 describe("AppController", () => {
   beforeEach(() => {
-    fetchMock.resetMocks()
+    fetchMock.reset()
     fakeSetHistoryLocation.mockReset()
     fakeSetHistoryLocation.mockReset()
   })
 
   it("sets view from snapshot", async () => {
-    fetchMock.mockResponse(JSON.stringify({ view: { resources: [] } }))
+    fetchMock.mock(
+      "/api/snapshot/aaaaaaa",
+      JSON.stringify({ view: { resources: [] } })
+    )
 
     let pb = PathBuilder.forTesting("cloud.tilt.dev", "/snapshot/aaaaaaa")
     let ac = new AppController(pb, HUD)
@@ -33,7 +37,8 @@ describe("AppController", () => {
   })
 
   it("sets view and path from snapshot", async () => {
-    fetchMock.mockResponse(
+    fetchMock.mock(
+      "/api/snapshot/aaaaaa",
       JSON.stringify({ view: { resources: [] }, path: "/foo" })
     )
 
@@ -52,7 +57,8 @@ describe("AppController", () => {
       beginningLogID: "1",
       endingLogID: "6",
     }
-    fetchMock.mockResponse(
+    fetchMock.mock(
+      "/api/snapshot/aaaaaa",
       JSON.stringify({
         view: { resources: [] },
         snapshotHighlight: snapshotHighlight,

@@ -1,8 +1,12 @@
 import { mount } from "enzyme"
-import fetchMock from "jest-fetch-mock"
+import fetchMock from "fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { expectIncr } from "./analytics_test_helpers"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import { toggleTriggerMode } from "./OverviewItemView"
 import OverviewPane from "./OverviewPane"
 import {
@@ -26,7 +30,12 @@ let expectToggleToManual = function (mode: TriggerMode) {
 
 describe("SidebarTriggerButton", () => {
   beforeEach(() => {
-    fetchMock.resetMocks()
+    fetchMock.reset()
+    mockAnalyticsCalls()
+  })
+
+  afterEach(() => {
+    cleanupMockAnalyticsCalls()
   })
 
   it("shows toggle button only for test cards", () => {
@@ -82,7 +91,7 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("POSTs to endpoint when clicked", () => {
-    fetchMock.mockResponse(JSON.stringify({}))
+    fetchMock.mock("/api/override/trigger_mode", JSON.stringify({}))
 
     let toggleFoobar = toggleTriggerMode.bind(null, "foobar")
     const root = mount(
@@ -103,14 +112,18 @@ describe("SidebarTriggerButton", () => {
     })
     expect(preventDefaulted).toEqual(true)
 
-    expect(fetchMock.mock.calls.length).toEqual(2) // 1 call to analytics, one to /override
-    expectIncr(0, "ui.web.toggleTriggerMode", {
-      toMode: TriggerMode.TriggerModeManual.toString(),
+    expect(fetchMock.calls().length).toEqual(2) // 1 call to analytics, one to /override
+    expectIncrs({
+      name: "ui.web.toggleTriggerMode",
+      tags: {
+        action: "click",
+        toMode: TriggerMode.TriggerModeManual.toString(),
+      },
     })
 
-    expect(fetchMock.mock.calls[1][0]).toEqual("/api/override/trigger_mode")
-    expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
-    expect(fetchMock.mock.calls[1][1]?.body).toEqual(
+    expect(fetchMock.calls()[1][0]).toEqual("/api/override/trigger_mode")
+    expect(fetchMock.calls()[1][1]?.method).toEqual("post")
+    expect(fetchMock.calls()[1][1]?.body).toEqual(
       JSON.stringify({
         manifest_names: ["foobar"],
         trigger_mode: TriggerMode.TriggerModeManual,

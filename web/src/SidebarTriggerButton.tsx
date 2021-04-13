@@ -2,6 +2,7 @@ import React from "react"
 import styled from "styled-components"
 import { ReactComponent as TriggerButtonManualSvg } from "./assets/svg/trigger-button-manual.svg"
 import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
+import { InstrumentedButton } from "./instrumentedComponents"
 import {
   AnimDuration,
   Color,
@@ -11,8 +12,8 @@ import {
 } from "./style-helpers"
 import { TriggerMode } from "./types"
 
-export let SidebarTriggerButtonRoot = styled.button`
-  ${mixinResetButtonStyle}
+export let SidebarTriggerButtonRoot = styled(InstrumentedButton)`
+  ${mixinResetButtonStyle};
   width: ${SizeUnit(1)};
   height: ${SizeUnit(1)};
   background-color: ${Color.grayLighter};
@@ -87,7 +88,7 @@ type SidebarTriggerButtonProps = {
   isSelected: boolean
   hasPendingChanges: boolean
   isQueued: boolean
-  onTrigger: (action: string) => void
+  onTrigger: () => void
 }
 
 const titleText = (
@@ -135,7 +136,7 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
     // stopPropagation prevents the overview card from opening.
     e.stopPropagation()
 
-    props.onTrigger("click")
+    props.onTrigger()
   }
 
   // Add padding to center the icon better.
@@ -160,6 +161,7 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
       disabled={!clickable}
       title={titleText(clickable, clickMe, props.isQueued)}
       style={{ padding }}
+      analyticsName={"ui.web.triggerResource"}
     >
       {clickMe ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
     </SidebarTriggerButtonRoot>

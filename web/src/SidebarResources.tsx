@@ -121,9 +121,9 @@ export class SidebarResources extends React.Component<SidebarProps> {
     this.triggerSelected = this.triggerSelected.bind(this)
   }
 
-  triggerSelected(action: string) {
+  triggerSelected() {
     if (this.props.selected) {
-      triggerUpdate(this.props.selected, action)
+      triggerUpdate(this.props.selected)
     }
   }
 

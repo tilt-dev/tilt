@@ -1,8 +1,12 @@
 import { mount } from "enzyme"
-import fetchMock from "jest-fetch-mock"
+import fetchMock from "fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { expectIncr } from "./analytics_test_helpers"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { triggerUpdate } from "./SidebarItemView"
@@ -38,12 +42,16 @@ let expectWithTooltip = (button: any, expected: string) => {
 
 describe("SidebarTriggerButton", () => {
   beforeEach(() => {
-    fetchMock.resetMocks()
+    fetchMock.reset()
+    mockAnalyticsCalls()
+    fetchMock.mock("http://localhost/api/trigger", JSON.stringify({}))
+  })
+
+  afterEach(() => {
+    cleanupMockAnalyticsCalls()
   })
 
   it("POSTs to endpoint when clicked", () => {
-    fetchMock.mockResponse(JSON.stringify({}))
-
     const root = mount(
       <SidebarTriggerButton
         isTiltfile={false}
@@ -53,7 +61,7 @@ describe("SidebarTriggerButton", () => {
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
-        onTrigger={() => triggerUpdate("doggos", "click")}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 
@@ -68,12 +76,12 @@ describe("SidebarTriggerButton", () => {
     })
     expect(preventDefaulted).toEqual(true)
 
-    expect(fetchMock.mock.calls.length).toEqual(2)
-    expectIncr(0, "ui.web.triggerResource", { action: "click" })
+    expect(fetchMock.calls().length).toEqual(2)
+    expectIncrs({ name: "ui.web.triggerResource", tags: { action: "click" } })
 
-    expect(fetchMock.mock.calls[1][0]).toEqual("//localhost/api/trigger")
-    expect(fetchMock.mock.calls[1][1]?.method).toEqual("post")
-    expect(fetchMock.mock.calls[1][1]?.body).toEqual(
+    expect(fetchMock.calls()[1][0]).toEqual("http://localhost/api/trigger")
+    expect(fetchMock.calls()[1][1]?.method).toEqual("post")
+    expect(fetchMock.calls()[1][1]?.body).toEqual(
       JSON.stringify({
         manifest_names: ["doggos"],
         build_reason: 16 /* BuildReasonFlagTriggerWeb */,
@@ -82,8 +90,6 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("disables button when resource is queued", () => {
-    fetchMock.mockResponse(JSON.stringify({}))
-
     const root = mount(
       <SidebarTriggerButton
         isTiltfile={false}
@@ -93,7 +99,7 @@ describe("SidebarTriggerButton", () => {
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={true}
-        onTrigger={() => triggerUpdate("doggos", "click")}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 
@@ -101,12 +107,10 @@ describe("SidebarTriggerButton", () => {
     expect(element).toHaveLength(1)
     element.simulate("click")
 
-    expect(fetchMock.mock.calls.length).toEqual(0)
+    expect(fetchMock.calls().length).toEqual(0)
   })
 
   it("shows the button for TriggerModeManual", () => {
-    fetchMock.mockResponse(JSON.stringify({}))
-
     const root = mount(
       <SidebarTriggerButton
         isSelected={true}
@@ -116,7 +120,7 @@ describe("SidebarTriggerButton", () => {
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
-        onTrigger={() => triggerUpdate("doggos", "click")}
+        onTrigger={() => triggerUpdate("doggos")}
       />
     )
 
@@ -126,7 +130,7 @@ describe("SidebarTriggerButton", () => {
     expect(element).toHaveLength(1)
     element.simulate("click")
 
-    expect(fetchMock.mock.calls.length).toEqual(2)
+    expect(fetchMock.calls().length).toEqual(2)
   })
 
   it("shows clickable + clickMe trigger button for manual resource with pending changes", () => {

@@ -1,10 +1,11 @@
 import React from "react"
 import styled from "styled-components"
 import { ReactComponent as TriggerModeButtonSvg } from "./assets/svg/trigger-mode-button.svg"
+import { InstrumentedButton } from "./instrumentedComponents"
 import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 import { TriggerMode } from "./types"
 
-let TriggerModeToggleRoot = styled.button`
+let TriggerModeToggleRoot = styled(InstrumentedButton)`
   ${mixinResetButtonStyle}
   display: flex;
   align-items: center;
@@ -90,6 +91,8 @@ function TriggerModeToggle(props: TriggerModeToggleProps) {
       className={isManualTriggerMode ? "is-manual" : ""}
       onClick={onClick}
       title={titleText(isManualTriggerMode)}
+      analyticsName="ui.web.toggleTriggerMode"
+      analyticsTags={{ toMode: desiredMode.toString() }}
     >
       <TriggerModeButtonSvg />
     </TriggerModeToggleRoot>

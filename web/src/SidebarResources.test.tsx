@@ -1,8 +1,11 @@
 import { mount, ReactWrapper } from "enzyme"
-import fetchMock from "jest-fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { expectIncr } from "./analytics_test_helpers"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   AlertsOnTopToggle,
@@ -41,12 +44,11 @@ function clickPin(
 
 describe("SidebarResources", () => {
   beforeEach(() => {
-    fetchMock.resetMocks()
-    fetchMock.mockResponse(JSON.stringify({}))
+    mockAnalyticsCalls()
   })
 
   afterEach(() => {
-    fetchMock.resetMocks()
+    cleanupMockAnalyticsCalls()
     localStorage.clear()
   })
 
@@ -69,8 +71,14 @@ describe("SidebarResources", () => {
 
     clickPin(root, "snack")
 
-    expectIncr(0, "ui.web.pin", { pinCount: "0", action: "load" })
-    expectIncr(1, "ui.web.pin", { pinCount: "1", action: "pin" })
+    expectIncrs(
+      { name: "ui.web.pin", tags: { pinCount: "0", action: "load" } },
+      {
+        name: "ui.web.sidebarPinButton",
+        tags: { action: "click", newPinState: "true" },
+      },
+      { name: "ui.web.pin", tags: { pinCount: "1", action: "pin" } }
+    )
 
     expect(pinnedItemsAccessor.get()).toEqual(["snack"])
   })
@@ -96,8 +104,14 @@ describe("SidebarResources", () => {
 
     clickPin(root, "snack")
 
-    expectIncr(0, "ui.web.pin", { pinCount: "2", action: "load" })
-    expectIncr(1, "ui.web.pin", { pinCount: "1", action: "unpin" })
+    expectIncrs(
+      { name: "ui.web.pin", tags: { pinCount: "2", action: "load" } },
+      {
+        name: "ui.web.sidebarPinButton",
+        tags: { action: "click", newPinState: "false" },
+      },
+      { name: "ui.web.pin", tags: { pinCount: "1", action: "unpin" } }
+    )
 
     expect(pinnedItemsAccessor.get()).toEqual(["vigoda"])
   })
