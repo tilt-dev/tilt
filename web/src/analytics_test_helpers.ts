@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock"
 import { Tags } from "./analytics"
 
 export function mockAnalyticsCalls() {
-  fetchMock.reset()
   fetchMock.mock("//localhost/api/analytics", JSON.stringify({}))
 }
 export function cleanupMockAnalyticsCalls() {
