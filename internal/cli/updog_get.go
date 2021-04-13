@@ -32,7 +32,6 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
-	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -81,7 +80,12 @@ func (c *updogGetCmd) run(ctx context.Context, args []string) error {
 	defer a.Flush(time.Second)
 
 	o := c.options
-	f := cmdutil.NewFactory(cliclient.NewGetter(defaultWebHost, defaultWebPort))
+	getter, err := wireClientGetter(ctx)
+	if err != nil {
+		return err
+	}
+
+	f := cmdutil.NewFactory(getter)
 	cmd := c.cmd
 	cmdutil.CheckErr(o.Complete(f, cmd, args))
 	cmdutil.CheckErr(o.Validate(cmd))

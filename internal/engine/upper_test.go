@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
@@ -3751,6 +3752,7 @@ type testFixture struct {
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 
+	dir := dirs.NewTiltDevDirAt(f.Path())
 	log := bufsync.NewThreadSafeBuffer()
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
@@ -3799,10 +3801,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	memconn := server.ProvideMemConn()
-	serverOptions, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey())
+	serverOptions, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(), 0)
 	require.NoError(t, err)
+	webListener, err := server.ProvideWebListener("localhost", 0)
+	require.NoError(t, err)
+	configAccess := server.ProvideConfigAccess(dir)
 	hudsc := server.ProvideHeadsUpServerController(
-		"localhost", 0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+		configAccess, "tilt-default", webListener, serverOptions,
+		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()

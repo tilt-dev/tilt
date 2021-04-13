@@ -22,12 +22,12 @@ limitations under the License.
 package client
 
 import (
-	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -35,23 +35,17 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/client-go/util/homedir"
-)
-
-var (
-	defaultCacheDir = filepath.Join(homedir.HomeDir(), ".tilt-dev", "cache")
 )
 
 // Composes the set of values necessary
 // for obtaining a REST client config
 type Getter struct {
-	Host string
-	Port int
+	dir    *dirs.TiltDevDir
+	config TiltClientConfig
 }
 
-func NewGetter(host string, port int) *Getter {
-	return &Getter{Host: host, Port: port}
+func NewGetter(dir *dirs.TiltDevDir, config TiltClientConfig) *Getter {
+	return &Getter{dir: dir, config: config}
 }
 
 var _ genericclioptions.RESTClientGetter = &Getter{}
@@ -68,23 +62,7 @@ func (f *Getter) ToRESTConfig() (*rest.Config, error) {
 // Returns an interactive clientConfig if the password flag is enabled,
 // or a non-interactive clientConfig otherwise.
 func (f *Getter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
-	const apiserver = "tilt-apiserver"
-	config := clientcmdapi.NewConfig()
-	config.Clusters[apiserver] = &clientcmdapi.Cluster{
-		Server:                fmt.Sprintf("http://%s:%d", f.Host, f.Port),
-		InsecureSkipTLSVerify: true,
-	}
-	config.AuthInfos[apiserver] = &clientcmdapi.AuthInfo{
-		Username: "corgi",
-		Password: "charge!!!",
-	}
-	config.Contexts[apiserver] = &clientcmdapi.Context{
-		Cluster:  apiserver,
-		AuthInfo: apiserver,
-	}
-	config.CurrentContext = apiserver
-
-	return clientcmd.NewNonInteractiveClientConfig(*config, apiserver, &clientcmd.ConfigOverrides{}, nil)
+	return clientcmd.ClientConfig(f.config)
 }
 
 // ToDiscoveryClient implements RESTClientGetter.
@@ -101,7 +79,7 @@ func (f *Getter) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
 	// double it just so we don't end up here again for a while.  This config is only used for discovery.
 	config.Burst = 100
 
-	cacheDir := defaultCacheDir
+	cacheDir := filepath.Join(f.dir.Root(), "cache")
 	httpCacheDir := filepath.Join(cacheDir, "http")
 	discoveryCacheDir := computeDiscoverCacheDir(filepath.Join(cacheDir, "discovery"), config.Host)
 
