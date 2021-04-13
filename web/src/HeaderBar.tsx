@@ -17,6 +17,7 @@ const HeaderBarRoot = styled.div`
   display: flex;
   align-items: center;
   padding-left: ${SizeUnit(1)};
+  background-color: ${Color.grayDarkest};
 
   ${ResourceStatusSummaryRoot} {
     justify-self: center;

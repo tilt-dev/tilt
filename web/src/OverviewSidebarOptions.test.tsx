@@ -170,51 +170,6 @@ describe("overview sidebar options", () => {
     expect(filters).toHaveLength(1)
   })
 
-  it("still displays pinned tests when tests hidden", () => {
-    pinnedResourcesAccessor.set(["beep"])
-    const root = mount(
-      <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
-            {TwoResourcesTwoTests()}
-          </SidebarPinContextProvider>
-        </tiltfileKeyContext.Provider>
-      </MemoryRouter>
-    )
-
-    assertSidebarItemsAndOptions(
-      root,
-      ["(Tiltfile)", "vigoda", "snack", "beep", "boop"],
-      false,
-      false,
-      false
-    )
-
-    let pinned = root
-      .find(SidebarListSection)
-      .find({ name: "Pinned" })
-      .find(SidebarItemView)
-    expect(pinned).toHaveLength(1)
-    expect(pinned.at(0).props().item.name).toEqual("beep")
-
-    clickTestsHiddenControl(root)
-    assertSidebarItemsAndOptions(
-      root,
-      ["(Tiltfile)", "vigoda", "snack"],
-      true,
-      false,
-      false
-    )
-
-    // "beep" should still be pinned, even though we're no longer showing tests in the main resource list
-    pinned = root
-      .find(SidebarListSection)
-      .find({ name: "Pinned" })
-      .find(SidebarItemView)
-    expect(pinned).toHaveLength(1)
-    expect(pinned.at(0).props().item.name).toEqual("beep")
-  })
-
   it("applies the name filter", () => {
     // 'B p' tests both case insensitivity and a multi-term query
     sidebarOptionsAccessor.set({ ...defaultOptions, resourceNameFilter: "B p" })

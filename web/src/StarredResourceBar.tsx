@@ -4,6 +4,8 @@ import styled from "styled-components"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { usePathBuilder } from "./PathBuilder"
 import { ClassNameFromResourceStatus } from "./ResourceStatus"
+import { useSidebarPin } from "./SidebarPin"
+import { combinedStatus } from "./status"
 import {
   AnimDuration,
   Color,
@@ -33,6 +35,7 @@ export const StarredResourceLabel = styled.div`
 const ResourceButton = styled.button`
   ${mixinResetButtonStyle};
   color: inherit;
+  display: flex;
 `
 const StarIcon = styled(StarSvg)`
   height: ${SizeUnit(0.5)};
@@ -57,6 +60,8 @@ const StarredResourceRoot = styled.div`
   display: inline-flex;
   align-items: center;
   background-color: ${Color.gray};
+  padding-top: ${SizeUnit(0.125)};
+  padding-bottom: ${SizeUnit(0.125)};
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -109,8 +114,12 @@ const StarredResourceRoot = styled.div`
   }
 `
 const StarredResourceBarRoot = styled.div`
-  margin-left: ${SizeUnit(0.5)};
-  margin-right: ${SizeUnit(0.5)};
+  padding-left: ${SizeUnit(0.5)};
+  padding-right: ${SizeUnit(0.5)};
+  padding-top: ${SizeUnit(0.25)};
+  padding-bottom: ${SizeUnit(0.25)};
+  margin-bottom: ${SizeUnit(0.25)};
+  background-color: ${Color.grayDarker};
 
   ${StarredResourceRoot} {
     margin-right: ${SizeUnit(0.25)};
@@ -177,4 +186,24 @@ export default function StarredResourceBar(props: StarredResourceBarProps) {
       ))}
     </StarredResourceBarRoot>
   )
+}
+
+// translates the view to a pared-down model so that `StarredResourceBar` can have a simple API for testing.
+export function starredResourcePropsFromView(
+  view: Proto.webviewView,
+  selectedResource: string
+): StarredResourceBarProps {
+  const pinCtx = useSidebarPin()
+  const namesAndStatuses = (view?.resources || []).flatMap((r) => {
+    if (r.name && pinCtx.pinnedResources.includes(r.name)) {
+      return [{ name: r.name, status: combinedStatus(r) }]
+    } else {
+      return []
+    }
+  })
+  return {
+    resources: namesAndStatuses,
+    unstar: pinCtx.unpinResource,
+    selectedResource: selectedResource,
+  }
 }

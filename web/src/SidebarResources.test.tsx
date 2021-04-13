@@ -13,10 +13,9 @@ import {
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import { SidebarItemBox } from "./SidebarItemView"
 import { SidebarPinContextProvider } from "./SidebarPin"
 import SidebarPinButton from "./SidebarPinButton"
-import SidebarResources, { SidebarListSection } from "./SidebarResources"
+import SidebarResources from "./SidebarResources"
 import {
   oneResource,
   oneResourceTestWithName,
@@ -30,16 +29,6 @@ const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
   "sidebar_options"
 )
 const pinnedItemsAccessor = accessorsForTesting<string[]>("pinned-resources")
-
-function getPinnedItemNames(
-  root: ReactWrapper<any, React.Component["state"], React.Component>
-): Array<string> {
-  let pinnedItems = root
-    .find(SidebarListSection)
-    .find({ name: "Pinned" })
-    .find(SidebarItemBox)
-  return pinnedItems.map((i) => i.prop("data-name"))
-}
 
 function clickPin(
   root: ReactWrapper<any, React.Component["state"], React.Component>,
@@ -61,7 +50,7 @@ describe("SidebarResources", () => {
     localStorage.clear()
   })
 
-  it("adds items to the pinned group when items are pinned", () => {
+  it("adds items to the pinned list when items are pinned", () => {
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
@@ -78,11 +67,7 @@ describe("SidebarResources", () => {
       </MemoryRouter>
     )
 
-    expect(getPinnedItemNames(root)).toEqual([])
-
     clickPin(root, "snack")
-
-    expect(getPinnedItemNames(root)).toEqual(["snack"])
 
     expectIncr(0, "ui.web.pin", { pinCount: "0", action: "load" })
     expectIncr(1, "ui.web.pin", { pinCount: "1", action: "pin" })
@@ -90,29 +75,7 @@ describe("SidebarResources", () => {
     expect(pinnedItemsAccessor.get()).toEqual(["snack"])
   })
 
-  it("reads pinned items from local storage", () => {
-    pinnedItemsAccessor.set(["vigoda", "snack"])
-
-    let items = twoResourceView().resources.map((r) => new SidebarItem(r))
-    const root = mount(
-      <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
-            <SidebarResources
-              items={items}
-              selected={""}
-              resourceView={ResourceView.Log}
-              pathBuilder={pathBuilder}
-            />
-          </SidebarPinContextProvider>
-        </tiltfileKeyContext.Provider>
-      </MemoryRouter>
-    )
-
-    expect(getPinnedItemNames(root)).toEqual(["vigoda", "snack"])
-  })
-
-  it("removes items from the pinned group when items are pinned", () => {
+  it("removes items from the pinned list when items are unpinned", () => {
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     pinnedItemsAccessor.set(items.map((i) => i.name))
 
@@ -131,11 +94,7 @@ describe("SidebarResources", () => {
       </MemoryRouter>
     )
 
-    expect(getPinnedItemNames(root)).toEqual(["vigoda", "snack"])
-
     clickPin(root, "snack")
-
-    expect(getPinnedItemNames(root)).toEqual(["vigoda"])
 
     expectIncr(0, "ui.web.pin", { pinCount: "2", action: "load" })
     expectIncr(1, "ui.web.pin", { pinCount: "1", action: "unpin" })
