@@ -4,8 +4,10 @@ import styled from "styled-components"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
-import SidebarPinButton, { PinButton } from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
+import StarResourceButton, {
+  StarResourceButtonRoot,
+} from "./StarResourceButton"
 import {
   AnimDuration,
   barberpole,
@@ -28,12 +30,12 @@ export const SidebarItemRoot = styled.li`
   & + & {
     margin-top: ${SizeUnit(0.35)};
   }
-  // smaller margin-left since the pin icon takes up space
+  // smaller margin-left since the star icon takes up space
   margin-left: ${SizeUnit(0.25)};
   margin-right: ${SizeUnit(0.5)};
   display: flex;
 
-  ${PinButton} {
+  ${StarResourceButtonRoot} {
     margin-right: ${SizeUnit(1.0 / 12)};
   }
 `
@@ -83,7 +85,7 @@ export let SidebarItemBox = styled.div`
 `
 
 // Flexbox (column) containing:
-// - `SidebarItemRuntimeBox` - (row) with runtime status, name, pin, timeago
+// - `SidebarItemRuntimeBox` - (row) with runtime status, name, star, timeago
 // - `SidebarItemBuildBox` - (row) with build status, text
 let SidebarItemInnerBox = styled.div`
   display: flex;
@@ -267,9 +269,12 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   return (
     <SidebarItemRoot
       key={item.name}
-      className={`u-showPinOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass}`}
+      className={`u-showStarOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass}`}
     >
-      <SidebarPinButton resourceName={item.name} />
+      <StarResourceButton
+        resourceName={item.name}
+        analyticsName="ui.web.sidebarStarButton"
+      />
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
         tabIndex={-1}

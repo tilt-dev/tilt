@@ -6,7 +6,6 @@ import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, { triggerUpdate } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { useSidebarPin } from "./SidebarPin"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceView, SidebarOptions } from "./types"
 
@@ -70,29 +69,6 @@ function MaybeUpgradeSavedSidebarOptions(o: SidebarOptions) {
   // non-nullable fields added to SidebarOptions after its initial release need to have default values
   // filled in here
   return { ...o, resourceNameFilter: o.resourceNameFilter ?? "" }
-}
-
-function PinnedItems(props: SidebarProps) {
-  let ctx = useSidebarPin()
-  let pinnedItems = ctx.pinnedResources?.flatMap((r) =>
-    props.items
-      .filter((i) => i.name === r)
-      .map((i) => (
-        <SidebarItemView
-          key={"sidebarItemPinned-" + i.name}
-          item={i}
-          selected={props.selected === i.name}
-          pathBuilder={props.pathBuilder}
-          resourceView={props.resourceView}
-        />
-      ))
-  )
-
-  if (!pinnedItems?.length) {
-    return null
-  }
-
-  return <SidebarListSection name="Pinned">{pinnedItems}</SidebarListSection>
 }
 
 function hasAlerts(item: SidebarItem): boolean {

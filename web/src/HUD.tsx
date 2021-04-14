@@ -20,9 +20,9 @@ import OverviewPane from "./OverviewPane"
 import OverviewResourcePane from "./OverviewResourcePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import ShareSnapshotModal from "./ShareSnapshotModal"
-import { SidebarPinContextProvider } from "./SidebarPin"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
+import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import { OverviewNavProvider } from "./TabNav"
 import {
   ShowErrorModal,
@@ -265,7 +265,7 @@ export default class HUD extends Component<HudProps, HudState> {
       resources.some((res) => res.name === name)
     return (
       <tiltfileKeyContext.Provider value={view.tiltfileKey}>
-        <SidebarPinContextProvider>
+        <StarredResourcesContextProvider>
           <ReactOutlineManager>
             <OverviewNavProvider validateTab={validateTab}>
               <div className={hudClasses.join(" ")}>
@@ -279,7 +279,7 @@ export default class HUD extends Component<HudProps, HudState> {
               </div>
             </OverviewNavProvider>
           </ReactOutlineManager>
-        </SidebarPinContextProvider>
+        </StarredResourcesContextProvider>
       </tiltfileKeyContext.Provider>
     )
   }

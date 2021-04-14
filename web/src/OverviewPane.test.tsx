@@ -5,8 +5,8 @@ import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import OverviewItemView from "./OverviewItemView"
 import OverviewPane, { AllResources, TestResources } from "./OverviewPane"
 import { TwoResources } from "./OverviewPane.stories"
-import { SidebarPinContextProvider } from "./SidebarPin"
 import { StarredResourceLabel } from "./StarredResourceBar"
+import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import { oneResourceTest, twoResourceView } from "./testdata"
 
 function assertContainerWithResources(
@@ -31,11 +31,11 @@ function assertStarredResources(root: ReactWrapper, names: string[]) {
   expect(renderedStarredResourceNames).toEqual(names)
 }
 
-const pinnedResourcesAccessor = accessorsForTesting<string[]>(
+const starredResourcesAccessor = accessorsForTesting<string[]>(
   "pinned-resources"
 )
 
-it("renders all resources if no pinned and no tests", () => {
+it("renders all resources if no starred and no tests", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>{TwoResources()}</MemoryRouter>
   )
@@ -46,12 +46,14 @@ it("renders all resources if no pinned and no tests", () => {
 })
 
 it("renders starred resources", () => {
-  pinnedResourcesAccessor.set(["snack"])
+  starredResourcesAccessor.set(["snack"])
 
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>
       <tiltfileKeyContext.Provider value="test">
-        <SidebarPinContextProvider>{TwoResources()}</SidebarPinContextProvider>
+        <StarredResourcesContextProvider>
+          {TwoResources()}
+        </StarredResourcesContextProvider>
       </tiltfileKeyContext.Provider>
     </MemoryRouter>
   )

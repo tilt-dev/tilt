@@ -3,7 +3,7 @@ import React from "react"
 import { Router } from "react-router"
 import { FilterLevel, FilterSource, useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
-import { SidebarPinMemoryProvider } from "./SidebarPin"
+import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { oneResource } from "./testdata"
 
 type Resource = Proto.webviewResource
@@ -18,11 +18,11 @@ export default {
       history.location.search = `?level=${level}&source=${source}`
       return (
         <Router history={history}>
-          <SidebarPinMemoryProvider>
+          <StarredResourceMemoryProvider>
             <div style={{ margin: "-1rem", height: "80vh" }}>
               <Story {...context.args} />
             </div>
-          </SidebarPinMemoryProvider>
+          </StarredResourceMemoryProvider>
         </Router>
       )
     },

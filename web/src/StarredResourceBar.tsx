@@ -5,7 +5,7 @@ import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
 import { ClassNameFromResourceStatus } from "./ResourceStatus"
-import { useSidebarPin } from "./SidebarPin"
+import { useStarredResources } from "./StarredResourcesContext"
 import { combinedStatus } from "./status"
 import {
   AnimDuration,
@@ -217,9 +217,9 @@ export function starredResourcePropsFromView(
   view: Proto.webviewView,
   selectedResource: string
 ): StarredResourceBarProps {
-  const pinCtx = useSidebarPin()
+  const starContext = useStarredResources()
   const namesAndStatuses = (view?.resources || []).flatMap((r) => {
-    if (r.name && pinCtx.pinnedResources.includes(r.name)) {
+    if (r.name && starContext.starredResources.includes(r.name)) {
       return [{ name: r.name, status: combinedStatus(r) }]
     } else {
       return []
@@ -227,7 +227,7 @@ export function starredResourcePropsFromView(
   })
   return {
     resources: namesAndStatuses,
-    unstar: pinCtx.unpinResource,
+    unstar: starContext.unstarResource,
     selectedResource: selectedResource,
   }
 }
