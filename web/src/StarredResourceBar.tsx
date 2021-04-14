@@ -9,6 +9,7 @@ import { useSidebarPin } from "./SidebarPin"
 import { combinedStatus } from "./status"
 import {
   AnimDuration,
+  barberpole,
   Color,
   ColorAlpha,
   ColorRGBA,
@@ -63,14 +64,10 @@ const StarredResourceRoot = styled.div`
   background-color: ${Color.gray};
   padding-top: ${SizeUnit(0.125)};
   padding-bottom: ${SizeUnit(0.125)};
+  position: relative; // Anchor the .isBuilding::after psuedo-element
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
-  }
-
-  &.isSelected {
-    background-color: ${Color.white};
-    color: ${Color.gray};
   }
 
   &.isWarning {
@@ -102,6 +99,28 @@ const StarredResourceRoot = styled.div`
   &.isNone {
     color: ${Color.grayLighter};
     transition: border-color ${AnimDuration.default} linear;
+  }
+  &.isSelected {
+    background-color: ${Color.white};
+    color: ${Color.gray};
+  }
+
+  &.isBuilding::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    width: 100%;
+    top: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      225deg,
+      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)},
+      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)} 1px,
+      ${ColorRGBA(Color.black, 0)} 1px,
+      ${ColorRGBA(Color.black, 0)} 6px
+    );
+    background-size: 200% 200%;
+    animation: ${barberpole} 8s linear infinite;
   }
 
   // implement margins as padding on child buttons, to ensure the buttons consume the

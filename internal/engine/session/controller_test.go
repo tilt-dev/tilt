@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -36,6 +39,18 @@ func TestExitControlCI_TiltfileFailure(t *testing.T) {
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithError("fake Tiltfile error")
+}
+
+func TestExitControlIdempotent(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	assert.NotNil(t, f.store.LastAction())
+
+	f.store.ClearLastAction()
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	assert.Nil(t, f.store.LastAction())
 }
 
 func TestExitControlCI_FirstBuildFailure(t *testing.T) {
@@ -381,6 +396,8 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 	cli := fake.NewTiltClient()
 	c := NewController(cli)
 	ctx := context.Background()
+	l := logger.NewLogger(logger.VerboseLvl, os.Stdout)
+	ctx = logger.WithLogger(ctx, l)
 
 	return &fixture{
 		TempDirFixture: f,
@@ -393,6 +410,9 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 type testStore struct {
 	*store.TestingStore
 	t testing.TB
+
+	mu         sync.Mutex
+	lastAction store.Action
 }
 
 func NewTestingStore(t testing.TB) *testStore {
@@ -402,7 +422,23 @@ func NewTestingStore(t testing.TB) *testStore {
 	}
 }
 
+func (s *testStore) LastAction() store.Action {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastAction
+}
+
+func (s *testStore) ClearLastAction() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastAction = nil
+}
+
 func (s *testStore) Dispatch(action store.Action) {
+	s.mu.Lock()
+	s.lastAction = action
+	s.mu.Unlock()
+
 	s.TestingStore.Dispatch(action)
 
 	a, ok := action.(SessionUpdateStatusAction)

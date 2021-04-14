@@ -15,6 +15,7 @@ import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
+import SidebarPinButton, { PinButton } from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import { buildStatus, runtimeStatus } from "./status"
 import {
@@ -198,6 +199,11 @@ let InnerRuntimeBox = styled.div`
   display: flex;
   align-items: center;
   flex-grow: 1;
+
+  ${PinButton} {
+    margin-left: ${SizeUnit(0.125)};
+    align-content: center;
+  }
 `
 let OverviewItemType = styled.div`
   display: flex;
@@ -369,6 +375,7 @@ function RuntimeBox(props: RuntimeBoxProps) {
       <RuntimeBoxStack>
         <InnerRuntimeBox>
           <OverviewItemType>{item.resourceTypeLabel}</OverviewItemType>
+          <SidebarPinButton resourceName={item.name} />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>

@@ -44,6 +44,8 @@ github.com/akutz/memconn
 github.com/alessio/shellescape
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
+# github.com/bitly/go-hostpool v0.1.0
+## explicit
 # github.com/blang/semver v3.5.1+incompatible
 ## explicit
 github.com/blang/semver
@@ -1370,6 +1372,7 @@ k8s.io/kube-openapi/pkg/util/proto/validation
 k8s.io/kube-openapi/pkg/util/sets
 # k8s.io/kubectl v0.20.2
 ## explicit
+k8s.io/kubectl/pkg/cmd/apiresources
 k8s.io/kubectl/pkg/cmd/apply
 k8s.io/kubectl/pkg/cmd/delete
 k8s.io/kubectl/pkg/cmd/get
