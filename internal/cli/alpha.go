@@ -16,6 +16,7 @@ The APIs of these commands may change frequently.
 	addCommand(result, newKubeconfigPathCmd())
 	addCommand(result, newUpdogCmd())
 	addCommand(result, newUpdogGetCmd())
+	addCommand(result, newEditCmd())
 	addCommand(result, newApiresourcesCmd())
 
 	return result
