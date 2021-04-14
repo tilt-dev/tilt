@@ -13,7 +13,6 @@ The APIs of these commands may change frequently.
 	}
 
 	addCommand(result, newTiltfileResultCmd())
-	addCommand(result, newKubeconfigPathCmd())
 	addCommand(result, newUpdogCmd())
 	addCommand(result, newUpdogGetCmd())
 	addCommand(result, newEditCmd())
