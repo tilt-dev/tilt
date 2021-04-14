@@ -155,3 +155,9 @@ export const spin = keyframes`
     transform: rotate(360deg);
   }
 `
+
+export const barberpole = keyframes`
+100% {
+  background-position: 100% 100%;
+}
+`
