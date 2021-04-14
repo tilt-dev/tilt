@@ -7,6 +7,9 @@ import HeaderBar from "./HeaderBar"
 import OverviewGrid from "./OverviewGrid"
 import { OverviewItem } from "./OverviewItemView"
 import { useSidebarPin } from "./SidebarPin"
+import StarredResourceBar, {
+  starredResourcePropsFromView,
+} from "./StarredResourceBar"
 import { Color, Font } from "./style-helpers"
 
 type OverviewPaneProps = {
@@ -104,8 +107,8 @@ export default function OverviewPane(props: OverviewPaneProps) {
   return (
     <OverviewPaneRoot>
       <HeaderBar view={props.view} />
+      <StarredResourceBar {...starredResourcePropsFromView(props.view, "")} />
       <ServicesContainer>
-        <PinnedResources items={pinnedItems} />
         <AllResources items={allResources} />
         <TestResources items={testItems} />
       </ServicesContainer>
