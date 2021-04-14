@@ -17,6 +17,7 @@ The APIs of these commands may change frequently.
 	addCommand(result, newUpdogGetCmd())
 	addCommand(result, newEditCmd())
 	addCommand(result, newApiresourcesCmd())
+	addCommand(result, newDeleteCmd())
 
 	return result
 }
