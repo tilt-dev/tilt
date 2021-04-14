@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -238,7 +239,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	imgName := pod.Status.ContainerStatuses[0].Image
 	runningState := v1.ContainerState{
 		Running: &v1.ContainerStateRunning{
-			StartedAt: metav1.NewTime(time.Now()),
+			StartedAt: apis.NewTime(time.Now()),
 		},
 	}
 	pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, v1.ContainerStatus{

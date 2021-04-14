@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/timecmp"
+
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 
 	"github.com/tilt-dev/wmclient/pkg/analytics"
@@ -423,12 +425,12 @@ func (s BuildStatus) IsEmpty() bool {
 
 func (s *BuildStatus) ClearPendingChangesBefore(startTime time.Time) {
 	for file, modTime := range s.PendingFileChanges {
-		if BeforeOrEqual(modTime, startTime) {
+		if timecmp.BeforeOrEqual(modTime, startTime) {
 			delete(s.PendingFileChanges, file)
 		}
 	}
 	for file, modTime := range s.PendingDependencyChanges {
-		if BeforeOrEqual(modTime, startTime) {
+		if timecmp.BeforeOrEqual(modTime, startTime) {
 			delete(s.PendingDependencyChanges, file)
 		}
 	}
@@ -685,21 +687,21 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 	ok := false
 	earliest := highWaterMark
 	t := ms.PendingManifestChange
-	if !t.IsZero() && BeforeOrEqual(t, earliest) {
+	if !t.IsZero() && timecmp.BeforeOrEqual(t, earliest) {
 		ok = true
 		earliest = t
 	}
 
 	for _, status := range ms.BuildStatuses {
 		for _, t := range status.PendingFileChanges {
-			if !t.IsZero() && BeforeOrEqual(t, earliest) {
+			if !t.IsZero() && timecmp.BeforeOrEqual(t, earliest) {
 				ok = true
 				earliest = t
 			}
 		}
 
 		for _, t := range status.PendingDependencyChanges {
-			if !t.IsZero() && BeforeOrEqual(t, earliest) {
+			if !t.IsZero() && timecmp.BeforeOrEqual(t, earliest) {
 				ok = true
 				earliest = t
 			}

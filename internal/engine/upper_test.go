@@ -17,6 +17,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/timecmp"
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 
 	"github.com/docker/distribution/reference"
@@ -1453,8 +1456,8 @@ func TestPodEventOrdering(t *testing.T) {
 			f.withManifestState("fe", func(ms store.ManifestState) {
 				runtime := ms.K8sRuntimeState()
 				if assert.Equal(t, 2, runtime.PodLen()) {
-					assert.Equal(t, now.String(), runtime.Pods["pod-a"].CreatedAt.String())
-					assert.Equal(t, now.String(), runtime.Pods["pod-b"].CreatedAt.String())
+					timecmp.AssertTimeEqual(t, now, runtime.Pods["pod-a"].CreatedAt)
+					timecmp.AssertTimeEqual(t, now, runtime.Pods["pod-b"].CreatedAt)
 					assert.Equal(t, uidNow, runtime.PodAncestorUID)
 				}
 			})
@@ -2445,7 +2448,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 		Message:        "something has happened zomg",
 		Type:           v1.EventTypeWarning,
 		ObjectMeta: metav1.ObjectMeta{
-			CreationTimestamp: metav1.Time{Time: f.Now()},
+			CreationTimestamp: apis.NewTime(f.Now()),
 			Namespace:         k8s.DefaultNamespace.String(),
 		},
 	}
@@ -2478,7 +2481,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 		Message:        "something has happened zomg",
 		Type:           v1.EventTypeWarning,
 		ObjectMeta: metav1.ObjectMeta{
-			CreationTimestamp: metav1.Time{Time: f.Now()},
+			CreationTimestamp: apis.NewTime(f.Now()),
 			Namespace:         k8s.DefaultNamespace.String(),
 		},
 	}
@@ -2585,7 +2588,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 
 	f.withManifestState(m.ManifestName(), func(ms store.ManifestState) {
 		startTime := ms.DCRuntimeState().StartTime
-		assert.True(t, store.AfterOrEqual(startTime, beforeStart))
+		assert.True(t, timecmp.AfterOrEqual(startTime, beforeStart))
 	})
 
 	// An event unrelated to status shouldn't change the status

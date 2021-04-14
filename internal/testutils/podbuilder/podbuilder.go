@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/validation"
@@ -244,14 +246,15 @@ func (b PodBuilder) buildReplicaSet() *appsv1.ReplicaSet {
 
 func (b PodBuilder) buildCreationTime() metav1.Time {
 	if !b.creationTime.IsZero() {
-		return metav1.Time{Time: b.creationTime}
+		return apis.NewTime(b.creationTime)
 	}
-	return metav1.Time{Time: time.Now()}
+	return apis.Now()
 }
 
 func (b PodBuilder) buildDeletionTime() *metav1.Time {
 	if !b.deletionTime.IsZero() {
-		return &metav1.Time{Time: b.deletionTime}
+		v := apis.NewTime(b.deletionTime)
+		return &v
 	}
 	return nil
 }
@@ -323,7 +326,7 @@ func (b PodBuilder) buildContainerStatuses(spec v1.PodSpec) []v1.ContainerStatus
 
 		state := v1.ContainerState{
 			Running: &v1.ContainerStateRunning{
-				StartedAt: metav1.NewTime(time.Now()),
+				StartedAt: apis.NewTime(time.Now()),
 			},
 		}
 

@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/pkg/apis"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -60,10 +60,11 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []*Pod
 			}
 
 			nn := types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}
+			sinceTime := apis.NewTime(state.TiltStartTime)
 			spec := PodLogStreamSpec{
 				Pod:       pod.Name,
 				Namespace: pod.Namespace,
-				SinceTime: &metav1.Time{Time: state.TiltStartTime},
+				SinceTime: &sinceTime,
 				IgnoreContainers: []string{
 					string(IstioInitContainerName),
 					string(IstioSidecarContainerName),

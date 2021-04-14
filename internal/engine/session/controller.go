@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -108,7 +110,7 @@ func (c *Controller) makeSession(st store.RStore) *session.Session {
 		},
 		Status: session.SessionStatus{
 			PID:       c.pid,
-			StartTime: metav1.NewMicroTime(c.startTime),
+			StartTime: apis.NewMicroTime(c.startTime),
 		},
 	}
 
@@ -130,7 +132,7 @@ func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
 
 	status := &session.SessionStatus{
 		PID:       c.pid,
-		StartTime: metav1.NewMicroTime(c.startTime),
+		StartTime: apis.NewMicroTime(c.startTime),
 	}
 
 	status.Targets = append(status.Targets, tiltfileTarget(state))

@@ -4,15 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	session "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -62,13 +60,13 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 		switch v1.PodPhase(pod.Phase) {
 		case v1.PodRunning:
 			target.State.Active = &session.TargetStateActive{
-				StartTime: metav1.NewMicroTime(pod.CreatedAt.Time),
+				StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
 				Ready:     mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore || store.AllPodContainersReady(pod),
 			}
 			return target
 		case v1.PodSucceeded:
 			target.State.Terminated = &session.TargetStateTerminated{
-				StartTime: metav1.NewMicroTime(pod.CreatedAt.Time),
+				StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
 			}
 			return target
 		case v1.PodFailed:
@@ -77,7 +75,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 				podErr = fmt.Sprintf("Pod %q failed", pod.Name)
 			}
 			target.State.Terminated = &session.TargetStateTerminated{
-				StartTime: metav1.NewMicroTime(pod.CreatedAt.Time),
+				StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
 				Error:     podErr,
 			}
 			return target
@@ -86,7 +84,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 		for _, ctr := range store.AllPodContainers(pod) {
 			if k8sconv.ContainerStatusToRuntimeState(ctr) == model.RuntimeStatusError {
 				target.State.Terminated = &session.TargetStateTerminated{
-					StartTime: metav1.NewMicroTime(pod.CreatedAt.Time),
+					StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
 					Error: fmt.Sprintf("Pod %s in error state due to container %s: %s",
 						pod.Name, ctr.Name, pod.Status),
 				}
@@ -130,13 +128,13 @@ func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *ses
 	lrs := mt.State.LocalRuntimeState()
 	if runtimeErr := lrs.RuntimeStatusError(); runtimeErr != nil {
 		target.State.Terminated = &session.TargetStateTerminated{
-			StartTime:  metav1.NewMicroTime(lrs.StartTime),
-			FinishTime: metav1.NewMicroTime(lrs.FinishTime),
+			StartTime:  apis.NewMicroTime(lrs.StartTime),
+			FinishTime: apis.NewMicroTime(lrs.FinishTime),
 			Error:      errToString(runtimeErr),
 		}
 	} else if lrs.PID != 0 {
 		target.State.Active = &session.TargetStateActive{
-			StartTime: metav1.NewMicroTime(lrs.StartTime),
+			StartTime: apis.NewMicroTime(lrs.StartTime),
 			Ready:     lrs.Ready,
 		}
 	} else {
@@ -171,7 +169,7 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 		target.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
 	case model.RuntimeStatusOK:
 		target.State.Active = &session.TargetStateActive{
-			StartTime: metav1.NewMicroTime(mt.State.LastSuccessfulDeployTime),
+			StartTime: apis.NewMicroTime(mt.State.LastSuccessfulDeployTime),
 			// generic resources have no readiness concept so they're just ready by default
 			// (this also applies to Docker Compose, since we don't support its health checks)
 			Ready: true,
@@ -222,13 +220,13 @@ func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.
 		res.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
 	} else if !mt.State.CurrentBuild.Empty() {
 		res.State.Active = &session.TargetStateActive{
-			StartTime: metav1.NewMicroTime(mt.State.CurrentBuild.StartTime),
+			StartTime: apis.NewMicroTime(mt.State.CurrentBuild.StartTime),
 		}
 	} else if len(mt.State.BuildHistory) != 0 {
 		lastBuild := mt.State.LastBuild()
 		res.State.Terminated = &session.TargetStateTerminated{
-			StartTime:  metav1.NewMicroTime(lastBuild.StartTime),
-			FinishTime: metav1.NewMicroTime(lastBuild.FinishTime),
+			StartTime:  apis.NewMicroTime(lastBuild.StartTime),
+			FinishTime: apis.NewMicroTime(lastBuild.FinishTime),
 			Error:      errToString(lastBuild.Error),
 		}
 	}
@@ -264,7 +262,7 @@ func tiltfileTarget(state store.EngineState) session.Target {
 	// this logic is largely duplicated from the generic resource build logic
 	if !state.TiltfileState.CurrentBuild.Empty() {
 		target.State.Active = &session.TargetStateActive{
-			StartTime: metav1.NewMicroTime(state.TiltfileState.CurrentBuild.StartTime),
+			StartTime: apis.NewMicroTime(state.TiltfileState.CurrentBuild.StartTime),
 		}
 	} else if len(state.PendingConfigFileChanges) != 0 {
 		target.State.Waiting = &session.TargetStateWaiting{
@@ -273,8 +271,8 @@ func tiltfileTarget(state store.EngineState) session.Target {
 	} else if len(state.TiltfileState.BuildHistory) != 0 {
 		lastBuild := state.TiltfileState.LastBuild()
 		target.State.Terminated = &session.TargetStateTerminated{
-			StartTime:  metav1.NewMicroTime(lastBuild.StartTime),
-			FinishTime: metav1.NewMicroTime(lastBuild.FinishTime),
+			StartTime:  apis.NewMicroTime(lastBuild.StartTime),
+			FinishTime: apis.NewMicroTime(lastBuild.FinishTime),
 			Error:      errToString(lastBuild.Error),
 		}
 	} else {

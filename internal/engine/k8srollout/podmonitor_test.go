@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
@@ -34,22 +35,22 @@ func TestMonitorReady(t *testing.T) {
 	start := time.Now()
 	p := v1alpha1.Pod{
 		Name:      "pod-id",
-		CreatedAt: metav1.NewTime(start),
+		CreatedAt: apis.NewTime(start),
 		Conditions: []v1alpha1.PodCondition{
 			{
 				Type:               string(v1.PodScheduled),
 				Status:             string(v1.ConditionTrue),
-				LastTransitionTime: metav1.Time{Time: start.Add(time.Second)},
+				LastTransitionTime: apis.NewTime(start.Add(time.Second)),
 			},
 			{
 				Type:               string(v1.PodInitialized),
 				Status:             string(v1.ConditionTrue),
-				LastTransitionTime: metav1.Time{Time: start.Add(5 * time.Second)},
+				LastTransitionTime: apis.NewTime(start.Add(5 * time.Second)),
 			},
 			{
 				Type:               string(v1.PodReady),
 				Status:             string(v1.ConditionTrue),
-				LastTransitionTime: metav1.Time{Time: start.Add(10 * time.Second)},
+				LastTransitionTime: apis.NewTime(start.Add(10 * time.Second)),
 			},
 		},
 	}

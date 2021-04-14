@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/timecmp"
+
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -191,7 +193,7 @@ func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v
 			// TODO(nick): We might need to remove this check and optimize
 			// it in a different way. We want Tilt to be to attach to existing
 			// resources, and these resources might have pre-existing events.
-			if event.ObjectMeta.CreationTimestamp.Time.Before(tiltStartTime) {
+			if !timecmp.AfterOrEqual(event.ObjectMeta.CreationTimestamp, tiltStartTime) {
 				continue
 			}
 
