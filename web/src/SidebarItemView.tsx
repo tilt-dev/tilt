@@ -1,6 +1,6 @@
 import React from "react"
 import TimeAgo from "react-timeago"
-import styled, { keyframes } from "styled-components"
+import styled from "styled-components"
 import PathBuilder from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
@@ -8,6 +8,7 @@ import SidebarPinButton, { PinButton } from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
 import {
   AnimDuration,
+  barberpole,
   Color,
   ColorAlpha,
   ColorRGBA,
@@ -34,12 +35,6 @@ export const SidebarItemRoot = styled.li`
 
   ${PinButton} {
     margin-right: ${SizeUnit(1.0 / 12)};
-  }
-`
-
-const barberpole = keyframes`
-  100% {
-    background-position: 100% 100%;
   }
 `
 
