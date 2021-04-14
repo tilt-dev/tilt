@@ -18,6 +18,7 @@ The APIs of these commands may change frequently.
 	addCommand(result, newEditCmd())
 	addCommand(result, newApiresourcesCmd())
 	addCommand(result, newDeleteCmd())
+	addCommand(result, newApplyCmd())
 
 	return result
 }
