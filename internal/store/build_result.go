@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"sort"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -127,8 +128,8 @@ func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID, s
 type K8sBuildResult struct {
 	id model.TargetID
 
-	// The UIDs that we deployed to a Kubernetes cluster.
-	DeployedUIDs []types.UID
+	// DeployedEntities are references to the objects that we deployed to a Kubernetes cluster.
+	DeployedEntities []v1.ObjectReference
 
 	// Hashes of the pod template specs that we deployed to a Kubernetes cluster.
 	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
@@ -139,8 +140,8 @@ type K8sBuildResult struct {
 func (r K8sBuildResult) TargetID() model.TargetID   { return r.id }
 func (r K8sBuildResult) BuildType() model.BuildType { return model.BuildTypeK8s }
 
-// For kubernetes deploy targets.
-func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
+// NewK8sDeployResult creates a deploy result for Kubernetes deploy targets.
+func NewK8sDeployResult(id model.TargetID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
 	// Remove verbose fields from the YAML.
 	for _, e := range appliedEntities {
 		e.Clean()
@@ -151,9 +152,14 @@ func NewK8sDeployResult(id model.TargetID, uids []types.UID, hashes []k8s.PodTem
 		appliedEntitiesText = fmt.Sprintf("unable to serialize entities to yaml: %s", err.Error())
 	}
 
+	deployedRefs := make(k8s.ObjRefList, len(appliedEntities))
+	for i, entity := range appliedEntities {
+		deployedRefs[i] = entity.ToObjectReference()
+	}
+
 	return K8sBuildResult{
 		id:                    id,
-		DeployedUIDs:          uids,
+		DeployedEntities:      deployedRefs,
 		PodTemplateSpecHashes: hashes,
 		AppliedEntitiesText:   appliedEntitiesText,
 	}
@@ -188,12 +194,15 @@ func (set BuildResultSet) LiveUpdatedContainerIDs() []container.ID {
 	return result
 }
 
-func (set BuildResultSet) DeployedUIDSet() UIDSet {
-	result := NewUIDSet()
+func (set BuildResultSet) DeployedEntities() k8s.ObjRefList {
+	var result k8s.ObjRefList
 	for _, r := range set {
 		r, ok := r.(K8sBuildResult)
 		if ok {
-			result.Add(r.DeployedUIDs...)
+			for _, ref := range r.DeployedEntities {
+				// shallow copy is fine; there's no reference types on v1.ObjectReference
+				result = append(result, ref)
+			}
 		}
 	}
 	return result
@@ -473,7 +482,7 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	// new pods yet. We check the PodAncestorID and see if it's in the most
 	// recent deploy set. If it's not, then we can should ignore these pods.
 	ancestorUID := runtimeState.PodAncestorUID
-	if ancestorUID != "" && !runtimeState.DeployedUIDSet.Contains(ancestorUID) {
+	if ancestorUID != "" && !runtimeState.DeployedUIDSet().Contains(ancestorUID) {
 		return nil, nil
 	}
 

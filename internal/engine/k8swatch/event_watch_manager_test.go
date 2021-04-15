@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -33,8 +32,9 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 	// Seed the k8s client with a pod and its owner tree
 	manifest := f.addManifest(mn)
 	pb := podbuilder.New(t, manifest)
-	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
@@ -53,8 +53,9 @@ func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
 	// Seed the k8s client with a pod and its owner tree
 	manifest := f.addManifest(mn)
 	pb := podbuilder.New(t, manifest)
-	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 
 	evt1 := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 	evt1.ObjectMeta.Namespace = "kube-system"
@@ -80,9 +81,10 @@ func TestEventWatchManager_duplicateDeployIDs(t *testing.T) {
 
 	// Seed the k8s client with a pod and its owner tree
 	pb := podbuilder.New(t, m1)
-	f.addDeployedUID(m1, pb.DeploymentUID())
-	f.addDeployedUID(m2, pb.DeploymentUID())
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(m1, entities.Deployment())
+	f.addDeployedEntity(m2, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
@@ -117,8 +119,9 @@ func TestEventWatchManagerDifferentEvents(t *testing.T) {
 			// Seed the k8s client with a pod and its owner tree
 			manifest := f.addManifest(mn)
 			pb := podbuilder.New(t, manifest)
-			f.addDeployedUID(manifest, pb.DeploymentUID())
-			f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+			entities := pb.ObjectTreeEntities()
+			f.addDeployedEntity(manifest, entities.Deployment())
+			f.kClient.InjectEntityByName(entities...)
 
 			evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 			evt.Reason = c.Reason
@@ -175,7 +178,8 @@ func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	pb := podbuilder.New(t, manifest)
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	entities := pb.ObjectTreeEntities()
+	f.kClient.InjectEntityByName(entities...)
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
@@ -186,7 +190,7 @@ func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 
 	// When the UIDs of the deployed objects show up, then
 	// we need to go back and emit the events we saw earlier.
-	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.addDeployedEntity(manifest, entities.Deployment())
 	expected := store.K8sEventAction{Event: evt, ManifestName: mn}
 	f.assertActions(expected)
 }
@@ -200,8 +204,9 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 	// Seed the k8s client with a pod and its owner tree
 	manifest := f.addManifest(mn)
 	pb := podbuilder.New(t, manifest)
-	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 
 	entity := k8s.NewK8sEntity(pb.Build())
 	evt1 := f.makeEvent(entity)
@@ -290,7 +295,7 @@ func (f *ewmFixture) addManifest(manifestName model.ManifestName) model.Manifest
 	return m
 }
 
-func (f *ewmFixture) addDeployedUID(m model.Manifest, uid types.UID) {
+func (f *ewmFixture) addDeployedEntity(m model.Manifest, entity k8s.K8sEntity) {
 	defer f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	state := f.store.LockMutableStateForTesting()
@@ -300,7 +305,8 @@ func (f *ewmFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
 	runtimeState := mState.K8sRuntimeState()
-	runtimeState.DeployedUIDSet[uid] = true
+	runtimeState.DeployedEntities = k8s.ObjRefList{entity.ToObjectReference()}
+	mState.RuntimeState = runtimeState
 }
 
 func (f *ewmFixture) assertNoActions() {

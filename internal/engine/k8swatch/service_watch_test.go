@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -28,7 +30,6 @@ func TestServiceWatch(t *testing.T) {
 	nodePort := 9998
 	uid := types.UID("fake-uid")
 	manifest := f.addManifest("server")
-	f.addDeployedUID(manifest, uid)
 
 	ls := k8s.ManagedByTiltSelector()
 	s := servicebuilder.New(f.t, manifest).
@@ -37,6 +38,7 @@ func TestServiceWatch(t *testing.T) {
 		WithIP(string(f.nip)).
 		WithUID(uid).
 		Build()
+	f.addDeployedService(manifest, s)
 	f.kClient.EmitService(ls, s)
 
 	expectedSCA := ServiceChangeAction{
@@ -72,7 +74,7 @@ func TestServiceWatchUIDDelayed(t *testing.T) {
 	f.kClient.EmitService(ls, s)
 	f.waitUntilServiceKnown(uid)
 
-	f.addDeployedUID(manifest, uid)
+	f.addDeployedService(manifest, s)
 
 	expectedSCA := ServiceChangeAction{
 		Service:      s,
@@ -92,7 +94,7 @@ func (f *swFixture) addManifest(manifestName model.ManifestName) model.Manifest 
 	return m
 }
 
-func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
+func (f *swFixture) addDeployedService(m model.Manifest, svc *v1.Service) {
 	defer f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	state := f.store.LockMutableStateForTesting()
@@ -102,7 +104,10 @@ func (f *swFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
 	runtimeState := mState.K8sRuntimeState()
-	runtimeState.DeployedUIDSet[uid] = true
+	runtimeState.DeployedEntities = k8s.ObjRefList{
+		k8s.NewK8sEntity(svc).ToObjectReference(),
+	}
+	mState.RuntimeState = runtimeState
 }
 
 type swFixture struct {

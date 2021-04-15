@@ -355,12 +355,26 @@ func (b PodBuilder) validateContainerIDs(numContainers int) {
 	}
 }
 
+type PodObjectTree []k8s.K8sEntity
+
+func (p PodObjectTree) Pod() k8s.K8sEntity {
+	return p[0]
+}
+
+func (p PodObjectTree) ReplicaSet() k8s.K8sEntity {
+	return p[1]
+}
+
+func (p PodObjectTree) Deployment() k8s.K8sEntity {
+	return p[2]
+}
+
 // Simulates a Pod -> ReplicaSet -> Deployment ref tree
-func (b PodBuilder) ObjectTreeEntities() []k8s.K8sEntity {
+func (b PodBuilder) ObjectTreeEntities() PodObjectTree {
 	pod := b.Build()
 	rs := b.buildReplicaSet()
 	dep := b.buildDeployment()
-	return []k8s.K8sEntity{
+	return PodObjectTree{
 		k8s.NewK8sEntity(pod),
 		k8s.NewK8sEntity(rs),
 		k8s.NewK8sEntity(dep),

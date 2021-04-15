@@ -142,7 +142,7 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 	// If the event has an ancestor UID attached, but that ancestor isn't in the
 	// deployed UID set anymore, we can ignore it.
 	isAncestorMatched := matchedAncestorUID != ""
-	if isAncestorMatched && !runtime.DeployedUIDSet.Contains(matchedAncestorUID) {
+	if isAncestorMatched && !runtime.DeployedEntities.ContainsUID(matchedAncestorUID) {
 		return nil
 	}
 	return mt

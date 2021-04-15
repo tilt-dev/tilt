@@ -337,19 +337,25 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
-		uid := types.UID(uuid.New().String())
-		if b.nextDeployedUID != "" {
-			uid = b.nextDeployedUID
-			b.nextDeployedUID = ""
+		deployed, err := k8s.ParseYAMLFromString(kTarg.YAML)
+		if err != nil {
+			return result, err
 		}
-		uids := []types.UID{uid}
+		for i := 0; i < len(deployed); i++ {
+			uid := types.UID(uuid.New().String())
+			if b.nextDeployedUID != "" {
+				uid = b.nextDeployedUID
+				b.nextDeployedUID = ""
+			}
+			k8s.SetUIDForTest(b.t, &deployed[i], string(uid))
+		}
 
 		templateSpecHashes := podTemplateSpecHashesForTarg(b.t, kTarg)
 		if len(b.nextPodTemplateSpecHashes) != 0 {
 			templateSpecHashes = b.nextPodTemplateSpecHashes
 			b.nextPodTemplateSpecHashes = nil
 		}
-		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), uids, templateSpecHashes, nil)
+		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), templateSpecHashes, deployed)
 	}
 
 	err = b.nextLiveUpdateCompileError
@@ -1436,7 +1442,7 @@ func TestPodEventOrdering(t *testing.T) {
 			call := f.nextCall()
 			assert.True(t, call.oneImageState().IsEmpty())
 			f.WaitUntilManifestState("uid deployed", "fe", func(ms store.ManifestState) bool {
-				return ms.K8sRuntimeState().DeployedUIDSet.Contains(uidNow)
+				return ms.K8sRuntimeState().DeployedEntities.ContainsUID(uidNow)
 			})
 
 			for _, pb := range order {
@@ -1681,7 +1687,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		WithTemplateSpecHash(ptsh)
 	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
 		spanID0,
-		deployResultSet(manifest, ancestorUID, []k8s.PodTemplateSpecHash{ptsh}), nil))
+		deployResultSet(manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
 
 	f.store.Dispatch(k8swatch.NewPodChangeAction(pb.Build(), manifest.Name, ancestorUID))
 	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
@@ -2353,7 +2359,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	result := f.b.resultsByID[manifest.K8sTarget().ID()]
-	uid := result.(store.K8sBuildResult).DeployedUIDs[0]
+	uid := result.(store.K8sBuildResult).DeployedEntities[0].UID
 	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
 	err := k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 	require.NoError(t, err)
@@ -2386,7 +2392,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	result := f.b.resultsByID[manifest.K8sTarget().ID()]
-	uid := result.(store.K8sBuildResult).DeployedUIDs[0]
+	uid := result.(store.K8sBuildResult).DeployedEntities[0].UID
 	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
 	svc := sb.Build()
 	err := k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
@@ -3117,7 +3123,7 @@ func TestDeployUIDsInEngineState(t *testing.T) {
 
 	_ = f.nextCall()
 	f.WaitUntilManifestState("UID in ManifestState", "fe", func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().DeployedUIDSet.Contains(uid)
+		return state.K8sRuntimeState().DeployedEntities.ContainsUID(uid)
 	})
 
 	err := f.Stop()
@@ -4258,9 +4264,8 @@ func (f *testFixture) lastDeployedUID(manifestName model.ManifestName) types.UID
 	if !ok {
 		return ""
 	}
-	uids := k8sResult.DeployedUIDs
-	if len(uids) > 0 {
-		return uids[0]
+	if len(k8sResult.DeployedEntities) > 0 {
+		return k8sResult.DeployedEntities[0].UID
 	}
 	return ""
 }
@@ -4529,7 +4534,7 @@ func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Act
 	})
 }
 
-func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
+func deployResultSet(manifest model.Manifest, pb podbuilder.PodBuilder, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	tag := "deadbeef"
 	for _, iTarget := range manifest.ImageTargets {
@@ -4538,7 +4543,7 @@ func deployResultSet(manifest model.Manifest, uid types.UID, hashes []k8s.PodTem
 		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 	}
 	ktID := manifest.K8sTarget().ID()
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, []types.UID{uid}, hashes, nil)
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, hashes, []k8s.K8sEntity{pb.ObjectTreeEntities().Deployment()})
 	return resultSet
 }
 

@@ -34,7 +34,7 @@ type EventWatchManager struct {
 	// all events that they own (transitively).
 	//
 	// For example, a Deployment UID might contain a set of N event UIDs.
-	knownDescendentEventUIDs map[types.UID]store.UIDSet
+	knownDescendentEventUIDs map[types.UID]k8s.UIDSet
 
 	// An index of all the known events, by UID
 	knownEvents map[types.UID]*v1.Event
@@ -45,7 +45,7 @@ func NewEventWatchManager(kClient k8s.Client, ownerFetcher k8s.OwnerFetcher, cfg
 		kClient:                  kClient,
 		ownerFetcher:             ownerFetcher,
 		watcherKnownState:        newWatcherKnownState(cfgNS),
-		knownDescendentEventUIDs: make(map[types.UID]store.UIDSet),
+		knownDescendentEventUIDs: make(map[types.UID]k8s.UIDSet),
 		knownEvents:              make(map[types.UID]*v1.Event),
 	}
 }
@@ -143,7 +143,7 @@ func (m *EventWatchManager) triageEventUpdate(event *v1.Event, objTree k8s.Objec
 	for _, ownerUID := range objTree.UIDs() {
 		set, ok := m.knownDescendentEventUIDs[ownerUID]
 		if !ok {
-			set = store.NewUIDSet()
+			set = k8s.NewUIDSet()
 			m.knownDescendentEventUIDs[ownerUID] = set
 		}
 		set.Add(uid)

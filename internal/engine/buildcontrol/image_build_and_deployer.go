@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -274,15 +273,11 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		return nil, err
 	}
 
-	// TODO(nick): Do something with this result
-	uids := []types.UID{}
 	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
 	for _, entity := range deployed {
-		uid := entity.UID()
-		if uid == "" {
+		if entity.UID() == "" {
 			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
 		}
-		uids = append(uids, entity.UID())
 		hs, err := k8s.ReadPodTemplateSpecHashes(entity)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading pod template spec hashes")
@@ -290,7 +285,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
 	}
 
-	return store.NewK8sDeployResult(kTarget.ID(), uids, podTemplateSpecHashes, deployed), nil
+	return store.NewK8sDeployResult(kTarget.ID(), podTemplateSpecHashes, deployed), nil
 }
 
 func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) context.Context {

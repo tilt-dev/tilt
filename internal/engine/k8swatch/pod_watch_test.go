@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -36,9 +35,10 @@ func TestPodWatch(t *testing.T) {
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
 
-	// Simulate the Deployment UID in the engine state
-	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	// Simulate the deployed entities in the engine state
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 
 	f.kClient.EmitPod(labels.Everything(), p)
 
@@ -60,9 +60,11 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	f.kClient.EmitPod(labels.Everything(), p)
 	f.assertObservedPods()
 
-	// Simulate the Deployment UID in the engine state after
+	// Simulate the deployed entities in the engine state after
 	// the pod event.
-	f.addDeployedUID(manifest, pb.DeploymentUID())
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 
 	f.assertObservedPods(p)
 }
@@ -80,9 +82,10 @@ func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 
 	pb := podbuilder.New(t, manifest).WithResourceVersion("9")
 
-	// Simulate the Deployment UID in the engine state
-	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	// Simulate the deployed entities in the engine state
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 
 	p1 := pb.Build()
 	f.kClient.EmitPod(labels.Everything(), p1)
@@ -141,8 +144,9 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 
 	pb2 := podbuilder.New(t, manifest2).WithPodID("pod2")
 	p2 := pb2.Build()
-	f.addDeployedUID(manifest2, pb2.DeploymentUID())
-	f.kClient.InjectEntityByName(pb2.ObjectTreeEntities()...)
+	p2Entities := pb2.ObjectTreeEntities()
+	f.addDeployedEntity(manifest2, p2Entities.Deployment())
+	f.kClient.InjectEntityByName(p2Entities...)
 	f.kClient.EmitPod(labels.Everything(), p2)
 	f.assertObservedPods(p2)
 	f.clearPods()
@@ -179,8 +183,9 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 
 	pb := podbuilder.New(t, manifest)
 
-	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 
 	count := 20
 	pods := []*v1.Pod{}
@@ -217,8 +222,9 @@ func TestPodWatchReadd(t *testing.T) {
 
 	pb := podbuilder.New(t, manifest)
 	p := pb.Build()
-	f.addDeployedUID(manifest, pb.DeploymentUID())
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities()...)
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.kClient.InjectEntityByName(entities...)
 	f.kClient.EmitPod(labels.Everything(), p)
 
 	f.assertObservedPods(p)
@@ -228,7 +234,7 @@ func TestPodWatchReadd(t *testing.T) {
 
 	f.pods = nil
 	_ = f.addManifestWithSelectors("server")
-	f.addDeployedUID(manifest, pb.DeploymentUID())
+	f.addDeployedEntity(manifest, pb.ObjectTreeEntities().Deployment())
 	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	// Make sure the pods are re-broadcast.
@@ -364,7 +370,7 @@ func (f *pwFixture) TearDown() {
 	f.cancel()
 }
 
-func (f *pwFixture) addDeployedUID(m model.Manifest, uid types.UID) {
+func (f *pwFixture) addDeployedEntity(m model.Manifest, entity k8s.K8sEntity) {
 	defer f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	state := f.store.LockMutableStateForTesting()
@@ -373,8 +379,10 @@ func (f *pwFixture) addDeployedUID(m model.Manifest, uid types.UID) {
 	if !ok {
 		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
+
 	runtimeState := mState.K8sRuntimeState()
-	runtimeState.DeployedUIDSet[uid] = true
+	runtimeState.DeployedEntities = k8s.ObjRefList{entity.ToObjectReference()}
+	mState.RuntimeState = runtimeState
 }
 
 func (f *pwFixture) waitForPodActionCount(count int) {

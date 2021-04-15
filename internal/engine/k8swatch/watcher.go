@@ -63,7 +63,7 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 		}
 
 		// Collect all the new UIDs
-		for id := range mt.State.K8sRuntimeState().DeployedUIDSet {
+		for _, ref := range mt.State.K8sRuntimeState().DeployedEntities {
 			// Our data model allows people to have the same resource defined in
 			// multiple manifests, and so we can have the same deployed UID in
 			// multiple manifests.
@@ -72,6 +72,7 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 			// between the two manifests.
 			//
 			// Ideally, our data model would prevent this from happening entirely.
+			id := ref.UID
 			if seenUIDs[id] {
 				continue
 			}
