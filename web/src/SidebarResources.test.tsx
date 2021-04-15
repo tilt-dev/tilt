@@ -72,18 +72,18 @@ describe("SidebarResources", () => {
     clickStar(root, "snack")
 
     expectIncrs(
-      { name: "ui.web.star", tags: { pinCount: "0", action: "load" } },
+      { name: "ui.web.star", tags: { starCount: "0", action: "load" } },
       {
         name: "ui.web.sidebarStarButton",
         tags: { action: "click", newStarState: "true" },
       },
-      { name: "ui.web.star", tags: { pinCount: "1", action: "pin" } }
+      { name: "ui.web.star", tags: { starCount: "1", action: "star" } }
     )
 
     expect(starredItemsAccessor.get()).toEqual(["snack"])
   })
 
-  it("removes items from the pinned list when items are unpinned", () => {
+  it("removes items from the starred list when items are unstarred", () => {
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     starredItemsAccessor.set(items.map((i) => i.name))
 
@@ -105,12 +105,12 @@ describe("SidebarResources", () => {
     clickStar(root, "snack")
 
     expectIncrs(
-      { name: "ui.web.star", tags: { pinCount: "2", action: "load" } },
+      { name: "ui.web.star", tags: { starCount: "2", action: "load" } },
       {
         name: "ui.web.sidebarStarButton",
         tags: { action: "click", newStarState: "false" },
       },
-      { name: "ui.web.star", tags: { pinCount: "1", action: "unpin" } }
+      { name: "ui.web.star", tags: { starCount: "1", action: "unstar" } }
     )
 
     expect(starredItemsAccessor.get()).toEqual(["vigoda"])

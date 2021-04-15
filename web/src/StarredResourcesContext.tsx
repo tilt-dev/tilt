@@ -67,7 +67,7 @@ export function StarredResourcesContextProvider(
 
   useEffect(() => {
     incr("ui.web.star", {
-      pinCount: starredResources.length.toString(),
+      starCount: starredResources.length.toString(),
       action: "load",
     })
     // empty deps because we only want to report the loaded star count once per app load
@@ -78,8 +78,8 @@ export function StarredResourcesContextProvider(
     setStarredResources((prevState) => {
       const ret = prevState.includes(name) ? prevState : [...prevState, name]
       incr("ui.web.star", {
-        pinCount: ret.length.toString(),
-        action: "pin",
+        starCount: ret.length.toString(),
+        action: "star",
       })
       return ret
     })
@@ -89,8 +89,8 @@ export function StarredResourcesContextProvider(
     setStarredResources((prevState) => {
       const ret = prevState.filter((n) => n !== name)
       incr("ui.web.star", {
-        pinCount: ret.length.toString(),
-        action: "unpin",
+        starCount: ret.length.toString(),
+        action: "unstar",
       })
       return ret
     })

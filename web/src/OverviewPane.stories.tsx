@@ -35,7 +35,7 @@ export const OneHundredResourcesOneStar = () => (
   </StarredResourceMemoryProvider>
 )
 
-export const OneHundredResourcesTenPins = () => {
+export const OneHundredResourcesTenStars = () => {
   let items = [
     "vigoda_1",
     "vigoda_11",
