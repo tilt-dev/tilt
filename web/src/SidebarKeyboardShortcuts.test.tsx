@@ -2,9 +2,9 @@ import { fireEvent } from "@testing-library/dom"
 import { mount } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { ResourceNavContextProvider } from "./ResourceNav"
 import SidebarItem from "./SidebarItem"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { TabNavContextProvider } from "./TabNav"
 import { twoResourceView } from "./testdata"
 import { ResourceView } from "./types"
 
@@ -12,20 +12,18 @@ var opened: any
 let component: any
 let triggered: any = false
 const shortcuts = (items: SidebarItem[], selected: string) => {
-  let tabNav = {
-    tabs: [],
-    selectedTab: "",
-    invalidTab: "",
-    openResource: (name: string, options?: { newTab: boolean }) => {
+  let resourceNav = {
+    selectedResource: "",
+    invalidResource: "",
+    openResource: (name: string) => {
       opened = name
     },
-    closeTab: (name: string) => {},
   }
   opened = null
 
   component = mount(
     <MemoryRouter initialEntries={["/init"]}>
-      <TabNavContextProvider value={tabNav}>
+      <ResourceNavContextProvider value={resourceNav}>
         <SidebarKeyboardShortcuts
           items={items}
           selected={selected}
@@ -34,7 +32,7 @@ const shortcuts = (items: SidebarItem[], selected: string) => {
             triggered = true
           }}
         />
-      </TabNavContextProvider>
+      </ResourceNavContextProvider>
     </MemoryRouter>
   )
 }

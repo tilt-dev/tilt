@@ -6,7 +6,7 @@ import { ButtonLeftPill, FilterRadioButton } from "./OverviewActionBar"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { NotFound } from "./OverviewResourcePane.stories"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
-import { OverviewNavProvider } from "./TabNav"
+import { ResourceNavProvider } from "./ResourceNav"
 import { oneResourceView } from "./testdata"
 import { appendLinesForManifestAndSpan } from "./testlogs"
 
@@ -38,9 +38,9 @@ describe("alert filtering", () => {
     let root = mount(
       <MemoryRouter initialEntries={["/"]}>
         <LogStoreProvider value={logStore}>
-          <OverviewNavProvider validateTab={() => true}>
+          <ResourceNavProvider validateResource={() => true}>
             <OverviewResourcePane view={view} />
-          </OverviewNavProvider>
+          </ResourceNavProvider>
         </LogStoreProvider>
       </MemoryRouter>
     )

@@ -5,11 +5,11 @@ import HeaderBar from "./HeaderBar"
 import { LogUpdateAction, LogUpdateEvent, useLogStore } from "./LogStore"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
+import { useResourceNav } from "./ResourceNav"
 import StarredResourceBar, {
   starredResourcePropsFromView,
 } from "./StarredResourceBar"
 import { Color } from "./style-helpers"
-import { useTabNav } from "./TabNav"
 import { ResourceName } from "./types"
 
 type OverviewResourcePaneProps = {
@@ -34,10 +34,10 @@ let Main = styled.div`
 `
 
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
-  let nav = useTabNav()
+  let nav = useResourceNav()
   const logStore = useLogStore()
   let resources = props.view?.resources || []
-  let name = nav.invalidTab || nav.selectedTab || ""
+  let name = nav.invalidResource || nav.selectedResource || ""
   let r: Proto.webviewResource | undefined
   let all = name === "" || name === ResourceName.all
   if (!all) {
