@@ -72,12 +72,12 @@ describe("SidebarResources", () => {
     clickStar(root, "snack")
 
     expectIncrs(
-      { name: "ui.web.pin", tags: { pinCount: "0", action: "load" } },
+      { name: "ui.web.star", tags: { pinCount: "0", action: "load" } },
       {
         name: "ui.web.sidebarStarButton",
         tags: { action: "click", newStarState: "true" },
       },
-      { name: "ui.web.pin", tags: { pinCount: "1", action: "pin" } }
+      { name: "ui.web.star", tags: { pinCount: "1", action: "pin" } }
     )
 
     expect(starredItemsAccessor.get()).toEqual(["snack"])
@@ -105,12 +105,12 @@ describe("SidebarResources", () => {
     clickStar(root, "snack")
 
     expectIncrs(
-      { name: "ui.web.pin", tags: { pinCount: "2", action: "load" } },
+      { name: "ui.web.star", tags: { pinCount: "2", action: "load" } },
       {
         name: "ui.web.sidebarStarButton",
         tags: { action: "click", newStarState: "false" },
       },
-      { name: "ui.web.pin", tags: { pinCount: "1", action: "unpin" } }
+      { name: "ui.web.star", tags: { pinCount: "1", action: "unpin" } }
     )
 
     expect(starredItemsAccessor.get()).toEqual(["vigoda"])

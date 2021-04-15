@@ -2,8 +2,8 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
+import { ResourceNavProvider } from "./ResourceNav"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
-import { OverviewNavProvider } from "./TabNav"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type Resource = Proto.webviewResource
@@ -30,12 +30,13 @@ function OverviewResourcePaneHarness(props: {
   let { name, view } = props
   let entry = name ? `/r/${props.name}/overview` : `/overview`
   let resources = view?.resources || []
-  let validateTab = (name: string) => resources.some((res) => res.name == name)
+  let validateResource = (name: string) =>
+    resources.some((res) => res.name == name)
   return (
     <MemoryRouter initialEntries={[entry]}>
-      <OverviewNavProvider validateTab={validateTab}>
+      <ResourceNavProvider validateResource={validateResource}>
         <OverviewResourcePane view={view} />
-      </OverviewNavProvider>
+      </ResourceNavProvider>
     </MemoryRouter>
   )
 }

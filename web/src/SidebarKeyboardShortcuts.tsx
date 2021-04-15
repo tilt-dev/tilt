@@ -1,14 +1,14 @@
 import React, { Component } from "react"
 import { incr } from "./analytics"
+import { ResourceNav, useResourceNav } from "./ResourceNav"
 import { isTargetEditable } from "./shortcut"
 import SidebarItem from "./SidebarItem"
-import { TabNav, useTabNav } from "./TabNav"
 import { ResourceName, ResourceView } from "./types"
 
 type Props = {
   items: SidebarItem[]
   selected: string
-  tabNav: TabNav
+  resourceNav: ResourceNav
   resourceView: ResourceView
   onTrigger: () => void
 }
@@ -56,7 +56,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         }
 
         let name = names[targetIndex]
-        this.props.tabNav.openResource(name, { newTab: e.metaKey || e.ctrlKey })
+        this.props.resourceNav.openResource(name)
         e.preventDefault()
         break
 
@@ -84,6 +84,6 @@ type PublicProps = {
 }
 
 export default function (props: PublicProps) {
-  let tabNav = useTabNav()
-  return <SidebarKeyboardShortcuts {...props} tabNav={tabNav} />
+  let resourceNav = useResourceNav()
+  return <SidebarKeyboardShortcuts {...props} resourceNav={resourceNav} />
 }

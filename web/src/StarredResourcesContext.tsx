@@ -66,7 +66,7 @@ export function StarredResourcesContextProvider(
   )
 
   useEffect(() => {
-    incr("ui.web.pin", {
+    incr("ui.web.star", {
       pinCount: starredResources.length.toString(),
       action: "load",
     })
@@ -77,7 +77,7 @@ export function StarredResourcesContextProvider(
   function starResource(name: string) {
     setStarredResources((prevState) => {
       const ret = prevState.includes(name) ? prevState : [...prevState, name]
-      incr("ui.web.pin", {
+      incr("ui.web.star", {
         pinCount: ret.length.toString(),
         action: "pin",
       })
@@ -88,7 +88,7 @@ export function StarredResourcesContextProvider(
   function unstarResource(name: string) {
     setStarredResources((prevState) => {
       const ret = prevState.filter((n) => n !== name)
-      incr("ui.web.pin", {
+      incr("ui.web.star", {
         pinCount: ret.length.toString(),
         action: "unpin",
       })
