@@ -83,6 +83,7 @@ func (c *createCmd) register() *cobra.Command {
 	c.cmd = cmd
 
 	addCommand(cmd, newCreateFileWatchCmd())
+	addCommand(cmd, newCreateCmdCmd())
 
 	return cmd
 }
