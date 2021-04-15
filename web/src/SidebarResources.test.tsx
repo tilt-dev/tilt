@@ -16,9 +16,9 @@ import {
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import { SidebarPinContextProvider } from "./SidebarPin"
-import SidebarPinButton from "./SidebarPinButton"
 import SidebarResources from "./SidebarResources"
+import { StarredResourcesContextProvider } from "./StarredResourcesContext"
+import StarResourceButton from "./StarResourceButton"
 import {
   oneResource,
   oneResourceTestWithName,
@@ -31,15 +31,15 @@ let pathBuilder = PathBuilder.forTesting("localhost", "/")
 const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
   "sidebar_options"
 )
-const pinnedItemsAccessor = accessorsForTesting<string[]>("pinned-resources")
+const starredItemsAccessor = accessorsForTesting<string[]>("pinned-resources")
 
-function clickPin(
+function clickStar(
   root: ReactWrapper<any, React.Component["state"], React.Component>,
   name: string
 ) {
-  let pinButtons = root.find(SidebarPinButton).find({ resourceName: name })
-  expect(pinButtons.length).toBeGreaterThan(0)
-  pinButtons.at(0).simulate("click")
+  let starButtons = root.find(StarResourceButton).find({ resourceName: name })
+  expect(starButtons.length).toBeGreaterThan(0)
+  starButtons.at(0).simulate("click")
 }
 
 describe("SidebarResources", () => {
@@ -52,68 +52,68 @@ describe("SidebarResources", () => {
     localStorage.clear()
   })
 
-  it("adds items to the pinned list when items are pinned", () => {
+  it("adds items to the starred list when items are starred", () => {
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
+          <StarredResourcesContextProvider>
             <SidebarResources
               items={items}
               selected={""}
               resourceView={ResourceView.Log}
               pathBuilder={pathBuilder}
             />
-          </SidebarPinContextProvider>
+          </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
 
-    clickPin(root, "snack")
+    clickStar(root, "snack")
 
     expectIncrs(
-      { name: "ui.web.pin", tags: { pinCount: "0", action: "load" } },
+      { name: "ui.web.star", tags: { starCount: "0", action: "load" } },
       {
-        name: "ui.web.sidebarPinButton",
-        tags: { action: "click", newPinState: "true" },
+        name: "ui.web.sidebarStarButton",
+        tags: { action: "click", newStarState: "true" },
       },
-      { name: "ui.web.pin", tags: { pinCount: "1", action: "pin" } }
+      { name: "ui.web.star", tags: { starCount: "1", action: "star" } }
     )
 
-    expect(pinnedItemsAccessor.get()).toEqual(["snack"])
+    expect(starredItemsAccessor.get()).toEqual(["snack"])
   })
 
-  it("removes items from the pinned list when items are unpinned", () => {
+  it("removes items from the starred list when items are unstarred", () => {
     let items = twoResourceView().resources.map((r) => new SidebarItem(r))
-    pinnedItemsAccessor.set(items.map((i) => i.name))
+    starredItemsAccessor.set(items.map((i) => i.name))
 
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
+          <StarredResourcesContextProvider>
             <SidebarResources
               items={items}
               selected={""}
               resourceView={ResourceView.Log}
               pathBuilder={pathBuilder}
             />
-          </SidebarPinContextProvider>
+          </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
 
-    clickPin(root, "snack")
+    clickStar(root, "snack")
 
     expectIncrs(
-      { name: "ui.web.pin", tags: { pinCount: "2", action: "load" } },
+      { name: "ui.web.star", tags: { starCount: "2", action: "load" } },
       {
-        name: "ui.web.sidebarPinButton",
-        tags: { action: "click", newPinState: "false" },
+        name: "ui.web.sidebarStarButton",
+        tags: { action: "click", newStarState: "false" },
       },
-      { name: "ui.web.pin", tags: { pinCount: "1", action: "unpin" } }
+      { name: "ui.web.star", tags: { starCount: "1", action: "unstar" } }
     )
 
-    expect(pinnedItemsAccessor.get()).toEqual(["vigoda"])
+    expect(starredItemsAccessor.get()).toEqual(["vigoda"])
   })
 
   const falseyOptions: SidebarOptions = {

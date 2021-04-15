@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { ResourceNavProvider } from "./ResourceNav"
-import { SidebarPinMemoryProvider } from "./SidebarPin"
+import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type Resource = Proto.webviewResource
@@ -13,11 +13,11 @@ export default {
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
-        <SidebarPinMemoryProvider>
+        <StarredResourceMemoryProvider>
           <div style={{ margin: "-1rem", height: "80vh" }}>
             <Story />
           </div>
-        </SidebarPinMemoryProvider>
+        </StarredResourceMemoryProvider>
       </MemoryRouter>
     ),
   ],

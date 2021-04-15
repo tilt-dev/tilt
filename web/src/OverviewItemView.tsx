@@ -15,8 +15,10 @@ import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
-import SidebarPinButton, { PinButton } from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
+import StarResourceButton, {
+  StarResourceButtonRoot,
+} from "./StarResourceButton"
 import { buildStatus, runtimeStatus } from "./status"
 import {
   AnimDuration,
@@ -200,7 +202,7 @@ let InnerRuntimeBox = styled.div`
   align-items: center;
   flex-grow: 1;
 
-  ${PinButton} {
+  ${StarResourceButtonRoot} {
     margin-left: ${SizeUnit(0.125)};
     align-content: center;
   }
@@ -375,7 +377,10 @@ function RuntimeBox(props: RuntimeBoxProps) {
       <RuntimeBoxStack>
         <InnerRuntimeBox>
           <OverviewItemType>{item.resourceTypeLabel}</OverviewItemType>
-          <SidebarPinButton resourceName={item.name} />
+          <StarResourceButton
+            resourceName={item.name}
+            analyticsName="ui.web.overviewStarButton"
+          />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>
@@ -667,7 +672,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
     <OverviewItemRoot
       key={item.name}
       onClick={handleClick}
-      className="u-showPinOnHover u-showTriggerModeOnHover"
+      className="u-showStarOnHover u-showTriggerModeOnHover"
     >
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <RuntimeBox item={item} />

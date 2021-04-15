@@ -22,18 +22,15 @@ import {
   TestsOnlyToggle,
 } from "./OverviewSidebarOptions"
 import SidebarItemView from "./SidebarItemView"
-import { SidebarPinContextProvider } from "./SidebarPin"
 import SidebarResources, {
   defaultOptions,
   SidebarListSection,
 } from "./SidebarResources"
+import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import { SidebarOptions } from "./types"
 
 const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
   "sidebar_options"
-)
-const pinnedResourcesAccessor = accessorsForTesting<string[]>(
-  "pinned-resources"
 )
 
 export function assertSidebarItemsAndOptions(
@@ -47,7 +44,7 @@ export function assertSidebarItemsAndOptions(
   let sidebar = root.find(SidebarResources)
   expect(sidebar).toHaveLength(1)
 
-  // only check items in the "all resources" section, i.e. don't look at pinned things
+  // only check items in the "all resources" section, i.e. don't look at starred things
   // or we'll have duplicates
   let all = sidebar.find(SidebarListSection).find({ name: "resources" })
   let items = all.find(SidebarItemView)
@@ -188,9 +185,9 @@ describe("overview sidebar options", () => {
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
+          <StarredResourcesContextProvider>
             {TwoResourcesTwoTests()}
-          </SidebarPinContextProvider>
+          </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
@@ -213,9 +210,9 @@ describe("overview sidebar options", () => {
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
+          <StarredResourcesContextProvider>
             {TwoResourcesTwoTests()}
-          </SidebarPinContextProvider>
+          </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )

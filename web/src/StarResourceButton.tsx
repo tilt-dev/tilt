@@ -2,7 +2,7 @@ import React from "react"
 import styled from "styled-components"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
-import { useSidebarPin } from "./SidebarPin"
+import { useStarredResources } from "./StarredResourcesContext"
 import {
   AnimDuration,
   Color,
@@ -10,7 +10,7 @@ import {
   SizeUnit,
 } from "./style-helpers"
 
-export const PinButton = styled(InstrumentedButton)`
+export const StarResourceButtonRoot = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   padding: 0;
   background-color: transparent;
@@ -20,64 +20,65 @@ let StarIcon = styled(StarSvg)`
   width: ${SizeUnit(1.0 / 3)};
   height: ${SizeUnit(1.0 / 3)};
 `
-let PinnedPinIcon = styled(StarIcon)`
+let ActiveStarIcon = styled(StarIcon)`
   transition: transform ${AnimDuration.short} ease;
   fill: ${Color.grayLight};
 
-  ${PinButton}:hover & {
+  ${StarResourceButtonRoot}:hover & {
     fill: ${Color.blue};
   }
 `
 
-let UnpinnedPinIcon = styled(StarIcon)`
+let InactiveStarIcon = styled(StarIcon)`
   transition: fill ${AnimDuration.default} linear,
     opacity ${AnimDuration.short} linear;
   opacity: 0;
 
-  .u-showPinOnHover:hover &,
-  ${PinButton}:focus &,
-  ${PinButton}.u-persistShow & {
+  .u-showStarOnHover:hover &,
+  ${StarResourceButtonRoot}:focus &,
+  ${StarResourceButtonRoot}.u-persistShow & {
     fill: ${Color.grayLight};
     opacity: 1;
   }
 
-  ${PinButton}:hover & {
+  ${StarResourceButtonRoot}:hover & {
     fill: ${Color.blue};
     opacity: 1;
   }
 `
 
-type SidebarPinButtonProps = {
+type StarResourceButtonProps = {
   resourceName: string
   persistShow?: boolean
+  analyticsName: string
 }
 
-export default function SidebarPinButton(
-  props: SidebarPinButtonProps
+export default function StarResourceButton(
+  props: StarResourceButtonProps
 ): JSX.Element {
-  let ctx = useSidebarPin()
+  let ctx = useStarredResources()
   let { resourceName, persistShow } = props
-  let isPinned =
-    ctx.pinnedResources && ctx.pinnedResources.includes(resourceName)
+  let isStarred =
+    ctx.starredResources && ctx.starredResources.includes(resourceName)
 
   let icon: JSX.Element
   let title: string
 
-  if (isPinned) {
-    icon = <PinnedPinIcon />
+  if (isStarred) {
+    icon = <ActiveStarIcon />
     title = "Unstar"
   } else {
-    icon = <UnpinnedPinIcon />
+    icon = <InactiveStarIcon />
     title = "Star"
   }
 
   function onClick(e: any) {
     e.preventDefault()
     e.stopPropagation()
-    if (isPinned) {
-      ctx.unpinResource(resourceName)
+    if (isStarred) {
+      ctx.unstarResource(resourceName)
     } else {
-      ctx.pinResource(resourceName)
+      ctx.starResource(resourceName)
     }
   }
 
@@ -86,14 +87,14 @@ export default function SidebarPinButton(
     className = "u-persistShow"
   }
   return (
-    <PinButton
+    <StarResourceButtonRoot
       title={title}
       onClick={onClick}
       className={className}
-      analyticsName="ui.web.sidebarPinButton"
-      analyticsTags={{ newPinState: (!isPinned).toString() }}
+      analyticsName={props.analyticsName}
+      analyticsTags={{ newStarState: (!isStarred).toString() }}
     >
       {icon}
-    </PinButton>
+    </StarResourceButtonRoot>
   )
 }
