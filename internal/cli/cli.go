@@ -63,6 +63,12 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, &dockerPruneCmd{})
 	addCommand(rootCmd, newArgsCmd())
 	addCommand(rootCmd, &logsCmd{})
+	addCommand(rootCmd, newGetCmd())
+	addCommand(rootCmd, newEditCmd())
+	addCommand(rootCmd, newApiresourcesCmd())
+	addCommand(rootCmd, newDeleteCmd())
+	addCommand(rootCmd, newApplyCmd())
+	addCommand(rootCmd, newCreateCmd())
 
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newDumpCmd(rootCmd))

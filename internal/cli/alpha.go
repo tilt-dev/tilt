@@ -14,12 +14,8 @@ The APIs of these commands may change frequently.
 
 	addCommand(result, newTiltfileResultCmd())
 	addCommand(result, newUpdogCmd())
-	addCommand(result, newUpdogGetCmd())
-	addCommand(result, newEditCmd())
+	addCommand(result, newGetCmd())
 	addCommand(result, newApiresourcesCmd())
-	addCommand(result, newDeleteCmd())
-	addCommand(result, newApplyCmd())
-	addCommand(result, newCreateCmd())
 
 	return result
 }

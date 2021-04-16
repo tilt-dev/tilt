@@ -36,24 +36,24 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type updogGetCmd struct {
+type getCmd struct {
 	options *get.GetOptions
 	cmd     *cobra.Command
 }
 
-var _ tiltCmd = &updogCmd{}
+var _ tiltCmd = &getCmd{}
 
-func newUpdogGetCmd() *updogGetCmd {
+func newGetCmd() *getCmd {
 	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
-	o := get.NewGetOptions("tilt alpha", streams)
-	return &updogGetCmd{
+	o := get.NewGetOptions("tilt", streams)
+	return &getCmd{
 		options: o,
 	}
 }
 
-func (c *updogGetCmd) name() model.TiltSubcommand { return "updog-get" }
+func (c *getCmd) name() model.TiltSubcommand { return "get" }
 
-func (c *updogGetCmd) register() *cobra.Command {
+func (c *getCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "get TYPE [NAME | -l label]",
 		DisableFlagsInUseLine: true,
@@ -73,10 +73,10 @@ func (c *updogGetCmd) register() *cobra.Command {
 	return cmd
 }
 
-func (c *updogGetCmd) run(ctx context.Context, args []string) error {
+func (c *getCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
 	cmdTags := engineanalytics.CmdTags(map[string]string{})
-	a.Incr("cmd.updog-get", cmdTags.AsMap())
+	a.Incr("cmd.get", cmdTags.AsMap())
 	defer a.Flush(time.Second)
 
 	o := c.options
