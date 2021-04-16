@@ -82,7 +82,7 @@ func (c *createCmd) register() *cobra.Command {
 	c.options = o
 	c.cmd = cmd
 
-	// TODO(nick): Add subcommands
+	addCommand(cmd, newCreateFileWatchCmd())
 
 	return cmd
 }
