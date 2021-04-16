@@ -20,7 +20,7 @@ func TestCreateFileWatch(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 
 	cmd := newCreateFileWatchCmd()
-	cmd.streams.Out = out
+	cmd.helper.streams.Out = out
 	c := cmd.register()
 	err := c.Flags().Parse([]string{
 		"--ignore", "web/node_modules",

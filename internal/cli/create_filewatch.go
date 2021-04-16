@@ -8,10 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/dynamic"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -22,13 +18,9 @@ import (
 // A human-friendly CLI for creating file watches.
 //
 // (as opposed to the machine-friendly CLIs of create -f or apply -f)
-//
-// TODO(nick): Refactor out the common parts of this, so that
-// each human-friendly create CLI doesn't require all this boilerplate.
 type createFileWatchCmd struct {
-	streams    genericclioptions.IOStreams
-	printFlags *genericclioptions.PrintFlags
-	cmd        *cobra.Command
+	helper *createHelper
+	cmd    *cobra.Command
 
 	ignoreValues []string
 }
@@ -36,14 +28,13 @@ type createFileWatchCmd struct {
 var _ tiltCmd = &createFileWatchCmd{}
 
 func newCreateFileWatchCmd() *createFileWatchCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+	helper := newCreateHelper()
 	return &createFileWatchCmd{
-		streams:    streams,
-		printFlags: genericclioptions.NewPrintFlags("created"),
+		helper: helper,
 	}
 }
 
-func (c *createFileWatchCmd) name() model.TiltSubcommand { return "create-filewatch" }
+func (c *createFileWatchCmd) name() model.TiltSubcommand { return "filewatch" }
 
 func (c *createFileWatchCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
@@ -71,8 +62,7 @@ trigger events when a file changes.
 	cmd.Flags().StringSliceVar(&c.ignoreValues, "ignore", nil,
 		"Patterns to ignore. Supports same syntax as .dockerignore. Paths are relative to the current directory.")
 
-	c.printFlags.AddFlags(cmd)
-	addConnectServerFlags(cmd)
+	c.helper.addFlags(cmd)
 	c.cmd = cmd
 
 	return cmd
@@ -84,12 +74,7 @@ func (c *createFileWatchCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.create-filewatch", cmdTags.AsMap())
 	defer a.Flush(time.Second)
 
-	printer, err := c.printFlags.ToPrinter()
-	if err != nil {
-		return err
-	}
-
-	dynamicClient, err := c.dynamicClient(ctx)
+	err := c.helper.interpretFlags(ctx)
 	if err != nil {
 		return err
 	}
@@ -99,32 +84,7 @@ func (c *createFileWatchCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(fw)
-	if err != nil {
-		return err
-	}
-
-	result, err := dynamicClient.Resource(fw.GetGroupVersionResource()).
-		Create(ctx, &unstructured.Unstructured{Object: obj}, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return printer.PrintObj(result, c.streams.Out)
-}
-
-// Loads a dynamically typed tilt client.
-func (c *createFileWatchCmd) dynamicClient(ctx context.Context) (dynamic.Interface, error) {
-	getter, err := wireClientGetter(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	config, err := getter.ToRESTConfig()
-	if err != nil {
-		return nil, err
-	}
-	return dynamic.NewForConfig(config)
+	return c.helper.create(ctx, fw)
 }
 
 // Interprets the flags specified on the commandline to the FileWatch to create.
