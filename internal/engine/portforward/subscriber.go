@@ -221,6 +221,6 @@ type PodLogActionWriter struct {
 }
 
 func (w PodLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	w.Store.Dispatch(store.NewLogAction(w.ManifestName, k8sconv.SpanIDForPod(w.PodID), level, fields, p))
+	w.Store.Dispatch(store.NewLogAction(w.ManifestName, k8sconv.SpanIDForPod(w.ManifestName, w.PodID), level, fields, p))
 	return nil
 }

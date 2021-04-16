@@ -142,8 +142,8 @@ var ErrorWaitingReasons = map[string]bool{
 	"Error":             true,
 }
 
-func SpanIDForPod(podID k8s.PodID) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("pod:%s", podID))
+func SpanIDForPod(mn model.ManifestName, podID k8s.PodID) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("%s:pod:%s", mn.String(), podID))
 }
 
 // copied from https://github.com/kubernetes/kubernetes/blob/aedeccda9562b9effe026bb02c8d3c539fc7bb77/pkg/kubectl/resource_printer.go#L692-L764
