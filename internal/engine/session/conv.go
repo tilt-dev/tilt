@@ -56,28 +56,31 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 	// but ensures Job containers are handled correctly and adds additional
 	// metadata
 	pod := krs.MostRecentPod()
-	switch pod.Phase {
-	case v1.PodRunning:
-		target.State.Active = &session.TargetStateActive{
-			StartTime: metav1.NewMicroTime(pod.StartedAt),
-			Ready:     mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore || pod.AllContainersReady(),
+	if krs.HasEverDeployedSuccessfully && !pod.Empty() {
+		switch pod.Phase {
+		case v1.PodRunning:
+			target.State.Active = &session.TargetStateActive{
+				StartTime: metav1.NewMicroTime(pod.StartedAt),
+				Ready:     mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore || pod.AllContainersReady(),
+			}
+			return target
+		case v1.PodSucceeded:
+			target.State.Terminated = &session.TargetStateTerminated{
+				StartTime: metav1.NewMicroTime(pod.StartedAt),
+			}
+			return target
+		case v1.PodFailed:
+			podErr := strings.Join(pod.StatusMessages, "; ")
+			if podErr == "" {
+				podErr = fmt.Sprintf("Pod %q failed", pod.PodID.String())
+			}
+			target.State.Terminated = &session.TargetStateTerminated{
+				StartTime: metav1.NewMicroTime(pod.StartedAt),
+				Error:     podErr,
+			}
+			return target
 		}
-	case v1.PodSucceeded:
-		target.State.Terminated = &session.TargetStateTerminated{
-			StartTime: metav1.NewMicroTime(pod.StartedAt),
-		}
-	case v1.PodFailed:
-		podErr := strings.Join(pod.StatusMessages, "; ")
-		if podErr == "" {
-			podErr = fmt.Sprintf("Pod %q failed", pod.PodID.String())
-		}
-		target.State.Terminated = &session.TargetStateTerminated{
-			StartTime: metav1.NewMicroTime(pod.StartedAt),
-			Error:     podErr,
-		}
-	}
 
-	if target.State.Terminated == nil || target.State.Terminated.Error == "" {
 		for _, ctr := range pod.AllContainers() {
 			if ctr.Status == model.RuntimeStatusError {
 				target.State.Terminated = &session.TargetStateTerminated{
@@ -85,26 +88,25 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 					Error: fmt.Sprintf("Pod %s in error state due to container %s: %s",
 						pod.PodID, ctr.Name, pod.Status),
 				}
+				return target
 			}
 		}
 	}
 
-	if target.State.Active == nil && target.State.Terminated == nil {
-		// for resources with auto_init=True that aren't yet active/terminated, fake a fallback waiting state
-		// for resources with auto_init=False that aren't active/terminated (i.e. the user has never triggered it),
-		// 	don't populate anything to signal that the target is _intentionally_ in an "inactive" state
-		if mt.Manifest.TriggerMode.AutoInitial() {
-			waitReason := pod.Status
-			if waitReason == "" {
-				if pod.Empty() {
-					waitReason = "waiting-for-pod"
-				} else {
-					waitReason = "unknown"
-				}
+	// for resources with auto_init=True, fake a fallback waiting state
+	// for resources with auto_init=False (and the user has never triggered it),
+	// 	don't populate anything to signal that the target is _intentionally_ in an "inactive" state
+	if mt.Manifest.TriggerMode.AutoInitial() {
+		waitReason := pod.Status
+		if waitReason == "" {
+			if pod.Empty() {
+				waitReason = "waiting-for-pod"
+			} else {
+				waitReason = "unknown"
 			}
-			target.State.Waiting = &session.TargetStateWaiting{
-				WaitReason: waitReason,
-			}
+		}
+		target.State.Waiting = &session.TargetStateWaiting{
+			WaitReason: waitReason,
 		}
 	}
 
