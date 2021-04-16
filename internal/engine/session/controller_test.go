@@ -119,6 +119,56 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 	f.store.requireExitSignalWithError("Pod pod-a in error state due to container c1: ErrImagePull")
 }
 
+func TestExitControlCI_PodRunningContainerError(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+
+		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireNoExitSignal()
+
+	f.store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
+			PodID: "pod-a",
+			Phase: v1.PodRunning,
+			Containers: []store.Container{
+				{Name: "c1", Running: false, Ready: false, Terminated: false, Restarts: 400, Status: model.RuntimeStatusError},
+				{Name: "c2", Running: true, Ready: true, Terminated: false, Status: model.RuntimeStatusOK},
+			},
+		})
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	// even though one of the containers is in an error state, CI shouldn't exit - expectation is that the target for
+	// the pod is in Waiting state
+	f.store.requireNoExitSignal()
+
+	f.store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
+			PodID: "pod-a",
+			Phase: v1.PodRunning,
+			Containers: []store.Container{
+				{Name: "c1", Running: true, Ready: true, Terminated: false, Restarts: 401, Status: model.RuntimeStatusOK},
+				{Name: "c2", Running: true, Ready: true, Terminated: false, Status: model.RuntimeStatusOK},
+			},
+		})
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireExitSignalWithNoError()
+}
+
 func TestExitControlCI_Success(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
@@ -460,8 +510,8 @@ func (s *testStore) requireExitSignalWithError(errString string) {
 	s.t.Helper()
 	state := s.RLockState()
 	defer s.RUnlockState()
-	assert.True(s.t, state.ExitSignal, "ExitSignal was not true")
 	require.EqualError(s.t, state.ExitError, errString)
+	assert.True(s.t, state.ExitSignal, "ExitSignal was not true")
 }
 
 func (s *testStore) requireExitSignalWithNoError() {
