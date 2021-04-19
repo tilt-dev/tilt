@@ -26,7 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func TestUpdogGet(t *testing.T) {
+func TestGet(t *testing.T) {
 	f := newServerFixture(t)
 	defer f.TearDown()
 
@@ -39,11 +39,11 @@ func TestUpdogGet(t *testing.T) {
 	require.NoError(t, err)
 
 	out := bytes.NewBuffer(nil)
-	updogGet := newUpdogGetCmd()
-	updogGet.register()
-	updogGet.options.IOStreams.Out = out
+	get := newGetCmd()
+	get.register()
+	get.options.IOStreams.Out = out
 
-	err = updogGet.run(f.ctx, []string{"cmd", "my-sleep"})
+	err = get.run(f.ctx, []string{"cmd", "my-sleep"})
 	require.NoError(t, err)
 
 	assert.Contains(t, out.String(), `NAME       CREATED AT

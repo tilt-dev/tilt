@@ -55,9 +55,9 @@ To run a shell script, use 'sh -c' (as shown in the examples).
 `,
 		Args: cobra.MinimumNArgs(2),
 		Example: `
-tilt alpha create cmd my-cmd echo hello world
+tilt create cmd my-cmd echo hello world
 
-tilt alpha create cmd my-cmd sh -c "echo hi && echo bye"
+tilt create cmd my-cmd sh -c "echo hi && echo bye"
 `,
 	}
 

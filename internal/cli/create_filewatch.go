@@ -56,7 +56,7 @@ trigger events when a file changes.
 `,
 		Aliases: []string{"fw"},
 		Args:    cobra.MinimumNArgs(2),
-		Example: `tilt alpha create fw src-and-web src web --ignore=web/node_modules`,
+		Example: `tilt create fw src-and-web src web --ignore=web/node_modules`,
 	}
 
 	cmd.Flags().StringSliceVar(&c.ignoreValues, "ignore", nil,

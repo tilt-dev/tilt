@@ -43,7 +43,7 @@ type createCmd struct {
 	cmd     *cobra.Command
 }
 
-var _ tiltCmd = &updogCmd{}
+var _ tiltCmd = &createCmd{}
 
 func newCreateCmd() *createCmd {
 	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
