@@ -5,6 +5,10 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -263,7 +267,7 @@ func TestHoldForDeploy(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 	f.assertHold("sancho", store.HoldWaitingForDeploy)
 
-	sancho.State.K8sRuntimeState().Pods["pod-1"] = successPod("pod-1", sanchoImage.Refs.ClusterRef())
+	sancho.State.K8sRuntimeState().Pods["pod-1"] = readyPod("pod-1", sanchoImage.Refs.ClusterRef())
 	f.assertNextTargetToBuild("sancho")
 
 	sancho.State.K8sRuntimeState().Pods["pod-1"] = crashingPod("pod-1", sanchoImage.Refs.ClusterRef())
@@ -276,18 +280,20 @@ func TestHoldForDeploy(t *testing.T) {
 	f.assertNextTargetToBuild("sancho")
 }
 
-func successPod(podID k8s.PodID, ref reference.Named) *store.Pod {
+func readyPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 	return &store.Pod{
 		PodID:  podID,
-		Phase:  v1.PodSucceeded,
+		Phase:  v1.PodRunning,
 		Status: "Running",
 		Containers: []store.Container{
-			store.Container{
-				ID:       container.ID(podID + "-container"),
-				Name:     "c",
-				Ready:    true,
-				Running:  true,
-				ImageRef: ref,
+			{
+				ID:    string(podID + "-container"),
+				Name:  "c",
+				Ready: true,
+				Image: ref.String(),
+				State: v1alpha1.ContainerState{
+					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
+				},
 			},
 		},
 	}
@@ -299,13 +305,19 @@ func crashingPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 		Phase:  v1.PodRunning,
 		Status: "CrashLoopBackOff",
 		Containers: []store.Container{
-			store.Container{
-				ID:       container.ID(podID + "-container"),
+			{
+				ID:       string(podID + "-container"),
 				Name:     "c",
 				Ready:    false,
-				Running:  false,
-				ImageRef: ref,
+				Image:    ref.String(),
 				Restarts: 1,
+				State: v1alpha1.ContainerState{
+					Terminated: &v1alpha1.ContainerStateTerminated{
+						StartedAt:  metav1.Now(),
+						FinishedAt: metav1.Now(),
+						Reason:     "Error",
+						ExitCode:   127,
+					}},
 			},
 		},
 	}
@@ -317,13 +329,15 @@ func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 		Phase:  v1.PodRunning,
 		Status: "Ready",
 		Containers: []store.Container{
-			store.Container{
-				ID:       container.ID(podID + "-container"),
+			{
+				ID:       string(podID + "-container"),
 				Name:     "c",
 				Ready:    true,
-				Running:  true,
-				ImageRef: ref,
+				Image:    ref.String(),
 				Restarts: 1,
+				State: v1alpha1.ContainerState{
+					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
+				},
 			},
 		},
 	}
@@ -335,21 +349,29 @@ func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 		Phase:  v1.PodRunning,
 		Status: "Ready",
 		Containers: []store.Container{
-			store.Container{
-				ID:       container.ID(podID + "-container"),
+			{
+				ID:       string(podID + "-container"),
 				Name:     "c",
 				Ready:    true,
-				Running:  true,
-				ImageRef: ref,
+				Image:    ref.String(),
 				Restarts: 0,
+				State: v1alpha1.ContainerState{
+					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
+				},
 			},
-			store.Container{
-				ID:       container.ID(podID + "-sidecar"),
+			{
+				ID:       string(podID + "-sidecar"),
 				Name:     "s",
 				Ready:    false,
-				Running:  false,
-				ImageRef: container.MustParseNamed("sidecar"),
+				Image:    container.MustParseNamed("sidecar").String(),
 				Restarts: 1,
+				State: v1alpha1.ContainerState{
+					Terminated: &v1alpha1.ContainerStateTerminated{
+						StartedAt:  metav1.Now(),
+						FinishedAt: metav1.Now(),
+						Reason:     "Error",
+						ExitCode:   127,
+					}},
 			},
 		},
 	}

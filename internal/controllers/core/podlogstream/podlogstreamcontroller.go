@@ -75,7 +75,7 @@ func (m *Controller) filterContainers(stream *PodLogStream, containers []store.C
 
 		result := []store.Container{}
 		for _, c := range containers {
-			if only[c.Name] {
+			if only[container.Name(c.Name)] {
 				result = append(result, c)
 			}
 		}
@@ -90,7 +90,7 @@ func (m *Controller) filterContainers(stream *PodLogStream, containers []store.C
 
 		result := []store.Container{}
 		for _, c := range containers {
-			if !ignore[c.Name] {
+			if !ignore[container.Name(c.Name)] {
 				result = append(result, c)
 			}
 		}
@@ -112,11 +112,12 @@ func (m *Controller) shouldStreamContainerLogs(c store.Container, key podLogKey)
 		return false
 	}
 
-	if c.Terminated && m.hasClosedStream[key] {
+	if c.State.Terminated != nil && m.hasClosedStream[key] {
 		return false
 	}
 
-	if !(c.Running || c.Terminated) {
+	if c.State.Running == nil && c.State.Terminated == nil {
+		// nothing to stream for containers in waiting state
 		return false
 	}
 
@@ -168,7 +169,7 @@ func (r *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		key := podLogKey{
 			streamName: streamName,
 			podID:      k8s.PodID(podNN.Name),
-			cID:        c.ID,
+			cID:        container.ID(c.ID),
 		}
 		if !r.shouldStreamContainerLogs(c, key) {
 			continue
@@ -208,8 +209,8 @@ func (r *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 			// where it left off.
 			startWatchTime = <-existing.terminationTime
 			r.hasClosedStream[key] = true
-			if c.Terminated {
-				r.mutateStatus(streamName, c.Name, func(cs *ContainerLogStreamStatus) {
+			if c.State.Terminated != nil {
+				r.mutateStatus(streamName, container.Name(c.Name), func(cs *ContainerLogStreamStatus) {
 					cs.Terminated = true
 					cs.Active = false
 					cs.Error = ""
@@ -224,7 +225,7 @@ func (r *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 			ctx:             ctx,
 			cancel:          cancel,
 			podID:           k8s.PodID(podNN.Name),
-			cName:           c.Name,
+			cName:           container.Name(c.Name),
 			namespace:       k8s.Namespace(podNN.Namespace),
 			startWatchTime:  startWatchTime,
 			terminationTime: make(chan time.Time, 1),

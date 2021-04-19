@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -82,7 +84,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 		}
 
 		for _, ctr := range pod.AllContainers() {
-			if ctr.Status == model.RuntimeStatusError {
+			if k8sconv.ContainerStatusToRuntimeState(ctr) == model.RuntimeStatusError {
 				target.State.Terminated = &session.TargetStateTerminated{
 					StartTime: metav1.NewMicroTime(pod.StartedAt),
 					Error: fmt.Sprintf("Pod %s in error state due to container %s: %s",
