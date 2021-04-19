@@ -9,10 +9,10 @@ import (
 
 	"github.com/fatih/color"
 	tty "github.com/mattn/go-tty"
-	"github.com/pkg/browser"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -24,20 +24,14 @@ type TerminalInput interface {
 
 type OpenInput func() (TerminalInput, error)
 
-type OpenURL func(url string) error
-
 func TTYOpen() (TerminalInput, error) {
 	return tty.Open()
-}
-
-func BrowserOpen(url string) error {
-	return browser.OpenURL(url)
 }
 
 type TerminalPrompt struct {
 	a         *analytics.TiltAnalytics
 	openInput OpenInput
-	openURL   OpenURL
+	openURL   openurl.OpenURL
 	stdout    hud.Stdout
 	host      model.WebHost
 	url       model.WebURL
@@ -53,8 +47,9 @@ type TerminalPrompt struct {
 }
 
 func NewTerminalPrompt(a *analytics.TiltAnalytics, openInput OpenInput,
-	openURL OpenURL, stdout hud.Stdout,
+	openURL openurl.OpenURL, stdout hud.Stdout,
 	host model.WebHost, url model.WebURL) *TerminalPrompt {
+
 	return &TerminalPrompt{
 		a:         a,
 		openInput: openInput,
@@ -211,7 +206,7 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore, _ store.
 				case ' ':
 					p.a.Incr("ui.prompt.browser", map[string]string{})
 					_, _ = fmt.Fprintf(p.stdout, "Opening browser: %s\n", p.url.String())
-					err := p.openURL(p.url.String())
+					err := p.openURL(p.url.String(), p.stdout)
 					if err != nil {
 						_, _ = fmt.Fprintf(p.stdout, "Error: %v\n", err)
 					}

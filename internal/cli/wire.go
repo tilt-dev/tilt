@@ -50,6 +50,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/internal/token"
@@ -112,6 +113,7 @@ var BaseWireSet = wire.NewSet(
 	provideClock,
 	hud.WireSet,
 	prompt.WireSet,
+	wire.Value(openurl.OpenURL(openurl.BrowserOpen)),
 
 	provideLogActions,
 	store.NewStore,

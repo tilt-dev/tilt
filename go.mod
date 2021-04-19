@@ -55,7 +55,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
-	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
+	github.com/pkg/browser v0.0.0-00010101000000-000000000000
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/schollz/closestmatch v2.1.0+incompatible
@@ -63,6 +63,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/theupdateframework/notary v0.6.1 // indirect
+	github.com/tilt-dev/browser v0.0.2 // indirect
 	github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277
 	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 	github.com/tilt-dev/fsnotify v1.4.8-0.20200727200623-991e307aab7f
@@ -120,6 +121,9 @@ replace (
 	// controller-runtime uses a newer gnostic but apiserver + kube-openapi require an older version
 	// due to an incompatible change from yaml.v2 -> yaml.v3
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
+
+	// can remove if/when https://github.com/pkg/browser/pull/30 is merged
+	github.com/pkg/browser => github.com/tilt-dev/browser v0.0.1
 
 	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413

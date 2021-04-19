@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
@@ -176,11 +175,6 @@ func ProvideK8sClient(
 	discovery := memory.NewMemCacheClient(discoveryClient)
 
 	drm := restmapper.NewDeferredDiscoveryRESTMapper(discovery)
-
-	// TODO(nick): I'm not happy about the way that pkg/browser uses global writers.
-	writer := logger.Get(ctx).Writer(logger.DebugLvl)
-	browser.Stdout = writer
-	browser.Stderr = writer
 
 	c := &K8sClient{
 		InformerSet: newInformerSet(clientset, di),

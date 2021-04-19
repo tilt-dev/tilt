@@ -18,18 +18,22 @@ var Stdout io.Writer = os.Stdout
 // Stderr is the io.Writer to which executed commands write standard error.
 var Stderr io.Writer = os.Stderr
 
+type CmdOption func (*exec.Cmd)
+
 // OpenFile opens new browser window for the file path.
-func OpenFile(path string) error {
+// options can be used to configure the underlying exec.Cmd, if any
+func OpenFile(path string, options ...CmdOption) error {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
-	return OpenURL("file://" + path)
+	return OpenURL("file://" + path, options...)
 }
 
 // OpenReader consumes the contents of r and presents the
 // results in a new browser window.
-func OpenReader(r io.Reader) error {
+// options can be used to configure the underlying exec.Cmd, if any
+func OpenReader(r io.Reader, options ...CmdOption) error {
 	f, err := ioutil.TempFile("", "browser")
 	if err != nil {
 		return fmt.Errorf("browser: could not create temporary file: %v", err)
@@ -46,17 +50,22 @@ func OpenReader(r io.Reader) error {
 	if err := os.Rename(oldname, newname); err != nil {
 		return fmt.Errorf("browser: renaming temporary file failed: %v", err)
 	}
-	return OpenFile(newname)
+	return OpenFile(newname, options...)
 }
 
 // OpenURL opens a new browser window pointing to url.
-func OpenURL(url string) error {
-	return openBrowser(url)
+// options can be used to configure the underlying exec.Cmd, if any
+func OpenURL(url string, options ...CmdOption) error {
+	return openBrowser(url, options)
 }
 
-func runCmd(prog string, args ...string) error {
+func runCmd(prog string, args []string, options []CmdOption) error {
 	cmd := exec.Command(prog, args...)
 	cmd.Stdout = Stdout
 	cmd.Stderr = Stderr
+	setFlags(cmd)
+	for _, o := range options {
+		o(cmd)
+	}
 	return cmd.Run()
 }
