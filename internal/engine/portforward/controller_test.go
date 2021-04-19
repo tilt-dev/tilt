@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
@@ -98,8 +100,8 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	f.onChange()
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []store.Container{
-		store.Container{Ports: []int32{8000}},
+	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []v1alpha1.Container{
+		v1alpha1.Container{Ports: []int32{8000}},
 	}
 	f.st.UnlockMutableState()
 
@@ -129,8 +131,8 @@ func TestPortForwardAutoDiscovery2(t *testing.T) {
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
 		PodID: "pod-id",
 		Phase: v1.PodRunning,
-		Containers: []store.Container{
-			store.Container{Ports: []int32{8000, 8080}},
+		Containers: []v1alpha1.Container{
+			v1alpha1.Container{Ports: []int32{8000, 8080}},
 		},
 	})
 	f.st.UnlockMutableState()
@@ -247,8 +249,8 @@ func TestPopulatePortForward(t *testing.T) {
 				PortForwards: c.spec,
 			})
 			pod := store.Pod{
-				Containers: []store.Container{
-					store.Container{Ports: c.containerPorts},
+				Containers: []v1alpha1.Container{
+					v1alpha1.Container{Ports: c.containerPorts},
 				},
 			}
 

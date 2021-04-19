@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/google/go-cmp/cmp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -66,14 +68,14 @@ func NewController(ctx context.Context, client ctrlclient.Client, st store.RStor
 }
 
 // Filter containers based on the inclusions/exclusions in the PodLogStream spec.
-func (m *Controller) filterContainers(stream *PodLogStream, containers []store.Container) []store.Container {
+func (m *Controller) filterContainers(stream *PodLogStream, containers []v1alpha1.Container) []v1alpha1.Container {
 	if len(stream.Spec.OnlyContainers) > 0 {
 		only := make(map[container.Name]bool, len(stream.Spec.OnlyContainers))
 		for _, name := range stream.Spec.OnlyContainers {
 			only[container.Name(name)] = true
 		}
 
-		result := []store.Container{}
+		result := []v1alpha1.Container{}
 		for _, c := range containers {
 			if only[container.Name(c.Name)] {
 				result = append(result, c)
@@ -88,7 +90,7 @@ func (m *Controller) filterContainers(stream *PodLogStream, containers []store.C
 			ignore[container.Name(name)] = true
 		}
 
-		result := []store.Container{}
+		result := []v1alpha1.Container{}
 		for _, c := range containers {
 			if !ignore[container.Name(c.Name)] {
 				result = append(result, c)
@@ -107,7 +109,7 @@ func (c *Controller) TearDown(ctx context.Context) {
 	c.podSource.TearDown()
 }
 
-func (m *Controller) shouldStreamContainerLogs(c store.Container, key podLogKey) bool {
+func (m *Controller) shouldStreamContainerLogs(c v1alpha1.Container, key podLogKey) bool {
 	if c.ID == "" {
 		return false
 	}
@@ -157,7 +159,7 @@ func (r *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 
 	initContainers := r.filterContainers(stream, k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses))
 	runContainers := r.filterContainers(stream, k8sconv.PodContainers(ctx, pod, pod.Status.ContainerStatuses))
-	containers := []store.Container{}
+	containers := []v1alpha1.Container{}
 	containers = append(containers, initContainers...)
 	containers = append(containers, runContainers...)
 	r.ensureStatus(streamName, containers)
@@ -367,7 +369,7 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 }
 
 // Set up the status object for a particular stream, tracking each container individually.
-func (r *Controller) ensureStatus(streamName types.NamespacedName, containers []store.Container) {
+func (r *Controller) ensureStatus(streamName types.NamespacedName, containers []v1alpha1.Container) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

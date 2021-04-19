@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -104,7 +106,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	checkForContainerCrash(ctx, state, mt)
 }
 
-func restartedContainerNames(existingContainers []store.Container, newContainers []store.Container) []container.Name {
+func restartedContainerNames(existingContainers []v1alpha1.Container, newContainers []v1alpha1.Container) []container.Name {
 	result := []container.Name{}
 	for i, c := range newContainers {
 		if i >= len(existingContainers) {

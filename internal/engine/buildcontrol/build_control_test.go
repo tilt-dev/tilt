@@ -285,7 +285,7 @@ func readyPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 		PodID:  podID,
 		Phase:  v1.PodRunning,
 		Status: "Running",
-		Containers: []store.Container{
+		Containers: []v1alpha1.Container{
 			{
 				ID:    string(podID + "-container"),
 				Name:  "c",
@@ -304,7 +304,7 @@ func crashingPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 		PodID:  podID,
 		Phase:  v1.PodRunning,
 		Status: "CrashLoopBackOff",
-		Containers: []store.Container{
+		Containers: []v1alpha1.Container{
 			{
 				ID:       string(podID + "-container"),
 				Name:     "c",
@@ -328,7 +328,7 @@ func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 		PodID:  podID,
 		Phase:  v1.PodRunning,
 		Status: "Ready",
-		Containers: []store.Container{
+		Containers: []v1alpha1.Container{
 			{
 				ID:       string(podID + "-container"),
 				Name:     "c",
@@ -348,7 +348,7 @@ func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 		PodID:  podID,
 		Phase:  v1.PodRunning,
 		Status: "Ready",
-		Containers: []store.Container{
+		Containers: []v1alpha1.Container{
 			{
 				ID:       string(podID + "-container"),
 				Name:     "c",

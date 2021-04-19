@@ -112,7 +112,7 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
 			PodID:  "pod-a",
 			Status: "ErrImagePull",
-			Containers: []store.Container{
+			Containers: []v1alpha1.Container{
 				{
 					Name: "c1",
 					State: v1alpha1.ContainerState{
@@ -154,7 +154,7 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
 			PodID: "pod-a",
 			Phase: v1.PodRunning,
-			Containers: []store.Container{
+			Containers: []v1alpha1.Container{
 				{
 					Name:     "c1",
 					Ready:    false,
@@ -557,7 +557,7 @@ func pod(podID k8s.PodID, ready bool) store.Pod {
 	return store.Pod{
 		PodID: podID,
 		Phase: v1.PodRunning,
-		Containers: []store.Container{
+		Containers: []v1alpha1.Container{
 			{
 				ID:    string(podID + "-container"),
 				Ready: ready,
@@ -574,7 +574,7 @@ func successPod(podID k8s.PodID) store.Pod {
 		PodID:  podID,
 		Phase:  v1.PodSucceeded,
 		Status: "Completed",
-		Containers: []store.Container{
+		Containers: []v1alpha1.Container{
 			{
 				ID: string(podID + "-container"),
 				State: v1alpha1.ContainerState{
