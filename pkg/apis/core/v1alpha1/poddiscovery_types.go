@@ -21,6 +21,71 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Pod is a collection of containers that can run on a host.
+//
+// The Tilt API representation mirrors the Kubernetes API very closely. Irrelevant data is
+// not included, and some fields might be simplified.
+//
+// There might also be Tilt-specific status fields.
+type Pod struct {
+	// Name is the Pod name within the K8s cluster.
+	Name string `json:"name"`
+	// Namespace is the Pod namespace within the K8s cluster.
+	Namespace string `json:"namespace"`
+	// CreatedAt is when the Pod was created.
+	CreatedAt metav1.Time `json:"createdAt"`
+	// Phase is where the Pod is at in its current lifecycle.
+	//
+	// Valid values for this are v1.PodPhase values from the Kubernetes API.
+	Phase string `json:"phase"`
+	// Deleting indicates that the Pod is in the process of being removed.
+	Deleting bool `json:"deleting"`
+	// Conditions are various lifecycle conditions for this Pod.
+	//
+	// See also v1.PodCondition in the Kubernetes API.
+	Conditions []PodCondition `json:"conditions,omitempty"`
+	// InitContainers are containers executed prior to the Pod containers being executed.
+	InitContainers []Container `json:"initContainers,omitempty"`
+	// Containers are the containers belonging to the Pod.
+	Containers []Container `json:"containers"`
+
+	// BaselineRestarts is the number of restarts across all containers before Tilt started observing the Pod.
+	//
+	// This is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.
+	BaselineRestarts int `json:"baselineRestarts"`
+	// PodTemplateSpecHash is a hash of the Pod template spec.
+	//
+	// Tilt uses this to associate Pods with the build that triggered them.
+	PodTemplateSpecHash string `json:"podTemplateHash"`
+	// UpdateStartedAt is when Tilt started a deployment update for this Pod.
+	UpdateStartedAt metav1.Time `json:"updateStartTime,omitempty"`
+	// Status is a concise description for the Pod's current state.
+	//
+	// This is based off the status output from `kubectl get pod` and is not an "enum-like"
+	// value.
+	Status string `json:"status"`
+	// Errors are aggregated error messages for the Pod and its containers.
+	Errors []string `json:"errors"`
+}
+
+// PodCondition is a lifecycle condition for a Pod.
+type PodCondition struct {
+	// Type is the type of condition.
+	//
+	// Valid values for this are v1.PodConditionType values from the Kubernetes API.
+	Type string `json:"type"`
+	// Status is the current state of the condition (True, False, or Unknown).
+	//
+	// Valid values for this are v1.PodConditionStatus values from the Kubernetes API.
+	Status string `json:"status"`
+	// LastTransitionTime is the last time the status changed.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// Reason is a unique, one-word, CamelCase value for the cause of the last status change.
+	Reason string `json:"reason,omitempty"`
+	// Message is a human-readable description of the last status change.
+	Message string `json:"message,omitempty"`
+}
+
 // Container is an init or application container within a pod.
 //
 // The Tilt API representation mirrors the Kubernetes API very closely. Irrelevant data is

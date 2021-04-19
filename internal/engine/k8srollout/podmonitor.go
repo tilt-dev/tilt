@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/google/go-cmp/cmp"
 	v1 "k8s.io/api/core/v1"
 
@@ -39,8 +41,8 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 		ms := mt.State
 		manifest := mt.Manifest
 		pod := ms.MostRecentPod()
-		podID := pod.PodID
-		if podID == "" {
+		podID := k8s.PodID(pod.Name)
+		if podID.Empty() {
 			continue
 		}
 
@@ -85,7 +87,7 @@ func (m *PodMonitor) print(ctx context.Context, update podStatus) {
 	m.printCondition(ctx, "Ready", update.ready, update.initialized.LastTransitionTime.Time)
 }
 
-func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1.PodCondition, startTime time.Time) {
+func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1alpha1.PodCondition, startTime time.Time) {
 	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameProgressID: name})
 
 	indent := "     "
@@ -107,7 +109,7 @@ func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1.Po
 		}
 	}
 
-	if cond.Status == v1.ConditionTrue {
+	if cond.Status == string(v1.ConditionTrue) {
 		l.Infof("%s┊ %s%s- %s", indent, name, spacer, duration)
 		return
 	}
@@ -128,15 +130,15 @@ type podStatus struct {
 	podID        k8s.PodID
 	manifestName model.ManifestName
 	startTime    time.Time
-	scheduled    v1.PodCondition
-	initialized  v1.PodCondition
-	ready        v1.PodCondition
+	scheduled    v1alpha1.PodCondition
+	initialized  v1alpha1.PodCondition
+	ready        v1alpha1.PodCondition
 }
 
 func newPodStatus(pod store.Pod, manifestName model.ManifestName) podStatus {
-	s := podStatus{podID: pod.PodID, manifestName: manifestName, startTime: pod.StartedAt}
+	s := podStatus{podID: k8s.PodID(pod.Name), manifestName: manifestName, startTime: pod.CreatedAt.Time}
 	for _, condition := range pod.Conditions {
-		switch condition.Type {
+		switch v1.PodConditionType(condition.Type) {
 		case v1.PodScheduled:
 			s.scheduled = condition
 		case v1.PodInitialized:

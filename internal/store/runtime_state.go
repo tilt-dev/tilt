@@ -91,7 +91,7 @@ func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...Pod) K8sRuntimeState {
 	state := NewK8sRuntimeState(m)
 	for _, pod := range pods {
 		p := pod
-		state.Pods[p.PodID] = &p
+		state.Pods[k8s.PodID(p.Name)] = &p
 	}
 	state.HasEverDeployedSuccessfully = len(pods) > 0
 	return state
@@ -113,7 +113,7 @@ func (s K8sRuntimeState) RuntimeStatusError() error {
 		return nil
 	}
 	pod := s.MostRecentPod()
-	return fmt.Errorf("Pod %s in error state: %s", pod.PodID, pod.Status)
+	return fmt.Errorf("Pod %s in error state: %s", pod.Name, pod.Status)
 }
 
 func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
@@ -127,9 +127,9 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 
 	pod := s.MostRecentPod()
 
-	switch pod.Phase {
+	switch v1.PodPhase(pod.Phase) {
 	case v1.PodRunning:
-		if pod.AllContainersReady() {
+		if AllPodContainersReady(pod) {
 			return model.RuntimeStatusOK
 		}
 		return model.RuntimeStatusPending
@@ -141,7 +141,7 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 		return model.RuntimeStatusError
 	}
 
-	for _, c := range pod.AllContainers() {
+	for _, c := range AllPodContainers(pod) {
 		if k8sconv.ContainerStatusToRuntimeState(c) == model.RuntimeStatusError {
 			return model.RuntimeStatusError
 		}
@@ -186,7 +186,7 @@ func (s K8sRuntimeState) MostRecentPod() Pod {
 	found := false
 
 	for _, v := range s.Pods {
-		if !found || v.isAfter(bestPod) {
+		if !found || podCompare(*v, bestPod) {
 			bestPod = *v
 			found = true
 		}
@@ -205,67 +205,26 @@ func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1.Pod) bool {
 	return s.DeployedPodTemplateSpecHashSet.Contains(k8s.PodTemplateSpecHash(hash))
 }
 
-type Pod struct {
-	PodID     k8s.PodID
-	Namespace k8s.Namespace
-	StartedAt time.Time
-	Status    string
-	Phase     v1.PodPhase
+type Pod = v1alpha1.Pod
 
-	// Error messages from the pod state if it's in an error state.
-	StatusMessages []string
-
-	// Set when we get ready to replace a pod. We may do the update in-place.
-	UpdateStartTime time.Time
-
-	// If a pod is being deleted, Kubernetes marks it as Running
-	// until it actually gets removed.
-	Deleting bool
-
-	HasSynclet bool
-
-	Containers     []v1alpha1.Container
-	InitContainers []v1alpha1.Container
-
-	// We want to show the user # of restarts since some baseline time
-	// i.e. Total Restarts - BaselineRestarts
-	BaselineRestarts int
-
-	Conditions []v1.PodCondition
-
-	SpanID model.LogSpanID
+// podCompare is a stable sort order for pods.
+func podCompare(p1 Pod, p2 Pod) bool {
+	if p1.CreatedAt.After(p2.CreatedAt.Time) {
+		return true
+	} else if p2.CreatedAt.After(p1.CreatedAt.Time) {
+		return false
+	}
+	return p1.Name > p2.Name
 }
 
-func (p Pod) AllContainers() []v1alpha1.Container {
-	result := []v1alpha1.Container{}
+func AllPodContainers(p Pod) []v1alpha1.Container {
+	var result []v1alpha1.Container
 	result = append(result, p.InitContainers...)
 	result = append(result, p.Containers...)
 	return result
 }
 
-func (p Pod) Empty() bool {
-	return p.PodID == ""
-}
-
-// A stable sort order for pods.
-func (p Pod) isAfter(p2 Pod) bool {
-	if p.StartedAt.After(p2.StartedAt) {
-		return true
-	} else if p2.StartedAt.After(p.StartedAt) {
-		return false
-	}
-	return p.PodID > p2.PodID
-}
-
-func (p Pod) AllContainerPorts() []int32 {
-	result := make([]int32, 0)
-	for _, c := range p.Containers {
-		result = append(result, c.Ports...)
-	}
-	return result
-}
-
-func (p Pod) AllContainersReady() bool {
+func AllPodContainersReady(p Pod) bool {
 	if len(p.Containers) == 0 {
 		return false
 	}
@@ -278,14 +237,22 @@ func (p Pod) AllContainersReady() bool {
 	return true
 }
 
-func (p Pod) VisibleContainerRestarts() int {
-	return p.AllContainerRestarts() - p.BaselineRestarts
-}
-
-func (p Pod) AllContainerRestarts() int {
+func AllPodContainerRestarts(p Pod) int {
 	result := 0
 	for _, c := range p.Containers {
 		result += int(c.Restarts)
+	}
+	return result
+}
+
+func VisiblePodContainerRestarts(p Pod) int {
+	return AllPodContainerRestarts(p) - p.BaselineRestarts
+}
+
+func AllPodContainerPorts(p v1alpha1.Pod) []int32 {
+	result := make([]int32, 0)
+	for _, c := range p.Containers {
+		result = append(result, c.Ports...)
 	}
 	return result
 }

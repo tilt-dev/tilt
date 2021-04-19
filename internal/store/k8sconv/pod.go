@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	v1 "k8s.io/api/core/v1"
@@ -12,6 +14,21 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+func PodConditions(conditions []v1.PodCondition) []v1alpha1.PodCondition {
+	result := make([]v1alpha1.PodCondition, 0, len(conditions))
+	for _, c := range conditions {
+		condition := v1alpha1.PodCondition{
+			Type:               string(c.Type),
+			Status:             string(c.Status),
+			LastTransitionTime: *c.LastTransitionTime.DeepCopy(),
+			Reason:             c.Reason,
+			Message:            c.Message,
+		}
+		result = append(result, condition)
+	}
+	return result
+}
 
 // Convert a Kubernetes Pod into a list if simpler Container models to store in the engine state.
 func PodContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.ContainerStatus) []v1alpha1.Container {
@@ -105,4 +122,8 @@ var ErrorWaitingReasons = map[string]bool{
 	"RunContainerError": true,
 	"StartError":        true,
 	"Error":             true,
+}
+
+func SpanIDForPod(podID k8s.PodID) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("pod:%s", podID))
 }
