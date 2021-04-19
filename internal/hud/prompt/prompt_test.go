@@ -3,6 +3,7 @@ package prompt
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/url"
 	"reflect"
 	"testing"
@@ -140,7 +141,7 @@ func (b *fakeBrowser) WaitForURL(t *testing.T) string {
 	}
 }
 
-func (b *fakeBrowser) OpenURL(url string) error {
+func (b *fakeBrowser) OpenURL(url string, w io.Writer) error {
 	b.url <- url
 	return nil
 }

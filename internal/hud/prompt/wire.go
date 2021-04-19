@@ -6,5 +6,4 @@ import (
 
 var WireSet = wire.NewSet(
 	NewTerminalPrompt,
-	wire.Value(OpenInput(TTYOpen)),
-	wire.Value(OpenURL(BrowserOpen)))
+	wire.Value(OpenInput(TTYOpen)))
