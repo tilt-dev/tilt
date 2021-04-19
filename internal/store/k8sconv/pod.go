@@ -2,28 +2,28 @@ package k8sconv
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/pkg/errors"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Convert a Kubernetes Pod into a list if simpler Container models to store in the engine state.
-func PodContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.ContainerStatus) []store.Container {
-	result := make([]store.Container, 0, len(containerStatuses))
+func PodContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.ContainerStatus) []v1alpha1.Container {
+	result := make([]v1alpha1.Container, 0, len(containerStatuses))
 	for _, cStatus := range containerStatuses {
-		c, err := ContainerForStatus(ctx, pod, cStatus)
+		c, err := ContainerForStatus(pod, cStatus)
 		if err != nil {
 			logger.Get(ctx).Debugf("%s", err.Error())
 			continue
 		}
 
-		if !c.Empty() {
+		if c.Name != "" {
 			result = append(result, c)
 		}
 	}
@@ -31,50 +31,49 @@ func PodContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.Cont
 }
 
 // Convert a Kubernetes Pod and ContainerStatus into a simpler Container model to store in the engine state.
-func ContainerForStatus(ctx context.Context, pod *v1.Pod, cStatus v1.ContainerStatus) (store.Container, error) {
-	cName := k8s.ContainerNameFromContainerStatus(cStatus)
-
-	cID, err := k8s.ContainerIDFromContainerStatus(cStatus)
-	if err != nil {
-		return store.Container{}, errors.Wrap(err, "Error parsing container ID")
-	}
-
-	cRef, err := container.ParseNamed(cStatus.Image)
-	if err != nil {
-		return store.Container{}, errors.Wrap(err, "Error parsing container image ID")
-
-	}
-
-	ports := make([]int32, 0)
+func ContainerForStatus(pod *v1.Pod, cStatus v1.ContainerStatus) (v1alpha1.Container, error) {
 	cSpec := k8s.ContainerSpecOf(pod, cStatus)
-	for _, cPort := range cSpec.Ports {
-		ports = append(ports, cPort.ContainerPort)
+	ports := make([]int32, len(cSpec.Ports))
+	for i, cPort := range cSpec.Ports {
+		ports[i] = cPort.ContainerPort
 	}
 
-	isRunning := false
-	if cStatus.State.Running != nil && !cStatus.State.Running.StartedAt.IsZero() {
-		isRunning = true
+	cID, err := k8s.NormalizeContainerID(cStatus.ContainerID)
+	if err != nil {
+		return v1alpha1.Container{}, fmt.Errorf("error parsing container ID: %w", err)
 	}
 
-	isTerminated := false
-	if cStatus.State.Terminated != nil && !cStatus.State.Terminated.StartedAt.IsZero() {
-		isTerminated = true
+	c := v1alpha1.Container{
+		Name:     cStatus.Name,
+		ID:       string(cID),
+		Ready:    cStatus.Ready,
+		Image:    cStatus.Image,
+		Restarts: cStatus.RestartCount,
+		State:    v1alpha1.ContainerState{},
+		Ports:    ports,
 	}
 
-	return store.Container{
-		Name:       cName,
-		ID:         cID,
-		Ports:      ports,
-		Ready:      cStatus.Ready,
-		Running:    isRunning,
-		Terminated: isTerminated,
-		ImageRef:   cRef,
-		Restarts:   int(cStatus.RestartCount),
-		Status:     ContainerStatusToRuntimeState(cStatus),
-	}, nil
+	if cStatus.State.Waiting != nil {
+		c.State.Waiting = &v1alpha1.ContainerStateWaiting{
+			Reason: cStatus.State.Waiting.Reason,
+		}
+	} else if cStatus.State.Running != nil {
+		c.State.Running = &v1alpha1.ContainerStateRunning{
+			StartedAt: *cStatus.State.Running.StartedAt.DeepCopy(),
+		}
+	} else if cStatus.State.Terminated != nil {
+		c.State.Terminated = &v1alpha1.ContainerStateTerminated{
+			StartedAt:  *cStatus.State.Terminated.StartedAt.DeepCopy(),
+			FinishedAt: *cStatus.State.Terminated.FinishedAt.DeepCopy(),
+			Reason:     cStatus.State.Terminated.Reason,
+			ExitCode:   cStatus.State.Terminated.ExitCode,
+		}
+	}
+
+	return c, nil
 }
 
-func ContainerStatusToRuntimeState(status v1.ContainerStatus) model.RuntimeStatus {
+func ContainerStatusToRuntimeState(status v1alpha1.Container) model.RuntimeStatus {
 	state := status.State
 	if state.Terminated != nil {
 		if state.Terminated.ExitCode == 0 {
@@ -91,6 +90,7 @@ func ContainerStatusToRuntimeState(status v1.ContainerStatus) model.RuntimeStatu
 		return model.RuntimeStatusPending
 	}
 
+	// TODO(milas): this should really consider status.Ready
 	if state.Running != nil {
 		return model.RuntimeStatusOK
 	}

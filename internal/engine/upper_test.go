@@ -2282,13 +2282,13 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 		}
 
 		c1 := pod.Containers[0]
-		require.Equal(t, container.Name("sancho"), c1.Name)
-		require.Equal(t, podbuilder.FakeContainerID(), c1.ID)
+		require.Equal(t, container.Name("sancho").String(), c1.Name)
+		require.Equal(t, podbuilder.FakeContainerID().String(), c1.ID)
 		require.True(t, c1.Ready)
 
 		c2 := pod.Containers[1]
-		require.Equal(t, container.Name("sidecar"), c2.Name)
-		require.Equal(t, container.ID("sidecar"), c2.ID)
+		require.Equal(t, container.Name("sidecar").String(), c2.Name)
+		require.Equal(t, container.ID("sidecar").String(), c2.ID)
 		require.False(t, c2.Ready)
 
 		return true
@@ -2329,8 +2329,8 @@ func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 			return false
 		}
 
-		require.Equal(t, container.Name("sancho"), pod.Containers[0].Name)
-		require.Equal(t, container.Name("extra2"), pod.Containers[1].Name)
+		require.Equal(t, container.Name("sancho").String(), pod.Containers[0].Name)
+		require.Equal(t, container.Name("extra2").String(), pod.Containers[1].Name)
 
 		return true
 	})

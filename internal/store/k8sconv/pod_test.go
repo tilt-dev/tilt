@@ -3,8 +3,9 @@ package k8sconv
 import (
 	"testing"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -12,32 +13,32 @@ import (
 func TestContainerStatusToRuntimeState(t *testing.T) {
 	cases := []struct {
 		Name   string
-		Status v1.ContainerStatus
+		Status v1alpha1.Container
 		Result model.RuntimeStatus
 	}{
 		{
-			"ok-running", v1.ContainerStatus{
-				State: v1.ContainerState{Running: &v1.ContainerStateRunning{}},
+			"ok-running", v1alpha1.Container{
+				State: v1alpha1.ContainerState{Running: &v1alpha1.ContainerStateRunning{}},
 			}, model.RuntimeStatusOK,
 		},
 		{
-			"ok-terminated", v1.ContainerStatus{
-				State: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{}},
+			"ok-terminated", v1alpha1.Container{
+				State: v1alpha1.ContainerState{Terminated: &v1alpha1.ContainerStateTerminated{}},
 			}, model.RuntimeStatusOK,
 		},
 		{
-			"error-terminated", v1.ContainerStatus{
-				State: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{ExitCode: 1}},
+			"error-terminated", v1alpha1.Container{
+				State: v1alpha1.ContainerState{Terminated: &v1alpha1.ContainerStateTerminated{ExitCode: 1}},
 			}, model.RuntimeStatusError,
 		},
 		{
-			"error-waiting", v1.ContainerStatus{
-				State: v1.ContainerState{Waiting: &v1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+			"error-waiting", v1alpha1.Container{
+				State: v1alpha1.ContainerState{Waiting: &v1alpha1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
 			}, model.RuntimeStatusError,
 		},
 		{
-			"pending-waiting", v1.ContainerStatus{
-				State: v1.ContainerState{Waiting: &v1.ContainerStateWaiting{Reason: "Initializing"}},
+			"pending-waiting", v1alpha1.Container{
+				State: v1alpha1.ContainerState{Waiting: &v1alpha1.ContainerStateWaiting{Reason: "Initializing"}},
 			}, model.RuntimeStatusPending,
 		},
 	}

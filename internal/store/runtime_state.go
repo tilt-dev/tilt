@@ -5,11 +5,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/docker/distribution/reference"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -140,8 +141,8 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 		return model.RuntimeStatusError
 	}
 
-	for _, container := range pod.AllContainers() {
-		if container.Status == model.RuntimeStatusError {
+	for _, c := range pod.AllContainers() {
+		if k8sconv.ContainerStatusToRuntimeState(c) == model.RuntimeStatusError {
 			return model.RuntimeStatusError
 		}
 	}
@@ -242,21 +243,7 @@ func (p Pod) AllContainers() []Container {
 	return result
 }
 
-type Container struct {
-	Name       container.Name
-	ID         container.ID
-	Ports      []int32
-	Ready      bool
-	Running    bool
-	Terminated bool
-	ImageRef   reference.Named
-	Restarts   int
-	Status     model.RuntimeStatus
-}
-
-func (c Container) Empty() bool {
-	return c.Name == "" && c.ID == ""
-}
+type Container = v1alpha1.Container
 
 func (p Pod) Empty() bool {
 	return p.PodID == ""
@@ -300,7 +287,7 @@ func (p Pod) VisibleContainerRestarts() int {
 func (p Pod) AllContainerRestarts() int {
 	result := 0
 	for _, c := range p.Containers {
-		result += c.Restarts
+		result += int(c.Restarts)
 	}
 	return result
 }

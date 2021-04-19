@@ -117,7 +117,7 @@ func restartedContainerNames(existingContainers []store.Container, newContainers
 		}
 
 		if c.Restarts > existing.Restarts {
-			result = append(result, c.Name)
+			result = append(result, container.Name(c.Name))
 		}
 	}
 	return result
