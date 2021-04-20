@@ -2193,7 +2193,7 @@ func TestUpperPodRestartsBeforeTiltStart(t *testing.T) {
 	f.startPod(pb.Build(), manifest.Name)
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, 1, ms.MostRecentPod().BaselineRestarts)
+		assert.Equal(t, 1, ms.MostRecentPod().BaselineRestartCount)
 	})
 
 	err := f.Stop()

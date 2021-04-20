@@ -246,7 +246,7 @@ func AllPodContainerRestarts(p Pod) int {
 }
 
 func VisiblePodContainerRestarts(p Pod) int {
-	return AllPodContainerRestarts(p) - p.BaselineRestarts
+	return AllPodContainerRestarts(p) - p.BaselineRestartCount
 }
 
 func AllPodContainerPorts(p v1alpha1.Pod) []int32 {

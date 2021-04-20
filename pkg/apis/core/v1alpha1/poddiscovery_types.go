@@ -49,16 +49,16 @@ type Pod struct {
 	// Containers are the containers belonging to the Pod.
 	Containers []Container `json:"containers"`
 
-	// BaselineRestarts is the number of restarts across all containers before Tilt started observing the Pod.
+	// BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.
 	//
 	// This is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.
-	BaselineRestarts int `json:"baselineRestarts"`
+	BaselineRestartCount int `json:"baselineRestartCount"`
 	// PodTemplateSpecHash is a hash of the Pod template spec.
 	//
 	// Tilt uses this to associate Pods with the build that triggered them.
-	PodTemplateSpecHash string `json:"podTemplateHash"`
+	PodTemplateSpecHash string `json:"podTemplateSpecHash,omitempty"`
 	// UpdateStartedAt is when Tilt started a deployment update for this Pod.
-	UpdateStartedAt metav1.Time `json:"updateStartTime,omitempty"`
+	UpdateStartedAt metav1.Time `json:"updateStartedAt,omitempty"`
 	// Status is a concise description for the Pod's current state.
 	//
 	// This is based off the status output from `kubectl get pod` and is not an "enum-like"

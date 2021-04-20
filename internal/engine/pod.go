@@ -83,7 +83,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		// This can happen when the image was deployed on a previous
 		// Tilt run, so we're just attaching to an existing pod
 		// with some old history.
-		podInfo.BaselineRestarts = store.AllPodContainerRestarts(*podInfo)
+		podInfo.BaselineRestartCount = store.AllPodContainerRestarts(*podInfo)
 	}
 
 	if len(podInfo.Containers) == 0 {
@@ -272,5 +272,5 @@ func handlePodResetRestartsAction(state *store.EngineState, action store.PodRese
 	// We have to be careful here because the pod might have restarted
 	// since the action was created.
 	delta := store.VisiblePodContainerRestarts(*podInfo) - action.VisibleRestarts
-	podInfo.BaselineRestarts = store.AllPodContainerRestarts(*podInfo) - delta
+	podInfo.BaselineRestartCount = store.AllPodContainerRestarts(*podInfo) - delta
 }
