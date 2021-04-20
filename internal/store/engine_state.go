@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
-	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -123,9 +123,9 @@ type EngineState struct {
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds          map[string]*Cmd                                 `json:"-"`
-	FileWatches   map[types.NamespacedName]*filewatches.FileWatch `json:"-"`
-	PodLogStreams map[string]*PodLogStream                        `json:"-"`
+	Cmds          map[string]*Cmd                              `json:"-"`
+	FileWatches   map[types.NamespacedName]*v1alpha1.FileWatch `json:"-"`
+	PodLogStreams map[string]*PodLogStream                     `json:"-"`
 }
 
 type CloudStatus struct {
@@ -484,7 +484,7 @@ func NewState() *EngineState {
 	}
 
 	ret.Cmds = make(map[string]*Cmd)
-	ret.FileWatches = make(map[types.NamespacedName]*filewatches.FileWatch)
+	ret.FileWatches = make(map[types.NamespacedName]*v1alpha1.FileWatch)
 	ret.PodLogStreams = make(map[string]*PodLogStream)
 
 	return ret
@@ -584,11 +584,11 @@ func (ms *ManifestState) StartedFirstBuild() bool {
 	return !ms.CurrentBuild.Empty() || len(ms.BuildHistory) > 0
 }
 
-func (ms *ManifestState) MostRecentPod() filewatches.Pod {
+func (ms *ManifestState) MostRecentPod() v1alpha1.Pod {
 	return ms.K8sRuntimeState().MostRecentPod()
 }
 
-func (ms *ManifestState) PodWithID(pid k8s.PodID) (*filewatches.Pod, bool) {
+func (ms *ManifestState) PodWithID(pid k8s.PodID) (*v1alpha1.Pod, bool) {
 	for id, pod := range ms.K8sRuntimeState().Pods {
 		if id == pid {
 			return pod, true
