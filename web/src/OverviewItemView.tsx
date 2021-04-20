@@ -11,11 +11,14 @@ import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { ReactComponent as MaximizeSvg } from "./assets/svg/maximize.svg"
+import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarIcon from "./SidebarIcon"
-import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
+import StarResourceButton, {
+  StarResourceButtonRoot,
+} from "./StarResourceButton"
 import { buildStatus, runtimeStatus } from "./status"
 import {
   AnimDuration,
@@ -198,6 +201,11 @@ let InnerRuntimeBox = styled.div`
   display: flex;
   align-items: center;
   flex-grow: 1;
+
+  ${StarResourceButtonRoot} {
+    margin-left: ${SizeUnit(0.125)};
+    align-content: center;
+  }
 `
 let OverviewItemType = styled.div`
   display: flex;
@@ -253,9 +261,7 @@ let OverviewItemBuildText = styled.div`
   ${mixinTruncateText}
 `
 
-export function triggerUpdate(name: string, action: string) {
-  incr("ui.web.triggerResource", { action })
-
+export function triggerUpdate(name: string) {
   let url = `//${window.location.host}/api/trigger`
 
   fetch(url, {
@@ -272,8 +278,6 @@ export function triggerUpdate(name: string, action: string) {
 }
 
 export function toggleTriggerMode(name: string, mode: TriggerMode) {
-  incr("ui.web.toggleTriggerMode", { toMode: mode.toString() })
-
   let url = "/api/override/trigger_mode"
 
   fetch(url, {
@@ -373,7 +377,10 @@ function RuntimeBox(props: RuntimeBoxProps) {
       <RuntimeBoxStack>
         <InnerRuntimeBox>
           <OverviewItemType>{item.resourceTypeLabel}</OverviewItemType>
-          <SidebarPinButton resourceName={item.name} />
+          <StarResourceButton
+            resourceName={item.name}
+            analyticsName="ui.web.overviewStarButton"
+          />
           <OverviewItemTimeAgo>
             {hasSuccessfullyDeployed ? timeAgo : "—"}
           </OverviewItemTimeAgo>
@@ -508,7 +515,7 @@ let Endpoint = styled.a`
   ${detailsRow}
 `
 
-let Copy = styled.button`
+let Copy = styled(InstrumentedButton)`
   ${detailsRow}
 `
 
@@ -574,7 +581,7 @@ export function OverviewItemDetails(props: OverviewItemDetailsProps) {
     )
 
     copy = (
-      <Copy onClick={copyClick}>
+      <Copy onClick={copyClick} analyticsName="ui.web.overview.copyPodID">
         {icon}
         <DetailText style={{ marginLeft: "8px" }}>
           {item.podId} Pod ID
@@ -665,7 +672,7 @@ export default function OverviewItemView(props: OverviewItemViewProps) {
     <OverviewItemRoot
       key={item.name}
       onClick={handleClick}
-      className="u-showPinOnHover u-showTriggerModeOnHover"
+      className="u-showStarOnHover u-showTriggerModeOnHover"
     >
       <OverviewItemBox className={`${isBuildingClass}`} data-name={item.name}>
         <RuntimeBox item={item} />

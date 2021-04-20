@@ -5,6 +5,7 @@ import styled from "styled-components"
 import { incr } from "./analytics"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as SearchSvg } from "./assets/svg/search.svg"
+import { InstrumentedButton } from "./instrumentedComponents"
 import {
   Color,
   Font,
@@ -48,7 +49,7 @@ const ResourceFilterSegmentedControls = styled.div`
   margin-left: ${SizeUnit(0.25)};
 `
 
-const ResourceFilterToggle = styled.button`
+const ResourceFilterToggle = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   color: ${Color.grayLightest};
   background-color: ${Color.gray};
@@ -75,7 +76,7 @@ export const TestsOnlyToggle = styled(ResourceFilterToggle)`
   border-bottom-right-radius: ${toggleBorderRadius};
 `
 
-export const AlertsOnTopToggle = styled.button`
+export const AlertsOnTopToggle = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   color: ${Color.grayLightest};
   background-color: ${Color.gray};
@@ -119,7 +120,7 @@ export const ResourceNameFilterTextField = styled(TextField)`
   }
 `
 
-export const ClearResourceNameFilterButton = styled.button`
+export const ClearResourceNameFilterButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   display: flex;
   align-items: center;
@@ -184,12 +185,20 @@ function filterOptions(props: OverviewSidebarOptionsProps) {
         <TestsHiddenToggle
           className={props.options.testsHidden ? "is-enabled" : ""}
           onClick={(e) => toggleTestsHidden(props)}
+          analyticsName="ui.web.testsHiddenToggle"
+          analyticsTags={{
+            newTestsHiddenState: (!props.options.testsHidden).toString(),
+          }}
         >
           Hidden
         </TestsHiddenToggle>
         <TestsOnlyToggle
           className={props.options.testsOnly ? "is-enabled" : ""}
           onClick={(e) => toggleTestsOnly(props)}
+          analyticsName="ui.web.testsOnlyToggle"
+          analyticsTags={{
+            newTestsOnlyState: (!props.options.testsOnly).toString(),
+          }}
         >
           Only
         </TestsOnlyToggle>
@@ -197,8 +206,6 @@ function filterOptions(props: OverviewSidebarOptionsProps) {
     </FilterOptionList>
   )
 }
-
-const resourceNameFilterEventName = "ui.web.resourceNameFilter"
 
 // debounce so we don't send for every single keypress
 let incrResourceNameFilterEdit = debounce(() => {
@@ -217,13 +224,15 @@ function ResourceNameFilter(props: OverviewSidebarOptionsProps) {
   // only show the "x" to clear if there's any input to clear
   if (props.options.resourceNameFilter) {
     const onClearClick = () => {
-      incr(resourceNameFilterEventName, { action: "clear" })
       setResourceNameFilter("", props)
     }
 
     inputProps.endAdornment = (
       <InputAdornment position="end">
-        <ClearResourceNameFilterButton onClick={onClearClick}>
+        <ClearResourceNameFilterButton
+          onClick={onClearClick}
+          analyticsName="ui.web.clearResourceNameFilter"
+        >
           <CloseSvg fill={Color.grayLightest} />
         </ClearResourceNameFilterButton>
       </InputAdornment>
@@ -250,7 +259,7 @@ export function OverviewSidebarOptions(
   props: OverviewSidebarOptionsProps
 ): JSX.Element {
   return (
-    <OverviewSidebarOptionsRoot style={{ marginTop: SizeUnit(0.75) }}>
+    <OverviewSidebarOptionsRoot>
       <OverviewSidebarOptionsButtonsRoot
         className={!props.showFilters ? "is-filterButtonsHidden" : ""}
       >
@@ -258,6 +267,7 @@ export function OverviewSidebarOptions(
         <AlertsOnTopToggle
           className={props.options.alertsOnTop ? "is-enabled" : ""}
           onClick={(e) => setAlertsOnTop(props, !props.options.alertsOnTop)}
+          analyticsName="ui.web.alertsOnTopToggle"
         >
           Alerts on Top
         </AlertsOnTopToggle>

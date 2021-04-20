@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/portforward"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -42,15 +43,16 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		return
 	}
 
+	spanID := k8sconv.SpanIDForPod(k8s.PodID(podInfo.Name))
+
 	// Update the status
-	podInfo.StartedAt = pod.CreationTimestamp.Time
+	podInfo.CreatedAt = *pod.CreationTimestamp.DeepCopy()
 	podInfo.Status = k8swatch.PodStatusToString(*pod)
-	podInfo.Namespace = k8s.NamespaceFromPod(pod)
-	podInfo.SpanID = runtimelog.SpanIDForPod(podInfo.PodID)
+	podInfo.Namespace = pod.Namespace
 	podInfo.Deleting = pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
-	podInfo.Phase = pod.Status.Phase
-	podInfo.StatusMessages = k8swatch.PodStatusErrorMessages(*pod)
-	podInfo.Conditions = pod.Status.Conditions
+	podInfo.Phase = string(pod.Status.Phase)
+	podInfo.Errors = k8swatch.PodStatusErrorMessages(*pod)
+	podInfo.Conditions = k8sconv.PodConditions(pod.Status.Conditions)
 
 	prunePods(ms)
 
@@ -58,8 +60,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	if !isNew {
 		names := restartedContainerNames(podInfo.InitContainers, initContainers)
 		for _, name := range names {
-			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", podInfo.PodID, name)
-			handleLogAction(state, store.NewLogAction(manifest.Name, podInfo.SpanID, logger.WarnLvl, nil, []byte(s)))
+			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", podInfo.Name, name)
+			handleLogAction(state, store.NewLogAction(manifest.Name, spanID, logger.WarnLvl, nil, []byte(s)))
 		}
 	}
 	podInfo.InitContainers = initContainers
@@ -68,8 +70,8 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	if !isNew {
 		names := restartedContainerNames(podInfo.Containers, containers)
 		for _, name := range names {
-			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", podInfo.PodID, name)
-			handleLogAction(state, store.NewLogAction(manifest.Name, podInfo.SpanID, logger.WarnLvl, nil, []byte(s)))
+			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", podInfo.Name, name)
+			handleLogAction(state, store.NewLogAction(manifest.Name, spanID, logger.WarnLvl, nil, []byte(s)))
 		}
 	}
 	podInfo.Containers = containers
@@ -81,7 +83,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		// This can happen when the image was deployed on a previous
 		// Tilt run, so we're just attaching to an existing pod
 		// with some old history.
-		podInfo.BaselineRestarts = podInfo.AllContainerRestarts()
+		podInfo.BaselineRestartCount = store.AllPodContainerRestarts(*podInfo)
 	}
 
 	if len(podInfo.Containers) == 0 {
@@ -89,7 +91,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		return
 	}
 
-	if podInfo.AllContainersReady() || podInfo.Phase == v1.PodSucceeded {
+	if store.AllPodContainersReady(*podInfo) || podInfo.Phase == string(v1.PodSucceeded) {
 		runtime := ms.K8sRuntimeState()
 		runtime.LastReadyOrSucceededTime = time.Now()
 		ms.RuntimeState = runtime
@@ -99,12 +101,12 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	if !fwdsValid {
 		logger.Get(ctx).Warnf(
 			"Resource %s is using port forwards, but no container ports on pod %s",
-			manifest.Name, podInfo.PodID)
+			manifest.Name, podInfo.Name)
 	}
 	checkForContainerCrash(ctx, state, mt)
 }
 
-func restartedContainerNames(existingContainers []store.Container, newContainers []store.Container) []container.Name {
+func restartedContainerNames(existingContainers []v1alpha1.Container, newContainers []v1alpha1.Container) []container.Name {
 	result := []container.Name{}
 	for i, c := range newContainers {
 		if i >= len(existingContainers) {
@@ -117,7 +119,7 @@ func restartedContainerNames(existingContainers []store.Container, newContainers
 		}
 
 		if c.Restarts > existing.Restarts {
-			result = append(result, c.Name)
+			result = append(result, container.Name(c.Name))
 		}
 	}
 	return result
@@ -182,7 +184,7 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 		// CASE 2: We have a set of pods for this ancestor UID, but not this
 		// particular pod -- record it
 		podInfo = &store.Pod{
-			PodID: podID,
+			Name: podID.String(),
 		}
 
 		runtime.Pods[podID] = podInfo
@@ -239,8 +241,8 @@ func prunePods(ms *store.ManifestState) {
 
 		for key, pod := range runtime.Pods {
 			// Remove terminated pods if they aren't the most recent one.
-			isDead := pod.Phase == v1.PodSucceeded || pod.Phase == v1.PodFailed
-			if isDead && pod.PodID != bestPod.PodID {
+			isDead := pod.Phase == string(v1.PodSucceeded) || pod.Phase == string(v1.PodFailed)
+			if isDead && pod.Name != bestPod.Name {
 				delete(runtime.Pods, key)
 				break
 			}
@@ -269,6 +271,6 @@ func handlePodResetRestartsAction(state *store.EngineState, action store.PodRese
 
 	// We have to be careful here because the pod might have restarted
 	// since the action was created.
-	delta := podInfo.VisibleContainerRestarts() - action.VisibleRestarts
-	podInfo.BaselineRestarts = podInfo.AllContainerRestarts() - delta
+	delta := store.VisiblePodContainerRestarts(*podInfo) - action.VisibleRestarts
+	podInfo.BaselineRestartCount = store.AllPodContainerRestarts(*podInfo) - delta
 }

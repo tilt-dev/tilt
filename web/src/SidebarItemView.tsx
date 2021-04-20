@@ -1,14 +1,17 @@
 import React from "react"
 import TimeAgo from "react-timeago"
-import styled, { keyframes } from "styled-components"
-import { incr } from "./analytics"
+import styled from "styled-components"
 import PathBuilder from "./PathBuilder"
+import { useResourceNav } from "./ResourceNav"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
-import SidebarPinButton from "./SidebarPinButton"
 import SidebarTriggerButton from "./SidebarTriggerButton"
+import StarResourceButton, {
+  StarResourceButtonRoot,
+} from "./StarResourceButton"
 import {
   AnimDuration,
+  barberpole,
   Color,
   ColorAlpha,
   ColorRGBA,
@@ -18,30 +21,22 @@ import {
   overviewItemBorderRadius,
   SizeUnit,
 } from "./style-helpers"
-import { useTabNav } from "./TabNav"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { TriggerModeToggle } from "./TriggerModeToggle"
-import {
-  ResourceName,
-  ResourceStatus,
-  ResourceView,
-  TriggerMode,
-} from "./types"
+import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 
 export const SidebarItemRoot = styled.li`
   & + & {
     margin-top: ${SizeUnit(0.35)};
   }
-  // smaller margin-left since the pin icon takes up space
+  // smaller margin-left since the star icon takes up space
   margin-left: ${SizeUnit(0.25)};
   margin-right: ${SizeUnit(0.5)};
   display: flex;
-`
 
-const barberpole = keyframes`
-  100% {
-    background-position: 100% 100%;
+  ${StarResourceButtonRoot} {
+    margin-right: ${SizeUnit(1.0 / 12)};
   }
 `
 
@@ -90,7 +85,7 @@ export let SidebarItemBox = styled.div`
 `
 
 // Flexbox (column) containing:
-// - `SidebarItemRuntimeBox` - (row) with runtime status, name, pin, timeago
+// - `SidebarItemRuntimeBox` - (row) with runtime status, name, star, timeago
 // - `SidebarItemBuildBox` - (row) with build status, text
 let SidebarItemInnerBox = styled.div`
   display: flex;
@@ -128,46 +123,6 @@ let SidebarItemText = styled.div`
   color: ${Color.grayLightest};
 `
 
-let SidebarItemAllRoot = styled(SidebarItemRoot)`
-  text-transform: uppercase;
-  // SidebarItemRoot's margin-left of 0.25 plus the pin icon's width of 0.75
-  margin-left: ${SizeUnit(1)};
-`
-let SidebarItemAllBox = styled(SidebarItemBox)`
-  flex-direction: row;
-  height: ${SizeUnit(1.25)};
-`
-
-type SidebarItemAllProps = {
-  nothingSelected: boolean
-  totalAlerts: number
-}
-
-export function SidebarItemAll(props: SidebarItemAllProps) {
-  let nav = useTabNav()
-  return (
-    <SidebarItemAllRoot>
-      <SidebarItemAllBox
-        className={props.nothingSelected ? "isSelected" : ""}
-        tabIndex={-1}
-        role="button"
-        onClick={(e) =>
-          nav.openResource(ResourceName.all, {
-            newTab: (e.ctrlKey || e.metaKey) && !e.shiftKey,
-          })
-        }
-      >
-        <SidebarIcon
-          status={ResourceStatus.None}
-          alertCount={props.totalAlerts}
-          tooltipText={""}
-        />
-        <SidebarItemNameRoot>All</SidebarItemNameRoot>
-      </SidebarItemAllBox>
-    </SidebarItemAllRoot>
-  )
-}
-
 let SidebarItemNameRoot = styled.div`
   display: flex;
   align-items: center;
@@ -202,9 +157,7 @@ let SidebarItemTimeAgo = styled.span`
   padding-right: ${SizeUnit(0.25)};
 `
 
-export function triggerUpdate(name: string, action: string) {
-  incr("ui.web.triggerResource", { action })
-
+export function triggerUpdate(name: string) {
   let url = `//${window.location.host}/api/trigger`
 
   fetch(url, {
@@ -221,8 +174,6 @@ export function triggerUpdate(name: string, action: string) {
 }
 
 export function toggleTriggerMode(name: string, mode: TriggerMode) {
-  incr("ui.web.toggleTriggerMode", { toMode: mode.toString() })
-
   let url = "/api/override/trigger_mode"
 
   fetch(url, {
@@ -301,7 +252,7 @@ function buildTooltipText(status: ResourceStatus): string {
 }
 
 export default function SidebarItemView(props: SidebarItemViewProps) {
-  let nav = useTabNav()
+  let nav = useResourceNav()
   let item = props.item
   let formatter = timeAgoFormatter
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
@@ -318,18 +269,17 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   return (
     <SidebarItemRoot
       key={item.name}
-      className={`u-showPinOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass}`}
+      className={`u-showStarOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass}`}
     >
-      <SidebarPinButton resourceName={item.name} />
+      <StarResourceButton
+        resourceName={item.name}
+        analyticsName="ui.web.sidebarStarButton"
+      />
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
         tabIndex={-1}
         role="button"
-        onClick={(e) =>
-          nav.openResource(item.name, {
-            newTab: (e.ctrlKey || e.metaKey) && !e.shiftKey,
-          })
-        }
+        onClick={(e) => nav.openResource(item.name)}
         data-name={item.name}
       >
         <SidebarItemInnerBox>

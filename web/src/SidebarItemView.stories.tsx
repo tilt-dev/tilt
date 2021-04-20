@@ -1,12 +1,9 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import PathBuilder from "./PathBuilder"
+import { ResourceNavContextProvider } from "./ResourceNav"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, {
-  SidebarItemAll,
-  SidebarItemViewProps,
-} from "./SidebarItemView"
-import { LegacyNavProvider } from "./TabNav"
+import SidebarItemView, { SidebarItemViewProps } from "./SidebarItemView"
 import { oneResourceNoAlerts } from "./testdata"
 import {
   ResourceName,
@@ -19,11 +16,16 @@ type Resource = Proto.webviewResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 function ItemWrapper(props: { children: React.ReactNode }) {
+  let resourceNav = {
+    selectedResource: "",
+    invalidResource: "",
+    openResource: (name: string) => {},
+  }
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <LegacyNavProvider resourceView={ResourceView.Log}>
+      <ResourceNavContextProvider value={resourceNav}>
         <div style={{ width: "336px", margin: "100px" }}>{props.children}</div>
-      </LegacyNavProvider>
+      </ResourceNavContextProvider>
     </MemoryRouter>
   )
 }
@@ -159,19 +161,3 @@ export const Tiltfile = (args: Args) =>
     withName(ResourceName.tiltfile),
     withBuildStatusOnly(ResourceStatus.Healthy)
   )
-
-export const AllItemSelected = () => {
-  return (
-    <ItemWrapper>
-      <SidebarItemAll nothingSelected={true} totalAlerts={1} />
-    </ItemWrapper>
-  )
-}
-
-export const AllItemUnselected = () => {
-  return (
-    <ItemWrapper>
-      <SidebarItemAll nothingSelected={false} totalAlerts={1} />
-    </ItemWrapper>
-  )
-}

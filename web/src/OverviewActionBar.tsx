@@ -11,6 +11,7 @@ import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import LogActions from "./LogActions"
 import { FilterLevel, FilterSet, FilterSource } from "./logfilters"
@@ -143,7 +144,7 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
   )
 }
 
-let ButtonRoot = styled.button`
+let ButtonRoot = styled(InstrumentedButton)`
   font-family: ${Font.sansSerif};
   display: flex;
   align-items: center;
@@ -293,13 +294,19 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
 
   return (
     <ButtonPill style={{ marginRight: SizeUnit(0.5) }}>
-      <ButtonLeftPill className={leftClassName} onClick={onClick}>
+      <ButtonLeftPill
+        className={leftClassName}
+        onClick={onClick}
+        analyticsName="ui.web.filterLevel"
+        analyticsTags={{ level: level, source: props.filterSet.source }}
+      >
         {leftText}
       </ButtonLeftPill>
       <ButtonRightPill
         style={rightStyle}
         className={rightClassName}
         onClick={onMenuOpen}
+        analyticsName="ui.web.filterSourceMenu"
       >
         {rightText}
       </ButtonRightPill>
@@ -352,7 +359,7 @@ function CopyButton(props: CopyButtonProps) {
   )
 
   return (
-    <ButtonRoot onClick={copyClick}>
+    <ButtonRoot onClick={copyClick} analyticsName="ui.web.actionBar.copyPodID">
       {icon}
       <TruncateText style={{ marginLeft: "8px" }}>
         {props.podId} Pod ID

@@ -2,6 +2,11 @@ import MenuItem from "@material-ui/core/MenuItem"
 import { mount } from "enzyme"
 import { createMemoryHistory } from "history"
 import { MemoryRouter, Router } from "react-router"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import { FilterLevel, FilterSource } from "./logfilters"
 import {
   ActionBarTopRow,
@@ -10,6 +15,14 @@ import {
   FilterRadioButton,
 } from "./OverviewActionBar"
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
+
+beforeEach(() => {
+  mockAnalyticsCalls()
+})
+
+afterEach(() => {
+  cleanupMockAnalyticsCalls()
+})
 
 it("shows endpoints", () => {
   let root = mount(
@@ -49,6 +62,11 @@ it("navigates to warning filter", () => {
   expect(leftButton).toHaveLength(1)
   leftButton.simulate("click")
   expect(history.location.search).toEqual("?level=warn&source=")
+
+  expectIncrs({
+    name: "ui.web.filterLevel",
+    tags: { action: "click", level: "warn", source: "" },
+  })
 })
 
 it("navigates to build warning filter", () => {

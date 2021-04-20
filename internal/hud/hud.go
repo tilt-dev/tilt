@@ -9,16 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/output"
-	"github.com/tilt-dev/tilt/pkg/logger"
-
 	"github.com/gdamore/tcell"
-	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/openurl"
+	"github.com/tilt-dev/tilt/internal/output"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -36,8 +35,9 @@ type HeadsUpDisplay interface {
 }
 
 type Hud struct {
-	r      *Renderer
-	webURL model.WebURL
+	r       *Renderer
+	webURL  model.WebURL
+	openurl openurl.OpenURL
 
 	currentView      view.View
 	currentViewState view.ViewState
@@ -49,11 +49,12 @@ type Hud struct {
 
 var _ HeadsUpDisplay = (*Hud)(nil)
 
-func NewHud(renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics) HeadsUpDisplay {
+func NewHud(renderer *Renderer, webURL model.WebURL, analytics *analytics.TiltAnalytics, openurl openurl.OpenURL) HeadsUpDisplay {
 	return &Hud{
-		r:      renderer,
-		webURL: webURL,
-		a:      analytics,
+		r:       renderer,
+		webURL:  webURL,
+		a:       analytics,
+		openurl: openurl,
 	}
 }
 
@@ -148,7 +149,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				_, selected := h.selectedResource()
 				if len(selected.Endpoints) > 0 {
 					h.recordInteraction("open_preview")
-					err := browser.OpenURL(selected.Endpoints[0])
+					err := h.openurl(selected.Endpoints[0], logger.Get(ctx).Writer(logger.InfoLvl))
 					if err != nil {
 						h.currentViewState.AlertMessage = fmt.Sprintf("error opening url '%s' for resource '%s': %v",
 							selected.Endpoints[0], selected.Name, err)
@@ -162,7 +163,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				}
 				url := h.webURL
 				url.Path = "/"
-				_ = browser.OpenURL(url.String())
+				_ = h.openurl(url.String(), logger.Get(ctx).Writer(logger.InfoLvl))
 			case r == 'k':
 				h.activeScroller().Up()
 				h.refreshSelectedIndex()
@@ -219,7 +220,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			}
 
 			h.a.Incr("ui.interactions.open_log", nil)
-			_ = browser.OpenURL(url.String())
+			_ = h.openurl(url.String(), logger.Get(ctx).Writer(logger.InfoLvl))
 		case tcell.KeyRight:
 			i, _ := h.selectedResource()
 			h.currentViewState.Resources[i].CollapseState = view.CollapseNo

@@ -37,7 +37,12 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateTerminated":       schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting":          schema_pkg_apis_core_v1alpha1_CmdStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus":                schema_pkg_apis_core_v1alpha1_CmdStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container":                schema_pkg_apis_core_v1alpha1_Container(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerLogStreamStatus": schema_pkg_apis_core_v1alpha1_ContainerLogStreamStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerState":           schema_pkg_apis_core_v1alpha1_ContainerState(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateRunning":    schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated": schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting":    schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":               schema_pkg_apis_core_v1alpha1_ExecAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent":                schema_pkg_apis_core_v1alpha1_FileEvent(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":                schema_pkg_apis_core_v1alpha1_FileWatch(ref),
@@ -48,6 +53,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":               schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":                  schema_pkg_apis_core_v1alpha1_Handler(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":                schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod":                      schema_pkg_apis_core_v1alpha1_Pod(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition":             schema_pkg_apis_core_v1alpha1_PodCondition(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStream":             schema_pkg_apis_core_v1alpha1_PodLogStream(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamList":         schema_pkg_apis_core_v1alpha1_PodLogStreamList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec":         schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref),
@@ -427,6 +434,84 @@ func schema_pkg_apis_core_v1alpha1_CmdStatus(ref common.ReferenceCallback) commo
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_Container(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Container is an init or application container within a pod.\n\nThe Tilt API representation mirrors the Kubernetes API very closely. Irrelevant data is not included, and some fields might be simplified.\n\nThere might also be Tilt-specific status fields.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the container as defined in Kubernetes.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"id": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ID is the normalized container ID (the `docker://` prefix is stripped).",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"ready": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ready is true if the container is passing readiness checks (or has none defined).",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Image is the image the container is running.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"restarts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Restarts is the number of times the container has restarted.\n\nThis includes restarts before the Tilt daemon was started if the container was already running.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"state": {
+						SchemaProps: spec.SchemaProps{
+							Description: "State provides details about the container's current condition.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerState"),
+						},
+					},
+					"ports": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ports are exposed ports as extracted from the Pod spec.\n\nThis is added by Tilt for convenience when managing port forwards.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: 0,
+										Type:    []string{"integer"},
+										Format:  "int32",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"name", "id", "ready", "image", "restarts", "state", "ports"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerState"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_ContainerLogStreamStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -463,6 +548,130 @@ func schema_pkg_apis_core_v1alpha1_ContainerLogStreamStatus(ref common.Reference
 						},
 					},
 				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ContainerState(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ContainerState holds a possible state of container.\n\nOnly one of its members may be specified. If none of them is specified, the default one is ContainerStateWaiting.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Waiting provides details about a container that is not yet running.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting"),
+						},
+					},
+					"running": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Running provides details about a currently executing container.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateRunning"),
+						},
+					},
+					"terminated": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Terminated provides details about an exited container.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated"),
+						},
+					},
+				},
+				Required: []string{"waiting", "running", "terminated"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ContainerStateRunning is a running state of a container.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartedAt is the time the container began running.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+				},
+				Required: []string{"startedAt"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ContainerStateTerminated is a terminated state of a container.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartedAt is the time the container began running.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"finishedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FinishedAt is the time the container stopped running.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is a (brief) reason the container stopped running.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"exitCode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExitCode is the exit status from the termination of the container.\n\nAny non-zero value indicates an error during termination.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"startedAt", "finishedAt", "exitCode"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ContainerStateWaiting is a waiting state of a container.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is a (brief) reason the container is not yet running.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"reason"},
 			},
 		},
 	}
@@ -879,6 +1088,201 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 				Required: []string{"basePath"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Pod is a collection of containers that can run on a host.\n\nThe Tilt API representation mirrors the Kubernetes API very closely. Irrelevant data is not included, and some fields might be simplified.\n\nThere might also be Tilt-specific status fields.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the Pod name within the K8s cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the Pod namespace within the K8s cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"createdAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CreatedAt is when the Pod was created.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase is where the Pod is at in its current lifecycle.\n\nValid values for this are v1.PodPhase values from the Kubernetes API.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"deleting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Deleting indicates that the Pod is in the process of being removed.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions are various lifecycle conditions for this Pod.\n\nSee also v1.PodCondition in the Kubernetes API.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition"),
+									},
+								},
+							},
+						},
+					},
+					"initContainers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InitContainers are containers executed prior to the Pod containers being executed.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container"),
+									},
+								},
+							},
+						},
+					},
+					"containers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Containers are the containers belonging to the Pod.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container"),
+									},
+								},
+							},
+						},
+					},
+					"baselineRestartCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.\n\nThis is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"podTemplateSpecHash": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodTemplateSpecHash is a hash of the Pod template spec.\n\nTilt uses this to associate Pods with the build that triggered them.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"updateStartedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UpdateStartedAt is when Tilt started a deployment update for this Pod.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status is a concise description for the Pod's current state.\n\nThis is based off the status output from `kubectl get pod` and is not an \"enum-like\" value.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"errors": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Errors are aggregated error messages for the Pod and its containers.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"name", "namespace", "createdAt", "phase", "deleting", "containers", "baselineRestartCount", "status", "errors"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_PodCondition(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodCondition is a lifecycle condition for a Pod.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the type of condition.\n\nValid values for this are v1.PodConditionType values from the Kubernetes API.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status is the current state of the condition (True, False, or Unknown).\n\nValid values for this are v1.PodConditionStatus values from the Kubernetes API.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastTransitionTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastTransitionTime is the last time the status changed.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is a unique, one-word, CamelCase value for the cause of the last status change.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message is a human-readable description of the last status change.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"type", "status"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 

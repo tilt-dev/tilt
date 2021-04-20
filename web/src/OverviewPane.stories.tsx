@@ -1,7 +1,7 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewPane from "./OverviewPane"
-import { SidebarPinMemoryProvider } from "./SidebarPin"
+import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type Resource = Proto.webviewResource
@@ -12,9 +12,9 @@ export default {
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
         <div style={{ margin: "-1rem", height: "80vh" }}>
-          <SidebarPinMemoryProvider>
+          <StarredResourceMemoryProvider>
             <Story />
-          </SidebarPinMemoryProvider>
+          </StarredResourceMemoryProvider>
         </div>
       </MemoryRouter>
     ),
@@ -29,13 +29,13 @@ export const OneHundredResources = () => (
   <OverviewPane view={nResourceView(100)} />
 )
 
-export const OneHundredResourcesOnePin = () => (
-  <SidebarPinMemoryProvider initialValueForTesting={["vigoda_2"]}>
+export const OneHundredResourcesOneStar = () => (
+  <StarredResourceMemoryProvider initialValueForTesting={["vigoda_2"]}>
     <OverviewPane view={nResourceView(100)} />
-  </SidebarPinMemoryProvider>
+  </StarredResourceMemoryProvider>
 )
 
-export const OneHundredResourcesTenPins = () => {
+export const OneHundredResourcesTenStars = () => {
   let items = [
     "vigoda_1",
     "vigoda_11",
@@ -49,8 +49,8 @@ export const OneHundredResourcesTenPins = () => {
     "vigoda_91",
   ]
   return (
-    <SidebarPinMemoryProvider initialValueForTesting={items}>
+    <StarredResourceMemoryProvider initialValueForTesting={items}>
       <OverviewPane view={nResourceView(100)} />
-    </SidebarPinMemoryProvider>
+    </StarredResourceMemoryProvider>
   )
 }

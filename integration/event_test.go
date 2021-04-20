@@ -41,11 +41,7 @@ func markNodeSchedulable(f *k8sFixture, name string) {
 		"markNodeSchedulable")
 }
 
-// TestUnschedulableEvent is testing two things:
-//	1) Important K8s events (such as unschedulable pods) are propagated to logs (at least until #3532 is done)
-//	2) Unschedulable pods continue to be monitored by Tilt after the situation is resolved
-//		(see comments on assertions - this is hacky right now!)
-func TestUnschedulableEvent(t *testing.T) {
+func TestEvent(t *testing.T) {
 	f := newK8sFixture(t, "event")
 	defer f.TearDown()
 
@@ -74,10 +70,4 @@ func TestUnschedulableEvent(t *testing.T) {
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31234", "Hello world")
-
-	// TODO(milas): once Tilt API is more fully-fledged, assert on the status of resource (from Tilt's perspective)
-	// 	to verify that it's failing while the node is unschedulable and replace this log hack with a corresponding
-	// 	status check to show it's passing as well (the log inspection is being used as a way to check that Tilt is
-	// 	still correctly watching the pod even though it was temporarily in an error state)
-	assert.NoError(t, f.logs.WaitUntilContains("Starting HTTP server", 2*time.Second))
 }

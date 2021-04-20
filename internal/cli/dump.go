@@ -35,6 +35,7 @@ and may change frequently.
 	result.AddCommand(newDumpLogStoreCmd())
 	result.AddCommand(newDumpCliDocsCmd(rootCmd))
 	result.AddCommand(newDumpImageDeployRefCmd())
+	addCommand(result, newOpenapiCmd())
 
 	return result
 }

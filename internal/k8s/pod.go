@@ -26,11 +26,3 @@ func (k *K8sClient) ContainerLogs(ctx context.Context, pID PodID, cName containe
 func PodIDFromPod(pod *v1.Pod) PodID {
 	return PodID(pod.ObjectMeta.Name)
 }
-
-func NamespaceFromPod(pod *v1.Pod) Namespace {
-	return Namespace(pod.ObjectMeta.Namespace)
-}
-
-func NodeIDFromPod(pod *v1.Pod) NodeID {
-	return NodeID(pod.Spec.NodeName)
-}

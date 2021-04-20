@@ -4,8 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"sync"
 	"testing"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 
@@ -13,12 +19,12 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -36,6 +42,18 @@ func TestExitControlCI_TiltfileFailure(t *testing.T) {
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithError("fake Tiltfile error")
+}
+
+func TestExitControlIdempotent(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	assert.NotNil(t, f.store.LastAction())
+
+	f.store.ClearLastAction()
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	assert.Nil(t, f.store.LastAction())
 }
 
 func TestExitControlCI_FirstBuildFailure(t *testing.T) {
@@ -92,16 +110,94 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 	f.store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
-			PodID:  "pod-a",
+			Name:   "pod-a",
 			Status: "ErrImagePull",
-			Containers: []store.Container{
-				store.Container{Name: "c1", Status: model.RuntimeStatusError},
+			Containers: []v1alpha1.Container{
+				{
+					Name: "c1",
+					State: v1alpha1.ContainerState{
+						Terminated: &v1alpha1.ContainerStateTerminated{
+							StartedAt:  metav1.Now(),
+							FinishedAt: metav1.Now(),
+							Reason:     "Error",
+							ExitCode:   127,
+						},
+					},
+				},
 			},
 		})
 	})
 
 	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithError("Pod pod-a in error state due to container c1: ErrImagePull")
+}
+
+func TestExitControlCI_PodRunningContainerError(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+		state.UpsertManifestTarget(store.NewManifestTarget(m))
+
+		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireNoExitSignal()
+
+	f.store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
+			Name:  "pod-a",
+			Phase: string(v1.PodRunning),
+			Containers: []v1alpha1.Container{
+				{
+					Name:     "c1",
+					Ready:    false,
+					Restarts: 400,
+					State: v1alpha1.ContainerState{
+						Terminated: &v1alpha1.ContainerStateTerminated{
+							StartedAt:  metav1.Now(),
+							FinishedAt: metav1.Now(),
+							Reason:     "Error",
+							ExitCode:   127,
+						},
+					},
+				},
+				{
+					Name:  "c2",
+					Ready: true,
+					State: v1alpha1.ContainerState{
+						Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
+					},
+				},
+			},
+		})
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	// even though one of the containers is in an error state, CI shouldn't exit - expectation is that the target for
+	// the pod is in Waiting state
+	f.store.requireNoExitSignal()
+
+	f.store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		pod := mt.State.K8sRuntimeState().Pods["pod-a"]
+		c1 := pod.Containers[0]
+		c1.Ready = true
+		c1.Restarts++
+		c1.State = v1alpha1.ContainerState{
+			Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
+		}
+		pod.Containers[0] = c1
+	})
+
+	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireExitSignalWithNoError()
 }
 
 func TestExitControlCI_Success(t *testing.T) {
@@ -381,6 +477,8 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 	cli := fake.NewTiltClient()
 	c := NewController(cli)
 	ctx := context.Background()
+	l := logger.NewLogger(logger.VerboseLvl, os.Stdout)
+	ctx = logger.WithLogger(ctx, l)
 
 	return &fixture{
 		TempDirFixture: f,
@@ -393,6 +491,9 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 type testStore struct {
 	*store.TestingStore
 	t testing.TB
+
+	mu         sync.Mutex
+	lastAction store.Action
 }
 
 func NewTestingStore(t testing.TB) *testStore {
@@ -402,7 +503,23 @@ func NewTestingStore(t testing.TB) *testStore {
 	}
 }
 
+func (s *testStore) LastAction() store.Action {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastAction
+}
+
+func (s *testStore) ClearLastAction() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastAction = nil
+}
+
 func (s *testStore) Dispatch(action store.Action) {
+	s.mu.Lock()
+	s.lastAction = action
+	s.mu.Unlock()
+
 	s.TestingStore.Dispatch(action)
 
 	a, ok := action.(SessionUpdateStatusAction)
@@ -424,8 +541,8 @@ func (s *testStore) requireExitSignalWithError(errString string) {
 	s.t.Helper()
 	state := s.RLockState()
 	defer s.RUnlockState()
-	assert.True(s.t, state.ExitSignal, "ExitSignal was not true")
 	require.EqualError(s.t, state.ExitError, errString)
+	assert.True(s.t, state.ExitSignal, "ExitSignal was not true")
 }
 
 func (s *testStore) requireExitSignalWithNoError() {
@@ -438,12 +555,15 @@ func (s *testStore) requireExitSignalWithNoError() {
 
 func pod(podID k8s.PodID, ready bool) store.Pod {
 	return store.Pod{
-		PodID: podID,
-		Phase: v1.PodRunning,
-		Containers: []store.Container{
-			store.Container{
-				ID:    container.ID(podID + "-container"),
+		Name:  podID.String(),
+		Phase: string(v1.PodRunning),
+		Containers: []v1alpha1.Container{
+			{
+				ID:    string(podID + "-container"),
 				Ready: ready,
+				State: v1alpha1.ContainerState{
+					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
+				},
 			},
 		},
 	}
@@ -451,12 +571,19 @@ func pod(podID k8s.PodID, ready bool) store.Pod {
 
 func successPod(podID k8s.PodID) store.Pod {
 	return store.Pod{
-		PodID:  podID,
-		Phase:  v1.PodSucceeded,
+		Name:   podID.String(),
+		Phase:  string(v1.PodSucceeded),
 		Status: "Completed",
-		Containers: []store.Container{
-			store.Container{
-				ID: container.ID(podID + "-container"),
+		Containers: []v1alpha1.Container{
+			{
+				ID: string(podID + "-container"),
+				State: v1alpha1.ContainerState{
+					Terminated: &v1alpha1.ContainerStateTerminated{
+						StartedAt:  metav1.Now(),
+						FinishedAt: metav1.Now(),
+						ExitCode:   0,
+					},
+				},
 			},
 		},
 	}

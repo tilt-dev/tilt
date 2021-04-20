@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -54,25 +53,6 @@ func FixContainerStatusImagesNoMutation(pod *v1.Pod) *v1.Pod {
 	return pod
 }
 
-func ContainerMatching(pod *v1.Pod, ref container.RefSelector) (v1.ContainerStatus, error) {
-	for _, c := range pod.Status.ContainerStatuses {
-		cRef, err := container.ParseNamed(c.Image)
-		if err != nil {
-			return v1.ContainerStatus{}, errors.Wrap(err, "ContainerMatching")
-		}
-
-		if ref.Matches(cRef) {
-			return c, nil
-		}
-	}
-	return v1.ContainerStatus{}, nil
-}
-
-func ContainerIDFromContainerStatus(status v1.ContainerStatus) (container.ID, error) {
-	id := status.ContainerID
-	return NormalizeContainerID(id)
-}
-
 func NormalizeContainerID(id string) (container.ID, error) {
 	if id == "" {
 		return "", nil
@@ -83,10 +63,6 @@ func NormalizeContainerID(id string) (container.ID, error) {
 		return "", fmt.Errorf("Malformed container ID: %s", id)
 	}
 	return container.ID(components[1]), nil
-}
-
-func ContainerNameFromContainerStatus(status v1.ContainerStatus) container.Name {
-	return container.Name(status.Name)
 }
 
 func ContainerSpecOf(pod *v1.Pod, status v1.ContainerStatus) v1.Container {

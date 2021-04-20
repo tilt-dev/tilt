@@ -4,12 +4,8 @@ import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, {
-  SidebarItemAll,
-  triggerUpdate,
-} from "./SidebarItemView"
+import SidebarItemView, { triggerUpdate } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { useSidebarPin } from "./SidebarPin"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceView, SidebarOptions } from "./types"
 
@@ -75,29 +71,6 @@ function MaybeUpgradeSavedSidebarOptions(o: SidebarOptions) {
   return { ...o, resourceNameFilter: o.resourceNameFilter ?? "" }
 }
 
-function PinnedItems(props: SidebarProps) {
-  let ctx = useSidebarPin()
-  let pinnedItems = ctx.pinnedResources?.flatMap((r) =>
-    props.items
-      .filter((i) => i.name === r)
-      .map((i) => (
-        <SidebarItemView
-          key={"sidebarItemPinned-" + i.name}
-          item={i}
-          selected={props.selected === i.name}
-          pathBuilder={props.pathBuilder}
-          resourceView={props.resourceView}
-        />
-      ))
-  )
-
-  if (!pinnedItems?.length) {
-    return null
-  }
-
-  return <SidebarListSection name="Pinned">{pinnedItems}</SidebarListSection>
-}
-
 function hasAlerts(item: SidebarItem): boolean {
   return item.buildAlertCount > 0 || item.runtimeAlertCount > 0
 }
@@ -124,9 +97,9 @@ export class SidebarResources extends React.Component<SidebarProps> {
     this.triggerSelected = this.triggerSelected.bind(this)
   }
 
-  triggerSelected(action: string) {
+  triggerSelected() {
     if (this.props.selected) {
-      triggerUpdate(this.props.selected, action)
+      triggerUpdate(this.props.selected)
     }
   }
 
@@ -192,13 +165,6 @@ export class SidebarResources extends React.Component<SidebarProps> {
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
-          <SidebarListSection name="">
-            <SidebarItemAll
-              nothingSelected={nothingSelected}
-              totalAlerts={totalAlerts}
-            />
-          </SidebarListSection>
-          <PinnedItems {...this.props} />
           <OverviewSidebarOptions
             showFilters={showFilters}
             options={options}

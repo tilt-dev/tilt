@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
@@ -43,7 +45,7 @@ func TestPortForward(t *testing.T) {
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+		store.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -54,7 +56,7 @@ func TestPortForward(t *testing.T) {
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{PodID: "pod-id2", Phase: v1.PodRunning})
+		store.Pod{Name: "pod-id2", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -63,7 +65,8 @@ func TestPortForward(t *testing.T) {
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{PodID: "pod-id2", Phase: v1.PodPending})
+	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+		store.Pod{Name: "pod-id2", Phase: string(v1.PodPending)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -92,14 +95,14 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+		store.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
 	assert.Equal(t, 0, len(f.plc.activeForwards))
 	state = f.st.LockMutableStateForTesting()
-	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []store.Container{
-		store.Container{Ports: []int32{8000}},
+	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []v1alpha1.Container{
+		v1alpha1.Container{Ports: []int32{8000}},
 	}
 	f.st.UnlockMutableState()
 
@@ -127,10 +130,10 @@ func TestPortForwardAutoDiscovery2(t *testing.T) {
 
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
-		PodID: "pod-id",
-		Phase: v1.PodRunning,
-		Containers: []store.Container{
-			store.Container{Ports: []int32{8000, 8080}},
+		Name:  "pod-id",
+		Phase: string(v1.PodRunning),
+		Containers: []v1alpha1.Container{
+			{Ports: []int32{8000, 8080}},
 		},
 	})
 	f.st.UnlockMutableState()
@@ -155,7 +158,8 @@ func TestPortForwardChangePort(t *testing.T) {
 	})
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+		store.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -191,7 +195,7 @@ func TestPortForwardRestart(t *testing.T) {
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{PodID: "pod-id", Phase: v1.PodRunning})
+		store.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -247,8 +251,8 @@ func TestPopulatePortForward(t *testing.T) {
 				PortForwards: c.spec,
 			})
 			pod := store.Pod{
-				Containers: []store.Container{
-					store.Container{Ports: c.containerPorts},
+				Containers: []v1alpha1.Container{
+					v1alpha1.Container{Ports: c.containerPorts},
 				},
 			}
 

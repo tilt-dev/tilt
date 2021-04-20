@@ -628,8 +628,8 @@ func (pb *podBuilder) toPod() *v1.Pod {
 func (pb *podBuilder) toStorePod(ctx context.Context) store.Pod {
 	pod := (*v1.Pod)(pb)
 	return store.Pod{
-		PodID:          k8s.PodID(pb.Name),
-		Namespace:      k8s.Namespace(pb.Namespace),
+		Name:           pb.Name,
+		Namespace:      pb.Namespace,
 		InitContainers: k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses),
 		Containers:     k8sconv.PodContainers(ctx, pod, pod.Status.ContainerStatuses),
 	}

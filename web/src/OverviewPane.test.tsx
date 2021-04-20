@@ -3,13 +3,10 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import OverviewItemView from "./OverviewItemView"
-import OverviewPane, {
-  AllResources,
-  PinnedResources,
-  TestResources,
-} from "./OverviewPane"
+import OverviewPane, { AllResources, TestResources } from "./OverviewPane"
 import { TwoResources } from "./OverviewPane.stories"
-import { SidebarPinContextProvider } from "./SidebarPin"
+import { StarredResourceLabel } from "./StarredResourceBar"
+import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import { oneResourceTest, twoResourceView } from "./testdata"
 
 function assertContainerWithResources(
@@ -27,34 +24,43 @@ function assertContainerWithResources(
   }
 }
 
-const pinnedResourcesAccessor = accessorsForTesting<string[]>(
+function assertStarredResources(root: ReactWrapper, names: string[]) {
+  const renderedStarredResourceNames = root
+    .find(StarredResourceLabel)
+    .map((i) => i.text())
+  expect(renderedStarredResourceNames).toEqual(names)
+}
+
+const starredResourcesAccessor = accessorsForTesting<string[]>(
   "pinned-resources"
 )
 
-it("renders all resources if no pinned and no tests", () => {
+it("renders all resources if no starred and no tests", () => {
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>{TwoResources()}</MemoryRouter>
   )
 
-  assertContainerWithResources(root, PinnedResources, [])
   assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
   assertContainerWithResources(root, TestResources, [])
+  assertStarredResources(root, [])
 })
 
-it("renders pinned resources", () => {
-  pinnedResourcesAccessor.set(["snack"])
+it("renders starred resources", () => {
+  starredResourcesAccessor.set(["snack"])
 
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>
       <tiltfileKeyContext.Provider value="test">
-        <SidebarPinContextProvider>{TwoResources()}</SidebarPinContextProvider>
+        <StarredResourcesContextProvider>
+          {TwoResources()}
+        </StarredResourcesContextProvider>
       </tiltfileKeyContext.Provider>
     </MemoryRouter>
   )
 
-  assertContainerWithResources(root, PinnedResources, ["snack"])
   assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
   assertContainerWithResources(root, TestResources, [])
+  assertStarredResources(root, ["snack"])
 })
 
 it("renders test resources separate from all resources", () => {
@@ -67,7 +73,7 @@ it("renders test resources separate from all resources", () => {
     </MemoryRouter>
   )
 
-  assertContainerWithResources(root, PinnedResources, [])
   assertContainerWithResources(root, AllResources, ["vigoda", "snack"])
   assertContainerWithResources(root, TestResources, ["boop"])
+  assertStarredResources(root, [])
 })

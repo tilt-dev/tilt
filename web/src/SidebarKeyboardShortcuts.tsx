@@ -1,15 +1,16 @@
 import React, { Component } from "react"
+import { incr } from "./analytics"
+import { ResourceNav, useResourceNav } from "./ResourceNav"
 import { isTargetEditable } from "./shortcut"
 import SidebarItem from "./SidebarItem"
-import { TabNav, useTabNav } from "./TabNav"
 import { ResourceName, ResourceView } from "./types"
 
 type Props = {
   items: SidebarItem[]
   selected: string
-  tabNav: TabNav
+  resourceNav: ResourceNav
   resourceView: ResourceView
-  onTrigger: (action: string) => void
+  onTrigger: () => void
 }
 
 /**
@@ -55,7 +56,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         }
 
         let name = names[targetIndex]
-        this.props.tabNav.openResource(name, { newTab: e.metaKey || e.ctrlKey })
+        this.props.resourceNav.openResource(name)
         e.preventDefault()
         break
 
@@ -63,7 +64,8 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         if (e.metaKey || e.ctrlKey) {
           return
         }
-        this.props.onTrigger("shortcut")
+        this.props.onTrigger()
+        incr("ui.web.triggerResource", { action: "shortcut" })
         e.preventDefault()
         break
     }
@@ -77,11 +79,11 @@ class SidebarKeyboardShortcuts extends Component<Props> {
 type PublicProps = {
   items: SidebarItem[]
   selected: string
-  onTrigger: (action: string) => void
+  onTrigger: () => void
   resourceView: ResourceView
 }
 
 export default function (props: PublicProps) {
-  let tabNav = useTabNav()
-  return <SidebarKeyboardShortcuts {...props} tabNav={tabNav} />
+  let resourceNav = useResourceNav()
+  return <SidebarKeyboardShortcuts {...props} resourceNav={resourceNav} />
 }

@@ -3,6 +3,7 @@ import { incr } from "./analytics"
 import { clearLogs } from "./ClearLogs"
 import LogStore from "./LogStore"
 import { isTargetEditable } from "./shortcut"
+import { ResourceName } from "./types"
 
 type Link = Proto.webviewLink
 
@@ -44,7 +45,9 @@ class OverviewActionBarKeyboardShortcuts extends Component<Props> {
 
     if (e.ctrlKey || e.metaKey) {
       if (e.key === "Backspace" && !e.shiftKey) {
-        clearLogs(this.props.logStore, this.props.resourceName, "shortcut")
+        const all = this.props.resourceName === ResourceName.all
+        incr("ui.web.clearLogs", { action: "shortcut", all: all.toString() })
+        clearLogs(this.props.logStore, this.props.resourceName)
         e.preventDefault()
         return
       }

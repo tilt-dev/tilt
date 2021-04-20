@@ -5,19 +5,22 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type HeadsUpServerController struct {
-	host            model.WebHost
-	port            model.WebPort
+	configAccess    clientcmd.ConfigAccess
+	apiServerName   model.APIServerName
+	webListener     WebListener
 	hudServer       *HeadsUpServer
 	assetServer     assets.Server
 	apiServer       *http.Server
@@ -29,8 +32,9 @@ type HeadsUpServerController struct {
 }
 
 func ProvideHeadsUpServerController(
-	host model.WebHost,
-	port model.WebPort,
+	configAccess clientcmd.ConfigAccess,
+	apiServerName model.APIServerName,
+	webListener WebListener,
 	apiServerConfig *APIServerConfig,
 	hudServer *HeadsUpServer,
 	assetServer assets.Server,
@@ -40,8 +44,9 @@ func ProvideHeadsUpServerController(
 	close(emptyCh)
 
 	return &HeadsUpServerController{
-		host:            host,
-		port:            port,
+		configAccess:    configAccess,
+		apiServerName:   apiServerName,
+		webListener:     webListener,
 		hudServer:       hudServer,
 		assetServer:     assetServer,
 		webURL:          webURL,
@@ -54,13 +59,13 @@ func (s *HeadsUpServerController) TearDown(ctx context.Context) {
 	s.shutdown()
 	s.assetServer.TearDown(ctx)
 
-	ctxWeb, cancelWeb := context.WithTimeout(ctx, 10*time.Millisecond)
-	defer cancelWeb()
-	_ = s.webServer.Shutdown(ctxWeb)
+	// Close all active connections immediately.
+	// Tilt is deleting all its state, so there's no good
+	// reason to handle graceful shutdown.
+	_ = s.webServer.Close()
+	_ = s.apiServer.Close()
 
-	ctxApi, cancelApi := context.WithTimeout(ctx, 10*time.Millisecond)
-	defer cancelApi()
-	_ = s.apiServer.Shutdown(ctxApi)
+	_ = s.removeFromAPIServerConfig()
 }
 
 func (s *HeadsUpServerController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
@@ -75,6 +80,10 @@ func (s *HeadsUpServerController) SetUp(ctx context.Context, st store.RStore) er
 	err := s.setUpHelper(ctx, st)
 	if err != nil {
 		return fmt.Errorf("Cannot start the tilt-apiserver: %v", err)
+	}
+	err = s.addToAPIServerConfig()
+	if err != nil {
+		return fmt.Errorf("writing tilt api configs: %v", err)
 	}
 	return nil
 }
@@ -101,37 +110,39 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	apiserverHandler := prepared.Handler
 	serving := config.ExtraConfig.ServingInfo
 
-	r := mux.NewRouter()
-	r.Path("/api").Handler(http.NotFoundHandler())
-	r.PathPrefix("/apis").Handler(apiserverHandler)
-	r.PathPrefix("/healthz").Handler(apiserverHandler)
-	r.PathPrefix("/livez").Handler(apiserverHandler)
-	r.PathPrefix("/metrics").Handler(apiserverHandler)
-	r.PathPrefix("/openapi").Handler(apiserverHandler)
-	r.PathPrefix("/readyz").Handler(apiserverHandler)
-	r.PathPrefix("/swagger").Handler(apiserverHandler)
-	r.PathPrefix("/version").Handler(apiserverHandler)
-	r.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
-	r.PathPrefix("/").Handler(s.hudServer.Router())
+	apiRouter := mux.NewRouter()
+	apiRouter.Path("/api").Handler(http.NotFoundHandler())
+	apiRouter.PathPrefix("/apis").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/healthz").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/livez").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/metrics").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/openapi").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/readyz").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/swagger").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/version").Handler(apiserverHandler)
+	apiRouter.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
 
-	webListener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(s.host), int(s.port)))
+	apiTLSConfig, err := start.TLSConfig(serving)
 	if err != nil {
-		return fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
-			"If you want to run multiple Tilt instances simultaneously,\n"+
-			"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
-			s.port, err)
+		return fmt.Errorf("Starting apiserver: %v", err)
 	}
 
+	webRouter := mux.NewRouter()
+	webRouter.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
+	webRouter.PathPrefix("/").Handler(s.hudServer.Router())
+
+	webListener := net.Listener(s.webListener)
 	s.webServer = &http.Server{
 		Addr:    webListener.Addr().String(),
-		Handler: s.hudServer.Router(),
+		Handler: webRouter,
 	}
 	runServer(ctx, s.webServer, webListener)
 
 	s.apiServer = &http.Server{
 		Addr:           serving.Listener.Addr().String(),
-		Handler:        r,
+		Handler:        apiRouter,
 		MaxHeaderBytes: 1 << 20,
+		TLSConfig:      apiTLSConfig,
 	}
 	runServer(ctx, s.apiServer, serving.Listener)
 	server.GenericAPIServer.RunPostStartHooks(stopCh)
@@ -144,6 +155,59 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	}()
 
 	return nil
+}
+
+// Write the API server configs into the user settings directory.
+//
+// Usually shows up as ~/.windmill/config or ~/.tilt-dev/config.
+func (s *HeadsUpServerController) addToAPIServerConfig() error {
+	newConfig, err := s.configAccess.GetStartingConfig()
+	if err != nil {
+		return err
+	}
+	newConfig = newConfig.DeepCopy()
+
+	clientConfig := s.apiServerConfig.GenericConfig.LoopbackClientConfig
+	if err := model.ValidateAPIServerName(s.apiServerName); err != nil {
+		return err
+	}
+
+	name := string(s.apiServerName)
+	newConfig.Contexts[name] = &clientcmdapi.Context{
+		Cluster:  name,
+		AuthInfo: name,
+	}
+	newConfig.AuthInfos[name] = &clientcmdapi.AuthInfo{
+		Token: clientConfig.BearerToken,
+	}
+
+	newConfig.Clusters[name] = &clientcmdapi.Cluster{
+		Server:                   clientConfig.Host,
+		CertificateAuthorityData: clientConfig.TLSClientConfig.CAData,
+	}
+
+	return clientcmd.ModifyConfig(s.configAccess, *newConfig, true)
+}
+
+// Remove this API server's configs into the user settings directory.
+//
+// Usually shows up as ~/.windmill/config or ~/.tilt-dev/config.
+func (s *HeadsUpServerController) removeFromAPIServerConfig() error {
+	newConfig, err := s.configAccess.GetStartingConfig()
+	if err != nil {
+		return err
+	}
+	newConfig = newConfig.DeepCopy()
+	if err := model.ValidateAPIServerName(s.apiServerName); err != nil {
+		return err
+	}
+
+	name := string(s.apiServerName)
+	delete(newConfig.Contexts, name)
+	delete(newConfig.AuthInfos, name)
+	delete(newConfig.Clusters, name)
+
+	return clientcmd.ModifyConfig(s.configAccess, *newConfig, true)
 }
 
 var _ store.SetUpper = &HeadsUpServerController{}

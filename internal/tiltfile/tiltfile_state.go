@@ -15,6 +15,7 @@ import (
 	links "github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
+	"github.com/tilt-dev/tilt/internal/tiltfile/sys"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -190,6 +191,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		include.IncludeFn{},
 		git.NewExtension(),
 		os.NewExtension(),
+		sys.NewExtension(),
 		io.NewExtension(),
 		s.k8sContextExt,
 		dockerprune.NewExtension(),

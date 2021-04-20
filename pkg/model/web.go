@@ -73,6 +73,8 @@ var emptyWebMode = WebMode("")
 var _ flag.Value = &emptyWebMode
 var _ pflag.Value = &emptyWebMode
 
+const DefaultWebPort = 10350
+
 type WebHost string
 type WebPort int
 type WebDevPort int

@@ -17,10 +17,7 @@ import (
 	"testing"
 	"time"
 
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
-	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
@@ -28,19 +25,23 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 	yaml "gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/wmclient/pkg/analytics"
-
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -64,6 +65,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
@@ -226,7 +228,7 @@ type fakeBuildAndDeployer struct {
 	resultsByID store.BuildResultSet
 }
 
-var _ BuildAndDeployer = &fakeBuildAndDeployer{}
+var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
 
 func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
@@ -305,11 +307,11 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		iTarget := target.(model.ImageTarget)
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
-			if isImageDeployedToDC(iTarget, call.dc()) {
+			if buildcontrol.IsImageDeployedToDC(iTarget, call.dc()) {
 				deployTarget = call.dc()
 			}
 		} else {
-			if isImageDeployedToK8s(iTarget, call.k8s()) {
+			if buildcontrol.IsImageDeployedToK8s(iTarget, call.k8s()) {
 				deployTarget = call.k8s()
 			}
 		}
@@ -1378,14 +1380,14 @@ func TestPodResetRestartsAction(t *testing.T) {
 	f.podEvent(pb.Build(), manifest.Name)
 
 	f.WaitUntilManifestState("restart seen", "fe", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().VisibleContainerRestarts() == 1
+		return store.VisiblePodContainerRestarts(ms.MostRecentPod()) == 1
 	})
 
 	f.store.Dispatch(store.NewPodResetRestartsAction(
 		k8s.PodID(pb.Build().Name), "fe", 1))
 
 	f.WaitUntilManifestState("restart cleared", "fe", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().VisibleContainerRestarts() == 0
+		return store.VisiblePodContainerRestarts(ms.MostRecentPod()) == 0
 	})
 
 	assert.NoError(t, f.Stop())
@@ -1440,19 +1442,19 @@ func TestPodEventOrdering(t *testing.T) {
 			}
 
 			f.upper.store.Dispatch(
-				store.NewLogAction("fe", runtimelog.SpanIDForPod(podBNow.PodID()), logger.InfoLvl, nil, []byte("pod b log\n")))
+				store.NewLogAction("fe", k8sconv.SpanIDForPod(podBNow.PodID()), logger.InfoLvl, nil, []byte("pod b log\n")))
 
 			f.WaitUntil("pod log seen", func(state store.EngineState) bool {
 				ms, _ := state.ManifestState("fe")
-				spanID := ms.MostRecentPod().SpanID
+				spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
 				return spanID != "" && strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
 			})
 
 			f.withManifestState("fe", func(ms store.ManifestState) {
 				runtime := ms.K8sRuntimeState()
 				if assert.Equal(t, 2, runtime.PodLen()) {
-					assert.Equal(t, now.String(), runtime.Pods["pod-a"].StartedAt.String())
-					assert.Equal(t, now.String(), runtime.Pods["pod-b"].StartedAt.String())
+					assert.Equal(t, now.String(), runtime.Pods["pod-a"].CreatedAt.String())
+					assert.Equal(t, now.String(), runtime.Pods["pod-b"].CreatedAt.String())
 					assert.Equal(t, uidNow, runtime.PodAncestorUID)
 				}
 			})
@@ -1484,13 +1486,13 @@ func TestPodEventContainerStatus(t *testing.T) {
 	podState := store.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
-		return podState.PodID.String() == pod.Name && len(podState.Containers) > 0
+		return podState.Name == pod.Name && len(podState.Containers) > 0
 	})
 
 	container := podState.Containers[0]
-	assert.Equal(t, "", string(container.ID))
-	assert.Equal(t, "main", string(container.Name))
-	assert.Equal(t, []int32{8080}, podState.AllContainerPorts())
+	assert.Equal(t, "", container.ID)
+	assert.Equal(t, "main", container.Name)
+	assert.Equal(t, []int32{8080}, container.Ports)
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1538,14 +1540,14 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	podState := store.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
-		return podState.PodID.String() == pod.Name && len(podState.Containers) > 0
+		return podState.Name == pod.Name && len(podState.Containers) > 0
 	})
 
 	// If we have no image target to match container by image ref, we just take the first one
 	container := podState.Containers[0]
 	assert.Equal(t, "great-container-id", string(container.ID))
 	assert.Equal(t, "first-container", string(container.Name))
-	assert.Equal(t, []int32{8080}, podState.AllContainerPorts())
+	assert.Equal(t, []int32{8080}, store.AllPodContainerPorts(podState))
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1875,7 +1877,7 @@ func TestPodContainerStatus(t *testing.T) {
 	pod := pb.Build()
 	f.podEvent(pod, manifest.Name)
 	f.WaitUntilManifestState("pod appears", "fe", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().PodID.String() == pod.Name
+		return ms.MostRecentPod().Name == pod.Name
 	})
 
 	pod = pb.Build()
@@ -1884,7 +1886,7 @@ func TestPodContainerStatus(t *testing.T) {
 	f.podEvent(pod, manifest.Name)
 
 	f.WaitUntilManifestState("container is ready", "fe", func(ms store.ManifestState) bool {
-		ports := ms.MostRecentPod().AllContainerPorts()
+		ports := store.AllPodContainerPorts(ms.MostRecentPod())
 		return len(ports) == 1 && ports[0] == 8080
 	})
 
@@ -1998,13 +2000,13 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 
 			if test.podSeen {
 				runtime.Pods[podID] = &store.Pod{
-					PodID:  podID,
+					Name:   podID.String(),
 					Status: "Running",
 				}
 			}
 			if test.haveAdditionalPod {
 				runtime.Pods[otherPodID] = &store.Pod{
-					PodID:  otherPodID,
+					Name:   otherPodID.String(),
 					Status: "Running",
 				}
 			}
@@ -2101,7 +2103,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 
 	f.withState(func(state store.EngineState) {
 		ms, _ := state.ManifestState(name)
-		spanID := ms.MostRecentPod().SpanID
+		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
 		assert.Equal(t, "first string\nsecond string\n", state.LogStore.SpanLog(spanID))
 	})
 
@@ -2130,13 +2132,13 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(name)
-		pod := ms.MostRecentPod()
-		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
+		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+		assert.Contains(t, es.LogStore.SpanLog(spanID), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name),
 			"WARNING: Detected container restart. Pod: fakePodID. Container: sancho.\n")
-		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
+		assert.Contains(t, es.LogStore.SpanLog(spanID), "third string\n")
 	})
 
 	err := f.Stop()
@@ -2162,12 +2164,12 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	pod := pb.Build()
 	pod.Status.ContainerStatuses[0].Ready = false
 	f.notifyAndWaitForPodStatus(pod, name, func(pod store.Pod) bool {
-		return !pod.AllContainersReady()
+		return !store.AllPodContainersReady(pod)
 	})
 
 	f.withState(func(state store.EngineState) {
 		ms, _ := state.ManifestState(name)
-		spanID := ms.MostRecentPod().SpanID
+		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
 		assert.Equal(t, "first string\nWARNING: Detected container restart. Pod: fakePodID. Container: sancho.\nsecond string\n",
 			state.LogStore.SpanLog(spanID))
 	})
@@ -2191,7 +2193,7 @@ func TestUpperPodRestartsBeforeTiltStart(t *testing.T) {
 	f.startPod(pb.Build(), manifest.Name)
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, 1, ms.MostRecentPod().BaselineRestarts)
+		assert.Equal(t, 1, ms.MostRecentPod().BaselineRestartCount)
 	})
 
 	err := f.Stop()
@@ -2282,13 +2284,13 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 		}
 
 		c1 := pod.Containers[0]
-		require.Equal(t, container.Name("sancho"), c1.Name)
-		require.Equal(t, podbuilder.FakeContainerID(), c1.ID)
+		require.Equal(t, container.Name("sancho").String(), c1.Name)
+		require.Equal(t, podbuilder.FakeContainerID().String(), c1.ID)
 		require.True(t, c1.Ready)
 
 		c2 := pod.Containers[1]
-		require.Equal(t, container.Name("sidecar"), c2.Name)
-		require.Equal(t, container.ID("sidecar"), c2.ID)
+		require.Equal(t, container.Name("sidecar").String(), c2.Name)
+		require.Equal(t, container.ID("sidecar").String(), c2.ID)
 		require.False(t, c2.Ready)
 
 		return true
@@ -2329,8 +2331,8 @@ func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 			return false
 		}
 
-		require.Equal(t, container.Name("sancho"), pod.Containers[0].Name)
-		require.Equal(t, container.Name("extra2"), pod.Containers[1].Name)
+		require.Equal(t, container.Name("sancho").String(), pod.Containers[0].Name)
+		require.Equal(t, container.Name("extra2").String(), pod.Containers[1].Name)
 
 		return true
 	})
@@ -2490,6 +2492,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 
 func TestHudExitNoError(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.Start([]model.Manifest{})
 	f.store.Dispatch(hud.NewExitAction(nil))
 	err := f.WaitForExit()
@@ -2498,6 +2501,7 @@ func TestHudExitNoError(t *testing.T) {
 
 func TestHudExitWithError(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.Start([]model.Manifest{})
 	e := errors.New("helllllo")
 	f.store.Dispatch(hud.NewExitAction(e))
@@ -2506,6 +2510,7 @@ func TestHudExitWithError(t *testing.T) {
 
 func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.loadAndStart()
 
 	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
@@ -2521,6 +2526,7 @@ func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 
 func TestDockerComposeUp(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	redis, server := f.setupDCFixture()
 
 	f.Start([]model.Manifest{redis, server})
@@ -2536,6 +2542,7 @@ func TestDockerComposeUp(t *testing.T) {
 
 func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	f.Start([]model.Manifest{m})
@@ -2554,6 +2561,7 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 
 func TestDockerComposeEventSetsStatus(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	f.Start([]model.Manifest{m})
@@ -2591,6 +2599,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 
 func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	// Actual behavior is that we init with zero manifests, and add in manifests
@@ -2614,6 +2623,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 
 func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m, _ := f.setupDCFixture()
 	expected := "yarn install"
 	f.setBuildLogOutput(m.DockerComposeTarget().ID(), expected)
@@ -2633,6 +2643,7 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 
 func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m, _ := f.setupDCFixture()
 	expected := "hello world"
 	output := make(chan string, 1)
@@ -2660,6 +2671,7 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 
 func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m, _ := f.setupDCFixture()
 	expected := "Attaching to snack\n"
 	output := make(chan string, 1)
@@ -2682,6 +2694,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 // we inferred crash from ContainerState rather than sequences of events.
 func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, m2 := f.setupDCFixture()
 
 	f.loadAndStart()
@@ -2739,6 +2752,7 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 
 func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, _ := f.setupDCFixture()
 
 	expected := container.ID("aaaaaa")
@@ -2763,6 +2777,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.WriteFile("Tiltfile", "")
 
 	closeCh := make(chan error)
@@ -2827,6 +2842,7 @@ func TestUpperStart(t *testing.T) {
 
 func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	m1, m2 := NewManifestsWithCommonAncestor(f)
 	f.Start([]model.Manifest{m1, m2})
 
@@ -2948,6 +2964,7 @@ func TestSetAnalyticsOpt(t *testing.T) {
 
 func TestFeatureFlagsStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 
@@ -2972,6 +2989,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 
 func TestTeamIDStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 
@@ -3734,6 +3752,7 @@ type testFixture struct {
 func newTestFixture(t *testing.T) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
 
+	dir := dirs.NewTiltDevDirAt(f.Path())
 	log := bufsync.NewThreadSafeBuffer()
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
@@ -3782,10 +3801,14 @@ func newTestFixture(t *testing.T) *testFixture {
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	memconn := server.ProvideMemConn()
-	serverOptions, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn)
+	serverOptions, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(), 0)
 	require.NoError(t, err)
+	webListener, err := server.ProvideWebListener("localhost", 0)
+	require.NoError(t, err)
+	configAccess := server.ProvideConfigAccess(dir)
 	hudsc := server.ProvideHeadsUpServerController(
-		"localhost", 0, serverOptions, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+		configAccess, "tilt-default", webListener, serverOptions,
+		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
@@ -3795,7 +3818,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	lsc := local.NewServerController(cdc)
 	sessionController := session.NewController(cdc)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
-	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, prompt.BrowserOpen,
+	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
 	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, v1alpha1.NewScheme(), ccb)
@@ -4211,17 +4234,18 @@ func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
 	f.t.Helper()
 	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, manifestName, f.lastDeployedUID(manifestName)))
 	f.WaitUntilManifestState("pod appears", manifestName, func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().PodID == k8s.PodID(pod.Name)
+		return ms.MostRecentPod().Name == pod.Name
 	})
 }
 
 func (f *testFixture) podLog(pod *v1.Pod, manifestName model.ManifestName, s string) {
 	podID := k8s.PodID(pod.Name)
-	f.upper.store.Dispatch(store.NewLogAction(manifestName, runtimelog.SpanIDForPod(podID), logger.InfoLvl, nil, []byte(s+"\n")))
+	f.upper.store.Dispatch(store.NewLogAction(manifestName, k8sconv.SpanIDForPod(podID), logger.InfoLvl, nil, []byte(s+"\n")))
 
 	f.WaitUntil("pod log seen", func(es store.EngineState) bool {
 		ms, _ := es.ManifestState(manifestName)
-		return strings.Contains(es.LogStore.SpanLog(ms.MostRecentPod().SpanID), s)
+		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+		return strings.Contains(es.LogStore.SpanLog(spanID), s)
 	})
 }
 
@@ -4234,7 +4258,7 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 
 	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().AllContainerRestarts() == int(restartCount)
+		return store.AllPodContainerRestarts(ms.MostRecentPod()) == restartCount
 	})
 	return pb
 }

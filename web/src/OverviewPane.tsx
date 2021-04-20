@@ -1,13 +1,14 @@
 import React, { useEffect } from "react"
 import styled from "styled-components"
 import { ReactComponent as GridDividerAllSvg } from "./assets/svg/grid-divider-all.svg"
-import { ReactComponent as GridDividerPinSvg } from "./assets/svg/grid-divider-pin.svg"
 import { ReactComponent as GridDividerTestSvg } from "./assets/svg/grid-divider-test.svg"
+import HeaderBar from "./HeaderBar"
 import OverviewGrid from "./OverviewGrid"
 import { OverviewItem } from "./OverviewItemView"
-import OverviewResourceBar from "./OverviewResourceBar"
-import OverviewTabBar from "./OverviewTabBar"
-import { useSidebarPin } from "./SidebarPin"
+import StarredResourceBar, {
+  starredResourcePropsFromView,
+} from "./StarredResourceBar"
+import { useStarredResources } from "./StarredResourcesContext"
 import { Color, Font } from "./style-helpers"
 
 type OverviewPaneProps = {
@@ -44,18 +45,6 @@ type ResourceProps = {
   items: OverviewItem[]
 }
 
-export function PinnedResources(props: ResourceProps) {
-  return props.items?.length ? (
-    <React.Fragment>
-      <ServicesDividerRoot>
-        <GridDividerPinSvg style={{ marginLeft: "28px" }} />
-        <ServicesLabel>Pinned Resources</ServicesLabel>
-      </ServicesDividerRoot>
-      <OverviewGrid items={props.items} />
-    </React.Fragment>
-  ) : null
-}
-
 export function AllResources(props: ResourceProps) {
   return props.items?.length ? (
     <React.Fragment>
@@ -81,7 +70,7 @@ export function TestResources(props: ResourceProps) {
 }
 
 export default function OverviewPane(props: OverviewPaneProps) {
-  let pinContext = useSidebarPin()
+  let starContext = useStarredResources()
   let resources = props.view.resources || []
   let allItems = resources.map((res) => new OverviewItem(res))
   let allResources = allItems.filter(
@@ -91,8 +80,8 @@ export default function OverviewPane(props: OverviewPaneProps) {
       // (This is bad because in the backend, tests are also "resources", but  ¯\_(ツ)_/¯ )
       !item.isTest
   )
-  let pinnedItems = allItems.filter((item) =>
-    pinContext.pinnedResources.includes(item.name)
+  let starredItems = allItems.filter((item) =>
+    starContext.starredResources.includes(item.name)
   )
   let testItems = allItems.filter((item) => item.isTest)
 
@@ -104,10 +93,9 @@ export default function OverviewPane(props: OverviewPaneProps) {
 
   return (
     <OverviewPaneRoot>
-      <OverviewTabBar selectedTab={""} />
-      <OverviewResourceBar view={props.view} />
+      <HeaderBar view={props.view} />
+      <StarredResourceBar {...starredResourcePropsFromView(props.view, "")} />
       <ServicesContainer>
-        <PinnedResources items={pinnedItems} />
         <AllResources items={allResources} />
         <TestResources items={testItems} />
       </ServicesContainer>

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,22 +33,22 @@ func TestMonitorReady(t *testing.T) {
 
 	start := time.Now()
 	p := store.Pod{
-		PodID:     "pod-id",
-		StartedAt: start,
-		Conditions: []v1.PodCondition{
-			v1.PodCondition{
-				Type:               v1.PodScheduled,
-				Status:             v1.ConditionTrue,
+		Name:      "pod-id",
+		CreatedAt: metav1.NewTime(start),
+		Conditions: []v1alpha1.PodCondition{
+			{
+				Type:               string(v1.PodScheduled),
+				Status:             string(v1.ConditionTrue),
 				LastTransitionTime: metav1.Time{Time: start.Add(time.Second)},
 			},
-			v1.PodCondition{
-				Type:               v1.PodInitialized,
-				Status:             v1.ConditionTrue,
+			{
+				Type:               string(v1.PodInitialized),
+				Status:             string(v1.ConditionTrue),
 				LastTransitionTime: metav1.Time{Time: start.Add(5 * time.Second)},
 			},
-			v1.PodCondition{
-				Type:               v1.PodReady,
-				Status:             v1.ConditionTrue,
+			{
+				Type:               string(v1.PodReady),
+				Status:             string(v1.ConditionTrue),
 				LastTransitionTime: metav1.Time{Time: start.Add(10 * time.Second)},
 			},
 		},

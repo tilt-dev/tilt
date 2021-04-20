@@ -50,6 +50,7 @@ linters-settings:
     locale: US
     ignore-words:
       - servantes
+      - cancelled # British spelling used in Kubernetes code
 linters:
   disable-all: true
   enable:

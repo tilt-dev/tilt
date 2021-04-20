@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -34,7 +33,12 @@ type Controller struct {
 	startTime time.Time
 	client    ctrlclient.Client
 
-	mu      sync.Mutex
+	// The last status object sent to the server.
+	lastStatus *session.SessionStatus
+
+	// The last session object returned by the server.
+	// Note that the server may annotate and transform this
+	// on top of what we sent.
 	session *session.Session
 }
 
@@ -52,9 +56,6 @@ func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary stor
 	if summary.IsLogOnly() {
 		return
 	}
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	if c.session == nil {
 		if initialized, err := c.initialize(ctx, st); err != nil {
@@ -151,9 +152,12 @@ func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
 }
 
 func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *session.SessionStatus) error {
-	if equality.Semantic.DeepEqual(&c.session.Status, newStatus) {
+	// Use the lastStatus to check for changes, so we don't have to worry
+	// about server-side changes affecting the equality check.
+	if equality.Semantic.DeepEqual(c.lastStatus, newStatus) {
 		return nil
 	}
+	c.lastStatus = newStatus.DeepCopy()
 
 	// deep copy is made to avoid tainting local version on failure
 	updated := c.session.DeepCopy()

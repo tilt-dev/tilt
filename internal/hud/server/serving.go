@@ -18,6 +18,7 @@ limitations under the License.
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -40,7 +41,10 @@ func runServer(
 	go func() {
 		defer runtime.HandleCrash()
 
-		listener := tcpKeepAliveListener{ln}
+		var listener net.Listener = tcpKeepAliveListener{ln}
+		if server.TLSConfig != nil {
+			listener = tls.NewListener(listener, server.TLSConfig)
+		}
 		err := server.Serve(listener)
 		msg := fmt.Sprintf("Stopped listening on %s", ln.Addr().String())
 		select {

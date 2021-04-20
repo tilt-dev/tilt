@@ -19,11 +19,11 @@ import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewPane from "./OverviewPane"
 import OverviewResourcePane from "./OverviewResourcePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
+import { ResourceNavProvider } from "./ResourceNav"
 import ShareSnapshotModal from "./ShareSnapshotModal"
-import { SidebarPinContextProvider } from "./SidebarPin"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
-import { OverviewNavProvider } from "./TabNav"
+import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import {
   ShowErrorModal,
   ShowFatalErrorModal,
@@ -261,13 +261,13 @@ export default class HUD extends Component<HudProps, HudState> {
       hudClasses.push("is-snapshot")
     }
 
-    let validateTab = (name: string) =>
+    let validateResource = (name: string) =>
       resources.some((res) => res.name === name)
     return (
       <tiltfileKeyContext.Provider value={view.tiltfileKey}>
-        <SidebarPinContextProvider>
+        <StarredResourcesContextProvider>
           <ReactOutlineManager>
-            <OverviewNavProvider validateTab={validateTab}>
+            <ResourceNavProvider validateResource={validateResource}>
               <div className={hudClasses.join(" ")}>
                 <AnalyticsNudge needsNudge={needsNudge} />
                 <SocketBar state={this.state.socketState} />
@@ -277,9 +277,9 @@ export default class HUD extends Component<HudProps, HudState> {
 
                 {this.renderOverviewSwitch()}
               </div>
-            </OverviewNavProvider>
+            </ResourceNavProvider>
           </ReactOutlineManager>
-        </SidebarPinContextProvider>
+        </StarredResourcesContextProvider>
       </tiltfileKeyContext.Provider>
     )
   }

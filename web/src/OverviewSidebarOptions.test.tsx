@@ -1,8 +1,11 @@
 import { mount, ReactWrapper } from "enzyme"
-import fetchMock from "jest-fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { expectIncrs } from "./analytics_test_helpers"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   TestsWithErrors,
@@ -19,18 +22,15 @@ import {
   TestsOnlyToggle,
 } from "./OverviewSidebarOptions"
 import SidebarItemView from "./SidebarItemView"
-import { SidebarPinContextProvider } from "./SidebarPin"
 import SidebarResources, {
   defaultOptions,
   SidebarListSection,
 } from "./SidebarResources"
+import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import { SidebarOptions } from "./types"
 
 const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
   "sidebar_options"
-)
-const pinnedResourcesAccessor = accessorsForTesting<string[]>(
-  "pinned-resources"
 )
 
 export function assertSidebarItemsAndOptions(
@@ -44,7 +44,7 @@ export function assertSidebarItemsAndOptions(
   let sidebar = root.find(SidebarResources)
   expect(sidebar).toHaveLength(1)
 
-  // only check items in the "all resources" section, i.e. don't look at pinned things
+  // only check items in the "all resources" section, i.e. don't look at starred things
   // or we'll have duplicates
   let all = sidebar.find(SidebarListSection).find({ name: "resources" })
   let items = all.find(SidebarItemView)
@@ -80,13 +80,12 @@ const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
 
 describe("overview sidebar options", () => {
   beforeEach(() => {
-    fetchMock.resetMocks()
-    fetchMock.mockResponse(JSON.stringify({}))
+    mockAnalyticsCalls()
     jest.useFakeTimers()
   })
 
   afterEach(() => {
-    fetchMock.resetMocks()
+    cleanupMockAnalyticsCalls()
     localStorage.clear()
     jest.useRealTimers()
   })
@@ -109,6 +108,11 @@ describe("overview sidebar options", () => {
       false
     )
 
+    expectIncrs({
+      name: "ui.web.testsHiddenToggle",
+      tags: { action: "click", newTestsHiddenState: "true" },
+    })
+
     // re-check and make sure everything is visible
     clickTestsHiddenControl(root)
     assertSidebarItemsAndOptions(root, allNames, false, false, false)
@@ -120,6 +124,11 @@ describe("overview sidebar options", () => {
 
     clickTestsOnlyControl(root)
     assertSidebarItemsAndOptions(root, ["beep", "boop"], false, true, false)
+
+    expectIncrs({
+      name: "ui.web.testsOnlyToggle",
+      tags: { action: "click", newTestsOnlyState: "true" },
+    })
 
     // re-check and make sure tests are visible
     clickTestsOnlyControl(root)
@@ -170,60 +179,15 @@ describe("overview sidebar options", () => {
     expect(filters).toHaveLength(1)
   })
 
-  it("still displays pinned tests when tests hidden", () => {
-    pinnedResourcesAccessor.set(["beep"])
-    const root = mount(
-      <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
-            {TwoResourcesTwoTests()}
-          </SidebarPinContextProvider>
-        </tiltfileKeyContext.Provider>
-      </MemoryRouter>
-    )
-
-    assertSidebarItemsAndOptions(
-      root,
-      ["(Tiltfile)", "vigoda", "snack", "beep", "boop"],
-      false,
-      false,
-      false
-    )
-
-    let pinned = root
-      .find(SidebarListSection)
-      .find({ name: "Pinned" })
-      .find(SidebarItemView)
-    expect(pinned).toHaveLength(1)
-    expect(pinned.at(0).props().item.name).toEqual("beep")
-
-    clickTestsHiddenControl(root)
-    assertSidebarItemsAndOptions(
-      root,
-      ["(Tiltfile)", "vigoda", "snack"],
-      true,
-      false,
-      false
-    )
-
-    // "beep" should still be pinned, even though we're no longer showing tests in the main resource list
-    pinned = root
-      .find(SidebarListSection)
-      .find({ name: "Pinned" })
-      .find(SidebarItemView)
-    expect(pinned).toHaveLength(1)
-    expect(pinned.at(0).props().item.name).toEqual("beep")
-  })
-
   it("applies the name filter", () => {
     // 'B p' tests both case insensitivity and a multi-term query
     sidebarOptionsAccessor.set({ ...defaultOptions, resourceNameFilter: "B p" })
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
+          <StarredResourcesContextProvider>
             {TwoResourcesTwoTests()}
-          </SidebarPinContextProvider>
+          </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
@@ -246,9 +210,9 @@ describe("overview sidebar options", () => {
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <SidebarPinContextProvider>
+          <StarredResourcesContextProvider>
             {TwoResourcesTwoTests()}
-          </SidebarPinContextProvider>
+          </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
@@ -291,8 +255,8 @@ describe("overview sidebar options", () => {
 
     button.simulate("click")
     expectIncrs({
-      name: "ui.web.resourceNameFilter",
-      tags: { action: "clear" },
+      name: "ui.web.clearResourceNameFilter",
+      tags: { action: "click" },
     })
   })
 })

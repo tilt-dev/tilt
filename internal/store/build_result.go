@@ -465,7 +465,7 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	}
 
 	pod := runtimeState.MostRecentPod()
-	if pod.PodID == "" {
+	if pod.Name == "" {
 		return nil, nil
 	}
 
@@ -480,10 +480,11 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	var containers []ContainerInfo
 	for _, c := range pod.Containers {
 		// Only return containers matching our image
-		if c.ImageRef == nil || iTarget.Refs.ClusterRef().Name() != c.ImageRef.Name() {
+		imageRef, err := container.ParseNamed(c.Image)
+		if err != nil || imageRef == nil || iTarget.Refs.ClusterRef().Name() != imageRef.Name() {
 			continue
 		}
-		if c.ID == "" || c.Name == "" || !c.Running {
+		if c.ID == "" || c.Name == "" || c.State.Running == nil {
 			// If we're missing any relevant info for this container, OR if the
 			// container isn't running, we can't update it in place.
 			// (Since we'll need to fully rebuild this image, we shouldn't bother
@@ -492,10 +493,10 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 			return nil, nil
 		}
 		containers = append(containers, ContainerInfo{
-			PodID:         pod.PodID,
-			ContainerID:   c.ID,
-			ContainerName: c.Name,
-			Namespace:     pod.Namespace,
+			PodID:         k8s.PodID(pod.Name),
+			ContainerID:   container.ID(c.ID),
+			ContainerName: container.Name(c.Name),
+			Namespace:     k8s.Namespace(pod.Namespace),
 		})
 	}
 
