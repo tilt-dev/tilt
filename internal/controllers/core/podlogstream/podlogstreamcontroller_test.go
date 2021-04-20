@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -625,9 +627,9 @@ func (pb *podBuilder) toPod() *v1.Pod {
 	return (*v1.Pod)(pb)
 }
 
-func (pb *podBuilder) toStorePod(ctx context.Context) store.Pod {
+func (pb *podBuilder) toStorePod(ctx context.Context) v1alpha1.Pod {
 	pod := (*v1.Pod)(pb)
-	return store.Pod{
+	return v1alpha1.Pod{
 		Name:           pb.Name,
 		Namespace:      pb.Namespace,
 		InitContainers: k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses),

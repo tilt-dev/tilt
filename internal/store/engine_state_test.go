@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/assert"
@@ -193,9 +195,9 @@ func TestStateToViewNonWorkloadYAMLManifest(t *testing.T) {
 }
 
 func TestMostRecentPod(t *testing.T) {
-	podA := Pod{Name: "pod-a", CreatedAt: metav1.Now()}
-	podB := Pod{Name: "pod-b", CreatedAt: metav1.NewTime(time.Now().Add(time.Minute))}
-	podC := Pod{Name: "pod-c", CreatedAt: metav1.NewTime(time.Now().Add(-time.Minute))}
+	podA := v1alpha1.Pod{Name: "pod-a", CreatedAt: metav1.Now()}
+	podB := v1alpha1.Pod{Name: "pod-b", CreatedAt: metav1.NewTime(time.Now().Add(time.Minute))}
+	podC := v1alpha1.Pod{Name: "pod-c", CreatedAt: metav1.NewTime(time.Now().Add(-time.Minute))}
 	m := model.Manifest{Name: "fe"}
 	podSet := NewK8sRuntimeStateWithPods(m, podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().Name)

@@ -584,11 +584,11 @@ func (ms *ManifestState) StartedFirstBuild() bool {
 	return !ms.CurrentBuild.Empty() || len(ms.BuildHistory) > 0
 }
 
-func (ms *ManifestState) MostRecentPod() Pod {
+func (ms *ManifestState) MostRecentPod() filewatches.Pod {
 	return ms.K8sRuntimeState().MostRecentPod()
 }
 
-func (ms *ManifestState) PodWithID(pid k8s.PodID) (*Pod, bool) {
+func (ms *ManifestState) PodWithID(pid k8s.PodID) (*filewatches.Pod, bool) {
 	for id, pod := range ms.K8sRuntimeState().Pods {
 		if id == pid {
 			return pod, true

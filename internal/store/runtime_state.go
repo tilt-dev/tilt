@@ -72,7 +72,7 @@ type K8sRuntimeState struct {
 	// In many cases, this will be a Deployment UID.
 	PodAncestorUID types.UID
 
-	Pods                           map[k8s.PodID]*Pod
+	Pods                           map[k8s.PodID]*v1alpha1.Pod
 	LBs                            map[k8s.ServiceName]*url.URL
 	DeployedUIDSet                 UIDSet                 // for the most recent successful deploy
 	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet // for the most recent successful deploy
@@ -87,7 +87,7 @@ func (K8sRuntimeState) RuntimeState() {}
 
 var _ RuntimeState = K8sRuntimeState{}
 
-func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...Pod) K8sRuntimeState {
+func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...v1alpha1.Pod) K8sRuntimeState {
 	state := NewK8sRuntimeState(m)
 	for _, pod := range pods {
 		p := pod
@@ -100,7 +100,7 @@ func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...Pod) K8sRuntimeState {
 func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 	return K8sRuntimeState{
 		PodReadinessMode:               m.PodReadinessMode(),
-		Pods:                           make(map[k8s.PodID]*Pod),
+		Pods:                           make(map[k8s.PodID]*v1alpha1.Pod),
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedUIDSet:                 NewUIDSet(),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
@@ -169,8 +169,8 @@ func (s K8sRuntimeState) ContainsID(id k8s.PodID) bool {
 	return ok
 }
 
-func (s K8sRuntimeState) PodList() []Pod {
-	pods := make([]Pod, 0, len(s.Pods))
+func (s K8sRuntimeState) PodList() []v1alpha1.Pod {
+	pods := make([]v1alpha1.Pod, 0, len(s.Pods))
 	for _, pod := range s.Pods {
 		pods = append(pods, *pod)
 	}
@@ -181,8 +181,8 @@ func (s K8sRuntimeState) PodList() []Pod {
 // For most users, we believe there will be only one pod per manifest.
 // So most of this time, this will return the only pod.
 // And in other cases, it will return a reasonable, consistent default.
-func (s K8sRuntimeState) MostRecentPod() Pod {
-	bestPod := Pod{}
+func (s K8sRuntimeState) MostRecentPod() v1alpha1.Pod {
+	bestPod := v1alpha1.Pod{}
 	found := false
 
 	for _, v := range s.Pods {
@@ -205,10 +205,8 @@ func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1.Pod) bool {
 	return s.DeployedPodTemplateSpecHashSet.Contains(k8s.PodTemplateSpecHash(hash))
 }
 
-type Pod = v1alpha1.Pod
-
 // podCompare is a stable sort order for pods.
-func podCompare(p1 Pod, p2 Pod) bool {
+func podCompare(p1 v1alpha1.Pod, p2 v1alpha1.Pod) bool {
 	if p1.CreatedAt.After(p2.CreatedAt.Time) {
 		return true
 	} else if p2.CreatedAt.After(p1.CreatedAt.Time) {
@@ -217,14 +215,14 @@ func podCompare(p1 Pod, p2 Pod) bool {
 	return p1.Name > p2.Name
 }
 
-func AllPodContainers(p Pod) []v1alpha1.Container {
+func AllPodContainers(p v1alpha1.Pod) []v1alpha1.Container {
 	var result []v1alpha1.Container
 	result = append(result, p.InitContainers...)
 	result = append(result, p.Containers...)
 	return result
 }
 
-func AllPodContainersReady(p Pod) bool {
+func AllPodContainersReady(p v1alpha1.Pod) bool {
 	if len(p.Containers) == 0 {
 		return false
 	}
@@ -237,7 +235,7 @@ func AllPodContainersReady(p Pod) bool {
 	return true
 }
 
-func AllPodContainerRestarts(p Pod) int {
+func AllPodContainerRestarts(p v1alpha1.Pod) int {
 	result := 0
 	for _, c := range p.Containers {
 		result += int(c.Restarts)
@@ -245,7 +243,7 @@ func AllPodContainerRestarts(p Pod) int {
 	return result
 }
 
-func VisiblePodContainerRestarts(p Pod) int {
+func VisiblePodContainerRestarts(p v1alpha1.Pod) int {
 	return AllPodContainerRestarts(p) - p.BaselineRestartCount
 }
 

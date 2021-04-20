@@ -135,7 +135,7 @@ type podStatus struct {
 	ready        v1alpha1.PodCondition
 }
 
-func newPodStatus(pod store.Pod, manifestName model.ManifestName) podStatus {
+func newPodStatus(pod v1alpha1.Pod, manifestName model.ManifestName) podStatus {
 	s := podStatus{podID: k8s.PodID(pod.Name), manifestName: manifestName, startTime: pod.CreatedAt.Time}
 	for _, condition := range pod.Conditions {
 		switch v1.PodConditionType(condition.Type) {
