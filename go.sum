@@ -1097,14 +1097,12 @@ github.com/theupdateframework/notary v0.6.1/go.mod h1:MOfgIfmox8s7/7fduvB2xyPPMJ
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/tilt-dev/browser v0.0.1 h1:e+mFToX6A7pkMlGFrXW5VLvS7qS0HVbcXqmR0uPrWUA=
 github.com/tilt-dev/browser v0.0.1/go.mod h1:2DaMt8P8xEqDFzxaAbraOig5iUmQdd1wtO1Tb6tODHA=
-github.com/tilt-dev/browser v0.0.2 h1:CMEo7elyH2wLERfTYvKjGiL0CUS1SYVA+pNH7hgM/dg=
-github.com/tilt-dev/browser v0.0.2/go.mod h1:BdxPFtOcwPNE7gUdqDUeYWcp+lslOAW5qnYCwkkq4O4=
 github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277 h1:+M1rb07n9/WS/UdOFTIy+fXyAhcqZkkLU5UcNcq7zO4=
 github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277/go.mod h1:jVw8aojw83Ph6G4lQn0Xe5az++nNnFrK1dNQwZzT3Mc=
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de h1:tG+nJMUUxV7MJm/MeU1Mw7rvmwN9GWyHMMg+wtf9HS4=
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de/go.mod h1:1jUbPVh7Ani2CSublmvP7+zqTgR06A8Y0MKU9Xr2L5s=
-github.com/tilt-dev/fsnotify v1.4.8-0.20200727200623-991e307aab7f h1:A3/0Ild2AvlDohwdHnyHYxcrm4syPBT3olxgQrXLbXw=
-github.com/tilt-dev/fsnotify v1.4.8-0.20200727200623-991e307aab7f/go.mod h1:c6pAambncyReVORBv+ReH61QHPhZ2ddi0/3QyJO3aF8=
+github.com/tilt-dev/fsnotify v1.4.8-0.20210420175148-fb09a0d02ca7 h1:TQIuhMvYgU9wE6fVzo/m+zIYPfyxFATeMXGYHderFmM=
+github.com/tilt-dev/fsnotify v1.4.8-0.20210420175148-fb09a0d02ca7/go.mod h1:9wJjkpCk7ADlLOAl+yIXbHwnMoV9i0+uLr9CG3D5434=
 github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527 h1:Vs10qGgqW8K/2+mOlYmZIDrpKL30jAoDNHN4kSkbi+8=
 github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527/go.mod h1:sqJ1OH6ggqbd2+J5TFsDGP/CXeRAXBxR52m5FtL0+xo=
 github.com/tilt-dev/json-patch/v4 v4.8.1 h1:AbrhK3NMDfk/+/oMXz3NcKaCNwHYdhUJMDjBHNOHF5o=

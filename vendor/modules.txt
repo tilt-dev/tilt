@@ -506,7 +506,7 @@ github.com/tilt-dev/dockerignore
 # github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 ## explicit
 github.com/tilt-dev/fsevents
-# github.com/tilt-dev/fsnotify v1.4.8-0.20200727200623-991e307aab7f
+# github.com/tilt-dev/fsnotify v1.4.8-0.20210420175148-fb09a0d02ca7
 ## explicit
 github.com/tilt-dev/fsnotify
 # github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
@@ -1513,7 +1513,7 @@ vbom.ml/util/sortorder
 # github.com/evanphx/json-patch => github.com/tilt-dev/json-patch/v4 v4.8.1
 # github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.3
 # github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
+# github.com/pkg/browser => github.com/tilt-dev/browser v0.0.1
 # go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 # golang.org/x/sys => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
-# github.com/pkg/browser => github.com/tilt-dev/browser v0.0.1
