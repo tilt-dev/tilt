@@ -58,37 +58,37 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 	// but ensures Job containers are handled correctly and adds additional
 	// metadata
 	pod := krs.MostRecentPod()
-	if krs.HasEverDeployedSuccessfully && !pod.Empty() {
-		switch pod.Phase {
+	if krs.HasEverDeployedSuccessfully && pod.Name != "" {
+		switch v1.PodPhase(pod.Phase) {
 		case v1.PodRunning:
 			target.State.Active = &session.TargetStateActive{
-				StartTime: metav1.NewMicroTime(pod.StartedAt),
-				Ready:     mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore || pod.AllContainersReady(),
+				StartTime: metav1.NewMicroTime(pod.CreatedAt.Time),
+				Ready:     mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore || store.AllPodContainersReady(pod),
 			}
 			return target
 		case v1.PodSucceeded:
 			target.State.Terminated = &session.TargetStateTerminated{
-				StartTime: metav1.NewMicroTime(pod.StartedAt),
+				StartTime: metav1.NewMicroTime(pod.CreatedAt.Time),
 			}
 			return target
 		case v1.PodFailed:
-			podErr := strings.Join(pod.StatusMessages, "; ")
+			podErr := strings.Join(pod.Errors, "; ")
 			if podErr == "" {
-				podErr = fmt.Sprintf("Pod %q failed", pod.PodID.String())
+				podErr = fmt.Sprintf("Pod %q failed", pod.Name)
 			}
 			target.State.Terminated = &session.TargetStateTerminated{
-				StartTime: metav1.NewMicroTime(pod.StartedAt),
+				StartTime: metav1.NewMicroTime(pod.CreatedAt.Time),
 				Error:     podErr,
 			}
 			return target
 		}
 
-		for _, ctr := range pod.AllContainers() {
+		for _, ctr := range store.AllPodContainers(pod) {
 			if k8sconv.ContainerStatusToRuntimeState(ctr) == model.RuntimeStatusError {
 				target.State.Terminated = &session.TargetStateTerminated{
-					StartTime: metav1.NewMicroTime(pod.StartedAt),
+					StartTime: metav1.NewMicroTime(pod.CreatedAt.Time),
 					Error: fmt.Sprintf("Pod %s in error state due to container %s: %s",
-						pod.PodID, ctr.Name, pod.Status),
+						pod.Name, ctr.Name, pod.Status),
 				}
 				return target
 			}
@@ -101,7 +101,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 	if mt.Manifest.TriggerMode.AutoInitial() {
 		waitReason := pod.Status
 		if waitReason == "" {
-			if pod.Empty() {
+			if pod.Name == "" {
 				waitReason = "waiting-for-pod"
 			} else {
 				waitReason = "unknown"

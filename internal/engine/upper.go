@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
@@ -226,7 +228,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 
 	if ms.IsK8s() {
 		for _, pod := range ms.K8sRuntimeState().Pods {
-			pod.UpdateStartTime = action.StartTime
+			pod.UpdateStartedAt = metav1.NewTime(action.StartTime)
 		}
 	} else if manifest.IsDC() {
 		// Attach the SpanID and initialize the runtime state if we haven't yet.
@@ -394,7 +396,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		for _, pod := range ms.K8sRuntimeState().Pods {
 			// Reset the baseline, so that we don't show restarts
 			// from before any live-updates
-			pod.BaselineRestarts = pod.AllContainerRestarts()
+			pod.BaselineRestartCount = store.AllPodContainerRestarts(*pod)
 		}
 	}
 
@@ -410,8 +412,8 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		bestPod := ms.MostRecentPod()
-		if store.AfterOrEqual(bestPod.StartedAt, bs.StartTime) ||
-			bestPod.UpdateStartTime.Equal(bs.StartTime) {
+		if store.AfterOrEqual(bestPod.CreatedAt.Time, bs.StartTime) ||
+			bestPod.UpdateStartedAt.Time.Equal(bs.StartTime) {
 			checkForContainerCrash(ctx, engineState, mt)
 		}
 	}

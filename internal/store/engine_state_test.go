@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -191,12 +193,12 @@ func TestStateToViewNonWorkloadYAMLManifest(t *testing.T) {
 }
 
 func TestMostRecentPod(t *testing.T) {
-	podA := Pod{PodID: "pod-a", StartedAt: time.Now()}
-	podB := Pod{PodID: "pod-b", StartedAt: time.Now().Add(time.Minute)}
-	podC := Pod{PodID: "pod-c", StartedAt: time.Now().Add(-time.Minute)}
+	podA := Pod{Name: "pod-a", CreatedAt: metav1.Now()}
+	podB := Pod{Name: "pod-b", CreatedAt: metav1.NewTime(time.Now().Add(time.Minute))}
+	podC := Pod{Name: "pod-c", CreatedAt: metav1.NewTime(time.Now().Add(-time.Minute))}
 	m := model.Manifest{Name: "fe"}
 	podSet := NewK8sRuntimeStateWithPods(m, podA, podB, podC)
-	assert.Equal(t, "pod-b", podSet.MostRecentPod().PodID.String())
+	assert.Equal(t, "pod-b", podSet.MostRecentPod().Name)
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {

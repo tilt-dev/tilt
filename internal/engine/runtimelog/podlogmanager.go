@@ -4,17 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 const IstioInitContainerName = container.Name("istio-init")
@@ -54,16 +55,14 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []*Pod
 		ms := mt.State
 		runtime := ms.K8sRuntimeState()
 		for _, pod := range runtime.PodList() {
-			if pod.PodID == "" {
+			if pod.Name == "" {
 				continue
 			}
 
-			podID := string(pod.PodID)
-			ns := string(pod.Namespace)
-			nn := types.NamespacedName{Name: podID, Namespace: ns}
+			nn := types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}
 			spec := PodLogStreamSpec{
-				Pod:       podID,
-				Namespace: ns,
+				Pod:       pod.Name,
+				Namespace: pod.Namespace,
 				SinceTime: &metav1.Time{Time: state.TiltStartTime},
 				IgnoreContainers: []string{
 					string(IstioInitContainerName),
@@ -72,10 +71,10 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []*Pod
 			}
 			obj := &PodLogStream{
 				ObjectMeta: ObjectMeta{
-					Name: fmt.Sprintf("%s-%s", pod.Namespace, pod.PodID),
+					Name: fmt.Sprintf("%s-%s", pod.Namespace, pod.Name),
 					Annotations: map[string]string{
 						v1alpha1.AnnotationManifest: string(man.Name),
-						v1alpha1.AnnotationSpanID:   string(SpanIDForPod(pod.PodID)),
+						v1alpha1.AnnotationSpanID:   string(k8sconv.SpanIDForPod(k8s.PodID(pod.Name))),
 					},
 				},
 				Spec: spec,
@@ -133,10 +132,6 @@ func (m *PodLogManager) createPls(ctx context.Context, st store.RStore, pls *Pod
 		return
 	}
 	st.Dispatch(PodLogStreamCreateAction{PodLogStream: pls})
-}
-
-func SpanIDForPod(podID k8s.PodID) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("pod:%s", podID))
 }
 
 var _ store.Subscriber = &PodLogManager{}

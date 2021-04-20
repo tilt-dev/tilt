@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
@@ -1378,14 +1380,14 @@ func TestPodResetRestartsAction(t *testing.T) {
 	f.podEvent(pb.Build(), manifest.Name)
 
 	f.WaitUntilManifestState("restart seen", "fe", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().VisibleContainerRestarts() == 1
+		return store.VisiblePodContainerRestarts(ms.MostRecentPod()) == 1
 	})
 
 	f.store.Dispatch(store.NewPodResetRestartsAction(
 		k8s.PodID(pb.Build().Name), "fe", 1))
 
 	f.WaitUntilManifestState("restart cleared", "fe", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().VisibleContainerRestarts() == 0
+		return store.VisiblePodContainerRestarts(ms.MostRecentPod()) == 0
 	})
 
 	assert.NoError(t, f.Stop())
@@ -1440,19 +1442,19 @@ func TestPodEventOrdering(t *testing.T) {
 			}
 
 			f.upper.store.Dispatch(
-				store.NewLogAction("fe", runtimelog.SpanIDForPod(podBNow.PodID()), logger.InfoLvl, nil, []byte("pod b log\n")))
+				store.NewLogAction("fe", k8sconv.SpanIDForPod(podBNow.PodID()), logger.InfoLvl, nil, []byte("pod b log\n")))
 
 			f.WaitUntil("pod log seen", func(state store.EngineState) bool {
 				ms, _ := state.ManifestState("fe")
-				spanID := ms.MostRecentPod().SpanID
+				spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
 				return spanID != "" && strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
 			})
 
 			f.withManifestState("fe", func(ms store.ManifestState) {
 				runtime := ms.K8sRuntimeState()
 				if assert.Equal(t, 2, runtime.PodLen()) {
-					assert.Equal(t, now.String(), runtime.Pods["pod-a"].StartedAt.String())
-					assert.Equal(t, now.String(), runtime.Pods["pod-b"].StartedAt.String())
+					assert.Equal(t, now.String(), runtime.Pods["pod-a"].CreatedAt.String())
+					assert.Equal(t, now.String(), runtime.Pods["pod-b"].CreatedAt.String())
 					assert.Equal(t, uidNow, runtime.PodAncestorUID)
 				}
 			})
@@ -1484,13 +1486,13 @@ func TestPodEventContainerStatus(t *testing.T) {
 	podState := store.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
-		return podState.PodID.String() == pod.Name && len(podState.Containers) > 0
+		return podState.Name == pod.Name && len(podState.Containers) > 0
 	})
 
 	container := podState.Containers[0]
-	assert.Equal(t, "", string(container.ID))
-	assert.Equal(t, "main", string(container.Name))
-	assert.Equal(t, []int32{8080}, podState.AllContainerPorts())
+	assert.Equal(t, "", container.ID)
+	assert.Equal(t, "main", container.Name)
+	assert.Equal(t, []int32{8080}, container.Ports)
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1538,14 +1540,14 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	podState := store.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
-		return podState.PodID.String() == pod.Name && len(podState.Containers) > 0
+		return podState.Name == pod.Name && len(podState.Containers) > 0
 	})
 
 	// If we have no image target to match container by image ref, we just take the first one
 	container := podState.Containers[0]
 	assert.Equal(t, "great-container-id", string(container.ID))
 	assert.Equal(t, "first-container", string(container.Name))
-	assert.Equal(t, []int32{8080}, podState.AllContainerPorts())
+	assert.Equal(t, []int32{8080}, store.AllPodContainerPorts(podState))
 
 	err := f.Stop()
 	assert.Nil(t, err)
@@ -1875,7 +1877,7 @@ func TestPodContainerStatus(t *testing.T) {
 	pod := pb.Build()
 	f.podEvent(pod, manifest.Name)
 	f.WaitUntilManifestState("pod appears", "fe", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().PodID.String() == pod.Name
+		return ms.MostRecentPod().Name == pod.Name
 	})
 
 	pod = pb.Build()
@@ -1884,7 +1886,7 @@ func TestPodContainerStatus(t *testing.T) {
 	f.podEvent(pod, manifest.Name)
 
 	f.WaitUntilManifestState("container is ready", "fe", func(ms store.ManifestState) bool {
-		ports := ms.MostRecentPod().AllContainerPorts()
+		ports := store.AllPodContainerPorts(ms.MostRecentPod())
 		return len(ports) == 1 && ports[0] == 8080
 	})
 
@@ -1998,13 +2000,13 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 
 			if test.podSeen {
 				runtime.Pods[podID] = &store.Pod{
-					PodID:  podID,
+					Name:   podID.String(),
 					Status: "Running",
 				}
 			}
 			if test.haveAdditionalPod {
 				runtime.Pods[otherPodID] = &store.Pod{
-					PodID:  otherPodID,
+					Name:   otherPodID.String(),
 					Status: "Running",
 				}
 			}
@@ -2101,7 +2103,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 
 	f.withState(func(state store.EngineState) {
 		ms, _ := state.ManifestState(name)
-		spanID := ms.MostRecentPod().SpanID
+		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
 		assert.Equal(t, "first string\nsecond string\n", state.LogStore.SpanLog(spanID))
 	})
 
@@ -2130,13 +2132,13 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(name)
-		pod := ms.MostRecentPod()
-		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
+		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+		assert.Contains(t, es.LogStore.SpanLog(spanID), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name),
 			"WARNING: Detected container restart. Pod: fakePodID. Container: sancho.\n")
-		assert.Contains(t, es.LogStore.SpanLog(pod.SpanID), "third string\n")
+		assert.Contains(t, es.LogStore.SpanLog(spanID), "third string\n")
 	})
 
 	err := f.Stop()
@@ -2162,12 +2164,12 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	pod := pb.Build()
 	pod.Status.ContainerStatuses[0].Ready = false
 	f.notifyAndWaitForPodStatus(pod, name, func(pod store.Pod) bool {
-		return !pod.AllContainersReady()
+		return !store.AllPodContainersReady(pod)
 	})
 
 	f.withState(func(state store.EngineState) {
 		ms, _ := state.ManifestState(name)
-		spanID := ms.MostRecentPod().SpanID
+		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
 		assert.Equal(t, "first string\nWARNING: Detected container restart. Pod: fakePodID. Container: sancho.\nsecond string\n",
 			state.LogStore.SpanLog(spanID))
 	})
@@ -2191,7 +2193,7 @@ func TestUpperPodRestartsBeforeTiltStart(t *testing.T) {
 	f.startPod(pb.Build(), manifest.Name)
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, 1, ms.MostRecentPod().BaselineRestarts)
+		assert.Equal(t, 1, ms.MostRecentPod().BaselineRestartCount)
 	})
 
 	err := f.Stop()
@@ -4232,17 +4234,18 @@ func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
 	f.t.Helper()
 	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, manifestName, f.lastDeployedUID(manifestName)))
 	f.WaitUntilManifestState("pod appears", manifestName, func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().PodID == k8s.PodID(pod.Name)
+		return ms.MostRecentPod().Name == pod.Name
 	})
 }
 
 func (f *testFixture) podLog(pod *v1.Pod, manifestName model.ManifestName, s string) {
 	podID := k8s.PodID(pod.Name)
-	f.upper.store.Dispatch(store.NewLogAction(manifestName, runtimelog.SpanIDForPod(podID), logger.InfoLvl, nil, []byte(s+"\n")))
+	f.upper.store.Dispatch(store.NewLogAction(manifestName, k8sconv.SpanIDForPod(podID), logger.InfoLvl, nil, []byte(s+"\n")))
 
 	f.WaitUntil("pod log seen", func(es store.EngineState) bool {
 		ms, _ := es.ManifestState(manifestName)
-		return strings.Contains(es.LogStore.SpanLog(ms.MostRecentPod().SpanID), s)
+		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+		return strings.Contains(es.LogStore.SpanLog(spanID), s)
 	})
 }
 
@@ -4255,7 +4258,7 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 
 	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().AllContainerRestarts() == int(restartCount)
+		return store.AllPodContainerRestarts(ms.MostRecentPod()) == restartCount
 	})
 	return pb
 }

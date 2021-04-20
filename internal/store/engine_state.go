@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -902,12 +904,12 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 	case K8sRuntimeState:
 		pod := state.MostRecentPod()
 		return view.K8sResourceInfo{
-			PodName:            pod.PodID.String(),
-			PodCreationTime:    pod.StartedAt,
-			PodUpdateStartTime: pod.UpdateStartTime,
+			PodName:            pod.Name,
+			PodCreationTime:    pod.CreatedAt.Time,
+			PodUpdateStartTime: pod.UpdateStartedAt.Time,
 			PodStatus:          pod.Status,
-			PodRestarts:        pod.VisibleContainerRestarts(),
-			SpanID:             pod.SpanID,
+			PodRestarts:        VisiblePodContainerRestarts(pod),
+			SpanID:             k8sconv.SpanIDForPod(k8s.PodID(pod.Name)),
 			RunStatus:          runStatus,
 			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}

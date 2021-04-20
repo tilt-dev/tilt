@@ -75,7 +75,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 
 		endpoints := store.ManifestTargetEndpoints(mt)
 
-		podID := ms.MostRecentPod().PodID
+		podID := ms.MostRecentPod().Name
 
 		bh, err := ToProtoBuildRecords(buildHistory, s.LogStore)
 		if err != nil {
@@ -114,7 +114,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			PendingBuildReason: int32(mt.NextBuildReason()),
 			CurrentBuild:       cb,
 			EndpointLinks:      ToProtoLinks(endpoints),
-			PodID:              podID.String(),
+			PodID:              podID,
 			Specs:              specs,
 			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
 			TriggerMode:        int32(mt.Manifest.TriggerMode),
@@ -251,13 +251,13 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
 		r.K8SResourceInfo = &proto_webview.K8SResourceInfo{
-			PodName:            pod.PodID.String(),
-			PodCreationTime:    pod.StartedAt.String(),
-			PodUpdateStartTime: pod.UpdateStartTime.String(),
+			PodName:            pod.Name,
+			PodCreationTime:    pod.CreatedAt.String(),
+			PodUpdateStartTime: pod.UpdateStartedAt.String(),
 			PodStatus:          pod.Status,
-			PodStatusMessage:   strings.Join(pod.StatusMessages, "\n"),
-			AllContainersReady: pod.AllContainersReady(),
-			PodRestarts:        int32(pod.VisibleContainerRestarts()),
+			PodStatusMessage:   strings.Join(pod.Errors, "\n"),
+			AllContainersReady: store.AllPodContainersReady(pod),
+			PodRestarts:        int32(store.VisiblePodContainerRestarts(pod)),
 			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 

@@ -282,8 +282,8 @@ func TestHoldForDeploy(t *testing.T) {
 
 func readyPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 	return &store.Pod{
-		PodID:  podID,
-		Phase:  v1.PodRunning,
+		Name:   podID.String(),
+		Phase:  string(v1.PodRunning),
 		Status: "Running",
 		Containers: []v1alpha1.Container{
 			{
@@ -301,8 +301,8 @@ func readyPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 
 func crashingPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 	return &store.Pod{
-		PodID:  podID,
-		Phase:  v1.PodRunning,
+		Name:   podID.String(),
+		Phase:  string(v1.PodRunning),
 		Status: "CrashLoopBackOff",
 		Containers: []v1alpha1.Container{
 			{
@@ -325,8 +325,8 @@ func crashingPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 
 func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 	return &store.Pod{
-		PodID:  podID,
-		Phase:  v1.PodRunning,
+		Name:   podID.String(),
+		Phase:  string(v1.PodRunning),
 		Status: "Ready",
 		Containers: []v1alpha1.Container{
 			{
@@ -345,8 +345,8 @@ func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 
 func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 	return &store.Pod{
-		PodID:  podID,
-		Phase:  v1.PodRunning,
+		Name:   podID.String(),
+		Phase:  string(v1.PodRunning),
 		Status: "Ready",
 		Containers: []v1alpha1.Container{
 			{

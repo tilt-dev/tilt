@@ -465,7 +465,7 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	}
 
 	pod := runtimeState.MostRecentPod()
-	if pod.PodID == "" {
+	if pod.Name == "" {
 		return nil, nil
 	}
 
@@ -493,10 +493,10 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 			return nil, nil
 		}
 		containers = append(containers, ContainerInfo{
-			PodID:         pod.PodID,
+			PodID:         k8s.PodID(pod.Name),
 			ContainerID:   container.ID(c.ID),
 			ContainerName: container.Name(c.Name),
-			Namespace:     pod.Namespace,
+			Namespace:     k8s.Namespace(pod.Namespace),
 		})
 	}
 
