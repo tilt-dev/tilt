@@ -3,7 +3,6 @@ package buildcontrol
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -207,9 +206,9 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 			return liveUpdInfo{}, err
 		}
 		if len(pathsMatchingNoSync) > 0 {
-			prettyPaths := ospath.FileListDisplayNames(iTarget.LocalPaths(), pathsMatchingNoSync)
 			return liveUpdInfo{}, RedirectToNextBuilderInfof(
-				"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(), strings.Join(prettyPaths, ", "))
+				"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(),
+				ospath.FormatFileChangeList(pathsMatchingNoSync))
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
@@ -218,7 +217,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 			return liveUpdInfo{}, err
 		}
 		if anyMatch {
-			prettyFile := ospath.FileListDisplayNames(iTarget.LocalPaths(), []string{file})[0]
+			prettyFile := ospath.FileDisplayName(iTarget.LocalPaths(), file)
 			return liveUpdInfo{}, RedirectToNextBuilderInfof(
 				"Detected change to fall_back_on file %q", prettyFile)
 		}
