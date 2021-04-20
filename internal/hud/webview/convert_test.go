@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -251,7 +253,7 @@ func TestReadinessCheckFailing(t *testing.T) {
 			"pod id": {
 				Status: "Running",
 				Phase:  "Running",
-				Containers: []store.Container{
+				Containers: []v1alpha1.Container{
 					{
 						Ready: false,
 					},

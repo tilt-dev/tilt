@@ -224,8 +224,8 @@ type Pod struct {
 
 	HasSynclet bool
 
-	Containers     []Container
-	InitContainers []Container
+	Containers     []v1alpha1.Container
+	InitContainers []v1alpha1.Container
 
 	// We want to show the user # of restarts since some baseline time
 	// i.e. Total Restarts - BaselineRestarts
@@ -236,14 +236,12 @@ type Pod struct {
 	SpanID model.LogSpanID
 }
 
-func (p Pod) AllContainers() []Container {
-	result := []Container{}
+func (p Pod) AllContainers() []v1alpha1.Container {
+	result := []v1alpha1.Container{}
 	result = append(result, p.InitContainers...)
 	result = append(result, p.Containers...)
 	return result
 }
-
-type Container = v1alpha1.Container
 
 func (p Pod) Empty() bool {
 	return p.PodID == ""
