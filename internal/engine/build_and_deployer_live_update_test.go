@@ -886,6 +886,49 @@ func TestLiveUpdateExecChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 	runTestCase(t, f, tCase)
 }
 
+func TestLiveUpdateManyFilesNotMatching(t *testing.T) {
+	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	defer f.TearDown()
+
+	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
+		Source: f.JoinPath("specific/directory"),
+		Dest:   "/go/src/github.com/tilt-dev/sancho",
+	}}
+
+	changedFiles := []string{}
+	for i := 0; i < 100; i++ {
+		changedFiles = append(changedFiles, f.JoinPath(fmt.Sprintf("a%d.txt", i)))
+	}
+
+	expectedList := fmt.Sprintf("%s %s %s %s %s ...",
+		f.JoinPath("a0.txt"),
+		f.JoinPath("a1.txt"),
+		f.JoinPath("a10.txt"),
+		f.JoinPath("a11.txt"),
+		f.JoinPath("a12.txt"))
+
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, false, []string{"a.txt"}, f)
+	tCase := testCase{
+		manifest: manifestbuilder.New(f, "sancho").
+			WithK8sYAML(SanchoYAML).
+			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithLiveUpdate(lu).
+			Build(),
+		changedFiles: changedFiles,
+
+		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
+		expectDockerPushCount:    1,
+		expectDockerCopyCount:    0,
+		expectDockerExecCount:    0,
+		expectDockerRestartCount: 0,
+		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
+
+		logsContain:     []string{"Found file(s) not matching any sync", expectedList},
+		logsDontContain: []string{"unexpected error"},
+	}
+	runTestCase(t, f, tCase)
+}
+
 func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
