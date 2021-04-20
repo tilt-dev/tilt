@@ -194,14 +194,14 @@ func (s K8sRuntimeState) MostRecentPod() v1alpha1.Pod {
 	return bestPod
 }
 
-func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1.Pod) bool {
+func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1alpha1.Pod) bool {
 	// if it doesn't have a label, just let it through - maybe it's from a CRD w/ no pod template spec
-	hash, ok := pod.Labels[k8s.TiltPodTemplateHashLabel]
-	if !ok {
+	hash := k8s.PodTemplateSpecHash(pod.PodTemplateSpecHash)
+	if hash == "" {
 		return true
 	}
 
-	return s.DeployedPodTemplateSpecHashSet.Contains(k8s.PodTemplateSpecHash(hash))
+	return s.DeployedPodTemplateSpecHashSet.Contains(hash)
 }
 
 func (s K8sRuntimeState) DeployedUIDSet() k8s.UIDSet {

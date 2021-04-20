@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -190,7 +194,11 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 	count := 20
 	pods := []*v1.Pod{}
 	for i := 0; i < count; i++ {
-		pod := pb.WithResourceVersion(fmt.Sprintf("%d", i)).Build()
+		v := strconv.Itoa(i)
+		pod := pb.
+			WithResourceVersion(v).
+			WithTemplateSpecHash(k8s.PodTemplateSpecHash(v)).
+			Build()
 		pods = append(pods, pod)
 	}
 
@@ -204,8 +212,8 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 	for i := 1; i < count; i++ {
 		pod := f.pods[i]
 		lastPod := f.pods[i-1]
-		podV, _ := strconv.Atoi(pod.ResourceVersion)
-		lastPodV, _ := strconv.Atoi(lastPod.ResourceVersion)
+		podV, _ := strconv.Atoi(pod.PodTemplateSpecHash)
+		lastPodV, _ := strconv.Atoi(lastPod.PodTemplateSpecHash)
 		if lastPodV > podV {
 			t.Fatalf("Pods appeared out of order\nPod %d: %v\nPod %d: %v\n", i-1, lastPod, i, pod)
 		}
@@ -284,10 +292,10 @@ func TestPodStatus(t *testing.T) {
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("case%d", i), func(t *testing.T) {
 			pod := corev1.Pod{Status: c.pod}
-			status := PodStatusToString(pod)
+			status := k8sconv.PodStatusToString(pod)
 			assert.Equal(t, c.status, status)
 
-			messages := PodStatusErrorMessages(pod)
+			messages := k8sconv.PodStatusErrorMessages(pod)
 			assert.Equal(t, c.messages, messages)
 		})
 	}
@@ -319,7 +327,7 @@ type pwFixture struct {
 	ctx           context.Context
 	cancel        func()
 	store         *store.Store
-	pods          []*corev1.Pod
+	pods          []*v1alpha1.Pod
 	manifestNames []model.ManifestName
 	mu            sync.Mutex
 }
@@ -386,6 +394,7 @@ func (f *pwFixture) addDeployedEntity(m model.Manifest, entity k8s.K8sEntity) {
 }
 
 func (f *pwFixture) waitForPodActionCount(count int) {
+	f.t.Helper()
 	start := time.Now()
 	for time.Since(start) < time.Second {
 		f.mu.Lock()
@@ -403,8 +412,13 @@ func (f *pwFixture) waitForPodActionCount(count int) {
 }
 
 func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
+	f.t.Helper()
 	f.waitForPodActionCount(len(pods))
-	require.ElementsMatch(f.t, pods, f.pods)
+	var toCmp []*v1alpha1.Pod
+	for _, p := range pods {
+		toCmp = append(toCmp, k8sconv.Pod(f.ctx, p))
+	}
+	require.ElementsMatch(f.t, toCmp, f.pods)
 }
 
 func (f *pwFixture) assertObservedManifests(manifests ...model.ManifestName) {

@@ -2,8 +2,9 @@ package k8swatch
 
 import (
 	"context"
-	"fmt"
 	"sync"
+
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -12,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -127,13 +127,13 @@ func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Nam
 // new actions. This handles the case where we get the Pod change event
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
-func (w *PodWatcher) setupNewUIDs(_ context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
+func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
 	for uid, mn := range newUIDs {
 		w.watcherKnownState.knownDeployedUIDs[uid] = mn
 
 		pod, ok := w.knownPods[uid]
 		if ok {
-			st.Dispatch(NewPodChangeAction(pod, mn, uid))
+			st.Dispatch(NewPodChangeAction(k8sconv.Pod(ctx, pod), mn, uid))
 			// since this UID matched a known pod, there's no reason to look at descendants
 			continue
 		}
@@ -142,7 +142,7 @@ func (w *PodWatcher) setupNewUIDs(_ context.Context, st store.RStore, newUIDs ma
 		for podUID := range descendants {
 			pod, ok := w.knownPods[podUID]
 			if ok {
-				st.Dispatch(NewPodChangeAction(pod, mn, uid))
+				st.Dispatch(NewPodChangeAction(k8sconv.Pod(ctx, pod), mn, uid))
 			}
 		}
 	}
@@ -222,7 +222,7 @@ func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st stor
 	w.mu.Lock()
 	freshPod, ok := w.knownPods[pod.UID]
 	if ok {
-		st.Dispatch(NewPodChangeAction(freshPod, mn, ancestorUID))
+		st.Dispatch(NewPodChangeAction(k8sconv.Pod(ctx, freshPod), mn, ancestorUID))
 	}
 	w.mu.Unlock()
 }
@@ -252,113 +252,4 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.O
 			return
 		}
 	}
-}
-
-// copied from https://github.com/kubernetes/kubernetes/blob/aedeccda9562b9effe026bb02c8d3c539fc7bb77/pkg/kubectl/resource_printer.go#L692-L764
-// to match the status column of `kubectl get pods`
-func PodStatusToString(pod v1.Pod) string {
-	reason := string(pod.Status.Phase)
-	if pod.Status.Reason != "" {
-		reason = pod.Status.Reason
-	}
-
-	for i, container := range pod.Status.InitContainerStatuses {
-		state := container.State
-
-		switch {
-		case state.Terminated != nil && state.Terminated.ExitCode == 0:
-			continue
-		case state.Terminated != nil:
-			// initialization is failed
-			if len(state.Terminated.Reason) == 0 {
-				if state.Terminated.Signal != 0 {
-					reason = fmt.Sprintf("Init:Signal:%d", state.Terminated.Signal)
-				} else {
-					reason = fmt.Sprintf("Init:ExitCode:%d", state.Terminated.ExitCode)
-				}
-			} else {
-				reason = "Init:" + state.Terminated.Reason
-			}
-		case state.Waiting != nil && len(state.Waiting.Reason) > 0 && state.Waiting.Reason != "PodInitializing":
-			reason = "Init:" + state.Waiting.Reason
-		default:
-			reason = fmt.Sprintf("Init:%d/%d", i, len(pod.Spec.InitContainers))
-		}
-		break
-	}
-
-	if isPodStillInitializing(pod) {
-		return reason
-	}
-
-	for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
-		container := pod.Status.ContainerStatuses[i]
-		state := container.State
-
-		if state.Waiting != nil && state.Waiting.Reason != "" {
-			reason = state.Waiting.Reason
-		} else if state.Terminated != nil && state.Terminated.Reason != "" {
-			reason = state.Terminated.Reason
-		} else if state.Terminated != nil && state.Terminated.Reason == "" {
-			if state.Terminated.Signal != 0 {
-				reason = fmt.Sprintf("Signal:%d", state.Terminated.Signal)
-			} else {
-				reason = fmt.Sprintf("ExitCode:%d", state.Terminated.ExitCode)
-			}
-		}
-	}
-
-	return reason
-}
-
-// Pull out interesting error messages from the pod status
-func PodStatusErrorMessages(pod v1.Pod) []string {
-	result := []string{}
-	if isPodStillInitializing(pod) {
-		for _, container := range pod.Status.InitContainerStatuses {
-			result = append(result, containerStatusErrorMessages(container)...)
-		}
-	}
-	for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
-		container := pod.Status.ContainerStatuses[i]
-		result = append(result, containerStatusErrorMessages(container)...)
-	}
-	return result
-}
-
-func containerStatusErrorMessages(container v1.ContainerStatus) []string {
-	result := []string{}
-	state := container.State
-	if state.Waiting != nil {
-		lastState := container.LastTerminationState
-		if lastState.Terminated != nil &&
-			lastState.Terminated.ExitCode != 0 &&
-			lastState.Terminated.Message != "" {
-			result = append(result, lastState.Terminated.Message)
-		}
-
-		// If we're in an error mode, also include the error message.
-		// Many error modes put important information in the error message,
-		// like when the pod will get rescheduled.
-		if state.Waiting.Message != "" && k8sconv.ErrorWaitingReasons[state.Waiting.Reason] {
-			result = append(result, state.Waiting.Message)
-		}
-	} else if state.Terminated != nil &&
-		state.Terminated.ExitCode != 0 &&
-		state.Terminated.Message != "" {
-		result = append(result, state.Terminated.Message)
-	}
-
-	return result
-}
-
-func isPodStillInitializing(pod v1.Pod) bool {
-	for _, container := range pod.Status.InitContainerStatuses {
-		state := container.State
-		isFinished := state.Terminated != nil && state.Terminated.ExitCode == 0
-		if !isFinished {
-			return true
-		}
-	}
-	return false
 }
