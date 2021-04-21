@@ -288,6 +288,35 @@ func TestDisposeOrphans(t *testing.T) {
 	f.fe.RequireNoKnownProcess(t, "true")
 }
 
+func TestDisposeTerminatedWhenCmdChanges(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	f.MkdirAll("subdir")
+
+	t1 := time.Unix(1, 0)
+	f.resource("foo", "true", ".", t1)
+	f.step()
+
+	f.assertCmdMatches("foo-serve-1", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+
+	err := f.fe.stop("true", 0)
+	require.NoError(t, err)
+
+	f.assertCmdMatches("foo-serve-1", func(cmd *Cmd) bool {
+		return cmd.Status.Terminated != nil
+	})
+
+	f.resource("foo", "true", "subdir", t1)
+	f.step()
+	f.assertCmdMatches("foo-serve-2", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+	f.assertCmdDeleted("foo-serve-1")
+}
+
 type testStore struct {
 	*store.TestingStore
 	out     io.Writer

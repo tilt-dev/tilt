@@ -34,9 +34,8 @@ const AnnotationDepStatus = "tilt.dev/dep-status"
 // - We report the Cmd status Terminated as an Error state,
 //   and report it in a standard way.
 type ServerController struct {
-	recentlyCreatedCmd map[string]bool
+	recentlyCreatedCmd map[string]string
 	createdTriggerTime map[string]time.Time
-	deletingCmds       map[string]bool
 	client             ctrlclient.Client
 
 	cmdCount int
@@ -46,9 +45,8 @@ var _ store.Subscriber = &ServerController{}
 
 func NewServerController(client ctrlclient.Client) *ServerController {
 	return &ServerController{
-		recentlyCreatedCmd: make(map[string]bool),
+		recentlyCreatedCmd: make(map[string]string),
 		createdTriggerTime: make(map[string]time.Time),
-		deletingCmds:       make(map[string]bool),
 		client:             client,
 	}
 }
@@ -65,19 +63,19 @@ func (c *ServerController) OnChange(ctx context.Context, st store.RStore, summar
 
 	// Garbage collect commands where the owner has been deleted.
 	for _, orphan := range orphans {
-		c.deleteCmd(ctx, st, orphan)
+		c.deleteOrphanedCmd(ctx, st, orphan)
 	}
 }
 
 // Returns a list of server objects and the Cmd they own (if any).
-func (c *ServerController) determineServers(ctx context.Context, st store.RStore) (servers []CmdServer, owned, orphaned []*Cmd) {
+func (c *ServerController) determineServers(ctx context.Context, st store.RStore) (servers []CmdServer, owned [][]*Cmd, orphaned []*Cmd) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	// Find all the Cmds owned by CmdServer.
 	//
 	// Simulates controller-runtime's notion of Owns().
-	ownedCmds := make(map[string]*Cmd)
+	ownedCmds := make(map[string][]*Cmd)
 	for _, cmd := range state.Cmds {
 		ownerName := cmd.Annotations[AnnotationOwnerName]
 		ownerKind := cmd.Annotations[AnnotationOwnerKind]
@@ -85,7 +83,7 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 			continue
 		}
 
-		ownedCmds[ownerName] = cmd
+		ownedCmds[ownerName] = append(ownedCmds[ownerName], cmd)
 	}
 
 	// Infer all the CmdServer objects from the legacy EngineState
@@ -116,40 +114,70 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 		}
 
 		mn := mt.Manifest.Name.String()
-		cmd, ok := ownedCmds[mn]
+		cmds, ok := ownedCmds[mn]
 		if ok {
-			cmdServer.Status = CmdServerStatus{
-				CmdName:   cmd.Name,
-				CmdStatus: cmd.Status,
-			}
 			delete(ownedCmds, mn)
 		}
 
 		servers = append(servers, cmdServer)
-		owned = append(owned, cmd)
+		owned = append(owned, cmds)
 	}
 
 	for _, orphan := range ownedCmds {
-		orphaned = append(orphaned, orphan)
+		orphaned = append(orphaned, orphan...)
 	}
 
 	return servers, owned, orphaned
 }
 
-func (c *ServerController) deleteCmd(ctx context.Context, st store.RStore, cmd *Cmd) {
+// Find the most recent command in a collection
+func (c *ServerController) mostRecentCmd(cmds []*Cmd) *Cmd {
+	var mostRecentCmd *Cmd
+	for _, cmd := range cmds {
+		if mostRecentCmd == nil {
+			mostRecentCmd = cmd
+			continue
+		}
+
+		if cmd.CreationTimestamp.Time.Equal(mostRecentCmd.CreationTimestamp.Time) {
+			if cmd.Name > mostRecentCmd.Name {
+				mostRecentCmd = cmd
+			}
+			continue
+		}
+
+		if cmd.CreationTimestamp.Time.After(mostRecentCmd.CreationTimestamp.Time) {
+			mostRecentCmd = cmd
+		}
+	}
+
+	return mostRecentCmd
+}
+
+// Delete a command and stop waiting on it.
+func (c *ServerController) deleteOwnedCmd(ctx context.Context, serverName string, st store.RStore, cmd *Cmd) {
+	if waitingOn := c.recentlyCreatedCmd[serverName]; waitingOn == cmd.Name {
+		delete(c.recentlyCreatedCmd, serverName)
+	}
+
+	c.deleteOrphanedCmd(ctx, st, cmd)
+}
+
+// Delete an orphaned command.
+func (c *ServerController) deleteOrphanedCmd(ctx context.Context, st store.RStore, cmd *Cmd) {
 	err := c.client.Delete(ctx, cmd)
 
 	// We want our reconciler to be idempotent, so it's OK
 	// if it deletes the same resource multiple times
 	if err != nil && !apierrors.IsNotFound(err) {
-		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("deleting Cmd from apiserver: %v", err)))
 		return
 	}
 
 	st.Dispatch(CmdDeleteAction{Name: cmd.Name})
 }
 
-func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owned *Cmd, st store.RStore) {
+func (c *ServerController) reconcile(ctx context.Context, server CmdServer, ownedCmds []*Cmd, st store.RStore) {
 	// Do not make any changes to the server while the update status is building.
 	// This ensures the old server stays up while any deps are building.
 	depStatus := model.UpdateStatus(server.ObjectMeta.Annotations[AnnotationDepStatus])
@@ -157,10 +185,18 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 		return
 	}
 
-	// If the command was created recently but hasn't appeared yet, wait until it appears.
 	name := server.Name
-	if c.recentlyCreatedCmd[name] {
-		if owned == nil {
+
+	// If the command was created recently but hasn't appeared yet, wait until it appears.
+	if waitingOn, ok := c.recentlyCreatedCmd[name]; ok {
+		seen := false
+		for _, owned := range ownedCmds {
+			if waitingOn == owned.Name {
+				seen = true
+			}
+		}
+
+		if !seen {
 			return
 		}
 		delete(c.recentlyCreatedCmd, name)
@@ -174,25 +210,30 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 	}
 
 	triggerTime := c.createdTriggerTime[name]
-	if owned != nil && equality.Semantic.DeepEqual(owned.Spec, cmdSpec) && triggerTime.Equal(server.Spec.TriggerTime) {
+	mostRecent := c.mostRecentCmd(ownedCmds)
+	if mostRecent != nil && equality.Semantic.DeepEqual(mostRecent.Spec, cmdSpec) && triggerTime.Equal(server.Spec.TriggerTime) {
 		// We're in the correct state! Nothing to do.
 		return
 	}
 
 	// Otherwise, we need to create a new command.
 
-	// If the command is running, wait until it's deleted
-	if owned != nil && owned.Status.Terminated == nil {
-		if !c.deletingCmds[name] {
-			c.deletingCmds[name] = true
-			c.deleteCmd(ctx, st, owned)
+	// Garbage collect all owned commands.
+	for _, owned := range ownedCmds {
+		c.deleteOwnedCmd(ctx, name, st, owned)
+	}
+
+	// If any commands are still running, we need to wait.
+	// Otherwise, we'll run into problems where a new server will
+	// start while the old server is hanging onto the port.
+	for _, owned := range ownedCmds {
+		if owned.Status.Terminated == nil {
+			return
 		}
-		return
 	}
 
 	// Start the command!
 	c.createdTriggerTime[name] = server.Spec.TriggerTime
-	c.deletingCmds[name] = false
 	c.cmdCount++
 
 	cmdName := fmt.Sprintf("%s-serve-%d", name, c.cmdCount)
@@ -213,7 +254,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 		},
 		Spec: cmdSpec,
 	}
-	c.recentlyCreatedCmd[name] = true
+	c.recentlyCreatedCmd[name] = cmdName
 
 	err := c.client.Create(ctx, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -243,8 +284,6 @@ type CmdServerSpec struct {
 }
 
 type CmdServerStatus struct {
-	CmdName   string
-	CmdStatus CmdStatus
 }
 
 func SpanIDForServeLog(procNum int) logstore.SpanID {
