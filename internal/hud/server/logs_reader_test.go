@@ -63,22 +63,28 @@ func TestLogStreamerDoesNotPrintResentLogs(t *testing.T) {
 }
 
 func TestLogStreamerCheckpointHandling(t *testing.T) {
-	f := newLogStreamerFixture(t)
-	resourceNames := []string{
-		"foo", "", "foo", "bar",
-		"bar", "bar", "", "bar",
-		"", "foo", "bar", "baz"}
-	view := f.newViewWithLogsForManifests(alphabet[:4], resourceNames[:4], 0)
-	f.handle(view)
+	// the client might attach after the server has truncated, so the first "FromCheckpoint" it sees
+	// won't always be 0
+	for _, initialOffset := range []int32{0, 1000} {
+		t.Run(fmt.Sprintf("Offset-%d", initialOffset), func(t *testing.T) {
+			f := newLogStreamerFixture(t)
+			resourceNames := []string{
+				"foo", "", "foo", "bar",
+				"bar", "bar", "", "bar",
+				"", "foo", "bar", "baz"}
+			view := f.newViewWithLogsForManifests(alphabet[:4], resourceNames[:4], initialOffset)
+			f.handle(view)
 
-	view = f.newViewWithLogsForManifests(alphabet[4:8], resourceNames[4:8], view.LogList.ToCheckpoint)
-	f.handle(view)
+			view = f.newViewWithLogsForManifests(alphabet[4:8], resourceNames[4:8], view.LogList.ToCheckpoint)
+			f.handle(view)
 
-	view = f.newViewWithLogsForManifests(alphabet[8:12], resourceNames[8:12], view.LogList.ToCheckpoint)
-	f.handle(view)
+			view = f.newViewWithLogsForManifests(alphabet[8:12], resourceNames[8:12], view.LogList.ToCheckpoint)
+			f.handle(view)
 
-	expected := f.expectedLinesWithPrefixes(alphabet[:12], resourceNames[:12])
-	f.assertExpectedLogLines(expected)
+			expected := f.expectedLinesWithPrefixes(alphabet[:12], resourceNames[:12])
+			f.assertExpectedLogLines(expected)
+		})
+	}
 }
 
 func TestLogStreamerFiltersOnResourceNamesSingle(t *testing.T) {

@@ -52,10 +52,17 @@ type ViewHandler interface {
 }
 
 type LogStreamer struct {
-	logstore   *logstore.LogStore
+	logstore *logstore.LogStore
+	// checkpoint tracks the client's latest printed logs.
+	//
+	// WARNING: The server watermark values CANNOT be used for checkpointing within the client!
 	checkpoint logstore.Checkpoint
-	resources  model.ManifestNameSet // if present, resource(s) to stream logs for
-	printer    *hud.IncrementalPrinter
+	// serverWatermark ensures that we don't print any duplicate logs.
+	//
+	// This value should only be used to compare to other server values, NOT client checkpoints.
+	serverWatermark int32
+	resources       model.ManifestNameSet // if present, resource(s) to stream logs for
+	printer         *hud.IncrementalPrinter
 }
 
 func NewLogStreamer(resources []string, p *hud.IncrementalPrinter) *LogStreamer {
@@ -72,20 +79,18 @@ func NewLogStreamer(resources []string, p *hud.IncrementalPrinter) *LogStreamer 
 }
 
 func (ls *LogStreamer) Handle(v proto_webview.View) error {
-	// if printing logs for only one resource, don't need resource name prefix
-	suppressPrefix := len(ls.resources) == 1
-	fromCheckpoint := logstore.Checkpoint(v.LogList.FromCheckpoint)
-	toCheckpoint := logstore.Checkpoint(v.LogList.ToCheckpoint)
-
-	if fromCheckpoint == -1 {
+	if v.LogList.FromCheckpoint == -1 {
 		// Server has no new logs to send
 		return nil
 	}
 
+	// if printing logs for only one resource, don't need resource name prefix
+	suppressPrefix := len(ls.resources) == 1
+
 	segments := v.LogList.Segments
-	if fromCheckpoint < ls.checkpoint {
+	if v.LogList.FromCheckpoint < ls.serverWatermark {
 		// The server is re-sending some logs we already have, so slice them off.
-		deleteCount := ls.checkpoint - fromCheckpoint
+		deleteCount := ls.serverWatermark - v.LogList.FromCheckpoint
 		segments = segments[deleteCount:]
 	}
 
@@ -99,9 +104,8 @@ func (ls *LogStreamer) Handle(v proto_webview.View) error {
 		SuppressPrefix: suppressPrefix,
 	}))
 
-	if toCheckpoint > ls.checkpoint {
-		ls.checkpoint = toCheckpoint
-	}
+	ls.checkpoint = ls.logstore.Checkpoint()
+	ls.serverWatermark = v.LogList.ToCheckpoint
 
 	return nil
 }
