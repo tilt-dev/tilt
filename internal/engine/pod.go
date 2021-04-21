@@ -152,7 +152,7 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 // If not, AND if the pod matches the current deploy, create a new tracking object.
 // Returns a store.Pod that the caller can mutate, and true
 // if this is the first time we've seen this pod.
-func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*store.Pod, bool) {
+func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*v1alpha1.Pod, bool) {
 	pod := action.Pod
 	podID := k8s.PodIDFromPod(pod)
 	runtime := ms.K8sRuntimeState()
@@ -172,7 +172,7 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 		(isAncestorMatch && runtime.PodAncestorUID != matchedAncestorUID) {
 
 		// Track a new ancestor ID, and delete all existing tracked pods.
-		runtime.Pods = make(map[k8s.PodID]*store.Pod)
+		runtime.Pods = make(map[k8s.PodID]*v1alpha1.Pod)
 		runtime.PodAncestorUID = matchedAncestorUID
 		ms.RuntimeState = runtime
 
@@ -183,7 +183,7 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*s
 	if !ok {
 		// CASE 2: We have a set of pods for this ancestor UID, but not this
 		// particular pod -- record it
-		podInfo = &store.Pod{
+		podInfo = &v1alpha1.Pod{
 			Name: podID.String(),
 		}
 

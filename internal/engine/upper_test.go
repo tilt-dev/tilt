@@ -1485,7 +1485,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	pod.Spec = k8s.FakePodSpec(ref)
 	f.podEvent(pod, manifest.Name)
 
-	podState := store.Pod{}
+	podState := v1alpha1.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
 		return podState.Name == pod.Name && len(podState.Containers) > 0
@@ -1539,7 +1539,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 
 	f.podEvent(pod, manifest.Name)
 
-	podState := store.Pod{}
+	podState := v1alpha1.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
 		podState = ms.MostRecentPod()
 		return podState.Name == pod.Name && len(podState.Containers) > 0
@@ -1995,19 +1995,19 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			require.True(t, ok, "couldn't find manifest state for %s", mName)
 
 			runtime := ms.K8sRuntimeState()
-			runtime.Pods = make(map[k8s.PodID]*store.Pod)
+			runtime.Pods = make(map[k8s.PodID]*v1alpha1.Pod)
 			if test.ancestorSeen {
 				runtime.PodAncestorUID = ancestorUID
 			}
 
 			if test.podSeen {
-				runtime.Pods[podID] = &store.Pod{
+				runtime.Pods[podID] = &v1alpha1.Pod{
 					Name:   podID.String(),
 					Status: "Running",
 				}
 			}
 			if test.haveAdditionalPod {
-				runtime.Pods[otherPodID] = &store.Pod{
+				runtime.Pods[otherPodID] = &v1alpha1.Pod{
 					Name:   otherPodID.String(),
 					Status: "Running",
 				}
@@ -2165,7 +2165,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 
 	pod := pb.Build()
 	pod.Status.ContainerStatuses[0].Ready = false
-	f.notifyAndWaitForPodStatus(pod, name, func(pod store.Pod) bool {
+	f.notifyAndWaitForPodStatus(pod, name, func(pod v1alpha1.Pod) bool {
 		return !store.AllPodContainersReady(pod)
 	})
 
@@ -2280,7 +2280,7 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 	})
 
 	f.startPod(pod, manifest.Name)
-	f.notifyAndWaitForPodStatus(pod, manifest.Name, func(pod store.Pod) bool {
+	f.notifyAndWaitForPodStatus(pod, manifest.Name, func(pod v1alpha1.Pod) bool {
 		if len(pod.Containers) != 2 {
 			return false
 		}
@@ -2328,7 +2328,7 @@ func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 	})
 
 	f.startPod(pod, manifest.Name)
-	f.notifyAndWaitForPodStatus(pod, manifest.Name, func(pod store.Pod) bool {
+	f.notifyAndWaitForPodStatus(pod, manifest.Name, func(pod v1alpha1.Pod) bool {
 		if len(pod.Containers) != 2 {
 			return false
 		}
@@ -4298,7 +4298,7 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 	return pb
 }
 
-func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestName, pred func(pod store.Pod) bool) {
+func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestName, pred func(pod v1alpha1.Pod) bool) {
 	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(pod, mn, f.lastDeployedUID(mn)))
 
 	f.WaitUntilManifestState("pod status change seen", mn, func(state store.ManifestState) bool {

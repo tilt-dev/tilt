@@ -32,7 +32,7 @@ func TestMonitorReady(t *testing.T) {
 	defer f.TearDown()
 
 	start := time.Now()
-	p := store.Pod{
+	p := v1alpha1.Pod{
 		Name:      "pod-id",
 		CreatedAt: metav1.NewTime(start),
 		Conditions: []v1alpha1.PodCondition{
