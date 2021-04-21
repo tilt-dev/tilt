@@ -249,7 +249,7 @@ func TestReadinessCheckFailing(t *testing.T) {
 	}.WithDeployTarget(model.K8sTarget{})
 	state := newState([]model.Manifest{m})
 	state.ManifestTargets[m.Name].State.RuntimeState = store.K8sRuntimeState{
-		Pods: map[k8s.PodID]*store.Pod{
+		Pods: map[k8s.PodID]*v1alpha1.Pod{
 			"pod id": {
 				Status: "Running",
 				Phase:  "Running",

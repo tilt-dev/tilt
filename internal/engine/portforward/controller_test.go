@@ -45,7 +45,7 @@ func TestPortForward(t *testing.T) {
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -56,7 +56,7 @@ func TestPortForward(t *testing.T) {
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{Name: "pod-id2", Phase: string(v1.PodRunning)})
+		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -66,7 +66,7 @@ func TestPortForward(t *testing.T) {
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{Name: "pod-id2", Phase: string(v1.PodPending)})
+		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodPending)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -95,7 +95,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -129,7 +129,7 @@ func TestPortForwardAutoDiscovery2(t *testing.T) {
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 
 	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, store.Pod{
+	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
 		Name:  "pod-id",
 		Phase: string(v1.PodRunning),
 		Containers: []v1alpha1.Container{
@@ -159,7 +159,7 @@ func TestPortForwardChangePort(t *testing.T) {
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -195,7 +195,7 @@ func TestPortForwardRestart(t *testing.T) {
 	state.UpsertManifestTarget(store.NewManifestTarget(m))
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		store.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -250,7 +250,7 @@ func TestPopulatePortForward(t *testing.T) {
 			m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
 				PortForwards: c.spec,
 			})
-			pod := store.Pod{
+			pod := v1alpha1.Pod{
 				Containers: []v1alpha1.Container{
 					v1alpha1.Container{Ports: c.containerPorts},
 				},

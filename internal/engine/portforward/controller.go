@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 
 	v1 "k8s.io/api/core/v1"
@@ -183,7 +185,7 @@ type portForwardEntry struct {
 // Extract the port-forward specs from the manifest. If any of them
 // have ContainerPort = 0, populate them with the default port for the pod.
 // Quietly drop forwards that we can't populate.
-func populatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
+func populatePortForwards(m model.Manifest, pod v1alpha1.Pod) []model.PortForward {
 	cPorts := store.AllPodContainerPorts(pod)
 	fwds := m.K8sTarget().PortForwards
 	forwards := make([]model.PortForward, 0, len(fwds))
@@ -206,7 +208,7 @@ func populatePortForwards(m model.Manifest, pod store.Pod) []model.PortForward {
 	return forwards
 }
 
-func PortForwardsAreValid(m model.Manifest, pod store.Pod) bool {
+func PortForwardsAreValid(m model.Manifest, pod v1alpha1.Pod) bool {
 	expectedFwds := m.K8sTarget().PortForwards
 	actualFwds := populatePortForwards(m, pod)
 	return len(actualFwds) == len(expectedFwds)

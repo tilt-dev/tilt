@@ -280,8 +280,8 @@ func TestHoldForDeploy(t *testing.T) {
 	f.assertNextTargetToBuild("sancho")
 }
 
-func readyPod(podID k8s.PodID, ref reference.Named) *store.Pod {
-	return &store.Pod{
+func readyPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodRunning),
 		Status: "Running",
@@ -299,8 +299,8 @@ func readyPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 	}
 }
 
-func crashingPod(podID k8s.PodID, ref reference.Named) *store.Pod {
-	return &store.Pod{
+func crashingPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodRunning),
 		Status: "CrashLoopBackOff",
@@ -323,8 +323,8 @@ func crashingPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 	}
 }
 
-func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *store.Pod {
-	return &store.Pod{
+func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodRunning),
 		Status: "Ready",
@@ -343,8 +343,8 @@ func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *store.Pod {
 	}
 }
 
-func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *store.Pod {
-	return &store.Pod{
+func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodRunning),
 		Status: "Ready",
