@@ -199,7 +199,7 @@ func (s *LogStore) prevIndexMatchingManifests(index int, mns model.ManifestNameS
 		return index - 1
 	}
 
-	for i := index - 1; index >= 0; i-- {
+	for i := index - 1; i >= 0; i-- {
 		span, ok := s.spans[s.segments[i].SpanID]
 		if !ok {
 			continue
