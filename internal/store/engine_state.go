@@ -126,6 +126,7 @@ type EngineState struct {
 	Cmds          map[string]*Cmd                              `json:"-"`
 	FileWatches   map[types.NamespacedName]*v1alpha1.FileWatch `json:"-"`
 	PodLogStreams map[string]*PodLogStream                     `json:"-"`
+	PortForwards  map[string]*PortForward                      `json:"-"`
 }
 
 type CloudStatus struct {
@@ -486,6 +487,7 @@ func NewState() *EngineState {
 	ret.Cmds = make(map[string]*Cmd)
 	ret.FileWatches = make(map[types.NamespacedName]*v1alpha1.FileWatch)
 	ret.PodLogStreams = make(map[string]*PodLogStream)
+	ret.PortForwards = make(map[string]*PortForward)
 
 	return ret
 }

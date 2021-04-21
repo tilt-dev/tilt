@@ -62,6 +62,9 @@ type ChangeSummary struct {
 
 	// Sessions that have changed.
 	Sessions ChangeSet
+
+	// PortForwards that have changed.
+	PortForwards ChangeSet
 }
 
 func (s ChangeSummary) IsLogOnly() bool {
@@ -76,6 +79,7 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.Pods.AddAll(other.Pods)
 	s.PodLogStreams.AddAll(other.PodLogStreams)
 	s.Sessions.AddAll(other.Sessions)
+	s.PortForwards.AddAll(other.PortForwards)
 }
 
 func LegacyChangeSummary() ChangeSummary {

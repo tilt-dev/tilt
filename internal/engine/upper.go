@@ -9,6 +9,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
@@ -196,6 +198,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		runtimelog.HandlePodLogStreamCreateAction(state, action)
 	case runtimelog.PodLogStreamDeleteAction:
 		runtimelog.HandlePodLogStreamDeleteAction(state, action)
+	case portforward.PortForwardCreateAction:
+		portforward.HandlePortForwardCreateAction(state, action)
+	case portforward.PortForwardDeleteAction:
+		portforward.HandlePortForwardDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}

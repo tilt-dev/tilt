@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/equality"
+
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 
 	"github.com/docker/distribution/reference"
@@ -3714,6 +3716,39 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 	require.NoError(t, err)
 
 	err = f.Stop()
+	require.NoError(t, err)
+}
+
+func TestPortForwardActions(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	pfAName := "port-forward-A"
+
+	pfA := &portforward.PortForward{
+		ObjectMeta: metav1.ObjectMeta{Name: pfAName},
+		Spec:       portforward.PortForwardSpec{Pod: "pod-A"},
+	}
+
+	f.Start([]model.Manifest{})
+
+	f.upper.store.Dispatch(portforward.NewPortForwardCreateAction(pfA))
+	f.WaitUntil("port forward A stored on state", func(st store.EngineState) bool {
+		return len(st.PortForwards) == 1 && equality.Semantic.DeepEqual(pfA, st.PortForwards[pfAName])
+	})
+
+	f.upper.store.Dispatch(portforward.PortForwardDeleteAction{Name: "something-random"})
+	time.Sleep(time.Millisecond * 5)
+	f.WaitUntil("port forward A still on state", func(st store.EngineState) bool {
+		return len(st.PortForwards) == 1 && equality.Semantic.DeepEqual(pfA, st.PortForwards[pfAName])
+	})
+
+	f.upper.store.Dispatch(portforward.PortForwardDeleteAction{Name: pfAName})
+	f.WaitUntil("port forward A removed from state", func(st store.EngineState) bool {
+		return len(st.PortForwards) == 0
+	})
+
+	err := f.Stop()
 	require.NoError(t, err)
 }
 
