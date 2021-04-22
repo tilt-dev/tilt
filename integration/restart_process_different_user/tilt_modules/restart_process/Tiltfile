@@ -39,6 +39,11 @@ def docker_build_with_restart(ref, context, entrypoint, live_update,
     base_ref = '{}{}'.format(ref, base_suffix)
     docker_build(base_ref, context, **kwargs)
 
+    # get the user specified by the docker image
+    # this will often be an empty string, but when that is passed in below that will leave
+    # it as "root"
+    base_user = local("docker image inspect {} --format='{{{{.Config.User}}}}'".format(ref))
+
     # declare a new docker build that adds a static binary of tilt-restart-wrapper
     # (which makes use of `entr` to watch files and restart processes) to the user's image
     df = '''
@@ -49,7 +54,8 @@ def docker_build_with_restart(ref, context, entrypoint, live_update,
     RUN ["touch", "{}"]
     COPY --from=restart-helper /tilt-restart-wrapper /
     COPY --from=restart-helper /entr /
-  '''.format(base_ref, restart_file)
+    USER {}
+  '''.format(base_ref, restart_file, base_user)
 
     # Clean kwargs for building the child image (which builds on user's specified
     # image and copies in Tilt's restart wrapper). In practice, this means removing
