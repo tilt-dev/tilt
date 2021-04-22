@@ -268,7 +268,7 @@ type plcFixture struct {
 	cancel func()
 	kCli   *k8s.FakeK8sClient
 	st     *store.TestingStore
-	plc    *Controller
+	plc    *Subscriber
 	out    *bufsync.ThreadSafeBuffer
 }
 
@@ -276,7 +276,7 @@ func newPLCFixture(t *testing.T) *plcFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient()
-	plc := NewController(kCli)
+	plc := NewSubscriber(kCli)
 
 	out := bufsync.NewThreadSafeBuffer()
 	l := logger.NewLogger(logger.DebugLvl, out)

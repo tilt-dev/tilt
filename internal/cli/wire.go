@@ -92,7 +92,7 @@ var BaseWireSet = wire.NewSet(
 	engine.DeployerWireSet,
 	runtimelog.NewPodLogManager,
 	podlogstream.NewController,
-	portforward.NewController,
+	portforward.NewSubscriber,
 	engine.NewBuildController,
 	cmd.WireSet,
 	local.NewServerController,

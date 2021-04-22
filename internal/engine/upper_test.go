@@ -3824,7 +3824,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	plsc := podlogstream.NewController(ctx, cdc, st, kCli)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
-	pfc := portforward.NewController(kCli)
+	pfs := portforward.NewSubscriber(kCli)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
@@ -3904,7 +3904,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfc, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, mcc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
