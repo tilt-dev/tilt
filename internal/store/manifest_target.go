@@ -34,6 +34,18 @@ func (mt *ManifestTarget) UpdateStatus() model.UpdateStatus {
 	}
 
 	if m.IsLocal() && m.LocalTarget().UpdateCmd.Empty() {
+		// NOTE(nick): We currently model a local_resource(serve_cmd) as a Manifest
+		// with a no-op Update. BuildController treats it like any other
+		// resource. When the build completes, the server controller starts the
+		// server.
+		//
+		// We want to make sure that the UpdateStatus is still "Pending" until we
+		// have a completed build record. Otherwise the server controller will try
+		// to start the server twice (once while the update is in-progress, and once
+		// when the update completes).
+		if us == model.UpdateStatusInProgress {
+			return model.UpdateStatusPending
+		}
 		return model.UpdateStatusNotApplicable
 	}
 

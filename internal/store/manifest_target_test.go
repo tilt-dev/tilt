@@ -15,6 +15,10 @@ func TestLocalTargetUpdateStatus(t *testing.T) {
 	mt := NewManifestTarget(m)
 	assert.Equal(t, model.UpdateStatusPending, mt.UpdateStatus())
 
+	mt.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	assert.Equal(t, model.UpdateStatusPending, mt.UpdateStatus())
+
+	mt.State.CurrentBuild = model.BuildRecord{}
 	mt.State.AddCompletedBuild(model.BuildRecord{StartTime: time.Now(), FinishTime: time.Now()})
 	assert.Equal(t, model.UpdateStatusNotApplicable, mt.UpdateStatus())
 
