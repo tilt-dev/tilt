@@ -71,23 +71,32 @@ func AfterOrEqual(a, b commonTime) bool {
 // 	* If both a and b are time.Time, a and b have their monotonic clock reading stripped but are otherwise untouched.
 // 	* Otherwise, this function will panic.
 func normalize(a, b commonTime) (time.Time, time.Time) {
-	_, aSecondsGranularity := a.(metav1.Time)
-	_, bSecondsGranularity := b.(metav1.Time)
-	if aSecondsGranularity || bSecondsGranularity {
+	var anySeconds bool
+	var anyMicroseconds bool
+	for _, x := range []commonTime{a, b} {
+		switch x.(type) {
+		case metav1.Time:
+			anySeconds = true
+		case *metav1.Time:
+			anySeconds = true
+		case metav1.MicroTime:
+			anyMicroseconds = true
+		case *metav1.MicroTime:
+			anyMicroseconds = true
+		// stdlib time is accepted, but has nanosecond-granularity, so nothing more to do
+		case time.Time:
+		case *time.Time:
+		default:
+			panic(fmt.Errorf("unexpected type for time normalization: %T", x))
+		}
+	}
+
+	if anySeconds {
 		return a.Truncate(time.Second), b.Truncate(time.Second)
 	}
 
-	_, aMicrosecondsGranularity := a.(metav1.MicroTime)
-	_, bMicrosecondsGranularity := b.(metav1.MicroTime)
-	if aMicrosecondsGranularity || bMicrosecondsGranularity {
+	if anyMicroseconds {
 		return a.Truncate(time.Microsecond), b.Truncate(time.Microsecond)
-	}
-
-	// this will need new cases if a new time type is ever introduced
-	_, aStdlib := a.(time.Time)
-	_, bStdLib := b.(time.Time)
-	if !aStdlib || !bStdLib {
-		panic(fmt.Errorf("unexpected types for time normalization: %T / %T", a, b))
 	}
 
 	// truncate with value <= 0 will strip off monotonic clock reading but

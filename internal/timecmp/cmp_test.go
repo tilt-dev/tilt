@@ -266,4 +266,14 @@ func runTest(t testing.TB, tc tc) {
 	assert.Equal(t, tc.second, tc.cmp(metav1.NewMicroTime(tc.x), metav1.NewTime(tc.y)),
 		"Second (metav1.MicroTime <> metav1.Time) comparison failed. Values:\n- x: %s\n- y: %s",
 		tc.x.String(), tc.y.String())
+
+	// pointer test cases (non-exhaustive)
+	xAPITime := metav1.NewTime(tc.x)
+	yMicroTime := metav1.NewMicroTime(tc.y)
+	assert.Equal(t, tc.second, tc.cmp(&xAPITime, &yMicroTime),
+		"Second (*metav1.Time <> *metav1.MicroTime) comparison failed. Values:\n- x: %s\n- y: %s",
+		tc.x.String(), tc.y.String())
+	assert.Equal(t, tc.second, tc.cmp(&xAPITime, &tc.y),
+		"Second (metav1.Time <> *stdlib) comparison failed. Values:\n- x: %s\n- y: %s",
+		tc.x.String(), tc.y.String())
 }
