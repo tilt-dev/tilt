@@ -13,6 +13,54 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+type KubernetesDiscoveryCreateAction struct {
+	KubernetesDiscovery *v1alpha1.KubernetesDiscovery
+}
+
+func (p KubernetesDiscoveryCreateAction) Action() {}
+
+func (p KubernetesDiscoveryCreateAction) Summarize(s *store.ChangeSummary) {
+	s.KubernetesDiscoveries.Add(types.NamespacedName{
+		Name:      p.KubernetesDiscovery.Name,
+		Namespace: p.KubernetesDiscovery.Namespace,
+	})
+}
+
+func NewKubernetesDiscoveryCreateAction(kd *v1alpha1.KubernetesDiscovery) KubernetesDiscoveryCreateAction {
+	return KubernetesDiscoveryCreateAction{KubernetesDiscovery: kd.DeepCopy()}
+}
+
+type KubernetesDiscoveryUpdateAction struct {
+	KubernetesDiscovery *v1alpha1.KubernetesDiscovery
+}
+
+func (p KubernetesDiscoveryUpdateAction) Action() {}
+
+func (p KubernetesDiscoveryUpdateAction) Summarize(s *store.ChangeSummary) {
+	s.KubernetesDiscoveries.Add(types.NamespacedName{
+		Name:      p.KubernetesDiscovery.Name,
+		Namespace: p.KubernetesDiscovery.Namespace,
+	})
+}
+
+func NewKubernetesDiscoveryUpdateAction(kd *v1alpha1.KubernetesDiscovery) KubernetesDiscoveryUpdateAction {
+	return KubernetesDiscoveryUpdateAction{KubernetesDiscovery: kd.DeepCopy()}
+}
+
+type KubernetesDiscoveryDeleteAction struct {
+	Name types.NamespacedName
+}
+
+func (p KubernetesDiscoveryDeleteAction) Action() {}
+
+func (p KubernetesDiscoveryDeleteAction) Summarize(s *store.ChangeSummary) {
+	s.KubernetesDiscoveries.Add(p.Name)
+}
+
+func NewKubernetesDiscoveryDeleteAction(name types.NamespacedName) KubernetesDiscoveryDeleteAction {
+	return KubernetesDiscoveryDeleteAction{Name: name}
+}
+
 type PodChangeAction struct {
 	Pod          *v1alpha1.Pod
 	ManifestName model.ManifestName

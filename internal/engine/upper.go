@@ -136,6 +136,12 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		fswatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
 	case fswatch.FileWatchDeleteAction:
 		fswatch.HandleFileWatchDeleteEvent(ctx, state, action)
+	case k8swatch.KubernetesDiscoveryCreateAction:
+		k8swatch.HandleKubernetesDiscoveryCreateAction(ctx, state, action)
+	case k8swatch.KubernetesDiscoveryUpdateAction:
+		k8swatch.HandleKubernetesDiscoveryUpdateAction(ctx, state, action)
+	case k8swatch.KubernetesDiscoveryDeleteAction:
+		k8swatch.HandleKubernetesDiscoveryDeleteAction(ctx, state, action)
 	case k8swatch.PodChangeAction:
 		handlePodChangeAction(ctx, state, action)
 	case k8swatch.PodDeleteAction:

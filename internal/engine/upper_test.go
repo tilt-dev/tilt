@@ -3790,8 +3790,9 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	ns := k8s.Namespace("default")
 	kCli := k8s.NewFakeK8sClient()
+	kdms := k8swatch.NewManifestSubscriber(ns)
 	of := k8s.ProvideOwnerFetcher(ctx, kCli)
-	pw := k8swatch.NewPodWatcher(kCli, of, ns)
+	pw := k8swatch.NewPodWatcher(kCli, of)
 	sw := k8swatch.NewServiceWatcher(kCli, of, ns)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
@@ -3891,7 +3892,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

@@ -60,6 +60,11 @@ func TestAPIServerDynamicClient(t *testing.T) {
 			"tiltfilePath":  filepath.Join(mustCwd(t), "Tiltfile"),
 			"exitCondition": "manual",
 		},
+		"KubernetesDiscovery": map[string]interface{}{
+			"watches": []map[string]interface{}{
+				{"namespace": "my-namespace", "uid": "my-uid"},
+			},
+		},
 	}
 
 	for _, obj := range v1alpha1.AllResourceObjects() {
