@@ -19,14 +19,14 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type Controller struct {
+type Subscriber struct {
 	kClient k8s.Client
 
 	activeForwards map[k8s.PodID]portForwardEntry
 }
 
-func NewController(kClient k8s.Client) *Controller {
-	return &Controller{
+func NewSubscriber(kClient k8s.Client) *Subscriber {
+	return &Subscriber{
 		kClient:        kClient,
 		activeForwards: make(map[k8s.PodID]portForwardEntry),
 	}
@@ -34,7 +34,7 @@ func NewController(kClient k8s.Client) *Controller {
 
 // Figure out the diff between what's in the data store and
 // what port-forwarding is currently active.
-func (m *Controller) diff(ctx context.Context, st store.RStore) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
+func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -62,7 +62,7 @@ func (m *Controller) diff(ctx context.Context, st store.RStore) (toStart []portF
 
 		statePods[podID] = true
 
-		oldEntry, isActive := m.activeForwards[podID]
+		oldEntry, isActive := s.activeForwards[podID]
 		if isActive {
 			if cmp.Equal(oldEntry.forwards, forwards, cmp.AllowUnexported(model.PortForward{})) {
 				continue
@@ -81,26 +81,26 @@ func (m *Controller) diff(ctx context.Context, st store.RStore) (toStart []portF
 		}
 
 		toStart = append(toStart, entry)
-		m.activeForwards[podID] = entry
+		s.activeForwards[podID] = entry
 	}
 
 	// Find all the port-forwards that aren't in the manifest anymore
 	// and need to be shut down.
-	for key, value := range m.activeForwards {
+	for key, value := range s.activeForwards {
 		_, inState := statePods[key]
 		if inState {
 			continue
 		}
 
 		toShutdown = append(toShutdown, value)
-		delete(m.activeForwards, key)
+		delete(s.activeForwards, key)
 	}
 
 	return toStart, toShutdown
 }
 
-func (m *Controller) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
-	toStart, toShutdown := m.diff(ctx, st)
+func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+	toStart, toShutdown := s.diff(ctx, st)
 	for _, entry := range toShutdown {
 		entry.cancel()
 	}
@@ -116,12 +116,12 @@ func (m *Controller) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 		for _, forward := range entry.forwards {
 			entry := entry
 			forward := forward
-			go m.startPortForwardLoop(ctx, entry, forward)
+			go s.startPortForwardLoop(ctx, entry, forward)
 		}
 	}
 }
 
-func (m *Controller) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward model.PortForward) {
+func (s *Subscriber) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward model.PortForward) {
 	originalBackoff := wait.Backoff{
 		Steps:    1000,
 		Duration: 50 * time.Millisecond,
@@ -133,7 +133,7 @@ func (m *Controller) startPortForwardLoop(ctx context.Context, entry portForward
 
 	for {
 		start := time.Now()
-		err := m.onePortForward(ctx, entry, forward)
+		err := s.onePortForward(ctx, entry, forward)
 		if ctx.Err() != nil {
 			// If the context was canceled, we're satisfied.
 			// Ignore any errors.
@@ -155,11 +155,11 @@ func (m *Controller) startPortForwardLoop(ctx context.Context, entry portForward
 	}
 }
 
-func (m *Controller) onePortForward(ctx context.Context, entry portForwardEntry, forward model.PortForward) error {
+func (s *Subscriber) onePortForward(ctx context.Context, entry portForwardEntry, forward model.PortForward) error {
 	ns := entry.namespace
 	podID := entry.podID
 
-	pf, err := m.kClient.CreatePortForwarder(ctx, ns, podID, forward.LocalPort, forward.ContainerPort, forward.Host)
+	pf, err := s.kClient.CreatePortForwarder(ctx, ns, podID, forward.LocalPort, forward.ContainerPort, forward.Host)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func (m *Controller) onePortForward(ctx context.Context, entry portForwardEntry,
 	return nil
 }
 
-var _ store.Subscriber = &Controller{}
+var _ store.Subscriber = &Subscriber{}
 
 type portForwardEntry struct {
 	name      model.ManifestName
