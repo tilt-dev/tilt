@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/jonboulle/clockwork"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -210,7 +212,7 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 
 	entity := k8s.NewK8sEntity(pb.Build())
 	evt1 := f.makeEvent(entity)
-	evt1.CreationTimestamp = metav1.Time{Time: f.clock.Now().Add(-time.Minute)}
+	evt1.CreationTimestamp = apis.NewTime(f.clock.Now().Add(-time.Minute))
 
 	f.kClient.EmitEvent(f.ctx, evt1)
 
@@ -227,7 +229,7 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 func (f *ewmFixture) makeEvent(obj k8s.K8sEntity) *v1.Event {
 	return &v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
-			CreationTimestamp: metav1.Time{Time: f.clock.Now()},
+			CreationTimestamp: apis.NewTime(f.clock.Now()),
 			Namespace:         k8s.DefaultNamespace.String(),
 		},
 		Reason:         "test event reason",

@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tilt-dev/tilt/internal/timecmp"
+	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/tilt-dev/tilt/internal/engine/portforward"
 
@@ -234,7 +235,7 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 
 	if ms.IsK8s() {
 		for _, pod := range ms.K8sRuntimeState().Pods {
-			pod.UpdateStartedAt = metav1.NewTime(action.StartTime)
+			pod.UpdateStartedAt = apis.NewTime(action.StartTime)
 		}
 	} else if manifest.IsDC() {
 		// Attach the SpanID and initialize the runtime state if we haven't yet.
@@ -389,7 +390,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	handleBuildResults(engineState, mt, bs, cb.Result)
 
 	if !ms.PendingManifestChange.IsZero() &&
-		store.BeforeOrEqual(ms.PendingManifestChange, bs.StartTime) {
+		timecmp.BeforeOrEqual(ms.PendingManifestChange, bs.StartTime) {
 		ms.PendingManifestChange = time.Time{}
 	}
 
@@ -418,8 +419,8 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		}
 
 		bestPod := ms.MostRecentPod()
-		if store.AfterOrEqual(bestPod.CreatedAt.Time, bs.StartTime) ||
-			bestPod.UpdateStartedAt.Time.Equal(bs.StartTime) {
+		if timecmp.AfterOrEqual(bestPod.CreatedAt, bs.StartTime) ||
+			timecmp.Equal(bestPod.UpdateStartedAt, bs.StartTime) {
 			checkForContainerCrash(ctx, engineState, mt)
 		}
 	}
@@ -662,7 +663,7 @@ func handleConfigsReloaded(
 
 	// Remove pending file changes that were consumed by this build.
 	for file, modTime := range state.PendingConfigFileChanges {
-		if store.BeforeOrEqual(modTime, state.TiltfileState.LastBuild().StartTime) {
+		if timecmp.BeforeOrEqual(modTime, state.TiltfileState.LastBuild().StartTime) {
 			delete(state.PendingConfigFileChanges, file)
 		}
 	}
