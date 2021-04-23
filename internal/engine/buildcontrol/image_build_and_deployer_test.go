@@ -864,8 +864,9 @@ func TestIBDDeployUIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 1, len(result.DeployedUIDSet()))
-	assert.True(t, result.DeployedUIDSet().Contains(f.k8s.LastUpsertResult[0].UID()))
+	deployed := result.DeployedEntities()
+	assert.Equal(t, 1, len(deployed))
+	assert.True(t, deployed.ContainsUID(f.k8s.LastUpsertResult[0].UID()))
 }
 
 func TestDockerBuildTargetStage(t *testing.T) {

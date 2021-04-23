@@ -31,7 +31,7 @@ type PodWatcher struct {
 	// all pods that they own (transitively).
 	//
 	// For example, a Deployment UID might contain a set of N pod UIDs.
-	knownDescendentPodUIDs map[types.UID]store.UIDSet
+	knownDescendentPodUIDs map[types.UID]k8s.UIDSet
 
 	// An index of all the known pods, by UID
 	knownPods map[types.UID]*v1.Pod
@@ -41,7 +41,7 @@ func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, cfgNS k8s.Nam
 	return &PodWatcher{
 		kCli:                   kCli,
 		ownerFetcher:           ownerFetcher,
-		knownDescendentPodUIDs: make(map[types.UID]store.UIDSet),
+		knownDescendentPodUIDs: make(map[types.UID]k8s.UIDSet),
 		knownPods:              make(map[types.UID]*v1.Pod),
 		watcherKnownState:      newWatcherKnownState(cfgNS),
 	}
@@ -127,13 +127,14 @@ func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Nam
 // new actions. This handles the case where we get the Pod change event
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
-func (w *PodWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
+func (w *PodWatcher) setupNewUIDs(_ context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
 	for uid, mn := range newUIDs {
 		w.watcherKnownState.knownDeployedUIDs[uid] = mn
 
 		pod, ok := w.knownPods[uid]
 		if ok {
 			st.Dispatch(NewPodChangeAction(pod, mn, uid))
+			// since this UID matched a known pod, there's no reason to look at descendants
 			continue
 		}
 
@@ -177,7 +178,7 @@ func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) (mode
 
 		set, ok := w.knownDescendentPodUIDs[ownerUID]
 		if !ok {
-			set = store.NewUIDSet()
+			set = k8s.NewUIDSet()
 			w.knownDescendentPodUIDs[ownerUID] = set
 		}
 		set.Add(uid)

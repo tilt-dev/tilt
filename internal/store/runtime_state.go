@@ -74,7 +74,7 @@ type K8sRuntimeState struct {
 
 	Pods                           map[k8s.PodID]*v1alpha1.Pod
 	LBs                            map[k8s.ServiceName]*url.URL
-	DeployedUIDSet                 UIDSet                 // for the most recent successful deploy
+	DeployedEntities               k8s.ObjRefList         // for the most recent successful deploy
 	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet // for the most recent successful deploy
 
 	LastReadyOrSucceededTime    time.Time
@@ -102,7 +102,6 @@ func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 		PodReadinessMode:               m.PodReadinessMode(),
 		Pods:                           make(map[k8s.PodID]*v1alpha1.Pod),
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
-		DeployedUIDSet:                 NewUIDSet(),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
 	}
 }
@@ -205,6 +204,14 @@ func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1.Pod) bool {
 	return s.DeployedPodTemplateSpecHashSet.Contains(k8s.PodTemplateSpecHash(hash))
 }
 
+func (s K8sRuntimeState) DeployedUIDSet() k8s.UIDSet {
+	uids := k8s.NewUIDSet()
+	for _, ref := range s.DeployedEntities {
+		uids.Add(ref.UID)
+	}
+	return uids
+}
+
 // podCompare is a stable sort order for pods.
 func podCompare(p1 v1alpha1.Pod, p2 v1alpha1.Pod) bool {
 	if p1.CreatedAt.After(p2.CreatedAt.Time) {
@@ -253,22 +260,6 @@ func AllPodContainerPorts(p v1alpha1.Pod) []int32 {
 		result = append(result, c.Ports...)
 	}
 	return result
-}
-
-type UIDSet map[types.UID]bool
-
-func NewUIDSet() UIDSet {
-	return make(map[types.UID]bool)
-}
-
-func (s UIDSet) Add(uids ...types.UID) {
-	for _, uid := range uids {
-		s[uid] = true
-	}
-}
-
-func (s UIDSet) Contains(uid types.UID) bool {
-	return s[uid]
 }
 
 type PodTemplateSpecHashSet map[k8s.PodTemplateSpecHash]bool

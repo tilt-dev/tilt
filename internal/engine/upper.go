@@ -427,9 +427,9 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	manifest := mt.Manifest
 	if manifest.IsK8s() {
 		state := ms.K8sRuntimeState()
-		deployedUIDSet := cb.Result.DeployedUIDSet()
-		if len(deployedUIDSet) > 0 {
-			state.DeployedUIDSet = deployedUIDSet
+		deployedEntities := cb.Result.DeployedEntities()
+		if len(deployedEntities) > 0 {
+			state.DeployedEntities = deployedEntities
 		}
 
 		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
