@@ -34,15 +34,15 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		return
 	}
 
-	podInfo := action.Pod
-	podID := k8s.PodID(podInfo.Name)
+	pod := action.Pod
+	podID := k8s.PodID(pod.Name)
 	spanID := k8sconv.SpanIDForPod(podID)
 	ms := mt.State
 	krs := ms.K8sRuntimeState()
 	manifest := mt.Manifest
 
 	var existing *v1alpha1.Pod
-	isCurrentDeploy := krs.HasOKPodTemplateSpecHash(podInfo)
+	isCurrentDeploy := krs.HasOKPodTemplateSpecHash(pod)
 	if isCurrentDeploy {
 		// Only attach a new pod to the runtime state if it's from the current deploy;
 		// if it's from an old deploy/an old Tilt run, we don't want to be checking it
@@ -55,13 +55,13 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		if existing == nil {
 			return
 		}
-		krs.Pods[podID] = podInfo
+		krs.Pods[podID] = pod
 	}
 
 	prunePods(ms)
 
 	if existing != nil {
-		names := restartedContainerNames(existing.InitContainers, podInfo.InitContainers)
+		names := restartedContainerNames(existing.InitContainers, pod.InitContainers)
 		for _, name := range names {
 			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", existing.Name, name)
 			handleLogAction(state, store.NewLogAction(manifest.Name, spanID, logger.WarnLvl, nil, []byte(s)))
@@ -69,7 +69,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	}
 
 	if existing != nil {
-		names := restartedContainerNames(existing.Containers, podInfo.Containers)
+		names := restartedContainerNames(existing.Containers, pod.Containers)
 		for _, name := range names {
 			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", existing.Name, name)
 			handleLogAction(state, store.NewLogAction(manifest.Name, spanID, logger.WarnLvl, nil, []byte(s)))
@@ -83,25 +83,25 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 		// This can happen when the image was deployed on a previous
 		// Tilt run, so we're just attaching to an existing pod
 		// with some old history.
-		podInfo.BaselineRestartCount = store.AllPodContainerRestarts(*podInfo)
+		pod.BaselineRestartCount = store.AllPodContainerRestarts(*pod)
 	}
 
-	if len(podInfo.Containers) == 0 {
+	if len(pod.Containers) == 0 {
 		// not enough info to do anything else
 		return
 	}
 
-	if store.AllPodContainersReady(*podInfo) || podInfo.Phase == string(v1.PodSucceeded) {
+	if store.AllPodContainersReady(*pod) || pod.Phase == string(v1.PodSucceeded) {
 		runtime := ms.K8sRuntimeState()
 		runtime.LastReadyOrSucceededTime = time.Now()
 		ms.RuntimeState = runtime
 	}
 
-	fwdsValid := portforward.PortForwardsAreValid(manifest, *podInfo)
+	fwdsValid := portforward.PortForwardsAreValid(manifest, *pod)
 	if !fwdsValid {
 		logger.Get(ctx).Warnf(
 			"Resource %s is using port forwards, but no container ports on pod %s",
-			manifest.Name, podInfo.Name)
+			manifest.Name, pod.Name)
 	}
 	checkForContainerCrash(state, mt)
 }
@@ -156,7 +156,9 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 //
 // A mutable reference to the Pod to be tracked is stored so that further changes to it
 // can be made based on the diff from the returned prior version. The caller should *not*
-// hold their reference beyond the action handler.
+// hold their reference beyond the action handler. This is a temporary situation to ease
+// transition of this data to an API server reconciler; currently, the reducer here is
+// both handling the tracking as well as using diff to derive things like container restarts.
 func trackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) *v1alpha1.Pod {
 	pod := action.Pod
 	podID := k8s.PodID(pod.Name)
