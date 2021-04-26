@@ -62,26 +62,29 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 
 		statePods[podID] = true
 
+		// 😱 NEED A DIFFERENT KEY!!
 		oldEntry, isActive := s.activeForwards[podID]
 		if isActive {
-			if cmp.Equal(oldEntry.forwards, forwards, cmp.AllowUnexported(model.PortForward{})) {
+			if cmp.Equal(oldEntry.forward, forwards, cmp.AllowUnexported(model.PortForward{})) {
 				continue
 			}
 			toShutdown = append(toShutdown, oldEntry)
 		}
 
 		ctx, cancel := context.WithCancel(ctx)
-		entry := portForwardEntry{
-			podID:     podID,
-			name:      ms.Name,
-			namespace: k8s.Namespace(pod.Namespace),
-			forwards:  forwards,
-			ctx:       ctx,
-			cancel:    cancel,
-		}
+		for _, pf := range forwards {
+			entry := portForwardEntry{
+				podID:     podID,
+				name:      ms.Name,
+				namespace: k8s.Namespace(pod.Namespace),
+				forward:   pf,
+				ctx:       ctx,
+				cancel:    cancel,
+			}
 
-		toStart = append(toStart, entry)
-		s.activeForwards[podID] = entry
+			toStart = append(toStart, entry)
+			s.activeForwards[podID] = entry
+		}
 	}
 
 	// Find all the port-forwards that aren't in the manifest anymore
@@ -113,15 +116,11 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 			ManifestName: entry.name,
 		})
 
-		for _, forward := range entry.forwards {
-			entry := entry
-			forward := forward
-			go s.startPortForwardLoop(ctx, entry, forward)
-		}
+		go s.startPortForwardLoop(ctx, entry)
 	}
 }
 
-func (s *Subscriber) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward model.PortForward) {
+func (s *Subscriber) startPortForwardLoop(ctx context.Context, entry portForwardEntry) {
 	originalBackoff := wait.Backoff{
 		Steps:    1000,
 		Duration: 50 * time.Millisecond,
@@ -133,7 +132,7 @@ func (s *Subscriber) startPortForwardLoop(ctx context.Context, entry portForward
 
 	for {
 		start := time.Now()
-		err := s.onePortForward(ctx, entry, forward)
+		err := s.onePortForward(ctx, entry)
 		if ctx.Err() != nil {
 			// If the context was canceled, we're satisfied.
 			// Ignore any errors.
@@ -155,11 +154,11 @@ func (s *Subscriber) startPortForwardLoop(ctx context.Context, entry portForward
 	}
 }
 
-func (s *Subscriber) onePortForward(ctx context.Context, entry portForwardEntry, forward model.PortForward) error {
+func (s *Subscriber) onePortForward(ctx context.Context, entry portForwardEntry) error {
 	ns := entry.namespace
 	podID := entry.podID
 
-	pf, err := s.kClient.CreatePortForwarder(ctx, ns, podID, forward.LocalPort, forward.ContainerPort, forward.Host)
+	pf, err := s.kClient.CreatePortForwarder(ctx, ns, podID, entry.forward.LocalPort, entry.forward.ContainerPort, entry.forward.Host)
 	if err != nil {
 		return err
 	}
@@ -177,7 +176,7 @@ type portForwardEntry struct {
 	name      model.ManifestName
 	namespace k8s.Namespace
 	podID     k8s.PodID
-	forwards  []model.PortForward
+	forward   model.PortForward
 	ctx       context.Context
 	cancel    func()
 }
