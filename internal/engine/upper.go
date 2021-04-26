@@ -421,7 +421,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		bestPod := ms.MostRecentPod()
 		if timecmp.AfterOrEqual(bestPod.CreatedAt, bs.StartTime) ||
 			timecmp.Equal(bestPod.UpdateStartedAt, bs.StartTime) {
-			checkForContainerCrash(ctx, engineState, mt)
+			checkForContainerCrash(engineState, mt)
 		}
 	}
 

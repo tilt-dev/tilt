@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/stretchr/testify/assert"
@@ -692,7 +693,7 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 	})
 
 	deleteEvent := k8swatch.NewPodChangeAction(
-		podbuilder.New(f.T(), manifest).WithDeletionTime(time.Now()).Build(),
+		k8sconv.Pod(f.ctx, podbuilder.New(f.T(), manifest).WithDeletionTime(time.Now()).Build()),
 		manifest.Name, f.lastDeployedUID(manifest.Name))
 
 	f.b.completeBuildsManually = true

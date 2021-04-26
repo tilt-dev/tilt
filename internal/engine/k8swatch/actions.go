@@ -3,6 +3,8 @@ package k8swatch
 import (
 	"net/url"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -12,7 +14,7 @@ import (
 )
 
 type PodChangeAction struct {
-	Pod          *v1.Pod
+	Pod          *v1alpha1.Pod
 	ManifestName model.ManifestName
 
 	// The UID that we matched against to associate this pod with Tilt.
@@ -25,10 +27,10 @@ var _ store.Summarizer = PodChangeAction{}
 func (PodChangeAction) Action() {}
 
 func (a PodChangeAction) Summarize(s *store.ChangeSummary) {
-	s.Pods.Add(types.NamespacedName{Name: string(a.Pod.Name), Namespace: string(a.Pod.Namespace)})
+	s.Pods.Add(types.NamespacedName{Name: a.Pod.Name, Namespace: a.Pod.Namespace})
 }
 
-func NewPodChangeAction(pod *v1.Pod, mn model.ManifestName, matchedAncestorUID types.UID) PodChangeAction {
+func NewPodChangeAction(pod *v1alpha1.Pod, mn model.ManifestName, matchedAncestorUID types.UID) PodChangeAction {
 	return PodChangeAction{
 		Pod:                pod,
 		ManifestName:       mn,

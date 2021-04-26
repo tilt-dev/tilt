@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
@@ -29,10 +31,7 @@ func TestPodDeleteAction(t *testing.T) {
 
 	assert.Equal(t, 0, len(ms.K8sRuntimeState().Pods))
 
-	handlePodChangeAction(f.ctx, f.state, k8swatch.PodChangeAction{
-		Pod:          pod,
-		ManifestName: m.Name,
-	})
+	handlePodChangeAction(f.ctx, f.state, k8swatch.NewPodChangeAction(k8sconv.Pod(f.ctx, pod), m.Name, ""))
 
 	assert.Equal(t, 1, len(ms.K8sRuntimeState().Pods))
 

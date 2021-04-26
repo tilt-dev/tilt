@@ -18,7 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-func handlePodDeleteAction(ctx context.Context, state *store.EngineState, action k8swatch.PodDeleteAction) {
+func handlePodDeleteAction(_ context.Context, state *store.EngineState, action k8swatch.PodDeleteAction) {
 	// PodDeleteActions only have the pod id. We don't have a good way to tie them back to their ancestors.
 	// So just brute-force it.
 	for _, target := range state.ManifestTargets {
@@ -35,75 +35,75 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 	}
 
 	pod := action.Pod
+	podID := k8s.PodID(pod.Name)
+	spanID := k8sconv.SpanIDForPod(podID)
 	ms := mt.State
+	krs := ms.K8sRuntimeState()
 	manifest := mt.Manifest
-	podInfo, isNew := maybeTrackPod(ms, action)
-	if podInfo == nil {
-		// This is an event from an old pod that has never been tracked.
-		return
+
+	var existing *v1alpha1.Pod
+	isCurrentDeploy := krs.HasOKPodTemplateSpecHash(pod)
+	if isCurrentDeploy {
+		// Only attach a new pod to the runtime state if it's from the current deploy;
+		// if it's from an old deploy/an old Tilt run, we don't want to be checking it
+		// for status etc.
+		existing = trackPod(ms, action)
+	} else {
+		// If this is from an outdated deploy but the pod is still being tracked, we
+		// will still update it; if it's outdated and untracked, just ignore
+		existing = krs.Pods[podID]
+		if existing == nil {
+			return
+		}
+		krs.Pods[podID] = pod
 	}
-
-	spanID := k8sconv.SpanIDForPod(k8s.PodID(podInfo.Name))
-
-	// Update the status
-	podInfo.CreatedAt = *pod.CreationTimestamp.DeepCopy()
-	podInfo.Status = k8swatch.PodStatusToString(*pod)
-	podInfo.Namespace = pod.Namespace
-	podInfo.Deleting = pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()
-	podInfo.Phase = string(pod.Status.Phase)
-	podInfo.Errors = k8swatch.PodStatusErrorMessages(*pod)
-	podInfo.Conditions = k8sconv.PodConditions(pod.Status.Conditions)
 
 	prunePods(ms)
 
-	initContainers := k8sconv.PodContainers(ctx, pod, pod.Status.InitContainerStatuses)
-	if !isNew {
-		names := restartedContainerNames(podInfo.InitContainers, initContainers)
+	if existing != nil {
+		names := restartedContainerNames(existing.InitContainers, pod.InitContainers)
 		for _, name := range names {
-			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", podInfo.Name, name)
+			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", existing.Name, name)
 			handleLogAction(state, store.NewLogAction(manifest.Name, spanID, logger.WarnLvl, nil, []byte(s)))
 		}
 	}
-	podInfo.InitContainers = initContainers
 
-	containers := k8sconv.PodContainers(ctx, pod, pod.Status.ContainerStatuses)
-	if !isNew {
-		names := restartedContainerNames(podInfo.Containers, containers)
+	if existing != nil {
+		names := restartedContainerNames(existing.Containers, pod.Containers)
 		for _, name := range names {
-			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", podInfo.Name, name)
+			s := fmt.Sprintf("Detected container restart. Pod: %s. Container: %s.", existing.Name, name)
 			handleLogAction(state, store.NewLogAction(manifest.Name, spanID, logger.WarnLvl, nil, []byte(s)))
 		}
 	}
-	podInfo.Containers = containers
 
-	if isNew {
+	if existing == nil {
 		// This is the first time we've seen this pod.
 		// Ignore any restarts that happened before Tilt saw it.
 		//
 		// This can happen when the image was deployed on a previous
 		// Tilt run, so we're just attaching to an existing pod
 		// with some old history.
-		podInfo.BaselineRestartCount = store.AllPodContainerRestarts(*podInfo)
+		pod.BaselineRestartCount = store.AllPodContainerRestarts(*pod)
 	}
 
-	if len(podInfo.Containers) == 0 {
+	if len(pod.Containers) == 0 {
 		// not enough info to do anything else
 		return
 	}
 
-	if store.AllPodContainersReady(*podInfo) || podInfo.Phase == string(v1.PodSucceeded) {
+	if store.AllPodContainersReady(*pod) || pod.Phase == string(v1.PodSucceeded) {
 		runtime := ms.K8sRuntimeState()
 		runtime.LastReadyOrSucceededTime = time.Now()
 		ms.RuntimeState = runtime
 	}
 
-	fwdsValid := portforward.PortForwardsAreValid(manifest, *podInfo)
+	fwdsValid := portforward.PortForwardsAreValid(manifest, *pod)
 	if !fwdsValid {
 		logger.Get(ctx).Warnf(
 			"Resource %s is using port forwards, but no container ports on pod %s",
-			manifest.Name, podInfo.Name)
+			manifest.Name, pod.Name)
 	}
-	checkForContainerCrash(ctx, state, mt)
+	checkForContainerCrash(state, mt)
 }
 
 func restartedContainerNames(existingContainers []v1alpha1.Container, newContainers []v1alpha1.Container) []container.Name {
@@ -148,24 +148,23 @@ func matchPodChangeToManifest(state *store.EngineState, action k8swatch.PodChang
 	return mt
 }
 
-// Checks the runtime state if we're already tracking this pod.
-// If not, AND if the pod matches the current deploy, create a new tracking object.
-// Returns a store.Pod that the caller can mutate, and true
-// if this is the first time we've seen this pod.
-func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*v1alpha1.Pod, bool) {
+// trackPod adds a Pod to the RuntimeState for a resource.
+//
+// If there are currently tracked Pods and the new Pod's ancestor UID differs from theirs,
+// the tracked Pods will be cleared and the ancestor UID updated. Otherwise, the Pod will
+// be upserted and the prior version returned.
+//
+// A mutable reference to the Pod to be tracked is stored so that further changes to it
+// can be made based on the diff from the returned prior version. The caller should *not*
+// hold their reference beyond the action handler. This is a temporary situation to ease
+// transition of this data to an API server reconciler; currently, the reducer here is
+// both handling the tracking as well as using diff to derive things like container restarts.
+func trackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) *v1alpha1.Pod {
 	pod := action.Pod
-	podID := k8s.PodIDFromPod(pod)
+	podID := k8s.PodID(pod.Name)
 	runtime := ms.K8sRuntimeState()
-	isCurrentDeploy := runtime.HasOKPodTemplateSpecHash(pod) // is pod from the most recent Tilt deploy?
 
-	// Only attach a new pod to the runtime state if it's from the current deploy;
-	// if it's from an old deploy/an old Tilt run, we don't want to be checking it
-	// for status etc.
-	if !isCurrentDeploy {
-		return runtime.Pods[podID], false
-	}
-
-	// Case 1: We haven't seen pods for this ancestor yet.
+	// (Re-)initialize state if we haven't seen pods for this ancestor yet
 	matchedAncestorUID := action.MatchedAncestorUID
 	isAncestorMatch := matchedAncestorUID != ""
 	if runtime.PodAncestorUID == "" ||
@@ -175,28 +174,15 @@ func maybeTrackPod(ms *store.ManifestState, action k8swatch.PodChangeAction) (*v
 		runtime.Pods = make(map[k8s.PodID]*v1alpha1.Pod)
 		runtime.PodAncestorUID = matchedAncestorUID
 		ms.RuntimeState = runtime
-
-		// Fall through to the case below to create a new tracked pod.
 	}
 
-	podInfo, ok := runtime.Pods[podID]
-	if !ok {
-		// CASE 2: We have a set of pods for this ancestor UID, but not this
-		// particular pod -- record it
-		podInfo = &v1alpha1.Pod{
-			Name: podID.String(),
-		}
-
-		runtime.Pods[podID] = podInfo
-
-		return podInfo, true
-	}
-
-	// CASE 3: This pod is already in the PodSet, nothing to do.
-	return podInfo, false
+	// Return the existing (if any) and track the new version
+	existing := runtime.Pods[podID]
+	runtime.Pods[podID] = pod
+	return existing
 }
 
-func checkForContainerCrash(ctx context.Context, state *store.EngineState, mt *store.ManifestTarget) {
+func checkForContainerCrash(state *store.EngineState, mt *store.ManifestTarget) {
 	ms := mt.State
 	if ms.NeedsRebuildFromCrash {
 		// We're already aware the pod is crashing.
