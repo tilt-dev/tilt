@@ -67,8 +67,6 @@ export default function HeaderBar(props: HeaderBarProps) {
     let specs = r.specs ?? []
     return specs.some((spec) => spec.type === TargetType.K8s)
   })
-  let showMetricsButton = !!(hasK8s || view?.metricsServing?.mode)
-  let metricsServing = view?.metricsServing
 
   let globalNavProps = {
     isSnapshot,
@@ -76,8 +74,6 @@ export default function HeaderBar(props: HeaderBarProps) {
     showUpdate: showUpdate(view),
     suggestedVersion,
     runningBuild,
-    showMetricsButton,
-    metricsServing,
     tiltCloudUsername: view.tiltCloudUsername ?? "",
     tiltCloudSchemeHost: view.tiltCloudSchemeHost ?? "",
     tiltCloudTeamID: view.tiltCloudTeamID ?? "",

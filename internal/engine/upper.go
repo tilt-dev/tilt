@@ -25,7 +25,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -183,10 +182,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		session.HandleSessionUpdateStatusAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
-	case metrics.MetricsModeAction:
-		handleMetricsModeAction(state, action)
-	case metrics.MetricsDashboardAction:
-		handleMetricsDashboardAction(state, action)
 	case server.OverrideTriggerModeAction:
 		handleOverrideTriggerModeAction(ctx, state, action)
 	case local.CmdCreateAction:
@@ -807,53 +802,6 @@ func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 	state.CloudStatus.WaitingForStatusPostRegistration = true
-}
-
-func handleMetricsModeAction(state *store.EngineState, action metrics.MetricsModeAction) {
-	// Don't deploy the local metrics stack in CI mode.
-	if action.Serving.Mode == model.MetricsLocal && state.EngineMode != store.EngineModeUp {
-		return
-	}
-
-	state.MetricsServing = action.Serving
-	state.MetricsSettings = action.Settings
-
-	manifests := action.Manifests
-	manifestNames := map[model.ManifestName]bool{}
-	for _, m := range manifests {
-		manifestNames[m.Name] = true
-
-		mt, ok := state.ManifestTargets[m.ManifestName()]
-		if !ok {
-			mt = store.NewManifestTarget(m)
-		}
-
-		mt.Manifest = m
-		state.UpsertManifestTarget(mt)
-	}
-
-	// Go through all the existing manifest targets:
-	// 1) If they were from the metrics, but were removed from the latest
-	//    action, delete them.
-	// 2) If they were not from the metrics, preserve them.
-	newDefOrder := make([]model.ManifestName, 0)
-	for _, mt := range state.Targets() {
-		m := mt.Manifest
-		if m.Source == model.ManifestSourceMetrics {
-			if !manifestNames[m.Name] {
-				delete(state.ManifestTargets, m.Name)
-				continue
-			}
-		}
-
-		newDefOrder = append(newDefOrder, m.Name)
-	}
-
-	state.ManifestDefinitionOrder = newDefOrder
-}
-
-func handleMetricsDashboardAction(state *store.EngineState, action metrics.MetricsDashboardAction) {
-	state.MetricsServing.GrafanaHost = action.GrafanaHost
 }
 
 func handleOverrideTriggerModeAction(ctx context.Context, state *store.EngineState,
