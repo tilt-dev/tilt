@@ -9,7 +9,7 @@ import (
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
-	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -42,6 +42,7 @@ type Controller struct {
 	watches         map[podLogKey]PodLogWatch
 	hasClosedStream map[podLogKey]bool
 	statuses        map[types.NamespacedName]*PodLogStreamStatus
+	lastUpdate      map[types.NamespacedName]*PodLogStreamStatus
 
 	newTicker func(d time.Duration) *time.Ticker
 	since     func(t time.Time) time.Duration
@@ -61,6 +62,7 @@ func NewController(ctx context.Context, client ctrlclient.Client, st store.RStor
 		watches:         make(map[podLogKey]PodLogWatch),
 		hasClosedStream: make(map[podLogKey]bool),
 		statuses:        make(map[types.NamespacedName]*PodLogStreamStatus),
+		lastUpdate:      make(map[types.NamespacedName]*PodLogStreamStatus),
 		newTicker:       time.NewTicker,
 		since:           time.Since,
 		now:             time.Now,
@@ -433,14 +435,23 @@ func (r *Controller) updateStatus(streamName types.NamespacedName) {
 		return
 	}
 
+	lastUpdate, hasLastUpdate := r.lastUpdate[streamName]
+	if hasLastUpdate && equality.Semantic.DeepEqual(status, lastUpdate) {
+		return
+	}
+
 	stream := &PodLogStream{}
 	err := r.client.Get(r.ctx, streamName, stream)
-	if err != nil || cmp.Equal(stream.Status, status) {
+	if err != nil {
 		return
 	}
 
 	status.DeepCopyInto(&stream.Status)
-	_ = r.client.Status().Update(r.ctx, stream)
+	err = r.client.Status().Update(r.ctx, stream)
+	if err != nil {
+		return
+	}
+	r.lastUpdate[streamName] = status.DeepCopy()
 }
 
 func (c *Controller) SetupWithManager(mgr ctrl.Manager) error {
