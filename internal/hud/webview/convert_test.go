@@ -71,7 +71,6 @@ func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 
 	sort.Strings(r.CurrentBuild.Edits)
 	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, r.CurrentBuild.Edits)
-	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, r.PendingBuildEdits)
 }
 
 func TestStateToWebViewPortForwards(t *testing.T) {

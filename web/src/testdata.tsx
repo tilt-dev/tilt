@@ -126,9 +126,7 @@ function oneResource(): Resource {
         startTime: tsPast,
       },
     ],
-    pendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     pendingBuildSince: ts,
-    pendingBuildReason: 0,
     currentBuild: {
       edits: ["main.go"],
       startTime: ts,
@@ -166,7 +164,6 @@ function oneResourceNoAlerts(): Resource {
         startTime: ts,
       },
     ],
-    pendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     pendingBuildSince: ts,
     currentBuild: {},
     k8sResourceInfo: {
@@ -195,7 +192,6 @@ function oneResourceImagePullBackOff(): Resource {
         startTime: ts,
       },
     ],
-    pendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     pendingBuildSince: ts,
     currentBuild: {},
     k8sResourceInfo: {
@@ -224,7 +220,6 @@ function oneResourceErrImgPull(): Resource {
         startTime: ts,
       },
     ],
-    pendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     pendingBuildSince: ts,
     currentBuild: {},
     k8sResourceInfo: {
@@ -253,7 +248,6 @@ function oneResourceUnrecognizedError(): Resource {
         startTime: ts,
       },
     ],
-    pendingBuildEdits: ["main.go", "cli.go", "vigoda.go"],
     pendingBuildSince: ts,
     currentBuild: {},
     k8sResourceInfo: {
@@ -323,7 +317,6 @@ function twoResourceView(): view {
         startTime: ts,
       },
     ],
-    pendingBuildEdits: ["main.go", "cli.go", "snack.go"],
     pendingBuildSince: ts,
     currentBuild: {
       edits: ["main.go"],
@@ -335,7 +328,6 @@ function twoResourceView(): view {
     triggerMode: TriggerMode.TriggerModeAuto,
     isTiltfile: false,
     podID: "",
-    pendingBuildReason: 0,
     k8sResourceInfo: {
       podStatus: "Running",
       podStatusMessage: "",
@@ -391,8 +383,6 @@ function oneResourceFailedToBuild(): Resource[] {
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
-      pendingBuildReason: 1,
-      pendingBuildEdits: ["main.go"],
       pendingBuildSince: "0001-01-01T00:00:00Z",
       endpointLinks: [{ url: "http://localhost:9002/" }],
       k8sResourceInfo: {
@@ -405,7 +395,6 @@ function oneResourceFailedToBuild(): Resource[] {
       updateStatus: "pending",
       runtimeStatus: "ok",
       isTiltfile: false,
-      showBuildStatus: true,
     },
   ]
 }
@@ -426,12 +415,10 @@ function oneResourceBuilding(): Resource[] {
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
-      pendingBuildReason: 0,
       pendingBuildSince: "0001-01-01T00:00:00Z",
       updateStatus: "ok",
       runtimeStatus: "ok",
       isTiltfile: true,
-      showBuildStatus: false,
     },
     {
       name: "fe",
@@ -446,7 +433,6 @@ function oneResourceBuilding(): Resource[] {
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
-      pendingBuildReason: 0,
       pendingBuildSince: "0001-01-01T00:00:00Z",
       endpointLinks: [{ url: "http://localhost:9000/" }],
       k8sResourceInfo: {
@@ -459,7 +445,6 @@ function oneResourceBuilding(): Resource[] {
       updateStatus: "ok",
       runtimeStatus: "ok",
       isTiltfile: false,
-      showBuildStatus: true,
     },
     {
       name: "vigoda",
@@ -474,7 +459,6 @@ function oneResourceBuilding(): Resource[] {
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
-      pendingBuildReason: 0,
       pendingBuildSince: "0001-01-01T00:00:00Z",
       endpointLinks: [{ url: "http://localhost:9001/" }],
       k8sResourceInfo: {
@@ -487,7 +471,6 @@ function oneResourceBuilding(): Resource[] {
       updateStatus: "ok",
       runtimeStatus: "ok",
       isTiltfile: false,
-      showBuildStatus: true,
     },
     {
       name: "snack",
@@ -510,8 +493,6 @@ function oneResourceBuilding(): Resource[] {
         startTime: "2019-04-22T11:20:44.674248-04:00",
         finishTime: "0001-01-01T00:00:00Z",
       },
-      pendingBuildReason: 1,
-      pendingBuildEdits: ["main.go"],
       pendingBuildSince: "2019-04-22T11:20:44.672903-04:00",
       endpointLinks: [{ url: "http://localhost:9002/" }],
       k8sResourceInfo: {
@@ -524,7 +505,6 @@ function oneResourceBuilding(): Resource[] {
       updateStatus: "error",
       runtimeStatus: "error",
       isTiltfile: false,
-      showBuildStatus: true,
     },
   ]
 }
@@ -549,7 +529,6 @@ function oneResourceCrashedOnStart(): Resource[] {
         startTime: "0001-01-01T00:00:00Z",
         finishTime: "0001-01-01T00:00:00Z",
       },
-      pendingBuildReason: 0,
       pendingBuildSince: "0001-01-01T00:00:00Z",
       endpointLinks: [{ url: "http://localhost:9002/" }],
       k8sResourceInfo: {
@@ -562,7 +541,6 @@ function oneResourceCrashedOnStart(): Resource[] {
       updateStatus: "ok",
       runtimeStatus: "error",
       isTiltfile: false,
-      showBuildStatus: true,
     },
   ]
 }

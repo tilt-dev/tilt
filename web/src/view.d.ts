@@ -65,8 +65,6 @@ declare namespace Proto {
     triggerMode?: number;
     buildHistory?: webviewBuildRecord[];
     currentBuild?: webviewBuildRecord;
-    pendingBuildReason?: number;
-    pendingBuildEdits?: string[];
     pendingBuildSince?: string;
     hasPendingChanges?: boolean;
     endpointLinks?: webviewLink[];
@@ -79,7 +77,6 @@ declare namespace Proto {
     updateStatus?: string;
     isTiltfile?: boolean;
     specs?: webviewTargetSpec[];
-    showBuildStatus?: boolean;
     queued?: boolean;
   }
   export interface webviewMetricsServing {

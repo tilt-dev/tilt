@@ -347,16 +347,6 @@
         "current_build": {
           "$ref": "#/definitions/webviewBuildRecord"
         },
-        "pending_build_reason": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "pending_build_edits": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "pending_build_since": {
           "type": "string",
           "format": "date-time"
@@ -401,10 +391,6 @@
           "items": {
             "$ref": "#/definitions/webviewTargetSpec"
           }
-        },
-        "show_build_status": {
-          "type": "boolean",
-          "format": "boolean"
         },
         "queued": {
           "type": "boolean",

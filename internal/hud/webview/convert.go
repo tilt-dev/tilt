@@ -106,20 +106,17 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 		}
 
 		r := &proto_webview.Resource{
-			Name:               name.String(),
-			LastDeployTime:     lastDeploy,
-			BuildHistory:       bh,
-			PendingBuildEdits:  pendingBuildEdits,
-			PendingBuildSince:  pbs,
-			PendingBuildReason: int32(mt.NextBuildReason()),
-			CurrentBuild:       cb,
-			EndpointLinks:      ToProtoLinks(endpoints),
-			PodID:              podID,
-			Specs:              specs,
-			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
-			TriggerMode:        int32(mt.Manifest.TriggerMode),
-			HasPendingChanges:  hasPendingChanges,
-			Queued:             s.ManifestInTriggerQueue(name),
+			Name:              name.String(),
+			LastDeployTime:    lastDeploy,
+			BuildHistory:      bh,
+			PendingBuildSince: pbs,
+			CurrentBuild:      cb,
+			EndpointLinks:     ToProtoLinks(endpoints),
+			PodID:             podID,
+			Specs:             specs,
+			TriggerMode:       int32(mt.Manifest.TriggerMode),
+			HasPendingChanges: hasPendingChanges,
+			Queued:            s.ManifestInTriggerQueue(name),
 		}
 
 		err = protoPopulateResourceInfoView(mt, r)
