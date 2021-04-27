@@ -6,5 +6,4 @@ import (
 
 var WireSet = wire.NewSet(
 	NewController,
-	NewModeController,
 )

@@ -35,8 +35,6 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
     let specs = r.specs ?? []
     return specs.some((spec) => spec.type === TargetType.K8s)
   })
-  let showMetricsButton = !!(hasK8s || view?.metricsServing?.mode)
-  let metricsServing = view?.metricsServing
 
   let globalNavProps = {
     isSnapshot,
@@ -44,8 +42,6 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
     showUpdate: showUpdate(view),
     suggestedVersion,
     runningBuild,
-    showMetricsButton,
-    metricsServing,
     tiltCloudUsername: view.tiltCloudUsername ?? "",
     tiltCloudSchemeHost: view.tiltCloudSchemeHost ?? "",
     tiltCloudTeamID: view.tiltCloudTeamID ?? "",

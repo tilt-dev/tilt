@@ -85,7 +85,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
-	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
@@ -3634,26 +3633,6 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestMetricsModeAction(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	m1 := f.newManifest("fe")
-	f.Start([]model.Manifest{m1})
-
-	m2 := f.newManifest("collector")
-	f.store.Dispatch(metrics.MetricsModeAction{
-		Serving:   store.MetricsServing{Mode: model.MetricsLocal},
-		Settings:  model.MetricsSettings{Address: "localhost:10352"},
-		Manifests: []model.Manifest{m2},
-	})
-
-	f.waitForCompletedBuildCount(2)
-	f.withState(func(state store.EngineState) {
-		assert.Equal(t, []model.ManifestName{"fe", "collector"}, state.ManifestDefinitionOrder)
-	})
-}
-
 func TestOverrideTriggerModeEvent(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -3911,9 +3890,8 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
-	mcc := metrics.NewModeController("localhost", user.NewFakePrefs())
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, mcc)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

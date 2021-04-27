@@ -69,7 +69,6 @@ func ProvideSubscribers(
 	podm *k8srollout.PodMonitor,
 	sc *session.Controller,
 	mc *metrics.Controller,
-	mmc *metrics.ModeController,
 ) []store.Subscriber {
 	apiSubscribers := ProvideSubscribersAPIOnly(hudsc, tscm, cb, ts)
 
@@ -95,7 +94,6 @@ func ProvideSubscribers(
 		podm,
 		sc,
 		mc,
-		mmc,
 	}
 	return append(apiSubscribers, legacySubscribers...)
 }

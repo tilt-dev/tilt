@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/user"
 
@@ -381,28 +380,6 @@ func TestSetTiltfileArgs(t *testing.T) {
 	assert.Equal(t, []string{"--foo", "bar", "as df"}, action.Args)
 }
 
-func TestMetricsOpter(t *testing.T) {
-	f := newTestFixture(t)
-
-	req, err := http.NewRequest("POST", "/api/metrics_opt", strings.NewReader("local"))
-	require.NoError(t, err)
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleMetricsOpt)
-	handler.ServeHTTP(rr, req)
-	require.Equal(t, http.StatusOK, rr.Code)
-
-	a := store.WaitForAction(t, reflect.TypeOf(metrics.MetricsModeAction{}), f.getActions)
-	action, ok := a.(metrics.MetricsModeAction)
-	if !ok {
-		t.Fatalf("Action was not of type '%T': %+v", metrics.MetricsModeAction{}, action)
-	}
-	assert.Equal(t, model.MetricsLocal, action.Serving.Mode)
-
-	mode := f.up.Prefs.MetricsMode
-	assert.Equal(t, model.MetricsLocal, mode)
-}
-
 type serverFixture struct {
 	t            *testing.T
 	serv         *server.HeadsUpServer
@@ -426,8 +403,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 	addr := cloudurl.Address("nonexistent.example.com")
 	uploader := cloud.NewSnapshotUploader(snapshotHTTP, addr)
 	up := user.NewFakePrefs()
-	mcc := metrics.NewModeController("localhost", up)
-	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, mcc, uploader)
+	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, uploader)
 	if err != nil {
 		t.Fatal(err)
 	}
