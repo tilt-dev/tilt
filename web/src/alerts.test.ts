@@ -1,12 +1,4 @@
-import {
-  Alert,
-  BuildFailedErrorType,
-  combinedAlerts,
-  CrashRebuildErrorType,
-  PodRestartErrorType,
-  PodStatusErrorType,
-  WarningErrorType,
-} from "./alerts"
+import { Alert, combinedAlerts } from "./alerts"
 import { FilterLevel, FilterSource } from "./logfilters"
 import LogStore from "./LogStore"
 import { appendLinesForManifestAndSpan } from "./testlogs"
@@ -31,10 +23,7 @@ describe("combinedAlerts", () => {
     let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
-        alertType: PodStatusErrorType,
         msg: "I'm a pod in Error",
-        timestamp: "",
-        header: "",
         resourceName: "snack",
         level: FilterLevel.error,
         source: FilterSource.runtime,
@@ -48,16 +37,10 @@ describe("combinedAlerts", () => {
     let rInfo = r.k8sResourceInfo
     if (!rInfo) throw new Error("missing k8s info")
     rInfo.podRestarts = 1
-    let actual = combinedAlerts(r, logStore).map((a) => {
-      delete a.dismissHandler
-      return a
-    })
+    let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
-        alertType: PodRestartErrorType,
         msg: "Restarts: 1",
-        timestamp: "",
-        header: "Restarts: 1",
         resourceName: "snack",
         level: FilterLevel.warn,
         source: FilterSource.runtime,
@@ -83,10 +66,7 @@ describe("combinedAlerts", () => {
     let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
-        alertType: BuildFailedErrorType,
         msg: "Build error log",
-        timestamp: "10:00AM",
-        header: "Build error",
         resourceName: "snack",
         level: FilterLevel.error,
         source: FilterSource.build,
@@ -112,10 +92,7 @@ describe("combinedAlerts", () => {
     let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
-        alertType: CrashRebuildErrorType,
         msg: "Pod crashed",
-        timestamp: "10:00AM",
-        header: "Pod crashed",
         resourceName: "snack",
         level: FilterLevel.error,
         source: FilterSource.runtime,
@@ -144,10 +121,7 @@ describe("combinedAlerts", () => {
     let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
-        alertType: WarningErrorType,
         msg: "Hi i'm a warning",
-        timestamp: "10:00am",
-        header: "snack",
         resourceName: "snack",
         level: FilterLevel.warn,
         source: FilterSource.build,
@@ -177,25 +151,16 @@ describe("combinedAlerts", () => {
       segments: [{ text: "Build error log", spanId: "build:1" }],
     })
 
-    let actual = combinedAlerts(r, logStore).map((a) => {
-      delete a.dismissHandler
-      return a
-    })
+    let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
-        alertType: PodRestartErrorType,
         msg: "Restarts: 1",
-        timestamp: "10:00AM",
-        header: "Restarts: 1",
         resourceName: "snack",
         level: FilterLevel.warn,
         source: FilterSource.runtime,
       },
       {
-        alertType: BuildFailedErrorType,
         msg: "Build error log",
-        timestamp: "10:00AM",
-        header: "Build error",
         resourceName: "snack",
         level: FilterLevel.error,
         source: FilterSource.build,
@@ -222,28 +187,19 @@ describe("combinedAlerts", () => {
     let actual = combinedAlerts(r, logStore)
     let expectedAlerts: Alert[] = [
       {
-        alertType: CrashRebuildErrorType,
         msg: "Pod crashed",
-        timestamp: "",
-        header: "Pod crashed",
         resourceName: "snack",
         level: FilterLevel.error,
         source: FilterSource.runtime,
       },
       {
-        alertType: BuildFailedErrorType,
         msg: "Build failed log",
-        timestamp: "10:00am",
-        header: "Build error",
         resourceName: "snack",
         level: FilterLevel.error,
         source: FilterSource.build,
       },
       {
-        alertType: WarningErrorType,
         msg: "Hi I am a warning",
-        timestamp: "10:00am",
-        header: "snack",
         resourceName: "snack",
         level: FilterLevel.warn,
         source: FilterSource.build,
@@ -285,10 +241,7 @@ it("DC Resource: should show a warning alert using the first build history", () 
   let actual = combinedAlerts(r, logStore)
   let expectedAlerts: Alert[] = [
     {
-      alertType: WarningErrorType,
       msg: "Hi i'm a warning",
-      timestamp: "10:00am",
-      header: "vigoda",
       resourceName: "vigoda",
       level: FilterLevel.warn,
       source: FilterSource.build,
@@ -316,10 +269,7 @@ it("DC Resource has build failed alert using first build history info ", () => {
   let actual = combinedAlerts(r, logStore)
   let expectedAlerts: Alert[] = [
     {
-      alertType: BuildFailedErrorType,
       msg: "Hi you're build failed :'(",
-      timestamp: "10:00am",
-      header: "Build error",
       resourceName: "vigoda",
       level: FilterLevel.error,
       source: FilterSource.build,
@@ -368,19 +318,13 @@ it("renders a build error for both a K8s resource and DC resource ", () => {
   let actual = dcAlerts.concat(k8sAlerts)
   let expectedAlerts: Alert[] = [
     {
-      alertType: BuildFailedErrorType,
       msg: "Hi your build failed :'(",
-      timestamp: "10:00am",
-      header: "Build error",
       resourceName: "vigoda",
       level: FilterLevel.error,
       source: FilterSource.build,
     },
     {
-      alertType: BuildFailedErrorType,
       msg: "Hi this (k8s) resource failed too :)",
-      timestamp: "10:00am",
-      header: "Build error",
       resourceName: "snack",
       level: FilterLevel.error,
       source: FilterSource.build,
