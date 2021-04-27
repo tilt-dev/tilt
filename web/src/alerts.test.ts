@@ -397,8 +397,6 @@ function k8sResource(): Resource {
     podID: "podID",
     isTiltfile: false,
     lastDeployTime: "",
-    pendingBuildEdits: [],
-    pendingBuildReason: 0,
     pendingBuildSince: "",
     k8sResourceInfo: {
       podName: "testPod",
@@ -432,8 +430,6 @@ function dcResource(): Resource {
       finishTime: "0001-01-01T00:00:00Z",
       isCrashRebuild: false,
     },
-    pendingBuildReason: 0,
-    pendingBuildEdits: [],
     pendingBuildSince: "0001-01-01T00:00:00Z",
     hasPendingChanges: false,
     endpointLinks: [{ url: "http://localhost:9007/" }],

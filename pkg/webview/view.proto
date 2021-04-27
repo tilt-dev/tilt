@@ -94,15 +94,6 @@ message LocalResourceInfo {
   bool is_test = 2;
 }
 
-message Facet {
-  string name = 1;
-  string value = 2;
-
-  // If span_id is non-empty, that means the value is in the logstore
-  // instead of in the value field.
-  string span_id = 3;
-}
-
 message Link {
   string url = 1;
   string name = 2;
@@ -121,8 +112,13 @@ message Resource {
   int32 trigger_mode = 5;
   repeated BuildRecord build_history = 6;
   BuildRecord current_build = 7;
-  int32 pending_build_reason = 8;
-  repeated string pending_build_edits = 9;
+
+  reserved "pending_build_reason";
+  reserved 8;
+
+  reserved "pending_build_edits";
+  reserved 9;
+  
   google.protobuf.Timestamp pending_build_since = 10;
   bool has_pending_changes = 11;
 
@@ -140,7 +136,9 @@ message Resource {
   string update_status = 29;
   bool is_tiltfile = 19;
   repeated TargetSpec specs = 27;
-  bool show_build_status = 20;
+
+  reserved "show_build_status";
+  reserved 20;
 
   // Resource logs are now stored in the log store.
   reserved "combined_log";
