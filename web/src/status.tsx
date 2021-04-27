@@ -1,3 +1,5 @@
+import { Duration } from "moment"
+import { timeDiff } from "./time"
 import { ResourceStatus, RuntimeStatus, UpdateStatus } from "./types"
 
 type Resource = Proto.webviewResource
@@ -81,6 +83,16 @@ function warnings(res: any): string[] {
   return warnings
 }
 
+function lastBuildDuration(res: Resource): Duration | null {
+  const buildHistory = res.buildHistory || []
+  const lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
+  if (lastBuild && lastBuild.startTime && lastBuild.finishTime) {
+    return timeDiff(lastBuild.startTime, lastBuild.finishTime)
+  } else {
+    return null
+  }
+}
+
 export {
   buildStatus,
   runtimeStatus,
@@ -88,4 +100,5 @@ export {
   warnings,
   buildWarnings,
   runtimeWarnings,
+  lastBuildDuration,
 }

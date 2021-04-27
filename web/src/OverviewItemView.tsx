@@ -19,7 +19,7 @@ import SidebarTriggerButton from "./SidebarTriggerButton"
 import StarResourceButton, {
   StarResourceButtonRoot,
 } from "./StarResourceButton"
-import { buildStatus, runtimeStatus } from "./status"
+import { buildStatus, lastBuildDuration, runtimeStatus } from "./status"
 import {
   AnimDuration,
   Color,
@@ -32,7 +32,7 @@ import {
   SizeUnit,
   Width,
 } from "./style-helpers"
-import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
+import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { TriggerModeToggle } from "./TriggerModeToggle"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
@@ -106,10 +106,7 @@ export class OverviewItem {
     this.runtimeStatus = runtimeStatus(res)
     this.runtimeAlertCount = runtimeAlerts(res, null).length
     this.hasEndpoints = (res.endpointLinks || []).length > 0
-    this.lastBuildDur =
-      lastBuild && lastBuild.startTime && lastBuild.finishTime
-        ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
-        : null
+    this.lastBuildDur = lastBuildDuration(res)
     this.lastDeployTime = res.lastDeployTime ?? ""
     this.pendingBuildSince = res.pendingBuildSince ?? ""
     this.currentBuildStartTime = res.currentBuild?.startTime ?? ""

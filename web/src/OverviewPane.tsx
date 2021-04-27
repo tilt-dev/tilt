@@ -15,7 +15,7 @@ type OverviewPaneProps = {
   view: Proto.webviewView
 }
 
-let OverviewPaneRoot = styled.div`
+export let OverviewPaneRoot = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;

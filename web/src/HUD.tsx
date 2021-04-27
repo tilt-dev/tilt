@@ -30,6 +30,8 @@ import {
   SnapshotHighlight,
   SocketState,
 } from "./types"
+import OverviewTable from "./OverviewTable"
+import OverviewTablePane from "./OverviewTablePane"
 
 type HudProps = {
   history: History
@@ -306,6 +308,9 @@ export default class HUD extends Component<HudProps, HudState> {
                     <OverviewResourcePane view={this.state.view} />
                   )}
                 />
+                <Route
+                  path={this.path("/table")}
+                  render={() => <OverviewTablePane view={this.state.view}/>}/>
                 <Route render={() => <OverviewPane view={this.state.view} />} />
               </Switch>
             </LogStoreProvider>
