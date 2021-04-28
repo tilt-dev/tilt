@@ -5,6 +5,7 @@ package webview;
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 import "pkg/webview/log.proto";
+import "pkg/apis/core/v1alpha1/generated.proto";
 
 option go_package = "github.com/tilt-dev/tilt/pkg/webview";
 
@@ -194,6 +195,11 @@ message View {
 
   reserved "metrics_serving";
   reserved 18;
+
+  // New API-server based data models. These will eventually obsolete the fields
+  // above.
+  github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UISession ui_session = 19;
+  map<string, github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UISession> ui_resources = 20;
 }
 
 message MetricsServing {

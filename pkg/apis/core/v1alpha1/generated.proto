@@ -824,3 +824,69 @@ message TargetStateWaiting {
   optional string waitReason = 1;
 }
 
+// UIResource represents per-resource status data for rendering the web UI.
+//
+// Treat this as a legacy data structure that's more intended to make transition
+// easier rather than a robust long-term API.
+//
+// +k8s:openapi-gen=true
+message UIResource {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional UIResourceSpec spec = 2;
+
+  optional UIResourceStatus status = 3;
+}
+
+// UIResourceList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message UIResourceList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated UIResource items = 2;
+}
+
+// UIResourceSpec is an empty struct.
+// UIResource is a kludge for making Tilt's internal status readable, not
+// for specifying behavior.
+message UIResourceSpec {
+}
+
+// UIResourceStatus defines the observed state of UIResource
+message UIResourceStatus {
+}
+
+// UISession represents global status data for rendering the web UI.
+//
+// Treat this as a legacy data structure that's more intended to make transition
+// easier rather than a robust long-term API.
+//
+// Per-resource status data should be stored in UIResource.
+//
+// +k8s:openapi-gen=true
+message UISession {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional UISessionSpec spec = 2;
+
+  optional UISessionStatus status = 3;
+}
+
+// UISessionList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message UISessionList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated UISession items = 2;
+}
+
+// UISessionSpec is an empty struct.
+// UISession is a kludge for making Tilt's internal status readable, not
+// for specifying behavior.
+message UISessionSpec {
+}
+
+// UISessionStatus defines the observed state of UISession
+message UISessionStatus {
+}
+
