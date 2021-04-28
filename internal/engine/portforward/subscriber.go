@@ -88,7 +88,6 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 			}
 
 			toStart = append(toStart, entry)
-			state.PortForwards[apiPf.Name] = apiPf
 			s.activeForwards[apiPf.Name] = entry
 		}
 	}
@@ -113,7 +112,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 	for _, entry := range toShutdown {
 		entry.cancel()
 
-		// ◽️ dispatch deletion event for PF set on state
+		st.Dispatch(NewPortForwardDeleteAction(entry.Name))
 		// TODO(maia): delete PF object in API
 	}
 
@@ -127,7 +126,8 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 
 		go s.startPortForwardLoop(ctx, entry)
 
-		// ◽️ dispatch creation event for PF set on state
+		st.Dispatch(NewPortForwardCreateAction(entry.PortForward))
+
 		// TODO(maia): create PF object in API
 	}
 }

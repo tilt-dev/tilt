@@ -3,6 +3,7 @@ package portforward
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -22,7 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func TestPortForward(t *testing.T) {
+func TestPortForwardAndCreateDeleteActions(t *testing.T) {
 	f := newPLCFixture(t)
 	defer f.TearDown()
 
@@ -54,6 +55,8 @@ func TestPortForward(t *testing.T) {
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID().String())
 	firstPodForwardCtx := f.kCli.LastForwardContext()
+	f.assertPortForwardCreateAction(t, 8080, 8081, "pod-id")
+	f.st.ClearActions()
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
@@ -64,6 +67,9 @@ func TestPortForward(t *testing.T) {
 	f.onChange()
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID().String())
+	f.assertPortForwardDeleteAction(t)
+	f.assertPortForwardCreateAction(t, 8080, 8081, "pod-id2")
+	f.st.ClearActions()
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
@@ -73,6 +79,8 @@ func TestPortForward(t *testing.T) {
 
 	f.onChange()
 	assert.Equal(t, 0, len(f.plc.activeForwards))
+	f.assertPortForwardDeleteAction(t)
+	f.st.ClearActions()
 
 	assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
 		"Expected first port-forward to be canceled")
@@ -447,6 +455,26 @@ func newPLCFixture(t *testing.T) *plcFixture {
 func (f *plcFixture) onChange() {
 	f.plc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
+}
+
+func (f *plcFixture) assertPortForwardCreateAction(t *testing.T, localPort, containerPort int, podName string) {
+	t.Helper()
+
+	a := f.st.WaitForAction(t, reflect.TypeOf(PortForwardCreateAction{}))
+	pf := a.(PortForwardCreateAction).PortForward
+	assert.Equal(t, localPort, pf.Spec.LocalPort, "local port from PortForwardCreateAction")
+	assert.Equal(t, containerPort, pf.Spec.ContainerPort, "container port from PortForwardCreateAction")
+	assert.Equal(t, podName, pf.Spec.PodName, "pod name from PortForwardCreateAction")
+
+	f.st.ClearActions()
+}
+
+func (f *plcFixture) assertPortForwardDeleteAction(t *testing.T) {
+	t.Helper()
+
+	// It's a PITA to reconstruct the name we expect to see on this action,
+	// so for now just assert that an action appeared
+	f.st.WaitForAction(t, reflect.TypeOf(PortForwardDeleteAction{}))
 }
 
 func (f *plcFixture) TearDown() {
