@@ -24,7 +24,7 @@ type Subscriber struct {
 	kClient k8s.Client
 
 	// Temporary map of PortForward name --> PortForwardEntry, so that we have
-	// a way of cancelling running forwards (soon this will be the responsibility
+	// a way of canceling running forwards (soon this will be the responsibility
 	// of the PortForwardReconciler)
 	activeForwards map[string]portForwardEntry
 }
@@ -187,7 +187,7 @@ func (s *Subscriber) onePortForward(ctx context.Context, entry portForwardEntry)
 var _ store.Subscriber = &Subscriber{}
 
 // NOTE(maia): this struct is temporary, soon this subscriber won't maintain the state of PF's
-//   or be responsible for cancelling them, and so will no longer need the context/cancel func.
+//   or be responsible for canceling them, and so will no longer need the context/cancel func.
 type portForwardEntry struct {
 	*v1alpha1.PortForward
 	ctx    context.Context
