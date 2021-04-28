@@ -2,7 +2,10 @@ package portforward
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
@@ -10,8 +13,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-
-	"github.com/google/go-cmp/cmp"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -22,13 +23,16 @@ import (
 type Subscriber struct {
 	kClient k8s.Client
 
-	activeForwards map[k8s.PodID]portForwardEntry
+	// Temporary map of PortForward name --> PortForwardEntry, so that we have
+	// a way of cancelling running forwards (soon this will be the responsibility
+	// of the PortForwardReconciler)
+	activeForwards map[string]portForwardEntry
 }
 
 func NewSubscriber(kClient k8s.Client) *Subscriber {
 	return &Subscriber{
 		kClient:        kClient,
-		activeForwards: make(map[k8s.PodID]portForwardEntry),
+		activeForwards: make(map[string]portForwardEntry),
 	}
 }
 
@@ -38,7 +42,7 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	statePods := make(map[k8s.PodID]bool, len(state.ManifestTargets))
+	currentPFs := make(map[string]bool) // 😱 do we want a type for PF Name?
 
 	// Find all the port-forwards that need to be created.
 	for _, mt := range state.Targets() {
@@ -60,43 +64,46 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 			continue
 		}
 
-		statePods[podID] = true
+		for _, fwd := range forwards {
+			apiPf := v1alpha1.NewPortForward(fwd.LocalPort, fwd.ContainerPort, fwd.Host, podID.String(), pod.Namespace, ms.Name.String())
+			currentPFs[apiPf.Name] = true
 
-		// 😱 NEED A DIFFERENT KEY!!
-		oldEntry, isActive := s.activeForwards[podID]
-		if isActive {
-			if cmp.Equal(oldEntry.forward, forwards, cmp.AllowUnexported(model.PortForward{})) {
-				continue
+			oldEntry, isActive := state.PortForwards[apiPf.Name]
+			if isActive {
+				// We're already running this port forward, nothing to do
+				if equality.Semantic.DeepEqual(oldEntry.Spec, apiPf.Spec) {
+					continue
+				}
+
+				// we can do this better but for now uh, this should never happen b/c the
+				// PF name ought to express all possibly changeable parts of the PF--
+				// should be impossible to get two unequal PFs with the same spec
+				// TODO(maia) -- just reverse the order of deleting entries/storing ctx
+				panic(fmt.Sprintf("found duplicate port forward %s (this should be impossible)", apiPf.Name))
 			}
-			toShutdown = append(toShutdown, oldEntry)
-		}
 
-		ctx, cancel := context.WithCancel(ctx)
-		for _, pf := range forwards {
+			ctx, cancel := context.WithCancel(ctx)
 			entry := portForwardEntry{
-				podID:     podID,
-				name:      ms.Name,
-				namespace: k8s.Namespace(pod.Namespace),
-				forward:   pf,
-				ctx:       ctx,
-				cancel:    cancel,
+				PortForward: apiPf,
+				ctx:         ctx,
+				cancel:      cancel,
 			}
-
 			toStart = append(toStart, entry)
-			s.activeForwards[podID] = entry
+			state.PortForwards[apiPf.Name] = apiPf
+			s.activeForwards[apiPf.Name] = entry
 		}
 	}
 
 	// Find all the port-forwards that aren't in the manifest anymore
-	// and need to be shut down.
-	for key, value := range s.activeForwards {
-		_, inState := statePods[key]
-		if inState {
+	// or belong to old pods--these need to be shut down.
+	for pfName, entry := range s.activeForwards {
+		_, isCurrent := currentPFs[pfName]
+		if isCurrent {
 			continue
 		}
 
-		toShutdown = append(toShutdown, value)
-		delete(s.activeForwards, key)
+		toShutdown = append(toShutdown, entry)
+		delete(s.activeForwards, pfName)
 	}
 
 	return toStart, toShutdown
@@ -106,17 +113,23 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 	toStart, toShutdown := s.diff(ctx, st)
 	for _, entry := range toShutdown {
 		entry.cancel()
+
+		// ◽️ dispatch deletion event for PF set on state
+		// TODO(maia): delete PF object in API
 	}
 
 	for _, entry := range toStart {
 		// Treat port-forwarding errors as part of the pod log
 		ctx := logger.CtxWithLogHandler(entry.ctx, PodLogActionWriter{
 			Store:        st,
-			PodID:        entry.podID,
-			ManifestName: entry.name,
+			PodID:        k8s.PodID(entry.Spec.PodName),
+			ManifestName: model.ManifestName(entry.ObjectMeta.Annotations[v1alpha1.AnnotationManifest]),
 		})
 
 		go s.startPortForwardLoop(ctx, entry)
+
+		// ◽️ dispatch creation event for PF set on state
+		// TODO(maia): create PF object in API
 	}
 }
 
@@ -141,7 +154,9 @@ func (s *Subscriber) startPortForwardLoop(ctx context.Context, entry portForward
 
 		// Otherwise, repeat the loop, maybe logging the error
 		if err != nil {
-			logger.Get(ctx).Infof("Reconnecting... Error port-forwarding %s: %v", entry.name, err)
+			logger.Get(ctx).Infof("Reconnecting... Error port-forwarding %s (%d -> %d): %v",
+				entry.ObjectMeta.Annotations[v1alpha1.AnnotationManifest],
+				entry.Spec.LocalPort, entry.Spec.ContainerPort, err)
 		}
 
 		// If this failed in less than a second, then we should advance the backoff.
@@ -155,10 +170,10 @@ func (s *Subscriber) startPortForwardLoop(ctx context.Context, entry portForward
 }
 
 func (s *Subscriber) onePortForward(ctx context.Context, entry portForwardEntry) error {
-	ns := entry.namespace
-	podID := entry.podID
+	ns := k8s.Namespace(entry.Spec.Namespace)
+	podID := k8s.PodID(entry.Spec.PodName)
 
-	pf, err := s.kClient.CreatePortForwarder(ctx, ns, podID, entry.forward.LocalPort, entry.forward.ContainerPort, entry.forward.Host)
+	pf, err := s.kClient.CreatePortForwarder(ctx, ns, podID, entry.Spec.LocalPort, entry.Spec.ContainerPort, entry.Spec.Host)
 	if err != nil {
 		return err
 	}
@@ -172,13 +187,12 @@ func (s *Subscriber) onePortForward(ctx context.Context, entry portForwardEntry)
 
 var _ store.Subscriber = &Subscriber{}
 
+// NOTE(maia): this struct is temporary, soon this subscriber won't maintain the state of PF's
+//   or be responsible for cancelling them, and so will no longer need the context/cancel func.
 type portForwardEntry struct {
-	name      model.ManifestName
-	namespace k8s.Namespace
-	podID     k8s.PodID
-	forward   model.PortForward
-	ctx       context.Context
-	cancel    func()
+	*v1alpha1.PortForward
+	ctx    context.Context
+	cancel func()
 }
 
 // Extract the port-forward specs from the manifest. If any of them

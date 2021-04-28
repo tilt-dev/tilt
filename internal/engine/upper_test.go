@@ -3736,7 +3736,7 @@ func TestPortForwardActions(t *testing.T) {
 
 	pfA := &portforward.PortForward{
 		ObjectMeta: metav1.ObjectMeta{Name: pfAName},
-		Spec:       portforward.PortForwardSpec{Pod: "pod-A"},
+		Spec:       portforward.PortForwardSpec{PodName: "pod-A"},
 	}
 
 	f.Start([]model.Manifest{})

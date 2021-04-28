@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,18 +55,18 @@ type PortForwardList struct {
 // PortForwardSpec defines the desired state of PortForward
 type PortForwardSpec struct {
 	// The name of the pod to port forward to/from. Required.
-	Pod string `json:"pod"`
+	PodName string `json:"pod_name"`
 
 	// The namespace of the pod to port forward to/from. Defaults to the kubecontext default namespace.
 	//
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
-	// The port on the Kubernetes pod to connect to. Required.
-	ContainerPort int `json:"container_port"`
-
 	// The port to expose on the current machine. Required.
 	LocalPort int `json:"local_port"`
+
+	// The port on the Kubernetes pod to connect to. Required.
+	ContainerPort int `json:"container_port"`
 
 	// Optional host to bind to on the current machine (localhost by default)
 	//
@@ -75,6 +76,45 @@ type PortForwardSpec struct {
 
 var _ resource.Object = &PortForward{}
 var _ resourcestrategy.Validater = &PortForward{}
+
+func NewPortForward(localPort, containerPort int, host string, podID string, ns string, mName string) *PortForward {
+	// generate a consistent name for a port forward based on its component parts
+	name := pfName(localPort, containerPort, host, podID, ns, mName)
+
+	return &PortForward{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Annotations: map[string]string{
+				// Name of the manifest that this Port Forward corresponds to
+				// (we need this to route the logs correctly)
+				AnnotationManifest: mName,
+			},
+		},
+		Spec: PortForwardSpec{
+			PodName:       podID,
+			Namespace:     ns,
+			ContainerPort: containerPort,
+			LocalPort:     localPort,
+			Host:          host,
+		},
+	}
+}
+
+// pfName generates a consistent name for a port forward based on its component parts
+// NOTE(maia): the name is super detailed because right now the PortForwardSubscriber can
+//   only create OR delete a PF by name, not both (i.e. can't delete the old version of a PF
+//   with the given name and then re-create the new version), so a name needs to uniquely
+//   identify a possible PF. Maybe as we continue the migration this can chill out a bit.
+func pfName(localPort, containerPort int, host string, podID string, ns string, mName string) string {
+	if host == "" {
+		host = "localhost"
+	}
+	name := fmt.Sprintf("%s-%s:%d-%d-%s", mName, host, localPort, containerPort, podID)
+	if ns != "" {
+		name = fmt.Sprintf("%s-%s", name, ns)
+	}
+	return name
+}
 
 func (in *PortForward) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
