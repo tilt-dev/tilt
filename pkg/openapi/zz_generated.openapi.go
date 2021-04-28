@@ -1579,7 +1579,7 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 				Description: "PortForwardSpec defines the desired state of PortForward",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"pod": {
+					"pod_name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The name of the pod to port forward to/from. Required.",
 							Default:     "",
@@ -1594,17 +1594,17 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
-					"container_port": {
+					"local_port": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The port on the Kubernetes pod to connect to. Required.",
+							Description: "The port to expose on the current machine. Required.",
 							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
-					"local_port": {
+					"container_port": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The port to expose on the current machine. Required.",
+							Description: "The port on the Kubernetes pod to connect to. Required.",
 							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",
@@ -1619,7 +1619,7 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 						},
 					},
 				},
-				Required: []string{"pod", "container_port", "local_port"},
+				Required: []string{"pod_name", "local_port", "container_port"},
 			},
 		},
 	}

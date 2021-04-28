@@ -42,7 +42,7 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	currentPFs := make(map[string]bool) // 😱 do we want a type for PF Name?
+	currentPFs := make(map[string]bool)
 
 	// Find all the port-forwards that need to be created.
 	for _, mt := range state.Targets() {
@@ -77,8 +77,8 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 
 			oldEntry, isActive := s.activeForwards[apiPf.Name]
 			if isActive {
-				// We're already running this port forward, nothing to do
 				if equality.Semantic.DeepEqual(oldEntry.Spec, apiPf.Spec) {
+					// We're already running this port forward, nothing to do
 					continue
 				}
 
