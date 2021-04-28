@@ -7,25 +7,12 @@ type Resource = Proto.webviewResource
 type K8sResourceInfo = Proto.webviewK8sResourceInfo
 
 export type Alert = {
-  // TODO(nick): alertType is largely obsolete now that we have
-  // source and level
-  alertType: string
-
   source: FilterSource
   level: FilterLevel
 
-  header: string
   msg: string
-  timestamp: string
   resourceName: string
-  dismissHandler?: () => void
 }
-
-export const PodRestartErrorType = "PodRestartError"
-export const PodStatusErrorType = "PodStatusError"
-export const CrashRebuildErrorType = "ResourceCrashRebuild"
-export const BuildFailedErrorType = "BuildError"
-export const WarningErrorType = "Warning"
 
 //These functions determine what kind of error has occurred based on information about
 //the resource - return booleans
@@ -99,10 +86,7 @@ function podStatusIsErrAlert(resource: Resource): Alert {
   let msg = podStatusMessage || `Pod has status ${podStatus}`
 
   return {
-    alertType: PodStatusErrorType,
-    header: "",
     msg: msg,
-    timestamp: rInfo.podCreationTime ?? "",
     resourceName: resource.name ?? "",
     level: FilterLevel.error,
     source: FilterSource.runtime,
@@ -110,37 +94,10 @@ function podStatusIsErrAlert(resource: Resource): Alert {
 }
 function podRestartAlert(r: Resource): Alert {
   let rInfo = r.k8sResourceInfo as K8sResourceInfo
-  let header = `Restarts: ${Number(rInfo.podRestarts).toString()}`
-  let msg = header
-
-  let dismissHandler = () => {
-    let url = "/api/action"
-    let payload = {
-      type: "PodResetRestarts",
-      manifest_name: r.name,
-      visible_restarts: Number(rInfo.podRestarts),
-      pod_id: rInfo.podName,
-    }
-    fetch(url, {
-      method: "POST",
-      body: JSON.stringify(payload),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) {
-        console.error(response)
-      }
-    })
-  }
-
+  let msg = `Restarts: ${Number(rInfo.podRestarts).toString()}`
   return {
-    alertType: PodRestartErrorType,
-    header: header,
     msg: msg,
-    timestamp: rInfo.podCreationTime ?? "",
     resourceName: r.name ?? "",
-    dismissHandler: dismissHandler,
     level: FilterLevel.warn,
     source: FilterSource.runtime,
   }
@@ -149,10 +106,7 @@ function crashRebuildAlert(r: Resource): Alert {
   let rInfo = r.k8sResourceInfo as K8sResourceInfo
   let msg = "Pod crashed"
   return {
-    alertType: CrashRebuildErrorType,
-    header: "Pod crashed",
     msg: msg,
-    timestamp: rInfo.podCreationTime ?? "",
     resourceName: r.name ?? "",
     level: FilterLevel.error,
     source: FilterSource.runtime,
@@ -177,10 +131,7 @@ function buildFailedAlert(
     msg = logLinesToString(logStore.spanLog([spanId]), false)
   }
   return {
-    alertType: BuildFailedErrorType,
-    header: "Build error",
     msg: msg,
-    timestamp: latestBuild.finishTime ?? "",
     resourceName: resource.name ?? "",
     level: FilterLevel.error,
     source: FilterSource.build,
@@ -198,10 +149,7 @@ function buildWarningsAlerts(
     (!logStore || logStore.hasLinesForSpan(latestBuild.spanId ?? ""))
   ) {
     alertArray = (latestBuild.warnings || []).map((w) => ({
-      alertType: WarningErrorType,
-      header: resource.name ?? "",
       msg: w,
-      timestamp: latestBuild.finishTime ?? "",
       resourceName: resource.name ?? "",
       level: FilterLevel.warn,
       source: FilterSource.build,
