@@ -123,6 +123,14 @@ export default class HUD extends Component<HudProps, HudState> {
       Object.assign(newState, state)
       newState.logStore = prevState.logStore ?? new LogStore()
 
+      let oldStartTime = prevState.view?.tiltStartTime
+      let newStartTime = newState.view?.tiltStartTime
+      if (oldStartTime && newStartTime && oldStartTime != newStartTime) {
+        // If Tilt restarts, reload the page to get new JS.
+        // https://github.com/tilt-dev/tilt/issues/4421
+        window.location.reload()
+      }
+
       let newLogList = newState.view?.logList
       if (newLogList) {
         let fromCheckpoint = newLogList.fromCheckpoint ?? 0
