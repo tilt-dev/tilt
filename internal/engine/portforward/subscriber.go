@@ -2,6 +2,7 @@ package portforward
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -81,8 +82,9 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 					continue
 				}
 
-				// The port forward has changed, so remove the old version and re-add the new one
-				toShutdown = append(toShutdown, oldEntry)
+				// Every possible PortForward ought to have a unique name--it
+				// should be impossible to get two unequal PFs with the same name
+				panic(fmt.Sprintf("found two different PortForwards with same name %s (this should be impossible)", apiPf.Name))
 			}
 
 			toStart = append(toStart, entry)

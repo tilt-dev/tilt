@@ -277,6 +277,56 @@ func TestPortForwardChangeHost(t *testing.T) {
 	assert.Equal(t, "otherHostB", f.kCli.LastForwardPortHost())
 }
 
+func TestPortForwardChangeManifestName(t *testing.T) {
+	f := newPLCFixture(t)
+	defer f.TearDown()
+
+	state := f.st.LockMutableStateForTesting()
+	m := model.Manifest{Name: "manifestA"}.WithDeployTarget(model.K8sTarget{
+		PortForwards: []model.PortForward{
+			{
+				LocalPort:     8080,
+				ContainerPort: 8081,
+			},
+		},
+	})
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	mt := state.ManifestTargets["manifestA"]
+	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+	for _, pf := range f.plc.activeForwards {
+		assert.Equal(t, "manifestA", pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest], "port forward expected manifest name")
+	}
+
+	state = f.st.LockMutableStateForTesting()
+	delete(state.ManifestTargets, "manifestA")
+	m = model.Manifest{Name: "manifestB"}.WithDeployTarget(model.K8sTarget{
+		PortForwards: []model.PortForward{
+			{
+				LocalPort:     8080,
+				ContainerPort: 8081,
+			},
+		},
+	})
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	mt = state.ManifestTargets["manifestB"]
+	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+	for _, pf := range f.plc.activeForwards {
+		assert.Equal(t, "manifestB", pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest], "port forward expected manifest name")
+	}
+}
+
 func TestPortForwardRestart(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("TODO(nick): investigate")

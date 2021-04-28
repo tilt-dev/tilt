@@ -25,6 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
@@ -100,11 +102,16 @@ func NewPortForward(localPort, containerPort int, host string, podID string, ns 
 	}
 }
 
-// pfName generates a consistent name for a port forward based on its component parts
-// NOTE(maia): the name is super detailed because right now the PortForwardSubscriber can
-//   only create OR delete a PF by name, not both (i.e. can't delete the old version of a PF
-//   with the given name and then re-create the new version), so a name needs to uniquely
-//   identify a possible PF. Maybe as we continue the migration this can chill out a bit.
+// pfName generates a consistent and unique name for a port forward based on its component parts
+// NOTE(maia): each possible PortForward should yield a unique name to avoid
+//  collisions when we create two similar PortForwards (multiple API objects
+//  with the same name may not exist in the same namespace).
+//  PortForwards are also "immutable", i.e. if we see a change to an existing PF (e.g.
+//  a port or host change), we delete the old PF and create the new, current PF.
+//  Unique names help us avoid the race condition of "delete PF xyz; create PF xyz"
+//  on the state.PortForwards map.
+//  (If we decide not to enforce unique names, we'll need to add the ability to update
+//  an existing port forward.)
 func pfName(localPort, containerPort int, host string, podID string, ns string, mName string) string {
 	if host == "" {
 		host = "localhost"
@@ -113,7 +120,7 @@ func pfName(localPort, containerPort int, host string, podID string, ns string, 
 	if ns != "" {
 		name = fmt.Sprintf("%s-%s", name, ns)
 	}
-	return name
+	return apis.SanitizeName(name)
 }
 
 func (in *PortForward) GetObjectMeta() *metav1.ObjectMeta {
