@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-  
+
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
@@ -53,6 +53,11 @@ type UITextFieldList struct {
 
 // UITextFieldSpec defines the desired state of UITextField
 type UITextFieldSpec struct {
+	Location UIComponentLocation `json:"location"`
+	// Text to display in the field when the value is empty
+	PlaceholderValue string `json:"placeholderValue"`
+	// Value of the field on load
+	DefaultValue string `json:"defaultValue"`
 }
 
 var _ resource.Object = &UITextField{}
@@ -99,6 +104,7 @@ func (in *UITextFieldList) GetListMeta() *metav1.ListMeta {
 
 // UITextFieldStatus defines the observed state of UITextField
 type UITextFieldStatus struct {
+	Value string `json:"value"`
 }
 
 // UITextField implements ObjectWithStatusSubResource interface.

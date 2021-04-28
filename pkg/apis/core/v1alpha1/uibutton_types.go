@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-  
+
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
@@ -53,6 +53,20 @@ type UIButtonList struct {
 
 // UIButtonSpec defines the desired state of UIButton
 type UIButtonSpec struct {
+	Location UIComponentLocation `json:"location"`
+
+	// Text to appear on the button itself
+	Text string `json:"text"`
+
+	// The command to run when clicked.
+	// Tilt will set some env vars when running the command:
+	// - $BUTTON_RESOURCE_NAME
+	//    If the button is on a resource, the name of the resource
+	// - $TEXTFIELD_${TEXTFIELD_NAME} (if in default namespace)
+	// - $TEXTFIELD_${TEXTFIELD_NAMESPACE}_${TEXTFIELD_NAME} (if not in default namespace)
+	//    If the button is in the same location as a TextField named 'foo'
+	//    Tilt will set $TEXTFIELD_FOO to that field's value. (name gets upper-cased)
+	Cmd CmdSpec `json:"cmd"`
 }
 
 var _ resource.Object = &UIButton{}
@@ -99,6 +113,7 @@ func (in *UIButtonList) GetListMeta() *metav1.ListMeta {
 
 // UIButtonStatus defines the observed state of UIButton
 type UIButtonStatus struct {
+	Cmd CmdStatus `json:"cmd"`
 }
 
 // UIButton implements ObjectWithStatusSubResource interface.

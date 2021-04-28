@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-  
+
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
@@ -53,6 +53,8 @@ type UILabelList struct {
 
 // UILabelSpec defines the desired state of UILabel
 type UILabelSpec struct {
+	Location UIComponentLocation `json:"location"`
+	Text     string              `json:"text"`
 }
 
 var _ resource.Object = &UILabel{}
