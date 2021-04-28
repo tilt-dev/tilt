@@ -18,8 +18,137 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// KubernetesDiscovery
+// +k8s:openapi-gen=true
+type KubernetesDiscovery struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   KubernetesDiscoverySpec   `json:"spec,omitempty"`
+	Status KubernetesDiscoveryStatus `json:"status,omitempty"`
+}
+
+// KubernetesDiscoveryList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type KubernetesDiscoveryList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []KubernetesDiscovery `json:"items"`
+}
+
+// KubernetesDiscoverySpec defines the desired state of KubernetesDiscovery
+type KubernetesDiscoverySpec struct {
+	// Watches determine what resources are discovered.
+	//
+	// If a discovered resource (e.g. Pod) matches the KubernetesWatchRef UID exactly, it will be reported.
+	// If a discovered resource is transitively owned by the KubernetesWatchRef UID, it will be reported.
+	Watches []KubernetesWatchRef `json:"watches"`
+
+	// ExtraSelectors are label selectors that will force discovery of a Pod even if it does not match
+	// the AncestorUID.
+	//
+	// This should only be necessary in the event that a CRD creates Pods but does not set an owner reference
+	// to itself.
+	ExtraSelectors [][]LabelValue `json:"extraSelectors,omitempty"`
+}
+
+// KubernetesWatchRef is similar to v1.ObjectReference from the Kubernetes API and is used to determine
+// what objects should be reported on based on discovery.
+type KubernetesWatchRef struct {
+	// UID is a Kubernetes object UID.
+	//
+	// It should either be the exact object UID or the transitive owner.
+	UID string `json:"uid"`
+	// Namespace is the Kubernetes namespace for discovery. Required.
+	Namespace string `json:"namespace"`
+	// Name is the Kubernetes object name.
+	//
+	// This is not directly used in discovery; it is extra metadata.
+	Name string `json:"name,omitempty"`
+}
+
+// LabelValue is a key-value pair of a Kubernetes label and associated value.
+type LabelValue struct {
+	// Label is the label name.
+	Label string `json:"label"`
+	// Value is the label value.
+	Value string `json:"value"`
+}
+
+var _ resource.Object = &KubernetesDiscovery{}
+var _ resourcestrategy.Validater = &KubernetesDiscovery{}
+
+func (in *KubernetesDiscovery) GetObjectMeta() *metav1.ObjectMeta {
+	return &in.ObjectMeta
+}
+
+func (in *KubernetesDiscovery) NamespaceScoped() bool {
+	return false
+}
+
+func (in *KubernetesDiscovery) New() runtime.Object {
+	return &KubernetesDiscovery{}
+}
+
+func (in *KubernetesDiscovery) NewList() runtime.Object {
+	return &KubernetesDiscoveryList{}
+}
+
+func (in *KubernetesDiscovery) GetGroupVersionResource() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "tilt.dev",
+		Version:  "v1alpha1",
+		Resource: "kubernetesdiscoveries",
+	}
+}
+
+func (in *KubernetesDiscovery) IsStorageVersion() bool {
+	return true
+}
+
+func (in *KubernetesDiscovery) Validate(ctx context.Context) field.ErrorList {
+	// TODO(user): Modify it, adding your API validation here.
+	return nil
+}
+
+var _ resource.ObjectList = &KubernetesDiscoveryList{}
+
+func (in *KubernetesDiscoveryList) GetListMeta() *metav1.ListMeta {
+	return &in.ListMeta
+}
+
+// KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery
+type KubernetesDiscoveryStatus struct{}
+
+// KubernetesDiscovery implements ObjectWithStatusSubResource interface.
+var _ resource.ObjectWithStatusSubResource = &KubernetesDiscovery{}
+
+func (in *KubernetesDiscovery) GetStatus() resource.StatusSubResource {
+	return in.Status
+}
+
+// KubernetesDiscoveryStatus{} implements StatusSubResource interface.
+var _ resource.StatusSubResource = &KubernetesDiscoveryStatus{}
+
+func (in KubernetesDiscoveryStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
+	parent.(*KubernetesDiscovery).Status = in
+}
 
 // Pod is a collection of containers that can run on a host.
 //

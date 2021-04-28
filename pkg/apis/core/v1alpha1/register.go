@@ -48,6 +48,7 @@ func AllResourceObjects() []resource.Object {
 		&Session{},
 		&FileWatch{},
 		&Cmd{},
+		&KubernetesDiscovery{},
 		&PodLogStream{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
@@ -58,6 +59,7 @@ func AllResourceLists() []runtime.Object {
 		&SessionList{},
 		&FileWatchList{},
 		&CmdList{},
+		&KubernetesDiscoveryList{},
 		&PodLogStreamList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.

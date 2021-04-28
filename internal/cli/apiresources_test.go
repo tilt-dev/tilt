@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,11 @@ func TestAPIResources(t *testing.T) {
 	err := cmd.run(f.ctx, nil)
 	require.NoError(t, err)
 
-	assert.Contains(t, out.String(),
-		`filewatches                  tilt.dev/v1alpha1   false        FileWatch`)
+	// output spacing is dependent on longest resource name, so a regex is used to keep this test
+	// from being overly brittle
+	outputRe := regexp.MustCompile(`filewatches[ ]+tilt.dev/v1alpha1[ ]+false[ ]+FileWatch`)
+
+	cmdOutput := out.String()
+	assert.Truef(t, outputRe.MatchString(cmdOutput),
+		"Command output was not as expected. Output:\n%s\n", cmdOutput)
 }
