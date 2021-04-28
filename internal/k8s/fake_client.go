@@ -491,6 +491,7 @@ func (pf FakePortForwarder) ForwardPorts() error {
 }
 
 type FakePortForwardClient struct {
+	mu               sync.Mutex
 	PortForwardCalls []PortForwardCall
 }
 
@@ -509,6 +510,9 @@ type PortForwardCall struct {
 }
 
 func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	result := FakePortForwarder{
 		localPort: optionalLocalPort,
 		ctx:       ctx,

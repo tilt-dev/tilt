@@ -2,7 +2,6 @@ package portforward
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -68,26 +67,24 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 			apiPf := v1alpha1.NewPortForward(fwd.LocalPort, fwd.ContainerPort, fwd.Host, podID.String(), pod.Namespace, ms.Name.String())
 			currentPFs[apiPf.Name] = true
 
-			oldEntry, isActive := state.PortForwards[apiPf.Name]
-			if isActive {
-				// We're already running this port forward, nothing to do
-				if equality.Semantic.DeepEqual(oldEntry.Spec, apiPf.Spec) {
-					continue
-				}
-
-				// we can do this better but for now uh, this should never happen b/c the
-				// PF name ought to express all possibly changeable parts of the PF--
-				// should be impossible to get two unequal PFs with the same spec
-				// TODO(maia) -- just reverse the order of deleting entries/storing ctx
-				panic(fmt.Sprintf("found duplicate port forward %s (this should be impossible)", apiPf.Name))
-			}
-
 			ctx, cancel := context.WithCancel(ctx)
 			entry := portForwardEntry{
 				PortForward: apiPf,
 				ctx:         ctx,
 				cancel:      cancel,
 			}
+
+			oldEntry, isActive := s.activeForwards[apiPf.Name]
+			if isActive {
+				// We're already running this port forward, nothing to do
+				if equality.Semantic.DeepEqual(oldEntry.Spec, apiPf.Spec) {
+					continue
+				}
+
+				// The port forward has changed, so remove the old version and re-add the new one
+				toShutdown = append(toShutdown, oldEntry)
+			}
+
 			toStart = append(toStart, entry)
 			state.PortForwards[apiPf.Name] = apiPf
 			s.activeForwards[apiPf.Name] = entry

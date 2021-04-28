@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
@@ -109,7 +111,8 @@ func TestMultiplePortForwards(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 2, len(f.plc.activeForwards))
+	require.Equal(t, 2, len(f.plc.activeForwards))
+	require.Equal(t, 2, len(f.kCli.PortForwardCalls))
 
 	// PortForwards are executed async so we can't guarantee the order;
 	// just make sure each expected call appears exactly once
@@ -236,6 +239,42 @@ func TestPortForwardChangePort(t *testing.T) {
 	f.onChange()
 	assert.Equal(t, 1, len(f.plc.activeForwards))
 	assert.Equal(t, 8082, f.kCli.LastForwardPortRemotePort())
+}
+
+func TestPortForwardChangeHost(t *testing.T) {
+	f := newPLCFixture(t)
+	defer f.TearDown()
+
+	state := f.st.LockMutableStateForTesting()
+	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
+		PortForwards: []model.PortForward{
+			{
+				LocalPort:     8080,
+				ContainerPort: 8081,
+				Host:          "someHostA",
+			},
+		},
+	})
+	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	mt := state.ManifestTargets["fe"]
+	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+	assert.Equal(t, "someHostA", f.kCli.LastForwardPortHost())
+
+	state = f.st.LockMutableStateForTesting()
+	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
+	kTarget.PortForwards[0].Host = "otherHostB"
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+	assert.Equal(t, "otherHostB", f.kCli.LastForwardPortHost())
 }
 
 func TestPortForwardRestart(t *testing.T) {
