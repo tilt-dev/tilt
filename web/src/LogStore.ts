@@ -13,7 +13,7 @@ import { LogLine, LogPatchSet } from "./types"
 const defaultSpanId = "_"
 const fieldNameProgressId = "progressID"
 
-const defaultMaxLogLength = 1000 * 1000
+const defaultMaxLogLength = 2 * 1000 * 1000
 
 type LogSpan = {
   spanId: string
@@ -617,27 +617,20 @@ class LogStore {
     }
 
     // First, count the number of bytes in each manifest.
-    let manifestByteCount: { [key: string]: number } = {}
-    function longestManifestName() {
-      let longest = ""
-      let longestCount = -1
-      for (let key in manifestByteCount) {
-        let count = manifestByteCount[key]
-        if (count > longestCount) {
-          longest = key
-          longestCount = count
-        }
-      }
-      return longest
-    }
+    let manifestWeights: {
+      [key: string]: { name: string; byteCount: number; start: string }
+    } = {}
 
     for (let segment of this.segments) {
       let span = this.spans[segment.spanId || defaultSpanId]
       if (span) {
         let name = span.manifestName || ""
-        let count = manifestByteCount[name] || 0
-        let len = segment.text?.length || 0
-        manifestByteCount[name] = count + len
+        let weight = manifestWeights[name]
+        if (!weight) {
+          weight = { name, byteCount: 0, start: segment.time || "" }
+          manifestWeights[name] = weight
+        }
+        weight.byteCount += segment.text?.length || 0
       }
     }
 
@@ -645,13 +638,13 @@ class LogStore {
     // we've reached the target number of bytes to cut.
     let leftToCut = this.logLength - this.logTruncationTarget()
     while (leftToCut > 0) {
-      let mn = longestManifestName()
-      let amountToCut = manifestByteCount[mn] / 2
+      let mn = this.heaviestManifestName(manifestWeights)
+      let amountToCut = Math.ceil(manifestWeights[mn].byteCount / 2)
       if (amountToCut > leftToCut) {
         amountToCut = leftToCut
       }
       leftToCut -= amountToCut
-      manifestByteCount[mn] = manifestByteCount[mn] - amountToCut
+      manifestWeights[mn].byteCount -= amountToCut
     }
 
     // Lastly, go through all the segments, and truncate the manifests
@@ -662,10 +655,9 @@ class LogStore {
       let segment = this.segments[i]
       let span = this.spans[segment.spanId || defaultSpanId]
       let mn = span?.manifestName || ""
-      let count = manifestByteCount[mn] || 0
       let len = segment.text?.length || 0
-      manifestByteCount[mn] = count - len
-      if (manifestByteCount[mn] < 0) {
+      manifestWeights[mn].byteCount -= len
+      if (manifestWeights[mn].byteCount < 0) {
         trimmedSegmentCount++
         continue
       }
@@ -694,6 +686,46 @@ class LogStore {
     this.invokeUpdateCallbacks({
       action: LogUpdateAction.truncate,
     })
+  }
+
+  // There are 3 types of logs we need to consider:
+  // 1) Jobs that print short, critical information at the start.
+  // 2) Jobs that print lots of health checks continuously.
+  // 3) Jobs that print recent test results.
+  //
+  // Truncating purely on recency would be bad for (1).
+  // Truncating purely on length would be bad for (3).
+  //
+  // So we weight based on both recency and length.
+  heaviestManifestName(manifestWeights: {
+    [key: string]: { name: string; byteCount: number; start: string }
+  }): string {
+    // Sort manifests by most recent first.
+    let manifestsByTime = Object.values(manifestWeights).sort((a, b) => {
+      if (a.start != b.start) {
+        return a.start < b.start ? 1 : -1
+      }
+      if (a.name != b.name) {
+        return a.name < b.name ? 1 : -1
+      }
+      return 0
+    })
+
+    let heaviest = ""
+    let heaviestValue = -1
+    for (let i = 0; i < manifestsByTime.length; i++) {
+      // We compute: weightValue = order * byteCount where the manifest with
+      // most recent logs has order 1, the next one has order 2, and so on.
+      //
+      // This helps ensures older logs get truncated first.
+      let order = i + 1
+      let value = order * manifestsByTime[i].byteCount
+      if (value > heaviestValue) {
+        heaviest = manifestsByTime[i].name
+        heaviestValue = value
+      }
+    }
+    return heaviest
   }
 }
 

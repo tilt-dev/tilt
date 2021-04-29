@@ -506,6 +506,30 @@ describe("LogStore", () => {
     expect(logLinesToString(logs.manifestLog("be"), false)).toEqual("")
   })
 
+  it("weights on recenty and length", () => {
+    let logs = new LogStore()
+    expect(
+      logs.heaviestManifestName({
+        a: { name: "a", byteCount: 100, start: "2020-04" },
+        b: { name: "b", byteCount: 100, start: "2021-04" },
+      })
+    ).toEqual("a")
+
+    expect(
+      logs.heaviestManifestName({
+        a: { name: "a", byteCount: 100, start: "2020-04" },
+        b: { name: "b", byteCount: 1000, start: "2021-04" },
+      })
+    ).toEqual("b")
+
+    expect(
+      logs.heaviestManifestName({
+        a: { name: "a", byteCount: 100, start: "2020-04" },
+        b: { name: "b", byteCount: 150, start: "2021-04" },
+      })
+    ).toEqual("a")
+  })
+
   it("truncates output for snapshots", () => {
     let logs = new LogStore()
     logs.maxLogLength = 40

@@ -3,6 +3,7 @@ package logstore
 import (
 	"fmt"
 	"io/ioutil"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -63,14 +64,38 @@ func TestLog_AppendOverLimit(t *testing.T) {
 
 func TestLog_TruncateChattySpansFirst(t *testing.T) {
 	l := NewLogStore()
-	l.maxLogLengthInBytes = 60
+	l.maxLogLengthInBytes = 100
 
 	l.Append(newTestLogEvent("(tiltfile)", time.Now(), "Tiltfile Success"), nil)
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 40; i++ {
 		l.Append(newTestLogEvent("noisy", time.Now(), "Noisy Log\n"), nil)
 	}
 
 	assert.Contains(t, l.String(), "Tiltfile Success")
+}
+
+func TestLog_ChattyServicesDoNotTruncateTests(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip() // Windows has slightly different line-endings which effect this test
+	}
+	l := NewLogStore()
+	l.maxLogLengthInBytes = 500
+
+	l.Append(newTestLogEvent("(tiltfile)", time.Now(), "Tiltfile Success"), nil)
+	for i := 0; i < 100; i++ {
+		l.Append(newTestLogEvent(model.ManifestName(fmt.Sprintf("noisy%d", i%5)), time.Now(), "Noisy Log\n"), nil)
+	}
+
+	for i := 0; i < 5; i++ {
+		l.Append(newTestLogEvent("test", time.Now(), fmt.Sprintf("test #%d success\n", i)), nil)
+	}
+
+	for i := 0; i < 20; i++ {
+		l.Append(newTestLogEvent(model.ManifestName(fmt.Sprintf("noisy%d", i%5)), time.Now(), "Noisy Log\n"), nil)
+	}
+
+	assert.Contains(t, l.String(), "Tiltfile Success")
+	assert.Contains(t, l.String(), "test #0 success")
 }
 
 func TestLogPrefix(t *testing.T) {
