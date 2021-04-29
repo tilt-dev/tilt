@@ -19,7 +19,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type ManifestSubscriber struct {
@@ -44,7 +43,16 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 	for _, mt := range state.Targets() {
 		key := keyForManifest(mt.Manifest.Name)
 		seen[key] = true
-		kd := m.kubernetesDiscoveryFromManifest(ctx, key, mt)
+		kd, err := m.kubernetesDiscoveryFromManifest(ctx, key, mt)
+		if err != nil {
+			// if the error is logged, it'll just trigger another store change and loop back here and
+			// get logged over and over, so all errors are fatal; any errors returned by the generation
+			// logic are indicative of a bug/regression, so this is fine
+			st.Dispatch(store.NewErrorAction(fmt.Errorf(
+				"failed to create KubernetesDiscovery spec for resource %q: %v",
+				mt.Manifest.Name, err)))
+		}
+
 		existing := state.KubernetesDiscoveries[key]
 		if kd != nil && existing == nil {
 			st.Dispatch(NewKubernetesDiscoveryCreateAction(kd))
@@ -76,6 +84,9 @@ func labelsFromSelector(selector labels.Selector) ([]v1alpha1.LabelValue, error)
 	requirements, _ := selector.Requirements()
 	for _, r := range requirements {
 		if r.Operator() != selection.Equals {
+			// both Tiltfile and KubernetesDiscovery schema only support =, so there's no practical way
+			// for this to occur; if Tiltfile ever becomes more flexible, the schema will need to be
+			// adjusted as well so that this limitation can be lifted
 			return nil, fmt.Errorf("label %q has unsupported operator: %q", r.Key(), r.Operator())
 		}
 		values := r.Values().List()
@@ -83,6 +94,8 @@ func labelsFromSelector(selector labels.Selector) ([]v1alpha1.LabelValue, error)
 			continue
 		}
 		if len(values) != 1 {
+			// requirements with selection.Equals for an operator MUST only have one value, so this is
+			// actually indicative of a malformed requirement, i.e. something is seriously wrong
 			return nil, fmt.Errorf("label %q has more than one value: %v", r.Key(), r.Values())
 		}
 		out = append(out, v1alpha1.LabelValue{Label: r.Key(), Value: values[0]})
@@ -90,16 +103,20 @@ func labelsFromSelector(selector labels.Selector) ([]v1alpha1.LabelValue, error)
 	return out, nil
 }
 
-func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context, key types.NamespacedName, mt *store.ManifestTarget) *v1alpha1.KubernetesDiscovery {
+// kubernetesDiscoveryFromManifest creates a spec from a manifest.
+//
+// Because there is no graceful way to handle errors without triggering infinite loops in the store,
+// any returned error should be considered fatal.
+func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context, key types.NamespacedName, mt *store.ManifestTarget) (*v1alpha1.KubernetesDiscovery, error) {
 	if !mt.Manifest.IsK8s() {
-		return nil
+		return nil, nil
 	}
 	kt := mt.Manifest.K8sTarget()
 
 	krs := mt.State.K8sRuntimeState()
 	if len(kt.ObjectRefs) == 0 {
 		// there is nothing to discover
-		return nil
+		return nil, nil
 	}
 
 	seenNamespaces := make(map[k8s.Namespace]bool)
@@ -139,8 +156,7 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context
 		for i := range kt.ExtraPodSelectors {
 			l, err := labelsFromSelector(kt.ExtraPodSelectors[i])
 			if err != nil {
-				logger.Get(ctx).Debugf("Error processing extra pod selectors for %q: %v", kt.Name, err)
-				return nil
+				return nil, err
 			}
 			labelSets = append(labelSets, l)
 		}
@@ -161,6 +177,8 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context
 		},
 	}
 
+	// HACK(milas): until these are stored in apiserver, explicitly ensure they're valid
+	// 	(any failure here is indicative of a logic bug in this method)
 	if fieldErrs := kd.Validate(ctx); len(fieldErrs) != 0 {
 		var sb strings.Builder
 		for i, fieldErr := range fieldErrs {
@@ -169,10 +187,8 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context
 			}
 			sb.WriteString(fieldErr.Error())
 		}
-		logger.Get(ctx).Debugf("Manifest %q produced invalid spec: %s",
-			mt.Manifest.Name, sb.String())
-		return nil
+		return nil, fmt.Errorf("failed validation: %s", sb.String())
 	}
 
-	return kd
+	return kd, nil
 }
