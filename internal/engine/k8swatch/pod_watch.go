@@ -174,27 +174,16 @@ func (w *PodWatcher) reconcile(ctx context.Context, st store.RStore, key watcher
 	seenUIDs := make(map[types.UID]bool)
 	seenNamespaces := make(map[k8s.Namespace]bool)
 	for _, toWatch := range kd.Spec.Watches {
+		// ensure a namespace watch exists + this watcher is referenced by it
 		namespace := k8s.Namespace(toWatch.Namespace)
-		if !seenNamespaces[namespace] {
-			w.setupWatch(ctx, st, namespace, key)
-			seenNamespaces[namespace] = true
-		}
+		seenNamespaces[namespace] = true
+		w.setupNamespaceWatch(ctx, st, namespace, key)
 
-		id := types.UID(toWatch.UID)
-		if id == "" || seenUIDs[id] {
-			continue
-		}
-		seenUIDs[id] = true
-
-		uidWatchers, ok := w.uidWatchers[id]
-		if !ok {
-			uidWatchers = make(watcherSet)
-			w.uidWatchers[id] = uidWatchers
-		}
-		if _, existing := uidWatchers[key]; !existing {
-			// this is the first time this watcher has had a ref for this UID, so dispatch
-			// events about known pods so that it can populate itself
-			w.setupNewUID(ctx, st, id, key)
+		// a watch ref might not have a UID (either resources haven't been deployed yet OR spec relies on labels)
+		if toWatch.UID != "" {
+			watchUID := types.UID(toWatch.UID)
+			seenUIDs[watchUID] = true
+			w.setupUIDWatch(ctx, st, watchUID, key)
 		}
 	}
 
@@ -227,7 +216,7 @@ func (w *PodWatcher) cleanupAbandonedNamespaces() {
 	}
 }
 
-// setupWatch creates a namespace watch if necessary and adds a key to the list of watchers for it.
+// setupNamespaceWatch creates a namespace watch if necessary and adds a key to the list of watchers for it.
 //
 // mu must be held by caller.
 //
@@ -239,7 +228,7 @@ func (w *PodWatcher) cleanupAbandonedNamespaces() {
 // This ensures it can be safely called by reconcile on each invocation for any namespace that the watcher cares about.
 // Additionally, for efficiency, duplicative watches on the same namespace will not be created; see watchedNamespaces
 // for more details.
-func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace, watcherKey watcherID) {
+func (w *PodWatcher) setupNamespaceWatch(ctx context.Context, st store.RStore, ns k8s.Namespace, watcherKey watcherID) {
 	if watcher, ok := w.watchedNamespaces[ns]; ok {
 		// already watching this namespace -- just add this watcher to the list for cleanup tracking
 		watcher.watchers[watcherKey] = true
@@ -262,17 +251,30 @@ func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Nam
 	go w.dispatchPodChangesLoop(ctx, ch, st)
 }
 
-// setupNewUID handles dispatching events to a watcher immediately for a UID it has not seen before.
+// setupUIDWatch handles dispatching events to a watcher immediately for a UID it has not seen before.
 //
 // mu must be held by caller.
 //
 // Very frequently, Pod events (as dispatched by K8s) for a UID have already been seen by the PodWatcher _before_ the
 // consumer (e.g. the ManifestSubscriber which generates KubernetesDiscovery specs) was able to propagate the UID for
 // discovery, so a Pod change event is sent to allow it to immediately populate an already known (to PodWatcher) Pod.
-func (w *PodWatcher) setupNewUID(ctx context.Context, st store.RStore, uid types.UID, watcherID watcherID) {
-	w.uidWatchers[uid][watcherID] = true
+func (w *PodWatcher) setupUIDWatch(ctx context.Context, st store.RStore, uid types.UID, watcherID watcherID) {
+	if w.uidWatchers[uid][watcherID] {
+		return
+	}
+
+	// add this key as a watcher for the UID
+	uidWatchers, ok := w.uidWatchers[uid]
+	if !ok {
+		uidWatchers = make(watcherSet)
+		w.uidWatchers[uid] = uidWatchers
+	}
+	uidWatchers[watcherID] = true
+
 	mn, ok := w.kubernetesDiscoveryManifest[watcherID]
 	if !ok {
+		// currently actions are tied to manifest, so there's nothing more to do if this spec
+		// didn't originate from a manifest
 		return
 	}
 
@@ -321,7 +323,7 @@ type triageResult struct {
 // Even if the Pod doesn't match any KubernetesDiscovery spec, it's still kept in local state,
 // so we can match it later if a KubernetesDiscovery spec is modified to match it; this is actually
 // extremely common because new Pods are typically observed here _before_ the respective
-// KubernetesDiscovery spec update propagates (see setupNewUID).
+// KubernetesDiscovery spec update propagates (see setupUIDWatch).
 func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []triageResult {
 	uid := pod.UID
 
