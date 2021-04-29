@@ -139,7 +139,7 @@ func schema_pkg_apis_core_v1alpha1_Cmd(ref common.ReferenceCallback) common.Open
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Cmd",
+				Description: "Cmd represents a process on the host machine.\n\nWhen the process exits, we will make a best-effort attempt (within OS limitations) to kill any spawned descendant processes.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
@@ -235,7 +235,7 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "CmdSpec defines the desired state of Cmd",
+				Description: "CmdSpec defines how to run a local command.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"args": {
@@ -283,7 +283,7 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 					},
 					"restartOn": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Indicates objects that can trigger a restart of this command.\n\nRestarts can happen even if the command is already done.\n\nLogs of the currently process after the restart are discarded.",
+							Description: "Indicates objects that can trigger a restart of this command.\n\nWhen a restart is triggered, Tilt will try to gracefully shutdown any currently running process, waiting for it to exit before starting a new process. If the process doesn't shutdown within the allotted time, Tilt will kill the process abruptly.\n\nRestarts can happen even if the command is already done.\n\nLogs of the current process after the restart are discarded.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
 						},
 					},

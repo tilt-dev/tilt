@@ -26,7 +26,11 @@ import "k8s.io/apimachinery/pkg/runtime/schema/generated.proto";
 // Package-wide variables from generator "generated".
 option go_package = "v1alpha1";
 
-// Cmd
+// Cmd represents a process on the host machine.
+//
+// When the process exits, we will make a best-effort attempt
+// (within OS limitations) to kill any spawned descendant processes.
+//
 // +k8s:openapi-gen=true
 message Cmd {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
@@ -44,7 +48,7 @@ message CmdList {
   repeated Cmd items = 2;
 }
 
-// CmdSpec defines the desired state of Cmd
+// CmdSpec defines how to run a local command.
 message CmdSpec {
   // Command-line arguments. Must have length at least 1.
   repeated string args = 1;
@@ -74,9 +78,14 @@ message CmdSpec {
 
   // Indicates objects that can trigger a restart of this command.
   //
+  // When a restart is triggered, Tilt will try to gracefully shutdown any
+  // currently running process, waiting for it to exit before starting a new
+  // process. If the process doesn't shutdown within the allotted time, Tilt
+  // will kill the process abruptly.
+  //
   // Restarts can happen even if the command is already done.
   //
-  // Logs of the currently process after the restart are discarded.
+  // Logs of the current process after the restart are discarded.
   optional RestartOnSpec restartOn = 5;
 }
 
