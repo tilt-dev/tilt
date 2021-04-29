@@ -81,6 +81,7 @@ func New(t testing.TB, manifest model.Manifest) PodBuilder {
 	return PodBuilder{
 		t:                      t,
 		manifest:               manifest,
+		creationTime:           time.Now(),
 		imageRefs:              make(map[int]string),
 		cIDs:                   make(map[int]string),
 		cReady:                 make(map[int]bool),
@@ -260,10 +261,7 @@ func (b PodBuilder) buildReplicaSet() *appsv1.ReplicaSet {
 }
 
 func (b PodBuilder) buildCreationTime() metav1.Time {
-	if !b.creationTime.IsZero() {
-		return apis.NewTime(b.creationTime)
-	}
-	return apis.Now()
+	return apis.NewTime(b.creationTime)
 }
 
 func (b PodBuilder) buildDeletionTime() *metav1.Time {
@@ -341,7 +339,7 @@ func (b PodBuilder) buildContainerStatuses(spec v1.PodSpec) []v1.ContainerStatus
 
 		state := v1.ContainerState{
 			Running: &v1.ContainerStateRunning{
-				StartedAt: apis.NewTime(time.Now()),
+				StartedAt: b.buildCreationTime(),
 			},
 		}
 

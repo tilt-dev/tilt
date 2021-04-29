@@ -1842,7 +1842,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestPodEventDeleted(t *testing.T) {
+func TestPodDeleted(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	mn := model.ManifestName("foobar")
@@ -1857,12 +1857,24 @@ func TestPodEventDeleted(t *testing.T) {
 	pb = pb.WithCreationTime(creationTime)
 	f.podEvent(pb.Build())
 
-	f.WaitUntilManifestState("pod crashes", mn, func(state store.ManifestState) bool {
+	f.WaitUntilManifestState("pod never seen", mn, func(state store.ManifestState) bool {
 		return state.K8sRuntimeState().ContainsID(pb.PodName())
 	})
 
+	// set the DeletionTime on the pod and emit an event, ensuring that it gets removed
 	f.podEvent(pb.WithDeletionTime(creationTime.Add(time.Minute)).Build())
+	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
+		return state.K8sRuntimeState().PodLen() == 0
+	})
 
+	// recreate the pod
+	f.podEvent(pb.Build())
+	f.WaitUntilManifestState("pod never seen", mn, func(state store.ManifestState) bool {
+		return state.K8sRuntimeState().ContainsID(pb.PodName())
+	})
+
+	// emit a true deletion event, ensuring that it gets removed
+	f.kClient.EmitPodDelete(labels.Nothing(), pb.Build())
 	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
 		return state.K8sRuntimeState().PodLen() == 0
 	})
@@ -1987,11 +1999,15 @@ func TestPodContainerStatus(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+// TODO(milas): rewrite this test as part of pod_watcher_test to better simulate initial state
+// 	currently, to seed state in PodWatcher, it has to emit events, which is concerningly close to the actual logic
+// 	it's trying to actually test
 func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 	deployedHash := k8s.PodTemplateSpecHash("some-hash-abc")
 	nonMatchingHash := k8s.PodTemplateSpecHash("danger-will-robinson")
 	ancestorUID := types.UID("some-ancestor")
-	podID := k8s.PodID("special-pod")
+	podUID := types.UID("special-pod-uid")
+	podName := k8s.PodID("special-pod")
 	otherPodID := k8s.PodID("other-pod")
 	mName := model.ManifestName("foobar")
 
@@ -2083,31 +2099,53 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 
 			_ = f.nextCallComplete()
 
-			// set up runtime state
-			st := f.store.LockMutableStateForTesting()
-			ms, ok := st.ManifestState(model.ManifestName(mName))
-			require.True(t, ok, "couldn't find manifest state for %s", mName)
-
-			runtime := ms.K8sRuntimeState()
-			runtime.Pods = make(map[k8s.PodID]*v1alpha1.Pod)
 			if test.ancestorSeen {
-				runtime.PodAncestorUID = ancestorUID
+				st := f.store.LockMutableStateForTesting()
+				ms, ok := st.ManifestState(mName)
+				require.True(t, ok, "couldn't find manifest state for %s", mName)
+				krs := ms.K8sRuntimeState()
+				krs.PodAncestorUID = ancestorUID
+				ms.RuntimeState = krs
+				f.store.UnlockMutableState()
 			}
 
 			if test.podSeen {
-				runtime.Pods[podID] = &v1alpha1.Pod{
-					Name:   podID.String(),
-					Status: "Running",
-				}
+				existing := pb.
+					WithPodUID(podUID).
+					WithPodName(podName.String()).
+					WithTemplateSpecHash(deployedHash).
+					WithPhase("Running").Build()
+				// because PodWatcher is the source of truth, anything written to EngineState will just get
+				// overwritten/ignored; an event must be emitted and go through the flow to end up in the store
+				f.podEvent(existing)
 			}
 			if test.haveAdditionalPod {
-				runtime.Pods[otherPodID] = &v1alpha1.Pod{
-					Name:   otherPodID.String(),
-					Status: "Running",
-				}
+				additional := pb.
+					WithPodUID("other-pod-uid").
+					WithPodName(otherPodID.String()).
+					WithNoTemplateSpecHash().
+					WithPhase("Running").
+					Build()
+				// because PodWatcher is the source of truth, anything written to EngineState will just get
+				// overwritten/ignored; an event must be emitted and go through the flow to end up in the store
+				f.podEvent(additional)
 			}
-			ms.RuntimeState = runtime
-			f.store.UnlockMutableState()
+
+			// since we're dispatching real events to seed the initial state, evaluate things holistically to
+			// ensure that the individual events didn't clobber each other in some way, i.e. we care about the
+			// steady state
+			f.WaitUntilManifestState("initial pod state incorrect", mName, func(ms store.ManifestState) bool {
+				initialStateOK := true
+				if test.podSeen {
+					_, ok := ms.PodWithID(podName)
+					initialStateOK = initialStateOK && ok
+				}
+				if test.haveAdditionalPod {
+					_, ok := ms.PodWithID(otherPodID)
+					initialStateOK = initialStateOK && ok
+				}
+				return initialStateOK
+			})
 
 			// Dispatch pod event
 			podHash := deployedHash
@@ -2115,7 +2153,8 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 				podHash = nonMatchingHash
 			}
 			pb = pb.
-				WithPodName(podID.String()).
+				WithPodUID(podUID).
+				WithPodName(podName.String()).
 				WithTemplateSpecHash(podHash).
 				WithPhase("CrashLoopBackOff")
 			pod := pb.Build()
@@ -2124,7 +2163,7 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			if test.expectUpdatePodOnManifest {
 				f.WaitUntilManifestState("pod on manifest state with updated status", mName,
 					func(ms store.ManifestState) bool {
-						foundPod, ok := ms.PodWithID(podID)
+						foundPod, ok := ms.PodWithID(podName)
 						return ok && foundPod.Status == "CrashLoopBackOff"
 					})
 				f.withManifestState(mName, func(ms store.ManifestState) {
@@ -2134,8 +2173,8 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			} else {
 				time.Sleep(10 * time.Millisecond)
 				f.withManifestState(mName, func(ms store.ManifestState) {
-					_, ok := ms.PodWithID(podID)
-					assert.False(t, ok, "expect manifest to NOT have pod with ID %q", podID)
+					_, ok := ms.PodWithID(podName)
+					assert.False(t, ok, "expect manifest to NOT have pod with ID %q", podName)
 				})
 			}
 
@@ -3880,7 +3919,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	ns := k8s.Namespace("default")
 	kdms := k8swatch.NewManifestSubscriber(ns)
 	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
-	pw := k8swatch.NewPodWatcher(b.kClient, of)
+	rd := k8swatch.NewContainerRestartDetector()
+	pw := k8swatch.NewPodWatcher(b.kClient, of, rd)
 	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}

@@ -3,7 +3,6 @@ package k8swatch
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -11,14 +10,11 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -32,6 +28,8 @@ import (
 )
 
 const stdTimeout = time.Second
+
+type ancestorMap map[types.UID]types.UID
 
 func TestPodWatch(t *testing.T) {
 	f := newPWFixture(t)
@@ -50,7 +48,7 @@ func TestPodWatch(t *testing.T) {
 
 	f.kClient.EmitPod(labels.Everything(), p)
 
-	f.assertObservedPods(p)
+	f.assertObservedPods(manifest.Name, ancestorMap{p.UID: entities.Deployment().UID()})
 }
 
 func TestPodWatchChangeEventBeforeUID(t *testing.T) {
@@ -68,16 +66,17 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	f.kClient.EmitPod(labels.Everything(), p)
 
 	require.Never(t, func() bool {
-		f.mu.Lock()
-		defer f.mu.Unlock()
-		return len(f.pods) != 0
+		state := f.store.RLockState()
+		defer f.store.RUnlockState()
+		kd := state.KubernetesDiscoveries[KeyForManifest(manifest.Name)]
+		return kd != nil && len(kd.Status.Pods) != 0
 	}, time.Second/2, 20*time.Millisecond, "No pods should have been observed")
 
 	// Simulate the deployed entities in the engine state after
 	// the pod event.
 	f.addDeployedEntity(manifest, entities.Deployment())
 
-	f.assertObservedPods(p)
+	f.assertObservedPods(manifest.Name, ancestorMap{p.UID: entities.Deployment().UID()})
 }
 
 // We had a bug where if newPod.resourceVersion < oldPod.resourceVersion (using string comparison!)
@@ -99,12 +98,17 @@ func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 	p1 := pb.Build()
 	f.kClient.EmitPod(labels.Everything(), p1)
 
-	f.assertObservedPods(p1)
+	f.assertObservedPods(manifest.Name, ancestorMap{p1.UID: entities.Deployment().UID()})
 
-	p2 := pb.WithResourceVersion("10").Build()
+	p2 := pb.WithResourceVersion("10").WithTemplateSpecHash("abc123").Build()
 	f.kClient.EmitPod(labels.Everything(), p2)
 
-	f.assertObservedPods(p1, p2)
+	f.requireState(KeyForManifest(manifest.Name), func(kd *v1alpha1.KubernetesDiscovery) bool {
+		if kd == nil {
+			return false
+		}
+		return kd.Status.Pods[0].PodTemplateSpecHash == "abc123"
+	}, "Pod for updated resource version was not observed")
 }
 
 func TestPodWatchExtraSelectors(t *testing.T) {
@@ -121,8 +125,8 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 		Build()
 	f.kClient.EmitPod(labels.Everything(), p)
 
-	f.assertObservedPods(p)
-	f.assertObservedManifests(manifest.Name)
+	// there should be NO ancestor since this was matched by labels
+	f.assertObservedPods(manifest.Name, ancestorMap{p.UID: ""})
 }
 
 func TestPodWatchHandleSelectorChange(t *testing.T) {
@@ -132,91 +136,54 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	ls1 := labels.Set{"foo": "bar"}
 	manifest := f.addManifestWithSelectors("server1", ls1)
 
-	p := podbuilder.New(t, manifest).
+	// p1 matches ls1 but not ls2
+	p1 := podbuilder.New(t, manifest).
 		WithPodLabel("foo", "bar").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.EmitPod(labels.Everything(), p1)
 
-	f.assertObservedPods(p)
-	f.clearPods()
-
-	ls2 := labels.Set{"baz": "quu"}
-	manifest2 := f.addManifestWithSelectors("server2", ls2)
-
-	// remove the first manifest and wait it to propagate
-	f.removeManifest(manifest.Name)
-
-	pb2 := podbuilder.New(t, manifest2).WithPodName("pod2")
+	// p2 is for a known deployment UID
+	pb2 := podbuilder.New(t, manifest).WithPodName("pod2")
 	p2 := pb2.Build()
 	p2Entities := pb2.ObjectTreeEntities()
-	f.addDeployedEntity(manifest2, p2Entities.Deployment())
 	f.kClient.Inject(p2Entities...)
 	f.kClient.EmitPod(labels.Everything(), p2)
-	f.assertObservedPods(p2)
-	f.clearPods()
+	f.addDeployedEntity(manifest, p2Entities.Deployment())
 
-	p3 := podbuilder.New(t, manifest2).
+	// p3 matches NEITHER ls1 nor ls2
+	// (it has th same label key as ls1 but a non-matching value!)
+	p3 := podbuilder.New(t, manifest).
 		WithPodName("pod3").
-		WithPodLabel("foo", "bar").
+		WithPodLabel("foo", "wrong-value").
 		WithUnknownOwner().
 		Build()
 	f.kClient.EmitPod(labels.Everything(), p3)
 
-	p4 := podbuilder.New(t, manifest2).
+	// p4 matches ls2 but not ls1
+	p4 := podbuilder.New(t, manifest).
 		WithPodName("pod4").
 		WithPodLabel("baz", "quu").
 		WithUnknownOwner().
 		Build()
 	f.kClient.EmitPod(labels.Everything(), p4)
 
-	p5 := podbuilder.New(t, manifest2).
-		WithPodName("pod5").
-		Build()
-	f.kClient.EmitPod(labels.Everything(), p5)
+	// p3 + p4 should not be observed
+	f.assertObservedPods(manifest.Name, ancestorMap{
+		p1.UID: "",                            // p1 matches ls1 -> no ancestor
+		p2.UID: p2Entities.Deployment().UID(), // p2 matches deployed UID
+	})
 
-	f.assertObservedPods(p4, p5)
-	assert.Equal(t, []model.ManifestName{manifest2.Name, manifest2.Name}, f.manifestNames)
-}
+	// change the labels - now p1 will NOT match but p4 WILL match; others stay the same
+	ls2 := labels.Set{"baz": "quu"}
+	manifest = f.addManifestWithSelectors(manifest.Name, ls2)
+	// (since we upserted in the store, need to re-attach p2)
+	f.addDeployedEntity(manifest, p2Entities.Deployment())
 
-func TestPodsDispatchedInOrder(t *testing.T) {
-	f := newPWFixture(t)
-	defer f.TearDown()
-	manifest := f.addManifestWithSelectors("server")
-
-	pb := podbuilder.New(t, manifest)
-	entities := pb.ObjectTreeEntities()
-	f.addDeployedEntity(manifest, entities.Deployment())
-	f.requireWatchForEntity(manifest.Name, entities.Deployment())
-	f.kClient.Inject(entities...)
-
-	count := 20
-	pods := []*v1.Pod{}
-	for i := 0; i < count; i++ {
-		v := strconv.Itoa(i)
-		pod := pb.
-			WithResourceVersion(v).
-			WithTemplateSpecHash(k8s.PodTemplateSpecHash(v)).
-			Build()
-		pods = append(pods, pod)
-	}
-
-	for _, pod := range pods {
-		f.kClient.EmitPod(labels.Everything(), pod)
-	}
-
-	f.waitForPodActionCount(count)
-
-	// Make sure the pods showed up in order.
-	for i := 1; i < count; i++ {
-		pod := f.pods[i]
-		lastPod := f.pods[i-1]
-		podV, _ := strconv.Atoi(pod.PodTemplateSpecHash)
-		lastPodV, _ := strconv.Atoi(lastPod.PodTemplateSpecHash)
-		if lastPodV > podV {
-			t.Fatalf("Pods appeared out of order\nPod %d: %v\nPod %d: %v\n", i-1, lastPod, i, pod)
-		}
-	}
+	f.assertObservedPods(manifest.Name, ancestorMap{
+		p2.UID: p2Entities.Deployment().UID(), // p2 matches deployed UID
+		p4.UID: "",                            // p4 matches ls2 -> no ancestor
+	})
 }
 
 func TestPodWatchReadd(t *testing.T) {
@@ -232,20 +199,25 @@ func TestPodWatchReadd(t *testing.T) {
 	f.kClient.Inject(entities...)
 	f.kClient.EmitPod(labels.Everything(), p)
 
-	f.assertObservedPods(p)
+	f.assertObservedPods(manifest.Name, ancestorMap{p.UID: entities.Deployment().UID()})
 
 	f.removeManifest("server")
+	// the watch should be removed now
+	require.Eventuallyf(t, func() bool {
+		key := KeyForManifest(manifest.Name)
+		return !f.pw.HasNamespaceWatch(key, k8s.DefaultNamespace) &&
+			!f.pw.HasUIDWatch(key, entities.Deployment().UID())
+	}, stdTimeout, 20*time.Millisecond, "Namespace watch was never removed")
 
-	f.clearPods()
 	manifest = f.addManifestWithSelectors("server")
 
-	f.addDeployedEntity(manifest, pb.ObjectTreeEntities().Deployment())
+	f.addDeployedEntity(manifest, entities.Deployment())
 
 	// Make sure the pods are re-broadcast.
 	// Even though the pod didn't change when the manifest was
 	// redeployed, we still need to broadcast the pod to make
 	// sure it gets repopulated.
-	f.assertObservedPods(p)
+	f.assertObservedPods(manifest.Name, ancestorMap{p.UID: entities.Deployment().UID()})
 }
 
 func TestPodWatchDuplicates(t *testing.T) {
@@ -260,52 +232,75 @@ func TestPodWatchDuplicates(t *testing.T) {
 
 	pb := podbuilder.New(t, m1).
 		WithPodName("shared-pod").
-		WithPodLabel("foo", "bar")
+		WithPodLabel("foo", "bar").
+		WithNoTemplateSpecHash()
 	p := pb.Build()
 	entities := pb.ObjectTreeEntities()
 	// m3 + m4 don't know about the deployment, just labels
 	f.addDeployedEntity(m1, entities.Deployment())
 	f.addDeployedEntity(m2, entities.Deployment())
 	// only m1 is expected to watch the UID
+	// TODO(milas): this is actually a quirk of ManifestSubscriber - move to dedicated test there
 	f.requireWatchForEntity(m1.Name, entities.Deployment())
 
 	f.kClient.Inject(entities...)
 	f.kClient.EmitPod(labels.Everything(), p)
 
-	f.assertObservedManifests(m1.Name)
-	f.assertObservedPods(p)
+	// m1 should see the Pod and map it back to its ancestor (deployment)
+	f.assertObservedPods(m1.Name, ancestorMap{p.UID: entities.Deployment().UID()})
+	// m2 should see nothing since ManifestSubscriber gave the UID claim to m1
+	f.assertObservedPods(m2.Name, ancestorMap{})
+	// m3 + m4 still see the pod! but have no concept of ancestor since it was a label match
+	for _, mn := range []model.ManifestName{m3.Name, m4.Name} {
+		f.assertObservedPods(mn, ancestorMap{p.UID: ""})
+	}
 
-	f.clearPods()
 	f.removeManifest(m1.Name)
 
 	// the UID should get reassigned to m2
 	// AND dispatch a Pod event since it's "new" (to m2)
 	f.requireWatchForEntity(m2.Name, entities.Deployment())
-	f.assertObservedManifests(m2.Name)
-	f.assertObservedPods(p)
+	f.assertObservedPods(m2.Name, ancestorMap{p.UID: entities.Deployment().UID()})
+	// m3 + m4 still see the pod! but have no concept of ancestor since it was a label match
+	for _, mn := range []model.ManifestName{m3.Name, m4.Name} {
+		f.assertObservedPods(mn, ancestorMap{p.UID: ""})
+	}
 
-	f.clearPods()
 	f.removeManifest(m2.Name)
 
 	// NOTE: label matches do NOT get re-dispatched events for known pods currently,
-	// 	so we re-emit a Pod event
+	// 	so we need to re-emit a Pod event
 	f.kClient.EmitPod(labels.Everything(), p)
 
-	// m3 should now be allowed to match, but m4 still shouldn't because
-	// we restrict label matches to one watcher
-	f.assertObservedManifests(m3.Name)
-	f.assertObservedPods(p)
+	// m3 + m4 still see the pod! but have no concept of ancestor since it was a label match
+	for _, mn := range []model.ManifestName{m3.Name, m4.Name} {
+		f.assertObservedPods(mn, ancestorMap{p.UID: ""})
+	}
+}
 
-	f.clearPods()
-	f.removeManifest(m3.Name)
+func TestPodWatchRestarts(t *testing.T) {
+	f := newPWFixture(t)
+	defer f.TearDown()
 
-	// NOTE: label matches do NOT get re-dispatched events for known pods currently,
-	// 	so we re-emit a Pod event
+	manifest := f.addManifestWithSelectors("server")
+
+	pb := podbuilder.New(t, manifest).WithRestartCount(123)
+	p := pb.Build()
+
+	// Simulate the deployed entities in the engine state
+	entities := pb.ObjectTreeEntities()
+	f.addDeployedEntity(manifest, entities.Deployment())
+	f.requireWatchForEntity(manifest.Name, entities.Deployment())
+	f.kClient.Inject(entities...)
+
 	f.kClient.EmitPod(labels.Everything(), p)
 
-	// finally, m4 can see it
-	f.assertObservedManifests(m4.Name)
-	f.assertObservedPods(p)
+	f.requireState(KeyForManifest(manifest.Name), func(kd *v1alpha1.KubernetesDiscovery) bool {
+		if kd == nil || len(kd.Status.Pods) != 1 {
+			return false
+		}
+		return kd.Status.Pods[0].BaselineRestartCount == 123
+	}, "Incorrect restart count")
 }
 
 func (f *pwFixture) addManifestWithSelectors(mn model.ManifestName, ls ...labels.Set) model.Manifest {
@@ -324,7 +319,7 @@ func (f *pwFixture) addManifestWithSelectors(mn model.ManifestName, ls ...labels
 	// should trigger the OnChange for the PodWatcher
 	require.Eventuallyf(f.t, func() bool {
 		// SanchoYAML doesn't define a namespace so it'll be the default
-		return f.pw.HasNamespaceWatch(keyForManifest(mn), k8s.DefaultNamespace)
+		return f.pw.HasNamespaceWatch(KeyForManifest(mn), k8s.DefaultNamespace)
 	}, stdTimeout, 20*time.Millisecond, "Namespace for %q not being watched", mn)
 	f.waitForExtraSelectors(mn, ls...)
 
@@ -335,7 +330,7 @@ func (f *pwFixture) waitForExtraSelectors(mn model.ManifestName, expected ...lab
 	var desc strings.Builder
 	require.Eventuallyf(f.t, func() bool {
 		desc.Reset()
-		actualSelectors := f.pw.ExtraSelectors(keyForManifest(mn))
+		actualSelectors := f.pw.ExtraSelectors(KeyForManifest(mn))
 		if len(expected) != len(actualSelectors) {
 			desc.WriteString(fmt.Sprintf("expected selector count: %d | actual selector count: %d",
 				len(expected), len(actualSelectors)))
@@ -368,8 +363,9 @@ func (f *pwFixture) removeManifest(mn model.ManifestName) {
 	// race conditions
 	namespaces := make(map[k8s.Namespace]bool)
 
+	key := KeyForManifest(mn)
 	state := f.store.LockMutableStateForTesting()
-	if kd := state.KubernetesDiscoveries[keyForManifest(mn)]; kd != nil {
+	if kd := state.KubernetesDiscoveries[key]; kd != nil {
 		for _, w := range kd.Spec.Watches {
 			namespaces[k8s.Namespace(w.Namespace)] = true
 		}
@@ -378,32 +374,26 @@ func (f *pwFixture) removeManifest(mn model.ManifestName) {
 	f.store.UnlockMutableState()
 
 	f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-
-	// all watched namespaces should be removed; this happens async because
-	// k8swatch.ManifestSubscriber dispatches the updates to the KubernetesDiscovery specs
-	// and then k8swatch.PodWatcher reacts to those changes to update the actual watches
-	require.Eventuallyf(f.t, func() bool {
-		for ns := range namespaces {
-			if f.pw.HasNamespaceWatch(keyForManifest(mn), ns) {
-				return false
-			}
-		}
-		return true
-	}, stdTimeout, 20*time.Millisecond, "Namespace watches were never removed")
+	f.requireState(KeyForManifest(mn), func(kd *v1alpha1.KubernetesDiscovery) bool {
+		return kd == nil
+	}, "KubernetesDiscovery was not removed from state for manifest[%s]", mn)
+	// since spec has been removed from state, safe to synchronously assert that watches were removed
+	for ns := range namespaces {
+		require.Falsef(f.t, f.pw.HasNamespaceWatch(key, ns),
+			"Watch for namespace[%s] by manifest[%s] still exists", ns, mn)
+	}
 }
 
 type pwFixture struct {
 	*tempdir.TempDirFixture
-	t             *testing.T
-	kClient       *k8s.FakeK8sClient
-	ms            *ManifestSubscriber
-	pw            *PodWatcher
-	ctx           context.Context
-	cancel        func()
-	store         *store.Store
-	pods          []*v1alpha1.Pod
-	manifestNames []model.ManifestName
-	mu            sync.Mutex
+	t       *testing.T
+	kClient *k8s.FakeK8sClient
+	ms      *ManifestSubscriber
+	pw      *PodWatcher
+	ctx     context.Context
+	cancel  func()
+	store   *store.Store
+	mu      sync.Mutex
 }
 
 func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, action store.Action) {
@@ -417,9 +407,8 @@ func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, acti
 		HandleKubernetesDiscoveryUpdateAction(ctx, state, a)
 	case KubernetesDiscoveryDeleteAction:
 		HandleKubernetesDiscoveryDeleteAction(ctx, state, a)
-	case PodChangeAction:
-		pw.pods = append(pw.pods, a.Pod)
-		pw.manifestNames = append(pw.manifestNames, a.ManifestName)
+	case KubernetesDiscoveryUpdateStatusAction:
+		HandleKubernetesDiscoveryUpdateStatusAction(ctx, state, a)
 	case store.PanicAction:
 		pw.t.Fatalf("Store received PanicAction: %v", a.Err)
 	default:
@@ -434,7 +423,8 @@ func newPWFixture(t *testing.T) *pwFixture {
 	ctx, cancel := context.WithCancel(ctx)
 
 	of := k8s.ProvideOwnerFetcher(ctx, kClient)
-	pw := NewPodWatcher(kClient, of)
+	rd := NewContainerRestartDetector()
+	pw := NewPodWatcher(kClient, of, rd)
 
 	ms := NewManifestSubscriber(k8s.DefaultNamespace)
 
@@ -485,50 +475,42 @@ func (f *pwFixture) addDeployedEntity(m model.Manifest, entity k8s.K8sEntity) {
 }
 
 func (f *pwFixture) requireWatchForEntity(mn model.ManifestName, entity k8s.K8sEntity) {
-	key := keyForManifest(mn)
+	key := KeyForManifest(mn)
 	require.Eventuallyf(f.t, func() bool {
 		return f.pw.HasUIDWatch(key, entity.UID())
 	}, stdTimeout, 20*time.Millisecond, "Watch for manifest[%s] on entity[%s] not setup", mn, entity.Name())
 }
 
-func (f *pwFixture) waitForPodActionCount(count int) {
+func (f *pwFixture) assertObservedPods(mn model.ManifestName, expected ancestorMap) {
+	f.t.Helper()
+	var desc strings.Builder
+	f.requireState(KeyForManifest(mn), func(kd *v1alpha1.KubernetesDiscovery) bool {
+		desc.Reset()
+		if kd == nil {
+			desc.WriteString("KubernetesDiscovery object is nil in state")
+			return false
+		}
+		actual := make(ancestorMap)
+		for _, p := range kd.Status.Pods {
+			podUID := types.UID(p.UID)
+			actual[podUID] = types.UID(p.AncestorUID)
+		}
+
+		diff := cmp.Diff(expected, actual)
+		if diff != "" {
+			desc.WriteString("\n")
+			desc.WriteString(diff)
+			return false
+		}
+		return true
+	}, "Expected Pods were not observed for manifest[%s]: %s", mn, &desc)
+}
+
+func (f *pwFixture) requireState(key types.NamespacedName, cond func(kd *v1alpha1.KubernetesDiscovery) bool, msg string, args ...interface{}) {
 	f.t.Helper()
 	require.Eventuallyf(f.t, func() bool {
-		f.mu.Lock()
-		defer f.mu.Unlock()
-		return len(f.pods) >= count
-	}, stdTimeout, 20*time.Millisecond, "Timeout waiting for %d pod actions", count)
-}
-
-func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
-	f.t.Helper()
-	if len(pods) == 0 {
-		// since this waits on async actions, asserting on no pods is
-		// not reliable as it's the default state so too race-y
-		f.t.Fatal("Must assert on at least one pod")
-	}
-
-	f.waitForPodActionCount(len(pods))
-	var toCmp []*v1alpha1.Pod
-	for _, p := range pods {
-		toCmp = append(toCmp, k8sconv.Pod(f.ctx, p))
-	}
-	require.ElementsMatch(f.t, toCmp, f.pods)
-}
-
-func (f *pwFixture) assertObservedManifests(manifests ...model.ManifestName) {
-	f.t.Helper()
-	start := time.Now()
-	for time.Since(start) < stdTimeout {
-		if len(manifests) == len(f.manifestNames) {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	require.Equal(f.t, manifests, f.manifestNames)
-}
-
-func (f *pwFixture) clearPods() {
-	f.pods = nil
-	f.manifestNames = nil
+		state := f.store.RLockState()
+		defer f.store.RUnlockState()
+		return cond(state.KubernetesDiscoveries[key])
+	}, stdTimeout, 20*time.Millisecond, msg, args...)
 }

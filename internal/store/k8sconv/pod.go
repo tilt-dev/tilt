@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -15,20 +19,23 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func Pod(ctx context.Context, pod *v1.Pod) *v1alpha1.Pod {
+func Pod(ctx context.Context, pod *v1.Pod, ancestorUID types.UID, baselineRestarts int32) *v1alpha1.Pod {
 	podInfo := &v1alpha1.Pod{
+		UID:            string(pod.UID),
 		Name:           pod.Name,
 		Namespace:      pod.Namespace,
-		CreatedAt:      *pod.CreationTimestamp.DeepCopy(),
+		CreatedAt:      apis.NewTime(pod.CreationTimestamp.Time),
 		Phase:          string(pod.Status.Phase),
 		Deleting:       pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero(),
 		Conditions:     PodConditions(pod.Status.Conditions),
 		InitContainers: PodContainers(ctx, pod, pod.Status.InitContainerStatuses),
 		Containers:     PodContainers(ctx, pod, pod.Status.ContainerStatuses),
 
-		PodTemplateSpecHash: pod.Labels[k8s.TiltPodTemplateHashLabel],
-		Status:              PodStatusToString(*pod),
-		Errors:              PodStatusErrorMessages(*pod),
+		AncestorUID:          string(ancestorUID),
+		BaselineRestartCount: baselineRestarts,
+		PodTemplateSpecHash:  pod.Labels[k8s.TiltPodTemplateHashLabel],
+		Status:               PodStatusToString(*pod),
+		Errors:               PodStatusErrorMessages(*pod),
 	}
 	return podInfo
 }
@@ -39,7 +46,7 @@ func PodConditions(conditions []v1.PodCondition) []v1alpha1.PodCondition {
 		condition := v1alpha1.PodCondition{
 			Type:               string(c.Type),
 			Status:             string(c.Status),
-			LastTransitionTime: *c.LastTransitionTime.DeepCopy(),
+			LastTransitionTime: apis.NewTime(c.LastTransitionTime.Time),
 			Reason:             c.Reason,
 			Message:            c.Message,
 		}
@@ -94,12 +101,12 @@ func ContainerForStatus(pod *v1.Pod, cStatus v1.ContainerStatus) (v1alpha1.Conta
 		}
 	} else if cStatus.State.Running != nil {
 		c.State.Running = &v1alpha1.ContainerStateRunning{
-			StartedAt: *cStatus.State.Running.StartedAt.DeepCopy(),
+			StartedAt: apis.NewTime(cStatus.State.Running.StartedAt.Time),
 		}
 	} else if cStatus.State.Terminated != nil {
 		c.State.Terminated = &v1alpha1.ContainerStateTerminated{
-			StartedAt:  *cStatus.State.Terminated.StartedAt.DeepCopy(),
-			FinishedAt: *cStatus.State.Terminated.FinishedAt.DeepCopy(),
+			StartedAt:  apis.NewTime(cStatus.State.Terminated.StartedAt.Time),
+			FinishedAt: apis.NewTime(cStatus.State.Terminated.FinishedAt.Time),
 			Reason:     cStatus.State.Terminated.Reason,
 			ExitCode:   cStatus.State.Terminated.ExitCode,
 		}
