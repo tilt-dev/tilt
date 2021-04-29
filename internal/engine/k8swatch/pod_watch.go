@@ -2,6 +2,7 @@ package k8swatch
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -20,6 +21,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 )
 
+// watcherID is to disambiguate between K8s object keys and tilt-apiserver KubernetesDiscovery object keys.
+type watcherID types.NamespacedName
+type watcherSet map[watcherID]bool
+
 type PodWatcher struct {
 	kCli         k8s.Client
 	ownerFetcher k8s.OwnerFetcher
@@ -29,7 +34,7 @@ type PodWatcher struct {
 
 	// extraSelectors is a mapping of KubernetesDiscovery keys to extra label selectors for matching
 	// pods that don't transitively matched a known UID.
-	extraSelectors map[types.NamespacedName][]labels.Selector
+	extraSelectors map[watcherID][]labels.Selector
 
 	// watchedNamespaces tracks the namespaces that are being observed for Pod events.
 	//
@@ -38,14 +43,9 @@ type PodWatcher struct {
 	// the watch.
 	watchedNamespaces map[k8s.Namespace]nsWatch
 
-	// claimedUIDs enforces a unique association for a particular UID to a watcher.
-	//
-	// This is a temporary restriction to align with behavior that meant a given UID could
-	// be referenced by multiple manifests but, to avoid duplicate events, only associate
-	// events with one of them. Once PodChangeAction -> KubernetesDiscoveryUpdateStatusAction, this
-	// restriction will be lifted and ManifestSubscriber will instead handle "claims" for
-	// manifests, but the general restriction will no longer apply at an API level.
-	claimedUIDs map[types.UID]types.NamespacedName
+	// uidWatchers are the KubernetesDiscovery objects that have a watch ref for a particular K8s UID,
+	// and so will receive events for changes to it.
+	uidWatchers map[types.UID]watcherSet
 
 	// kubernetesDiscoveryManifest is a temporary mapping of KubernetesDiscovery keys to associated manifests.
 	//
@@ -53,7 +53,7 @@ type PodWatcher struct {
 	// dispatching events without changing that logic. This will be eliminated once this dispatches
 	// KubernetesDiscoveryUpdateStatusAction instead and the reducers will be responsible for associating
 	// it back to a manifest (or ignoring it if none).
-	kubernetesDiscoveryManifest map[types.NamespacedName]model.ManifestName
+	kubernetesDiscoveryManifest map[watcherID]model.ManifestName
 
 	// An index that maps the UID of Kubernetes resources to the UIDs of
 	// all pods that they own (transitively).
@@ -69,10 +69,10 @@ func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *PodWatcher {
 	return &PodWatcher{
 		kCli:                        kCli,
 		ownerFetcher:                ownerFetcher,
-		extraSelectors:              make(map[types.NamespacedName][]labels.Selector),
+		extraSelectors:              make(map[watcherID][]labels.Selector),
 		watchedNamespaces:           make(map[k8s.Namespace]nsWatch),
-		claimedUIDs:                 make(map[types.UID]types.NamespacedName),
-		kubernetesDiscoveryManifest: make(map[types.NamespacedName]model.ManifestName),
+		uidWatchers:                 make(map[types.UID]watcherSet),
+		kubernetesDiscoveryManifest: make(map[watcherID]model.ManifestName),
 		knownDescendentPodUIDs:      make(map[types.UID]k8s.UIDSet),
 		knownPods:                   make(map[types.UID]*v1.Pod),
 	}
@@ -80,16 +80,8 @@ func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher) *PodWatcher {
 
 // nsWatch tracks the watchers for the given namespace and allows the watch to be canceled.
 type nsWatch struct {
-	watchers map[types.NamespacedName]bool
+	watchers map[watcherID]bool
 	cancel   context.CancelFunc
-}
-
-func selectorFromLabels(labelValues []v1alpha1.LabelValue) labels.Selector {
-	ls := make(labels.Set, len(labelValues))
-	for _, l := range labelValues {
-		ls[l.Label] = l.Value
-	}
-	return ls.AsSelector()
 }
 
 // OnChange reconciles based on changes to KubernetesDiscovery objects.
@@ -102,13 +94,15 @@ func (w *PodWatcher) OnChange(ctx context.Context, st store.RStore, summary stor
 	defer w.mu.Unlock()
 
 	for key := range summary.KubernetesDiscoveries.Changes {
-		w.reconcile(ctx, st, key)
+		w.reconcile(ctx, st, watcherID(key))
 	}
 
 	w.cleanupAbandonedNamespaces()
 }
 
 // HasNamespaceWatch returns true if the key is a watcher for the given namespace.
+//
+// This is intended for use in tests.
 func (w *PodWatcher) HasNamespaceWatch(key types.NamespacedName, ns k8s.Namespace) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -116,7 +110,16 @@ func (w *PodWatcher) HasNamespaceWatch(key types.NamespacedName, ns k8s.Namespac
 	if !ok {
 		return false
 	}
-	return nsWatch.watchers[key]
+	return nsWatch.watchers[watcherID(key)]
+}
+
+// HasUIDWatch returns true if the key is a watcher for the given K8s UID.
+//
+// This is intended for use in tests.
+func (w *PodWatcher) HasUIDWatch(key types.NamespacedName, uid types.UID) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.uidWatchers[uid][watcherID(key)]
 }
 
 // ExtraSelectors returns the extra selectors for a given KubernetesDiscovery object.
@@ -126,26 +129,16 @@ func (w *PodWatcher) ExtraSelectors(key types.NamespacedName) []labels.Selector 
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	var ret []labels.Selector
-	for _, s := range w.extraSelectors[key] {
+	for _, s := range w.extraSelectors[watcherID(key)] {
 		ret = append(ret, s.DeepCopySelector())
 	}
 	return ret
 }
 
-// Claimant returns the key that has uniquely claimed a particular K8s entity UID to prevent
-// duplicate events.
-//
-// This is intended for use in tests.
-func (w *PodWatcher) Claimant(uid types.UID) types.NamespacedName {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.claimedUIDs[uid]
-}
-
 // reconcile manages namespace watches for the modified KubernetesDiscovery object.
-func (w *PodWatcher) reconcile(ctx context.Context, st store.RStore, key types.NamespacedName) {
+func (w *PodWatcher) reconcile(ctx context.Context, st store.RStore, key watcherID) {
 	state := st.RLockState()
-	kd := state.KubernetesDiscoveries[key]
+	kd := state.KubernetesDiscoveries[types.NamespacedName(key)]
 	st.RUnlockState()
 
 	if kd == nil {
@@ -158,10 +151,8 @@ func (w *PodWatcher) reconcile(ctx context.Context, st store.RStore, key types.N
 			// namespace watch will be cleaned up afterwards
 			delete(watcher.watchers, key)
 		}
-		for uid, k := range w.claimedUIDs {
-			if k == key {
-				delete(w.claimedUIDs, uid)
-			}
+		for _, watchers := range w.uidWatchers {
+			delete(watchers, key)
 		}
 		return
 	}
@@ -195,9 +186,14 @@ func (w *PodWatcher) reconcile(ctx context.Context, st store.RStore, key types.N
 		}
 		seenUIDs[id] = true
 
-		if claimant, ok := w.claimedUIDs[id]; !ok || claimant != key {
-			// either this UID has not been claimed (so it's new to Tilt)
-			// or the claim has changed (so it's new to this KubernetesDiscovery object)
+		uidWatchers, ok := w.uidWatchers[id]
+		if !ok {
+			uidWatchers = make(watcherSet)
+			w.uidWatchers[id] = uidWatchers
+		}
+		if _, existing := uidWatchers[key]; !existing {
+			// this is the first time this watcher has had a ref for this UID, so dispatch
+			// events about known pods so that it can populate itself
 			w.setupNewUID(ctx, st, id, key)
 		}
 	}
@@ -210,14 +206,9 @@ func (w *PodWatcher) reconcile(ctx context.Context, st store.RStore, key types.N
 		}
 	}
 
-	for uid, claimant := range w.claimedUIDs {
-		if claimant == key && !seenUIDs[uid] {
-			// remove any claims on UIDs that vanished; most likely the object was destroyed,
-			// but it's also possible for two manifests to reference the same UID, so this
-			// ensures that if another manifest still references the UID, it will be free to
-			// take the claim the next time it's reconciled (this isn't perfect, but it's
-			// a pathological case that will be better resolved soon)
-			delete(w.claimedUIDs, uid)
+	for uid, watchers := range w.uidWatchers {
+		if !seenUIDs[uid] {
+			delete(watchers, key)
 		}
 	}
 }
@@ -248,7 +239,7 @@ func (w *PodWatcher) cleanupAbandonedNamespaces() {
 // This ensures it can be safely called by reconcile on each invocation for any namespace that the watcher cares about.
 // Additionally, for efficiency, duplicative watches on the same namespace will not be created; see watchedNamespaces
 // for more details.
-func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace, watcherKey types.NamespacedName) {
+func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace, watcherKey watcherID) {
 	if watcher, ok := w.watchedNamespaces[ns]; ok {
 		// already watching this namespace -- just add this watcher to the list for cleanup tracking
 		watcher.watchers[watcherKey] = true
@@ -264,28 +255,23 @@ func (w *PodWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Nam
 
 	ctx, cancel := context.WithCancel(ctx)
 	w.watchedNamespaces[ns] = nsWatch{
-		watchers: map[types.NamespacedName]bool{watcherKey: true},
+		watchers: map[watcherID]bool{watcherKey: true},
 		cancel:   cancel,
 	}
 
 	go w.dispatchPodChangesLoop(ctx, ch, st)
 }
 
-// setupNewUID handles dispatching events immediately for a new UID.
+// setupNewUID handles dispatching events to a watcher immediately for a UID it has not seen before.
 //
 // mu must be held by caller.
 //
-// There are two cases of a new UID: one common and one esoteric. The former is what is typically thought of
-// as a new UID: it has just been added for discovery to a KubernetesDiscovery spec. Very frequently, Pod events for
-// this UID have already been seen by the watcher here (as dispatched by K8s) _before_ the consumer was able to
-// propagate the UID for discovery, so a Pod change event is sent to allow it to populate.
-//
-// The latter case is when a UID changes "claims" between two manifests. This is a strange edge case, but the
-// same reasoning applies: the new consumer still needs to get data populated, so an event is (re-)dispatched
-// but targeted at the new claimant.
-func (w *PodWatcher) setupNewUID(ctx context.Context, st store.RStore, uid types.UID, claimedByKey types.NamespacedName) {
-	w.claimedUIDs[uid] = claimedByKey
-	mn, ok := w.kubernetesDiscoveryManifest[claimedByKey]
+// Very frequently, Pod events (as dispatched by K8s) for a UID have already been seen by the PodWatcher _before_ the
+// consumer (e.g. the ManifestSubscriber which generates KubernetesDiscovery specs) was able to propagate the UID for
+// discovery, so a Pod change event is sent to allow it to immediately populate an already known (to PodWatcher) Pod.
+func (w *PodWatcher) setupNewUID(ctx context.Context, st store.RStore, uid types.UID, watcherID watcherID) {
+	w.uidWatchers[uid][watcherID] = true
+	mn, ok := w.kubernetesDiscoveryManifest[watcherID]
 	if !ok {
 		return
 	}
@@ -314,19 +300,29 @@ func (w *PodWatcher) upsertPod(pod *v1.Pod) {
 	w.knownPods[uid] = pod
 }
 
+// triageResult is a KubernetesDiscovery key and the UID (if any) of the watch ref that matched the Pod event.
+type triageResult struct {
+	watcherID   watcherID
+	ancestorUID types.UID
+}
+
 // triagePodTree checks to see if this Pod corresponds to any of the KubernetesDiscovery objects.
 //
-// Currently, we do this by comparing the Pod UID and its owner UIDs against watched UIDs from KubernetesDiscovery specs.
-// If it does not transitively belong to watched UID, it will be compared against any extra selectors from the
-// specs instead.
+// Currently, we do this by comparing the Pod UID and its owner UIDs against watched UIDs from
+// KubernetesDiscovery specs. More than one KubernetesDiscovery object can watch the same UID
+// and each will receive an event. (Note that currently, ManifestSubscriber uniquely assigns
+// UIDs to prevent more than one manifest from watching the same UID, but at an API level, it's
+// possible.)
 //
-// If the Pod doesn't match any KubernetesDiscovery spec, it's kept in local  state, so we can match it later if a
-// KubernetesDiscovery spec is modified to match it; this is actually extremely common because new Pods are typically
-// observed here _before_ the respective KubernetesDiscovery spec update propagates (see setupNewUID).
-func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) (types.NamespacedName, types.UID) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
+// If it does not transitively belong to any watched UIDs, it will be compared against any
+// extra selectors from the specs instead. Only the _first_ match receives an event; this is
+// to ensure that more than one manifest doesn't see it.
+//
+// Even if the Pod doesn't match any KubernetesDiscovery spec, it's still kept in local state,
+// so we can match it later if a KubernetesDiscovery spec is modified to match it; this is actually
+// extremely common because new Pods are typically observed here _before_ the respective
+// KubernetesDiscovery spec update propagates (see setupNewUID).
+func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []triageResult {
 	uid := pod.UID
 
 	// Set up the descendent pod UID index
@@ -343,12 +339,20 @@ func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) (type
 		set.Add(uid)
 	}
 
-	// Find the manifest name
+	var results []triageResult
+
+	// Find any watchers that have a ref to a UID in the object tree (i.e. the Pod itself or a transitive owner)
 	for _, ownerUID := range objTree.UIDs() {
-		key, ok := w.claimedUIDs[ownerUID]
-		if ok {
-			return key, ownerUID
+		for watcherID := range w.uidWatchers[ownerUID] {
+			results = append(results, triageResult{watcherID: watcherID, ancestorUID: ownerUID})
 		}
+	}
+
+	if len(results) != 0 {
+		// TODO(milas): it doesn't totally make sense that extra selectors only apply if no other watcher matched them,
+		// 	but if this constraint is removed, it'll open the door for >1 manifest to see the same Pod, which causes
+		// 	problems in other parts of the engine
+		return results
 	}
 
 	// If we can't find the key based on owner, check to see if the pod any
@@ -361,11 +365,23 @@ func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) (type
 	for key, selectors := range w.extraSelectors {
 		for _, selector := range selectors {
 			if selector.Matches(podLabels) {
-				return key, ""
+				// there is no ancestorUID since this was a label match
+				results = append(results, triageResult{watcherID: key, ancestorUID: ""})
 			}
 		}
 	}
-	return types.NamespacedName{}, ""
+
+	if len(results) > 1 {
+		// TODO(milas): similar to the reason for the early return, in the event that we fell back to label selectors,
+		// 	multiple manifests might match, which can cause trouble in the engine downstream, so arbitrarily (but
+		// 	deterministically) pick ONE to get the event for now
+		sort.SliceStable(results, func(i, j int) bool {
+			return results[i].watcherID.Name < results[j].watcherID.Name
+		})
+		return results[:1]
+	}
+
+	return results
 }
 
 func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st store.RStore) {
@@ -374,21 +390,27 @@ func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st stor
 		return
 	}
 
-	key, ancestorUID := w.triagePodTree(pod, objTree)
-
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	mn := w.kubernetesDiscoveryManifest[key]
-	if mn == "" {
-		// currently, PodChangeAction is tied to a manifest, so only Pods that are associated
-		// with a KubernetesDiscovery spec that originated from a manifest can have events dispatched
-		// (this will change imminently once PodChangeAction -> KubernetesDiscoveryUpdateStatusAction)
-		return
-	}
 
-	freshPod, ok := w.knownPods[pod.UID]
-	if ok {
-		st.Dispatch(NewPodChangeAction(k8sconv.Pod(ctx, freshPod), mn, ancestorUID))
+	triageResults := w.triagePodTree(pod, objTree)
+
+	for i := range triageResults {
+		key := triageResults[i].watcherID
+		ancestorUID := triageResults[i].ancestorUID
+
+		mn := w.kubernetesDiscoveryManifest[key]
+		if mn == "" {
+			// currently, PodChangeAction is tied to a manifest, so only Pods that are associated
+			// with a KubernetesDiscovery spec that originated from a manifest can have events dispatched
+			// (this will change imminently once PodChangeAction -> KubernetesDiscoveryUpdateStatusAction)
+			return
+		}
+
+		freshPod, ok := w.knownPods[pod.UID]
+		if ok {
+			st.Dispatch(NewPodChangeAction(k8sconv.Pod(ctx, freshPod), mn, ancestorUID))
+		}
 	}
 }
 
@@ -417,4 +439,12 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.O
 			return
 		}
 	}
+}
+
+func selectorFromLabels(labelValues []v1alpha1.LabelValue) labels.Selector {
+	ls := make(labels.Set, len(labelValues))
+	for _, l := range labelValues {
+		ls[l.Label] = l.Value
+	}
+	return ls.AsSelector()
 }

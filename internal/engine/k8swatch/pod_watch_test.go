@@ -42,6 +42,7 @@ func TestPodWatch(t *testing.T) {
 	// Simulate the deployed entities in the engine state
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
+	f.requireWatchForEntity(manifest.Name, entities.Deployment())
 	f.kClient.InjectEntityByName(entities...)
 
 	f.kClient.EmitPod(labels.Everything(), p)
@@ -183,6 +184,7 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 	pb := podbuilder.New(t, manifest)
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
+	f.requireWatchForEntity(manifest.Name, entities.Deployment())
 	f.kClient.InjectEntityByName(entities...)
 
 	count := 20
@@ -244,6 +246,66 @@ func TestPodWatchReadd(t *testing.T) {
 	// Even though the pod didn't change when the manifest was
 	// redeployed, we still need to broadcast the pod to make
 	// sure it gets repopulated.
+	f.assertObservedPods(p)
+}
+
+func TestPodWatchDuplicates(t *testing.T) {
+	f := newPWFixture(t)
+	defer f.TearDown()
+
+	m1 := f.addManifestWithSelectors("server1")
+	m2 := f.addManifestWithSelectors("server2")
+	l := labels.Set{"foo": "bar"}
+	m3 := f.addManifestWithSelectors("server3", l.AsSelector())
+	m4 := f.addManifestWithSelectors("server4", l.AsSelector())
+
+	pb := podbuilder.New(t, m1).
+		WithPodID("shared-pod").
+		WithPodLabel("foo", "bar")
+	p := pb.Build()
+	entities := pb.ObjectTreeEntities()
+	// m3 + m4 don't know about the deployment, just labels
+	f.addDeployedEntity(m1, entities.Deployment())
+	f.addDeployedEntity(m2, entities.Deployment())
+	// only m1 is expected to watch the UID
+	f.requireWatchForEntity(m1.Name, entities.Deployment())
+
+	f.kClient.InjectEntityByName(entities...)
+	f.kClient.EmitPod(labels.Everything(), p)
+
+	f.assertObservedManifests(m1.Name)
+	f.assertObservedPods(p)
+
+	f.clearPods()
+	f.removeManifest(m1.Name)
+
+	// the UID should get reassigned to m2
+	// AND dispatch a Pod event since it's "new" (to m2)
+	f.requireWatchForEntity(m2.Name, entities.Deployment())
+	f.assertObservedManifests(m2.Name)
+	f.assertObservedPods(p)
+
+	f.clearPods()
+	f.removeManifest(m2.Name)
+
+	// NOTE: label matches do NOT get re-dispatched events for known pods currently,
+	// 	so we re-emit a Pod event
+	f.kClient.EmitPod(labels.Everything(), p)
+
+	// m3 should now be allowed to match, but m4 still shouldn't because
+	// we restrict label matches to one watcher
+	f.assertObservedManifests(m3.Name)
+	f.assertObservedPods(p)
+
+	f.clearPods()
+	f.removeManifest(m3.Name)
+
+	// NOTE: label matches do NOT get re-dispatched events for known pods currently,
+	// 	so we re-emit a Pod event
+	f.kClient.EmitPod(labels.Everything(), p)
+
+	// finally, m4 can see it
+	f.assertObservedManifests(m4.Name)
 	f.assertObservedPods(p)
 }
 
@@ -438,18 +500,19 @@ func (f *pwFixture) addDeployedEntity(m model.Manifest, entity k8s.K8sEntity) {
 	if !ok {
 		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
-
 	runtimeState := mState.K8sRuntimeState()
 	runtimeState.DeployedEntities = k8s.ObjRefList{entity.ToObjectReference()}
 	mState.RuntimeState = runtimeState
 	f.store.UnlockMutableState()
-	f.t.Logf("Added K8s entity (kind[%s] name[%s]) to manifest[%s] - waiting for watcher to acknowledge",
-		entity.GVK().Kind, entity.Name(), m.Name)
 
 	f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+}
+
+func (f *pwFixture) requireWatchForEntity(mn model.ManifestName, entity k8s.K8sEntity) {
+	key := keyForManifest(mn)
 	require.Eventuallyf(f.t, func() bool {
-		return f.pw.Claimant(entity.UID()) == keyForManifest(m.Name)
-	}, stdTimeout, 20*time.Millisecond, "Manifest %q watch for %q not setup", m.Name, entity.Name())
+		return f.pw.HasUIDWatch(key, entity.UID())
+	}, stdTimeout, 20*time.Millisecond, "Watch for manifest[%s] on entity[%s] not setup", mn, entity.Name())
 }
 
 func (f *pwFixture) waitForPodActionCount(count int) {
@@ -478,14 +541,15 @@ func (f *pwFixture) assertObservedPods(pods ...*corev1.Pod) {
 }
 
 func (f *pwFixture) assertObservedManifests(manifests ...model.ManifestName) {
+	f.t.Helper()
 	start := time.Now()
-	for time.Since(start) < time.Second {
+	for time.Since(start) < stdTimeout {
 		if len(manifests) == len(f.manifestNames) {
 			break
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
-
-	require.ElementsMatch(f.t, manifests, f.manifestNames)
+	require.Equal(f.t, manifests, f.manifestNames)
 }
 
 func (f *pwFixture) clearPods() {

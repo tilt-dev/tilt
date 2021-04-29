@@ -39,11 +39,12 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 	state := st.RLockState()
 	defer st.RUnlockState()
 
+	claims := make(map[types.UID]types.NamespacedName)
 	seen := make(map[types.NamespacedName]bool)
 	for _, mt := range state.Targets() {
 		key := keyForManifest(mt.Manifest.Name)
 		seen[key] = true
-		kd, err := m.kubernetesDiscoveryFromManifest(ctx, key, mt)
+		kd, err := m.kubernetesDiscoveryFromManifest(ctx, key, mt, claims)
 		if err != nil {
 			// if the error is logged, it'll just trigger another store change and loop back here and
 			// get logged over and over, so all errors are fatal; any errors returned by the generation
@@ -107,7 +108,7 @@ func labelsFromSelector(selector labels.Selector) ([]v1alpha1.LabelValue, error)
 //
 // Because there is no graceful way to handle errors without triggering infinite loops in the store,
 // any returned error should be considered fatal.
-func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context, key types.NamespacedName, mt *store.ManifestTarget) (*v1alpha1.KubernetesDiscovery, error) {
+func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context, key types.NamespacedName, mt *store.ManifestTarget, claims map[types.UID]types.NamespacedName) (*v1alpha1.KubernetesDiscovery, error) {
 	if !mt.Manifest.IsK8s() {
 		return nil, nil
 	}
@@ -122,6 +123,15 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context
 	seenNamespaces := make(map[k8s.Namespace]bool)
 	var watchRefs []v1alpha1.KubernetesWatchRef
 	for _, e := range krs.DeployedEntities {
+		if _, claimed := claims[e.UID]; claimed {
+			// it's possible for multiple manifests to reference the same entity; however, duplicate reporting
+			// of the same K8s resources can cause confusing + odd behavior throughout other parts of the engine,
+			// so we only allow the first manifest to "claim" it so that the others won't receive events for it
+			// (note that manifest iteration order is deterministic, which ensures it doesn't flip-flop)
+			continue
+		}
+		claims[e.UID] = key
+
 		ns := k8s.Namespace(e.Namespace)
 		if ns == "" {
 			// since this entity is actually deployed, don't fallback to cfgNS
