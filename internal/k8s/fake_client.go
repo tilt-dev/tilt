@@ -491,26 +491,60 @@ func (pf FakePortForwarder) ForwardPorts() error {
 }
 
 type FakePortForwardClient struct {
-	CreatePortForwardCallCount int
-	LastForwardPortPodID       PodID
-	LastForwardPortRemotePort  int
-	LastForwardPortHost        string
-	LastForwarder              FakePortForwarder
-	LastForwardContext         context.Context
+	mu               sync.Mutex
+	PortForwardCalls []PortForwardCall
+}
+
+func NewFakePortfowardClient() *FakePortForwardClient {
+	return &FakePortForwardClient{
+		PortForwardCalls: []PortForwardCall{},
+	}
+}
+
+type PortForwardCall struct {
+	PodID      PodID
+	RemotePort int
+	Host       string
+	Forwarder  FakePortForwarder
+	Context    context.Context
 }
 
 func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
-	c.CreatePortForwardCallCount++
-	c.LastForwardContext = ctx
-	c.LastForwardPortPodID = podID
-	c.LastForwardPortRemotePort = remotePort
-	c.LastForwardPortHost = host
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	result := FakePortForwarder{
 		localPort: optionalLocalPort,
 		ctx:       ctx,
 		Done:      make(chan error),
 	}
-	c.LastForwarder = result
+
+	c.PortForwardCalls = append(c.PortForwardCalls, PortForwardCall{
+		PodID:      podID,
+		RemotePort: remotePort,
+		Host:       host,
+		Forwarder:  result,
+		Context:    ctx,
+	})
+
 	return result, nil
+}
+
+func (c *FakePortForwardClient) CreatePortForwardCallCount() int {
+	return len(c.PortForwardCalls)
+}
+func (c *FakePortForwardClient) LastForwardPortPodID() PodID {
+	return c.PortForwardCalls[len(c.PortForwardCalls)-1].PodID
+}
+func (c *FakePortForwardClient) LastForwardPortRemotePort() int {
+	return c.PortForwardCalls[len(c.PortForwardCalls)-1].RemotePort
+}
+func (c *FakePortForwardClient) LastForwardPortHost() string {
+	return c.PortForwardCalls[len(c.PortForwardCalls)-1].Host
+}
+func (c *FakePortForwardClient) LastForwarder() FakePortForwarder {
+	return c.PortForwardCalls[len(c.PortForwardCalls)-1].Forwarder
+}
+func (c *FakePortForwardClient) LastForwardContext() context.Context {
+	return c.PortForwardCalls[len(c.PortForwardCalls)-1].Context
 }
