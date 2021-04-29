@@ -54,18 +54,24 @@ type PortForwardList struct {
 // PortForwardSpec defines the desired state of PortForward
 type PortForwardSpec struct {
 	// The name of the pod to port forward to/from. Required.
-	Pod string `json:"pod"`
+	PodName string `json:"pod_name"`
 
 	// The namespace of the pod to port forward to/from. Defaults to the kubecontext default namespace.
 	//
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
-	// The port on the Kubernetes pod to connect to. Required.
-	ContainerPort int `json:"container_port"`
+	// One or more port forwards to execute on the given pod. Required.
+	Forwards []Forward `json:"forwards"`
+}
 
+// Forward defines a port forward to execute on a given pod.
+type Forward struct {
 	// The port to expose on the current machine. Required.
 	LocalPort int `json:"local_port"`
+
+	// The port on the Kubernetes pod to connect to. Required.
+	ContainerPort int `json:"container_port"`
 
 	// Optional host to bind to on the current machine (localhost by default)
 	//

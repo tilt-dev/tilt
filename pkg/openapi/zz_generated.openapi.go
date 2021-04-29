@@ -49,6 +49,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":             schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec":             schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus":           schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward":                   schema_pkg_apis_core_v1alpha1_Forward(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":             schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":                schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":                   schema_pkg_apis_core_v1alpha1_Handler(ref),
@@ -939,6 +940,44 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_Forward(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Forward defines a port forward to execute on a given pod.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"local_port": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port to expose on the current machine. Required.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"container_port": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port on the Kubernetes pod to connect to. Required.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"host": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional host to bind to on the current machine (localhost by default)",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"local_port", "container_port"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1810,7 +1849,7 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 				Description: "PortForwardSpec defines the desired state of PortForward",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"pod": {
+					"pod_name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The name of the pod to port forward to/from. Required.",
 							Default:     "",
@@ -1825,34 +1864,26 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
-					"container_port": {
+					"forwards": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The port on the Kubernetes pod to connect to. Required.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"local_port": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The port to expose on the current machine. Required.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"host": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional host to bind to on the current machine (localhost by default)",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "One or more port forwards to execute on the given pod. Required.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward"),
+									},
+								},
+							},
 						},
 					},
 				},
-				Required: []string{"pod", "container_port", "local_port"},
+				Required: []string{"pod_name", "forwards"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward"},
 	}
 }
 
