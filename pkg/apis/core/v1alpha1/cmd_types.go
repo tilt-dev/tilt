@@ -36,25 +36,25 @@ import (
 // +k8s:openapi-gen=true
 type Cmd struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   CmdSpec   `json:"spec,omitempty"`
-	Status CmdStatus `json:"status,omitempty"`
+	Spec   CmdSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status CmdStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // CmdList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type CmdList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Items []Cmd `json:"items"`
+	Items []Cmd `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // CmdSpec defines the desired state of Cmd
 type CmdSpec struct {
 	// Command-line arguments. Must have length at least 1.
-	Args []string `json:"args,omitempty"`
+	Args []string `json:"args,omitempty" protobuf:"bytes,1,rep,name=args"`
 
 	// Process working directory.
 	//
@@ -62,7 +62,7 @@ type CmdSpec struct {
 	// in the default Tilt working directory.
 	//
 	// +optional
-	Dir string `json:"dir,omitempty"`
+	Dir string `json:"dir,omitempty" protobuf:"bytes,2,opt,name=dir"`
 
 	// Additional variables process environment.
 	//
@@ -72,19 +72,19 @@ type CmdSpec struct {
 	// that Tilt runs with.
 	//
 	// +optional
-	Env []string `json:"env,omitempty"`
+	Env []string `json:"env,omitempty" protobuf:"bytes,3,rep,name=env"`
 
 	// Periodic probe of service readiness.
 	//
 	// +optional
-	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty" protobuf:"bytes,4,opt,name=readinessProbe"`
 
 	// Indicates objects that can trigger a restart of this command.
 	//
 	// Restarts can happen even if the command is already done.
 	//
 	// Logs of the currently process after the restart are discarded.
-	RestartOn *RestartOnSpec `json:"restartOn,omitempty"`
+	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,5,opt,name=restartOn"`
 }
 
 var _ resource.Object = &Cmd{}
@@ -135,15 +135,15 @@ func (in *CmdList) GetListMeta() *metav1.ListMeta {
 type CmdStatus struct {
 	// Details about a waiting process.
 	// +optional
-	Waiting *CmdStateWaiting `json:"waiting,omitempty"`
+	Waiting *CmdStateWaiting `json:"waiting,omitempty" protobuf:"bytes,1,opt,name=waiting"`
 
 	// Details about a running process.
 	// +optional
-	Running *CmdStateRunning `json:"running,omitempty"`
+	Running *CmdStateRunning `json:"running,omitempty" protobuf:"bytes,2,opt,name=running"`
 
 	// Details about a terminated process.
 	// +optional
-	Terminated *CmdStateTerminated `json:"terminated,omitempty"`
+	Terminated *CmdStateTerminated `json:"terminated,omitempty" protobuf:"bytes,3,opt,name=terminated"`
 
 	// Specifies whether the command has passed its readiness probe.
 	//
@@ -152,42 +152,42 @@ type CmdStatus struct {
 	// Is always true when no readiness probe is defined.
 	//
 	// +optional
-	Ready bool `json:"ready,omitempty"`
+	Ready bool `json:"ready,omitempty" protobuf:"varint,4,opt,name=ready"`
 }
 
 // CmdStateWaiting is a waiting state of a local command.
 type CmdStateWaiting struct {
 	// (brief) reason the process is not yet running.
 	// +optional
-	Reason string `json:"reason,omitempty"`
+	Reason string `json:"reason,omitempty" protobuf:"bytes,1,opt,name=reason"`
 }
 
 // CmdStateRunning is a running state of a local command.
 type CmdStateRunning struct {
 	// The process id of the command.
-	PID int32 `json:"pid"`
+	PID int32 `json:"pid" protobuf:"varint,1,opt,name=pid"`
 
 	// Time at which the command was last started.
-	StartedAt metav1.MicroTime `json:"startedAt,omitempty"`
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,2,opt,name=startedAt"`
 }
 
 // CmdStateTerminated is a terminated state of a local command.
 type CmdStateTerminated struct {
 	// The process id of the command.
-	PID int32 `json:"pid"`
+	PID int32 `json:"pid" protobuf:"varint,1,opt,name=pid"`
 
 	// Exit status from the last termination of the command
-	ExitCode int32 `json:"exitCode"`
+	ExitCode int32 `json:"exitCode" protobuf:"varint,2,opt,name=exitCode"`
 
 	// Time at which previous execution of the command started
-	StartedAt metav1.MicroTime `json:"startedAt,omitempty"`
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,3,opt,name=startedAt"`
 
 	// Time at which the command last terminated
-	FinishedAt metav1.MicroTime `json:"finishedAt,omitempty"`
+	FinishedAt metav1.MicroTime `json:"finishedAt,omitempty" protobuf:"bytes,4,opt,name=finishedAt"`
 
 	// (brief) reason the process is terminated
 	// +optional
-	Reason string `json:"reason,omitempty"`
+	Reason string `json:"reason,omitempty" protobuf:"bytes,5,opt,name=reason"`
 }
 
 // Cmd implements ObjectWithStatusSubResource interface.
@@ -207,5 +207,5 @@ func (in CmdStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 // RestartOnSpec indicates the set of objects that can trigger a restart of this object.
 type RestartOnSpec struct {
 	// A list of file watches that can trigger a restart.
-	FileWatches []string `json:"fileWatches"`
+	FileWatches []string `json:"fileWatches" protobuf:"bytes,1,rep,name=fileWatches"`
 }

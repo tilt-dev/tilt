@@ -242,15 +242,15 @@ func AllPodContainersReady(p v1alpha1.Pod) bool {
 	return true
 }
 
-func AllPodContainerRestarts(p v1alpha1.Pod) int {
-	result := 0
+func AllPodContainerRestarts(p v1alpha1.Pod) int32 {
+	result := int32(0)
 	for _, c := range p.Containers {
-		result += int(c.Restarts)
+		result += c.Restarts
 	}
 	return result
 }
 
-func VisiblePodContainerRestarts(p v1alpha1.Pod) int {
+func VisiblePodContainerRestarts(p v1alpha1.Pod) int32 {
 	return AllPodContainerRestarts(p) - p.BaselineRestartCount
 }
 

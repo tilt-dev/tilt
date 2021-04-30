@@ -37,27 +37,27 @@ import (
 // +k8s:openapi-gen=true
 type Session struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   SessionSpec   `json:"spec,omitempty"`
-	Status SessionStatus `json:"status,omitempty"`
+	Spec   SessionSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status SessionStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // SessionList is a list of Session objects.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SessionList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Items []Session `json:"items"`
+	Items []Session `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // SessionSpec defines the desired state of Session
 type SessionSpec struct {
 	// TiltfilePath is the path to the Tiltfile for the run. It cannot be empty.
-	TiltfilePath string `json:"tiltfilePath"`
+	TiltfilePath string `json:"tiltfilePath" protobuf:"bytes,1,opt,name=tiltfilePath"`
 	// ExitCondition defines the criteria for Tilt to exit.
-	ExitCondition ExitCondition `json:"exitCondition"`
+	ExitCondition ExitCondition `json:"exitCondition" protobuf:"bytes,2,opt,name=exitCondition,casttype=ExitCondition"`
 }
 
 type ExitCondition string
@@ -146,37 +146,37 @@ func (in *SessionList) GetListMeta() *metav1.ListMeta {
 // SessionStatus defines the observed state of Session
 type SessionStatus struct {
 	// PID is the process identifier for this instance of Tilt.
-	PID int64 `json:"pid"`
+	PID int64 `json:"pid" protobuf:"varint,1,opt,name=pid"`
 	// StartTime is when the Tilt engine was first started.
-	StartTime metav1.MicroTime `json:"startTime"`
+	StartTime metav1.MicroTime `json:"startTime" protobuf:"bytes,2,opt,name=startTime"`
 	// Targets are normalized representations of the servers/jobs managed by this Session.
 	//
 	// A resource from a Tiltfile might produce one or more targets. A target can also be shared across
 	// multiple resources (e.g. an image referenced by multiple K8s pods).
-	Targets []Target `json:"targets"`
+	Targets []Target `json:"targets" protobuf:"bytes,3,rep,name=targets"`
 
 	// Done indicates whether this Session has completed its work and is ready to exit.
-	Done bool `json:"done"`
+	Done bool `json:"done" protobuf:"varint,4,opt,name=done"`
 	// Error is a non-empty string when the Session is Done but encountered a failure as defined by the ExitCondition
 	// from the SessionSpec.
 	//
 	// +optional
-	Error string `json:"error,omitempty"`
+	Error string `json:"error,omitempty" protobuf:"bytes,5,opt,name=error"`
 }
 
 // Target is a server or job whose execution is managed as part of this Session.
 type Target struct {
 	// Name is the name of the target; this is auto-generated from Tiltfile resources.
-	Name string `json:"name"`
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Type is the execution profile for this resource.
 	//
 	// Job targets run to completion (e.g. a build script or database migration script).
 	// Server targets run indefinitely (e.g. an HTTP server).
-	Type TargetType `json:"type"`
+	Type TargetType `json:"type" protobuf:"bytes,2,opt,name=type,casttype=TargetType"`
 	// Resources are one or more Tiltfile resources that this target is associated with.
-	Resources []string `json:"resources"`
+	Resources []string `json:"resources" protobuf:"bytes,3,rep,name=resources"`
 	// State provides information about the current status of the target.
-	State TargetState `json:"state"`
+	State TargetState `json:"state" protobuf:"bytes,4,opt,name=state"`
 }
 
 // TargetType describes a high-level categorization about the expected execution behavior for the target.
@@ -198,15 +198,15 @@ type TargetState struct {
 	// Waiting being non-nil indicates that the next execution of the target has been queued but not yet started.
 	//
 	// +optional
-	Waiting *TargetStateWaiting `json:"waiting,omitempty"`
+	Waiting *TargetStateWaiting `json:"waiting,omitempty" protobuf:"bytes,1,opt,name=waiting"`
 	// Active being non-nil indicates that the target is currently executing.
 	//
 	// +optional
-	Active *TargetStateActive `json:"active,omitempty"`
+	Active *TargetStateActive `json:"active,omitempty" protobuf:"bytes,2,opt,name=active"`
 	// Terminated being non-nil indicates that the target finished execution either normally or due to failure.
 	//
 	// +optional
-	Terminated *TargetStateTerminated `json:"terminated,omitempty"`
+	Terminated *TargetStateTerminated `json:"terminated,omitempty" protobuf:"bytes,3,opt,name=terminated"`
 }
 
 // TargetStateWaiting is a target that has been enqueued for execution but has not yet started.
@@ -214,33 +214,33 @@ type TargetStateWaiting struct {
 	// WaitReason is a description for why the target is waiting and not yet active.
 	//
 	// This is NOT the "cause" or "trigger" for the target being invoked.
-	WaitReason string `json:"waitReason"`
+	WaitReason string `json:"waitReason" protobuf:"bytes,1,opt,name=waitReason"`
 }
 
 // TargetStateActive is a target that is currently running but has not yet finished.
 type TargetStateActive struct {
 	// StartTime is when execution began.
-	StartTime metav1.MicroTime `json:"startTime"`
+	StartTime metav1.MicroTime `json:"startTime" protobuf:"bytes,1,opt,name=startTime"`
 	// Ready indicates that the target has passed readiness checks.
 	//
 	// If the target does not use or support readiness checks, this is always true.
-	Ready bool `json:"ready"`
+	Ready bool `json:"ready" protobuf:"varint,2,opt,name=ready"`
 }
 
 // TargetStateTerminated is a target that finished running, either because it completed successfully or
 // encountered an error.
 type TargetStateTerminated struct {
 	// StartTime is when the target began executing.
-	StartTime metav1.MicroTime `json:"startTime"`
+	StartTime metav1.MicroTime `json:"startTime" protobuf:"bytes,1,opt,name=startTime"`
 	// FinishTime is when the target stopped executing.
-	FinishTime metav1.MicroTime `json:"finishTime"`
+	FinishTime metav1.MicroTime `json:"finishTime" protobuf:"bytes,2,opt,name=finishTime"`
 	// Error is a non-empty string if the target encountered a failure during execution that caused it to stop.
 	//
 	// For targets of type TargetTypeServer, this is always populated, as the target is expected to run indefinitely,
 	// and thus any termination is an error.
 	//
 	// +optional
-	Error string `json:"error,omitempty"`
+	Error string `json:"error,omitempty" protobuf:"bytes,3,opt,name=error"`
 }
 
 // Session implements ObjectWithStatusSubResource interface.

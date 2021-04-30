@@ -59,7 +59,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec":   schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus": schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef":        schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LabelValue":                schema_pkg_apis_core_v1alpha1_LabelValue(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod":                       schema_pkg_apis_core_v1alpha1_Pod(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition":              schema_pkg_apis_core_v1alpha1_PodCondition(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStream":              schema_pkg_apis_core_v1alpha1_PodLogStream(ref),
@@ -1260,15 +1259,8 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceC
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Type: []string{"array"},
-										Items: &spec.SchemaOrArray{
-											Schema: &spec.Schema{
-												SchemaProps: spec.SchemaProps{
-													Default: map[string]interface{}{},
-													Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LabelValue"),
-												},
-											},
-										},
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"),
 									},
 								},
 							},
@@ -1279,7 +1271,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LabelValue"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef", "k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"},
 	}
 }
 
@@ -1326,36 +1318,6 @@ func schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref common.ReferenceCallba
 					},
 				},
 				Required: []string{"uid", "namespace"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_LabelValue(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "LabelValue is a key-value pair of a Kubernetes label and associated value.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"label": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Label is the label name.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"value": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Value is the label value.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"label", "value"},
 			},
 		},
 	}

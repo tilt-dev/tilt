@@ -2203,7 +2203,7 @@ func TestUpperPodRestartsBeforeTiltStart(t *testing.T) {
 	f.startPod(pb.Build(), manifest.Name)
 
 	f.withManifestState(name, func(ms store.ManifestState) {
-		assert.Equal(t, 1, ms.MostRecentPod().BaselineRestartCount)
+		assert.Equal(t, int32(1), ms.MostRecentPod().BaselineRestartCount)
 	})
 
 	err := f.Stop()
@@ -4279,7 +4279,7 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 	f.upper.store.Dispatch(k8swatch.NewPodChangeAction(k8sconv.Pod(f.ctx, pod), mn, f.lastDeployedUID(mn)))
 
 	f.WaitUntilManifestState("pod restart seen", "foobar", func(ms store.ManifestState) bool {
-		return store.AllPodContainerRestarts(ms.MostRecentPod()) == restartCount
+		return store.AllPodContainerRestarts(ms.MostRecentPod()) == int32(restartCount)
 	})
 	return pb
 }
