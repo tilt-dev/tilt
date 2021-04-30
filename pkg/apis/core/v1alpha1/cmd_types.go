@@ -32,7 +32,11 @@ import (
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Cmd
+// Cmd represents a process on the host machine.
+//
+// When the process exits, we will make a best-effort attempt
+// (within OS limitations) to kill any spawned descendant processes.
+//
 // +k8s:openapi-gen=true
 type Cmd struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -51,7 +55,7 @@ type CmdList struct {
 	Items []Cmd `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// CmdSpec defines the desired state of Cmd
+// CmdSpec defines how to run a local command.
 type CmdSpec struct {
 	// Command-line arguments. Must have length at least 1.
 	Args []string `json:"args,omitempty" protobuf:"bytes,1,rep,name=args"`
@@ -81,9 +85,14 @@ type CmdSpec struct {
 
 	// Indicates objects that can trigger a restart of this command.
 	//
+	// When a restart is triggered, Tilt will try to gracefully shutdown any
+	// currently running process, waiting for it to exit before starting a new
+	// process. If the process doesn't shutdown within the allotted time, Tilt
+	// will kill the process abruptly.
+	//
 	// Restarts can happen even if the command is already done.
 	//
-	// Logs of the currently process after the restart are discarded.
+	// Logs of the current process after the restart are discarded.
 	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,5,opt,name=restartOn"`
 }
 
