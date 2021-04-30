@@ -318,7 +318,7 @@ message Forward {
   optional int32 localPort = 4;
 
   // The port on the Kubernetes pod to connect to. Required.
-  optional int64 containerPort = 3;
+  optional int32 containerPort = 3;
 
   // Optional host to bind to on the current machine (localhost by default)
   //

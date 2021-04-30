@@ -71,7 +71,7 @@ type Forward struct {
 	LocalPort int32 `json:"localPort" protobuf:"varint,4,opt,name=localPort"`
 
 	// The port on the Kubernetes pod to connect to. Required.
-	ContainerPort int `json:"containerPort" protobuf:"varint,3,opt,name=containerPort"`
+	ContainerPort int32 `json:"containerPort" protobuf:"varint,3,opt,name=containerPort"`
 
 	// Optional host to bind to on the current machine (localhost by default)
 	//
