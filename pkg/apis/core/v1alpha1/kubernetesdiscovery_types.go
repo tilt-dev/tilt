@@ -114,9 +114,18 @@ func (in *KubernetesDiscovery) IsStorageVersion() bool {
 	return true
 }
 
-func (in *KubernetesDiscovery) Validate(ctx context.Context) field.ErrorList {
-	// TODO(user): Modify it, adding your API validation here.
-	return nil
+func (in *KubernetesDiscovery) Validate(_ context.Context) field.ErrorList {
+	var fieldErrors field.ErrorList
+	watchPath := field.NewPath("spec", "watches")
+	if len(in.Spec.Watches) == 0 {
+		fieldErrors = append(fieldErrors, field.Required(watchPath, "One or more watches are required"))
+	}
+	for i := range in.Spec.Watches {
+		if in.Spec.Watches[i].Namespace == "" {
+			fieldErrors = append(fieldErrors, field.Required(watchPath.Index(i), "Namespace must be provided"))
+		}
+	}
+	return fieldErrors
 }
 
 var _ resource.ObjectList = &KubernetesDiscoveryList{}

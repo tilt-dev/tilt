@@ -96,6 +96,7 @@ var BaseWireSet = wire.NewSet(
 	engine.NewBuildController,
 	cmd.WireSet,
 	local.NewServerController,
+	k8swatch.NewManifestSubscriber,
 	k8swatch.NewPodWatcher,
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,

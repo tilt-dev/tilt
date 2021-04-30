@@ -54,6 +54,9 @@ type ChangeSummary struct {
 	// FileWatches with their specs changed.
 	FileWatchSpecs ChangeSet
 
+	// KubernetesDiscoveries that have changed.
+	KubernetesDiscoveries ChangeSet
+
 	// Pods that have changed.
 	Pods ChangeSet
 
@@ -76,6 +79,7 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.Log = s.Log || other.Log
 	s.CmdSpecs.AddAll(other.CmdSpecs)
 	s.FileWatchSpecs.AddAll(other.FileWatchSpecs)
+	s.KubernetesDiscoveries.AddAll(other.KubernetesDiscoveries)
 	s.Pods.AddAll(other.Pods)
 	s.PodLogStreams.AddAll(other.PodLogStreams)
 	s.Sessions.AddAll(other.Sessions)
