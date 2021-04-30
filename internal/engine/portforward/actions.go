@@ -26,6 +26,10 @@ type PortForwardDeleteAction struct {
 	Name string
 }
 
+func NewPortForwardDeleteAction(pfName string) PortForwardDeleteAction {
+	return PortForwardDeleteAction{Name: pfName}
+}
+
 func (PortForwardDeleteAction) Action() {}
 
 func (a PortForwardDeleteAction) Summarize(s *store.ChangeSummary) {

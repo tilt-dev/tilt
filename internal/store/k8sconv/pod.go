@@ -48,7 +48,7 @@ func PodConditions(conditions []v1.PodCondition) []v1alpha1.PodCondition {
 	return result
 }
 
-// Convert a Kubernetes Pod into a list if simpler Container models to store in the engine state.
+// Convert a Kubernetes Pod into a list of simpler Container models to store in the engine state.
 func PodContainers(ctx context.Context, pod *v1.Pod, containerStatuses []v1.ContainerStatus) []v1alpha1.Container {
 	result := make([]v1alpha1.Container, 0, len(containerStatuses))
 	for _, cStatus := range containerStatuses {
