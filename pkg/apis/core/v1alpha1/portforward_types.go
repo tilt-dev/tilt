@@ -36,41 +36,41 @@ import (
 // +k8s:openapi-gen=true
 type PortForward struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   PortForwardSpec   `json:"spec,omitempty"`
-	Status PortForwardStatus `json:"status,omitempty"`
+	Spec   PortForwardSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status PortForwardStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // PortForwardList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type PortForwardList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Items []PortForward `json:"items"`
+	Items []PortForward `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // PortForwardSpec defines the desired state of PortForward
 type PortForwardSpec struct {
 	// The name of the pod to port forward to/from. Required.
-	Pod string `json:"pod"`
+	Pod string `json:"pod" protobuf:"bytes,1,opt,name=pod"`
 
 	// The namespace of the pod to port forward to/from. Defaults to the kubecontext default namespace.
 	//
 	// +optional
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty" protobuf:"bytes,2,opt,name=namespace"`
 
 	// The port on the Kubernetes pod to connect to. Required.
-	ContainerPort int32 `json:"containerPort"`
+	ContainerPort int32 `json:"containerPort" protobuf:"varint,3,opt,name=containerPort"`
 
 	// The port to expose on the current machine. Required.
-	LocalPort int32 `json:"localPort"`
+	LocalPort int32 `json:"localPort" protobuf:"varint,4,opt,name=localPort"`
 
 	// Optional host to bind to on the current machine (localhost by default)
 	//
 	// +optional
-	Host string `json:"host"`
+	Host string `json:"host" protobuf:"bytes,5,opt,name=host"`
 }
 
 var _ resource.Object = &PortForward{}
@@ -121,7 +121,7 @@ func (in *PortForwardList) GetListMeta() *metav1.ListMeta {
 type PortForwardStatus struct {
 	// Time at which we started trying to run the Port Forward (potentially distinct
 	// from the time the Port Forward successfully connected)
-	StartedAt metav1.MicroTime `json:"startedAt,omitempty"`
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,1,opt,name=startedAt"`
 
 	// TODO(maia): track status of the PortForward: is it active, is it failing/in
 	//   backoff, what was the last error? Exact fields/status TBD.
