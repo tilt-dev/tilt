@@ -312,6 +312,20 @@ message FileWatchStatus {
   optional string error = 4;
 }
 
+// Forward defines a port forward to execute on a given pod.
+message Forward {
+  // The port to expose on the current machine. Required.
+  optional int32 localPort = 4;
+
+  // The port on the Kubernetes pod to connect to. Required.
+  optional int32 containerPort = 3;
+
+  // Optional host to bind to on the current machine (localhost by default)
+  //
+  // +optional
+  optional string host = 5;
+}
+
 // HTTPGetAction describes an action based on HTTP Get requests.
 message HTTPGetAction {
   // Path to access on the HTTP server.
@@ -605,23 +619,15 @@ message PortForwardList {
 // PortForwardSpec defines the desired state of PortForward
 message PortForwardSpec {
   // The name of the pod to port forward to/from. Required.
-  optional string pod = 1;
+  optional string podName = 1;
 
   // The namespace of the pod to port forward to/from. Defaults to the kubecontext default namespace.
   //
   // +optional
   optional string namespace = 2;
 
-  // The port on the Kubernetes pod to connect to. Required.
-  optional int32 containerPort = 3;
-
-  // The port to expose on the current machine. Required.
-  optional int32 localPort = 4;
-
-  // Optional host to bind to on the current machine (localhost by default)
-  //
-  // +optional
-  optional string host = 5;
+  // One or more port forwards to execute on the given pod. Required.
+  repeated Forward forwards = 3;
 }
 
 // PortForwardStatus defines the observed state of PortForward
