@@ -28,7 +28,7 @@ func NewTarget(
 	name model.TargetName,
 	entities []K8sEntity,
 	portForwards []model.PortForward,
-	extraPodSelectors []labels.Selector,
+	extraPodSelectors []labels.Set,
 	dependencyIDs []model.TargetID,
 	refInjectCounts map[string]int,
 	podReadinessMode model.PodReadinessMode,

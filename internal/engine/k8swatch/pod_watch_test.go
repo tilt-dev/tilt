@@ -105,8 +105,8 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls1 := labels.Set{"foo": "bar"}.AsSelector()
-	ls2 := labels.Set{"baz": "quu"}.AsSelector()
+	ls1 := labels.Set{"foo": "bar"}
+	ls2 := labels.Set{"baz": "quu"}
 	manifest := f.addManifestWithSelectors("server", ls1, ls2)
 
 	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
@@ -125,7 +125,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls1 := labels.Set{"foo": "bar"}.AsSelector()
+	ls1 := labels.Set{"foo": "bar"}
 	manifest := f.addManifestWithSelectors("server1", ls1)
 
 	f.pw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
@@ -139,7 +139,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	f.assertObservedPods(p)
 	f.clearPods()
 
-	ls2 := labels.Set{"baz": "quu"}.AsSelector()
+	ls2 := labels.Set{"baz": "quu"}
 	manifest2 := f.addManifestWithSelectors("server2", ls2)
 	f.removeManifest("server1")
 
@@ -251,7 +251,7 @@ func TestPodWatchReadd(t *testing.T) {
 	f.assertObservedPods(p)
 }
 
-func (f *pwFixture) addManifestWithSelectors(manifestName string, ls ...labels.Selector) model.Manifest {
+func (f *pwFixture) addManifestWithSelectors(manifestName string, ls ...labels.Set) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
 	m := manifestbuilder.New(f, model.ManifestName(manifestName)).
 		WithK8sYAML(testyaml.SanchoYAML).

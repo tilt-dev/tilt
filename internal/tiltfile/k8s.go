@@ -47,7 +47,7 @@ type k8sResource struct {
 	portForwards []model.PortForward
 
 	// labels for pods that we should watch and associate with this resource
-	extraPodSelectors []labels.Selector
+	extraPodSelectors []labels.Set
 
 	podReadinessMode model.PodReadinessMode
 
@@ -68,7 +68,7 @@ type k8sResourceOptions struct {
 	// if non-empty, how to rename this resource
 	newName           string
 	portForwards      []model.PortForward
-	extraPodSelectors []labels.Selector
+	extraPodSelectors []labels.Set
 	triggerMode       triggerMode
 	autoInit          bool
 	tiltfilePosition  syntax.Position
@@ -339,7 +339,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	return starlark.None, nil
 }
 
-func selectorFromSkylarkDict(d *starlark.Dict) (labels.Selector, error) {
+func labelSetFromStarlarkDict(d *starlark.Dict) (labels.Set, error) {
 	ret := make(labels.Set)
 
 	for _, t := range d.Items() {
@@ -356,29 +356,29 @@ func selectorFromSkylarkDict(d *starlark.Dict) (labels.Selector, error) {
 		ret[string(k)] = string(v)
 	}
 	if len(ret) > 0 {
-		return ret.AsSelector(), nil
+		return ret, nil
 	} else {
 		return nil, nil
 	}
 }
 
-func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
+func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Set, error) {
 	if v == nil {
 		return nil, nil
 	}
 
 	switch x := v.(type) {
 	case *starlark.Dict:
-		s, err := selectorFromSkylarkDict(x)
+		s, err := labelSetFromStarlarkDict(x)
 		if err != nil {
 			return nil, err
 		} else if s == nil {
 			return nil, nil
 		} else {
-			return []labels.Selector{s}, nil
+			return []labels.Set{s}, nil
 		}
 	case *starlark.List:
-		var ret []labels.Selector
+		var ret []labels.Set
 
 		it := x.Iterate()
 		defer it.Done()
@@ -388,7 +388,7 @@ func podLabelsFromStarlarkValue(v starlark.Value) ([]labels.Selector, error) {
 			if !ok {
 				return nil, fmt.Errorf("pod labels elements must be dicts; got %T", i)
 			}
-			s, err := selectorFromSkylarkDict(d)
+			s, err := labelSetFromStarlarkDict(d)
 			if err != nil {
 				return nil, err
 			} else if s != nil {
