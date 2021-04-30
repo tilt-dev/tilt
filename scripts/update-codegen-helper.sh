@@ -38,8 +38,23 @@ if [[ "$(pwd)" != "${GOPATH}"* ]]; then
     exit 1
 fi
 
+OUTPUT_FILE=$(mktemp)
 bash "${CODEGEN_PKG}/generate-internal-groups.sh" "deepcopy,defaulter,openapi" \
   github.com/tilt-dev/tilt/pkg github.com/tilt-dev/tilt/pkg/apis github.com/tilt-dev/tilt/pkg/apis \
   "core:v1alpha1" \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
-  --go-header-file "${SCRIPT_ROOT}/hack/boilerplate.go.txt"
+  --go-header-file "${SCRIPT_ROOT}/hack/boilerplate.go.txt" | \
+  grep -v "API rule violation.*k8s.io" | \
+  grep -v list_type_missing > "$OUTPUT_FILE"
+
+VIOLATIONS=$(grep "API rule violation" "$OUTPUT_FILE" || echo -n "ok")
+if [[ "$VIOLATIONS" != "ok" ]]; then
+    echo "ERROR: found API rule violations in tilt code"
+    echo "$VIOLATIONS"
+    exit 1
+fi
+
+cat "$OUTPUT_FILE"
+
+
+
