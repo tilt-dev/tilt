@@ -65,7 +65,7 @@ type KubernetesDiscoverySpec struct {
 	//
 	// This should only be necessary in the event that a CRD creates Pods but does not set an owner reference
 	// to itself.
-	ExtraSelectors [][]LabelValue `json:"extraSelectors,omitempty"`
+	ExtraSelectors []metav1.LabelSelector `json:"extraSelectors,omitempty"`
 }
 
 // KubernetesWatchRef is similar to v1.ObjectReference from the Kubernetes API and is used to determine
@@ -81,14 +81,6 @@ type KubernetesWatchRef struct {
 	//
 	// This is not directly used in discovery; it is extra metadata.
 	Name string `json:"name,omitempty"`
-}
-
-// LabelValue is a key-value pair of a Kubernetes label and associated value.
-type LabelValue struct {
-	// Label is the label name.
-	Label string `json:"label"`
-	// Value is the label value.
-	Value string `json:"value"`
 }
 
 var _ resource.Object = &KubernetesDiscovery{}
@@ -181,7 +173,7 @@ type Pod struct {
 	// BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.
 	//
 	// This is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.
-	BaselineRestartCount int `json:"baselineRestartCount"`
+	BaselineRestartCount int32 `json:"baselineRestartCount"`
 	// PodTemplateSpecHash is a hash of the Pod template spec.
 	//
 	// Tilt uses this to associate Pods with the build that triggered them.
