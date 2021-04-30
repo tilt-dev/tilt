@@ -2,9 +2,8 @@
   "Extensions": [
     {
       "Name": "restart_process",
-      "GitCommitHash": "959247eafbf8bd7d1e9fdb2b3306f8be6da29bde",
       "ExtensionRegistry": "https://github.com/tilt-dev/tilt-extensions",
-      "TimeFetched": "2020-06-12T16:37:00.565942-04:00"
+      "TimeFetched": "2021-04-30T16:09:10.789748-04:00"
     }
   ]
 }
