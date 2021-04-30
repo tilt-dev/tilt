@@ -491,26 +491,82 @@ func (pf FakePortForwarder) ForwardPorts() error {
 }
 
 type FakePortForwardClient struct {
-	CreatePortForwardCallCount int
-	LastForwardPortPodID       PodID
-	LastForwardPortRemotePort  int
-	LastForwardPortHost        string
-	LastForwarder              FakePortForwarder
-	LastForwardContext         context.Context
+	mu               sync.Mutex
+	portForwardCalls []PortForwardCall
+}
+
+func NewFakePortfowardClient() *FakePortForwardClient {
+	return &FakePortForwardClient{
+		portForwardCalls: []PortForwardCall{},
+	}
+}
+
+type PortForwardCall struct {
+	PodID      PodID
+	RemotePort int
+	Host       string
+	Forwarder  FakePortForwarder
+	Context    context.Context
 }
 
 func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
-	c.CreatePortForwardCallCount++
-	c.LastForwardContext = ctx
-	c.LastForwardPortPodID = podID
-	c.LastForwardPortRemotePort = remotePort
-	c.LastForwardPortHost = host
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	result := FakePortForwarder{
 		localPort: optionalLocalPort,
 		ctx:       ctx,
 		Done:      make(chan error),
 	}
-	c.LastForwarder = result
+
+	c.portForwardCalls = append(c.portForwardCalls, PortForwardCall{
+		PodID:      podID,
+		RemotePort: remotePort,
+		Host:       host,
+		Forwarder:  result,
+		Context:    ctx,
+	})
+
 	return result, nil
+}
+
+func (c *FakePortForwardClient) CreatePortForwardCallCount() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.portForwardCalls)
+}
+func (c *FakePortForwardClient) LastForwardPortPodID() PodID {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.portForwardCalls[len(c.portForwardCalls)-1].PodID
+}
+func (c *FakePortForwardClient) LastForwardPortRemotePort() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.portForwardCalls[len(c.portForwardCalls)-1].RemotePort
+}
+func (c *FakePortForwardClient) LastForwardPortHost() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.portForwardCalls[len(c.portForwardCalls)-1].Host
+}
+func (c *FakePortForwardClient) LastForwarder() FakePortForwarder {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.portForwardCalls[len(c.portForwardCalls)-1].Forwarder
+}
+func (c *FakePortForwardClient) LastForwardContext() context.Context {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.portForwardCalls[len(c.portForwardCalls)-1].Context
+}
+func (c *FakePortForwardClient) PortForwardCalls() []PortForwardCall {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	calls := make([]PortForwardCall, len(c.portForwardCalls))
+	for i, call := range c.portForwardCalls {
+		calls[i] = call
+	}
+	return calls
 }
