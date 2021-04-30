@@ -25,7 +25,7 @@ type ManifestBuilder struct {
 
 	k8sPodReadiness    model.PodReadinessMode
 	k8sYAML            string
-	k8sPodSelectors    []labels.Selector
+	k8sPodSelectors    []labels.Set
 	k8sImageLocators   []k8s.ImageLocator
 	dcConfigPaths      []string
 	localCmd           string
@@ -71,7 +71,7 @@ func (b ManifestBuilder) WithK8sYAML(yaml string) ManifestBuilder {
 	return b
 }
 
-func (b ManifestBuilder) WithK8sPodSelectors(podSelectors []labels.Selector) ManifestBuilder {
+func (b ManifestBuilder) WithK8sPodSelectors(podSelectors []labels.Set) ManifestBuilder {
 	b.k8sPodSelectors = podSelectors
 	return b
 }

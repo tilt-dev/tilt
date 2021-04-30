@@ -70,7 +70,8 @@ func (w *PodWatcher) diff(ctx context.Context, st store.RStore) podWatchTaskList
 	var extraSelectors []ExtraSelector
 	if len(taskList.watchableNamespaces) > 0 {
 		for _, mt := range state.Targets() {
-			for _, ls := range mt.Manifest.K8sTarget().ExtraPodSelectors {
+			for _, labelSet := range mt.Manifest.K8sTarget().ExtraPodSelectors {
+				ls := labelSet.AsSelector()
 				if !ls.Empty() {
 					extraSelectors = append(extraSelectors, ExtraSelector{name: mt.Manifest.Name, labels: ls})
 				}
