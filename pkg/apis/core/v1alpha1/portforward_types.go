@@ -62,7 +62,7 @@ type PortForwardSpec struct {
 	Namespace string `json:"namespace,omitempty" protobuf:"bytes,2,opt,name=namespace"`
 
 	// One or more port forwards to execute on the given pod. Required.
-	Forwards []Forward `json:"forwards"`
+	Forwards []Forward `json:"forwards" protobuf:"bytes,3,rep,name=forwards"`
 }
 
 // Forward defines a port forward to execute on a given pod.
