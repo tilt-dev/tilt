@@ -112,14 +112,14 @@ func TestMultiplePortForwardsForOnePod(t *testing.T) {
 
 	f.onChange()
 	require.Equal(t, 1, len(f.plc.activeForwards))
-	require.Equal(t, 2, len(f.kCli.PortForwardCalls))
+	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
 
 	// PortForwards are executed async so we can't guarantee the order;
 	// just make sure each expected call appears exactly once
 	expectedRemotePorts := []int{8080, 8081}
 	var actualRemotePorts []int
 	var contexts []context.Context
-	for _, call := range f.kCli.PortForwardCalls {
+	for _, call := range f.kCli.PortForwardCalls() {
 		actualRemotePorts = append(actualRemotePorts, call.RemotePort)
 		contexts = append(contexts, call.Context)
 		assert.Equal(t, "pod-id", call.PodID.String())
