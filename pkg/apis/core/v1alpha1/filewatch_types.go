@@ -36,38 +36,38 @@ import (
 // +k8s:openapi-gen=true
 type FileWatch struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   FileWatchSpec   `json:"spec,omitempty"`
-	Status FileWatchStatus `json:"status,omitempty"`
+	Spec   FileWatchSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status FileWatchStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // FileWatchList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type FileWatchList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Items []FileWatch `json:"items"`
+	Items []FileWatch `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // FileWatchSpec defines the desired state of FileWatch
 type FileWatchSpec struct {
 	// WatchedPaths are paths of directories or files to watch for changes to. It cannot be empty.
-	WatchedPaths []string `json:"watchedPaths"`
+	WatchedPaths []string `json:"watchedPaths" protobuf:"bytes,1,rep,name=watchedPaths"`
 	// Ignores are optional rules to filter out a subset of changes matched by WatchedPaths.
-	Ignores []IgnoreDef `json:"ignores,omitempty"`
+	Ignores []IgnoreDef `json:"ignores,omitempty" protobuf:"bytes,2,rep,name=ignores"`
 }
 
 type IgnoreDef struct {
 	// BasePath is the base path for the patterns. It cannot be empty.
 	//
 	// If no patterns are specified, everything under it will be recursively ignored.
-	BasePath string `json:"basePath"`
+	BasePath string `json:"basePath" protobuf:"bytes,1,opt,name=basePath"`
 	// Patterns are dockerignore style rules. Absolute-style patterns will be rooted to the BasePath.
 	//
 	// See https://docs.docker.com/engine/reference/builder/#dockerignore-file.
-	Patterns []string `json:"patterns,omitempty"`
+	Patterns []string `json:"patterns,omitempty" protobuf:"bytes,2,rep,name=patterns"`
 }
 
 var _ resource.Object = &FileWatch{}
@@ -121,18 +121,18 @@ func (in *FileWatchList) GetListMeta() *metav1.ListMeta {
 type FileWatchStatus struct {
 	// MonitorStartTime is the timestamp of when filesystem monitor was started. It is zero if the monitor has not
 	// been started yet.
-	MonitorStartTime metav1.MicroTime `json:"monitorStartTime,omitempty"`
+	MonitorStartTime metav1.MicroTime `json:"monitorStartTime,omitempty" protobuf:"bytes,1,opt,name=monitorStartTime"`
 	// LastEventTime is the timestamp of the most recent file event. It is zero if no events have been seen yet.
 	//
 	// If the specifics of which files changed are not important, this field can be used as a watermark without
 	// needing to inspect FileEvents.
-	LastEventTime metav1.MicroTime `json:"lastEventTime,omitempty"`
+	LastEventTime metav1.MicroTime `json:"lastEventTime,omitempty" protobuf:"bytes,2,opt,name=lastEventTime"`
 	// FileEvents summarizes batches of file changes (create, modify, or delete) that have been seen in ascending
 	// chronological order. Only the most recent 20 events are included.
-	FileEvents []FileEvent `json:"fileEvents,omitempty"`
+	FileEvents []FileEvent `json:"fileEvents,omitempty" protobuf:"bytes,3,rep,name=fileEvents"`
 	// Error is set if there is a problem with the filesystem watch. If non-empty, consumers should assume that
 	// no filesystem events will be seen and that the file watcher is in a failed state.
-	Error string `json:"error,omitempty"`
+	Error string `json:"error,omitempty" protobuf:"bytes,4,opt,name=error"`
 }
 
 type FileEvent struct {
@@ -140,9 +140,9 @@ type FileEvent struct {
 	//
 	// This will NOT exactly match any inode attributes (e.g. ctime, mtime) at the filesystem level and is purely
 	// informational or for use as an opaque watermark.
-	Time metav1.MicroTime `json:"time"`
+	Time metav1.MicroTime `json:"time" protobuf:"bytes,1,opt,name=time"`
 	// SeenFiles is a list of paths which changed (create, modify, or delete).
-	SeenFiles []string `json:"seenFiles"`
+	SeenFiles []string `json:"seenFiles" protobuf:"bytes,2,rep,name=seenFiles"`
 }
 
 // FileWatch implements ObjectWithStatusSubResource interface.

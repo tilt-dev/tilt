@@ -49,8 +49,11 @@ changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+    - '^docs?:'
+    - '^tests?:'
+    - '^cleanup:'
+    - '^circleci:'
+    - '^ci:'
 brews:
 - tap:
     owner: tilt-dev

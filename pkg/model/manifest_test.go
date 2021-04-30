@@ -172,20 +172,20 @@ var equalitytests = []struct {
 	{
 		"k8s.ExtraPodSelectors equal",
 		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
 		}),
 		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
 		}),
 		false,
 	},
 	{
 		"k8s.ExtraPodSelectors unequal",
 		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
 		}),
 		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "baz"}.AsSelector()},
+			ExtraPodSelectors: []labels.Set{{"foo": "baz"}},
 		}),
 		true,
 	},

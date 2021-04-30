@@ -20,12 +20,16 @@ type tc struct {
 	nanosecond  bool
 }
 
+func now() time.Time {
+	return time.Unix(1619635910, 450240689)
+}
+
 func TestEqual(t *testing.T) {
 	reflexiveTest(t, Equal)
 
 	t.Run("NanosecondDifference", func(t *testing.T) {
 		// truncate to avoid potential roll-over
-		now := time.Now().Truncate(time.Nanosecond)
+		now := now().Truncate(time.Nanosecond)
 
 		runTest(t, tc{
 			x:           now,
@@ -39,7 +43,7 @@ func TestEqual(t *testing.T) {
 
 	t.Run("MicrosecondDifference", func(t *testing.T) {
 		// truncate to avoid potential roll-over
-		now := time.Now().Truncate(time.Microsecond)
+		now := now().Truncate(time.Microsecond)
 
 		runTest(t, tc{
 			x:           now,
@@ -53,7 +57,7 @@ func TestEqual(t *testing.T) {
 
 	t.Run("SecondDifference", func(t *testing.T) {
 		// truncate to avoid potential roll-over
-		now := time.Now().Truncate(time.Second)
+		now := now().Truncate(time.Second)
 
 		runTest(t, tc{
 			x:           now,
@@ -70,7 +74,7 @@ func TestBeforeOrEqual(t *testing.T) {
 	reflexiveTest(t, BeforeOrEqual)
 
 	t.Run("NanosecondDifference", func(t *testing.T) {
-		a := time.Now().Truncate(time.Nanosecond).Add(-5 * time.Nanosecond)
+		a := now().Truncate(time.Nanosecond).Add(-5 * time.Nanosecond)
 		b := a.Add(time.Nanosecond)
 
 		// x before y
@@ -95,7 +99,7 @@ func TestBeforeOrEqual(t *testing.T) {
 	})
 
 	t.Run("MicrosecondDifference", func(t *testing.T) {
-		a := time.Now().Truncate(time.Microsecond).Add(-5 * time.Microsecond)
+		a := now().Truncate(time.Microsecond).Add(-5 * time.Microsecond)
 		b := a.Add(time.Microsecond)
 
 		// x before y
@@ -120,7 +124,7 @@ func TestBeforeOrEqual(t *testing.T) {
 	})
 
 	t.Run("SecondDifference", func(t *testing.T) {
-		a := time.Now().Truncate(time.Second).Add(-5 * time.Second)
+		a := now().Truncate(time.Second).Add(-5 * time.Second)
 		b := a.Add(time.Second)
 
 		// x before y
@@ -149,7 +153,7 @@ func TestAfterOrEqual(t *testing.T) {
 	reflexiveTest(t, AfterOrEqual)
 
 	t.Run("NanosecondDifference", func(t *testing.T) {
-		a := time.Now().Truncate(time.Nanosecond).Add(-5 * time.Nanosecond)
+		a := now().Truncate(time.Nanosecond).Add(-5 * time.Nanosecond)
 		b := a.Add(time.Nanosecond)
 
 		// x before y
@@ -174,7 +178,7 @@ func TestAfterOrEqual(t *testing.T) {
 	})
 
 	t.Run("MicrosecondDifference", func(t *testing.T) {
-		a := time.Now().Truncate(time.Microsecond).Add(-5 * time.Microsecond)
+		a := now().Truncate(time.Microsecond).Add(-5 * time.Microsecond)
 		b := a.Add(time.Microsecond)
 
 		// x before y
@@ -199,7 +203,7 @@ func TestAfterOrEqual(t *testing.T) {
 	})
 
 	t.Run("SecondDifference", func(t *testing.T) {
-		a := time.Now().Truncate(time.Second).Add(-5 * time.Second)
+		a := now().Truncate(time.Second).Add(-5 * time.Second)
 		b := a.Add(time.Second)
 
 		// x before y
@@ -226,7 +230,7 @@ func TestAfterOrEqual(t *testing.T) {
 
 func reflexiveTest(t *testing.T, cmp cmpFunc) {
 	t.Run("Reflexive", func(t *testing.T) {
-		now := time.Now()
+		now := now()
 		runTest(t, tc{
 			x:           now,
 			y:           now,

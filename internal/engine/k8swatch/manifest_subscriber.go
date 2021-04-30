@@ -12,8 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/store"
@@ -80,30 +78,6 @@ func keyForManifest(mn model.ManifestName) types.NamespacedName {
 	return types.NamespacedName{Name: apis.SanitizeName(mn.String())}
 }
 
-func labelsFromSelector(selector labels.Selector) ([]v1alpha1.LabelValue, error) {
-	var out []v1alpha1.LabelValue
-	requirements, _ := selector.Requirements()
-	for _, r := range requirements {
-		if r.Operator() != selection.Equals {
-			// both Tiltfile and KubernetesDiscovery schema only support =, so there's no practical way
-			// for this to occur; if Tiltfile ever becomes more flexible, the schema will need to be
-			// adjusted as well so that this limitation can be lifted
-			return nil, fmt.Errorf("label %q has unsupported operator: %q", r.Key(), r.Operator())
-		}
-		values := r.Values().List()
-		if len(values) == 0 {
-			continue
-		}
-		if len(values) != 1 {
-			// requirements with selection.Equals for an operator MUST only have one value, so this is
-			// actually indicative of a malformed requirement, i.e. something is seriously wrong
-			return nil, fmt.Errorf("label %q has more than one value: %v", r.Key(), r.Values())
-		}
-		out = append(out, v1alpha1.LabelValue{Label: r.Key(), Value: values[0]})
-	}
-	return out, nil
-}
-
 // kubernetesDiscoveryFromManifest creates a spec from a manifest.
 //
 // Because there is no graceful way to handle errors without triggering infinite loops in the store,
@@ -161,14 +135,10 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context
 		}
 	}
 
-	var labelSets [][]v1alpha1.LabelValue
+	var extraSelectors []metav1.LabelSelector
 	if len(seenNamespaces) > 0 {
 		for i := range kt.ExtraPodSelectors {
-			l, err := labelsFromSelector(kt.ExtraPodSelectors[i])
-			if err != nil {
-				return nil, err
-			}
-			labelSets = append(labelSets, l)
+			extraSelectors = append(extraSelectors, *metav1.SetAsLabelSelector(kt.ExtraPodSelectors[i]))
 		}
 	}
 
@@ -183,7 +153,7 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context
 		},
 		Spec: v1alpha1.KubernetesDiscoverySpec{
 			Watches:        watchRefs,
-			ExtraSelectors: labelSets,
+			ExtraSelectors: extraSelectors,
 		},
 	}
 

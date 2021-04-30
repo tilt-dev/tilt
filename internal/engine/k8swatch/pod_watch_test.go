@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
@@ -108,8 +111,8 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls1 := labels.Set{"foo": "bar"}.AsSelector()
-	ls2 := labels.Set{"baz": "quu"}.AsSelector()
+	ls1 := labels.Set{"foo": "bar"}
+	ls2 := labels.Set{"baz": "quu"}
 	manifest := f.addManifestWithSelectors("server", ls1, ls2)
 
 	p := podbuilder.New(t, manifest).
@@ -126,7 +129,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	f := newPWFixture(t)
 	defer f.TearDown()
 
-	ls1 := labels.Set{"foo": "bar"}.AsSelector()
+	ls1 := labels.Set{"foo": "bar"}
 	manifest := f.addManifestWithSelectors("server1", ls1)
 
 	p := podbuilder.New(t, manifest).
@@ -138,7 +141,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	f.assertObservedPods(p)
 	f.clearPods()
 
-	ls2 := labels.Set{"baz": "quu"}.AsSelector()
+	ls2 := labels.Set{"baz": "quu"}
 	manifest2 := f.addManifestWithSelectors("server2", ls2)
 
 	// remove the first manifest and wait it to propagate
@@ -256,8 +259,8 @@ func TestPodWatchDuplicates(t *testing.T) {
 	m1 := f.addManifestWithSelectors("server1")
 	m2 := f.addManifestWithSelectors("server2")
 	l := labels.Set{"foo": "bar"}
-	m3 := f.addManifestWithSelectors("server3", l.AsSelector())
-	m4 := f.addManifestWithSelectors("server4", l.AsSelector())
+	m3 := f.addManifestWithSelectors("server3", l)
+	m4 := f.addManifestWithSelectors("server4", l)
 
 	pb := podbuilder.New(t, m1).
 		WithPodID("shared-pod").
@@ -309,56 +312,7 @@ func TestPodWatchDuplicates(t *testing.T) {
 	f.assertObservedPods(p)
 }
 
-type podStatusTestCase struct {
-	pod      corev1.PodStatus
-	status   string
-	messages []string
-}
-
-func TestPodStatus(t *testing.T) {
-	cases := []podStatusTestCase{
-		{
-			pod: corev1.PodStatus{
-				ContainerStatuses: []corev1.ContainerStatus{
-					{
-						LastTerminationState: corev1.ContainerState{
-							Terminated: &corev1.ContainerStateTerminated{
-								ExitCode: 128,
-								Message:  "failed to create containerd task: OCI runtime create failed: container_linux.go:345: starting container process caused \"exec: \\\"/hello\\\": stat /hello: no such file or directory\": unknown",
-								Reason:   "StartError",
-							},
-						},
-						Ready: false,
-						State: corev1.ContainerState{
-							Waiting: &corev1.ContainerStateWaiting{
-								Message: "Back-off 40s restarting failed container=my-app pod=my-app-7bb79c789d-8h6n9_default(31369f71-df65-4352-b6bd-6d704a862699)",
-								Reason:  "CrashLoopBackOff",
-							},
-						},
-					},
-				},
-			},
-			status: "CrashLoopBackOff",
-			messages: []string{
-				"failed to create containerd task: OCI runtime create failed: container_linux.go:345: starting container process caused \"exec: \\\"/hello\\\": stat /hello: no such file or directory\": unknown",
-				"Back-off 40s restarting failed container=my-app pod=my-app-7bb79c789d-8h6n9_default(31369f71-df65-4352-b6bd-6d704a862699)",
-			},
-		},
-	}
-
-	for i, c := range cases {
-		t.Run(fmt.Sprintf("case%d", i), func(t *testing.T) {
-			pod := corev1.Pod{Status: c.pod}
-			status := k8sconv.PodStatusToString(pod)
-			assert.Equal(t, c.status, status)
-
-			messages := k8sconv.PodStatusErrorMessages(pod)
-			assert.Equal(t, c.messages, messages)
-		})
-	}
-}
-
-func (f *pwFixture) addManifestWithSelectors(mn model.ManifestName, ls ...labels.Selector) model.Manifest {
+func (f *pwFixture) addManifestWithSelectors(mn model.ManifestName, ls ...labels.Set) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
 	m := manifestbuilder.New(f, mn).
 		WithK8sYAML(testyaml.SanchoYAML).
@@ -381,29 +335,33 @@ func (f *pwFixture) addManifestWithSelectors(mn model.ManifestName, ls ...labels
 	return mt.Manifest
 }
 
-func (f *pwFixture) waitForExtraSelectors(mn model.ManifestName, ls ...labels.Selector) {
+func (f *pwFixture) waitForExtraSelectors(mn model.ManifestName, expected ...labels.Set) {
+	var desc strings.Builder
 	require.Eventuallyf(f.t, func() bool {
-		manifestSelectors := f.pw.ExtraSelectors(keyForManifest(mn))
-		if len(ls) != len(manifestSelectors) {
+		desc.Reset()
+		actualSelectors := f.pw.ExtraSelectors(keyForManifest(mn))
+		if len(expected) != len(actualSelectors) {
+			desc.WriteString(fmt.Sprintf("expected selector count: %d | actual selector count: %d",
+				len(expected), len(actualSelectors)))
 			return false
 		}
 
-		for selectorIndex := range ls {
-			expectedReqs, _ := ls[selectorIndex].Requirements()
-			actualReqs, _ := manifestSelectors[selectorIndex].Requirements()
-			if len(expectedReqs) != len(actualReqs) {
-				return false
-			}
-
-			for reqIndex := range expectedReqs {
-				if expectedReqs[reqIndex].String() != actualReqs[reqIndex].String() {
-					return false
+		selectorsEqual := true
+		for selectorIndex := range expected {
+			expectedReqs, _ := expected[selectorIndex].AsSelector().Requirements()
+			actualReqs, _ := actualSelectors[selectorIndex].Requirements()
+			for i := range expectedReqs {
+				diff := cmp.Diff(expectedReqs[i].String(), actualReqs[i].String())
+				if diff != "" {
+					desc.WriteString("\n")
+					desc.WriteString(diff)
+					selectorsEqual = false
 				}
 			}
 		}
 
-		return true
-	}, stdTimeout, 20*time.Millisecond, "Selectors never setup for %q", mn)
+		return selectorsEqual
+	}, stdTimeout, 20*time.Millisecond, "Selectors never setup for %q: %s", mn, &desc)
 
 }
 

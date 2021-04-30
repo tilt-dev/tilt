@@ -6059,13 +6059,12 @@ func k8sObject(name string, kind string) k8sObjectHelper {
 }
 
 type extraPodSelectorsHelper struct {
-	labels []labels.Selector
+	labels []labels.Set
 }
 
-func extraPodSelectors(labels ...labels.Set) extraPodSelectorsHelper {
-	ret := extraPodSelectorsHelper{}
-	for _, ls := range labels {
-		ret.labels = append(ret.labels, ls.AsSelector())
+func extraPodSelectors(labelSets ...labels.Set) extraPodSelectorsHelper {
+	ret := extraPodSelectorsHelper{
+		labels: append([]labels.Set(nil), labelSets...),
 	}
 	return ret
 }

@@ -257,6 +257,6 @@ func handlePodResetRestartsAction(state *store.EngineState, action store.PodRese
 
 	// We have to be careful here because the pod might have restarted
 	// since the action was created.
-	delta := store.VisiblePodContainerRestarts(*podInfo) - action.VisibleRestarts
+	delta := store.VisiblePodContainerRestarts(*podInfo) - int32(action.VisibleRestarts)
 	podInfo.BaselineRestartCount = store.AllPodContainerRestarts(*podInfo) - delta
 }

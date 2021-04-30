@@ -2,8 +2,11 @@ package k8swatch
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 
@@ -159,11 +162,24 @@ func (w *PodWatcher) reconcile(ctx context.Context, st store.RStore, key watcher
 	}
 
 	if existing := w.watchers[key]; existing.spec == nil || !equality.Semantic.DeepEqual(existing.spec, kd.Spec) {
-		w.addOrReplace(ctx, st, key, kd)
+		if err := w.addOrReplace(ctx, st, key, kd); err != nil {
+			// currently all errors are fatal; once this writes to API server it will become more lenient
+			st.Dispatch(store.NewErrorAction(fmt.Errorf("failed to reconcile %s:%s: %v",
+				key.Namespace, key.Name, err)))
+		}
 	}
 }
 
-func (w *PodWatcher) addOrReplace(ctx context.Context, st store.RStore, key watcherID, kd *store.KubernetesDiscovery) {
+func (w *PodWatcher) addOrReplace(ctx context.Context, st store.RStore, key watcherID, kd *store.KubernetesDiscovery) error {
+	var extraSelectors []labels.Selector
+	for _, s := range kd.Spec.ExtraSelectors {
+		selector, err := metav1.LabelSelectorAsSelector(&s)
+		if err != nil {
+			return fmt.Errorf("invalid label selectors: %v", err)
+		}
+		extraSelectors = append(extraSelectors, selector)
+	}
+
 	currentNamespaces, currentUIDs := namespacesAndUIDsFromSpec(kd.Spec.Watches)
 	// handle cleanup from the previous version (if any) - this is very similar to teardown() except that it only
 	// removes stale entries vs all; currently, it's not feasible to teardown() followed by setup() because during
@@ -198,10 +214,11 @@ func (w *PodWatcher) addOrReplace(ctx context.Context, st store.RStore, key watc
 	pw := watcher{
 		spec:           kd.Spec.DeepCopy(),
 		manifestName:   model.ManifestName(kd.Annotations[v1alpha1.AnnotationManifest]),
-		extraSelectors: selectorsFromSpec(kd.Spec.ExtraSelectors),
+		extraSelectors: extraSelectors,
 	}
 
 	w.watchers[key] = pw
+	return nil
 }
 
 // teardown removes the watcher from all namespace + UIDs it was watching.
@@ -464,14 +481,6 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.O
 	}
 }
 
-func selectorFromLabels(labelValues []v1alpha1.LabelValue) labels.Selector {
-	ls := make(labels.Set, len(labelValues))
-	for _, l := range labelValues {
-		ls[l.Label] = l.Value
-	}
-	return ls.AsSelector()
-}
-
 type namespaceSet map[k8s.Namespace]bool
 
 func namespacesAndUIDsFromSpec(watches []v1alpha1.KubernetesWatchRef) (namespaceSet, k8s.UIDSet) {
@@ -490,15 +499,4 @@ func namespacesAndUIDsFromSpec(watches []v1alpha1.KubernetesWatchRef) (namespace
 	}
 
 	return seenNamespaces, seenUIDs
-}
-
-func selectorsFromSpec(labelValues [][]v1alpha1.LabelValue) []labels.Selector {
-	var selectors []labels.Selector
-	for _, labelSet := range labelValues {
-		ls := selectorFromLabels(labelSet)
-		if !ls.Empty() {
-			selectors = append(selectors, ls)
-		}
-	}
-	return selectors
 }
