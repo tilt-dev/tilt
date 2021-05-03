@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -71,6 +72,9 @@ func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary stor
 
 	newStatus := c.makeLatestStatus(st)
 	if err := c.handleLatestStatus(ctx, st, newStatus); err != nil {
+		if strings.Contains(err.Error(), context.Canceled.Error()) {
+			return
+		}
 		logger.Get(ctx).Debugf("failed to update Session status: %v", err)
 	}
 }
