@@ -235,10 +235,6 @@ func TestPodWatchReadd(t *testing.T) {
 	f.assertObservedPods(p)
 
 	f.removeManifest("server")
-	// the watch should be removed now
-	require.Eventuallyf(t, func() bool {
-		return !f.pw.HasNamespaceWatch(keyForManifest(manifest.Name), k8s.DefaultNamespace)
-	}, stdTimeout, 20*time.Millisecond, "Namespace watch was never removed")
 
 	f.clearPods()
 	manifest = f.addManifestWithSelectors("server")
@@ -366,12 +362,34 @@ func (f *pwFixture) waitForExtraSelectors(mn model.ManifestName, expected ...lab
 }
 
 func (f *pwFixture) removeManifest(mn model.ManifestName) {
+	// before removing, take note of which namespaces are currently on the spec
+	// for the relevant KubernetesDiscovery object so that we can assert they
+	// get removed, both to ensure things are working as expected and to avoid
+	// race conditions
+	namespaces := make(map[k8s.Namespace]bool)
+
 	state := f.store.LockMutableStateForTesting()
+	if kd := state.KubernetesDiscoveries[keyForManifest(mn)]; kd != nil {
+		for _, w := range kd.Spec.Watches {
+			namespaces[k8s.Namespace(w.Namespace)] = true
+		}
+	}
 	state.RemoveManifestTarget(mn)
 	f.store.UnlockMutableState()
 
 	f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.waitForExtraSelectors(mn)
+
+	// all watched namespaces should be removed; this happens async because
+	// k8swatch.ManifestSubscriber dispatches the updates to the KubernetesDiscovery specs
+	// and then k8swatch.PodWatcher reacts to those changes to update the actual watches
+	require.Eventuallyf(f.t, func() bool {
+		for ns := range namespaces {
+			if f.pw.HasNamespaceWatch(keyForManifest(mn), ns) {
+				return false
+			}
+		}
+		return true
+	}, stdTimeout, 20*time.Millisecond, "Namespace watches were never removed")
 }
 
 type pwFixture struct {
