@@ -533,31 +533,52 @@ func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespa
 func (c *FakePortForwardClient) CreatePortForwardCallCount() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	return len(c.portForwardCalls)
 }
 func (c *FakePortForwardClient) LastForwardPortPodID() PodID {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if len(c.portForwardCalls) == 0 {
+		return ""
+	}
 	return c.portForwardCalls[len(c.portForwardCalls)-1].PodID
 }
 func (c *FakePortForwardClient) LastForwardPortRemotePort() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if len(c.portForwardCalls) == 0 {
+		return 0
+	}
 	return c.portForwardCalls[len(c.portForwardCalls)-1].RemotePort
 }
 func (c *FakePortForwardClient) LastForwardPortHost() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if len(c.portForwardCalls) == 0 {
+		return ""
+	}
 	return c.portForwardCalls[len(c.portForwardCalls)-1].Host
 }
 func (c *FakePortForwardClient) LastForwarder() FakePortForwarder {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if len(c.portForwardCalls) == 0 {
+		return FakePortForwarder{}
+	}
 	return c.portForwardCalls[len(c.portForwardCalls)-1].Forwarder
 }
 func (c *FakePortForwardClient) LastForwardContext() context.Context {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if len(c.portForwardCalls) == 0 {
+		return nil
+	}
 	return c.portForwardCalls[len(c.portForwardCalls)-1].Context
 }
 func (c *FakePortForwardClient) PortForwardCalls() []PortForwardCall {

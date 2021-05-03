@@ -2,76 +2,68 @@ package portforward
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func TestPortForward(t *testing.T) {
+func TestCreatePortForward(t *testing.T) {
 	f := newPFRFixture(t)
 	defer f.TearDown()
 
+	f.onChange()
+	assert.Equal(t, 0, len(f.r.activeForwards))
+
 	state := f.st.LockMutableStateForTesting()
-	m := model.Manifest{
-		Name: "fe",
-	}
-	m = m.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort:     8080,
-				ContainerPort: 8081,
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 0, len(f.r.activeForwards))
-
-	state = f.st.LockMutableStateForTesting()
-	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+	state.PortForwards["pf_foo"] = f.makeSimplePF("pf_foo", 8000, 8080)
 	f.st.UnlockMutableState()
 
 	f.onChange()
 	assert.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID().String())
-	firstPodForwardCtx := f.kCli.LastForwardContext()
+	assert.Equal(t, "pf_foo-pod", f.kCli.LastForwardPortPodID().String())
+}
 
-	state = f.st.LockMutableStateForTesting()
-	mt = state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
+// func TestDeletePortForward(t *testing.T) {
+// 	fooForwardCtx := f.kCli.LastForwardContext()
+//
+// 	state = f.st.LockMutableStateForTesting()
+// 	mt = state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodRunning)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.r.activeForwards))
+// 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID().String())
+//
+// 	state = f.st.LockMutableStateForTesting()
+// 	mt = state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodPending)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 0, len(f.r.activeForwards))
+//
+// 	assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
+// 		"Expected first port-forward to be canceled")
+// }
 
-	f.onChange()
-	assert.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID().String())
+func TestModifyPortForward(t *testing.T) {
 
-	state = f.st.LockMutableStateForTesting()
-	mt = state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodPending)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 0, len(f.r.activeForwards))
-
-	assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
-		"Expected first port-forward to be canceled")
 }
 
 // func TestMultiplePortForwardsForOnePod(t *testing.T) {
@@ -393,4 +385,29 @@ func (f *pfrFixture) TearDown() {
 	f.kCli.TearDown()
 	f.TempDirFixture.TearDown()
 	f.cancel()
+}
+
+func (f *pfrFixture) makePF(name, mName, podName, ns string, forwards []v1alpha1.Forward) *v1alpha1.PortForward {
+	return &v1alpha1.PortForward{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManifest: mName,
+				v1alpha1.AnnotationSpanID:   string(k8sconv.SpanIDForPod(k8s.PodID(podName))),
+			},
+		},
+		Spec: PortForwardSpec{
+			PodName:   podName,
+			Namespace: ns,
+			Forwards:  forwards,
+		},
+	}
+}
+
+func (f *pfrFixture) makeSimplePF(name string, localPort, containerPort int) *v1alpha1.PortForward {
+	fwd := v1alpha1.Forward{
+		LocalPort:     int32(localPort),
+		ContainerPort: int32(containerPort),
+	}
+	return f.makePF(name, fmt.Sprintf("manifest-%s", name), fmt.Sprintf("pod-%s", name), "", []v1alpha1.Forward{fwd})
 }
