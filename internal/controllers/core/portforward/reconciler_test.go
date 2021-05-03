@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -25,15 +26,16 @@ func TestCreatePortForward(t *testing.T) {
 	defer f.TearDown()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.r.activeForwards))
+	require.Equal(t, 0, len(f.r.activeForwards))
 
 	state := f.st.LockMutableStateForTesting()
 	state.PortForwards["pf_foo"] = f.makeSimplePF("pf_foo", 8000, 8080)
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pf_foo-pod", f.kCli.LastForwardPortPodID().String())
+	require.Equal(t, 1, len(f.r.activeForwards))
+	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
 }
 
 // func TestDeletePortForward(t *testing.T) {
@@ -359,7 +361,7 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient()
-	plc := NewSubscriber(kCli)
+	plc := NewReconciler(kCli)
 
 	out := bufsync.NewThreadSafeBuffer()
 	l := logger.NewLogger(logger.DebugLvl, out)

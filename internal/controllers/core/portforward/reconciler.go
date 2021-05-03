@@ -2,7 +2,6 @@ package portforward
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -26,7 +25,7 @@ type Reconciler struct {
 	activeForwards map[string]portForwardEntry
 }
 
-func NewSubscriber(kClient k8s.Client) *Reconciler {
+func NewReconciler(kClient k8s.Client) *Reconciler {
 	return &Reconciler{
 		kClient:        kClient,
 		activeForwards: make(map[string]portForwardEntry),
@@ -35,25 +34,22 @@ func NewSubscriber(kClient k8s.Client) *Reconciler {
 
 // Figure out the diff between what's in the data store and
 // what port-forwarding is currently active.
-func (r *Reconciler) diff(ctx context.Context, changedPFs store.ChangeSet, st store.RStore) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
+func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	statePFs := state.PortForwards
-	for pfName := range changedPFs.Changes {
-		desired, onState := statePFs[pfName.String()]
-		existing, isActive := r.activeForwards[pfName.String()]
-		if !onState {
-			// This port forward is no longer on the state; the fact that we got a
-			// change event indicates that it's been deleted, shut it down.
-			if !isActive {
-				// This isn't great but idk if we want to freak out or just let it happen?
-				panic(fmt.Sprintf("couldn't find running port forward %s even tho it was just deleted from state?!", pfName.String()))
-			}
+
+	for name, existing := range r.activeForwards {
+		if _, onState := statePFs[name]; !onState {
+			// This port forward is no longer on the state, shut it down.
 			toShutdown = append(toShutdown, existing)
 			continue
 		}
+	}
 
+	for name, desired := range statePFs {
+		existing, isActive := r.activeForwards[name]
 		if isActive {
 			// We're already running this PortForward -- do we need to do anything further?
 			if equality.Semantic.DeepEqual(existing.Spec, desired.Spec) && equality.Semantic.DeepEqual(existing.ObjectMeta, desired.ObjectMeta) {
@@ -66,9 +62,11 @@ func (r *Reconciler) diff(ctx context.Context, changedPFs store.ChangeSet, st st
 		}
 
 		// We're not running this PortForward(/the current version of this PortForward), so spin it up
-		toStart = append(toStart, newEntry(ctx, desired))
-	}
+		entry := newEntry(ctx, desired)
+		toStart = append(toStart, entry)
+		r.activeForwards[entry.Name] = entry
 
+	}
 	return toStart, toShutdown
 }
 
@@ -77,7 +75,7 @@ func (r *Reconciler) OnChange(ctx context.Context, st store.RStore, summary stor
 		return
 	}
 
-	toStart, toShutdown := r.diff(ctx, summary.PortForwards, st)
+	toStart, toShutdown := r.diff(ctx, st)
 	for _, entry := range toShutdown {
 		entry.cancel()
 	}
