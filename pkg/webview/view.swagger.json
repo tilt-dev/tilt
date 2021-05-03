@@ -107,12 +107,6 @@
     "webviewBuildRecord": {
       "type": "object",
       "properties": {
-        "edits": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "error": {
           "type": "string"
         },
@@ -129,12 +123,6 @@
         "finish_time": {
           "type": "string",
           "format": "date-time"
-        },
-        "update_types": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/webviewUpdateType"
-          }
         },
         "is_crash_rebuild": {
           "type": "boolean",
@@ -477,19 +465,6 @@
           "format": "boolean"
         }
       }
-    },
-    "webviewUpdateType": {
-      "type": "string",
-      "enum": [
-        "UPDATE_TYPE_UNSPECIFIED",
-        "UPDATE_TYPE_IMAGE",
-        "UPDATE_TYPE_LIVE_UPDATE",
-        "UPDATE_TYPE_DOCKER_COMPOSE",
-        "UPDATE_TYPE_K8S",
-        "UPDATE_TYPE_LOCAL"
-      ],
-      "default": "UPDATE_TYPE_UNSPECIFIED",
-      "title": "Correspond to BuildAndDeployers"
     },
     "webviewUploadSnapshotResponse": {
       "type": "object",

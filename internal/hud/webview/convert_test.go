@@ -3,7 +3,6 @@ package webview
 import (
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 	"time"
 
@@ -65,12 +64,6 @@ func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 	v := stateToProtoView(t, *state)
 
 	require.Len(t, v.Resources, 2)
-
-	r, _ := findResource(m.Name, v)
-	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, lastBuild(r).Edits)
-
-	sort.Strings(r.CurrentBuild.Edits)
-	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, r.CurrentBuild.Edits)
 }
 
 func TestStateToWebViewPortForwards(t *testing.T) {
@@ -313,11 +306,6 @@ func TestBuildHistory(t *testing.T) {
 		BuildTypes: []model.BuildType{model.BuildTypeImage, model.BuildTypeK8s},
 	}
 	buildRecords := []model.BuildRecord{br1, br2, br3}
-	expectedUpdateTypes := [][]proto_webview.UpdateType{
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_IMAGE, proto_webview.UpdateType_UPDATE_TYPE_K8S},
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_LIVE_UPDATE},
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_IMAGE, proto_webview.UpdateType_UPDATE_TYPE_K8S},
-	}
 
 	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
 	state := newState([]model.Manifest{m})
@@ -331,11 +319,9 @@ func TestBuildHistory(t *testing.T) {
 
 	for i, actual := range r.BuildHistory {
 		expected := buildRecords[i]
-		require.Equal(t, expected.Edits, actual.Edits)
 		require.Equal(t, mustTimeToProto(expected.StartTime), actual.StartTime)
 		require.Equal(t, mustTimeToProto(expected.FinishTime), actual.FinishTime)
 		require.Equal(t, i == 2, actual.IsCrashRebuild)
-		require.ElementsMatch(t, expectedUpdateTypes[i], actual.UpdateTypes)
 	}
 }
 

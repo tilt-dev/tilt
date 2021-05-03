@@ -152,12 +152,10 @@ declare namespace Proto {
     spanId?: string;
   }
   export interface webviewBuildRecord {
-    edits?: string[];
     error?: string;
     warnings?: string[];
     startTime?: string;
     finishTime?: string;
-    updateTypes?: string[];
     isCrashRebuild?: boolean;
     /**
      * The span id for this build record's logs in the main logstore.

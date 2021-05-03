@@ -8,15 +8,6 @@ import "pkg/webview/log.proto";
 
 option go_package = "github.com/tilt-dev/tilt/pkg/webview";
 
-// Correspond to BuildAndDeployers
-enum UpdateType {
-  UPDATE_TYPE_UNSPECIFIED = 0;
-  UPDATE_TYPE_IMAGE = 1;
-  UPDATE_TYPE_LIVE_UPDATE = 2;
-  UPDATE_TYPE_DOCKER_COMPOSE = 3;
-  UPDATE_TYPE_K8S = 4;
-  UPDATE_TYPE_LOCAL = 5;
-}
 
 // Correspond to implementations of the TargetSpec interface
 enum TargetType {
@@ -34,13 +25,16 @@ message TargetSpec {
 }
 
 message BuildRecord {
-  repeated string edits = 1;
+  reserved "edits";
+  reserved 1;
+  
   string error = 2;
   repeated string warnings = 3;
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp finish_time  = 5;
 
-  repeated UpdateType update_types = 9;
+  reserved "update_types";
+  reserved 9;
 
   reserved "log";
   reserved 6;
