@@ -1,7 +1,4 @@
 declare namespace Proto {
-  export interface webviewYAMLResourceInfo {
-    k8sResources?: string[];
-  }
   export interface webviewView {
     log?: string;
     resources?: webviewResource[];
@@ -28,7 +25,6 @@ declare namespace Proto {
      */
     tiltStartTime?: string;
     tiltfileKey?: string;
-    metricsServing?: webviewMetricsServing;
   }
   export interface webviewVersionSettings {
     checkUpdates?: boolean;
@@ -70,21 +66,12 @@ declare namespace Proto {
     endpointLinks?: webviewLink[];
     podID?: string;
     k8sResourceInfo?: webviewK8sResourceInfo;
-    dcResourceInfo?: webviewDCResourceInfo;
-    yamlResourceInfo?: webviewYAMLResourceInfo;
     localResourceInfo?: webviewLocalResourceInfo;
     runtimeStatus?: string;
     updateStatus?: string;
     isTiltfile?: boolean;
     specs?: webviewTargetSpec[];
     queued?: boolean;
-  }
-  export interface webviewMetricsServing {
-    /**
-     * Whether we're using the local or remote metrics stack.
-     */
-    mode?: string;
-    grafanaHost?: string;
   }
   export interface webviewLogSpan {
     manifestName?: string;
@@ -143,13 +130,6 @@ declare namespace Proto {
     podRestarts?: number;
     spanId?: string;
     displayNames?: string[];
-  }
-  export interface webviewDCResourceInfo {
-    configPaths?: string[];
-    containerStatus?: string;
-    containerID?: string;
-    startTime?: string;
-    spanId?: string;
   }
   export interface webviewBuildRecord {
     error?: string;

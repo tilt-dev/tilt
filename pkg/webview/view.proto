@@ -64,25 +64,6 @@ message K8sResourceInfo {
   repeated string display_names = 10;
 }
 
-message DCResourceInfo {
-  repeated string config_paths = 1;
-  string container_status = 2;
-  string containerID = 3;
-
-  // service logs are now in the log store
-  reserved "log";
-  reserved 4;
-
-  google.protobuf.Timestamp start_time = 5;
-
-  // The span id for this docker-compose service's logs in the main logstore
-  string span_id = 6;
-}
-
-message YAMLResourceInfo {
-  repeated string k8s_resources = 1;
-}
-
 message LocalResourceInfo {
   int64 pid = 1;
   bool is_test = 2;
@@ -123,8 +104,13 @@ message Resource {
   repeated Link endpoint_links = 28;
   string podID = 13;
   K8sResourceInfo k8s_resource_info = 14;
-  DCResourceInfo dc_resource_info = 15;
-  YAMLResourceInfo yaml_resource_info = 16;
+
+  reserved "dc_resource_info";
+  reserved 15;
+
+  reserved "yaml_resource_info";
+  reserved 16;
+  
   LocalResourceInfo local_resource_info = 17;
   string runtime_status = 18;
   string update_status = 29;
@@ -206,7 +192,8 @@ message View {
   // an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile
   string tiltfile_key = 17;
 
-  MetricsServing metrics_serving = 18;
+  reserved "metrics_serving";
+  reserved 18;
 }
 
 message MetricsServing {

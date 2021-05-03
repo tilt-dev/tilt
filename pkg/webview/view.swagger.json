@@ -134,31 +134,6 @@
         }
       }
     },
-    "webviewDCResourceInfo": {
-      "type": "object",
-      "properties": {
-        "config_paths": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "container_status": {
-          "type": "string"
-        },
-        "containerID": {
-          "type": "string"
-        },
-        "start_time": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "span_id": {
-          "type": "string",
-          "title": "The span id for this docker-compose service's logs in the main logstore"
-        }
-      }
-    },
     "webviewK8sResourceInfo": {
       "type": "object",
       "properties": {
@@ -299,19 +274,6 @@
         }
       }
     },
-    "webviewMetricsServing": {
-      "type": "object",
-      "properties": {
-        "mode": {
-          "type": "string",
-          "description": "Whether we're using the local or remote metrics stack."
-        },
-        "grafana_host": {
-          "type": "string",
-          "title": "e.g., \"localhost:10352\""
-        }
-      }
-    },
     "webviewResource": {
       "type": "object",
       "properties": {
@@ -354,12 +316,6 @@
         },
         "k8s_resource_info": {
           "$ref": "#/definitions/webviewK8sResourceInfo"
-        },
-        "dc_resource_info": {
-          "$ref": "#/definitions/webviewDCResourceInfo"
-        },
-        "yaml_resource_info": {
-          "$ref": "#/definitions/webviewYAMLResourceInfo"
         },
         "local_resource_info": {
           "$ref": "#/definitions/webviewLocalResourceInfo"
@@ -549,20 +505,6 @@
         "tiltfile_key": {
           "type": "string",
           "title": "an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile"
-        },
-        "metrics_serving": {
-          "$ref": "#/definitions/webviewMetricsServing"
-        }
-      }
-    },
-    "webviewYAMLResourceInfo": {
-      "type": "object",
-      "properties": {
-        "k8s_resources": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     }

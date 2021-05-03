@@ -378,12 +378,6 @@ function dcResource(): Resource {
     hasPendingChanges: false,
     endpointLinks: [{ url: "http://localhost:9007/" }],
     podID: "",
-    dcResourceInfo: {
-      configPaths: [""],
-      containerStatus: "OK",
-      containerID: "",
-      startTime: "2019-08-07T11:43:36.900841-04:00",
-    },
     runtimeStatus: "ok",
     isTiltfile: false,
     queued: false,

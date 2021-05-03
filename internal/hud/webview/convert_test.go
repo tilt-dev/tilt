@@ -44,17 +44,8 @@ func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
-	ms.CurrentBuild.Edits = []string{
-		f.JoinPath("a", "b", "c", "foo"),
-		f.JoinPath("a", "b", "c", "d", "e"),
-	}
 	ms.BuildHistory = []model.BuildRecord{
-		{
-			Edits: []string{
-				f.JoinPath("a", "b", "c", "foo"),
-				f.JoinPath("a", "b", "c", "d", "e"),
-			},
-		},
+		{},
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
 		map[string]time.Time{
@@ -146,9 +137,6 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 
 	r, _ := findResource(m.Name, v)
 	assert.Equal(t, "", lastBuild(r).Error)
-
-	expectedInfo := &proto_webview.YAMLResourceInfo{K8SResources: []string{"sancho:deployment"}}
-	assert.Equal(t, expectedInfo, r.YamlResourceInfo)
 }
 
 func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
@@ -293,7 +281,6 @@ func TestBuildHistory(t *testing.T) {
 		BuildTypes: []model.BuildType{model.BuildTypeImage, model.BuildTypeK8s},
 	}
 	br2 := model.BuildRecord{
-		Edits:      []string{"a.txt", "b.txt"},
 		StartTime:  time.Now().Add(-45 * time.Minute),
 		FinishTime: time.Now().Add(-44 * time.Minute),
 		Reason:     model.BuildReasonFlagChangedFiles,

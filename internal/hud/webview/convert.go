@@ -1,13 +1,9 @@
 package webview
 
 import (
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
-	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -37,41 +33,9 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 		}
 
 		ms := mt.State
-
-		var absWatchDirs []string
-		for i, p := range mt.Manifest.LocalPaths() {
-			if i > 50 {
-				// to avoid pathological perf cases, stop after 50
-				break
-			}
-			fi, err := os.Stat(p)
-
-			// Treat this as a directory if there's an error
-			if err != nil || fi.IsDir() {
-				absWatchDirs = append(absWatchDirs, p)
-			}
-		}
-
-		var pendingBuildEdits []string
-		for _, status := range ms.BuildStatuses {
-			for f := range status.PendingFileChanges {
-				pendingBuildEdits = append(pendingBuildEdits, f)
-			}
-		}
-
-		pendingBuildEdits = ospath.FileListDisplayNames(absWatchDirs, pendingBuildEdits)
-
 		buildHistory := append([]model.BuildRecord{}, ms.BuildHistory...)
-		for i, build := range buildHistory {
-			build.Edits = ospath.FileListDisplayNames(absWatchDirs, build.Edits)
-			buildHistory[i] = build
-		}
 
 		currentBuild := ms.CurrentBuild
-		currentBuild.Edits = ospath.FileListDisplayNames(absWatchDirs, ms.CurrentBuild.Edits)
-
-		// Sort the strings to make the outputs deterministic.
-		sort.Strings(pendingBuildEdits)
 
 		endpoints := store.ManifestTargetEndpoints(mt)
 
@@ -164,23 +128,13 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 	ret.TiltStartTime = start
 
 	ret.TiltfileKey = s.TiltfilePath
-	ret.MetricsServing = toMetricsServingProto(s.MetricsServing)
 
 	return ret, nil
-}
-
-func toMetricsServingProto(s store.MetricsServing) *proto_webview.MetricsServing {
-	return &proto_webview.MetricsServing{
-		Mode:        string(s.Mode),
-		GrafanaHost: s.GrafanaHost,
-	}
 }
 
 func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, error) {
 	ltfb := s.TiltfileState.LastBuild()
 	ctfb := s.TiltfileState.CurrentBuild
-
-	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
 
 	pctfb, err := ToProtoBuildRecord(ctfb, s.LogStore)
 	if err != nil {
@@ -221,20 +175,11 @@ func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Re
 	r.RuntimeStatus = string(model.RuntimeStatusNotApplicable)
 
 	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
-		r.YamlResourceInfo = &proto_webview.YAMLResourceInfo{
-			K8SResources: mt.Manifest.K8sTarget().DisplayNames,
-		}
 		return nil
 	}
 
 	if mt.Manifest.IsDC() {
-		dc := mt.Manifest.DockerComposeTarget()
 		dcState := mt.State.DCRuntimeState()
-		info, err := NewProtoDCResourceInfo(dc.ConfigPaths, dcState.ContainerState.Status, dcState.ContainerID, dcState.StartTime)
-		if err != nil {
-			return err
-		}
-		r.DcResourceInfo = info
 		r.RuntimeStatus = string(dcState.RuntimeStatus())
 		return nil
 	}
