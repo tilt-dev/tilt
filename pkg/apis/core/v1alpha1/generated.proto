@@ -824,6 +824,39 @@ message TargetStateWaiting {
   optional string waitReason = 1;
 }
 
+// UIBuildRunning respresents an in-progress build/update in the user interface.
+message UIBuildRunning {
+  // The time when the build started.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
+
+  // The log span where the build logs are stored in the logstore.
+  optional string spanID = 2;
+}
+
+// UIBuildRunning respresents a finished build/update in the user interface.
+message UIBuildTerminated {
+  // A non-empty string if the build failed with an error.
+  optional string error = 1;
+
+  // A list of warnings encountered while running the build.
+  // These warnings will also be printed to the build's log.
+  repeated string warnings = 2;
+
+  // The time when the build started.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 3;
+
+  // The time when the build finished.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishTime = 4;
+
+  // The log span where the build logs are stored in the logstore.
+  optional string spanID = 5;
+
+  // A crash rebuild happens when Tilt live-updated a container, then
+  // the pod crashed, wiping out the live-updates. Tilt does a full
+  // build+deploy to reset the pod state to what's on disk.
+  optional bool isCrashRebuild = 6;
+}
+
 // UIResource represents per-resource status data for rendering the web UI.
 //
 // Treat this as a legacy data structure that's more intended to make transition
@@ -838,12 +871,65 @@ message UIResource {
   optional UIResourceStatus status = 3;
 }
 
+// UIResourceKubernetes contains status information specific to Kubernetes.
+message UIResourceKubernetes {
+  // The name of the active pod.
+  //
+  // The active pod tends to be what Tilt defaults to for port-forwards,
+  // live-updates, etc.
+  optional string podName = 1;
+
+  // The creation time of the active pod.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time podCreationTime = 2;
+
+  // The last update time of the active pod
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time podUpdateStartTime = 3;
+
+  // The status of the active pod.
+  optional string podStatus = 4;
+
+  // Extra error messaging around the current status of the active pod.
+  optional string podStatusMessage = 5;
+
+  // Whether all the containers in the pod are currently healthy
+  // and have passed readiness checks.
+  optional bool allContainersReady = 6;
+
+  // The number of pod restarts.
+  optional int32 podRestarts = 7;
+
+  // The span where this pod stores its logs in the Tilt logstore.
+  optional string spanID = 8;
+
+  // The list of all resources deployed in the Kubernetes deploy
+  // for this resource.
+  repeated string displayNames = 9;
+}
+
+// UIResourceLink represents a link assocatiated with a UIResource.
+message UIResourceLink {
+  // A URL to link to.
+  optional string url = 1;
+
+  // The display label on a URL.
+  optional string name = 2;
+}
+
 // UIResourceList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message UIResourceList {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated UIResource items = 2;
+}
+
+// UIResourceLocal contains status information specific to local commands.
+message UIResourceLocal {
+  // The PID of the actively running local command.
+  optional int64 pid = 1;
+
+  // Whether this represents a test job.
+  optional bool isTest = 2;
 }
 
 // UIResourceSpec is an empty struct.
@@ -854,6 +940,64 @@ message UIResourceSpec {
 
 // UIResourceStatus defines the observed state of UIResource
 message UIResourceStatus {
+  // The last time this resource was deployed.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastDeployTime = 1;
+
+  // Bit mask representing whether this resource is run when:
+  // 1) When a file changes
+  // 2) When the resource initializes
+  optional int32 triggerMode = 2;
+
+  // Past completed builds.
+  repeated UIBuildTerminated buildHistory = 3;
+
+  // The currently running build, if any.
+  optional UIBuildRunning currentBuild = 4;
+
+  // When the build was put in the pending queue.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime pendingBuildSince = 5;
+
+  // True if the build was put in the pending queue due to file changes.
+  optional bool hasPendingChanges = 6;
+
+  // Links attached to this resource.
+  repeated UIResourceLink endpointLinks = 7;
+
+  // Extra data about Kubernetes resources.
+  optional UIResourceKubernetes k8sResourceInfo = 8;
+
+  // Extra data about Local resources
+  optional UIResourceLocal localResourceInfo = 9;
+
+  // The RuntimeStatus is a simple, high-level summary of the runtime state of a server.
+  //
+  // Not all resources run servers.
+  optional string runtimeStatus = 10;
+
+  // The UpdateStatus is a simple, high-level summary of any update tasks to bring
+  // the resource up-to-date.
+  //
+  // If the resource runs a server, this may include both build tasks and live-update
+  // syncing.
+  optional string updateStatus = 14;
+
+  // Information about all the target specs that this resource summarizes.
+  repeated UIResourceTargetSpec specs = 12;
+
+  // Queued is a simple indicator of whether the resource is queued for an update.
+  optional bool queued = 13;
+}
+
+// UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.
+message UIResourceTargetSpec {
+  // The ID of the target.
+  optional string id = 1;
+
+  // The type of the target.
+  optional string type = 2;
+
+  // Whether the target has a live update assocated with it.
+  optional bool hasLiveUpdate = 3;
 }
 
 // UISession represents global status data for rendering the web UI.

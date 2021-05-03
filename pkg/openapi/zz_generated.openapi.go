@@ -81,10 +81,16 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateActive":         schema_pkg_apis_core_v1alpha1_TargetStateActive(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated":     schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting":        schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning":            schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated":         schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource":                schema_pkg_apis_core_v1alpha1_UIResource(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes":      schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink":            schema_pkg_apis_core_v1alpha1_UIResourceLink(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceList":            schema_pkg_apis_core_v1alpha1_UIResourceList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal":           schema_pkg_apis_core_v1alpha1_UIResourceLocal(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec":            schema_pkg_apis_core_v1alpha1_UIResourceSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus":          schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec":      schema_pkg_apis_core_v1alpha1_UIResourceTargetSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISession":                 schema_pkg_apis_core_v1alpha1_UISession(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionList":             schema_pkg_apis_core_v1alpha1_UISessionList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionSpec":             schema_pkg_apis_core_v1alpha1_UISessionSpec(ref),
@@ -2368,6 +2374,100 @@ func schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref common.ReferenceCallba
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIBuildRunning respresents an in-progress build/update in the user interface.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The time when the build started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"spanID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The log span where the build logs are stored in the logstore.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIBuildRunning respresents a finished build/update in the user interface.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A non-empty string if the build failed with an error.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"warnings": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of warnings encountered while running the build. These warnings will also be printed to the build's log.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"startTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The time when the build started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"finishTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The time when the build finished.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"spanID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The log span where the build logs are stored in the logstore.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"isCrashRebuild": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A crash rebuild happens when Tilt live-updated a container, then the pod crashed, wiping out the live-updates. Tilt does a full build+deploy to reset the pod state to what's on disk.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_UIResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2412,6 +2512,119 @@ func schema_pkg_apis_core_v1alpha1_UIResource(ref common.ReferenceCallback) comm
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceKubernetes contains status information specific to Kubernetes.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"podName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the active pod.\n\nThe active pod tends to be what Tilt defaults to for port-forwards, live-updates, etc.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podCreationTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The creation time of the active pod.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"podUpdateStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last update time of the active pod",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"podStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The status of the active pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podStatusMessage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Extra error messaging around the current status of the active pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"allContainersReady": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether all the containers in the pod are currently healthy and have passed readiness checks.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"podRestarts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The number of pod restarts.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"spanID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The span where this pod stores its logs in the Tilt logstore.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"displayNames": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The list of all resources deployed in the Kubernetes deploy for this resource.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceLink(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceLink represents a link assocatiated with a UIResource.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"url": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A URL to link to.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The display label on a URL.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -2464,6 +2677,33 @@ func schema_pkg_apis_core_v1alpha1_UIResourceList(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_UIResourceLocal(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceLocal contains status information specific to local commands.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"pid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The PID of the actively running local command.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"isTest": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether this represents a test job.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_UIResourceSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2481,6 +2721,153 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 			SchemaProps: spec.SchemaProps{
 				Description: "UIResourceStatus defines the observed state of UIResource",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"lastDeployTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last time this resource was deployed.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"triggerMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Bit mask representing whether this resource is run when: 1) When a file changes 2) When the resource initializes",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"buildHistory": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Past completed builds.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated"),
+									},
+								},
+							},
+						},
+					},
+					"currentBuild": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The currently running build, if any.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning"),
+						},
+					},
+					"pendingBuildSince": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When the build was put in the pending queue.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"hasPendingChanges": {
+						SchemaProps: spec.SchemaProps{
+							Description: "True if the build was put in the pending queue due to file changes.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"endpointLinks": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Links attached to this resource.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink"),
+									},
+								},
+							},
+						},
+					},
+					"k8sResourceInfo": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Extra data about Kubernetes resources.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes"),
+						},
+					},
+					"localResourceInfo": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Extra data about Local resources",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal"),
+						},
+					},
+					"runtimeStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The RuntimeStatus is a simple, high-level summary of the runtime state of a server.\n\nNot all resources run servers.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"updateStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The UpdateStatus is a simple, high-level summary of any update tasks to bring the resource up-to-date.\n\nIf the resource runs a server, this may include both build tasks and live-update syncing.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"specs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Information about all the target specs that this resource summarizes.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec"),
+									},
+								},
+							},
+						},
+					},
+					"queued": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Queued is a simple indicator of whether the resource is queued for an update.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceTargetSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"id": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The ID of the target.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The type of the target.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"hasLiveUpdate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the target has a live update assocated with it.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
 			},
 		},
 	}

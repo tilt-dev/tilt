@@ -199,7 +199,7 @@ message View {
   // New API-server based data models. These will eventually obsolete the fields
   // above.
   github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UISession ui_session = 19;
-  map<string, github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UISession> ui_resources = 20;
+  repeated github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UIResource ui_resources = 20;
 }
 
 message MetricsServing {
