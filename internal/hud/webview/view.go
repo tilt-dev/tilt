@@ -37,35 +37,6 @@ func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
 	return ts, nil
 }
 
-func buildTypesToProtoUpdateTypes(bts []model.BuildType) ([]proto_webview.UpdateType, error) {
-	result := make([]proto_webview.UpdateType, len(bts))
-	for i, bt := range bts {
-		protoType, err := buildTypeToProto(bt)
-		if err != nil {
-			return nil, err
-		}
-		result[i] = protoType
-	}
-	return result, nil
-}
-
-func buildTypeToProto(bt model.BuildType) (proto_webview.UpdateType, error) {
-	switch bt {
-	case model.BuildTypeImage:
-		return proto_webview.UpdateType_UPDATE_TYPE_IMAGE, nil
-	case model.BuildTypeLiveUpdate:
-		return proto_webview.UpdateType_UPDATE_TYPE_LIVE_UPDATE, nil
-	case model.BuildTypeDockerCompose:
-		return proto_webview.UpdateType_UPDATE_TYPE_DOCKER_COMPOSE, nil
-	case model.BuildTypeK8s:
-		return proto_webview.UpdateType_UPDATE_TYPE_K8S, nil
-	case model.BuildTypeLocal:
-		return proto_webview.UpdateType_UPDATE_TYPE_LOCAL, nil
-	default:
-		return proto_webview.UpdateType_UPDATE_TYPE_UNSPECIFIED, fmt.Errorf("unknown build type '%v'", bt)
-	}
-}
-
 func targetSpecToProto(spec model.TargetSpec) (proto_webview.TargetSpec, error) {
 	switch typ := spec.(type) {
 	case model.ImageTarget:
@@ -127,18 +98,12 @@ func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*pro
 		warnings = logStore.Warnings(br.SpanID)
 	}
 
-	updateTypes, err := buildTypesToProtoUpdateTypes(br.BuildTypes)
-	if err != nil {
-		return nil, err
-	}
 	return &proto_webview.BuildRecord{
-		Edits: br.Edits,
 		Error: e,
 		// TODO(nick): Remove this, and compute it client-side.
 		Warnings:       warnings,
 		StartTime:      start,
 		FinishTime:     finish,
-		UpdateTypes:    updateTypes,
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
 		SpanId:         string(br.SpanID),
 	}, nil

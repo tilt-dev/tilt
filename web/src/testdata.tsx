@@ -95,7 +95,6 @@ export function tiltfileResource(): Resource {
     lastDeployTime: ts,
     buildHistory: [
       {
-        edits: ["Tiltfile"],
         finishTime: ts,
         startTime: tsPast,
       },
@@ -120,7 +119,6 @@ function oneResource(): Resource {
     lastDeployTime: ts,
     buildHistory: [
       {
-        edits: ["main.go", "cli.go"],
         error: "the build failed!",
         finishTime: ts,
         startTime: tsPast,
@@ -128,7 +126,6 @@ function oneResource(): Resource {
     ],
     pendingBuildSince: ts,
     currentBuild: {
-      edits: ["main.go"],
       startTime: ts,
     },
     k8sResourceInfo: {
@@ -159,7 +156,6 @@ function oneResourceNoAlerts(): Resource {
     lastDeployTime: ts,
     buildHistory: [
       {
-        edits: ["main.go", "cli.go"],
         finishTime: ts,
         startTime: ts,
       },
@@ -187,7 +183,6 @@ function oneResourceImagePullBackOff(): Resource {
     lastDeployTime: ts,
     buildHistory: [
       {
-        edits: ["main.go", "cli.go"],
         finishTime: ts,
         startTime: ts,
       },
@@ -215,7 +210,6 @@ function oneResourceErrImgPull(): Resource {
     lastDeployTime: ts,
     buildHistory: [
       {
-        edits: ["main.go", "cli.go"],
         finishTime: ts,
         startTime: ts,
       },
@@ -243,7 +237,6 @@ function oneResourceUnrecognizedError(): Resource {
     lastDeployTime: ts,
     buildHistory: [
       {
-        edits: ["main.go", "cli.go"],
         finishTime: ts,
         startTime: ts,
       },
@@ -272,7 +265,6 @@ function oneResourceTestWithName(name: string): Resource {
       {
         startTime: ts,
         finishTime: ts,
-        updateTypes: ["UPDATE_TYPE_LOCAL"],
         spanId: "build:1",
       },
     ],
@@ -311,7 +303,6 @@ function twoResourceView(): view {
     lastDeployTime: new Date(time - 10000).toISOString(),
     buildHistory: [
       {
-        edits: ["main.go", "cli.go"],
         error: "the build failed!",
         finishTime: new Date(time - 10000).toISOString(),
         startTime: ts,
@@ -319,7 +310,6 @@ function twoResourceView(): view {
     ],
     pendingBuildSince: ts,
     currentBuild: {
-      edits: ["main.go"],
       startTime: ts,
     },
     endpointLinks: [unnamedEndpointLink],
@@ -369,7 +359,6 @@ function oneResourceFailedToBuild(): Resource[] {
       lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
       buildHistory: [
         {
-          edits: ["main.go"],
           error: "oh no",
           startTime: "2019-04-22T11:05:07.250689-04:00",
           finishTime: "2019-04-22T11:05:17.689819-04:00",
@@ -406,7 +395,6 @@ function oneResourceBuilding(): Resource[] {
       lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
       buildHistory: [
         {
-          edits: ["/Users/dan/go/src/github.com/tilt-dev/servantes/Tiltfile"],
           startTime: "2019-04-22T10:59:53.574652-04:00",
           finishTime: "2019-04-22T10:59:53.903047-04:00",
         },
@@ -477,19 +465,16 @@ function oneResourceBuilding(): Resource[] {
       lastDeployTime: "2019-04-22T11:05:58.928369-04:00",
       buildHistory: [
         {
-          edits: ["main.go"],
           startTime: "2019-04-22T11:05:53.676776-04:00",
           finishTime: "2019-04-22T11:05:58.928367-04:00",
         },
         {
-          edits: ["main.go"],
           error: "eek",
           startTime: "2019-04-22T11:05:07.250689-04:00",
           finishTime: "2019-04-22T11:05:17.689819-04:00",
         },
       ],
       currentBuild: {
-        edits: ["main.go"],
         startTime: "2019-04-22T11:20:44.674248-04:00",
         finishTime: "0001-01-01T00:00:00Z",
       },
@@ -516,7 +501,6 @@ function oneResourceCrashedOnStart(): Resource[] {
       lastDeployTime: "2019-04-22T13:34:59.442147-04:00",
       buildHistory: [
         {
-          edits: ["main.go"],
           startTime: "2019-04-22T13:34:57.084919-04:00",
           finishTime: "2019-04-22T13:34:59.442139-04:00",
         },
