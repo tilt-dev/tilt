@@ -23,7 +23,7 @@ import (
 )
 
 func TestPortForward(t *testing.T) {
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -42,7 +42,7 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
+	assert.Equal(t, 0, len(f.pfs.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
@@ -51,7 +51,7 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID().String())
 	firstPodForwardCtx := f.kCli.LastForwardContext()
 
@@ -62,7 +62,7 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID().String())
 
 	state = f.st.LockMutableStateForTesting()
@@ -72,14 +72,14 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
+	assert.Equal(t, 0, len(f.pfs.activeForwards))
 
 	assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
 		"Expected first port-forward to be canceled")
 }
 
 func TestMultiplePortForwardsForOnePod(t *testing.T) {
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -102,7 +102,7 @@ func TestMultiplePortForwardsForOnePod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
+	assert.Equal(t, 0, len(f.pfs.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
@@ -111,7 +111,7 @@ func TestMultiplePortForwardsForOnePod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	require.Equal(t, 1, len(f.plc.activeForwards))
+	require.Equal(t, 1, len(f.pfs.activeForwards))
 	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
 
 	// PortForwards are executed async so we can't guarantee the order;
@@ -133,7 +133,7 @@ func TestMultiplePortForwardsForOnePod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
+	assert.Equal(t, 0, len(f.pfs.activeForwards))
 
 	for _, ctx := range contexts {
 		assert.Equal(t, context.Canceled, ctx.Err(),
@@ -142,7 +142,7 @@ func TestMultiplePortForwardsForOnePod(t *testing.T) {
 }
 
 func TestPortForwardAutoDiscovery(t *testing.T) {
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -164,7 +164,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
+	assert.Equal(t, 0, len(f.pfs.activeForwards))
 	state = f.st.LockMutableStateForTesting()
 	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []v1alpha1.Container{
 		v1alpha1.Container{Ports: []int32{8000}},
@@ -172,12 +172,12 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 8000, f.kCli.LastForwardPortRemotePort())
 }
 
 func TestPortForwardAutoDiscovery2(t *testing.T) {
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -204,12 +204,12 @@ func TestPortForwardAutoDiscovery2(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
 }
 
 func TestPortForwardChangePort(t *testing.T) {
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -228,7 +228,7 @@ func TestPortForwardChangePort(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
 
 	state = f.st.LockMutableStateForTesting()
@@ -237,12 +237,12 @@ func TestPortForwardChangePort(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 8082, f.kCli.LastForwardPortRemotePort())
 }
 
 func TestPortForwardChangeHost(t *testing.T) {
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -262,7 +262,7 @@ func TestPortForwardChangeHost(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
 	assert.Equal(t, "someHostA", f.kCli.LastForwardPortHost())
 
@@ -272,13 +272,13 @@ func TestPortForwardChangeHost(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
 	assert.Equal(t, "otherHostB", f.kCli.LastForwardPortHost())
 }
 
 func TestPortForwardChangeManifestName(t *testing.T) {
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -297,7 +297,7 @@ func TestPortForwardChangeManifestName(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
 
 	state = f.st.LockMutableStateForTesting()
@@ -317,7 +317,7 @@ func TestPortForwardChangeManifestName(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
 }
 
@@ -325,7 +325,7 @@ func TestPortForwardRestart(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("TODO(nick): investigate")
 	}
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -344,7 +344,7 @@ func TestPortForwardRestart(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 1, f.kCli.CreatePortForwardCallCount())
 
 	err := fmt.Errorf("unique-error")
@@ -353,7 +353,7 @@ func TestPortForwardRestart(t *testing.T) {
 	assert.Contains(t, "unique-error", f.out.String())
 	time.Sleep(100 * time.Millisecond)
 
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.pfs.activeForwards))
 	assert.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
 }
 
@@ -407,17 +407,17 @@ func TestPopulatePortForward(t *testing.T) {
 	}
 }
 
-type plcFixture struct {
+type pfsFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
 	st     *store.TestingStore
-	plc    *Subscriber
+	pfs    *Subscriber
 	out    *bufsync.ThreadSafeBuffer
 }
 
-func newPLCFixture(t *testing.T) *plcFixture {
+func newPFSFixture(t *testing.T) *pfsFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient()
@@ -427,23 +427,23 @@ func newPLCFixture(t *testing.T) *plcFixture {
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = logger.WithLogger(ctx, l)
-	return &plcFixture{
+	return &pfsFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		cancel:         cancel,
 		st:             st,
 		kCli:           kCli,
-		plc:            plc,
+		pfs:            plc,
 		out:            out,
 	}
 }
 
-func (f *plcFixture) onChange() {
-	f.plc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+func (f *pfsFixture) onChange() {
+	f.pfs.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
 }
 
-func (f *plcFixture) TearDown() {
+func (f *pfsFixture) TearDown() {
 	f.kCli.TearDown()
 	f.TempDirFixture.TearDown()
 	f.cancel()
