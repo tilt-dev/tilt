@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
@@ -14,19 +13,6 @@ import (
 
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
-
-func NewProtoDCResourceInfo(configPaths []string, status string, cID container.ID, startTime time.Time) (*proto_webview.DCResourceInfo, error) {
-	start, err := timeToProto(startTime)
-	if err != nil {
-		return nil, err
-	}
-	return &proto_webview.DCResourceInfo{
-		ConfigPaths:     configPaths,
-		ContainerStatus: string(status),
-		ContainerID:     string(cID),
-		StartTime:       start,
-	}, nil
-}
 
 func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
 	ts, err := ptypes.TimestampProto(t)
