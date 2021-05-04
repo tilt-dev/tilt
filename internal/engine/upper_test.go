@@ -1679,12 +1679,10 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 		StartTime:    f.Now(),
 		SpanID:       spanID0,
 	})
-	podStartTime := f.Now()
 	ancestorUID := types.UID("fake-uid")
 	pb := podbuilder.New(t, manifest).
 		WithPodID("mypod").
 		WithContainerID("normal-container-id").
-		WithCreationTime(podStartTime).
 		WithDeploymentUID(ancestorUID).
 		WithTemplateSpecHash(ptsh)
 	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
