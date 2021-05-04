@@ -142,8 +142,13 @@ var ErrorWaitingReasons = map[string]bool{
 	"Error":             true,
 }
 
-func SpanIDForPod(podID k8s.PodID) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("pod:%s", podID))
+// SpanIDForPod creates a span ID for a given pod associated with a manifest.
+//
+// Generally, a given Pod is only referenced by a single manifest, but there are
+// rare occasions where it can be referenced by multiple. If the span ID is not
+// unique between them, things will behave erratically.
+func SpanIDForPod(mn model.ManifestName, podID k8s.PodID) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("pod:%s:%s", mn.String(), podID))
 }
 
 // copied from https://github.com/kubernetes/kubernetes/blob/aedeccda9562b9effe026bb02c8d3c539fc7bb77/pkg/kubectl/resource_printer.go#L692-L764

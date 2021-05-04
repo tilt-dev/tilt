@@ -1452,11 +1452,11 @@ func TestPodEventOrdering(t *testing.T) {
 			}
 
 			f.upper.store.Dispatch(
-				store.NewLogAction("fe", k8sconv.SpanIDForPod(podBNow.PodID()), logger.InfoLvl, nil, []byte("pod b log\n")))
+				store.NewLogAction("fe", k8sconv.SpanIDForPod(manifest.Name, podBNow.PodID()), logger.InfoLvl, nil, []byte("pod b log\n")))
 
 			f.WaitUntil("pod log seen", func(state store.EngineState) bool {
-				ms, _ := state.ManifestState("fe")
-				spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+				ms, _ := state.ManifestState(manifest.Name)
+				spanID := k8sconv.SpanIDForPod(manifest.Name, k8s.PodID(ms.MostRecentPod().Name))
 				return spanID != "" && strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
 			})
 
@@ -2111,7 +2111,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 
 	f.withState(func(state store.EngineState) {
 		ms, _ := state.ManifestState(name)
-		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+		spanID := k8sconv.SpanIDForPod(name, k8s.PodID(ms.MostRecentPod().Name))
 		assert.Equal(t, "first string\nsecond string\n", state.LogStore.SpanLog(spanID))
 	})
 
@@ -2140,7 +2140,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(name)
-		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+		spanID := k8sconv.SpanIDForPod(name, k8s.PodID(ms.MostRecentPod().Name))
 		assert.Contains(t, es.LogStore.SpanLog(spanID), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
@@ -2177,7 +2177,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 
 	f.withState(func(state store.EngineState) {
 		ms, _ := state.ManifestState(name)
-		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+		spanID := k8sconv.SpanIDForPod(name, k8s.PodID(ms.MostRecentPod().Name))
 		assert.Equal(t, "first string\nWARNING: Detected container restart. Pod: fakePodID. Container: sancho.\nsecond string\n",
 			state.LogStore.SpanLog(spanID))
 	})
@@ -4260,11 +4260,11 @@ func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
 
 func (f *testFixture) podLog(pod *v1.Pod, manifestName model.ManifestName, s string) {
 	podID := k8s.PodID(pod.Name)
-	f.upper.store.Dispatch(store.NewLogAction(manifestName, k8sconv.SpanIDForPod(podID), logger.InfoLvl, nil, []byte(s+"\n")))
+	f.upper.store.Dispatch(store.NewLogAction(manifestName, k8sconv.SpanIDForPod(manifestName, podID), logger.InfoLvl, nil, []byte(s+"\n")))
 
 	f.WaitUntil("pod log seen", func(es store.EngineState) bool {
 		ms, _ := es.ManifestState(manifestName)
-		spanID := k8sconv.SpanIDForPod(k8s.PodID(ms.MostRecentPod().Name))
+		spanID := k8sconv.SpanIDForPod(manifestName, k8s.PodID(ms.MostRecentPod().Name))
 		return strings.Contains(es.LogStore.SpanLog(spanID), s)
 	})
 }
