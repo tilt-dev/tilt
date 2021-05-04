@@ -7,7 +7,6 @@ require (
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/akutz/memconn v0.1.0
 	github.com/alessio/shellescape v1.2.2
-	github.com/bitly/go-hostpool v0.1.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bugsnag/bugsnag-go v1.5.3 // indirect
 	github.com/bugsnag/panicwrap v1.2.0 // indirect
@@ -32,8 +31,9 @@ require (
 	github.com/go-openapi/swag v0.19.13 // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
-	github.com/golang/protobuf v1.4.3
-	github.com/google/go-cmp v0.5.2
+	github.com/gogo/protobuf v1.3.1
+	github.com/golang/protobuf v1.5.2
+	github.com/google/go-cmp v0.5.5
 	github.com/google/uuid v1.1.2
 	github.com/google/wire v0.3.0
 	github.com/gorilla/mux v1.7.4
