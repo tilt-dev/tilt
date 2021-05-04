@@ -67,6 +67,7 @@ func (h *FakeHud) WaitUntilResource(t testing.TB, ctx context.Context, msg strin
 }
 
 func (h *FakeHud) WaitUntil(t testing.TB, ctx context.Context, msg string, isDone func(view.View) bool) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 

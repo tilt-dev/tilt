@@ -187,7 +187,7 @@ func (b PodBuilder) PodID() k8s.PodID {
 	if b.podID != "" {
 		return k8s.PodID(b.podID)
 	}
-	return "fakePodID"
+	return k8s.PodID(fmt.Sprintf("%s-fakePodID", b.manifest.Name))
 }
 
 func (b PodBuilder) buildPodUID() types.UID {

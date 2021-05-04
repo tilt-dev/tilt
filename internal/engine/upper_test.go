@@ -17,6 +17,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+	"k8s.io/apimachinery/pkg/labels"
+
 	"k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/tilt-dev/tilt/internal/timecmp"
@@ -213,6 +216,7 @@ type fakeBuildAndDeployer struct {
 	nextDockerComposeContainerID    container.ID
 	nextDockerComposeContainerState *dockertypes.ContainerState
 
+	targetObjectTree          map[model.TargetID]podbuilder.PodObjectTree
 	nextDeployedUID           types.UID
 	nextPodTemplateSpecHashes []k8s.PodTemplateSpecHash
 
@@ -230,6 +234,9 @@ type fakeBuildAndDeployer struct {
 	buildLogOutput map[model.TargetID]string
 
 	resultsByID store.BuildResultSet
+
+	// kClient registers deployed entities for subsequent retrieval.
+	kClient *k8s.FakeK8sClient
 }
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -339,24 +346,52 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
-		deployed, err := k8s.ParseYAMLFromString(kTarg.YAML)
-		if err != nil {
-			return result, err
-		}
-		for i := 0; i < len(deployed); i++ {
-			uid := types.UID(uuid.New().String())
+		var deployed []k8s.K8sEntity
+		var templateSpecHashes []k8s.PodTemplateSpecHash
+
+		explicitDeploymentEntities := b.targetObjectTree[kTarg.ID()]
+		if len(explicitDeploymentEntities) != 0 {
 			if b.nextDeployedUID != "" {
-				uid = b.nextDeployedUID
-				b.nextDeployedUID = ""
+				b.t.Fatalf("Cannot set both explicit deployed entities + next deployed UID")
 			}
-			k8s.SetUIDForTest(b.t, &deployed[i], string(uid))
+			if len(b.nextPodTemplateSpecHashes) != 0 {
+				b.t.Fatalf("Cannot set both explicit deployed entities + next pod template spec hashes")
+			}
+
+			// register Deployment + ReplicaSet so that other parts of the system can properly retrieve them
+			b.kClient.InjectEntityByName(
+				explicitDeploymentEntities.Deployment(),
+				explicitDeploymentEntities.ReplicaSet())
+
+			// only return the Deployment entity as deployed since the ReplicaSet + Pod are created implicitly,
+			// i.e. they are not returned in a normal apply call for a Deployment
+			deployed = []k8s.K8sEntity{explicitDeploymentEntities.Deployment()}
+			hash := explicitDeploymentEntities.Pod().Labels()[k8s.TiltPodTemplateHashLabel]
+			if hash != "" {
+				templateSpecHashes = append(templateSpecHashes, k8s.PodTemplateSpecHash(hash))
+			}
+		} else {
+			deployed, err = k8s.ParseYAMLFromString(kTarg.YAML)
+			if err != nil {
+				return result, err
+			}
+
+			for i := 0; i < len(deployed); i++ {
+				uid := types.UID(uuid.New().String())
+				if b.nextDeployedUID != "" {
+					uid = b.nextDeployedUID
+					b.nextDeployedUID = ""
+				}
+				k8s.SetUIDForTest(b.t, &deployed[i], string(uid))
+			}
+
+			templateSpecHashes = podTemplateSpecHashesForTarg(b.t, kTarg)
+			if len(b.nextPodTemplateSpecHashes) != 0 {
+				templateSpecHashes = b.nextPodTemplateSpecHashes
+				b.nextPodTemplateSpecHashes = nil
+			}
 		}
 
-		templateSpecHashes := podTemplateSpecHashesForTarg(b.t, kTarg)
-		if len(b.nextPodTemplateSpecHashes) != 0 {
-			templateSpecHashes = b.nextPodTemplateSpecHashes
-			b.nextPodTemplateSpecHashes = nil
-		}
 		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), templateSpecHashes, deployed)
 	}
 
@@ -403,10 +438,12 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key 
 
 func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
-		t:              t,
-		calls:          make(chan buildAndDeployCall, 20),
-		buildLogOutput: make(map[model.TargetID]string),
-		resultsByID:    store.BuildResultSet{},
+		t:                t,
+		calls:            make(chan buildAndDeployCall, 20),
+		buildLogOutput:   make(map[model.TargetID]string),
+		resultsByID:      store.BuildResultSet{},
+		kClient:          k8s.NewFakeK8sClient(),
+		targetObjectTree: make(map[model.TargetID]podbuilder.PodObjectTree),
 	}
 }
 
@@ -522,6 +559,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	f.timerMaker.MaxTimerLock.Lock()
@@ -529,7 +567,7 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	fileRelPath := "fdas"
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
@@ -554,6 +592,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	f.timerMaker.MaxTimerLock.Lock()
@@ -561,7 +600,7 @@ func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	f.timerMaker.RestTimerLock.Lock()
 	fileRelPaths := []string{"fdas", "giueheh"}
@@ -590,13 +629,14 @@ func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	f.timerMaker.MaxTimerLock.Lock()
 	f.timerMaker.RestTimerLock.Lock()
@@ -696,11 +736,12 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	// Simulate a change to a.go that makes the build fail.
 	f.SetNextBuildError(errors.New("build failed"))
@@ -729,24 +770,25 @@ func TestThreeBuilds(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("fe")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCallComplete("first build")
 	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
 
 	call = f.nextCallComplete("second build")
 	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneImageState().FilesChanged())
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	// Simulate a change to b.go
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
 
 	call = f.nextCallComplete("third build")
 	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneImageState().FilesChanged())
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, 2, len(ms.BuildHistory))
@@ -762,11 +804,12 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
 	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	// Simulate a change to .#a.go that's a broken symlink.
 	realPath := filepath.Join(f.Path(), "a.go")
@@ -819,7 +862,10 @@ k8s_yaml('snack.yaml')
 	f.withState(func(es store.EngineState) {
 		manifest = es.Manifests()[0]
 	})
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	pb := podbuilder.New(t, manifest).WithDeploymentUID(f.lastDeployedUID(manifest.Name))
+	// the manifest thinks it deployed a Deployment whose UID we used - fake the ReplicaSet to go with it
+	f.kClient.InjectEntityByName(pb.ObjectTreeEntities().ReplicaSet())
+	f.podEvent(pb.Build())
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("random_file.go"))
 
@@ -1350,15 +1396,14 @@ func TestPodEvent(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
 	assert.True(t, call.oneImageState().IsEmpty())
 
-	pod := podbuilder.New(f.T(), manifest).
-		WithPhase("CrashLoopBackOff").
-		Build()
-	f.podEvent(pod, manifest.Name)
+	pod := pb.WithPhase("CrashLoopBackOff").Build()
+	f.podEvent(pod)
 
 	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
 		return res.K8sInfo().PodName == pod.Name
@@ -1376,18 +1421,18 @@ func TestPodResetRestartsAction(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("fe")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
 	assert.True(t, call.oneImageState().IsEmpty())
 
-	pb := podbuilder.New(f.T(), manifest)
-	f.podEvent(pb.Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	pb = pb.
 		WithPhase("CrashLoopBackOff").
 		WithRestartCount(1)
-	f.podEvent(pb.Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	f.WaitUntilManifestState("restart seen", "fe", func(ms store.ManifestState) bool {
 		return store.VisiblePodContainerRestarts(ms.MostRecentPod()) == 1
@@ -1478,6 +1523,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	var ref reference.NamedTagged
@@ -1487,11 +1533,11 @@ func TestPodEventContainerStatus(t *testing.T) {
 		return ref != nil
 	})
 
-	pod := podbuilder.New(f.T(), manifest).Build()
+	pod := pb.Build()
 	pod.Status = k8s.FakePodStatus(ref, "Running")
 	pod.Status.ContainerStatuses[0].ContainerID = ""
 	pod.Spec = k8s.FakePodSpec(ref)
-	f.podEvent(pod, manifest.Name)
+	f.podEvent(pod)
 
 	podState := v1alpha1.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
@@ -1514,6 +1560,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	manifest := model.Manifest{
 		Name: model.ManifestName("foobar"),
 	}.WithDeployTarget(k8s.MustTarget("foobar", SanchoYAML))
+	pb := f.registerForDeployer(manifest)
 	ref := container.MustParseNamedTagged("dockerhub/we-didnt-build-this:foo")
 	f.Start([]model.Manifest{manifest})
 
@@ -1521,7 +1568,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 		return len(ms.BuildHistory) > 0
 	})
 
-	pod := podbuilder.New(f.T(), manifest).Build()
+	pod := pb.Build()
 	pod.Status = k8s.FakePodStatus(ref, "Running")
 
 	// If we have no image target to match container status by image ref,
@@ -1545,7 +1592,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 		},
 	}
 
-	f.podEvent(pod, manifest.Name)
+	f.podEvent(pod)
 
 	podState := v1alpha1.Pod{}
 	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
@@ -1568,11 +1615,26 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	defer f.TearDown()
 	f.bc.DisableForTesting()
 
-	ptsh := k8s.PodTemplateSpecHash("hash")
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
 	f.Start([]model.Manifest{manifest})
-	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
+
+	// since build controller is disabled, we need to manually simulate the deployment
+	hash := k8s.PodTemplateSpecHash("fake-hash")
+	pb := podbuilder.New(t, manifest).
+		WithPodID("mypod").
+		WithTemplateSpecHash(hash).
+		WithContainerID("myfunnycontainerid")
+	entities := pb.ObjectTreeEntities()
+	f.kClient.InjectEntityByName(entities...)
+
+	st := f.store.LockMutableStateForTesting()
+	ms, _ := st.ManifestState(name)
+	krs := ms.K8sRuntimeState()
+	krs.DeployedPodTemplateSpecHashSet.Add(hash)
+	krs.DeployedEntities = k8s.ObjRefList{entities.Deployment().ToObjectReference()}
+	ms.RuntimeState = krs
+	f.store.UnlockMutableState()
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
@@ -1596,11 +1658,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		return st.CompletedBuildCount == 1 && buildcontrol.NextManifestNameToBuild(st) == ""
 	})
 
-	f.podEvent(podbuilder.New(t, manifest).
-		WithPodID("mypod").
-		WithTemplateSpecHash(ptsh).
-		WithContainerID("myfunnycontainerid").
-		Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
 		return ms.NeedsRebuildFromCrash
@@ -1618,12 +1676,24 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
-	ptsh := k8s.PodTemplateSpecHash("abc123hash")
 
 	f.Start([]model.Manifest{manifest})
 
-	// (recognize incoming pods with this ptsh as belonging to this manifest)
-	f.registerDeployedPodTemplateSpecHashToManifest(name, ptsh)
+	// since build controller is disabled, we need to manually simulate the deployment
+	ptsh := k8s.PodTemplateSpecHash("abc123hash")
+	pb := podbuilder.New(t, manifest).
+		WithTemplateSpecHash(ptsh).
+		WithContainerID("myfunnycontainerid")
+	entities := pb.ObjectTreeEntities()
+	f.kClient.InjectEntityByName(entities...)
+
+	st := f.store.LockMutableStateForTesting()
+	ms, _ := st.ManifestState(name)
+	krs := ms.K8sRuntimeState()
+	krs.DeployedPodTemplateSpecHashSet.Add(ptsh)
+	krs.DeployedEntities = k8s.ObjRefList{entities.Deployment().ToObjectReference()}
+	ms.RuntimeState = krs
+	f.store.UnlockMutableState()
 
 	// Start a fake build
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
@@ -1639,8 +1709,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	})
 
 	// Simulate k8s restarting the container due to a crash.
-	f.podEvent(podbuilder.New(t, manifest).WithContainerID("myfunnycontainerid").
-		WithTemplateSpecHash(ptsh).Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	// ...and finish the build. Even though this action comes in AFTER the pod
 	// event w/ unexpected container,  we should still be able to detect the mismatch.
@@ -1728,26 +1797,27 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
 	assert.True(t, call.oneImageState().IsEmpty())
 
 	firstCreationTime := f.Now()
-	pod := podbuilder.New(f.T(), manifest).
+	pod := pb.
 		WithCreationTime(firstCreationTime).
 		WithPhase("CrashLoopBackOff").
 		Build()
-	f.podEvent(pod, manifest.Name)
+	f.podEvent(pod)
 	f.WaitUntilHUDResource("hud update crash", "foobar", func(res view.Resource) bool {
 		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
-	newPod := podbuilder.New(f.T(), manifest).
+	pb = podbuilder.New(t, manifest).
 		WithPodID("my-new-pod").
-		WithCreationTime(firstCreationTime.Add(time.Minute * 2)).
-		Build()
-	f.podEvent(newPod, manifest.Name)
+		WithCreationTime(firstCreationTime.Add(time.Minute * 2))
+	newPod := pb.Build()
+	f.podEvent(newPod)
 	f.WaitUntilHUDResource("hud update running", "foobar", func(res view.Resource) bool {
 		return res.K8sInfo().PodStatus == "Running"
 	})
@@ -1765,21 +1835,21 @@ func TestPodEventDeleted(t *testing.T) {
 	defer f.TearDown()
 	mn := model.ManifestName("foobar")
 	manifest := f.newManifest(mn.String())
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCallComplete()
 	assert.True(t, call.oneImageState().IsEmpty())
 
 	creationTime := f.Now()
-	pb := podbuilder.New(f.T(), manifest).
-		WithCreationTime(creationTime)
-	f.podEvent(pb.Build(), manifest.Name)
+	pb = pb.WithCreationTime(creationTime)
+	f.podEvent(pb.Build())
 
 	f.WaitUntilManifestState("pod crashes", mn, func(state store.ManifestState) bool {
 		return state.K8sRuntimeState().ContainsID(k8s.PodID(pb.PodID()))
 	})
 
-	f.podEvent(pb.WithDeletionTime(creationTime.Add(time.Minute)).Build(), manifest.Name)
+	f.podEvent(pb.WithDeletionTime(creationTime.Add(time.Minute)).Build())
 
 	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
 		return state.K8sRuntimeState().PodLen() == 0
@@ -1797,22 +1867,23 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCallComplete()
 	assert.True(t, call.oneImageState().IsEmpty())
 
 	creationTime := f.Now()
-	pb := podbuilder.New(f.T(), manifest).
+	pb = pb.
 		WithCreationTime(creationTime).
 		WithPhase("CrashLoopBackOff")
-	f.podEvent(pb.Build(), manifest.Name)
+	f.podEvent(pb.Build())
 
 	f.WaitUntilHUDResource("pod crashes", "foobar", func(res view.Resource) bool {
 		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
-	f.podEvent(pb.WithPhase("Running").Build(), manifest.Name)
+	f.podEvent(pb.WithPhase("Running").Build())
 
 	f.WaitUntilHUDResource("pod comes back", "foobar", func(res view.Resource) bool {
 		return res.K8sInfo().PodStatus == "Running"
@@ -1834,26 +1905,26 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
 	assert.True(t, call.oneImageState().IsEmpty())
 
 	creationTime := f.Now()
-	pod := podbuilder.New(f.T(), manifest).
+	pb = pb.
 		WithPodID("my-new-pod").
 		WithPhase("CrashLoopBackOff").
-		WithCreationTime(creationTime).
-		Build()
-	f.podEvent(pod, manifest.Name)
+		WithCreationTime(creationTime)
+	pod := pb.Build()
+	f.podEvent(pod)
 	f.WaitUntilHUDResource("hud update", "foobar", func(res view.Resource) bool {
 		return res.K8sInfo().PodStatus == "CrashLoopBackOff"
 	})
 
-	oldPod := podbuilder.New(f.T(), manifest).
-		WithCreationTime(creationTime.Add(time.Minute * -1)).
-		Build()
-	f.podEvent(oldPod, manifest.Name)
+	pb = pb.WithCreationTime(creationTime.Add(time.Minute * -1))
+	oldPod := pb.Build()
+	f.podEvent(oldPod)
 	time.Sleep(10 * time.Millisecond)
 
 	assert.NoError(t, f.Stop())
@@ -1868,6 +1939,7 @@ func TestPodContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 	manifest := f.newManifest("fe")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	_ = f.nextCall()
@@ -1880,10 +1952,9 @@ func TestPodContainerStatus(t *testing.T) {
 	})
 
 	startedAt := f.Now()
-	pb := podbuilder.New(f.T(), manifest).
-		WithCreationTime(startedAt)
+	pb = pb.WithCreationTime(startedAt)
 	pod := pb.Build()
-	f.podEvent(pod, manifest.Name)
+	f.podEvent(pod)
 	f.WaitUntilManifestState("pod appears", "fe", func(ms store.ManifestState) bool {
 		return ms.MostRecentPod().Name == pod.Name
 	})
@@ -1891,7 +1962,7 @@ func TestPodContainerStatus(t *testing.T) {
 	pod = pb.Build()
 	pod.Spec = k8s.FakePodSpec(ref)
 	pod.Status = k8s.FakePodStatus(ref, "Running")
-	f.podEvent(pod, manifest.Name)
+	f.podEvent(pod)
 
 	f.WaitUntilManifestState("container is ready", "fe", func(ms store.ManifestState) bool {
 		ports := store.AllPodContainerPorts(ms.MostRecentPod())
@@ -1989,6 +2060,11 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			defer f.TearDown()
 			manifest := f.newManifest(mName.String())
 
+			// this test has very specific requirements, so need to set up K8s stuff manually
+			pb := podbuilder.New(t, manifest).WithDeploymentUID(ancestorUID)
+			entities := pb.ObjectTreeEntities()
+			f.kClient.InjectEntityByName(entities.Deployment(), entities.ReplicaSet())
+
 			f.b.nextDeployedUID = ancestorUID
 			f.b.nextPodTemplateSpecHashes = []k8s.PodTemplateSpecHash{deployedHash}
 			f.Start([]model.Manifest{manifest})
@@ -2026,12 +2102,12 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			if !test.ptshMatch {
 				podHash = nonMatchingHash
 			}
-			pod := podbuilder.New(f.T(), manifest).
+			pb = pb.
 				WithPodID(podID.String()).
 				WithTemplateSpecHash(podHash).
-				WithPhase("CrashLoopBackOff").
-				Build()
-			f.podEvent(pod, manifest.Name)
+				WithPhase("CrashLoopBackOff")
+			pod := pb.Build()
+			f.podEvent(pod)
 
 			if test.expectUpdatePodOnManifest {
 				f.WaitUntilManifestState("pod on manifest state with updated status", mName,
@@ -2125,11 +2201,11 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
+	pb := f.registerForDeployer(manifest)
 
 	f.Start([]model.Manifest{manifest})
 	f.waitForCompletedBuildCount(1)
 
-	pb := podbuilder.New(f.T(), manifest)
 	f.startPod(pb.Build(), name)
 	f.podLog(pb.Build(), name, "first string")
 	pb = f.restartPod(pb)
@@ -2145,7 +2221,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name),
-			"WARNING: Detected container restart. Pod: fakePodID. Container: sancho.\n")
+			"WARNING: Detected container restart. Pod: foobar-fakePodID. Container: sancho.\n")
 		assert.Contains(t, es.LogStore.SpanLog(spanID), "third string\n")
 	})
 
@@ -2159,11 +2235,11 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
+	pb := f.registerForDeployer(manifest)
 
 	f.Start([]model.Manifest{manifest})
 	f.waitForCompletedBuildCount(1)
 
-	pb := podbuilder.New(f.T(), manifest)
 	f.startPod(pb.Build(), name)
 	f.podLog(pb.Build(), name, "first string")
 	pb = f.restartPod(pb)
@@ -2178,7 +2254,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	f.withState(func(state store.EngineState) {
 		ms, _ := state.ManifestState(name)
 		spanID := k8sconv.SpanIDForPod(name, k8s.PodID(ms.MostRecentPod().Name))
-		assert.Equal(t, "first string\nWARNING: Detected container restart. Pod: fakePodID. Container: sancho.\nsecond string\n",
+		assert.Equal(t, "first string\nWARNING: Detected container restart. Pod: foobar-fakePodID. Container: sancho.\nsecond string\n",
 			state.LogStore.SpanLog(spanID))
 	})
 
@@ -2218,6 +2294,7 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
+	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
@@ -2226,8 +2303,8 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextLiveUpdateContainerIDs = []container.ID{podbuilder.FakeContainerID()}
-	pod := podbuilder.New(f.T(), manifest).Build()
-	f.podEvent(pod, manifest.Name)
+	pod := pb.Build()
+	f.podEvent(pb.Build())
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -2238,11 +2315,11 @@ func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
 		assert.Equal(t, podbuilder.FakeContainerIDSet(1), ms.LiveUpdatedContainerIDs)
 	})
 
-	// Restart the pod with a new container id, to simulate a container restart.
-	f.podEvent(podbuilder.New(t, manifest).
-		WithPodID("pod-id").
-		WithContainerID("funnyContainerID").
-		Build(), manifest.Name)
+	// Simulate a container restart where the new container isn't running yet
+	// HACK(milas): by making the container ID an empty string, it'll get ignored; we should really just
+	// 	properly set the container status
+	pb = pb.WithContainerID("")
+	f.podEvent(pb.Build())
 	call = f.nextCall()
 	assert.True(t, call.oneImageState().OneContainerInfo().Empty())
 	f.waitForCompletedBuildCount(3)
@@ -3287,6 +3364,7 @@ func TestHasEverBeenReadyK8s(t *testing.T) {
 	defer f.TearDown()
 
 	m := f.newManifest("foobar")
+	pb := f.registerForDeployer(m)
 	f.Start([]model.Manifest{m})
 
 	f.waitForCompletedBuildCount(1)
@@ -3294,8 +3372,7 @@ func TestHasEverBeenReadyK8s(t *testing.T) {
 		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
 	})
 
-	pb := podbuilder.New(t, m).WithContainerReady(true)
-	f.podEvent(pb.Build(), m.Name)
+	f.podEvent(pb.WithContainerReady(true).Build())
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
 		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
@@ -3306,6 +3383,7 @@ func TestHasEverBeenCompleteK8s(t *testing.T) {
 	defer f.TearDown()
 
 	m := f.newManifest("foobar")
+	pb := f.registerForDeployer(m)
 	f.Start([]model.Manifest{m})
 
 	f.waitForCompletedBuildCount(1)
@@ -3313,8 +3391,7 @@ func TestHasEverBeenCompleteK8s(t *testing.T) {
 		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
 	})
 
-	pb := podbuilder.New(t, m).WithPhase(string(v1.PodSucceeded))
-	f.podEvent(pb.Build(), m.Name)
+	f.podEvent(pb.WithPhase(string(v1.PodSucceeded)).Build())
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
 		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
 	})
@@ -3787,11 +3864,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	dockerClient := docker.NewFakeClient()
 
 	ns := k8s.Namespace("default")
-	kCli := k8s.NewFakeK8sClient()
 	kdms := k8swatch.NewManifestSubscriber(ns)
-	of := k8s.ProvideOwnerFetcher(ctx, kCli)
-	pw := k8swatch.NewPodWatcher(kCli, of)
-	sw := k8swatch.NewServiceWatcher(kCli, of, ns)
+	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
+	pw := k8swatch.NewPodWatcher(b.kClient, of)
+	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
@@ -3808,17 +3884,17 @@ func newTestFixture(t *testing.T) *testFixture {
 	env := k8s.EnvDockerDesktop
 	cdc := controllers.ProvideDeferredClient()
 	plm := runtimelog.NewPodLogManager(cdc)
-	plsc := podlogstream.NewController(ctx, cdc, st, kCli)
+	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
-	pfs := portforward.NewSubscriber(kCli)
+	pfs := portforward.NewSubscriber(b.kClient)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
-	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kCli, env)
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", env)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
-	tfl := tiltfile.ProvideTiltfileLoader(ta, kCli, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", feature.MainDefaults, env)
+	tfl := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", feature.MainDefaults, env)
 	cc := configs.NewConfigsController(tfl, dockerClient)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
@@ -3831,7 +3907,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(
 		configAccess, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
-	ewm := k8swatch.NewEventWatchManager(kCli, of, ns)
+	ewm := k8swatch.NewEventWatchManager(b.kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
@@ -3864,7 +3940,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fsWatcher:         watcher,
 		timerMaker:        &timerMaker,
 		docker:            dockerClient,
-		kClient:           kCli,
+		kClient:           b.kClient,
 		hud:               h,
 		ts:                ts,
 		log:               log,
@@ -4226,8 +4302,8 @@ func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
 	}
 	for {
 		select {
-		case <-f.b.calls:
-			f.T().Fatal(msg)
+		case call := <-f.b.calls:
+			f.T().Fatalf("%s\ncall:\n%s", msg, spew.Sdump(call))
 		case <-time.After(stdTimeout):
 			return
 		}
@@ -4315,8 +4391,26 @@ func (f *testFixture) TearDown() {
 	f.cancel()
 }
 
-func (f *testFixture) podEvent(pod *v1.Pod, mn model.ManifestName) {
-	f.store.Dispatch(k8swatch.NewPodChangeAction(k8sconv.Pod(f.ctx, pod), mn, f.lastDeployedUID(mn)))
+func (f *testFixture) registerForDeployer(manifest model.Manifest) podbuilder.PodBuilder {
+	pb := podbuilder.New(f.t, manifest)
+	f.b.targetObjectTree[manifest.K8sTarget().ID()] = pb.ObjectTreeEntities()
+	return pb
+}
+
+func (f *testFixture) podEvent(pod *v1.Pod) {
+	f.t.Helper()
+	for _, ownerRef := range pod.OwnerReferences {
+		_, err := f.kClient.GetMetaByReference(f.ctx, v1.ObjectReference{
+			UID:  ownerRef.UID,
+			Name: ownerRef.Name,
+		})
+		if err != nil {
+			f.t.Logf("Owner reference uid[%s] name[%s] for pod[%s] does not exist in fake client",
+				ownerRef.UID, ownerRef.Name, pod.Name)
+		}
+	}
+
+	f.kClient.EmitPod(labels.Nothing(), pod)
 }
 
 func (f *testFixture) newManifest(name string) model.Manifest {
@@ -4448,19 +4542,6 @@ func (f *testFixture) hudResource(name model.ManifestName) view.Resource {
 		f.T().Fatalf("Resource not found: %s", name)
 	}
 	return res
-}
-
-// registerDeployedPodTemplateSpecHashToManifest stores the given hash on the k8sRuntimeState for the
-// specified manifest (so that we will recognize incoming pod events with the same hash
-// as belonging to this manifest).
-func (f *testFixture) registerDeployedPodTemplateSpecHashToManifest(name model.ManifestName, ptsh k8s.PodTemplateSpecHash) {
-	st := f.store.LockMutableStateForTesting()
-	ms, ok := st.ManifestState(name)
-	require.True(f.T(), ok, "no manifest found on state matching name %q", name)
-	runtime := ms.K8sRuntimeState()
-	runtime.DeployedPodTemplateSpecHashSet.Add(ptsh)
-	ms.RuntimeState = runtime
-	f.store.UnlockMutableState()
 }
 
 func (f *testFixture) completeBuildForManifest(m model.Manifest) {
