@@ -48,8 +48,8 @@ export function SidebarListSection(
   )
 }
 
-type Resource = Proto.webviewResource
-type Build = Proto.webviewBuildRecord
+type UIResource = Proto.v1alpha1UIResource
+type Build = Proto.v1alpha1UIBuildTerminated
 
 type SidebarProps = {
   items: SidebarItem[]

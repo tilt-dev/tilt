@@ -22,7 +22,7 @@ function numKeyCode(num: number): number {
   return num + 48
 }
 
-type Link = Proto.webviewLink
+type Link = Proto.v1alpha1UIResourceLink
 
 let logStore: LogStore | null
 let component: any

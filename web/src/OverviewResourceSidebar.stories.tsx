@@ -13,7 +13,7 @@ import {
 } from "./testdata"
 import { UpdateStatus } from "./types"
 
-type Resource = Proto.webviewResource
+type UIResource = Proto.v1alpha1UIResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 export default {
@@ -42,30 +42,30 @@ export const OneHundredResources = () => (
 )
 
 export function TwoResourcesTwoTests() {
-  let all: Resource[] = [
+  let all: UIResource[] = [
     tiltfileResource(),
     oneResource(),
     oneResourceNoAlerts(),
     oneResourceTest(),
     oneResourceTest(),
   ]
-  all[2].name = "snack"
-  all[3].name = "beep"
-  let view = { resources: all, tiltfileKey: "test" }
+  all[2].metadata = { name: "snack" }
+  all[3].metadata = { name: "beep" }
+  let view = { uiResources: all, tiltfileKey: "test" }
   return <OverviewResourceSidebar name={""} view={view} />
 }
 
 export function TestsWithErrors() {
-  let all: Resource[] = [tiltfileResource()]
+  let all: UIResource[] = [tiltfileResource()]
   for (let i = 0; i < 8; i++) {
     let test = oneResourceTest()
-    test.name = "test_" + i
+    test.metadata = { name: "test_" + i }
     if (i % 2 === 0) {
-      test.buildHistory![0].error = "egads!"
-      test.updateStatus = UpdateStatus.Error
+      test.status!.buildHistory![0].error = "egads!"
+      test.status!.updateStatus = UpdateStatus.Error
     }
     all.push(test)
   }
-  let view = { resources: all, tiltfileKey: "test" }
+  let view = { uiResources: all, tiltfileKey: "test" }
   return <OverviewResourceSidebar name={""} view={view} />
 }

@@ -180,7 +180,7 @@ type UIResourceTargetType string
 
 const UIResourceTargetTypeUnspecified = UIResourceTargetType("unspecified")
 const UIResourceTargetTypeImage = UIResourceTargetType("image")
-const UIResourceTargetTypeK8s = UIResourceTargetType("k8s")
+const UIResourceTargetTypeKubernetes = UIResourceTargetType("k8s")
 const UIResourceTargetTypeDockerCompose = UIResourceTargetType("docker-compose")
 const UIResourceTargetTypeLocal = UIResourceTargetType("local")
 

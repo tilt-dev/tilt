@@ -7,8 +7,10 @@ import OverviewLogPane from "./OverviewLogPane"
 import { Color } from "./style-helpers"
 import { ResourceName } from "./types"
 
+type UIResource = Proto.v1alpha1UIResource
+
 type OverviewResourceDetailsProps = {
-  resource?: Proto.webviewResource
+  resource?: UIResource
   alerts?: Alert[]
   name: string
 }
@@ -33,7 +35,7 @@ export default function OverviewResourceDetails(
   props: OverviewResourceDetailsProps
 ) {
   let { name, resource, alerts } = props
-  let manifestName = resource?.name || ""
+  let manifestName = resource?.metadata?.name || ""
   let all = name === "" || name === ResourceName.all
   let notFound = !all && !manifestName
   let filterSet = useFilterSet()

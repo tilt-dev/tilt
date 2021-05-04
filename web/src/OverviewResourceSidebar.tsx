@@ -24,7 +24,7 @@ export default function OverviewResourceSidebar(
   props: OverviewResourceSidebarProps
 ) {
   let pathBuilder = usePathBuilder()
-  let resources = props.view.resources || []
+  let resources = props.view.uiResources || []
   let items = resources.map((res) => new SidebarItem(res))
   let selected = props.name
   if (props.name === ResourceName.all) {

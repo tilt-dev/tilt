@@ -21,9 +21,12 @@ import { usePathBuilder } from "./PathBuilder"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceName } from "./types"
 
+type UIResource = Proto.v1alpha1UIResource
+type Link = Proto.v1alpha1UIResourceLink
+
 type OverviewActionBarProps = {
   // The current resource. May be null if there is no resource.
-  resource?: Proto.webviewResource
+  resource?: UIResource
 
   // All the alerts for the current resource.
   alerts?: Alert[]
@@ -389,7 +392,7 @@ let ActionBarBottomRow = styled.div`
 `
 
 type ActionBarProps = {
-  endpoints: Proto.webviewLink[]
+  endpoints: Link[]
   podId: string
 }
 
@@ -425,9 +428,11 @@ function openEndpointUrl(url: string) {
 
 export default function OverviewActionBar(props: OverviewActionBarProps) {
   let { resource, filterSet, alerts } = props
-  let endpoints = resource?.endpointLinks || []
-  let podId = resource?.podID || ""
-  const resourceName = resource ? resource.name || "" : ResourceName.all
+  let endpoints = resource?.status?.endpointLinks || []
+  let podId = resource?.status?.k8sResourceInfo?.podName || ""
+  const resourceName = resource
+    ? resource.metadata?.name || ""
+    : ResourceName.all
   const isSnapshot = usePathBuilder().isSnapshot()
   const logStore = useLogStore()
 
