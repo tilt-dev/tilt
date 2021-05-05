@@ -7,7 +7,6 @@ import (
 	context "context"
 	fmt "fmt"
 	math "math"
-
 	v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	proto "github.com/golang/protobuf/proto"
