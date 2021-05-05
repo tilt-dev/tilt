@@ -12,7 +12,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
@@ -180,8 +179,8 @@ func (c *ServerController) deleteOrphanedCmd(ctx context.Context, st store.RStor
 func (c *ServerController) reconcile(ctx context.Context, server CmdServer, ownedCmds []*Cmd, st store.RStore) {
 	// Do not make any changes to the server while the update status is building.
 	// This ensures the old server stays up while any deps are building.
-	depStatus := model.UpdateStatus(server.ObjectMeta.Annotations[AnnotationDepStatus])
-	if depStatus != model.UpdateStatusOK && depStatus != model.UpdateStatusNotApplicable {
+	depStatus := v1alpha1.UpdateStatus(server.ObjectMeta.Annotations[AnnotationDepStatus])
+	if depStatus != v1alpha1.UpdateStatusOK && depStatus != v1alpha1.UpdateStatusNotApplicable {
 		return
 	}
 
