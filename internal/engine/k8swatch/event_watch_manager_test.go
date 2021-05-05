@@ -36,7 +36,7 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 	pb := podbuilder.New(t, manifest)
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
@@ -57,7 +57,7 @@ func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
 	pb := podbuilder.New(t, manifest)
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	evt1 := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 	evt1.ObjectMeta.Namespace = "kube-system"
@@ -86,7 +86,7 @@ func TestEventWatchManager_duplicateDeployIDs(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(m1, entities.Deployment())
 	f.addDeployedEntity(m2, entities.Deployment())
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
@@ -123,7 +123,7 @@ func TestEventWatchManagerDifferentEvents(t *testing.T) {
 			pb := podbuilder.New(t, manifest)
 			entities := pb.ObjectTreeEntities()
 			f.addDeployedEntity(manifest, entities.Deployment())
-			f.kClient.InjectEntityByName(entities...)
+			f.kClient.Inject(entities...)
 
 			evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 			evt.Reason = c.Reason
@@ -181,7 +181,7 @@ func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 
 	pb := podbuilder.New(t, manifest)
 	entities := pb.ObjectTreeEntities()
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
@@ -208,7 +208,7 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 	pb := podbuilder.New(t, manifest)
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	entity := k8s.NewK8sEntity(pb.Build())
 	evt1 := f.makeEvent(entity)
@@ -251,7 +251,7 @@ type ewmFixture struct {
 }
 
 func newEWMFixture(t *testing.T) *ewmFixture {
-	kClient := k8s.NewFakeK8sClient()
+	kClient := k8s.NewFakeK8sClient(t)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)

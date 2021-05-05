@@ -359,7 +359,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			}
 
 			// register Deployment + ReplicaSet so that other parts of the system can properly retrieve them
-			b.kClient.InjectEntityByName(
+			b.kClient.Inject(
 				explicitDeploymentEntities.Deployment(),
 				explicitDeploymentEntities.ReplicaSet())
 
@@ -442,7 +442,7 @@ func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
 		calls:            make(chan buildAndDeployCall, 20),
 		buildLogOutput:   make(map[model.TargetID]string),
 		resultsByID:      store.BuildResultSet{},
-		kClient:          k8s.NewFakeK8sClient(),
+		kClient:          k8s.NewFakeK8sClient(t),
 		targetObjectTree: make(map[model.TargetID]podbuilder.PodObjectTree),
 	}
 }
@@ -864,7 +864,7 @@ k8s_yaml('snack.yaml')
 	})
 	pb := podbuilder.New(t, manifest).WithDeploymentUID(f.lastDeployedUID(manifest.Name))
 	// the manifest thinks it deployed a Deployment whose UID we used - fake the ReplicaSet to go with it
-	f.kClient.InjectEntityByName(pb.ObjectTreeEntities().ReplicaSet())
+	f.kClient.Inject(pb.ObjectTreeEntities().ReplicaSet())
 	f.podEvent(pb.Build())
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("random_file.go"))
@@ -1459,9 +1459,9 @@ func TestPodEventOrdering(t *testing.T) {
 	uidPast := types.UID("deployment-uid-past")
 	uidNow := types.UID("deployment-uid-now")
 	pb := podbuilder.New(f.T(), manifest)
-	pbA := pb.WithPodID("pod-a")
-	pbB := pb.WithPodID("pod-b")
-	pbC := pb.WithPodID("pod-c")
+	pbA := pb.WithPodName("pod-a")
+	pbB := pb.WithPodName("pod-b")
+	pbC := pb.WithPodName("pod-c")
 	podAPast := pbA.WithCreationTime(past).WithDeploymentUID(uidPast)
 	podBPast := pbB.WithCreationTime(past).WithDeploymentUID(uidPast)
 	podANow := pbA.WithCreationTime(now).WithDeploymentUID(uidNow)
@@ -1497,7 +1497,7 @@ func TestPodEventOrdering(t *testing.T) {
 			}
 
 			f.upper.store.Dispatch(
-				store.NewLogAction("fe", k8sconv.SpanIDForPod(manifest.Name, podBNow.PodID()), logger.InfoLvl, nil, []byte("pod b log\n")))
+				store.NewLogAction("fe", k8sconv.SpanIDForPod(manifest.Name, podBNow.PodName()), logger.InfoLvl, nil, []byte("pod b log\n")))
 
 			f.WaitUntil("pod log seen", func(state store.EngineState) bool {
 				ms, _ := state.ManifestState(manifest.Name)
@@ -1622,11 +1622,11 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	// since build controller is disabled, we need to manually simulate the deployment
 	hash := k8s.PodTemplateSpecHash("fake-hash")
 	pb := podbuilder.New(t, manifest).
-		WithPodID("mypod").
+		WithPodName("mypod").
 		WithTemplateSpecHash(hash).
 		WithContainerID("myfunnycontainerid")
 	entities := pb.ObjectTreeEntities()
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	st := f.store.LockMutableStateForTesting()
 	ms, _ := st.ManifestState(name)
@@ -1685,7 +1685,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		WithTemplateSpecHash(ptsh).
 		WithContainerID("myfunnycontainerid")
 	entities := pb.ObjectTreeEntities()
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	st := f.store.LockMutableStateForTesting()
 	ms, _ := st.ManifestState(name)
@@ -1750,7 +1750,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 	ancestorUID := types.UID("fake-uid")
 	pb := podbuilder.New(t, manifest).
-		WithPodID("mypod").
+		WithPodName("mypod").
 		WithContainerID("normal-container-id").
 		WithDeploymentUID(ancestorUID).
 		WithTemplateSpecHash(ptsh)
@@ -1814,7 +1814,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	})
 
 	pb = podbuilder.New(t, manifest).
-		WithPodID("my-new-pod").
+		WithPodName("my-new-pod").
 		WithCreationTime(firstCreationTime.Add(time.Minute * 2))
 	newPod := pb.Build()
 	f.podEvent(newPod)
@@ -1846,7 +1846,7 @@ func TestPodEventDeleted(t *testing.T) {
 	f.podEvent(pb.Build())
 
 	f.WaitUntilManifestState("pod crashes", mn, func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().ContainsID(k8s.PodID(pb.PodID()))
+		return state.K8sRuntimeState().ContainsID(pb.PodName())
 	})
 
 	f.podEvent(pb.WithDeletionTime(creationTime.Add(time.Minute)).Build())
@@ -1913,7 +1913,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 
 	creationTime := f.Now()
 	pb = pb.
-		WithPodID("my-new-pod").
+		WithPodName("my-new-pod").
 		WithPhase("CrashLoopBackOff").
 		WithCreationTime(creationTime)
 	pod := pb.Build()
@@ -2063,7 +2063,7 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			// this test has very specific requirements, so need to set up K8s stuff manually
 			pb := podbuilder.New(t, manifest).WithDeploymentUID(ancestorUID)
 			entities := pb.ObjectTreeEntities()
-			f.kClient.InjectEntityByName(entities.Deployment(), entities.ReplicaSet())
+			f.kClient.Inject(entities.Deployment(), entities.ReplicaSet())
 
 			f.b.nextDeployedUID = ancestorUID
 			f.b.nextPodTemplateSpecHashes = []k8s.PodTemplateSpecHash{deployedHash}
@@ -2103,7 +2103,7 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 				podHash = nonMatchingHash
 			}
 			pb = pb.
-				WithPodID(podID.String()).
+				WithPodName(podID.String()).
 				WithTemplateSpecHash(podHash).
 				WithPhase("CrashLoopBackOff")
 			pod := pb.Build()

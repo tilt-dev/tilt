@@ -56,7 +56,8 @@ type PodBuilder struct {
 	t        testing.TB
 	manifest model.Manifest
 
-	podID           string
+	podUID          types.UID
+	podName         string
 	phase           string
 	creationTime    time.Time
 	deletionTime    time.Time
@@ -128,12 +129,17 @@ func (b PodBuilder) WithResourceVersion(rv string) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) WithPodID(podID string) PodBuilder {
-	msgs := validation.NameIsDNSSubdomain(podID, false)
+func (b PodBuilder) WithPodUID(uid types.UID) PodBuilder {
+	b.podUID = uid
+	return b
+}
+
+func (b PodBuilder) WithPodName(name string) PodBuilder {
+	msgs := validation.NameIsDNSSubdomain(name, false)
 	if len(msgs) != 0 {
-		b.t.Fatalf("pod id %q is invalid: %s", podID, msgs)
+		b.t.Fatalf("pod id %q is invalid: %s", name, msgs)
 	}
-	b.podID = podID
+	b.podName = name
 	return b
 }
 
@@ -183,15 +189,18 @@ func (b PodBuilder) WithDeletionTime(deletionTime time.Time) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) PodID() k8s.PodID {
-	if b.podID != "" {
-		return k8s.PodID(b.podID)
+func (b PodBuilder) PodName() k8s.PodID {
+	if b.podName != "" {
+		return k8s.PodID(b.podName)
 	}
 	return k8s.PodID(fmt.Sprintf("%s-fakePodID", b.manifest.Name))
 }
 
-func (b PodBuilder) buildPodUID() types.UID {
-	return types.UID(fmt.Sprintf("%s-fakeUID", b.PodID()))
+func (b PodBuilder) PodUID() types.UID {
+	if b.podUID != "" {
+		return b.podUID
+	}
+	return types.UID(fmt.Sprintf("%s-fakeUID", b.PodName()))
 }
 
 func (b PodBuilder) WithDeploymentUID(deploymentUID types.UID) PodBuilder {
@@ -204,11 +213,17 @@ func (b PodBuilder) buildReplicaSetName() string {
 }
 
 func (b PodBuilder) buildReplicaSetUID() types.UID {
+	if b.deploymentUID != "" {
+		// if there's a custom Deployment UID, use that as the base for the ReplicaSet since
+		// Deployments create ReplicaSets, and otherwise we can mix up this ReplicaSet with
+		// the "default" Deployment since they'd have the same UID
+		return types.UID(fmt.Sprintf("%s-rs-fakeUID", b.deploymentUID))
+	}
 	return types.UID(fmt.Sprintf("%s-fakeUID", b.buildReplicaSetName()))
 }
 
 func (b PodBuilder) buildDeploymentName() string {
-	return b.manifest.Name.String()
+	return fmt.Sprintf("%s-deployment", b.manifest.Name)
 }
 
 func (b PodBuilder) DeploymentUID() types.UID {
@@ -294,7 +309,7 @@ func (b PodBuilder) buildImage(imageSpec string, index int) string {
 	// Use the pod ID as the image tag. This is kind of weird, but gets at the semantics
 	// we want (e.g., a new pod ID indicates that this is a new build).
 	// Tests that don't want this behavior should replace the image with setImage(pod, imageName)
-	return fmt.Sprintf("%s:%s", imageSpecRef.Name(), b.PodID())
+	return fmt.Sprintf("%s:%s", imageSpecRef.Name(), b.PodName())
 }
 
 func (b PodBuilder) buildContainerID(index int) string {
@@ -425,12 +440,12 @@ func (b PodBuilder) Build() *v1.Pod {
 
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:              string(b.PodID()),
+			Name:              string(b.PodName()),
 			Namespace:         k8s.DefaultNamespace.String(),
 			CreationTimestamp: b.buildCreationTime(),
 			DeletionTimestamp: b.buildDeletionTime(),
 			Labels:            labels,
-			UID:               b.buildPodUID(),
+			UID:               b.PodUID(),
 			OwnerReferences:   ownerRefs,
 			ResourceVersion:   b.resourceVersion,
 		},

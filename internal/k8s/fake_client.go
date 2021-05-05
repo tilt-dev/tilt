@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -35,6 +36,7 @@ type PodAndCName struct {
 }
 
 type FakeK8sClient struct {
+	t  testing.TB
 	mu sync.Mutex
 
 	FakePortForwardClient
@@ -68,7 +70,15 @@ type FakeK8sClient struct {
 	Registry   container.Registry
 	FakeNodeIP NodeIP
 
-	entityByName            map[string]K8sEntity
+	// entities are injected objects keyed by UID.
+	entities map[types.UID]K8sEntity
+	// currentVersions maintains a mapping of object name to UID which represents the most recently injected value.
+	//
+	// In real K8s, you'd need to delete the old object before being able to store the new one with the same name.
+	// For testing purposes, it's useful to be able to simulate out of order/stale data type scenarios, so the fake
+	// client doesn't enforce name uniqueness for storage. When appropriate (e.g. ListMeta), this map ensures that
+	// multiple objects for the same name aren't returned.
+	currentVersions         map[string]types.UID
 	getByReferenceCallCount int
 	listCallCount           int
 	listReturnsEmpty        bool
@@ -241,10 +251,13 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan Obj
 	return ch, nil
 }
 
-func NewFakeK8sClient() *FakeK8sClient {
+func NewFakeK8sClient(t testing.TB) *FakeK8sClient {
 	return &FakeK8sClient{
+		t:                        t,
 		PodLogsByPodAndContainer: make(map[PodAndCName]ReaderCloser),
 		pods:                     make(map[types.NamespacedName]*v1.Pod),
+		entities:                 make(map[types.UID]K8sEntity),
+		currentVersions:          make(map[string]types.UID),
 	}
 }
 
@@ -304,18 +317,23 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
-func (c *FakeK8sClient) InjectEntityByName(entities ...K8sEntity) {
-	if c.entityByName == nil {
-		c.entityByName = make(map[string]K8sEntity)
-	}
-	for _, entity := range entities {
-		c.entityByName[entity.Name()] = entity
+// Inject adds an entity or replaces it for subsequent retrieval.
+//
+// Entities are keyed by UID.
+func (c *FakeK8sClient) Inject(entities ...K8sEntity) {
+	c.t.Helper()
+	for i, entity := range entities {
+		if entity.UID() == "" {
+			c.t.Fatalf("Entity with name[%s] at index[%d] had no UID", entity.Name(), i)
+		}
+		c.entities[entity.UID()] = entity
+		c.currentVersions[entity.Name()] = entity.UID()
 	}
 }
 
 func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
 	c.getByReferenceCallCount++
-	resp, ok := c.entityByName[ref.Name]
+	resp, ok := c.entities[ref.UID]
 	if !ok {
 		logger.Get(ctx).Infof("FakeK8sClient.GetMetaByReference: resource not found: %s", ref.Name)
 		return nil, apierrors.NewNotFound(v1.Resource(ref.Kind), ref.Name)
@@ -330,7 +348,8 @@ func (c *FakeK8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKin
 	}
 
 	result := make([]ObjectMeta, 0)
-	for _, entity := range c.entityByName {
+	for _, uid := range c.currentVersions {
+		entity := c.entities[uid]
 		if entity.Namespace() != ns {
 			continue
 		}

@@ -783,7 +783,7 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 			},
 		},
 	}
-	k8s := k8s.NewFakeK8sClient()
+	k8s := k8s.NewFakeK8sClient(t)
 	k8s.Runtime = runtime
 	mode := buildcontrol.UpdateModeFlag(um)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)

@@ -420,7 +420,7 @@ type plcFixture struct {
 func newPLCFixture(t *testing.T) *plcFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
-	kCli := k8s.NewFakeK8sClient()
+	kCli := k8s.NewFakeK8sClient(t)
 	plc := NewSubscriber(kCli)
 
 	out := bufsync.NewThreadSafeBuffer()

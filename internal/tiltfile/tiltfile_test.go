@@ -5421,7 +5421,7 @@ func newFixture(t *testing.T) *fixture {
 	out := new(bytes.Buffer)
 	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	kCli := k8s.NewFakeK8sClient()
+	kCli := k8s.NewFakeK8sClient(t)
 
 	r := &fixture{
 		ctx:            ctx,
