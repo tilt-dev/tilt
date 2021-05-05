@@ -126,6 +126,22 @@
       },
       "description": "ManagedFieldsEntry is a workflow-id, a FieldSet and the group version of the resource\nthat the fieldset applies to."
     },
+    "v1MicroTime": {
+      "type": "object",
+      "properties": {
+        "seconds": {
+          "type": "string",
+          "format": "int64",
+          "description": "Represents seconds of UTC time since Unix epoch\n1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to\n9999-12-31T23:59:59Z inclusive."
+        },
+        "nanos": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Non-negative fractions of a second at nanosecond resolution. Negative\nsecond values with fractions must still have non-negative nanos values\nthat count forward in time. Must be from 0 to 999,999,999\ninclusive. This field may be limited in precision depending on context."
+        }
+      },
+      "description": "MicroTime is version of Time with microsecond level precision.\n\n+protobuf.options.marshal=false\n+protobuf.as=Timestamp\n+protobuf.options.(gogoproto.goproto_stringer)=false"
+    },
     "v1ObjectMeta": {
       "type": "object",
       "properties": {
@@ -260,6 +276,239 @@
         }
       },
       "description": "Time is a wrapper around time.Time which supports correct\nmarshaling to YAML and JSON.  Wrappers are provided for many\nof the factory methods that the time package offers.\n\n+protobuf.options.marshal=false\n+protobuf.as=Timestamp\n+protobuf.options.(gogoproto.goproto_stringer)=false"
+    },
+    "v1alpha1UIBuildRunning": {
+      "type": "object",
+      "properties": {
+        "startTime": {
+          "$ref": "#/definitions/v1MicroTime",
+          "description": "The time when the build started."
+        },
+        "spanID": {
+          "type": "string",
+          "description": "The log span where the build logs are stored in the logstore."
+        }
+      },
+      "description": "UIBuildRunning respresents an in-progress build/update in the user interface."
+    },
+    "v1alpha1UIBuildTerminated": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "A non-empty string if the build failed with an error."
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of warnings encountered while running the build.\nThese warnings will also be printed to the build's log."
+        },
+        "startTime": {
+          "$ref": "#/definitions/v1MicroTime",
+          "description": "The time when the build started."
+        },
+        "finishTime": {
+          "$ref": "#/definitions/v1MicroTime",
+          "description": "The time when the build finished."
+        },
+        "spanID": {
+          "type": "string",
+          "description": "The log span where the build logs are stored in the logstore."
+        },
+        "isCrashRebuild": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "A crash rebuild happens when Tilt live-updated a container, then\nthe pod crashed, wiping out the live-updates. Tilt does a full\nbuild+deploy to reset the pod state to what's on disk."
+        }
+      },
+      "description": "UIBuildRunning respresents a finished build/update in the user interface."
+    },
+    "v1alpha1UIResource": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/v1ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1alpha1UIResourceSpec"
+        },
+        "status": {
+          "$ref": "#/definitions/v1alpha1UIResourceStatus"
+        }
+      },
+      "description": "UIResource represents per-resource status data for rendering the web UI.\n\nTreat this as a legacy data structure that's more intended to make transition\neasier rather than a robust long-term API.\n\n+k8s:openapi-gen=true"
+    },
+    "v1alpha1UIResourceKubernetes": {
+      "type": "object",
+      "properties": {
+        "podName": {
+          "type": "string",
+          "description": "The name of the active pod.\n\nThe active pod tends to be what Tilt defaults to for port-forwards,\nlive-updates, etc."
+        },
+        "podCreationTime": {
+          "$ref": "#/definitions/v1Time",
+          "description": "The creation time of the active pod."
+        },
+        "podUpdateStartTime": {
+          "$ref": "#/definitions/v1Time",
+          "title": "The last update time of the active pod"
+        },
+        "podStatus": {
+          "type": "string",
+          "description": "The status of the active pod."
+        },
+        "podStatusMessage": {
+          "type": "string",
+          "description": "Extra error messaging around the current status of the active pod."
+        },
+        "allContainersReady": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "Whether all the containers in the pod are currently healthy\nand have passed readiness checks."
+        },
+        "podRestarts": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of pod restarts."
+        },
+        "spanID": {
+          "type": "string",
+          "description": "The span where this pod stores its logs in the Tilt logstore."
+        },
+        "displayNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of all resources deployed in the Kubernetes deploy\nfor this resource."
+        }
+      },
+      "description": "UIResourceKubernetes contains status information specific to Kubernetes."
+    },
+    "v1alpha1UIResourceLink": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "A URL to link to."
+        },
+        "name": {
+          "type": "string",
+          "description": "The display label on a URL."
+        }
+      },
+      "description": "UIResourceLink represents a link assocatiated with a UIResource."
+    },
+    "v1alpha1UIResourceLocal": {
+      "type": "object",
+      "properties": {
+        "pid": {
+          "type": "string",
+          "format": "int64",
+          "description": "The PID of the actively running local command."
+        },
+        "isTest": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "Whether this represents a test job."
+        }
+      },
+      "description": "UIResourceLocal contains status information specific to local commands."
+    },
+    "v1alpha1UIResourceSpec": {
+      "type": "object",
+      "description": "UIResourceSpec is an empty struct.\nUIResource is a kludge for making Tilt's internal status readable, not\nfor specifying behavior."
+    },
+    "v1alpha1UIResourceStatus": {
+      "type": "object",
+      "properties": {
+        "lastDeployTime": {
+          "$ref": "#/definitions/v1MicroTime",
+          "description": "The last time this resource was deployed."
+        },
+        "triggerMode": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Bit mask representing whether this resource is run when:\n1) When a file changes\n2) When the resource initializes"
+        },
+        "buildHistory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIBuildTerminated"
+          },
+          "description": "Past completed builds."
+        },
+        "currentBuild": {
+          "$ref": "#/definitions/v1alpha1UIBuildRunning",
+          "description": "The currently running build, if any."
+        },
+        "pendingBuildSince": {
+          "$ref": "#/definitions/v1MicroTime",
+          "description": "When the build was put in the pending queue."
+        },
+        "hasPendingChanges": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "True if the build was put in the pending queue due to file changes."
+        },
+        "endpointLinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIResourceLink"
+          },
+          "description": "Links attached to this resource."
+        },
+        "k8sResourceInfo": {
+          "$ref": "#/definitions/v1alpha1UIResourceKubernetes",
+          "description": "Extra data about Kubernetes resources."
+        },
+        "localResourceInfo": {
+          "$ref": "#/definitions/v1alpha1UIResourceLocal",
+          "title": "Extra data about Local resources"
+        },
+        "runtimeStatus": {
+          "type": "string",
+          "description": "The RuntimeStatus is a simple, high-level summary of the runtime state of a server.\n\nNot all resources run servers."
+        },
+        "updateStatus": {
+          "type": "string",
+          "description": "The UpdateStatus is a simple, high-level summary of any update tasks to bring\nthe resource up-to-date.\n\nIf the resource runs a server, this may include both build tasks and live-update\nsyncing."
+        },
+        "specs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIResourceTargetSpec"
+          },
+          "description": "Information about all the target specs that this resource summarizes."
+        },
+        "queued": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "Queued is a simple indicator of whether the resource is queued for an update."
+        }
+      },
+      "title": "UIResourceStatus defines the observed state of UIResource"
+    },
+    "v1alpha1UIResourceTargetSpec": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the target."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the target."
+        },
+        "hasLiveUpdate": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "Whether the target has a live update assocated with it."
+        }
+      },
+      "description": "UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes."
     },
     "v1alpha1UISession": {
       "type": "object",
@@ -710,9 +959,9 @@
           "description": "New API-server based data models. These will eventually obsolete the fields\nabove."
         },
         "ui_resources": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v1alpha1UISession"
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIResource"
           }
         }
       }

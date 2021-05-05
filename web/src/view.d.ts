@@ -30,7 +30,7 @@ declare namespace Proto {
      * above.
      */
     uiSession?: v1alpha1UISession;
-    uiResources?: object;
+    uiResources?: v1alpha1UIResource[];
   }
   export interface webviewVersionSettings {
     checkUpdates?: boolean;
@@ -306,6 +306,21 @@ declare namespace Proto {
      */
     managedFields?: v1ManagedFieldsEntry[];
   }
+  export interface v1MicroTime {
+    /**
+     * Represents seconds of UTC time since Unix epoch
+     * 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to
+     * 9999-12-31T23:59:59Z inclusive.
+     */
+    seconds?: string;
+    /**
+     * Non-negative fractions of a second at nanosecond resolution. Negative
+     * second values with fractions must still have non-negative nanos values
+     * that count forward in time. Must be from 0 to 999,999,999
+     * inclusive. This field may be limited in precision depending on context.
+     */
+    nanos?: number;
+  }
   export interface v1ManagedFieldsEntry {
     /**
      * Manager is an identifier of the workflow managing these fields.
@@ -339,5 +354,178 @@ declare namespace Proto {
     metadata?: v1ObjectMeta;
     spec?: v1alpha1UISessionSpec;
     status?: v1alpha1UISessionStatus;
+  }
+  export interface v1alpha1UIResourceTargetSpec {
+    /**
+     * The ID of the target.
+     */
+    id?: string;
+    /**
+     * The type of the target.
+     */
+    type?: string;
+    /**
+     * Whether the target has a live update assocated with it.
+     */
+    hasLiveUpdate?: boolean;
+  }
+  export interface v1alpha1UIResourceStatus {
+    /**
+     * The last time this resource was deployed.
+     */
+    lastDeployTime?: v1MicroTime;
+    triggerMode?: number;
+    /**
+     * Past completed builds.
+     */
+    buildHistory?: v1alpha1UIBuildTerminated[];
+    /**
+     * The currently running build, if any.
+     */
+    currentBuild?: v1alpha1UIBuildRunning;
+    /**
+     * When the build was put in the pending queue.
+     */
+    pendingBuildSince?: v1MicroTime;
+    /**
+     * True if the build was put in the pending queue due to file changes.
+     */
+    hasPendingChanges?: boolean;
+    /**
+     * Links attached to this resource.
+     */
+    endpointLinks?: v1alpha1UIResourceLink[];
+    /**
+     * Extra data about Kubernetes resources.
+     */
+    k8sResourceInfo?: v1alpha1UIResourceKubernetes;
+    localResourceInfo?: v1alpha1UIResourceLocal;
+    /**
+     * The RuntimeStatus is a simple, high-level summary of the runtime state of a server.
+     *
+     * Not all resources run servers.
+     */
+    runtimeStatus?: string;
+    /**
+     * The UpdateStatus is a simple, high-level summary of any update tasks to bring
+     * the resource up-to-date.
+     *
+     * If the resource runs a server, this may include both build tasks and live-update
+     * syncing.
+     */
+    updateStatus?: string;
+    /**
+     * Information about all the target specs that this resource summarizes.
+     */
+    specs?: v1alpha1UIResourceTargetSpec[];
+    /**
+     * Queued is a simple indicator of whether the resource is queued for an update.
+     */
+    queued?: boolean;
+  }
+  export interface v1alpha1UIResourceSpec {}
+  export interface v1alpha1UIResourceLocal {
+    /**
+     * The PID of the actively running local command.
+     */
+    pid?: string;
+    /**
+     * Whether this represents a test job.
+     */
+    isTest?: boolean;
+  }
+  export interface v1alpha1UIResourceLink {
+    /**
+     * A URL to link to.
+     */
+    url?: string;
+    /**
+     * The display label on a URL.
+     */
+    name?: string;
+  }
+  export interface v1alpha1UIResourceKubernetes {
+    /**
+     * The name of the active pod.
+     *
+     * The active pod tends to be what Tilt defaults to for port-forwards,
+     * live-updates, etc.
+     */
+    podName?: string;
+    /**
+     * The creation time of the active pod.
+     */
+    podCreationTime?: v1Time;
+    podUpdateStartTime?: v1Time;
+    /**
+     * The status of the active pod.
+     */
+    podStatus?: string;
+    /**
+     * Extra error messaging around the current status of the active pod.
+     */
+    podStatusMessage?: string;
+    /**
+     * Whether all the containers in the pod are currently healthy
+     * and have passed readiness checks.
+     */
+    allContainersReady?: boolean;
+    /**
+     * The number of pod restarts.
+     */
+    podRestarts?: number;
+    /**
+     * The span where this pod stores its logs in the Tilt logstore.
+     */
+    spanID?: string;
+    /**
+     * The list of all resources deployed in the Kubernetes deploy
+     * for this resource.
+     */
+    displayNames?: string[];
+  }
+  export interface v1alpha1UIResource {
+    metadata?: v1ObjectMeta;
+    spec?: v1alpha1UIResourceSpec;
+    status?: v1alpha1UIResourceStatus;
+  }
+  export interface v1alpha1UIBuildTerminated {
+    /**
+     * A non-empty string if the build failed with an error.
+     */
+    error?: string;
+    /**
+     * A list of warnings encountered while running the build.
+     * These warnings will also be printed to the build's log.
+     */
+    warnings?: string[];
+    /**
+     * The time when the build started.
+     */
+    startTime?: v1MicroTime;
+    /**
+     * The time when the build finished.
+     */
+    finishTime?: v1MicroTime;
+    /**
+     * The log span where the build logs are stored in the logstore.
+     */
+    spanID?: string;
+    /**
+     * A crash rebuild happens when Tilt live-updated a container, then
+     * the pod crashed, wiping out the live-updates. Tilt does a full
+     * build+deploy to reset the pod state to what's on disk.
+     */
+    isCrashRebuild?: boolean;
+  }
+  export interface v1alpha1UIBuildRunning {
+    /**
+     * The time when the build started.
+     */
+    startTime?: v1MicroTime;
+    /**
+     * The log span where the build logs are stored in the logstore.
+     */
+    spanID?: string;
   }
 }
