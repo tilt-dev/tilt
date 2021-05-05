@@ -42,7 +42,7 @@ var (
 )
 
 func TestAnalyticsReporter_Everything(t *testing.T) {
-	tf := newAnalyticsReporterTestFixture()
+	tf := newAnalyticsReporterTestFixture(t)
 
 	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDB).WithDeployTarget(kTarg))       // k8s
 	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithLU))                         // liveupdate
@@ -87,7 +87,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 }
 
 func TestAnalyticsReporter_SameImageMultiContainer(t *testing.T) {
-	tf := newAnalyticsReporterTestFixture()
+	tf := newAnalyticsReporterTestFixture(t)
 
 	injectCountsA := map[string]int{
 		r1: 1,
@@ -115,7 +115,7 @@ func TestAnalyticsReporter_SameImageMultiContainer(t *testing.T) {
 }
 
 func TestAnalyticsReporter_SameImageMultiContainer_NoIncr(t *testing.T) {
-	tf := newAnalyticsReporterTestFixture()
+	tf := newAnalyticsReporterTestFixture(t)
 
 	injectCounts := map[string]int{
 		r1: 1,
@@ -133,7 +133,7 @@ func TestAnalyticsReporter_SameImageMultiContainer_NoIncr(t *testing.T) {
 }
 
 func TestAnalyticsReporter_TiltfileError(t *testing.T) {
-	tf := newAnalyticsReporterTestFixture()
+	tf := newAnalyticsReporterTestFixture(t)
 
 	tf.addManifest(tf.nextManifest().WithImageTarget(model.ImageTarget{BuildDetails: model.DockerBuild{}}))
 	tf.addManifest(tf.nextManifest().WithDeployTarget(model.K8sTarget{}))
@@ -175,11 +175,11 @@ type analyticsReporterTestFixture struct {
 	st            *store.TestingStore
 }
 
-func newAnalyticsReporterTestFixture() *analyticsReporterTestFixture {
+func newAnalyticsReporterTestFixture(t testing.TB) *analyticsReporterTestFixture {
 	st := store.NewTestingStore()
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
-	kClient := k8s.NewFakeK8sClient()
+	kClient := k8s.NewFakeK8sClient(t)
 	ar := ProvideAnalyticsReporter(a, st, kClient, k8s.EnvDockerDesktop)
 	return &analyticsReporterTestFixture{
 		manifestCount: 0,

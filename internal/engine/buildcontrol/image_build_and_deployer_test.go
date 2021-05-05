@@ -1006,7 +1006,7 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
 	ctx = logger.WithLogger(ctx, l)
-	kClient := k8s.NewFakeK8sClient()
+	kClient := k8s.NewFakeK8sClient(t)
 	kl := &fakeKINDLoader{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
 	ibd, err := ProvideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kl, ta)

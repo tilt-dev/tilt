@@ -46,7 +46,7 @@ func TestPodWatch(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
 	f.requireWatchForEntity(manifest.Name, entities.Deployment())
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	f.kClient.EmitPod(labels.Everything(), p)
 
@@ -63,7 +63,7 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	p := pb.Build()
 
 	entities := pb.ObjectTreeEntities()
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 	// emit an event before this manifest knows of anything deployed
 	f.kClient.EmitPod(labels.Everything(), p)
 
@@ -94,7 +94,7 @@ func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 	// Simulate the deployed entities in the engine state
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	p1 := pb.Build()
 	f.kClient.EmitPod(labels.Everything(), p1)
@@ -147,31 +147,31 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	// remove the first manifest and wait it to propagate
 	f.removeManifest(manifest.Name)
 
-	pb2 := podbuilder.New(t, manifest2).WithPodID("pod2")
+	pb2 := podbuilder.New(t, manifest2).WithPodName("pod2")
 	p2 := pb2.Build()
 	p2Entities := pb2.ObjectTreeEntities()
 	f.addDeployedEntity(manifest2, p2Entities.Deployment())
-	f.kClient.InjectEntityByName(p2Entities...)
+	f.kClient.Inject(p2Entities...)
 	f.kClient.EmitPod(labels.Everything(), p2)
 	f.assertObservedPods(p2)
 	f.clearPods()
 
 	p3 := podbuilder.New(t, manifest2).
-		WithPodID("pod3").
+		WithPodName("pod3").
 		WithPodLabel("foo", "bar").
 		WithUnknownOwner().
 		Build()
 	f.kClient.EmitPod(labels.Everything(), p3)
 
 	p4 := podbuilder.New(t, manifest2).
-		WithPodID("pod4").
+		WithPodName("pod4").
 		WithPodLabel("baz", "quu").
 		WithUnknownOwner().
 		Build()
 	f.kClient.EmitPod(labels.Everything(), p4)
 
 	p5 := podbuilder.New(t, manifest2).
-		WithPodID("pod5").
+		WithPodName("pod5").
 		Build()
 	f.kClient.EmitPod(labels.Everything(), p5)
 
@@ -188,7 +188,7 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
 	f.requireWatchForEntity(manifest.Name, entities.Deployment())
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 
 	count := 20
 	pods := []*v1.Pod{}
@@ -229,7 +229,7 @@ func TestPodWatchReadd(t *testing.T) {
 	p := pb.Build()
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 	f.kClient.EmitPod(labels.Everything(), p)
 
 	f.assertObservedPods(p)
@@ -259,7 +259,7 @@ func TestPodWatchDuplicates(t *testing.T) {
 	m4 := f.addManifestWithSelectors("server4", l)
 
 	pb := podbuilder.New(t, m1).
-		WithPodID("shared-pod").
+		WithPodName("shared-pod").
 		WithPodLabel("foo", "bar")
 	p := pb.Build()
 	entities := pb.ObjectTreeEntities()
@@ -269,7 +269,7 @@ func TestPodWatchDuplicates(t *testing.T) {
 	// only m1 is expected to watch the UID
 	f.requireWatchForEntity(m1.Name, entities.Deployment())
 
-	f.kClient.InjectEntityByName(entities...)
+	f.kClient.Inject(entities...)
 	f.kClient.EmitPod(labels.Everything(), p)
 
 	f.assertObservedManifests(m1.Name)
@@ -428,7 +428,7 @@ func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, acti
 }
 
 func newPWFixture(t *testing.T) *pwFixture {
-	kClient := k8s.NewFakeK8sClient()
+	kClient := k8s.NewFakeK8sClient(t)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)

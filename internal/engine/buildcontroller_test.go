@@ -68,8 +68,8 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	pb1 := basePB.WithPodID("pod1")
-	pb2 := basePB.WithPodID("pod2")
+	pb1 := basePB.WithPodName("pod1")
+	pb2 := basePB.WithPodName("pod2")
 	f.podEvent(pb1.Build())
 	f.podEvent(pb2.Build())
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -104,8 +104,8 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	p1 := basePB.WithPodID("pod1").Build()
-	p2 := basePB.WithPodID("pod2").Build()
+	p1 := basePB.WithPodName("pod1").Build()
+	p2 := basePB.WithPodName("pod2").Build()
 
 	f.podEvent(p1)
 	f.podEvent(p2)
@@ -138,7 +138,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	pod := basePB.
-		WithPodID("pod-id").
+		WithPodName("pod-id").
 		WithImage("image-foo:othertag").
 		Build()
 	f.podEvent(pod)
@@ -215,8 +215,8 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	// Associate the pods with the manifest state
-	podA := basePB.WithPodID("pod1").Build()
-	podB := basePB.WithPodID("pod2").Build()
+	podA := basePB.WithPodName("pod1").Build()
+	podB := basePB.WithPodName("pod2").Build()
 	f.podEvent(podA)
 	f.podEvent(podB)
 

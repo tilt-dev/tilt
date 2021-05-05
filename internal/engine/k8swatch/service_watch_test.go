@@ -124,7 +124,7 @@ type swFixture struct {
 func newSWFixture(t *testing.T) *swFixture {
 	nip := k8s.NodeIP("fakeip")
 
-	kClient := k8s.NewFakeK8sClient()
+	kClient := k8s.NewFakeK8sClient(t)
 	kClient.FakeNodeIP = nip
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
