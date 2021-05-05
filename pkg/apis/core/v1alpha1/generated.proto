@@ -435,6 +435,7 @@ message KubernetesDiscoverySpec {
 
 // KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery
 message KubernetesDiscoveryStatus {
+  repeated Pod pods = 1;
 }
 
 // KubernetesWatchRef is similar to v1.ObjectReference from the Kubernetes API and is used to determine
@@ -461,6 +462,9 @@ message KubernetesWatchRef {
 //
 // There might also be Tilt-specific status fields.
 message Pod {
+  // UID is the unique Pod UID within the K8s cluster.
+  optional string uid = 14;
+
   // Name is the Pod name within the K8s cluster.
   optional string name = 1;
 
@@ -488,6 +492,13 @@ message Pod {
 
   // Containers are the containers belonging to the Pod.
   repeated Container containers = 8;
+
+  // AncestorUID is the UID from the WatchRef that matched this Pod.
+  //
+  // If the Pod matched based on extra label selectors, this will be empty.
+  //
+  // +optional
+  optional string ancestorUID = 15;
 
   // BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.
   //

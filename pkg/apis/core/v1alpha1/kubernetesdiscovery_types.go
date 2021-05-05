@@ -135,7 +135,9 @@ func (in *KubernetesDiscoveryList) GetListMeta() *metav1.ListMeta {
 }
 
 // KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery
-type KubernetesDiscoveryStatus struct{}
+type KubernetesDiscoveryStatus struct {
+	Pods []Pod `json:"pods" protobuf:"bytes,1,rep,name=pods"`
+}
 
 // KubernetesDiscovery implements ObjectWithStatusSubResource interface.
 var _ resource.ObjectWithStatusSubResource = &KubernetesDiscovery{}
@@ -158,6 +160,8 @@ func (in KubernetesDiscoveryStatus) CopyTo(parent resource.ObjectWithStatusSubRe
 //
 // There might also be Tilt-specific status fields.
 type Pod struct {
+	// UID is the unique Pod UID within the K8s cluster.
+	UID string `json:"uid" protobuf:"bytes,14,opt,name=uid"`
 	// Name is the Pod name within the K8s cluster.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Namespace is the Pod namespace within the K8s cluster.
@@ -179,6 +183,12 @@ type Pod struct {
 	// Containers are the containers belonging to the Pod.
 	Containers []Container `json:"containers" protobuf:"bytes,8,rep,name=containers"`
 
+	// AncestorUID is the UID from the WatchRef that matched this Pod.
+	//
+	// If the Pod matched based on extra label selectors, this will be empty.
+	//
+	// +optional
+	AncestorUID string `json:"ancestorUID,omitempty" protobuf:"bytes,15,opt,name=ancestorUID"`
 	// BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.
 	//
 	// This is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.
