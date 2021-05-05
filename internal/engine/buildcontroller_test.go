@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +18,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -709,17 +707,13 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 		ms.LiveUpdatedContainerIDs["containerID"] = true
 	})
 
-	deleteEvent := k8swatch.NewPodChangeAction(
-		k8sconv.Pod(f.ctx, podbuilder.New(f.T(), manifest).WithDeletionTime(time.Now()).Build()),
-		manifest.Name, f.lastDeployedUID(manifest.Name))
-
 	f.b.completeBuildsManually = true
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	f.WaitUntilManifestState("foobar building", "foobar", func(ms store.ManifestState) bool {
 		return ms.IsBuilding()
 	})
 
-	f.store.Dispatch(deleteEvent)
+	f.podEvent(basePB.WithDeletionTime(time.Now()).Build())
 	f.WaitUntilManifestState("foobar deleting", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.K8sRuntimeState().Pods) == 0
 	})
