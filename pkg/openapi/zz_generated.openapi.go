@@ -1295,8 +1295,26 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 			SchemaProps: spec.SchemaProps{
 				Description: "KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"pods": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"pods"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod"},
 	}
 }
 
@@ -1344,6 +1362,14 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 				Description: "Pod is a collection of containers that can run on a host.\n\nThe Tilt API representation mirrors the Kubernetes API very closely. Irrelevant data is not included, and some fields might be simplified.\n\nThere might also be Tilt-specific status fields.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID is the unique Pod UID within the K8s cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Name is the Pod name within the K8s cluster.",
@@ -1425,6 +1451,13 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 							},
 						},
 					},
+					"ancestorUID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AncestorUID is the UID from the WatchRef that matched this Pod.\n\nIf the Pod matched based on extra label selectors, this will be empty.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"baselineRestartCount": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.\n\nThis is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.",
@@ -1471,7 +1504,7 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 						},
 					},
 				},
-				Required: []string{"name", "namespace", "createdAt", "phase", "deleting", "containers", "baselineRestartCount", "status", "errors"},
+				Required: []string{"uid", "name", "namespace", "createdAt", "phase", "deleting", "containers", "baselineRestartCount", "status", "errors"},
 			},
 		},
 		Dependencies: []string{
