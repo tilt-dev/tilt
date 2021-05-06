@@ -136,6 +136,12 @@ func (in *KubernetesDiscoveryList) GetListMeta() *metav1.ListMeta {
 
 // KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery
 type KubernetesDiscoveryStatus struct {
+	// MonitorStartTime is the timestamp of when Kubernetes resource discovery was started.
+	//
+	// It is zero if discovery has not been started yet.
+	MonitorStartTime metav1.MicroTime `json:"monitorStartTime,omitempty" protobuf:"bytes,2,opt,name=monitorStartTime"`
+
+	// Pods that have been discovered based on the criteria in the spec.
 	Pods []Pod `json:"pods" protobuf:"bytes,1,rep,name=pods"`
 }
 
