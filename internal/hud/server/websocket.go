@@ -148,7 +148,7 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, _ s
 		s.Dispatch(store.AnalyticsNudgeSurfacedAction{})
 	}
 
-	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	jsEncoder := &runtime.JSONPb{}
 	w, err := ws.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		logger.Get(ctx).Verbosef("getting writer: %v", err)
@@ -172,9 +172,9 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, _ s
 	//     at this point in the code, we're not) the only thing ws.OnChange blocks
 	//     is subsequent ws.OnChange calls.
 	//
-	// In future, we can maybe solve this problem more elegantly by replacing our JSON
-	//     marshaling with jsoniter (would require either working around the lack of an
-	//     `EmitDefaults` option in jsoniter, or writing our own proto marshaling code).
+	// In future, we can maybe solve this problem more elegantly by replacing our
+	//     JSON marshaling with jsoniter (though changing json marshalers is
+	//     always fraught with peril).
 	time.Sleep(time.Millisecond * 100)
 }
 
