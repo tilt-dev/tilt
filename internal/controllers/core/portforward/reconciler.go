@@ -43,7 +43,7 @@ func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portF
 	for name, existing := range r.activeForwards {
 		if _, onState := statePFs[name]; !onState {
 			// This port forward is no longer on the state, shut it down.
-			toShutdown = append(toShutdown, existing)
+			toShutdown = r.addToShutdown(toShutdown, existing)
 			continue
 		}
 	}
@@ -58,16 +58,24 @@ func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portF
 			}
 
 			// There's been a change to the spec for this PortForward, so tear down the old version
-			toShutdown = append(toShutdown, existing)
+			toShutdown = r.addToShutdown(toShutdown, existing)
 		}
 
 		// We're not running this PortForward(/the current version of this PortForward), so spin it up
 		entry := newEntry(ctx, desired)
-		toStart = append(toStart, entry)
-		r.activeForwards[entry.Name] = entry
-
+		toStart = r.addToStart(toStart, entry)
 	}
 	return toStart, toShutdown
+}
+
+func (r *Reconciler) addToStart(toStart []portForwardEntry, entry portForwardEntry) []portForwardEntry {
+	r.activeForwards[entry.Name] = entry
+	return append(toStart, entry)
+}
+
+func (r *Reconciler) addToShutdown(toShutdown []portForwardEntry, entry portForwardEntry) []portForwardEntry {
+	delete(r.activeForwards, entry.Name)
+	return append(toShutdown, entry)
 }
 
 func (r *Reconciler) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {

@@ -473,12 +473,16 @@ var _ io.ReadCloser = ReaderCloser{}
 
 type FakePortForwarder struct {
 	localPort int
+	namespace Namespace
 	ctx       context.Context
 	Done      chan error
 }
 
 func (pf FakePortForwarder) LocalPort() int {
 	return pf.localPort
+}
+func (pf FakePortForwarder) Namespace() Namespace {
+	return pf.namespace
 }
 
 func (pf FakePortForwarder) ForwardPorts() error {
@@ -515,6 +519,7 @@ func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespa
 
 	result := FakePortForwarder{
 		localPort: optionalLocalPort,
+		namespace: namespace,
 		ctx:       ctx,
 		Done:      make(chan error),
 	}

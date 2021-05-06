@@ -21,6 +21,11 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
+const (
+	pfFooName = "pf_foo"
+	pfBarName = "pf_bar"
+)
+
 func TestCreatePortForward(t *testing.T) {
 	f := newPFRFixture(t)
 	defer f.TearDown()
@@ -29,7 +34,7 @@ func TestCreatePortForward(t *testing.T) {
 	require.Equal(t, 0, len(f.r.activeForwards))
 
 	state := f.st.LockMutableStateForTesting()
-	state.PortForwards["pf_foo"] = f.makeSimplePF("pf_foo", 8000, 8080)
+	state.PortForwards[pfFooName] = f.makeSimplePF(pfFooName, 8000, 8080)
 	f.st.UnlockMutableState()
 
 	f.onChange()
@@ -38,314 +43,185 @@ func TestCreatePortForward(t *testing.T) {
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
 }
 
-// func TestDeletePortForward(t *testing.T) {
-// 	fooForwardCtx := f.kCli.LastForwardContext()
-//
-// 	state = f.st.LockMutableStateForTesting()
-// 	mt = state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodRunning)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID().String())
-//
-// 	state = f.st.LockMutableStateForTesting()
-// 	mt = state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodPending)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 0, len(f.r.activeForwards))
-//
-// 	assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
-// 		"Expected first port-forward to be canceled")
-// }
+func TestDeletePortForward(t *testing.T) {
+	f := newPFRFixture(t)
+	defer f.TearDown()
 
-func TestModifyPortForward(t *testing.T) {
+	state := f.st.LockMutableStateForTesting()
+	state.PortForwards[pfFooName] = f.makeSimplePF(pfFooName, 8000, 8080)
+	f.st.UnlockMutableState()
 
+	f.onChange()
+	require.Equal(t, 1, len(f.r.activeForwards))
+	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
+	origForwardCtx := f.kCli.LastForwardContext()
+
+	state = f.st.LockMutableStateForTesting()
+	delete(state.PortForwards, pfFooName)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 0, len(f.r.activeForwards))
+	f.assertContextCancelled(t, origForwardCtx)
 }
 
-// func TestMultiplePortForwardsForOnePod(t *testing.T) {
-// 	f := newPFRFixture(t)
-// 	defer f.TearDown()
-//
-// 	state := f.st.LockMutableStateForTesting()
-// 	m := model.Manifest{
-// 		Name: "fe",
-// 	}
-// 	m = m.WithDeployTarget(model.K8sTarget{
-// 		PortForwards: []model.PortForward{
-// 			{
-// 				LocalPort:     8000,
-// 				ContainerPort: 8080,
-// 			},
-// 			{
-// 				LocalPort:     8001,
-// 				ContainerPort: 8081,
-// 			},
-// 		},
-// 	})
-// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 0, len(f.r.activeForwards))
-//
-// 	state = f.st.LockMutableStateForTesting()
-// 	mt := state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	require.Equal(t, 1, len(f.r.activeForwards))
-// 	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
-//
-// 	// PortForwards are executed async so we can't guarantee the order;
-// 	// just make sure each expected call appears exactly once
-// 	expectedRemotePorts := []int{8080, 8081}
-// 	var actualRemotePorts []int
-// 	var contexts []context.Context
-// 	for _, call := range f.kCli.PortForwardCalls() {
-// 		actualRemotePorts = append(actualRemotePorts, call.RemotePort)
-// 		contexts = append(contexts, call.Context)
-// 		assert.Equal(t, "pod-id", call.PodID.String())
-// 	}
-// 	assert.ElementsMatch(t, expectedRemotePorts, actualRemotePorts, "remote ports for which PortForward was called")
-//
-// 	state = f.st.LockMutableStateForTesting()
-// 	mt = state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodPending)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 0, len(f.r.activeForwards))
-//
-// 	for _, ctx := range contexts {
-// 		assert.Equal(t, context.Canceled, ctx.Err(),
-// 			"found uncancelled port forward context")
-// 	}
-// }
-//
-// func TestPortForwardAutoDiscovery(t *testing.T) {
-// 	f := newPFRFixture(t)
-// 	defer f.TearDown()
-//
-// 	state := f.st.LockMutableStateForTesting()
-// 	m := model.Manifest{
-// 		Name: "fe",
-// 	}
-// 	m = m.WithDeployTarget(model.K8sTarget{
-// 		PortForwards: []model.PortForward{
-// 			{
-// 				LocalPort: 8080,
-// 			},
-// 		},
-// 	})
-// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-//
-// 	mt := state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 0, len(f.r.activeForwards))
-// 	state = f.st.LockMutableStateForTesting()
-// 	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []v1alpha1.Container{
-// 		v1alpha1.Container{Ports: []int32{8000}},
-// 	}
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 8000, f.kCli.LastForwardPortRemotePort())
-// }
-//
-// func TestPortForwardAutoDiscovery2(t *testing.T) {
-// 	f := newPFRFixture(t)
-// 	defer f.TearDown()
-//
-// 	state := f.st.LockMutableStateForTesting()
-// 	m := model.Manifest{
-// 		Name: "fe",
-// 	}
-// 	m = m.WithDeployTarget(model.K8sTarget{
-// 		PortForwards: []model.PortForward{
-// 			{
-// 				LocalPort: 8080,
-// 			},
-// 		},
-// 	})
-// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-//
-// 	mt := state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
-// 		Name:  "pod-id",
-// 		Phase: string(v1.PodRunning),
-// 		Containers: []v1alpha1.Container{
-// 			{Ports: []int32{8000, 8080}},
-// 		},
-// 	})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
-// }
-//
-// func TestPortForwardChangePort(t *testing.T) {
-// 	f := newPFRFixture(t)
-// 	defer f.TearDown()
-//
-// 	state := f.st.LockMutableStateForTesting()
-// 	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
-// 		PortForwards: []model.PortForward{
-// 			{
-// 				LocalPort:     8080,
-// 				ContainerPort: 8081,
-// 			},
-// 		},
-// 	})
-// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-// 	mt := state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-//
-// 	state = f.st.LockMutableStateForTesting()
-// 	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
-// 	kTarget.PortForwards[0].ContainerPort = 8082
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 8082, f.kCli.LastForwardPortRemotePort())
-// }
-//
-// func TestPortForwardChangeHost(t *testing.T) {
-// 	f := newPFRFixture(t)
-// 	defer f.TearDown()
-//
-// 	state := f.st.LockMutableStateForTesting()
-// 	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
-// 		PortForwards: []model.PortForward{
-// 			{
-// 				LocalPort:     8080,
-// 				ContainerPort: 8081,
-// 				Host:          "someHostA",
-// 			},
-// 		},
-// 	})
-// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-// 	mt := state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-// 	assert.Equal(t, "someHostA", f.kCli.LastForwardPortHost())
-//
-// 	state = f.st.LockMutableStateForTesting()
-// 	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
-// 	kTarget.PortForwards[0].Host = "otherHostB"
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-// 	assert.Equal(t, "otherHostB", f.kCli.LastForwardPortHost())
-// }
-//
-// func TestPortForwardChangeManifestName(t *testing.T) {
-// 	f := newPFRFixture(t)
-// 	defer f.TearDown()
-//
-// 	state := f.st.LockMutableStateForTesting()
-// 	m := model.Manifest{Name: "manifestA"}.WithDeployTarget(model.K8sTarget{
-// 		PortForwards: []model.PortForward{
-// 			{
-// 				LocalPort:     8080,
-// 				ContainerPort: 8081,
-// 			},
-// 		},
-// 	})
-// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-// 	mt := state.ManifestTargets["manifestA"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-//
-// 	state = f.st.LockMutableStateForTesting()
-// 	delete(state.ManifestTargets, "manifestA")
-// 	m = model.Manifest{Name: "manifestB"}.WithDeployTarget(model.K8sTarget{
-// 		PortForwards: []model.PortForward{
-// 			{
-// 				LocalPort:     8080,
-// 				ContainerPort: 8081,
-// 			},
-// 		},
-// 	})
-// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-// 	mt = state.ManifestTargets["manifestB"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-// }
-//
-// func TestPortForwardRestart(t *testing.T) {
-// 	if runtime.GOOS == "windows" {
-// 		t.Skip("TODO(nick): investigate")
-// 	}
-// 	f := newPFRFixture(t)
-// 	defer f.TearDown()
-//
-// 	state := f.st.LockMutableStateForTesting()
-// 	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
-// 		PortForwards: []model.PortForward{
-// 			{
-// 				LocalPort:     8080,
-// 				ContainerPort: 8081,
-// 			},
-// 		},
-// 	})
-// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
-// 	mt := state.ManifestTargets["fe"]
-// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-// 	f.st.UnlockMutableState()
-//
-// 	f.onChange()
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 1, f.kCli.CreatePortForwardCallCount())
-//
-// 	err := fmt.Errorf("unique-error")
-// 	f.kCli.LastForwarder().Done <- err
-//
-// 	assert.Contains(t, "unique-error", f.out.String())
-// 	time.Sleep(100 * time.Millisecond)
-//
-// 	assert.Equal(t, 1, len(f.r.activeForwards))
-// 	assert.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
-// }
+func TestModifyPortForward(t *testing.T) {
+	f := newPFRFixture(t)
+	defer f.TearDown()
+
+	state := f.st.LockMutableStateForTesting()
+	state.PortForwards[pfFooName] = f.makeSimplePF(pfFooName, 8000, 8080)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 1, len(f.r.activeForwards))
+	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
+	origForwardCtx := f.kCli.LastForwardContext()
+
+	state = f.st.LockMutableStateForTesting()
+	state.PortForwards[pfFooName] = f.makeSimplePF(pfFooName, 8000, 9090)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 1, len(f.r.activeForwards))
+	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 9090, f.kCli.LastForwardPortRemotePort())
+
+	f.assertContextCancelled(t, origForwardCtx)
+}
+
+func TestModifyPortForwardManifestName(t *testing.T) {
+	// A change to only the manifestName should be enough to tear down and recreate
+	// a PortForward (we need to do this so the logs will be routed correctly)
+	f := newPFRFixture(t)
+	defer f.TearDown()
+
+	fwds := []v1alpha1.Forward{f.makeForward(8000, 8080, "")}
+
+	state := f.st.LockMutableStateForTesting()
+	state.PortForwards[pfFooName] = f.makePF(pfFooName, "manifestA", "pod-pf_foo", "", fwds)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 1, len(f.r.activeForwards))
+	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
+	origForwardCtx := f.kCli.LastForwardContext()
+
+	state = f.st.LockMutableStateForTesting()
+	state.PortForwards[pfFooName] = f.makePF(pfFooName, "manifestB", "pod-pf_foo", "", fwds)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 1, len(f.r.activeForwards))
+	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
+
+	f.assertContextCancelled(t, origForwardCtx)
+}
+
+func TestMultipleForwardsForOnePod(t *testing.T) {
+	f := newPFRFixture(t)
+	defer f.TearDown()
+
+	f.onChange()
+	assert.Equal(t, 0, len(f.r.activeForwards))
+
+	forwards := []v1alpha1.Forward{
+		f.makeForward(8000, 8080, "hostA"),
+		f.makeForward(8001, 8081, "hostB"),
+	}
+	state := f.st.LockMutableStateForTesting()
+	state.PortForwards[pfFooName] = f.makeSimplePFMultipleForwards(pfFooName, forwards)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 1, len(f.r.activeForwards))
+	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
+
+	var seen8080, seen8081 bool
+	var contexts []context.Context
+	for _, call := range f.kCli.PortForwardCalls() {
+		assert.Equal(t, "pod-pf_foo", call.PodID.String())
+		if call.RemotePort == 8080 {
+			seen8080 = true
+			contexts = append(contexts, call.Context)
+			assert.Equal(t, "hostA", call.Host, "unexpected host for port forward to 8080")
+		} else if call.RemotePort == 8081 {
+			seen8081 = true
+			contexts = append(contexts, call.Context)
+			assert.Equal(t, "hostB", call.Host, "unexpected host for port forward to 8081")
+		} else {
+			t.Fatalf("found port forward call to unexpected remotePort: %+v", call)
+		}
+	}
+	require.True(t, seen8080, "did not see port forward to remotePort 8080")
+	require.True(t, seen8081, "did not see port forward to remotePort 8081")
+
+	state = f.st.LockMutableStateForTesting()
+	delete(state.PortForwards, pfFooName)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 0, len(f.r.activeForwards))
+	for _, ctx := range contexts {
+		f.assertContextCancelled(t, ctx)
+	}
+}
+
+func TestMultipleForwardsMultiplePods(t *testing.T) {
+	f := newPFRFixture(t)
+	defer f.TearDown()
+
+	f.onChange()
+	assert.Equal(t, 0, len(f.r.activeForwards))
+
+	fwdsFoo := []v1alpha1.Forward{f.makeForward(8000, 8080, "host-foo")}
+	fwdsBar := []v1alpha1.Forward{f.makeForward(8001, 8081, "host-bar")}
+	state := f.st.LockMutableStateForTesting()
+	state.PortForwards[pfFooName] = f.makePF(pfFooName, "foo", "pod-pf_foo", "ns-foo", fwdsFoo)
+	state.PortForwards[pfBarName] = f.makePF(pfBarName, "bar", "pod-pf_bar", "ns-bar", fwdsBar)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 2, len(f.r.activeForwards))
+	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
+
+	// PortForwards are executed async so we can't guarantee the order;
+	// just make sure each expected call appears exactly once
+	var seenFoo, seenBar bool
+	var ctxFoo, ctxBar context.Context
+	for _, call := range f.kCli.PortForwardCalls() {
+		if call.PodID.String() == "pod-pf_foo" {
+			seenFoo = true
+			ctxFoo = call.Context
+			assert.Equal(t, 8080, call.RemotePort, "remotePort for forward foo")
+			assert.Equal(t, "ns-foo", call.Forwarder.Namespace().String(), "namespace for forward foo")
+			assert.Equal(t, "host-foo", call.Host, "host for forward foo")
+		} else if call.PodID.String() == "pod-pf_bar" {
+			seenBar = true
+			ctxBar = call.Context
+			assert.Equal(t, 8081, call.RemotePort, "remotePort for forward bar")
+			assert.Equal(t, "ns-bar", call.Forwarder.Namespace().String(), "namespace for forward bar")
+			assert.Equal(t, "host-bar", call.Host, "host for forward bar")
+		} else {
+			t.Fatalf("found port forward call for unexpected pod: %+v", call)
+		}
+	}
+	require.True(t, seenFoo, "did not see port forward foo")
+	require.True(t, seenBar, "did not see port forward bar")
+
+	state = f.st.LockMutableStateForTesting()
+	delete(state.PortForwards, pfFooName)
+	f.st.UnlockMutableState()
+
+	f.onChange()
+	require.Equal(t, 1, len(f.r.activeForwards))
+	f.assertContextCancelled(t, ctxFoo)
+	f.assertContextNotCancelled(t, ctxBar)
+}
 
 type pfrFixture struct {
 	*tempdir.TempDirFixture
@@ -389,6 +265,16 @@ func (f *pfrFixture) TearDown() {
 	f.cancel()
 }
 
+func (f *pfrFixture) assertContextCancelled(t *testing.T, ctx context.Context) {
+	if assert.Error(t, ctx.Err(), "expect cancelled context to have a non-nil error") {
+		assert.Equal(t, context.Canceled, ctx.Err(), "expect context to be cancelled")
+	}
+}
+
+func (f *pfrFixture) assertContextNotCancelled(t *testing.T, ctx context.Context) {
+	assert.NoError(t, ctx.Err(), "expect non-cancelled context to have no error")
+}
+
 func (f *pfrFixture) makePF(name, mName, podName, ns string, forwards []v1alpha1.Forward) *v1alpha1.PortForward {
 	return &v1alpha1.PortForward{
 		ObjectMeta: metav1.ObjectMeta{
@@ -406,10 +292,22 @@ func (f *pfrFixture) makePF(name, mName, podName, ns string, forwards []v1alpha1
 	}
 }
 
-func (f *pfrFixture) makeSimplePF(name string, localPort, containerPort int) *v1alpha1.PortForward {
+func (f *pfrFixture) makeSimplePF(name string, localPort, containerPort int32) *v1alpha1.PortForward {
 	fwd := v1alpha1.Forward{
-		LocalPort:     int32(localPort),
-		ContainerPort: int32(containerPort),
+		LocalPort:     localPort,
+		ContainerPort: containerPort,
 	}
 	return f.makePF(name, fmt.Sprintf("manifest-%s", name), fmt.Sprintf("pod-%s", name), "", []v1alpha1.Forward{fwd})
+}
+
+func (f *pfrFixture) makeSimplePFMultipleForwards(name string, forwards []v1alpha1.Forward) *v1alpha1.PortForward {
+	return f.makePF(name, fmt.Sprintf("manifest-%s", name), fmt.Sprintf("pod-%s", name), "", forwards)
+}
+
+func (f *pfrFixture) makeForward(localPort, containerPort int32, host string) v1alpha1.Forward {
+	return v1alpha1.Forward{
+		LocalPort:     localPort,
+		ContainerPort: containerPort,
+		Host:          host,
+	}
 }
