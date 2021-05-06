@@ -19,6 +19,8 @@ import {
 } from "./style-helpers"
 import UpdateDialog from "./UpdateDialog"
 
+type TiltBuild = Proto.corev1alpha1TiltBuild
+
 export const GlobalNavRoot = styled.div`
   display: flex;
   align-items: stretch;
@@ -133,7 +135,7 @@ type GlobalNavProps = {
   snapshot: SnapshotAction
   showUpdate: boolean
   suggestedVersion: string | null | undefined
-  runningBuild: Proto.webviewTiltBuild | undefined
+  runningBuild: TiltBuild | undefined
 }
 
 export function GlobalNav(props: GlobalNavProps) {
