@@ -81,8 +81,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateActive":         schema_pkg_apis_core_v1alpha1_TargetStateActive(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated":     schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting":        schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild":                 schema_pkg_apis_core_v1alpha1_TiltBuild(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning":            schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated":         schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag":             schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource":                schema_pkg_apis_core_v1alpha1_UIResource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes":      schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink":            schema_pkg_apis_core_v1alpha1_UIResourceLink(ref),
@@ -95,6 +97,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionList":             schema_pkg_apis_core_v1alpha1_UISessionList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionSpec":             schema_pkg_apis_core_v1alpha1_UISessionSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionStatus":           schema_pkg_apis_core_v1alpha1_UISessionStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings":           schema_pkg_apis_core_v1alpha1_VersionSettings(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                             schema_pkg_apis_meta_v1_APIGroup(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":                         schema_pkg_apis_meta_v1_APIGroupList(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResource":                          schema_pkg_apis_meta_v1_APIResource(ref),
@@ -2415,6 +2418,52 @@ func schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref common.ReferenceCallba
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Information about the running tilt binary.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A semantic version string.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"commitSHA": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The Git digest of the commit this binary was built at.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"date": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A human-readable string representing when the binary was built.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"dev": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicates whether this is a development build (true) or an official release (false).",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"version", "commitSHA", "date", "dev"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2506,6 +2555,36 @@ func schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref common.ReferenceCallbac
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Configures Tilt to enable non-default features (e.g., experimental or deprecated).\n\nThe Tilt features controlled by this are generally in an unfinished state, and not yet documented.\n\nAs a Tilt user, you don’t need to worry about this unless something else directs you to (e.g., an experimental feature doc, or a conversation with a Tilt contributor).",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the flag.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The value of the flag.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "value"},
+			},
+		},
 	}
 }
 
@@ -3027,6 +3106,132 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 			SchemaProps: spec.SchemaProps{
 				Description: "UISessionStatus defines the observed state of UISession",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"featureFlags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FeatureFlags reports a list of experimental features that have been enabled.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag"),
+									},
+								},
+							},
+						},
+					},
+					"needsAnalyticsNudge": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NeedsAnalyticsNudge reports whether the UI hasn't opted in or out of analytics, and the UI should nudge them to do so.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"runningTiltBuild": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RunningTiltBuild reports the currently running version of tilt that this UI is talking to.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild"),
+						},
+					},
+					"suggestedTiltVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SuggestedTiltVersion tells the UI the recommended version for this user. If the version is different than what's running, the UI may display a prompt to upgrade.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"versionSettings": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VersionSettings indicates whether version updates have been enabled/disabled from the Tiltfile.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings"),
+						},
+					},
+					"tiltCloudUsername": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiltCloudUsername reports the username if the user is signed into TiltCloud.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tiltCloudTeamName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiltCloudUsername reports the human-readable team name if the user is signed into TiltCloud and the Tiltfile declares a team.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tiltCloudSchemeHost": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance associated with this Tilt process. Usually https://cloud.tilt.dev",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tiltCloudTeamID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiltCloudTeamID reports the unique team id if the user is signed into TiltCloud and the Tiltfile declares a team.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"fatalError": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A FatalError is an error that forces Tilt to stop its control loop. The API server will stay up and continue to serve the UI, but no further builds will happen.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tiltStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The time that this instance of tilt started. Clients can use this to determine if the API server has restarted and all the objects need to be refreshed.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"tiltfileKey": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An identifier for the Tiltfile that is running. Clients can use this to store data associated with a particular project in LocalStorage or other persistent storage.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"featureFlags", "needsAnalyticsNudge", "runningTiltBuild", "suggestedTiltVersion", "versionSettings", "tiltCloudUsername", "tiltCloudTeamName", "tiltCloudSchemeHost", "tiltCloudTeamID", "fatalError", "tiltStartTime", "tiltfileKey"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_VersionSettings(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Information about how the Tilt binary handles updates.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"checkUpdates": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether version updates have been enabled/disabled from the Tiltfile.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"checkUpdates"},
 			},
 		},
 	}
