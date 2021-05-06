@@ -5,7 +5,7 @@ import LogStore from "./LogStore"
 import { isTargetEditable } from "./shortcut"
 import { ResourceName } from "./types"
 
-type Link = Proto.webviewLink
+type Link = Proto.v1alpha1UIResourceLink
 
 type Props = {
   logStore: LogStore

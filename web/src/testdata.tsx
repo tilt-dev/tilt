@@ -2,14 +2,14 @@ import { Href, UnregisterCallback } from "history"
 import { RouteComponentProps } from "react-router-dom"
 import { TriggerMode } from "./types"
 
-type Resource = Proto.webviewResource
-type Link = Proto.webviewLink
+type UIResource = Proto.v1alpha1UIResource
+type Link = Proto.v1alpha1UIResourceLink
 
 const unnamedEndpointLink: Link = { url: "1.2.3.4:8080" }
 const namedEndpointLink: Link = { url: "1.2.3.4:9090", name: "debugger" }
 
 type view = {
-  resources: Array<Resource>
+  uiResources: Array<UIResource>
   logList?: Proto.webviewLogList
   featureFlags?: { [featureFlag: string]: boolean }
   tiltfileKey?: string
@@ -87,210 +87,234 @@ function vigodaSpecs(): any {
   ]
 }
 
-export function tiltfileResource(): Resource {
+export function tiltfileResource(): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const tsPast = new Date(Date.now() - 12300).toISOString()
-  const resource: Resource = {
-    name: "(Tiltfile)",
-    lastDeployTime: ts,
-    buildHistory: [
-      {
-        finishTime: ts,
-        startTime: tsPast,
-      },
-    ],
-    updateStatus: "ok",
-    runtimeStatus: "not_applicable",
-    triggerMode: TriggerMode.TriggerModeAuto,
-    hasPendingChanges: false,
-    endpointLinks: [],
-    podID: "",
-    isTiltfile: true,
-    queued: false,
+  const resource: UIResource = {
+    metadata: {
+      name: "(Tiltfile)",
+    },
+    status: {
+      lastDeployTime: ts,
+      buildHistory: [
+        {
+          finishTime: ts,
+          startTime: tsPast,
+        },
+      ],
+      updateStatus: "ok",
+      runtimeStatus: "not_applicable",
+      triggerMode: TriggerMode.TriggerModeAuto,
+      hasPendingChanges: false,
+      endpointLinks: [],
+      queued: false,
+    },
   }
   return resource
 }
 
-function oneResource(): Resource {
+function oneResource(): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const tsPast = new Date(Date.now() - 12300).toISOString()
-  const resource: Resource = {
-    name: "vigoda",
-    lastDeployTime: ts,
-    buildHistory: [
-      {
-        error: "the build failed!",
-        finishTime: ts,
-        startTime: tsPast,
-      },
-    ],
-    pendingBuildSince: ts,
-    currentBuild: {
-      startTime: ts,
+  const resource: UIResource = {
+    metadata: {
+      name: "vigoda",
     },
-    k8sResourceInfo: {
-      podName: "vigoda-pod",
-      podCreationTime: ts,
-      podStatus: "Running",
-      podStatusMessage: "",
-      podRestarts: 0,
-      podUpdateStartTime: ts,
-    },
-    updateStatus: "in_progress",
-    runtimeStatus: "ok",
-    triggerMode: TriggerMode.TriggerModeAuto,
-    hasPendingChanges: false,
-    endpointLinks: [],
-    podID: "",
-    isTiltfile: false,
-    queued: false,
-    specs: vigodaSpecs(),
-  }
-  return resource
-}
-
-function oneResourceNoAlerts(): Resource {
-  const ts = new Date(Date.now()).toISOString()
-  const resource = {
-    name: "vigoda",
-    lastDeployTime: ts,
-    buildHistory: [
-      {
-        finishTime: ts,
+    status: {
+      lastDeployTime: ts,
+      buildHistory: [
+        {
+          error: "the build failed!",
+          finishTime: ts,
+          startTime: tsPast,
+        },
+      ],
+      pendingBuildSince: ts,
+      currentBuild: {
         startTime: ts,
       },
-    ],
-    pendingBuildSince: ts,
-    currentBuild: {},
-    k8sResourceInfo: {
-      podName: "vigoda-pod",
-      podCreationTime: ts,
-      podStatus: "Running",
-      podRestarts: 0,
+      k8sResourceInfo: {
+        podName: "vigoda-pod",
+        podCreationTime: ts,
+        podStatus: "Running",
+        podStatusMessage: "",
+        podRestarts: 0,
+        podUpdateStartTime: ts,
+      },
+      updateStatus: "in_progress",
+      runtimeStatus: "ok",
+      triggerMode: TriggerMode.TriggerModeAuto,
+      hasPendingChanges: false,
+      endpointLinks: [],
+      queued: false,
+      specs: vigodaSpecs(),
     },
-    updateStatus: "ok",
-    endpointLinks: [unnamedEndpointLink],
-    runtimeStatus: "ok",
-    specs: vigodaSpecs(),
   }
   return resource
 }
 
-function oneResourceImagePullBackOff(): Resource {
+function oneResourceNoAlerts(): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const resource = {
-    name: "vigoda",
-    lastDeployTime: ts,
-    buildHistory: [
-      {
-        finishTime: ts,
-        startTime: ts,
-      },
-    ],
-    pendingBuildSince: ts,
-    currentBuild: {},
-    k8sResourceInfo: {
-      podName: "vigoda-pod",
-      podCreationTime: ts,
-      podStatus: "ImagePullBackOff",
-      podRestarts: 0,
+    metadata: {
+      name: "vigoda",
     },
-    endpointLinks: [unnamedEndpointLink],
-    updateStatus: "ok",
-    runtimeStatus: "ok",
-    specs: vigodaSpecs(),
+    status: {
+      lastDeployTime: ts,
+      buildHistory: [
+        {
+          finishTime: ts,
+          startTime: ts,
+        },
+      ],
+      pendingBuildSince: ts,
+      currentBuild: {},
+      k8sResourceInfo: {
+        podName: "vigoda-pod",
+        podCreationTime: ts,
+        podStatus: "Running",
+        podRestarts: 0,
+      },
+      updateStatus: "ok",
+      endpointLinks: [unnamedEndpointLink],
+      runtimeStatus: "ok",
+      specs: vigodaSpecs(),
+    },
   }
   return resource
 }
 
-function oneResourceErrImgPull(): Resource {
+function oneResourceImagePullBackOff(): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const resource = {
-    name: "vigoda",
-    lastDeployTime: ts,
-    buildHistory: [
-      {
-        finishTime: ts,
-        startTime: ts,
-      },
-    ],
-    pendingBuildSince: ts,
-    currentBuild: {},
-    k8sResourceInfo: {
-      podName: "vigoda-pod",
-      podCreationTime: ts,
-      podStatus: "ErrImagePull",
-      podRestarts: 0,
+    metadata: {
+      name: "vigoda",
     },
-    endpointLinks: [unnamedEndpointLink],
-    updateStatus: "ok",
-    runtimeStatus: "ok",
-    specs: vigodaSpecs(),
+    status: {
+      lastDeployTime: ts,
+      buildHistory: [
+        {
+          finishTime: ts,
+          startTime: ts,
+        },
+      ],
+      pendingBuildSince: ts,
+      currentBuild: {},
+      k8sResourceInfo: {
+        podName: "vigoda-pod",
+        podCreationTime: ts,
+        podStatus: "ImagePullBackOff",
+        podRestarts: 0,
+      },
+      endpointLinks: [unnamedEndpointLink],
+      updateStatus: "ok",
+      runtimeStatus: "ok",
+      specs: vigodaSpecs(),
+    },
   }
   return resource
 }
 
-function oneResourceUnrecognizedError(): Resource {
+function oneResourceErrImgPull(): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const resource = {
-    name: "vigoda",
-    lastDeployTime: ts,
-    buildHistory: [
-      {
-        finishTime: ts,
-        startTime: ts,
-      },
-    ],
-    pendingBuildSince: ts,
-    currentBuild: {},
-    k8sResourceInfo: {
-      podName: "vigoda-pod",
-      podCreationTime: ts,
-      podStatus: "GarbleError",
-      podStatusMessage: "Detailed message on GarbleError",
+    metadata: {
+      name: "vigoda",
     },
-    updateStatus: "ok",
-    runtimeStatus: "ok",
-    specs: vigodaSpecs(),
+    status: {
+      lastDeployTime: ts,
+      buildHistory: [
+        {
+          finishTime: ts,
+          startTime: ts,
+        },
+      ],
+      pendingBuildSince: ts,
+      currentBuild: {},
+      k8sResourceInfo: {
+        podName: "vigoda-pod",
+        podCreationTime: ts,
+        podStatus: "ErrImagePull",
+        podRestarts: 0,
+      },
+      endpointLinks: [unnamedEndpointLink],
+      updateStatus: "ok",
+      runtimeStatus: "ok",
+      specs: vigodaSpecs(),
+    },
   }
   return resource
 }
 
-function oneResourceTestWithName(name: string): Resource {
+function oneResourceUnrecognizedError(): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const resource = {
-    name: name,
-    lastDeployTime: ts,
-    buildHistory: [
-      {
-        startTime: ts,
-        finishTime: ts,
-        spanId: "build:1",
-      },
-    ],
-    localResourceInfo: {
-      pid: "0",
-      isTest: true,
+    metadata: {
+      name: "vigoda",
     },
-    runtimeStatus: "not_applicable",
-    updateStatus: "ok",
-    specs: [
-      {
-        id: "local:boop",
-        type: "TARGET_TYPE_LOCAL",
-        hasLiveUpdate: false,
+    status: {
+      lastDeployTime: ts,
+      buildHistory: [
+        {
+          finishTime: ts,
+          startTime: ts,
+        },
+      ],
+      pendingBuildSince: ts,
+      currentBuild: {},
+      k8sResourceInfo: {
+        podName: "vigoda-pod",
+        podCreationTime: ts,
+        podStatus: "GarbleError",
+        podStatusMessage: "Detailed message on GarbleError",
       },
-    ],
+      updateStatus: "ok",
+      runtimeStatus: "ok",
+      specs: vigodaSpecs(),
+    },
   }
   return resource
 }
 
-function oneResourceTest(): Resource {
+function oneResourceTestWithName(name: string): UIResource {
+  const ts = new Date(Date.now()).toISOString()
+  const resource = {
+    metadata: {
+      name: name,
+    },
+    status: {
+      lastDeployTime: ts,
+      buildHistory: [
+        {
+          startTime: ts,
+          finishTime: ts,
+          spanId: "build:1",
+        },
+      ],
+      localResourceInfo: {
+        pid: "0",
+        isTest: true,
+      },
+      runtimeStatus: "not_applicable",
+      updateStatus: "ok",
+      specs: [
+        {
+          id: "local:boop",
+          type: "TARGET_TYPE_LOCAL",
+          hasLiveUpdate: false,
+        },
+      ],
+    },
+  }
+  return resource
+}
+
+function oneResourceTest(): UIResource {
   return oneResourceTestWithName("boop")
 }
 
 function oneResourceView(): view {
-  return { resources: [oneResource()], tiltfileKey: "test", runningTiltBuild }
+  return { uiResources: [oneResource()], tiltfileKey: "test", runningTiltBuild }
 }
 
 function twoResourceView(): view {
@@ -298,39 +322,41 @@ function twoResourceView(): view {
   const ts = new Date(time).toISOString()
   const vigoda = oneResource()
 
-  const snack: Resource = {
-    name: "snack",
-    lastDeployTime: new Date(time - 10000).toISOString(),
-    buildHistory: [
-      {
-        error: "the build failed!",
-        finishTime: new Date(time - 10000).toISOString(),
+  const snack: UIResource = {
+    metadata: {
+      name: "snack",
+    },
+    status: {
+      lastDeployTime: new Date(time - 10000).toISOString(),
+      buildHistory: [
+        {
+          error: "the build failed!",
+          finishTime: new Date(time - 10000).toISOString(),
+          startTime: ts,
+        },
+      ],
+      pendingBuildSince: ts,
+      currentBuild: {
         startTime: ts,
       },
-    ],
-    pendingBuildSince: ts,
-    currentBuild: {
-      startTime: ts,
+      endpointLinks: [unnamedEndpointLink],
+      updateStatus: "in_progress",
+      runtimeStatus: "ok",
+      triggerMode: TriggerMode.TriggerModeAuto,
+      k8sResourceInfo: {
+        podStatus: "Running",
+        podStatusMessage: "",
+        podRestarts: 0,
+        podCreationTime: "",
+        podName: "snack",
+        podUpdateStartTime: "",
+      },
+      hasPendingChanges: false,
+      queued: false,
+      specs: vigodaSpecs(),
     },
-    endpointLinks: [unnamedEndpointLink],
-    updateStatus: "in_progress",
-    runtimeStatus: "ok",
-    triggerMode: TriggerMode.TriggerModeAuto,
-    isTiltfile: false,
-    podID: "",
-    k8sResourceInfo: {
-      podStatus: "Running",
-      podStatusMessage: "",
-      podRestarts: 0,
-      podCreationTime: "",
-      podName: "snack",
-      podUpdateStartTime: "",
-    },
-    hasPendingChanges: false,
-    queued: false,
-    specs: vigodaSpecs(),
   }
-  return { resources: [vigoda, snack], tiltfileKey: "test", runningTiltBuild }
+  return { uiResources: [vigoda, snack], tiltfileKey: "test", runningTiltBuild }
 }
 
 export function tenResourceView(): view {
@@ -338,193 +364,205 @@ export function tenResourceView(): view {
 }
 
 export function nResourceView(n: number): view {
-  let resources: Resource[] = []
+  let resources: UIResource[] = []
   for (let i = 0; i < n; i++) {
     if (i === 0) {
       let res = tiltfileResource()
       resources.push(res)
     } else {
       let res = oneResourceNoAlerts()
-      res.name += "_" + i
+      res.metadata = { name: "_" + i }
       resources.push(res)
     }
   }
-  return { resources: resources, tiltfileKey: "test", runningTiltBuild }
+  return { uiResources: resources, tiltfileKey: "test", runningTiltBuild }
 }
 
-function oneResourceFailedToBuild(): Resource[] {
+function oneResourceFailedToBuild(): UIResource[] {
   return [
     {
-      name: "snack",
-      lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
-      buildHistory: [
-        {
-          error: "oh no",
-          startTime: "2019-04-22T11:05:07.250689-04:00",
-          finishTime: "2019-04-22T11:05:17.689819-04:00",
-        },
-        {
-          startTime: "2019-04-22T11:00:02.810268-04:00",
-          finishTime: "2019-04-22T11:00:04.242583-04:00",
-        },
-      ],
-      currentBuild: {
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
+      metadata: {
+        name: "snack",
       },
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: [{ url: "http://localhost:9002/" }],
-      k8sResourceInfo: {
-        podName: "dan-snack-f885fb46f-d5z2t",
-        podCreationTime: "2019-04-22T11:00:04-04:00",
-        podUpdateStartTime: "2019-04-22T11:05:07.250689-04:00",
-        podStatus: "Running",
-        podRestarts: 0,
+      status: {
+        lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
+        buildHistory: [
+          {
+            error: "oh no",
+            startTime: "2019-04-22T11:05:07.250689-04:00",
+            finishTime: "2019-04-22T11:05:17.689819-04:00",
+          },
+          {
+            startTime: "2019-04-22T11:00:02.810268-04:00",
+            finishTime: "2019-04-22T11:00:04.242583-04:00",
+          },
+        ],
+        currentBuild: {
+          startTime: "0001-01-01T00:00:00Z",
+        },
+        pendingBuildSince: "0001-01-01T00:00:00Z",
+        endpointLinks: [{ url: "http://localhost:9002/" }],
+        k8sResourceInfo: {
+          podName: "dan-snack-f885fb46f-d5z2t",
+          podCreationTime: "2019-04-22T11:00:04-04:00",
+          podUpdateStartTime: "2019-04-22T11:05:07.250689-04:00",
+          podStatus: "Running",
+          podRestarts: 0,
+        },
+        updateStatus: "pending",
+        runtimeStatus: "ok",
       },
-      updateStatus: "pending",
-      runtimeStatus: "ok",
-      isTiltfile: false,
     },
   ]
 }
 
-function oneResourceBuilding(): Resource[] {
+function oneResourceBuilding(): UIResource[] {
   return [
     {
-      name: "(Tiltfile)",
-      lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
-      buildHistory: [
-        {
-          startTime: "2019-04-22T10:59:53.574652-04:00",
-          finishTime: "2019-04-22T10:59:53.903047-04:00",
-        },
-      ],
-      currentBuild: {
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
+      metadata: {
+        name: "(Tiltfile)",
       },
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      updateStatus: "ok",
-      runtimeStatus: "ok",
-      isTiltfile: true,
+      status: {
+        lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
+        buildHistory: [
+          {
+            startTime: "2019-04-22T10:59:53.574652-04:00",
+            finishTime: "2019-04-22T10:59:53.903047-04:00",
+          },
+        ],
+        currentBuild: {
+          startTime: "0001-01-01T00:00:00Z",
+        },
+        pendingBuildSince: "0001-01-01T00:00:00Z",
+        updateStatus: "ok",
+        runtimeStatus: "ok",
+      },
     },
     {
-      name: "fe",
-      lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
-      buildHistory: [
-        {
-          startTime: "2019-04-22T10:59:56.489417-04:00",
-          finishTime: "2019-04-22T11:00:01.337284-04:00",
+      metadata: {
+        name: "fe",
+      },
+      status: {
+        lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
+        buildHistory: [
+          {
+            startTime: "2019-04-22T10:59:56.489417-04:00",
+            finishTime: "2019-04-22T11:00:01.337284-04:00",
+          },
+        ],
+        currentBuild: {
+          startTime: "0001-01-01T00:00:00Z",
         },
-      ],
-      currentBuild: {
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
+        pendingBuildSince: "0001-01-01T00:00:00Z",
+        endpointLinks: [{ url: "http://localhost:9000/" }],
+        k8sResourceInfo: {
+          podName: "dan-fe-7cdc8f978f-vp94d",
+          podCreationTime: "2019-04-22T11:00:01-04:00",
+          podUpdateStartTime: "0001-01-01T00:00:00Z",
+          podStatus: "Running",
+          podRestarts: 0,
+        },
+        updateStatus: "ok",
+        runtimeStatus: "ok",
       },
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: [{ url: "http://localhost:9000/" }],
-      k8sResourceInfo: {
-        podName: "dan-fe-7cdc8f978f-vp94d",
-        podCreationTime: "2019-04-22T11:00:01-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      updateStatus: "ok",
-      runtimeStatus: "ok",
-      isTiltfile: false,
     },
     {
-      name: "vigoda",
-      lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
-      buildHistory: [
-        {
-          startTime: "2019-04-22T11:00:01.337359-04:00",
-          finishTime: "2019-04-22T11:00:02.810112-04:00",
+      metadata: {
+        name: "vigoda",
+      },
+      status: {
+        lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
+        buildHistory: [
+          {
+            startTime: "2019-04-22T11:00:01.337359-04:00",
+            finishTime: "2019-04-22T11:00:02.810112-04:00",
+          },
+        ],
+        currentBuild: {
+          startTime: "0001-01-01T00:00:00Z",
         },
-      ],
-      currentBuild: {
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
+        pendingBuildSince: "0001-01-01T00:00:00Z",
+        endpointLinks: [{ url: "http://localhost:9001/" }],
+        k8sResourceInfo: {
+          podName: "dan-vigoda-67d79bd8d5-w77q4",
+          podCreationTime: "2019-04-22T11:00:02-04:00",
+          podUpdateStartTime: "0001-01-01T00:00:00Z",
+          podStatus: "Running",
+          podRestarts: 0,
+        },
+        updateStatus: "ok",
+        runtimeStatus: "ok",
       },
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: [{ url: "http://localhost:9001/" }],
-      k8sResourceInfo: {
-        podName: "dan-vigoda-67d79bd8d5-w77q4",
-        podCreationTime: "2019-04-22T11:00:02-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "Running",
-        podRestarts: 0,
-      },
-      updateStatus: "ok",
-      runtimeStatus: "ok",
-      isTiltfile: false,
     },
     {
-      name: "snack",
-      lastDeployTime: "2019-04-22T11:05:58.928369-04:00",
-      buildHistory: [
-        {
-          startTime: "2019-04-22T11:05:53.676776-04:00",
-          finishTime: "2019-04-22T11:05:58.928367-04:00",
-        },
-        {
-          error: "eek",
-          startTime: "2019-04-22T11:05:07.250689-04:00",
-          finishTime: "2019-04-22T11:05:17.689819-04:00",
-        },
-      ],
-      currentBuild: {
-        startTime: "2019-04-22T11:20:44.674248-04:00",
-        finishTime: "0001-01-01T00:00:00Z",
+      metadata: {
+        name: "snack",
       },
-      pendingBuildSince: "2019-04-22T11:20:44.672903-04:00",
-      endpointLinks: [{ url: "http://localhost:9002/" }],
-      k8sResourceInfo: {
-        podName: "dan-snack-65f9775f49-gcc8d",
-        podCreationTime: "2019-04-22T11:05:58-04:00",
-        podUpdateStartTime: "2019-04-22T11:20:44.674248-04:00",
-        podStatus: "CrashLoopBackOff",
-        podRestarts: 7,
+      status: {
+        lastDeployTime: "2019-04-22T11:05:58.928369-04:00",
+        buildHistory: [
+          {
+            startTime: "2019-04-22T11:05:53.676776-04:00",
+            finishTime: "2019-04-22T11:05:58.928367-04:00",
+          },
+          {
+            error: "eek",
+            startTime: "2019-04-22T11:05:07.250689-04:00",
+            finishTime: "2019-04-22T11:05:17.689819-04:00",
+          },
+        ],
+        currentBuild: {
+          startTime: "2019-04-22T11:20:44.674248-04:00",
+        },
+        pendingBuildSince: "2019-04-22T11:20:44.672903-04:00",
+        endpointLinks: [{ url: "http://localhost:9002/" }],
+        k8sResourceInfo: {
+          podName: "dan-snack-65f9775f49-gcc8d",
+          podCreationTime: "2019-04-22T11:05:58-04:00",
+          podUpdateStartTime: "2019-04-22T11:20:44.674248-04:00",
+          podStatus: "CrashLoopBackOff",
+          podRestarts: 7,
+        },
+        updateStatus: "error",
+        runtimeStatus: "error",
       },
-      updateStatus: "error",
-      runtimeStatus: "error",
-      isTiltfile: false,
     },
   ]
 }
 
-function oneResourceCrashedOnStart(): Resource[] {
+function oneResourceCrashedOnStart(): UIResource[] {
   return [
     {
-      name: "snack",
-      lastDeployTime: "2019-04-22T13:34:59.442147-04:00",
-      buildHistory: [
-        {
-          startTime: "2019-04-22T13:34:57.084919-04:00",
-          finishTime: "2019-04-22T13:34:59.442139-04:00",
-        },
-        {
-          startTime: "2019-04-22T13:34:05.844691-04:00",
-          finishTime: "2019-04-22T13:34:07.352812-04:00",
-        },
-      ],
-      currentBuild: {
-        startTime: "0001-01-01T00:00:00Z",
-        finishTime: "0001-01-01T00:00:00Z",
+      metadata: {
+        name: "snack",
       },
-      pendingBuildSince: "0001-01-01T00:00:00Z",
-      endpointLinks: [{ url: "http://localhost:9002/" }],
-      k8sResourceInfo: {
-        podName: "dan-snack-cd4d74d7b-lg8sh",
-        podCreationTime: "2019-04-22T13:34:59-04:00",
-        podUpdateStartTime: "0001-01-01T00:00:00Z",
-        podStatus: "CrashLoopBackOff",
-        podRestarts: 1,
+      status: {
+        lastDeployTime: "2019-04-22T13:34:59.442147-04:00",
+        buildHistory: [
+          {
+            startTime: "2019-04-22T13:34:57.084919-04:00",
+            finishTime: "2019-04-22T13:34:59.442139-04:00",
+          },
+          {
+            startTime: "2019-04-22T13:34:05.844691-04:00",
+            finishTime: "2019-04-22T13:34:07.352812-04:00",
+          },
+        ],
+        currentBuild: {
+          startTime: "0001-01-01T00:00:00Z",
+        },
+        pendingBuildSince: "0001-01-01T00:00:00Z",
+        endpointLinks: [{ url: "http://localhost:9002/" }],
+        k8sResourceInfo: {
+          podName: "dan-snack-cd4d74d7b-lg8sh",
+          podCreationTime: "2019-04-22T13:34:59-04:00",
+          podUpdateStartTime: "0001-01-01T00:00:00Z",
+          podStatus: "CrashLoopBackOff",
+          podRestarts: 1,
+        },
+        updateStatus: "ok",
+        runtimeStatus: "error",
       },
-      updateStatus: "ok",
-      runtimeStatus: "error",
-      isTiltfile: false,
     },
   ]
 }
@@ -2076,7 +2114,7 @@ const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLin
 </span><span data-lineid="772" class="logLine "><code><span>fortune     ┊   ENTRYPOINT /go/bin/fortune</span></code>
 <br>
 </span><span data-lineid="773" class="logLine "><code><span>fortune     ┊ </span></code>
-<br>
+c<br>
 </span><span data-lineid="774" class="logLine "><code><span>fortune     ┊ </span></code>
 <br>
 </span><span data-lineid="775" class="logLine "><code><span>fortune     ┊ </span><span class="ansi-blue">  │ </span><span>Tarring context…</span></code>

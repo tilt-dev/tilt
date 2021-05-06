@@ -139,12 +139,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		k8swatch.HandleKubernetesDiscoveryCreateAction(ctx, state, action)
 	case k8swatch.KubernetesDiscoveryUpdateAction:
 		k8swatch.HandleKubernetesDiscoveryUpdateAction(ctx, state, action)
+	case k8swatch.KubernetesDiscoveryUpdateStatusAction:
+		k8swatch.HandleKubernetesDiscoveryUpdateStatusAction(ctx, state, action)
 	case k8swatch.KubernetesDiscoveryDeleteAction:
 		k8swatch.HandleKubernetesDiscoveryDeleteAction(ctx, state, action)
-	case k8swatch.PodChangeAction:
-		handlePodChangeAction(ctx, state, action)
-	case k8swatch.PodDeleteAction:
-		handlePodDeleteAction(ctx, state, action)
 	case store.PodResetRestartsAction:
 		handlePodResetRestartsAction(state, action)
 	case k8swatch.ServiceChangeAction:
@@ -421,7 +419,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		bestPod := ms.MostRecentPod()
 		if timecmp.AfterOrEqual(bestPod.CreatedAt, bs.StartTime) ||
 			timecmp.Equal(bestPod.UpdateStartedAt, bs.StartTime) {
-			checkForContainerCrash(engineState, mt)
+			k8swatch.CheckForContainerCrash(engineState, mt)
 		}
 	}
 

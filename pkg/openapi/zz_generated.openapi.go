@@ -1296,9 +1296,17 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 				Description: "KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"monitorStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MonitorStartTime is the timestamp of when Kubernetes resource discovery was started.\n\nIt is zero if discovery has not been started yet.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
 					"pods": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Pods that have been discovered based on the criteria in the spec.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -1314,7 +1322,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

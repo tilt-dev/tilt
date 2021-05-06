@@ -8,7 +8,7 @@ import OverviewItemView, {
 import { oneResourceNoAlerts } from "./testdata"
 import { ResourceStatus, TriggerMode } from "./types"
 
-type Resource = Proto.webviewResource
+type UIResource = Proto.v1alpha1UIResource
 
 type optionFn = (item: OverviewItemViewProps) => void
 

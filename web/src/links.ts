@@ -1,6 +1,8 @@
 // Helper functions for displaying links
 
-export function displayURL(li: Proto.webviewLink): string {
+type Link = Proto.v1alpha1UIResourceLink
+
+export function displayURL(li: Link): string {
   let url = li.url?.replace(/^(http:\/\/)/, "")
   url = url?.replace(/^(https:\/\/)/, "")
   url = url?.replace(/^(www\.)/, "")

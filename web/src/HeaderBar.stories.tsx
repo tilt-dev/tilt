@@ -28,9 +28,9 @@ export const TenResources = () => <HeaderBar view={tenResourceView()} />
 
 export const TenResourcesErrorsAndWarnings = () => {
   let view = tenResourceView() as any
-  view.resources[0].updateStatus = UpdateStatus.Error
-  view.resources[1].buildHistory[0].warnings = ["warning time"]
-  view.resources[5].updateStatus = UpdateStatus.Error
+  view.uiResources[0].status.updateStatus = UpdateStatus.Error
+  view.uiResources[1].status.buildHistory[0].warnings = ["warning time"]
+  view.uiResources[5].status.updateStatus = UpdateStatus.Error
   return <HeaderBar view={view} />
 }
 
@@ -46,6 +46,6 @@ export const UpgradeAvailable = () => {
 
 export const WithTests = () => {
   let view = twoResourceView()
-  view.resources.push(oneResourceTest(), oneResourceTest())
+  view.uiResources.push(oneResourceTest(), oneResourceTest())
   return <HeaderBar view={view} />
 }

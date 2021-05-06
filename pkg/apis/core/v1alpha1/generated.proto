@@ -435,6 +435,12 @@ message KubernetesDiscoverySpec {
 
 // KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery
 message KubernetesDiscoveryStatus {
+  // MonitorStartTime is the timestamp of when Kubernetes resource discovery was started.
+  //
+  // It is zero if discovery has not been started yet.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime monitorStartTime = 2;
+
+  // Pods that have been discovered based on the criteria in the spec.
   repeated Pod pods = 1;
 }
 

@@ -2,10 +2,11 @@ import moment from "moment"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { buildStatus, runtimeStatus } from "./status"
 import { timeDiff } from "./time"
-import { ResourceStatus, TriggerMode } from "./types"
+import { ResourceName, ResourceStatus, TriggerMode } from "./types"
 
-type Resource = Proto.webviewResource
-type Build = Proto.webviewBuildRecord
+type UIResource = Proto.v1alpha1UIResource
+type UIResourceStatus = Proto.v1alpha1UIResourceStatus
+type Build = Proto.v1alpha1UIBuildTerminated
 
 class SidebarItem {
   name: string
@@ -28,29 +29,29 @@ class SidebarItem {
   /**
    * Create a pared down SidebarItem from a ResourceView
    */
-  constructor(res: Resource) {
-    let buildHistory = res.buildHistory || []
+  constructor(res: UIResource) {
+    let status = (res.status || {}) as UIResourceStatus
+    let buildHistory = status.buildHistory || []
     let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
 
-    this.name = res.name ?? ""
-    this.isTiltfile = !!res.isTiltfile
-    this.isTest =
-      (res.localResourceInfo && !!res.localResourceInfo.isTest) || false
+    this.name = res.metadata?.name ?? ""
+    this.isTiltfile = this.name === ResourceName.tiltfile
+    this.isTest = !!status.localResourceInfo?.isTest
     this.buildStatus = buildStatus(res)
     this.buildAlertCount = buildAlerts(res, null).length
     this.runtimeStatus = runtimeStatus(res)
     this.runtimeAlertCount = runtimeAlerts(res, null).length
-    this.hasEndpoints = (res.endpointLinks || []).length > 0
+    this.hasEndpoints = (status.endpointLinks || []).length > 0
     this.lastBuildDur =
       lastBuild && lastBuild.startTime && lastBuild.finishTime
         ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
         : null
-    this.lastDeployTime = res.lastDeployTime ?? ""
-    this.pendingBuildSince = res.pendingBuildSince ?? ""
-    this.currentBuildStartTime = res.currentBuild?.startTime ?? ""
-    this.triggerMode = res.triggerMode ?? TriggerMode.TriggerModeAuto
-    this.hasPendingChanges = !!res.hasPendingChanges
-    this.queued = !!res.queued
+    this.lastDeployTime = status.lastDeployTime ?? ""
+    this.pendingBuildSince = status.pendingBuildSince ?? ""
+    this.currentBuildStartTime = status.currentBuild?.startTime ?? ""
+    this.triggerMode = status.triggerMode ?? TriggerMode.TriggerModeAuto
+    this.hasPendingChanges = !!status.hasPendingChanges
+    this.queued = !!status.queued
     this.lastBuild = lastBuild
   }
 }

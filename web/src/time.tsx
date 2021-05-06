@@ -2,7 +2,7 @@ import moment from "moment"
 
 export const zeroTime = "0001-01-01T00:00:00Z"
 
-export function isZeroTime(time: string | undefined) {
+export function isZeroTime(time: string) {
   return !time || time === zeroTime
 }
 
@@ -27,7 +27,7 @@ export function formatBuildDuration(d: moment.Duration): string {
 }
 
 export function timeDiff(start: string, end: string): moment.Duration {
-  let t1 = moment(start)
-  let t2 = moment(end)
+  let t1 = moment(start || zeroTime)
+  let t2 = moment(end || zeroTime)
   return moment.duration(t2.diff(t1))
 }

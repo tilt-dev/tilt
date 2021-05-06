@@ -24,7 +24,7 @@ describe("AppController", () => {
   it("sets view from snapshot", async () => {
     fetchMock.mock(
       "/api/snapshot/aaaaaaa",
-      JSON.stringify({ view: { resources: [] } })
+      JSON.stringify({ view: { uiResources: [] } })
     )
 
     let pb = PathBuilder.forTesting("cloud.tilt.dev", "/snapshot/aaaaaaa")
@@ -39,7 +39,7 @@ describe("AppController", () => {
   it("sets view and path from snapshot", async () => {
     fetchMock.mock(
       "/api/snapshot/aaaaaa",
-      JSON.stringify({ view: { resources: [] }, path: "/foo" })
+      JSON.stringify({ view: { uiResources: [] }, path: "/foo" })
     )
 
     let pb = PathBuilder.forTesting("cloud.tilt.dev", "/snapshot/aaaaaa")
@@ -60,7 +60,7 @@ describe("AppController", () => {
     fetchMock.mock(
       "/api/snapshot/aaaaaa",
       JSON.stringify({
-        view: { resources: [] },
+        view: { uiResources: [] },
         snapshotHighlight: snapshotHighlight,
       })
     )
