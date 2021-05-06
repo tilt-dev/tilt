@@ -40,7 +40,7 @@ describe("SidebarTriggerButton", () => {
 
   it("shows toggle button only for test cards", () => {
     let view = twoResourceView()
-    view.resources.push(oneResourceTest())
+    view.uiResources.push(oneResourceTest())
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -59,12 +59,12 @@ describe("SidebarTriggerButton", () => {
       oneResourceTestWithName("manual_auto-init"),
       oneResourceTestWithName("manual_no-init"),
     ]
-    resources[0].triggerMode = TriggerMode.TriggerModeAuto
-    resources[1].triggerMode = TriggerMode.TriggerModeAutoWithManualInit
-    resources[2].triggerMode = TriggerMode.TriggerModeManualWithAutoInit
-    resources[3].triggerMode = TriggerMode.TriggerModeManual
+    resources[0].status!.triggerMode = TriggerMode.TriggerModeAuto
+    resources[1].status!.triggerMode = TriggerMode.TriggerModeAutoWithManualInit
+    resources[2].status!.triggerMode = TriggerMode.TriggerModeManualWithAutoInit
+    resources[3].status!.triggerMode = TriggerMode.TriggerModeManual
 
-    let view = { resources: resources }
+    let view = { uiResources: resources }
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>

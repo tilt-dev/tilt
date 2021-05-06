@@ -30,9 +30,9 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   let view = props.view
   let runningBuild = view?.runningTiltBuild
   let suggestedVersion = view?.suggestedTiltVersion
-  let resources = view?.resources || []
+  let resources = view?.uiResources || []
   let hasK8s = resources.some((r) => {
-    let specs = r.specs ?? []
+    let specs = r.status?.specs ?? []
     return specs.some((spec) => spec.type === TargetType.K8s)
   })
 

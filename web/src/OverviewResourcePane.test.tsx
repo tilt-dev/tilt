@@ -10,6 +10,8 @@ import { ResourceNavProvider } from "./ResourceNav"
 import { oneResourceView } from "./testdata"
 import { appendLinesForManifestAndSpan } from "./testlogs"
 
+type UIResource = Proto.v1alpha1UIResource
+
 it("renders correctly when no resource found", () => {
   let root = mount(
     <MemoryRouter initialEntries={["/"]}>{NotFound()}</MemoryRouter>
@@ -26,12 +28,12 @@ describe("alert filtering", () => {
   const doTest = (
     expectedErrs: number,
     expectedWarns: number,
-    prepare: (logStore: LogStore, r: Proto.webviewResource) => any
+    prepare: (logStore: LogStore, r: UIResource) => any
   ) => {
     const logStore = new LogStore()
     const view = oneResourceView()
 
-    const r = view.resources[0]
+    const r = view.uiResources[0]
 
     prepare(logStore, r)
 
@@ -59,12 +61,12 @@ describe("alert filtering", () => {
 
   it("creates no alerts if no build failures", () => {
     doTest(0, 0, (logStore, r) => {
-      const latestBuild = r.buildHistory![0]
-      latestBuild.spanId = "build:1"
+      const latestBuild = r.status!.buildHistory![0] || {}
+      latestBuild.spanID = "build:1"
       latestBuild.error = undefined
       latestBuild.warnings = []
 
-      appendLinesForManifestAndSpan(logStore, r.name!, "build:1", [
+      appendLinesForManifestAndSpan(logStore, r.metadata!.name!, "build:1", [
         "the build failed!",
       ])
     })
@@ -72,12 +74,12 @@ describe("alert filtering", () => {
 
   it("creates alerts for build failures with existing spans", () => {
     doTest(1, 2, (logStore, r) => {
-      const latestBuild = r.buildHistory![0]
-      latestBuild.spanId = "build:1"
+      const latestBuild = r.status!.buildHistory![0]
+      latestBuild.spanID = "build:1"
       latestBuild.error = "the build failed!"
       latestBuild.warnings = ["warning 1!", "warning 2!"]
 
-      appendLinesForManifestAndSpan(logStore, r.name!, "build:1", [
+      appendLinesForManifestAndSpan(logStore, r.metadata!.name!, "build:1", [
         "the build failed!",
       ])
     })
@@ -85,12 +87,12 @@ describe("alert filtering", () => {
 
   it("ignores alerts for removed spans", () => {
     doTest(0, 0, (logStore, r) => {
-      const latestBuild = r.buildHistory![0]
-      latestBuild.spanId = "build:1"
+      const latestBuild = r.status!.buildHistory![0] || {}
+      latestBuild.spanID = "build:1"
       latestBuild.error = "the build failed!"
       latestBuild.warnings = ["warning!"]
 
-      appendLinesForManifestAndSpan(logStore, r.name!, "build:2", [
+      appendLinesForManifestAndSpan(logStore, r.metadata!.name!, "build:2", [
         "the build failed!",
       ])
     })

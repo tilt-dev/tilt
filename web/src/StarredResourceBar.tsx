@@ -218,9 +218,10 @@ export function starredResourcePropsFromView(
   selectedResource: string
 ): StarredResourceBarProps {
   const starContext = useStarredResources()
-  const namesAndStatuses = (view?.resources || []).flatMap((r) => {
-    if (r.name && starContext.starredResources.includes(r.name)) {
-      return [{ name: r.name, status: combinedStatus(r) }]
+  const namesAndStatuses = (view?.uiResources || []).flatMap((r) => {
+    let name = r.metadata?.name
+    if (name && starContext.starredResources.includes(name)) {
+      return [{ name: name, status: combinedStatus(r) }]
     } else {
       return []
     }

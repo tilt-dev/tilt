@@ -19,6 +19,8 @@ import {
 import Tooltip from "./Tooltip"
 import { ResourceName, ResourceStatus } from "./types"
 
+type UIResource = Proto.v1alpha1UIResource
+
 const ResourceGroupStatusRoot = styled.div`
   display: flex;
   font-family: ${Font.sansSerif};
@@ -212,7 +214,7 @@ export type StatusCounts = {
   warning: number
 }
 
-function statusCounts(resources: Proto.webviewResource[]): StatusCounts {
+function statusCounts(resources: UIResource[]): StatusCounts {
   let statuses = resources.map((res) => combinedStatus(res))
   let allStatusCount = 0
   let healthyStatusCount = 0
@@ -282,12 +284,12 @@ type ResourceStatusSummaryProps = {
 
 export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   // Count the statuses.
-  let resources = props.view.resources || []
+  let resources = props.view.uiResources || []
 
-  let testResources = new Array<Proto.webviewResource>()
-  let otherResources = new Array<Proto.webviewResource>()
+  let testResources = new Array<UIResource>()
+  let otherResources = new Array<UIResource>()
   resources.forEach((r) => {
-    if (r.localResourceInfo && r.localResourceInfo.isTest) {
+    if (r.status?.localResourceInfo?.isTest) {
       testResources.push(r)
     } else {
       otherResources.push(r)

@@ -68,7 +68,6 @@ export default class HUD extends Component<HudProps, HudState> {
 
     this.state = {
       view: {
-        resources: [],
         needsAnalyticsNudge: false,
         fatalError: undefined,
         runningTiltBuild: {
@@ -251,7 +250,7 @@ export default class HUD extends Component<HudProps, HudState> {
     let view = this.state.view
 
     let needsNudge = view?.needsAnalyticsNudge ?? false
-    let resources = view?.resources ?? []
+    let resources = view?.uiResources ?? []
     if (!resources?.length || !view?.tiltfileKey) {
       return <HeroScreen message={"Loading…"} />
     }
@@ -270,7 +269,7 @@ export default class HUD extends Component<HudProps, HudState> {
     }
 
     let validateResource = (name: string) =>
-      resources.some((res) => res.name === name)
+      resources.some((res) => res.metadata?.name === name)
     return (
       <tiltfileKeyContext.Provider value={view.tiltfileKey}>
         <StarredResourcesContextProvider>

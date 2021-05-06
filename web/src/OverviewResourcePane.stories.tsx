@@ -6,7 +6,7 @@ import { ResourceNavProvider } from "./ResourceNav"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
-type Resource = Proto.webviewResource
+type UIResource = Proto.v1alpha1UIResource
 
 export default {
   title: "New UI/OverviewResourcePane",
@@ -29,9 +29,9 @@ function OverviewResourcePaneHarness(props: {
 }) {
   let { name, view } = props
   let entry = name ? `/r/${props.name}/overview` : `/overview`
-  let resources = view?.resources || []
+  let resources = view?.uiResources || []
   let validateResource = (name: string) =>
-    resources.some((res) => res.name == name)
+    resources.some((res) => res.metadata?.name == name)
   return (
     <MemoryRouter initialEntries={[entry]}>
       <ResourceNavProvider validateResource={validateResource}>
@@ -51,13 +51,14 @@ export const TenResources = () => (
 
 export const FullResourceBar = () => {
   let view = tenResourceView()
-  let res = view.resources[1]
-  res.endpointLinks = [
+  let res = view.uiResources[1]
+  res.status = res.status || {}
+  res.status.endpointLinks = [
     { url: "http://localhost:4001" },
     { url: "http://localhost:4002" },
     { url: "http://localhost:4003" },
   ]
-  res.podID = "my-pod-deadbeef"
+  res.status.k8sResourceInfo = { podName: "my-pod-deadbeef" }
   return <OverviewResourcePaneHarness name="vigoda_1" view={view} />
 }
 

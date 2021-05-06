@@ -12,6 +12,7 @@ import StarredResourceBar, {
 import { Color } from "./style-helpers"
 import { ResourceName } from "./types"
 
+type UIResource = Proto.v1alpha1UIResource
 type OverviewResourcePaneProps = {
   view: Proto.webviewView
 }
@@ -36,18 +37,18 @@ let Main = styled.div`
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let nav = useResourceNav()
   const logStore = useLogStore()
-  let resources = props.view?.resources || []
+  let resources = props.view?.uiResources || []
   let name = nav.invalidResource || nav.selectedResource || ""
-  let r: Proto.webviewResource | undefined
+  let r: UIResource | undefined
   let all = name === "" || name === ResourceName.all
   if (!all) {
-    r = resources.find((r) => r.name === name)
+    r = resources.find((r) => r.metadata?.name === name)
   }
   let selectedTab = ""
   if (all) {
     selectedTab = ResourceName.all
-  } else if (r?.name) {
-    selectedTab = r.name
+  } else if (r?.metadata?.name) {
+    selectedTab = r.metadata.name
   }
 
   const [truncateCount, setTruncateCount] = useState<number>(0)

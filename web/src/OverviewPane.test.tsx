@@ -65,7 +65,7 @@ it("renders starred resources", () => {
 
 it("renders test resources separate from all resources", () => {
   let view = twoResourceView()
-  view.resources.push(oneResourceTest())
+  view.uiResources.push(oneResourceTest())
 
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>

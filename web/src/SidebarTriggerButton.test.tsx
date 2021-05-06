@@ -18,7 +18,7 @@ import SidebarTriggerButton, {
 import { oneResource, twoResourceView } from "./testdata"
 import { ResourceName, ResourceView, TriggerMode } from "./types"
 
-type Resource = Proto.webviewResource
+type UIResource = Proto.v1alpha1UIResource
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
@@ -134,20 +134,23 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("shows clickable + clickMe trigger button for manual resource with pending changes", () => {
-    let items = twoResourceView().resources.map((res: Resource, i: number) => {
-      res.triggerMode = TriggerMode.TriggerModeManualWithAutoInit // both manual
-      res.currentBuild = {} // not currently building
-      if (i == 0) {
-        // only first resource has pending changes -- only this one should have class `isDirty`
-        res.hasPendingChanges = true
-        res.pendingBuildSince = new Date(Date.now()).toISOString()
-      } else {
-        res.hasPendingChanges = false
-        res.pendingBuildSince = "0001-01-01T00:00:00Z"
-      }
+    let items = twoResourceView().uiResources.map(
+      (r: UIResource, i: number) => {
+        let res = r.status!
+        res.triggerMode = TriggerMode.TriggerModeManualWithAutoInit // both manual
+        res.currentBuild = {} // not currently building
+        if (i == 0) {
+          // only first resource has pending changes -- only this one should have class `isDirty`
+          res.hasPendingChanges = true
+          res.pendingBuildSince = new Date(Date.now()).toISOString()
+        } else {
+          res.hasPendingChanges = false
+          res.pendingBuildSince = "0001-01-01T00:00:00Z"
+        }
 
-      return new SidebarItem(res)
-    })
+        return new SidebarItem(r)
+      }
+    )
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -178,15 +181,18 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("shows selected trigger button for selected resource", () => {
-    let items = twoResourceView().resources.map((res: Resource, i: number) => {
-      res.triggerMode = TriggerMode.TriggerModeManualWithAutoInit // both manual
-      res.currentBuild = {} // not currently building
-      if (i == 0) {
-        res.name = "selected resource"
-      }
+    let items = twoResourceView().uiResources.map(
+      (r: UIResource, i: number) => {
+        let res = r.status!
+        res.triggerMode = TriggerMode.TriggerModeManualWithAutoInit // both manual
+        res.currentBuild = {} // not currently building
+        if (i == 0) {
+          r.metadata = { name: "selected resource" }
+        }
 
-      return new SidebarItem(res)
-    })
+        return new SidebarItem(r)
+      }
+    )
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -207,20 +213,23 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("never shows clickMe trigger button for automatic resources", () => {
-    let items = twoResourceView().resources.map((res: Resource, i: number) => {
-      res.currentBuild = {} // not currently building
+    let items = twoResourceView().uiResources.map(
+      (r: UIResource, i: number) => {
+        let res = r.status!
+        res.currentBuild = {} // not currently building
 
-      if (i == 0) {
-        // first resource has pending changes -- but is automatic, should NOT
-        // have a clickMe button (and button should be !clickable)
-        res.hasPendingChanges = true
-        res.pendingBuildSince = new Date(Date.now()).toISOString()
-      } else {
-        res.hasPendingChanges = false
-        res.pendingBuildSince = "0001-01-01T00:00:00Z"
+        if (i == 0) {
+          // first resource has pending changes -- but is automatic, should NOT
+          // have a clickMe button (and button should be !clickable)
+          res.hasPendingChanges = true
+          res.pendingBuildSince = new Date(Date.now()).toISOString()
+        } else {
+          res.hasPendingChanges = false
+          res.pendingBuildSince = "0001-01-01T00:00:00Z"
+        }
+        return new SidebarItem(r)
       }
-      return new SidebarItem(res)
-    })
+    )
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -274,13 +283,14 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("trigger button not clickable if resource waiting for first build", () => {
-    let res = oneResource()
+    let r = oneResource()
+    let res = r.status!
     res.currentBuild = {}
     res.buildHistory = []
     res.lastDeployTime = ""
     res.hasPendingChanges = false
     res.pendingBuildSince = ""
-    let items = [new SidebarItem(res)]
+    let items = [new SidebarItem(r)]
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -304,8 +314,8 @@ describe("SidebarTriggerButton", () => {
 
   it("renders queued resource with class .isQueued and NOT .clickable", () => {
     let res = oneResource()
-    res.currentBuild = {}
-    res.queued = true
+    res.status!.currentBuild = {}
+    res.status!.queued = true
     let items = [new SidebarItem(res)]
 
     const root = mount(
@@ -330,10 +340,10 @@ describe("SidebarTriggerButton", () => {
 
   it("shows a trigger button for resource that failed its initial build", () => {
     let res = oneResource()
-    res.lastDeployTime = ""
-    res.currentBuild = {}
-    res.hasPendingChanges = false
-    res.pendingBuildSince = ""
+    res.status!.lastDeployTime = ""
+    res.status!.currentBuild = {}
+    res.status!.hasPendingChanges = false
+    res.status!.pendingBuildSince = ""
     let items = [new SidebarItem(res)]
 
     const root = mount(
@@ -358,11 +368,11 @@ describe("SidebarTriggerButton", () => {
 
   it("shows trigger button for Tiltfile", () => {
     let res = oneResource()
-    res.name = ResourceName.tiltfile
-    res.isTiltfile = true
-    res.currentBuild = {} // not currently building
-    res.hasPendingChanges = false
-    res.pendingBuildSince = "0001-01-01T00:00:00Z"
+    res.metadata = { name: ResourceName.tiltfile }
+    res.status = res.status || {}
+    res.status.currentBuild = {} // not currently building
+    res.status.hasPendingChanges = false
+    res.status.pendingBuildSince = "0001-01-01T00:00:00Z"
 
     let items = [new SidebarItem(res)]
 

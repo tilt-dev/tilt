@@ -71,7 +71,7 @@ export function TestResources(props: ResourceProps) {
 
 export default function OverviewPane(props: OverviewPaneProps) {
   let starContext = useStarredResources()
-  let resources = props.view.resources || []
+  let resources = props.view.uiResources || []
   let allItems = resources.map((res) => new OverviewItem(res))
   let allResources = allItems.filter(
     (item) =>
