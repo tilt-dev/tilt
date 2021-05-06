@@ -48,7 +48,7 @@ func TestPodWatch(t *testing.T) {
 	f.requireWatchForEntity(manifest.Name, entities.Deployment())
 	f.kClient.Inject(entities...)
 
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	f.assertObservedPods(p)
 }
@@ -65,7 +65,7 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.kClient.Inject(entities...)
 	// emit an event before this manifest knows of anything deployed
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	require.Never(t, func() bool {
 		f.mu.Lock()
@@ -97,12 +97,12 @@ func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 	f.kClient.Inject(entities...)
 
 	p1 := pb.Build()
-	f.kClient.EmitPod(labels.Everything(), p1)
+	f.kClient.UpsertPod(p1)
 
 	f.assertObservedPods(p1)
 
 	p2 := pb.WithResourceVersion("10").Build()
-	f.kClient.EmitPod(labels.Everything(), p2)
+	f.kClient.UpsertPod(p2)
 
 	f.assertObservedPods(p1, p2)
 }
@@ -119,7 +119,7 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 		WithPodLabel("foo", "bar").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	f.assertObservedPods(p)
 	f.assertObservedManifests(manifest.Name)
@@ -136,7 +136,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 		WithPodLabel("foo", "bar").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	f.assertObservedPods(p)
 	f.clearPods()
@@ -152,7 +152,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 	p2Entities := pb2.ObjectTreeEntities()
 	f.addDeployedEntity(manifest2, p2Entities.Deployment())
 	f.kClient.Inject(p2Entities...)
-	f.kClient.EmitPod(labels.Everything(), p2)
+	f.kClient.UpsertPod(p2)
 	f.assertObservedPods(p2)
 	f.clearPods()
 
@@ -161,19 +161,19 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 		WithPodLabel("foo", "bar").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p3)
+	f.kClient.UpsertPod(p3)
 
 	p4 := podbuilder.New(t, manifest2).
 		WithPodName("pod4").
 		WithPodLabel("baz", "quu").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p4)
+	f.kClient.UpsertPod(p4)
 
 	p5 := podbuilder.New(t, manifest2).
 		WithPodName("pod5").
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p5)
+	f.kClient.UpsertPod(p5)
 
 	f.assertObservedPods(p4, p5)
 	assert.Equal(t, []model.ManifestName{manifest2.Name, manifest2.Name}, f.manifestNames)
@@ -202,7 +202,7 @@ func TestPodsDispatchedInOrder(t *testing.T) {
 	}
 
 	for _, pod := range pods {
-		f.kClient.EmitPod(labels.Everything(), pod)
+		f.kClient.UpsertPod(pod)
 	}
 
 	f.waitForPodActionCount(count)
@@ -230,7 +230,7 @@ func TestPodWatchReadd(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
 	f.kClient.Inject(entities...)
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	f.assertObservedPods(p)
 
@@ -270,7 +270,7 @@ func TestPodWatchDuplicates(t *testing.T) {
 	f.requireWatchForEntity(m1.Name, entities.Deployment())
 
 	f.kClient.Inject(entities...)
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	f.assertObservedManifests(m1.Name)
 	f.assertObservedPods(p)
@@ -289,7 +289,7 @@ func TestPodWatchDuplicates(t *testing.T) {
 
 	// NOTE: label matches do NOT get re-dispatched events for known pods currently,
 	// 	so we re-emit a Pod event
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	// m3 should now be allowed to match, but m4 still shouldn't because
 	// we restrict label matches to one watcher
@@ -301,7 +301,7 @@ func TestPodWatchDuplicates(t *testing.T) {
 
 	// NOTE: label matches do NOT get re-dispatched events for known pods currently,
 	// 	so we re-emit a Pod event
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	// finally, m4 can see it
 	f.assertObservedManifests(m4.Name)

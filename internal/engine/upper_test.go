@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"k8s.io/apimachinery/pkg/labels"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 
@@ -2548,7 +2547,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 			Namespace:         k8s.DefaultNamespace.String(),
 		},
 	}
-	f.kClient.EmitEvent(f.ctx, warnEvt)
+	f.kClient.UpsertEvent(warnEvt)
 
 	f.WaitUntil("event message appears in manifest log", func(st store.EngineState) bool {
 		return strings.Contains(st.LogStore.ManifestLog(name), "something has happened zomg")
@@ -2581,7 +2580,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 			Namespace:         k8s.DefaultNamespace.String(),
 		},
 	}
-	f.kClient.EmitEvent(f.ctx, warnEvt)
+	f.kClient.UpsertEvent(warnEvt)
 
 	time.Sleep(10 * time.Millisecond)
 
@@ -4421,7 +4420,7 @@ func (f *testFixture) podEvent(pod *v1.Pod) {
 		}
 	}
 
-	f.kClient.EmitPod(labels.Nothing(), pod)
+	f.kClient.UpsertPod(pod)
 }
 
 func (f *testFixture) newManifest(name string) model.Manifest {
