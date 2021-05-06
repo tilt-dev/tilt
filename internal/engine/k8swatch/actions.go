@@ -3,12 +3,15 @@ package k8swatch
 import (
 	"net/url"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -47,6 +50,24 @@ func NewKubernetesDiscoveryUpdateAction(kd *v1alpha1.KubernetesDiscovery) Kubern
 	return KubernetesDiscoveryUpdateAction{KubernetesDiscovery: kd.DeepCopy()}
 }
 
+type KubernetesDiscoveryUpdateStatusAction struct {
+	ObjectMeta *metav1.ObjectMeta
+	Status     *v1alpha1.KubernetesDiscoveryStatus
+}
+
+func (p KubernetesDiscoveryUpdateStatusAction) Action() {}
+
+func (p KubernetesDiscoveryUpdateStatusAction) Summarize(s *store.ChangeSummary) {
+	s.KubernetesDiscoveries.Add(apis.KeyFromMeta(*p.ObjectMeta))
+}
+
+func NewKubernetesDiscoveryUpdateStatusAction(kd *v1alpha1.KubernetesDiscovery) KubernetesDiscoveryUpdateStatusAction {
+	return KubernetesDiscoveryUpdateStatusAction{
+		ObjectMeta: kd.ObjectMeta.DeepCopy(),
+		Status:     kd.Status.DeepCopy(),
+	}
+}
+
 type KubernetesDiscoveryDeleteAction struct {
 	Name types.NamespacedName
 }
@@ -59,51 +80,6 @@ func (p KubernetesDiscoveryDeleteAction) Summarize(s *store.ChangeSummary) {
 
 func NewKubernetesDiscoveryDeleteAction(name types.NamespacedName) KubernetesDiscoveryDeleteAction {
 	return KubernetesDiscoveryDeleteAction{Name: name}
-}
-
-type PodChangeAction struct {
-	Pod          *v1alpha1.Pod
-	ManifestName model.ManifestName
-
-	// The UID that we matched against to associate this pod with Tilt.
-	// Might be the Pod UID itself, or the UID of an ancestor.
-	MatchedAncestorUID types.UID
-}
-
-var _ store.Summarizer = PodChangeAction{}
-
-func (PodChangeAction) Action() {}
-
-func (a PodChangeAction) Summarize(s *store.ChangeSummary) {
-	s.Pods.Add(types.NamespacedName{Name: a.Pod.Name, Namespace: a.Pod.Namespace})
-}
-
-func NewPodChangeAction(pod *v1alpha1.Pod, mn model.ManifestName, matchedAncestorUID types.UID) PodChangeAction {
-	return PodChangeAction{
-		Pod:                pod,
-		ManifestName:       mn,
-		MatchedAncestorUID: matchedAncestorUID,
-	}
-}
-
-type PodDeleteAction struct {
-	PodID     k8s.PodID
-	Namespace k8s.Namespace
-}
-
-var _ store.Summarizer = PodDeleteAction{}
-
-func (PodDeleteAction) Action() {}
-
-func (a PodDeleteAction) Summarize(s *store.ChangeSummary) {
-	s.Pods.Add(types.NamespacedName{Name: string(a.PodID), Namespace: string(a.Namespace)})
-}
-
-func NewPodDeleteAction(podID k8s.PodID, namespace k8s.Namespace) PodDeleteAction {
-	return PodDeleteAction{
-		PodID:     podID,
-		Namespace: namespace,
-	}
 }
 
 type ServiceChangeAction struct {

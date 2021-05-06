@@ -40,7 +40,7 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 	claims := make(map[types.UID]types.NamespacedName)
 	seen := make(map[types.NamespacedName]bool)
 	for _, mt := range state.Targets() {
-		key := keyForManifest(mt.Manifest.Name)
+		key := KeyForManifest(mt.Manifest.Name)
 		seen[key] = true
 		kd, err := m.kubernetesDiscoveryFromManifest(ctx, key, mt, claims)
 		if err != nil {
@@ -74,7 +74,7 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 	}
 }
 
-func keyForManifest(mn model.ManifestName) types.NamespacedName {
+func KeyForManifest(mn model.ManifestName) types.NamespacedName {
 	return types.NamespacedName{Name: apis.SanitizeName(mn.String())}
 }
 

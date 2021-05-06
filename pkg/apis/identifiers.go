@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
@@ -19,7 +21,10 @@ const MaxNameLength = validation.DNS1123SubdomainMaxLength
 var invalidPathCharacters = regexp.MustCompile(`[` + strings.Join(path.NameMayNotContain, "") + `]`)
 
 func Key(o resource.Object) types.NamespacedName {
-	objMeta := o.GetObjectMeta()
+	return KeyFromMeta(*o.GetObjectMeta())
+}
+
+func KeyFromMeta(objMeta metav1.ObjectMeta) types.NamespacedName {
 	return types.NamespacedName{Name: objMeta.Name, Namespace: objMeta.Namespace}
 }
 

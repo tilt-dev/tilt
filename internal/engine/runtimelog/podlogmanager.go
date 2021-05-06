@@ -98,7 +98,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []*Pod
 }
 
 func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
-	if len(summary.Pods.Changes) == 0 {
+	if len(summary.KubernetesDiscoveries.Changes) == 0 {
 		return
 	}
 
