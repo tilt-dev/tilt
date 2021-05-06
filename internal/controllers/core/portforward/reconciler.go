@@ -197,15 +197,3 @@ func (w PodLogActionWriter) Write(level logger.Level, fields logger.Fields, p []
 	w.Store.Dispatch(store.NewLogAction(w.ManifestName, k8sconv.SpanIDForPod(w.ManifestName, w.PodID), level, fields, p))
 	return nil
 }
-
-func modelForwardsToApiForwards(forwards []model.PortForward) []v1alpha1.Forward {
-	res := make([]v1alpha1.Forward, len(forwards))
-	for i, fwd := range forwards {
-		res[i] = v1alpha1.Forward{
-			LocalPort:     int32(fwd.LocalPort),
-			ContainerPort: int32(fwd.ContainerPort),
-			Host:          fwd.Host,
-		}
-	}
-	return res
-}
