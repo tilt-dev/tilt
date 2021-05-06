@@ -118,7 +118,7 @@ func (r *Reconciler) OnChange(ctx context.Context, st store.RStore, summary stor
 	}
 }
 
-func (r *Reconciler) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward v1alpha1.Forward) {
+func (r *Reconciler) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward Forward) {
 	originalBackoff := wait.Backoff{
 		Steps:    1000,
 		Duration: 50 * time.Millisecond,
@@ -154,7 +154,7 @@ func (r *Reconciler) startPortForwardLoop(ctx context.Context, entry portForward
 	}
 }
 
-func (r *Reconciler) onePortForward(ctx context.Context, entry portForwardEntry, forward v1alpha1.Forward) error {
+func (r *Reconciler) onePortForward(ctx context.Context, entry portForwardEntry, forward Forward) error {
 	ns := k8s.Namespace(entry.Spec.Namespace)
 	podID := k8s.PodID(entry.Spec.PodName)
 
@@ -173,7 +173,7 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry portForwardEntry,
 var _ store.Subscriber = &Reconciler{}
 
 type portForwardEntry struct {
-	*v1alpha1.PortForward
+	*PortForward
 	ctx    context.Context
 	cancel func()
 }

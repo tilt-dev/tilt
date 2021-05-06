@@ -278,8 +278,8 @@ func (f *pfrFixture) assertContextNotCancelled(t *testing.T, ctx context.Context
 	assert.NoError(t, ctx.Err(), "expect non-cancelled context to have no error")
 }
 
-func (f *pfrFixture) makePF(name string, mName model.ManifestName, podName k8s.PodID, ns string, forwards []v1alpha1.Forward) *v1alpha1.PortForward {
-	return &v1alpha1.PortForward{
+func (f *pfrFixture) makePF(name string, mName model.ManifestName, podName k8s.PodID, ns string, forwards []Forward) *PortForward {
+	return &PortForward{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Annotations: map[string]string{
@@ -295,20 +295,20 @@ func (f *pfrFixture) makePF(name string, mName model.ManifestName, podName k8s.P
 	}
 }
 
-func (f *pfrFixture) makeSimplePF(name string, localPort, containerPort int32) *v1alpha1.PortForward {
-	fwd := v1alpha1.Forward{
+func (f *pfrFixture) makeSimplePF(name string, localPort, containerPort int32) *PortForward {
+	fwd := Forward{
 		LocalPort:     localPort,
 		ContainerPort: containerPort,
 	}
-	return f.makeSimplePFMultipleForwards(name, []v1alpha1.Forward{fwd})
+	return f.makeSimplePFMultipleForwards(name, []Forward{fwd})
 }
 
-func (f *pfrFixture) makeSimplePFMultipleForwards(name string, forwards []v1alpha1.Forward) *v1alpha1.PortForward {
+func (f *pfrFixture) makeSimplePFMultipleForwards(name string, forwards []Forward) *PortForward {
 	return f.makePF(name, model.ManifestName(fmt.Sprintf("manifest-%s", name)), k8s.PodID(fmt.Sprintf("pod-%s", name)), "", forwards)
 }
 
-func (f *pfrFixture) makeForward(localPort, containerPort int32, host string) v1alpha1.Forward {
-	return v1alpha1.Forward{
+func (f *pfrFixture) makeForward(localPort, containerPort int32, host string) Forward {
+	return Forward{
 		LocalPort:     localPort,
 		ContainerPort: containerPort,
 		Host:          host,
