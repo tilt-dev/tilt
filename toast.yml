@@ -26,6 +26,8 @@ tasks:
        pkg/webview/*.proto
       goimports -local github.com/tilt-dev/tilt -w pkg/webview/*.pb.go
       sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/view.pb.go 
+      sed -i 's|"$ref": "#/definitions/v1Time",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
+      sed -i 's|"$ref": "#/definitions/v1MicroTime",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
 
   proto-ts:
     dependencies:
@@ -37,6 +39,7 @@ tasks:
     command: |
       set -euo pipefail
       swagger-to-ts pkg/webview/view.swagger.json --camelcase --wrapper "declare namespace Proto" --output web/src/view.d.ts
+      sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/view.pb.go 
 
   wire:
     location: /go/src/github.com/tilt-dev/tilt

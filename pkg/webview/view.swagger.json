@@ -112,7 +112,7 @@
           "description": "APIVersion defines the version of this resource that this field set\napplies to. The format is \"group/version\" just like the top-level\nAPIVersion field. It is necessary to track the version of a field\nset because it cannot be automatically converted."
         },
         "time": {
-          "$ref": "#/definitions/v1Time",
+          "type": "string", "format": "date-time",
           "title": "Time is timestamp of when these fields were set. It should always be empty if Operation is 'Apply'\n+optional"
         },
         "fieldsType": {
@@ -175,11 +175,11 @@
           "title": "A sequence number representing a specific generation of the desired state.\nPopulated by the system. Read-only.\n+optional"
         },
         "creationTimestamp": {
-          "$ref": "#/definitions/v1Time",
+          "type": "string", "format": "date-time",
           "description": "CreationTimestamp is a timestamp representing the server time when this object was\ncreated. It is not guaranteed to be set in happens-before order across separate operations.\nClients may not set this value. It is represented in RFC3339 form and is in UTC.\n\nPopulated by the system.\nRead-only.\nNull for lists.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata\n+optional"
         },
         "deletionTimestamp": {
-          "$ref": "#/definitions/v1Time",
+          "type": "string", "format": "date-time",
           "description": "DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This\nfield is set by the server when a graceful deletion is requested by the user, and is not\ndirectly settable by a client. The resource is expected to be deleted (no longer visible\nfrom resource lists, and not reachable by name) after the time in this field, once the\nfinalizers list is empty. As long as the finalizers list contains items, deletion is blocked.\nOnce the deletionTimestamp is set, this value may not be unset or be set further into the\nfuture, although it may be shortened or the resource may be deleted prior to this time.\nFor example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react\nby sending a graceful termination signal to the containers in the pod. After that 30 seconds,\nthe Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup,\nremove the pod from the API. In the presence of network partitions, this object may still\nexist after this timestamp, until an administrator or automated process can determine the\nresource is fully terminated.\nIf not set, graceful deletion of the object has not been requested.\n\nPopulated by the system when a graceful deletion is requested.\nRead-only.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata\n+optional"
         },
         "deletionGracePeriodSeconds": {
@@ -281,7 +281,7 @@
       "type": "object",
       "properties": {
         "startTime": {
-          "$ref": "#/definitions/v1MicroTime",
+          "type": "string", "format": "date-time",
           "description": "The time when the build started."
         },
         "spanID": {
@@ -306,11 +306,11 @@
           "description": "A list of warnings encountered while running the build.\nThese warnings will also be printed to the build's log."
         },
         "startTime": {
-          "$ref": "#/definitions/v1MicroTime",
+          "type": "string", "format": "date-time",
           "description": "The time when the build started."
         },
         "finishTime": {
-          "$ref": "#/definitions/v1MicroTime",
+          "type": "string", "format": "date-time",
           "description": "The time when the build finished."
         },
         "spanID": {
@@ -348,11 +348,11 @@
           "description": "The name of the active pod.\n\nThe active pod tends to be what Tilt defaults to for port-forwards,\nlive-updates, etc."
         },
         "podCreationTime": {
-          "$ref": "#/definitions/v1Time",
+          "type": "string", "format": "date-time",
           "description": "The creation time of the active pod."
         },
         "podUpdateStartTime": {
-          "$ref": "#/definitions/v1Time",
+          "type": "string", "format": "date-time",
           "title": "The last update time of the active pod"
         },
         "podStatus": {
@@ -425,7 +425,7 @@
       "type": "object",
       "properties": {
         "lastDeployTime": {
-          "$ref": "#/definitions/v1MicroTime",
+          "type": "string", "format": "date-time",
           "description": "The last time this resource was deployed."
         },
         "triggerMode": {
@@ -445,7 +445,7 @@
           "description": "The currently running build, if any."
         },
         "pendingBuildSince": {
-          "$ref": "#/definitions/v1MicroTime",
+          "type": "string", "format": "date-time",
           "description": "When the build was put in the pending queue."
         },
         "hasPendingChanges": {

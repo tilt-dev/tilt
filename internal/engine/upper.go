@@ -7,11 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/timecmp"
-	"github.com/tilt-dev/tilt/pkg/apis"
-
-	"github.com/tilt-dev/tilt/internal/engine/portforward"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
@@ -25,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -33,7 +29,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -483,7 +482,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			if lt.ServeCmd.Empty() {
 				// local resources without a serve command are jobs that run and
 				// terminate; so there's no real runtime status
-				lrs.Status = model.RuntimeStatusNotApplicable
+				lrs.Status = v1alpha1.RuntimeStatusNotApplicable
 			}
 		}
 		ms.RuntimeState = lrs

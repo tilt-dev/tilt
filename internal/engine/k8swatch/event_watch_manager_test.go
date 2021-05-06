@@ -41,7 +41,7 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
 	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.kClient.EmitEvent(f.ctx, evt)
+	f.kClient.UpsertEvent(evt)
 	expected := store.K8sEventAction{Event: evt, ManifestName: mn}
 	f.assertActions(expected)
 }
@@ -65,8 +65,8 @@ func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
 	evt2 := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
 	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.kClient.EmitEvent(f.ctx, evt1)
-	f.kClient.EmitEvent(f.ctx, evt2)
+	f.kClient.UpsertEvent(evt1)
+	f.kClient.UpsertEvent(evt2)
 
 	expected := store.K8sEventAction{Event: evt2, ManifestName: mn}
 	f.assertActions(expected)
@@ -90,7 +90,7 @@ func TestEventWatchManager_duplicateDeployIDs(t *testing.T) {
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
-	f.kClient.EmitEvent(f.ctx, evt)
+	f.kClient.UpsertEvent(evt)
 	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	expected := store.K8sEventAction{Event: evt, ManifestName: fe1}
@@ -130,7 +130,7 @@ func TestEventWatchManagerDifferentEvents(t *testing.T) {
 			evt.Type = c.Type
 
 			f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-			f.kClient.EmitEvent(f.ctx, evt)
+			f.kClient.UpsertEvent(evt)
 			if c.Expected {
 				expected := store.K8sEventAction{Event: evt, ManifestName: mn}
 				f.assertActions(expected)
@@ -187,7 +187,7 @@ func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 
 	// The UIDs haven't shown up in the engine state yet, so
 	// we shouldn't emit the events.
-	f.kClient.EmitEvent(f.ctx, evt)
+	f.kClient.UpsertEvent(evt)
 	f.assertNoActions()
 
 	// When the UIDs of the deployed objects show up, then
@@ -214,11 +214,11 @@ func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 	evt1 := f.makeEvent(entity)
 	evt1.CreationTimestamp = apis.NewTime(f.clock.Now().Add(-time.Minute))
 
-	f.kClient.EmitEvent(f.ctx, evt1)
+	f.kClient.UpsertEvent(evt1)
 
 	evt2 := f.makeEvent(entity)
 
-	f.kClient.EmitEvent(f.ctx, evt2)
+	f.kClient.UpsertEvent(evt2)
 
 	// first event predates tilt start time, so should be ignored
 	expected := store.K8sEventAction{Event: evt2, ManifestName: mn}

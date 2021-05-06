@@ -46,7 +46,7 @@ func TestPodWatch(t *testing.T) {
 	f.requireWatchForEntity(manifest.Name, entities.Deployment())
 	f.kClient.Inject(entities...)
 
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	f.assertObservedPods(manifest.Name, ancestorMap{p.UID: entities.Deployment().UID()})
 }
@@ -63,7 +63,7 @@ func TestPodWatchChangeEventBeforeUID(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.kClient.Inject(entities...)
 	// emit an event before this manifest knows of anything deployed
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	require.Never(t, func() bool {
 		state := f.store.RLockState()
@@ -96,12 +96,12 @@ func TestPodWatchResourceVersionStringLessThan(t *testing.T) {
 	f.kClient.Inject(entities...)
 
 	p1 := pb.Build()
-	f.kClient.EmitPod(labels.Everything(), p1)
+	f.kClient.UpsertPod(p1)
 
 	f.assertObservedPods(manifest.Name, ancestorMap{p1.UID: entities.Deployment().UID()})
 
 	p2 := pb.WithResourceVersion("10").WithTemplateSpecHash("abc123").Build()
-	f.kClient.EmitPod(labels.Everything(), p2)
+	f.kClient.UpsertPod(p2)
 
 	f.requireState(KeyForManifest(manifest.Name), func(kd *v1alpha1.KubernetesDiscovery) bool {
 		if kd == nil {
@@ -123,7 +123,7 @@ func TestPodWatchExtraSelectors(t *testing.T) {
 		WithPodLabel("foo", "bar").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	// there should be NO ancestor since this was matched by labels
 	f.assertObservedPods(manifest.Name, ancestorMap{p.UID: ""})
@@ -141,14 +141,14 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 		WithPodLabel("foo", "bar").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p1)
+	f.kClient.UpsertPod(p1)
 
 	// p2 is for a known deployment UID
 	pb2 := podbuilder.New(t, manifest).WithPodName("pod2")
 	p2 := pb2.Build()
 	p2Entities := pb2.ObjectTreeEntities()
 	f.kClient.Inject(p2Entities...)
-	f.kClient.EmitPod(labels.Everything(), p2)
+	f.kClient.UpsertPod(p2)
 	f.addDeployedEntity(manifest, p2Entities.Deployment())
 
 	// p3 matches NEITHER ls1 nor ls2
@@ -158,7 +158,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 		WithPodLabel("foo", "wrong-value").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p3)
+	f.kClient.UpsertPod(p3)
 
 	// p4 matches ls2 but not ls1
 	p4 := podbuilder.New(t, manifest).
@@ -166,7 +166,7 @@ func TestPodWatchHandleSelectorChange(t *testing.T) {
 		WithPodLabel("baz", "quu").
 		WithUnknownOwner().
 		Build()
-	f.kClient.EmitPod(labels.Everything(), p4)
+	f.kClient.UpsertPod(p4)
 
 	// p3 + p4 should not be observed
 	f.assertObservedPods(manifest.Name, ancestorMap{
@@ -197,7 +197,7 @@ func TestPodWatchReadd(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.addDeployedEntity(manifest, entities.Deployment())
 	f.kClient.Inject(entities...)
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	f.assertObservedPods(manifest.Name, ancestorMap{p.UID: entities.Deployment().UID()})
 
@@ -244,7 +244,7 @@ func TestPodWatchDuplicates(t *testing.T) {
 	f.requireWatchForEntity(m1.Name, entities.Deployment())
 
 	f.kClient.Inject(entities...)
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	// m1 should see the Pod and map it back to its ancestor (deployment)
 	f.assertObservedPods(m1.Name, ancestorMap{p.UID: entities.Deployment().UID()})
@@ -270,7 +270,7 @@ func TestPodWatchDuplicates(t *testing.T) {
 
 	// NOTE: label matches do NOT get re-dispatched events for known pods currently,
 	// 	so we need to re-emit a Pod event
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	// m3 + m4 still see the pod! but have no concept of ancestor since it was a label match
 	for _, mn := range []model.ManifestName{m3.Name, m4.Name} {
@@ -293,7 +293,7 @@ func TestPodWatchRestarts(t *testing.T) {
 	f.requireWatchForEntity(manifest.Name, entities.Deployment())
 	f.kClient.Inject(entities...)
 
-	f.kClient.EmitPod(labels.Everything(), p)
+	f.kClient.UpsertPod(p)
 
 	f.requireState(KeyForManifest(manifest.Name), func(kd *v1alpha1.KubernetesDiscovery) bool {
 		if kd == nil || len(kd.Status.Pods) != 1 {

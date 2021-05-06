@@ -115,29 +115,29 @@ func ContainerForStatus(pod *v1.Pod, cStatus v1.ContainerStatus) (v1alpha1.Conta
 	return c, nil
 }
 
-func ContainerStatusToRuntimeState(status v1alpha1.Container) model.RuntimeStatus {
+func ContainerStatusToRuntimeState(status v1alpha1.Container) v1alpha1.RuntimeStatus {
 	state := status.State
 	if state.Terminated != nil {
 		if state.Terminated.ExitCode == 0 {
-			return model.RuntimeStatusOK
+			return v1alpha1.RuntimeStatusOK
 		} else {
-			return model.RuntimeStatusError
+			return v1alpha1.RuntimeStatusError
 		}
 	}
 
 	if state.Waiting != nil {
 		if ErrorWaitingReasons[state.Waiting.Reason] {
-			return model.RuntimeStatusError
+			return v1alpha1.RuntimeStatusError
 		}
-		return model.RuntimeStatusPending
+		return v1alpha1.RuntimeStatusPending
 	}
 
 	// TODO(milas): this should really consider status.Ready
 	if state.Running != nil {
-		return model.RuntimeStatusOK
+		return v1alpha1.RuntimeStatusOK
 	}
 
-	return model.RuntimeStatusUnknown
+	return v1alpha1.RuntimeStatusUnknown
 }
 
 var ErrorWaitingReasons = map[string]bool{
