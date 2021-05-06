@@ -717,7 +717,7 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 	return ok, earliest
 }
 
-func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) model.UpdateStatus {
+func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) v1alpha1.UpdateStatus {
 	currentBuild := ms.CurrentBuild
 	hasPendingChanges, _ := ms.HasPendingChanges()
 	lastBuild := ms.LastBuild()
@@ -732,15 +732,15 @@ func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) model.Updat
 	}
 
 	if !currentBuild.Empty() {
-		return model.UpdateStatusInProgress
+		return v1alpha1.UpdateStatusInProgress
 	} else if hasPendingBuild {
-		return model.UpdateStatusPending
+		return v1alpha1.UpdateStatusPending
 	} else if lastBuildError {
-		return model.UpdateStatusError
+		return v1alpha1.UpdateStatusError
 	} else if !lastBuild.Empty() {
-		return model.UpdateStatusOK
+		return v1alpha1.UpdateStatusOK
 	}
-	return model.UpdateStatusNone
+	return v1alpha1.UpdateStatusNone
 }
 
 var _ model.TargetStatus = &ManifestState{}
@@ -892,7 +892,7 @@ func tiltfileResourceView(s EngineState) view.Resource {
 }
 
 func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
-	runStatus := model.RuntimeStatusUnknown
+	runStatus := v1alpha1.RuntimeStatusUnknown
 	if mt.State.RuntimeState != nil {
 		runStatus = mt.State.RuntimeState.RuntimeStatus()
 	}

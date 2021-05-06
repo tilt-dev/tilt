@@ -5,6 +5,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -151,7 +152,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 		BuildHistory: []*proto_webview.BuildRecord{
 			pltfb,
 		},
-		RuntimeStatus: string(model.RuntimeStatusNotApplicable),
+		RuntimeStatus: string(v1alpha1.RuntimeStatusNotApplicable),
 		UpdateStatus:  string(s.TiltfileState.UpdateStatus(model.TriggerModeAuto)),
 	}
 	start, err := timeToProto(ctfb.StartTime)
@@ -172,7 +173,7 @@ func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, er
 
 func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) error {
 	r.UpdateStatus = string(mt.UpdateStatus())
-	r.RuntimeStatus = string(model.RuntimeStatusNotApplicable)
+	r.RuntimeStatus = string(v1alpha1.RuntimeStatusNotApplicable)
 
 	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
 		return nil

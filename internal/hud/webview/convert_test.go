@@ -245,7 +245,7 @@ func TestReadinessCheckFailing(t *testing.T) {
 	v := stateToProtoView(t, *state)
 	rv, ok := findResource(m.Name, v)
 	require.True(t, ok)
-	require.Equal(t, model.RuntimeStatusPending, model.RuntimeStatus(rv.RuntimeStatus))
+	require.Equal(t, v1alpha1.RuntimeStatusPending, v1alpha1.RuntimeStatus(rv.RuntimeStatus))
 }
 
 func TestLocalResource(t *testing.T) {
@@ -259,14 +259,14 @@ func TestLocalResource(t *testing.T) {
 	}.WithDeployTarget(lt)
 
 	state := newState([]model.Manifest{m})
-	lrs := store.LocalRuntimeState{Status: model.RuntimeStatusNotApplicable}
+	lrs := store.LocalRuntimeState{Status: v1alpha1.RuntimeStatusNotApplicable}
 	state.ManifestTargets[m.Name].State.RuntimeState = lrs
 	v := stateToProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.Resources))
 	r := v.Resources[1]
 	assert.Equal(t, "test", r.Name)
-	assert.Equal(t, model.RuntimeStatusNotApplicable, model.RuntimeStatus(r.RuntimeStatus))
+	assert.Equal(t, v1alpha1.RuntimeStatusNotApplicable, v1alpha1.RuntimeStatus(r.RuntimeStatus))
 	require.Len(t, r.Specs, 1)
 	spec := r.Specs[0]
 	require.Equal(t, proto_webview.TargetType_TARGET_TYPE_LOCAL, spec.Type)

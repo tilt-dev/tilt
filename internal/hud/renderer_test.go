@@ -14,6 +14,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/rty"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -114,7 +115,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 			PodStatus:   "Running",
 			PodRestarts: 1,
 			SpanID:      "vigoda:pod",
-			RunStatus:   model.RuntimeStatusOK,
+			RunStatus:   v1alpha1.RuntimeStatusOK,
 		},
 	})
 	v.LogReader = newSpanLogReader("a-a-a-aaaaabe vigoda", "vigoda:pod",
@@ -155,7 +156,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 			PodName:         "vigoda-pod",
 			PodCreationTime: ts,
 			PodStatus:       "Running",
-			RunStatus:       model.RuntimeStatusOK,
+			RunStatus:       v1alpha1.RuntimeStatusOK,
 			PodRestarts:     1,
 			SpanID:          "vigoda:pod",
 		},
@@ -181,7 +182,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 			PodName:         "vigoda-pod",
 			PodCreationTime: ts,
 			PodStatus:       "Running",
-			RunStatus:       model.RuntimeStatusOK,
+			RunStatus:       v1alpha1.RuntimeStatusOK,
 			PodRestarts:     0,
 		},
 		Endpoints: []string{"1.2.3.4:8080"},
@@ -200,7 +201,7 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 			PodName:         "vigoda-pod",
 			PodCreationTime: ts,
 			PodStatus:       "Running",
-			RunStatus:       model.RuntimeStatusOK,
+			RunStatus:       v1alpha1.RuntimeStatusOK,
 			PodRestarts:     1,
 			SpanID:          "vigoda:pod",
 		},
@@ -248,7 +249,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`)
 		PendingBuildSince: ts.Add(-5 * time.Second),
 		PendingBuildEdits: []string{"main.go"},
 		ResourceInfo: view.K8sResourceInfo{
-			RunStatus: model.RuntimeStatusPending,
+			RunStatus: v1alpha1.RuntimeStatusPending,
 		},
 	})
 	rtf.run("pending build", 70, 20, v, plainVs)
@@ -260,7 +261,7 @@ oh noooooooooooooooooo nooooooooooo noooooooooooo nooooooooooo`)
 			Edits: []string{"abbot.go", "costello.go", "harold.go"},
 		}},
 		ResourceInfo: view.K8sResourceInfo{
-			RunStatus: model.RuntimeStatusPending,
+			RunStatus: v1alpha1.RuntimeStatusPending,
 		},
 	})
 	rtf.run("edited files narrow term", 60, 20, v, plainVs)
@@ -361,7 +362,7 @@ func TestPodPending(t *testing.T) {
 	v.Resources[0].ResourceInfo = view.K8sResourceInfo{
 		PodCreationTime: ts,
 		PodStatus:       "Pending",
-		RunStatus:       model.RuntimeStatusPending,
+		RunStatus:       v1alpha1.RuntimeStatusPending,
 	}
 	rtf.run("pending pod pending status", 80, 20, v, vs)
 	assert.Equal(t, statusDisplay{color: cPending, spinner: true},
@@ -384,7 +385,7 @@ func TestCrashingPodInlineCrashLog(t *testing.T) {
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:            "vigoda-pod",
 			PodStatus:          "Error",
-			RunStatus:          model.RuntimeStatusError,
+			RunStatus:          v1alpha1.RuntimeStatusError,
 			SpanID:             "vigoda:pod",
 			PodUpdateStartTime: ts,
 			PodCreationTime:    ts.Add(-time.Minute),
@@ -419,7 +420,7 @@ func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:            "vigoda-pod",
 			PodStatus:          "Error",
-			RunStatus:          model.RuntimeStatusError,
+			RunStatus:          v1alpha1.RuntimeStatusError,
 			SpanID:             "vigoda:pod",
 			PodUpdateStartTime: ts,
 			PodCreationTime:    ts.Add(-time.Minute),
@@ -453,7 +454,7 @@ func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:            "vigoda-pod",
 			PodStatus:          "Running",
-			RunStatus:          model.RuntimeStatusOK,
+			RunStatus:          v1alpha1.RuntimeStatusOK,
 			SpanID:             "vigoda:pod",
 			PodUpdateStartTime: ts,
 			PodCreationTime:    ts.Add(-time.Minute),
@@ -487,7 +488,7 @@ func TestCompletedPod(t *testing.T) {
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:            "vigoda-pod",
 			PodStatus:          "Completed",
-			RunStatus:          model.RuntimeStatusOK,
+			RunStatus:          v1alpha1.RuntimeStatusOK,
 			PodUpdateStartTime: ts,
 			PodCreationTime:    ts.Add(-time.Minute),
 		},
@@ -512,7 +513,7 @@ func TestBrackets(t *testing.T) {
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:         "vigoda-pod",
 			PodStatus:       "Running",
-			RunStatus:       model.RuntimeStatusOK,
+			RunStatus:       v1alpha1.RuntimeStatusOK,
 			PodCreationTime: ts,
 		},
 		LastDeployTime: ts,
@@ -562,7 +563,7 @@ func TestBuildHistory(t *testing.T) {
 		ResourceInfo: view.K8sResourceInfo{
 			PodName:            "vigoda-pod",
 			PodStatus:          "Running",
-			RunStatus:          model.RuntimeStatusOK,
+			RunStatus:          v1alpha1.RuntimeStatusOK,
 			PodUpdateStartTime: ts,
 			PodCreationTime:    ts.Add(-time.Minute),
 		},
@@ -578,7 +579,7 @@ func TestDockerComposeUpExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "running", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusOK),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "running", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusOK),
 		Endpoints:    []string{"http://localhost:3000"},
 		CurrentBuild: model.BuildRecord{
 			StartTime: now.Add(-5 * time.Second),
@@ -597,7 +598,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
 		CurrentBuild: model.BuildRecord{
 			StartTime: now.Add(-5 * time.Second),
 			Reason:    model.BuildReasonFlagChangedFiles,
@@ -615,7 +616,7 @@ func TestDetectDCCrashExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
@@ -629,7 +630,7 @@ func TestDetectDCCrashNotExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
@@ -643,7 +644,7 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), model.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
@@ -780,7 +781,7 @@ func TestRenderTabView(t *testing.T) {
 			PodName:         "vigoda-pod",
 			PodCreationTime: now,
 			PodStatus:       "Running",
-			RunStatus:       model.RuntimeStatusOK,
+			RunStatus:       v1alpha1.RuntimeStatusOK,
 			SpanID:          "vigoda:pod",
 		},
 		LastDeployTime: now,
@@ -816,7 +817,7 @@ func TestPendingLocalResource(t *testing.T) {
 			StartTime: ts.Add(-5 * time.Second),
 			Edits:     []string{"node.json"},
 		},
-		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusPending, 0, model.LogSpanID("rt1")),
+		ResourceInfo: view.NewLocalResourceInfo(v1alpha1.RuntimeStatusPending, 0, model.LogSpanID("rt1")),
 	})
 
 	vs := fakeViewState(1, view.CollapseAuto)
@@ -831,7 +832,7 @@ func TestFinishedLocalResource(t *testing.T) {
 		BuildHistory: []model.BuildRecord{
 			model.BuildRecord{FinishTime: time.Now()},
 		},
-		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusNotApplicable, 0, model.LogSpanID("rt1")),
+		ResourceInfo: view.NewLocalResourceInfo(v1alpha1.RuntimeStatusNotApplicable, 0, model.LogSpanID("rt1")),
 	})
 
 	vs := fakeViewState(1, view.CollapseAuto)
@@ -867,7 +868,7 @@ func TestLocalResourceErroredServe(t *testing.T) {
 		BuildHistory: []model.BuildRecord{
 			model.BuildRecord{FinishTime: time.Now()},
 		},
-		ResourceInfo: view.NewLocalResourceInfo(model.RuntimeStatusError, 0, model.LogSpanID("rt1")),
+		ResourceInfo: view.NewLocalResourceInfo(v1alpha1.RuntimeStatusError, 0, model.LogSpanID("rt1")),
 	})
 
 	vs := fakeViewState(1, view.CollapseAuto)

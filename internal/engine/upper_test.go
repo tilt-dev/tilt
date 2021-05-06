@@ -2669,7 +2669,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	f.dispatchDCEvent(m, dockercompose.ActionCreate, docker.NewCreatedContainerState())
 
 	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusPending
+		return ms.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusPending
 	})
 
 	beforeStart := f.Now()
@@ -2678,7 +2678,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 	f.dispatchDCEvent(m, dockercompose.ActionStart, docker.NewRunningContainerState())
 
 	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusOK
+		return ms.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusOK
 	})
 
 	f.withManifestState(m.ManifestName(), func(ms store.ManifestState) {
@@ -2691,7 +2691,7 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusOK
+		return ms.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusOK
 	})
 }
 
@@ -2715,7 +2715,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f.dispatchDCEvent(m, dockercompose.ActionCreate, docker.NewCreatedContainerState())
 
 	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusPending
+		return ms.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusPending
 	})
 }
 
@@ -2799,11 +2799,11 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f.waitForCompletedBuildCount(2)
 
 	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, model.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
+		assert.NotEqual(t, v1alpha1.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
 	})
 
 	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, model.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
+		assert.NotEqual(t, v1alpha1.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
 	})
 
 	for _, action := range []dockercompose.Action{
@@ -2824,11 +2824,11 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	}
 
 	f.WaitUntilManifestState("is crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusError
+		return st.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusError
 	})
 
 	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, model.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
+		assert.NotEqual(t, v1alpha1.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
 	})
 
 	for _, action := range []dockercompose.Action{
@@ -2844,7 +2844,7 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 	}
 
 	f.WaitUntilManifestState("is not crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCRuntimeState().RuntimeStatus() == model.RuntimeStatusOK
+		return st.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusOK
 	})
 }
 
@@ -2869,7 +2869,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 			t.Fatal("expected RuntimeState to be docker compose, but it wasn't")
 		}
 		assert.Equal(t, expected, state.ContainerID)
-		assert.Equal(t, model.RuntimeStatusOK, state.RuntimeStatus())
+		assert.Equal(t, v1alpha1.RuntimeStatusOK, state.RuntimeStatus())
 	})
 }
 

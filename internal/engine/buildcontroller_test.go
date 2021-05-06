@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -192,7 +193,7 @@ func TestBuildControllerLocalResource(t *testing.T) {
 
 	f.WaitUntilManifestState("local target manifest state not updated", "local", func(ms store.ManifestState) bool {
 		lrs := ms.RuntimeState.(store.LocalRuntimeState)
-		return !lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus() == model.RuntimeStatusNotApplicable
+		return !lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus() == v1alpha1.RuntimeStatusNotApplicable
 	})
 
 	err := f.Stop()

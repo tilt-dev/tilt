@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -24,11 +25,11 @@ func (t ManifestTarget) Status() model.TargetStatus {
 	return t.State
 }
 
-func (mt *ManifestTarget) UpdateStatus() model.UpdateStatus {
+func (mt *ManifestTarget) UpdateStatus() v1alpha1.UpdateStatus {
 	m := mt.Manifest
 	us := mt.State.UpdateStatus(m.TriggerMode)
 
-	if us == model.UpdateStatusPending {
+	if us == v1alpha1.UpdateStatusPending {
 		// A resource with no update command can still be in pending mode.
 		return us
 	}
@@ -43,10 +44,10 @@ func (mt *ManifestTarget) UpdateStatus() model.UpdateStatus {
 		// have a completed build record. Otherwise the server controller will try
 		// to start the server twice (once while the update is in-progress, and once
 		// when the update completes).
-		if us == model.UpdateStatusInProgress {
-			return model.UpdateStatusPending
+		if us == v1alpha1.UpdateStatusInProgress {
+			return v1alpha1.UpdateStatusPending
 		}
-		return model.UpdateStatusNotApplicable
+		return v1alpha1.UpdateStatusNotApplicable
 	}
 
 	return us
