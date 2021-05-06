@@ -237,7 +237,8 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient()
-	plc := NewReconciler(kCli)
+	r := NewReconciler(kCli)
+	r.SetActive()
 
 	out := bufsync.NewThreadSafeBuffer()
 	l := logger.NewLogger(logger.DebugLvl, out)
@@ -249,7 +250,7 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 		cancel:         cancel,
 		st:             st,
 		kCli:           kCli,
-		r:              plc,
+		r:              r,
 		out:            out,
 	}
 }

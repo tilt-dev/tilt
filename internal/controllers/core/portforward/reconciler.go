@@ -19,6 +19,11 @@ import (
 )
 
 type Reconciler struct {
+	// until PortForwarding behavior is moved off the PortForwardSubscriber and onto
+	// the reconciler, we set the reconciler to active/not with a flag (there should
+	// be no PortForwards on the EngineState anyway, but this is a failsafe).
+	isActive bool
+
 	kClient k8s.Client
 
 	// map of PortForward object name --> running forward(s)
@@ -30,6 +35,11 @@ func NewReconciler(kClient k8s.Client) *Reconciler {
 		kClient:        kClient,
 		activeForwards: make(map[string]portForwardEntry),
 	}
+}
+
+func (r *Reconciler) SetActive() {
+	// Should only be used for tests; should be deprecated when migration is complete
+	r.isActive = true
 }
 
 // Figure out the diff between what's in the data store and
@@ -79,6 +89,10 @@ func (r *Reconciler) addToShutdown(toShutdown []portForwardEntry, entry portForw
 }
 
 func (r *Reconciler) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+	if !r.isActive {
+		return
+	}
+
 	if summary.IsLogOnly() {
 		return
 	}
