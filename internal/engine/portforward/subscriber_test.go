@@ -2,12 +2,8 @@ package portforward
 
 import (
 	"context"
-	"fmt"
-	"runtime"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
@@ -23,7 +19,7 @@ import (
 )
 
 func TestPortForward(t *testing.T) {
-	f := newPLCFixture(t)
+	f := newPFSFixture(t)
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -42,7 +38,7 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
+	assert.Equal(t, 0, len(f.s.activeForwards))
 
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
@@ -51,7 +47,7 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.s.activeForwards))
 	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID().String())
 	firstPodForwardCtx := f.kCli.LastForwardContext()
 
@@ -62,7 +58,7 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
+	assert.Equal(t, 1, len(f.s.activeForwards))
 	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID().String())
 
 	state = f.st.LockMutableStateForTesting()
@@ -72,378 +68,377 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
+	assert.Equal(t, 0, len(f.s.activeForwards))
 
 	assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
 		"Expected first port-forward to be canceled")
 }
 
-func TestMultiplePortForwardsForOnePod(t *testing.T) {
-	f := newPLCFixture(t)
-	defer f.TearDown()
+// func TestMultiplePortForwardsForOnePod(t *testing.T) {
+// 	f := newPFSFixture(t)
+// 	defer f.TearDown()
+//
+// 	state := f.st.LockMutableStateForTesting()
+// 	m := model.Manifest{
+// 		Name: "fe",
+// 	}
+// 	m = m.WithDeployTarget(model.K8sTarget{
+// 		PortForwards: []model.PortForward{
+// 			{
+// 				LocalPort:     8000,
+// 				ContainerPort: 8080,
+// 			},
+// 			{
+// 				LocalPort:     8001,
+// 				ContainerPort: 8081,
+// 			},
+// 		},
+// 	})
+// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 0, len(f.s.activeForwards))
+//
+// 	state = f.st.LockMutableStateForTesting()
+// 	mt := state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	require.Equal(t, 1, len(f.s.activeForwards))
+// 	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
+//
+// 	// PortForwards are executed async so we can't guarantee the order;
+// 	// just make sure each expected call appears exactly once
+// 	expectedRemotePorts := []int{8080, 8081}
+// 	var actualRemotePorts []int
+// 	var contexts []context.Context
+// 	for _, call := range f.kCli.PortForwardCalls() {
+// 		actualRemotePorts = append(actualRemotePorts, call.RemotePort)
+// 		contexts = append(contexts, call.Context)
+// 		assert.Equal(t, "pod-id", call.PodID.String())
+// 	}
+// 	assert.ElementsMatch(t, expectedRemotePorts, actualRemotePorts, "remote ports for which PortForward was called")
+//
+// 	state = f.st.LockMutableStateForTesting()
+// 	mt = state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodPending)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 0, len(f.s.activeForwards))
+//
+// 	for _, ctx := range contexts {
+// 		assert.Equal(t, context.Canceled, ctx.Err(),
+// 			"found uncancelled port forward context")
+// 	}
+// }
+//
+// func TestPortForwardAutoDiscovery(t *testing.T) {
+// 	f := newPFSFixture(t)
+// 	defer f.TearDown()
+//
+// 	state := f.st.LockMutableStateForTesting()
+// 	m := model.Manifest{
+// 		Name: "fe",
+// 	}
+// 	m = m.WithDeployTarget(model.K8sTarget{
+// 		PortForwards: []model.PortForward{
+// 			{
+// 				LocalPort: 8080,
+// 			},
+// 		},
+// 	})
+// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
+//
+// 	mt := state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 0, len(f.s.activeForwards))
+// 	state = f.st.LockMutableStateForTesting()
+// 	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []v1alpha1.Container{
+// 		v1alpha1.Container{Ports: []int32{8000}},
+// 	}
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 8000, f.kCli.LastForwardPortRemotePort())
+// }
+//
+// func TestPortForwardAutoDiscovery2(t *testing.T) {
+// 	f := newPFSFixture(t)
+// 	defer f.TearDown()
+//
+// 	state := f.st.LockMutableStateForTesting()
+// 	m := model.Manifest{
+// 		Name: "fe",
+// 	}
+// 	m = m.WithDeployTarget(model.K8sTarget{
+// 		PortForwards: []model.PortForward{
+// 			{
+// 				LocalPort: 8080,
+// 			},
+// 		},
+// 	})
+// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
+//
+// 	mt := state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
+// 		Name:  "pod-id",
+// 		Phase: string(v1.PodRunning),
+// 		Containers: []v1alpha1.Container{
+// 			{Ports: []int32{8000, 8080}},
+// 		},
+// 	})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
+// }
+//
+// func TestPortForwardChangePort(t *testing.T) {
+// 	f := newPFSFixture(t)
+// 	defer f.TearDown()
+//
+// 	state := f.st.LockMutableStateForTesting()
+// 	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
+// 		PortForwards: []model.PortForward{
+// 			{
+// 				LocalPort:     8080,
+// 				ContainerPort: 8081,
+// 			},
+// 		},
+// 	})
+// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
+// 	mt := state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+//
+// 	state = f.st.LockMutableStateForTesting()
+// 	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
+// 	kTarget.PortForwards[0].ContainerPort = 8082
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 8082, f.kCli.LastForwardPortRemotePort())
+// }
+//
+// func TestPortForwardChangeHost(t *testing.T) {
+// 	f := newPFSFixture(t)
+// 	defer f.TearDown()
+//
+// 	state := f.st.LockMutableStateForTesting()
+// 	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
+// 		PortForwards: []model.PortForward{
+// 			{
+// 				LocalPort:     8080,
+// 				ContainerPort: 8081,
+// 				Host:          "someHostA",
+// 			},
+// 		},
+// 	})
+// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
+// 	mt := state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+// 	assert.Equal(t, "someHostA", f.kCli.LastForwardPortHost())
+//
+// 	state = f.st.LockMutableStateForTesting()
+// 	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
+// 	kTarget.PortForwards[0].Host = "otherHostB"
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+// 	assert.Equal(t, "otherHostB", f.kCli.LastForwardPortHost())
+// }
+//
+// func TestPortForwardChangeManifestName(t *testing.T) {
+// 	f := newPFSFixture(t)
+// 	defer f.TearDown()
+//
+// 	state := f.st.LockMutableStateForTesting()
+// 	m := model.Manifest{Name: "manifestA"}.WithDeployTarget(model.K8sTarget{
+// 		PortForwards: []model.PortForward{
+// 			{
+// 				LocalPort:     8080,
+// 				ContainerPort: 8081,
+// 			},
+// 		},
+// 	})
+// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
+// 	mt := state.ManifestTargets["manifestA"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+//
+// 	state = f.st.LockMutableStateForTesting()
+// 	delete(state.ManifestTargets, "manifestA")
+// 	m = model.Manifest{Name: "manifestB"}.WithDeployTarget(model.K8sTarget{
+// 		PortForwards: []model.PortForward{
+// 			{
+// 				LocalPort:     8080,
+// 				ContainerPort: 8081,
+// 			},
+// 		},
+// 	})
+// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
+// 	mt = state.ManifestTargets["manifestB"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
+// }
+//
+// func TestPortForwardRestart(t *testing.T) {
+// 	if runtime.GOOS == "windows" {
+// 		t.Skip("TODO(nick): investigate")
+// 	}
+// 	f := newPFSFixture(t)
+// 	defer f.TearDown()
+//
+// 	state := f.st.LockMutableStateForTesting()
+// 	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
+// 		PortForwards: []model.PortForward{
+// 			{
+// 				LocalPort:     8080,
+// 				ContainerPort: 8081,
+// 			},
+// 		},
+// 	})
+// 	state.UpsertManifestTarget(store.NewManifestTarget(m))
+// 	mt := state.ManifestTargets["fe"]
+// 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+// 		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+// 	f.st.UnlockMutableState()
+//
+// 	f.onChange()
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 1, f.kCli.CreatePortForwardCallCount())
+//
+// 	err := fmt.Errorf("unique-error")
+// 	f.kCli.LastForwarder().Done <- err
+//
+// 	assert.Contains(t, "unique-error", f.out.String())
+// 	time.Sleep(100 * time.Millisecond)
+//
+// 	assert.Equal(t, 1, len(f.s.activeForwards))
+// 	assert.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
+// }
+//
+// type portForwardTestCase struct {
+// 	spec           []model.PortForward
+// 	containerPorts []int32
+// 	expected       []model.PortForward
+// }
+//
+// func TestPopulatePortForward(t *testing.T) {
+// 	cases := []portForwardTestCase{
+// 		{
+// 			spec:           []model.PortForward{{LocalPort: 8080}},
+// 			containerPorts: []int32{8080},
+// 			expected:       []model.PortForward{{ContainerPort: 8080, LocalPort: 8080}},
+// 		},
+// 		{
+// 			spec:           []model.PortForward{{LocalPort: 8080}},
+// 			containerPorts: []int32{8000, 8080, 8001},
+// 			expected:       []model.PortForward{{ContainerPort: 8080, LocalPort: 8080}},
+// 		},
+// 		{
+// 			spec:           []model.PortForward{{LocalPort: 8080}, {LocalPort: 8000}},
+// 			containerPorts: []int32{8000, 8080, 8001},
+// 			expected: []model.PortForward{
+// 				{ContainerPort: 8080, LocalPort: 8080},
+// 				{ContainerPort: 8000, LocalPort: 8000},
+// 			},
+// 		},
+// 		{
+// 			spec:           []model.PortForward{{ContainerPort: 8000, LocalPort: 8080}},
+// 			containerPorts: []int32{8000, 8080, 8001},
+// 			expected:       []model.PortForward{{ContainerPort: 8000, LocalPort: 8080}},
+// 		},
+// 	}
+//
+// 	for i, c := range cases {
+// 		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
+// 			m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
+// 				PortForwards: c.spec,
+// 			})
+// 			pod := v1alpha1.Pod{
+// 				Containers: []v1alpha1.Container{
+// 					v1alpha1.Container{Ports: c.containerPorts},
+// 				},
+// 			}
+//
+// 			actual := populatePortForwards(m, pod)
+// 			assert.Equal(t, c.expected, actual)
+// 		})
+// 	}
+// }
 
-	state := f.st.LockMutableStateForTesting()
-	m := model.Manifest{
-		Name: "fe",
-	}
-	m = m.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort:     8000,
-				ContainerPort: 8080,
-			},
-			{
-				LocalPort:     8001,
-				ContainerPort: 8081,
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
-
-	state = f.st.LockMutableStateForTesting()
-	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	require.Equal(t, 1, len(f.plc.activeForwards))
-	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
-
-	// PortForwards are executed async so we can't guarantee the order;
-	// just make sure each expected call appears exactly once
-	expectedRemotePorts := []int{8080, 8081}
-	var actualRemotePorts []int
-	var contexts []context.Context
-	for _, call := range f.kCli.PortForwardCalls() {
-		actualRemotePorts = append(actualRemotePorts, call.RemotePort)
-		contexts = append(contexts, call.Context)
-		assert.Equal(t, "pod-id", call.PodID.String())
-	}
-	assert.ElementsMatch(t, expectedRemotePorts, actualRemotePorts, "remote ports for which PortForward was called")
-
-	state = f.st.LockMutableStateForTesting()
-	mt = state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodPending)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
-
-	for _, ctx := range contexts {
-		assert.Equal(t, context.Canceled, ctx.Err(),
-			"found uncancelled port forward context")
-	}
-}
-
-func TestPortForwardAutoDiscovery(t *testing.T) {
-	f := newPLCFixture(t)
-	defer f.TearDown()
-
-	state := f.st.LockMutableStateForTesting()
-	m := model.Manifest{
-		Name: "fe",
-	}
-	m = m.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort: 8080,
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-
-	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 0, len(f.plc.activeForwards))
-	state = f.st.LockMutableStateForTesting()
-	state.ManifestTargets["fe"].State.K8sRuntimeState().Pods["pod-id"].Containers = []v1alpha1.Container{
-		v1alpha1.Container{Ports: []int32{8000}},
-	}
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 8000, f.kCli.LastForwardPortRemotePort())
-}
-
-func TestPortForwardAutoDiscovery2(t *testing.T) {
-	f := newPLCFixture(t)
-	defer f.TearDown()
-
-	state := f.st.LockMutableStateForTesting()
-	m := model.Manifest{
-		Name: "fe",
-	}
-	m = m.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort: 8080,
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-
-	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
-		Name:  "pod-id",
-		Phase: string(v1.PodRunning),
-		Containers: []v1alpha1.Container{
-			{Ports: []int32{8000, 8080}},
-		},
-	})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
-}
-
-func TestPortForwardChangePort(t *testing.T) {
-	f := newPLCFixture(t)
-	defer f.TearDown()
-
-	state := f.st.LockMutableStateForTesting()
-	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort:     8080,
-				ContainerPort: 8081,
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-
-	state = f.st.LockMutableStateForTesting()
-	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
-	kTarget.PortForwards[0].ContainerPort = 8082
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 8082, f.kCli.LastForwardPortRemotePort())
-}
-
-func TestPortForwardChangeHost(t *testing.T) {
-	f := newPLCFixture(t)
-	defer f.TearDown()
-
-	state := f.st.LockMutableStateForTesting()
-	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort:     8080,
-				ContainerPort: 8081,
-				Host:          "someHostA",
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-	assert.Equal(t, "someHostA", f.kCli.LastForwardPortHost())
-
-	state = f.st.LockMutableStateForTesting()
-	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
-	kTarget.PortForwards[0].Host = "otherHostB"
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-	assert.Equal(t, "otherHostB", f.kCli.LastForwardPortHost())
-}
-
-func TestPortForwardChangeManifestName(t *testing.T) {
-	f := newPLCFixture(t)
-	defer f.TearDown()
-
-	state := f.st.LockMutableStateForTesting()
-	m := model.Manifest{Name: "manifestA"}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort:     8080,
-				ContainerPort: 8081,
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	mt := state.ManifestTargets["manifestA"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-
-	state = f.st.LockMutableStateForTesting()
-	delete(state.ManifestTargets, "manifestA")
-	m = model.Manifest{Name: "manifestB"}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort:     8080,
-				ContainerPort: 8081,
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	mt = state.ManifestTargets["manifestB"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 8081, f.kCli.LastForwardPortRemotePort())
-}
-
-func TestPortForwardRestart(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO(nick): investigate")
-	}
-	f := newPLCFixture(t)
-	defer f.TearDown()
-
-	state := f.st.LockMutableStateForTesting()
-	m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{
-				LocalPort:     8080,
-				ContainerPort: 8081,
-			},
-		},
-	})
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
-	mt := state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 1, f.kCli.CreatePortForwardCallCount())
-
-	err := fmt.Errorf("unique-error")
-	f.kCli.LastForwarder().Done <- err
-
-	assert.Contains(t, "unique-error", f.out.String())
-	time.Sleep(100 * time.Millisecond)
-
-	assert.Equal(t, 1, len(f.plc.activeForwards))
-	assert.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
-}
-
-type portForwardTestCase struct {
-	spec           []model.PortForward
-	containerPorts []int32
-	expected       []model.PortForward
-}
-
-func TestPopulatePortForward(t *testing.T) {
-	cases := []portForwardTestCase{
-		{
-			spec:           []model.PortForward{{LocalPort: 8080}},
-			containerPorts: []int32{8080},
-			expected:       []model.PortForward{{ContainerPort: 8080, LocalPort: 8080}},
-		},
-		{
-			spec:           []model.PortForward{{LocalPort: 8080}},
-			containerPorts: []int32{8000, 8080, 8001},
-			expected:       []model.PortForward{{ContainerPort: 8080, LocalPort: 8080}},
-		},
-		{
-			spec:           []model.PortForward{{LocalPort: 8080}, {LocalPort: 8000}},
-			containerPorts: []int32{8000, 8080, 8001},
-			expected: []model.PortForward{
-				{ContainerPort: 8080, LocalPort: 8080},
-				{ContainerPort: 8000, LocalPort: 8000},
-			},
-		},
-		{
-			spec:           []model.PortForward{{ContainerPort: 8000, LocalPort: 8080}},
-			containerPorts: []int32{8000, 8080, 8001},
-			expected:       []model.PortForward{{ContainerPort: 8000, LocalPort: 8080}},
-		},
-	}
-
-	for i, c := range cases {
-		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
-			m := model.Manifest{Name: "fe"}.WithDeployTarget(model.K8sTarget{
-				PortForwards: c.spec,
-			})
-			pod := v1alpha1.Pod{
-				Containers: []v1alpha1.Container{
-					v1alpha1.Container{Ports: c.containerPorts},
-				},
-			}
-
-			actual := populatePortForwards(m, pod)
-			assert.Equal(t, c.expected, actual)
-		})
-	}
-}
-
-type plcFixture struct {
+type pfsFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
 	st     *store.TestingStore
-	plc    *Subscriber
+	s      *Subscriber
 	out    *bufsync.ThreadSafeBuffer
 }
 
-func newPLCFixture(t *testing.T) *plcFixture {
+func newPFSFixture(t *testing.T) *pfsFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient(t)
-	plc := NewSubscriber(kCli)
 
 	out := bufsync.NewThreadSafeBuffer()
 	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = logger.WithLogger(ctx, l)
-	return &plcFixture{
+	return &pfsFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		cancel:         cancel,
 		st:             st,
 		kCli:           kCli,
-		plc:            plc,
+		s:              NewSubscriber(kCli),
 		out:            out,
 	}
 }
 
-func (f *plcFixture) onChange() {
-	f.plc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+func (f *pfsFixture) onChange() {
+	f.s.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
 }
 
-func (f *plcFixture) TearDown() {
+func (f *pfsFixture) TearDown() {
 	f.kCli.TearDown()
 	f.TempDirFixture.TearDown()
 	f.cancel()
