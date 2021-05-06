@@ -21,7 +21,6 @@ func TestShortlivedPods(t *testing.T) {
 	defer cancel()
 	f.WaitForAllPodsInPhase(ctx, "app=shortlived-pod-fail", v1.PodFailed)
 	f.WaitForAllPodsInPhase(ctx, "app=shortlived-pod-success", v1.PodSucceeded)
-	f.KillProcs()
 
 	out := f.logs.String()
 	assert.Contains(t, out, "this is a successful job")

@@ -3,13 +3,14 @@ package k8swatch
 import (
 	"context"
 	"fmt"
-	"strings"
+
+	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
-
-	"k8s.io/apimachinery/pkg/api/equality"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,58 +21,149 @@ import (
 )
 
 type ManifestSubscriber struct {
-	cfgNS k8s.Namespace
+	cfgNS      k8s.Namespace
+	client     ctrlclient.Client
+	lastUpdate map[types.NamespacedName]*v1alpha1.KubernetesDiscoverySpec
 }
 
-func NewManifestSubscriber(cfgNS k8s.Namespace) *ManifestSubscriber {
+func NewManifestSubscriber(cfgNS k8s.Namespace, client ctrlclient.Client) *ManifestSubscriber {
 	return &ManifestSubscriber{
-		cfgNS: cfgNS,
+		cfgNS:      cfgNS,
+		client:     client,
+		lastUpdate: make(map[types.NamespacedName]*v1alpha1.KubernetesDiscoverySpec),
 	}
 }
 
+// OnChange creates KubernetesDiscovery objects from the engine manifests' K8s targets.
+//
+// Because this runs extremely frequently and cannot rely on change summary to filter its work, it keeps
+// copies of the latest versions it successfully persisted to the server in lastUpdate so that it can avoid
+// unnecessary API calls.
+//
+// Currently, any unexpected API errors are fatal.
 func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
 	if summary.IsLogOnly() {
 		return
 	}
 
+	current := m.makeSpecsFromEngineState(ctx, st)
+	for key, kd := range current {
+		existing := m.lastUpdate[key]
+		if kd != nil && existing == nil {
+			if err := m.createKubernetesDiscovery(ctx, st, key, kd); err != nil {
+				st.Dispatch(store.NewErrorAction(err))
+				return
+			}
+		} else if kd != nil && existing != nil {
+			if !equality.Semantic.DeepEqual(existing, &kd.Spec) {
+				err := m.updateKubernetesDiscovery(ctx, st, key, func(toUpdate *v1alpha1.KubernetesDiscovery) {
+					toUpdate.Spec = kd.Spec
+				})
+				if err != nil {
+					st.Dispatch(store.NewErrorAction(err))
+					return
+				}
+			}
+		} else if kd == nil && existing != nil {
+			// this manifest still exists but was modified such that it has
+			// no K8s entities to watch, so just delete the API spec
+			if err := m.deleteKubernetesDiscovery(ctx, st, key); err != nil {
+				st.Dispatch(store.NewErrorAction(err))
+				return
+			}
+		}
+	}
+
+	for key := range m.lastUpdate {
+		if _, ok := current[key]; !ok {
+			// this manifest was deleted entirely
+			if err := m.deleteKubernetesDiscovery(ctx, st, key); err != nil {
+				st.Dispatch(store.NewErrorAction(err))
+				return
+			}
+		}
+	}
+}
+
+func (m *ManifestSubscriber) getKubernetesDiscovery(ctx context.Context, key types.NamespacedName) (*v1alpha1.KubernetesDiscovery, error) {
+	var kd v1alpha1.KubernetesDiscovery
+	if err := m.client.Get(ctx, key, &kd); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get KubernetesDiscovery %q: %v", key, err)
+	}
+	return &kd, nil
+}
+
+func (m *ManifestSubscriber) createKubernetesDiscovery(ctx context.Context, st store.RStore, key types.NamespacedName, kd *v1alpha1.KubernetesDiscovery) error {
+	err := m.client.Create(ctx, kd)
+	if err == nil {
+		m.lastUpdate[key] = kd.Spec.DeepCopy()
+		st.Dispatch(NewKubernetesDiscoveryCreateAction(kd))
+	} else if !apierrors.IsAlreadyExists(err) {
+		return fmt.Errorf("failed to create KubernetesDiscovery %q: %v", key, err)
+	}
+	return nil
+}
+
+func (m *ManifestSubscriber) updateKubernetesDiscovery(ctx context.Context, st store.RStore, key types.NamespacedName,
+	updateFunc func(toUpdate *v1alpha1.KubernetesDiscovery)) error {
+
+	kd, err := m.getKubernetesDiscovery(ctx, key)
+	if err != nil {
+		return err
+	}
+	if kd == nil {
+		return nil
+	}
+	updateFunc(kd)
+
+	err = m.client.Update(ctx, kd)
+	if err == nil {
+		m.lastUpdate[key] = kd.Spec.DeepCopy()
+		st.Dispatch(NewKubernetesDiscoveryUpdateAction(kd))
+	} else if !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
+		return fmt.Errorf("failed to update KubernetesDiscovery %q: %v", key, err)
+	}
+	return nil
+}
+
+func (m *ManifestSubscriber) deleteKubernetesDiscovery(ctx context.Context, st store.RStore, key types.NamespacedName) error {
+	kd, err := m.getKubernetesDiscovery(ctx, key)
+	if err != nil {
+		return err
+	}
+	if kd == nil {
+		// already deleted
+		return nil
+	}
+
+	err = m.client.Delete(ctx, kd)
+	if ctrlclient.IgnoreNotFound(err) == nil {
+		delete(m.lastUpdate, key)
+		st.Dispatch(NewKubernetesDiscoveryDeleteAction(key))
+	} else if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete KubernetesDiscovery %q: %v", key, err)
+	}
+	return nil
+}
+
+func (m *ManifestSubscriber) makeSpecsFromEngineState(ctx context.Context, st store.RStore) map[types.NamespacedName]*v1alpha1.KubernetesDiscovery {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
+	results := make(map[types.NamespacedName]*v1alpha1.KubernetesDiscovery)
 	claims := make(map[types.UID]types.NamespacedName)
-	seen := make(map[types.NamespacedName]bool)
 	for _, mt := range state.Targets() {
 		key := KeyForManifest(mt.Manifest.Name)
-		seen[key] = true
-		kd, err := m.kubernetesDiscoveryFromManifest(ctx, key, mt, claims)
-		if err != nil {
-			// if the error is logged, it'll just trigger another store change and loop back here and
-			// get logged over and over, so all errors are fatal; any errors returned by the generation
-			// logic are indicative of a bug/regression, so this is fine
-			st.Dispatch(store.NewErrorAction(fmt.Errorf(
-				"failed to create KubernetesDiscovery spec for resource %q: %v",
-				mt.Manifest.Name, err)))
-		}
-
-		existing := state.KubernetesDiscoveries[key]
-		if kd != nil && existing == nil {
-			st.Dispatch(NewKubernetesDiscoveryCreateAction(kd))
-		} else if kd != nil && existing != nil {
-			if !equality.Semantic.DeepEqual(existing.Spec, kd.Spec) {
-				st.Dispatch(NewKubernetesDiscoveryUpdateAction(kd))
-			}
-		} else if kd == nil && existing != nil {
-			// this manifest was modified such that it has no K8s entities to watch,
-			// so just delete the entity
-			st.Dispatch(NewKubernetesDiscoveryDeleteAction(key))
+		kd := m.kubernetesDiscoveryFromManifest(ctx, key, mt, claims)
+		if kd != nil {
+			results[key] = kd
 		}
 	}
 
-	for key := range state.KubernetesDiscoveries {
-		if !seen[key] {
-			// this manifest was deleted entirely
-			st.Dispatch(NewKubernetesDiscoveryDeleteAction(key))
-		}
-	}
+	return results
 }
 
 func KeyForManifest(mn model.ManifestName) types.NamespacedName {
@@ -82,16 +174,16 @@ func KeyForManifest(mn model.ManifestName) types.NamespacedName {
 //
 // Because there is no graceful way to handle errors without triggering infinite loops in the store,
 // any returned error should be considered fatal.
-func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context, key types.NamespacedName, mt *store.ManifestTarget, claims map[types.UID]types.NamespacedName) (*v1alpha1.KubernetesDiscovery, error) {
+func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(_ context.Context, key types.NamespacedName, mt *store.ManifestTarget, claims map[types.UID]types.NamespacedName) *v1alpha1.KubernetesDiscovery {
 	if !mt.Manifest.IsK8s() {
-		return nil, nil
+		return nil
 	}
 	kt := mt.Manifest.K8sTarget()
 
 	krs := mt.State.K8sRuntimeState()
 	if len(kt.ObjectRefs) == 0 {
 		// there is nothing to discover
-		return nil, nil
+		return nil
 	}
 
 	seenNamespaces := make(map[k8s.Namespace]bool)
@@ -157,18 +249,5 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(ctx context.Context
 		},
 	}
 
-	// HACK(milas): until these are stored in apiserver, explicitly ensure they're valid
-	// 	(any failure here is indicative of a logic bug in this method)
-	if fieldErrs := kd.Validate(ctx); len(fieldErrs) != 0 {
-		var sb strings.Builder
-		for i, fieldErr := range fieldErrs {
-			if i != 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(fieldErr.Error())
-		}
-		return nil, fmt.Errorf("failed validation: %s", sb.String())
-	}
-
-	return kd, nil
+	return kd
 }

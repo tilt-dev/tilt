@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
+
 	"github.com/google/go-cmp/cmp"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -409,6 +411,8 @@ func (pw *pwFixture) reducer(ctx context.Context, state *store.EngineState, acti
 		HandleKubernetesDiscoveryDeleteAction(ctx, state, a)
 	case KubernetesDiscoveryUpdateStatusAction:
 		HandleKubernetesDiscoveryUpdateStatusAction(ctx, state, a)
+	case store.ErrorAction:
+		pw.t.Fatalf("Store received ErrorAction: %v", a.Error)
 	case store.PanicAction:
 		pw.t.Fatalf("Store received PanicAction: %v", a.Err)
 	default:
@@ -422,11 +426,12 @@ func newPWFixture(t *testing.T) *pwFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
+	cli := fake.NewTiltClient()
 	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := NewContainerRestartDetector()
-	pw := NewPodWatcher(kClient, of, rd)
+	pw := NewPodWatcher(kClient, of, rd, cli)
 
-	ms := NewManifestSubscriber(k8s.DefaultNamespace)
+	ms := NewManifestSubscriber(k8s.DefaultNamespace, cli)
 
 	ret := &pwFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
