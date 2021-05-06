@@ -264,7 +264,7 @@ declare namespace Proto {
      * More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
      * +optional
      */
-    creationTimestamp?: v1Time;
+    creationTimestamp?: string;
     /**
      * DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This
      * field is set by the server when a graceful deletion is requested by the user, and is not
@@ -286,7 +286,7 @@ declare namespace Proto {
      * More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
      * +optional
      */
-    deletionTimestamp?: v1Time;
+    deletionTimestamp?: string;
     deletionGracePeriodSeconds?: string;
     labels?: object;
     annotations?: object;
@@ -338,7 +338,7 @@ declare namespace Proto {
      * set because it cannot be automatically converted.
      */
     apiVersion?: string;
-    time?: v1Time;
+    time?: string;
     fieldsType?: string;
     fieldsV1?: v1FieldsV1;
   }
@@ -373,7 +373,7 @@ declare namespace Proto {
     /**
      * The last time this resource was deployed.
      */
-    lastDeployTime?: v1MicroTime;
+    lastDeployTime?: string;
     triggerMode?: number;
     /**
      * Past completed builds.
@@ -386,7 +386,7 @@ declare namespace Proto {
     /**
      * When the build was put in the pending queue.
      */
-    pendingBuildSince?: v1MicroTime;
+    pendingBuildSince?: string;
     /**
      * True if the build was put in the pending queue due to file changes.
      */
@@ -455,8 +455,8 @@ declare namespace Proto {
     /**
      * The creation time of the active pod.
      */
-    podCreationTime?: v1Time;
-    podUpdateStartTime?: v1Time;
+    podCreationTime?: string;
+    podUpdateStartTime?: string;
     /**
      * The status of the active pod.
      */
@@ -502,11 +502,11 @@ declare namespace Proto {
     /**
      * The time when the build started.
      */
-    startTime?: v1MicroTime;
+    startTime?: string;
     /**
      * The time when the build finished.
      */
-    finishTime?: v1MicroTime;
+    finishTime?: string;
     /**
      * The log span where the build logs are stored in the logstore.
      */
@@ -522,7 +522,7 @@ declare namespace Proto {
     /**
      * The time when the build started.
      */
-    startTime?: v1MicroTime;
+    startTime?: string;
     /**
      * The log span where the build logs are stored in the logstore.
      */

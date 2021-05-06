@@ -130,4 +130,6 @@ replace (
 	// Workaround for:
 	// https://github.com/moby/term/issues/15
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
+
+	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.20.2-tilt-20210505
 )
