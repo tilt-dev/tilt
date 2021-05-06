@@ -1,5 +1,7 @@
-package model
+package v1alpha1
 
+// The UpdateStatus is a simple, high-level summary of any update tasks to bring
+// the resource up-to-date.
 type UpdateStatus string
 
 const (

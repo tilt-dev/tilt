@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 
@@ -135,6 +137,9 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	s.webServer = &http.Server{
 		Addr:    webListener.Addr().String(),
 		Handler: webRouter,
+
+		// blackhole any server errors
+		ErrorLog: log.New(ioutil.Discard, "", 0),
 	}
 	runServer(ctx, s.webServer, webListener)
 
@@ -143,6 +148,9 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 		Handler:        apiRouter,
 		MaxHeaderBytes: 1 << 20,
 		TLSConfig:      apiTLSConfig,
+
+		// blackhole any server errors
+		ErrorLog: log.New(ioutil.Discard, "", 0),
 	}
 	runServer(ctx, s.apiServer, serving.Listener)
 	server.GenericAPIServer.RunPostStartHooks(stopCh)

@@ -457,7 +457,7 @@ type plmFixture struct {
 
 func newPLMFixture(t *testing.T) *plmFixture {
 	f := tempdir.NewTempDirFixture(t)
-	kClient := k8s.NewFakeK8sClient()
+	kClient := k8s.NewFakeK8sClient(t)
 
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())

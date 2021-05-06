@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -14,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -35,6 +35,7 @@ type PodAndCName struct {
 }
 
 type FakeK8sClient struct {
+	t  testing.TB
 	mu sync.Mutex
 
 	FakePortForwardClient
@@ -56,6 +57,8 @@ type FakeK8sClient struct {
 	podWatches     []fakePodWatch
 	serviceWatches []fakeServiceWatch
 	eventWatches   []fakeEventWatch
+	events         map[types.NamespacedName]*v1.Event
+	services       map[types.NamespacedName]*v1.Service
 	pods           map[types.NamespacedName]*v1.Pod
 
 	EventsWatchErr error
@@ -68,7 +71,15 @@ type FakeK8sClient struct {
 	Registry   container.Registry
 	FakeNodeIP NodeIP
 
-	entityByName            map[string]K8sEntity
+	// entities are injected objects keyed by UID.
+	entities map[types.UID]K8sEntity
+	// currentVersions maintains a mapping of object name to UID which represents the most recently injected value.
+	//
+	// In real K8s, you'd need to delete the old object before being able to store the new one with the same name.
+	// For testing purposes, it's useful to be able to simulate out of order/stale data type scenarios, so the fake
+	// client doesn't enforce name uniqueness for storage. When appropriate (e.g. ListMeta), this map ensures that
+	// multiple objects for the same name aren't returned.
+	currentVersions         map[string]types.UID
 	getByReferenceCallCount int
 	listCallCount           int
 	listReturnsEmpty        bool
@@ -87,23 +98,28 @@ type ExecCall struct {
 }
 
 type fakeServiceWatch struct {
-	ns Namespace
-	ch chan *v1.Service
+	cancel func()
+	ns     Namespace
+	ch     chan *v1.Service
 }
 
 type fakePodWatch struct {
-	ns Namespace
-	ch chan ObjectUpdate
+	cancel func()
+	ns     Namespace
+	ch     chan ObjectUpdate
 }
 
 type fakeEventWatch struct {
-	ns Namespace
-	ch chan *v1.Event
+	cancel func()
+	ns     Namespace
+	ch     chan *v1.Event
 }
 
-func (c *FakeK8sClient) EmitService(ls labels.Selector, s *v1.Service) {
+func (c *FakeK8sClient) UpsertService(s *v1.Service) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	c.services[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
 	for _, w := range c.serviceWatches {
 		if w.ns != Namespace(s.Namespace) {
 			continue
@@ -117,6 +133,27 @@ func (c *FakeK8sClient) UpsertPod(pod *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.pods[types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}] = pod
+	for _, w := range c.podWatches {
+		if w.ns != Namespace(pod.Namespace) {
+			continue
+		}
+
+		w.ch <- ObjectUpdate{obj: pod}
+	}
+}
+
+func (c *FakeK8sClient) UpsertEvent(event *v1.Event) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.events[types.NamespacedName{Name: event.Name, Namespace: event.Namespace}] = event
+	for _, w := range c.eventWatches {
+		if w.ns != Namespace(event.Namespace) {
+			continue
+		}
+
+		w.ch <- event
+	}
 }
 
 func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
@@ -130,14 +167,28 @@ func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, nn types.Names
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
 	c.mu.Lock()
 	ch := make(chan *v1.Service, 20)
-	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{ns, ch})
+	c.serviceWatches = append(c.serviceWatches, fakeServiceWatch{cancel, ns, ch})
+	toEmit := []*v1.Service{}
+	for _, service := range c.services {
+		if Namespace(service.Namespace) == ns {
+			toEmit = append(toEmit, service)
+		}
+	}
 	c.mu.Unlock()
 
 	go func() {
+		// Initial list of objects
+		for _, obj := range toEmit {
+			ch <- obj
+		}
+
 		// when ctx is canceled, remove the label selector from the list of watched label selectors
 		<-ctx.Done()
+
 		c.mu.Lock()
 		var newWatches []fakeServiceWatch
 		for _, e := range c.serviceWatches {
@@ -147,6 +198,8 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan
 		}
 		c.serviceWatches = newWatches
 		c.mu.Unlock()
+
+		close(ch)
 	}()
 	return ch, nil
 }
@@ -158,13 +211,27 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *
 		return nil, err
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	c.mu.Lock()
 	ch := make(chan *v1.Event, 20)
-	c.eventWatches = append(c.eventWatches, fakeEventWatch{ns, ch})
+	c.eventWatches = append(c.eventWatches, fakeEventWatch{cancel, ns, ch})
+	toEmit := []*v1.Event{}
+	for _, event := range c.events {
+		if Namespace(event.Namespace) == ns {
+			toEmit = append(toEmit, event)
+		}
+	}
 	c.mu.Unlock()
 
 	go func() {
+		// Initial list of objects
+		for _, obj := range toEmit {
+			ch <- obj
+		}
+
 		<-ctx.Done()
+
 		c.mu.Lock()
 		var newWatches []fakeEventWatch
 		for _, e := range c.eventWatches {
@@ -174,6 +241,8 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *
 		}
 		c.eventWatches = newWatches
 		c.mu.Unlock()
+
+		close(ch)
 	}()
 	return ch, nil
 }
@@ -182,34 +251,11 @@ func (c *FakeK8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKi
 	return make(chan ObjectMeta), nil
 }
 
-func (c *FakeK8sClient) EmitEvent(ctx context.Context, evt *v1.Event) {
+func (c *FakeK8sClient) EmitPodDelete(p *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for _, w := range c.eventWatches {
-		if w.ns != "" && w.ns != Namespace(evt.Namespace) {
-			continue
-		}
-
-		w.ch <- evt
-	}
-}
-
-func (c *FakeK8sClient) EmitPod(ls labels.Selector, p *v1.Pod) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for _, w := range c.podWatches {
-		if w.ns != Namespace(p.Namespace) {
-			continue
-		}
-
-		w.ch <- ObjectUpdate{obj: p}
-	}
-}
-
-func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	delete(c.pods, types.NamespacedName{Name: p.Name, Namespace: p.Namespace})
 	for _, w := range c.podWatches {
 		if w.ns != Namespace(p.Namespace) {
 			continue
@@ -220,14 +266,27 @@ func (c *FakeK8sClient) EmitPodDelete(ls labels.Selector, p *v1.Pod) {
 }
 
 func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
 	c.mu.Lock()
 	ch := make(chan ObjectUpdate, 20)
-	c.podWatches = append(c.podWatches, fakePodWatch{ns, ch})
+	c.podWatches = append(c.podWatches, fakePodWatch{cancel, ns, ch})
+	toEmit := []*v1.Pod{}
+	for _, pod := range c.pods {
+		if Namespace(pod.Namespace) == ns {
+			toEmit = append(toEmit, pod)
+		}
+	}
 	c.mu.Unlock()
 
 	go func() {
-		// when ctx is canceled, remove the label selector from the list of watched label selectors
+		// Initial list of objects
+		for _, obj := range toEmit {
+			ch <- ObjectUpdate{obj: obj}
+		}
+
 		<-ctx.Done()
+
 		c.mu.Lock()
 		var newWatches []fakePodWatch
 		for _, e := range c.podWatches {
@@ -237,29 +296,46 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan Obj
 		}
 		c.podWatches = newWatches
 		c.mu.Unlock()
+
+		close(ch)
 	}()
+
 	return ch, nil
 }
 
-func NewFakeK8sClient() *FakeK8sClient {
+func NewFakeK8sClient(t testing.TB) *FakeK8sClient {
 	return &FakeK8sClient{
+		t:                        t,
 		PodLogsByPodAndContainer: make(map[PodAndCName]ReaderCloser),
 		pods:                     make(map[types.NamespacedName]*v1.Pod),
+		services:                 make(map[types.NamespacedName]*v1.Service),
+		events:                   make(map[types.NamespacedName]*v1.Event),
+		entities:                 make(map[types.UID]K8sEntity),
+		currentVersions:          make(map[string]types.UID),
 	}
 }
 
 func (c *FakeK8sClient) TearDown() {
 	c.mu.Lock()
-	defer c.mu.Unlock()
+	podWatches := append([]fakePodWatch{}, c.podWatches...)
+	serviceWatches := append([]fakeServiceWatch{}, c.serviceWatches...)
+	eventWatches := append([]fakeEventWatch{}, c.eventWatches...)
+	c.mu.Unlock()
 
-	for _, watch := range c.podWatches {
-		close(watch.ch)
+	for _, watch := range podWatches {
+		watch.cancel()
+		for range watch.ch {
+		}
 	}
-	for _, watch := range c.serviceWatches {
-		close(watch.ch)
+	for _, watch := range serviceWatches {
+		watch.cancel()
+		for range watch.ch {
+		}
 	}
-	for _, watch := range c.eventWatches {
-		close(watch.ch)
+	for _, watch := range eventWatches {
+		watch.cancel()
+		for range watch.ch {
+		}
 	}
 }
 
@@ -304,18 +380,23 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 	return nil
 }
 
-func (c *FakeK8sClient) InjectEntityByName(entities ...K8sEntity) {
-	if c.entityByName == nil {
-		c.entityByName = make(map[string]K8sEntity)
-	}
-	for _, entity := range entities {
-		c.entityByName[entity.Name()] = entity
+// Inject adds an entity or replaces it for subsequent retrieval.
+//
+// Entities are keyed by UID.
+func (c *FakeK8sClient) Inject(entities ...K8sEntity) {
+	c.t.Helper()
+	for i, entity := range entities {
+		if entity.UID() == "" {
+			c.t.Fatalf("Entity with name[%s] at index[%d] had no UID", entity.Name(), i)
+		}
+		c.entities[entity.UID()] = entity
+		c.currentVersions[entity.Name()] = entity.UID()
 	}
 }
 
 func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
 	c.getByReferenceCallCount++
-	resp, ok := c.entityByName[ref.Name]
+	resp, ok := c.entities[ref.UID]
 	if !ok {
 		logger.Get(ctx).Infof("FakeK8sClient.GetMetaByReference: resource not found: %s", ref.Name)
 		return nil, apierrors.NewNotFound(v1.Resource(ref.Kind), ref.Name)
@@ -330,7 +411,8 @@ func (c *FakeK8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKin
 	}
 
 	result := make([]ObjectMeta, 0)
-	for _, entity := range c.entityByName {
+	for _, uid := range c.currentVersions {
+		entity := c.entities[uid]
 		if entity.Namespace() != ns {
 			continue
 		}

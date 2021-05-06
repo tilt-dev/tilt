@@ -73,7 +73,7 @@ func (s *Subscriber) diff(ctx context.Context, st store.RStore) (toStart []portF
 					// Name of the manifest that this Port Forward corresponds to
 					// (we need this to route the logs correctly)
 					v1alpha1.AnnotationManifest: manifest.Name.String(),
-					v1alpha1.AnnotationSpanID:   string(k8sconv.SpanIDForPod(podID)),
+					v1alpha1.AnnotationSpanID:   string(k8sconv.SpanIDForPod(manifest.Name, podID)),
 				},
 			},
 			Spec: PortForwardSpec{
@@ -248,7 +248,7 @@ type PodLogActionWriter struct {
 }
 
 func (w PodLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	w.Store.Dispatch(store.NewLogAction(w.ManifestName, k8sconv.SpanIDForPod(w.PodID), level, fields, p))
+	w.Store.Dispatch(store.NewLogAction(w.ManifestName, k8sconv.SpanIDForPod(w.ManifestName, w.PodID), level, fields, p))
 	return nil
 }
 

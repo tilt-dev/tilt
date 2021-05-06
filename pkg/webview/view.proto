@@ -5,18 +5,10 @@ package webview;
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 import "pkg/webview/log.proto";
+import "pkg/apis/core/v1alpha1/generated.proto";
 
 option go_package = "github.com/tilt-dev/tilt/pkg/webview";
 
-// Correspond to BuildAndDeployers
-enum UpdateType {
-  UPDATE_TYPE_UNSPECIFIED = 0;
-  UPDATE_TYPE_IMAGE = 1;
-  UPDATE_TYPE_LIVE_UPDATE = 2;
-  UPDATE_TYPE_DOCKER_COMPOSE = 3;
-  UPDATE_TYPE_K8S = 4;
-  UPDATE_TYPE_LOCAL = 5;
-}
 
 // Correspond to implementations of the TargetSpec interface
 enum TargetType {
@@ -34,13 +26,16 @@ message TargetSpec {
 }
 
 message BuildRecord {
-  repeated string edits = 1;
+  reserved "edits";
+  reserved 1;
+  
   string error = 2;
   repeated string warnings = 3;
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp finish_time  = 5;
 
-  repeated UpdateType update_types = 9;
+  reserved "update_types";
+  reserved 9;
 
   reserved "log";
   reserved 6;
@@ -68,25 +63,6 @@ message K8sResourceInfo {
   string span_id = 9;
 
   repeated string display_names = 10;
-}
-
-message DCResourceInfo {
-  repeated string config_paths = 1;
-  string container_status = 2;
-  string containerID = 3;
-
-  // service logs are now in the log store
-  reserved "log";
-  reserved 4;
-
-  google.protobuf.Timestamp start_time = 5;
-
-  // The span id for this docker-compose service's logs in the main logstore
-  string span_id = 6;
-}
-
-message YAMLResourceInfo {
-  repeated string k8s_resources = 1;
 }
 
 message LocalResourceInfo {
@@ -129,8 +105,13 @@ message Resource {
   repeated Link endpoint_links = 28;
   string podID = 13;
   K8sResourceInfo k8s_resource_info = 14;
-  DCResourceInfo dc_resource_info = 15;
-  YAMLResourceInfo yaml_resource_info = 16;
+
+  reserved "dc_resource_info";
+  reserved 15;
+
+  reserved "yaml_resource_info";
+  reserved 16;
+  
   LocalResourceInfo local_resource_info = 17;
   string runtime_status = 18;
   string update_status = 29;
@@ -212,7 +193,13 @@ message View {
   // an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile
   string tiltfile_key = 17;
 
-  MetricsServing metrics_serving = 18;
+  reserved "metrics_serving";
+  reserved 18;
+
+  // New API-server based data models. These will eventually obsolete the fields
+  // above.
+  github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UISession ui_session = 19;
+  repeated github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UIResource ui_resources = 20;
 }
 
 message MetricsServing {

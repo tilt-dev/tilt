@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -11,9 +14,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -75,7 +76,7 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []*Pod
 					Name: fmt.Sprintf("%s-%s", pod.Namespace, pod.Name),
 					Annotations: map[string]string{
 						v1alpha1.AnnotationManifest: string(man.Name),
-						v1alpha1.AnnotationSpanID:   string(k8sconv.SpanIDForPod(k8s.PodID(pod.Name))),
+						v1alpha1.AnnotationSpanID:   string(k8sconv.SpanIDForPod(man.Name, k8s.PodID(pod.Name))),
 					},
 				},
 				Spec: spec,

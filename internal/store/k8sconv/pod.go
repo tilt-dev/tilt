@@ -108,29 +108,29 @@ func ContainerForStatus(pod *v1.Pod, cStatus v1.ContainerStatus) (v1alpha1.Conta
 	return c, nil
 }
 
-func ContainerStatusToRuntimeState(status v1alpha1.Container) model.RuntimeStatus {
+func ContainerStatusToRuntimeState(status v1alpha1.Container) v1alpha1.RuntimeStatus {
 	state := status.State
 	if state.Terminated != nil {
 		if state.Terminated.ExitCode == 0 {
-			return model.RuntimeStatusOK
+			return v1alpha1.RuntimeStatusOK
 		} else {
-			return model.RuntimeStatusError
+			return v1alpha1.RuntimeStatusError
 		}
 	}
 
 	if state.Waiting != nil {
 		if ErrorWaitingReasons[state.Waiting.Reason] {
-			return model.RuntimeStatusError
+			return v1alpha1.RuntimeStatusError
 		}
-		return model.RuntimeStatusPending
+		return v1alpha1.RuntimeStatusPending
 	}
 
 	// TODO(milas): this should really consider status.Ready
 	if state.Running != nil {
-		return model.RuntimeStatusOK
+		return v1alpha1.RuntimeStatusOK
 	}
 
-	return model.RuntimeStatusUnknown
+	return v1alpha1.RuntimeStatusUnknown
 }
 
 var ErrorWaitingReasons = map[string]bool{
@@ -142,8 +142,13 @@ var ErrorWaitingReasons = map[string]bool{
 	"Error":             true,
 }
 
-func SpanIDForPod(podID k8s.PodID) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("pod:%s", podID))
+// SpanIDForPod creates a span ID for a given pod associated with a manifest.
+//
+// Generally, a given Pod is only referenced by a single manifest, but there are
+// rare occasions where it can be referenced by multiple. If the span ID is not
+// unique between them, things will behave erratically.
+func SpanIDForPod(mn model.ManifestName, podID k8s.PodID) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("pod:%s:%s", mn.String(), podID))
 }
 
 // copied from https://github.com/kubernetes/kubernetes/blob/aedeccda9562b9effe026bb02c8d3c539fc7bb77/pkg/kubectl/resource_printer.go#L692-L764

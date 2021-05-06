@@ -399,7 +399,7 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 					})
 					mt.State.RuntimeState = store.LocalRuntimeState{
 						CmdName:                  "echo hi",
-						Status:                   model.RuntimeStatusOK,
+						Status:                   v1alpha1.RuntimeStatusOK,
 						PID:                      1234,
 						StartTime:                time.Now(),
 						LastReadyOrSucceededTime: time.Now(),

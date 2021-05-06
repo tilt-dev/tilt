@@ -11,6 +11,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/rty"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
@@ -94,19 +95,19 @@ func combinedStatus(res view.Resource) statusDisplay {
 		return statusDisplay{color: cBad}
 	}
 
-	runtimeStatus := model.RuntimeStatusUnknown
+	runtimeStatus := v1alpha1.RuntimeStatusUnknown
 	if res.ResourceInfo != nil {
 		runtimeStatus = res.ResourceInfo.RuntimeStatus()
 	}
 
 	switch runtimeStatus {
-	case model.RuntimeStatusError:
+	case v1alpha1.RuntimeStatusError:
 		return statusDisplay{color: cBad}
-	case model.RuntimeStatusPending:
+	case v1alpha1.RuntimeStatusPending:
 		return statusDisplay{color: cPending, spinner: true}
-	case model.RuntimeStatusOK:
+	case v1alpha1.RuntimeStatusOK:
 		return statusDisplay{color: cGood}
-	case model.RuntimeStatusNotApplicable:
+	case v1alpha1.RuntimeStatusNotApplicable:
 		if len(buildHistory) > 0 {
 			return statusDisplay{color: cGood}
 		} else {

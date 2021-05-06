@@ -36,7 +36,7 @@ func handlePodChangeAction(ctx context.Context, state *store.EngineState, action
 
 	pod := action.Pod
 	podID := k8s.PodID(pod.Name)
-	spanID := k8sconv.SpanIDForPod(podID)
+	spanID := k8sconv.SpanIDForPod(mt.Manifest.Name, podID)
 	ms := mt.State
 	krs := ms.K8sRuntimeState()
 	manifest := mt.Manifest

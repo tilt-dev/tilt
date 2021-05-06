@@ -28,7 +28,7 @@ type RuntimeState interface {
 	// or a task.
 	HasEverBeenReadyOrSucceeded() bool
 
-	RuntimeStatus() model.RuntimeStatus
+	RuntimeStatus() v1alpha1.RuntimeStatus
 
 	// If the runtime status is in Error mode,
 	// RuntimeStatusError() should report a reason.
@@ -37,7 +37,7 @@ type RuntimeState interface {
 
 type LocalRuntimeState struct {
 	CmdName                  string
-	Status                   model.RuntimeStatus
+	Status                   v1alpha1.RuntimeStatus
 	PID                      int
 	StartTime                time.Time
 	FinishTime               time.Time
@@ -50,13 +50,13 @@ var _ RuntimeState = LocalRuntimeState{}
 
 func (LocalRuntimeState) RuntimeState() {}
 
-func (l LocalRuntimeState) RuntimeStatus() model.RuntimeStatus {
+func (l LocalRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 	return l.Status
 }
 
 func (l LocalRuntimeState) RuntimeStatusError() error {
 	status := l.RuntimeStatus()
-	if status != model.RuntimeStatusError {
+	if status != v1alpha1.RuntimeStatusError {
 		return nil
 	}
 	return fmt.Errorf("Process %d exited with non-zero status", l.PID)
@@ -108,20 +108,20 @@ func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 
 func (s K8sRuntimeState) RuntimeStatusError() error {
 	status := s.RuntimeStatus()
-	if status != model.RuntimeStatusError {
+	if status != v1alpha1.RuntimeStatusError {
 		return nil
 	}
 	pod := s.MostRecentPod()
 	return fmt.Errorf("Pod %s in error state: %s", pod.Name, pod.Status)
 }
 
-func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
+func (s K8sRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 	if !s.HasEverDeployedSuccessfully {
-		return model.RuntimeStatusPending
+		return v1alpha1.RuntimeStatusPending
 	}
 
 	if s.PodReadinessMode == model.PodReadinessIgnore {
-		return model.RuntimeStatusOK
+		return v1alpha1.RuntimeStatusOK
 	}
 
 	pod := s.MostRecentPod()
@@ -129,24 +129,24 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 	switch v1.PodPhase(pod.Phase) {
 	case v1.PodRunning:
 		if AllPodContainersReady(pod) {
-			return model.RuntimeStatusOK
+			return v1alpha1.RuntimeStatusOK
 		}
-		return model.RuntimeStatusPending
+		return v1alpha1.RuntimeStatusPending
 
 	case v1.PodSucceeded:
-		return model.RuntimeStatusOK
+		return v1alpha1.RuntimeStatusOK
 
 	case v1.PodFailed:
-		return model.RuntimeStatusError
+		return v1alpha1.RuntimeStatusError
 	}
 
 	for _, c := range AllPodContainers(pod) {
-		if k8sconv.ContainerStatusToRuntimeState(c) == model.RuntimeStatusError {
-			return model.RuntimeStatusError
+		if k8sconv.ContainerStatusToRuntimeState(c) == v1alpha1.RuntimeStatusError {
+			return v1alpha1.RuntimeStatusError
 		}
 	}
 
-	return model.RuntimeStatusPending
+	return v1alpha1.RuntimeStatusPending
 }
 
 func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {

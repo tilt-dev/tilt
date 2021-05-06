@@ -3,7 +3,6 @@ package webview
 import (
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 	"time"
 
@@ -45,17 +44,8 @@ func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
-	ms.CurrentBuild.Edits = []string{
-		f.JoinPath("a", "b", "c", "foo"),
-		f.JoinPath("a", "b", "c", "d", "e"),
-	}
 	ms.BuildHistory = []model.BuildRecord{
-		{
-			Edits: []string{
-				f.JoinPath("a", "b", "c", "foo"),
-				f.JoinPath("a", "b", "c", "d", "e"),
-			},
-		},
+		{},
 	}
 	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
 		map[string]time.Time{
@@ -65,12 +55,6 @@ func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 	v := stateToProtoView(t, *state)
 
 	require.Len(t, v.Resources, 2)
-
-	r, _ := findResource(m.Name, v)
-	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, lastBuild(r).Edits)
-
-	sort.Strings(r.CurrentBuild.Edits)
-	assert.ElementsMatch(t, []string{"foo", filepath.Join("d", "e")}, r.CurrentBuild.Edits)
 }
 
 func TestStateToWebViewPortForwards(t *testing.T) {
@@ -153,9 +137,6 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 
 	r, _ := findResource(m.Name, v)
 	assert.Equal(t, "", lastBuild(r).Error)
-
-	expectedInfo := &proto_webview.YAMLResourceInfo{K8SResources: []string{"sancho:deployment"}}
-	assert.Equal(t, expectedInfo, r.YamlResourceInfo)
 }
 
 func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
@@ -264,7 +245,7 @@ func TestReadinessCheckFailing(t *testing.T) {
 	v := stateToProtoView(t, *state)
 	rv, ok := findResource(m.Name, v)
 	require.True(t, ok)
-	require.Equal(t, model.RuntimeStatusPending, model.RuntimeStatus(rv.RuntimeStatus))
+	require.Equal(t, v1alpha1.RuntimeStatusPending, v1alpha1.RuntimeStatus(rv.RuntimeStatus))
 }
 
 func TestLocalResource(t *testing.T) {
@@ -278,14 +259,14 @@ func TestLocalResource(t *testing.T) {
 	}.WithDeployTarget(lt)
 
 	state := newState([]model.Manifest{m})
-	lrs := store.LocalRuntimeState{Status: model.RuntimeStatusNotApplicable}
+	lrs := store.LocalRuntimeState{Status: v1alpha1.RuntimeStatusNotApplicable}
 	state.ManifestTargets[m.Name].State.RuntimeState = lrs
 	v := stateToProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.Resources))
 	r := v.Resources[1]
 	assert.Equal(t, "test", r.Name)
-	assert.Equal(t, model.RuntimeStatusNotApplicable, model.RuntimeStatus(r.RuntimeStatus))
+	assert.Equal(t, v1alpha1.RuntimeStatusNotApplicable, v1alpha1.RuntimeStatus(r.RuntimeStatus))
 	require.Len(t, r.Specs, 1)
 	spec := r.Specs[0]
 	require.Equal(t, proto_webview.TargetType_TARGET_TYPE_LOCAL, spec.Type)
@@ -300,7 +281,6 @@ func TestBuildHistory(t *testing.T) {
 		BuildTypes: []model.BuildType{model.BuildTypeImage, model.BuildTypeK8s},
 	}
 	br2 := model.BuildRecord{
-		Edits:      []string{"a.txt", "b.txt"},
 		StartTime:  time.Now().Add(-45 * time.Minute),
 		FinishTime: time.Now().Add(-44 * time.Minute),
 		Reason:     model.BuildReasonFlagChangedFiles,
@@ -313,11 +293,6 @@ func TestBuildHistory(t *testing.T) {
 		BuildTypes: []model.BuildType{model.BuildTypeImage, model.BuildTypeK8s},
 	}
 	buildRecords := []model.BuildRecord{br1, br2, br3}
-	expectedUpdateTypes := [][]proto_webview.UpdateType{
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_IMAGE, proto_webview.UpdateType_UPDATE_TYPE_K8S},
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_LIVE_UPDATE},
-		[]proto_webview.UpdateType{proto_webview.UpdateType_UPDATE_TYPE_IMAGE, proto_webview.UpdateType_UPDATE_TYPE_K8S},
-	}
 
 	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
 	state := newState([]model.Manifest{m})
@@ -331,11 +306,9 @@ func TestBuildHistory(t *testing.T) {
 
 	for i, actual := range r.BuildHistory {
 		expected := buildRecords[i]
-		require.Equal(t, expected.Edits, actual.Edits)
 		require.Equal(t, mustTimeToProto(expected.StartTime), actual.StartTime)
 		require.Equal(t, mustTimeToProto(expected.FinishTime), actual.FinishTime)
 		require.Equal(t, i == 2, actual.IsCrashRebuild)
-		require.ElementsMatch(t, expectedUpdateTypes[i], actual.UpdateTypes)
 	}
 }
 

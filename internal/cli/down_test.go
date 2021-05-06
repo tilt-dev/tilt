@@ -179,7 +179,7 @@ func newDownFixture(t *testing.T) downFixture {
 	ctx, cancel := context.WithCancel(ctx)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	kCli := k8s.NewFakeK8sClient()
+	kCli := k8s.NewFakeK8sClient(t)
 	downDeps := DownDeps{tfl, dcc, kCli}
 	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (deps DownDeps, err error) {
 		return downDeps, nil
