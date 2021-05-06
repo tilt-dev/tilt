@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/pkg/model"
+
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
@@ -236,7 +238,7 @@ type pfrFixture struct {
 func newPFRFixture(t *testing.T) *pfrFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
-	kCli := k8s.NewFakeK8sClient()
+	kCli := k8s.NewFakeK8sClient(t)
 	r := NewReconciler(kCli)
 	r.SetActive()
 
@@ -276,17 +278,17 @@ func (f *pfrFixture) assertContextNotCancelled(t *testing.T, ctx context.Context
 	assert.NoError(t, ctx.Err(), "expect non-cancelled context to have no error")
 }
 
-func (f *pfrFixture) makePF(name, mName, podName, ns string, forwards []v1alpha1.Forward) *v1alpha1.PortForward {
+func (f *pfrFixture) makePF(name string, mName model.ManifestName, podName k8s.PodID, ns string, forwards []v1alpha1.Forward) *v1alpha1.PortForward {
 	return &v1alpha1.PortForward{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Annotations: map[string]string{
-				v1alpha1.AnnotationManifest: mName,
-				v1alpha1.AnnotationSpanID:   string(k8sconv.SpanIDForPod(k8s.PodID(podName))),
+				v1alpha1.AnnotationManifest: mName.String(),
+				v1alpha1.AnnotationSpanID:   string(k8sconv.SpanIDForPod(mName, podName)),
 			},
 		},
 		Spec: PortForwardSpec{
-			PodName:   podName,
+			PodName:   podName.String(),
 			Namespace: ns,
 			Forwards:  forwards,
 		},
@@ -298,11 +300,11 @@ func (f *pfrFixture) makeSimplePF(name string, localPort, containerPort int32) *
 		LocalPort:     localPort,
 		ContainerPort: containerPort,
 	}
-	return f.makePF(name, fmt.Sprintf("manifest-%s", name), fmt.Sprintf("pod-%s", name), "", []v1alpha1.Forward{fwd})
+	return f.makeSimplePFMultipleForwards(name, []v1alpha1.Forward{fwd})
 }
 
 func (f *pfrFixture) makeSimplePFMultipleForwards(name string, forwards []v1alpha1.Forward) *v1alpha1.PortForward {
-	return f.makePF(name, fmt.Sprintf("manifest-%s", name), fmt.Sprintf("pod-%s", name), "", forwards)
+	return f.makePF(name, model.ManifestName(fmt.Sprintf("manifest-%s", name)), k8s.PodID(fmt.Sprintf("pod-%s", name)), "", forwards)
 }
 
 func (f *pfrFixture) makeForward(localPort, containerPort int32, host string) v1alpha1.Forward {
