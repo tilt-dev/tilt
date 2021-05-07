@@ -2,12 +2,14 @@ package portforward
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
-	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -16,6 +18,11 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+)
+
+var (
+	PortForwardCreateActionType = reflect.TypeOf(PortForwardCreateAction{})
+	PortForwardDeleteActionType = reflect.TypeOf(PortForwardDeleteAction{})
 )
 
 func TestPortForward(t *testing.T) {
@@ -38,40 +45,48 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.s.activeForwards))
+	// f.getPortForwardActions(0)
 
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id", Phase: string(v1.PodRunning)})
+		v1alpha1.Pod{Name: "pod-A", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.s.activeForwards))
-	assert.Equal(t, "pod-id", f.kCli.LastForwardPortPodID().String())
-	firstPodForwardCtx := f.kCli.LastForwardContext()
+	creates, _ := f.getPortForwardActions(1, 0)
+	pfA := creates[0].PortForward
+	assert.Equal(t, "pod-A", pfA.Spec.PodName)
+	if assert.Len(t, pfA.Spec.Forwards, 1) {
+		assert.Equal(t, int32(8080), pfA.Spec.Forwards[0].LocalPort)
+		assert.Equal(t, int32(8081), pfA.Spec.Forwards[0].ContainerPort)
+	}
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodRunning)})
+		v1alpha1.Pod{Name: "pod-B", Phase: string(v1.PodRunning)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 1, len(f.s.activeForwards))
-	assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID().String())
+	creates, _ = f.getPortForwardActions(1, 0)
+
+	pfB := creates[0].PortForward
+	assert.Equal(t, "pod-B", pfB.Spec.PodName)
+	if assert.Len(t, pfB.Spec.Forwards, 1) {
+		assert.Equal(t, int32(8080), pfB.Spec.Forwards[0].LocalPort)
+		assert.Equal(t, int32(8081), pfB.Spec.Forwards[0].ContainerPort)
+	}
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
 	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodPending)})
+		v1alpha1.Pod{Name: "pod-B", Phase: string(v1.PodPending)})
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	assert.Equal(t, 0, len(f.s.activeForwards))
-
-	assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
-		"Expected first port-forward to be canceled")
+	_, deletes := f.getPortForwardActions(0, 1)
+	assert.Equal(t, pfB.Name, deletes[0].Name)
 }
 
 // func TestMultiplePortForwardsForOnePod(t *testing.T) {
@@ -405,6 +420,7 @@ func TestPortForward(t *testing.T) {
 
 type pfsFixture struct {
 	*tempdir.TempDirFixture
+	t      *testing.T
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
@@ -424,6 +440,7 @@ func newPFSFixture(t *testing.T) *pfsFixture {
 	ctx = logger.WithLogger(ctx, l)
 	return &pfsFixture{
 		TempDirFixture: f,
+		t:              t,
 		ctx:            ctx,
 		cancel:         cancel,
 		st:             st,
@@ -436,6 +453,31 @@ func newPFSFixture(t *testing.T) *pfsFixture {
 func (f *pfsFixture) onChange() {
 	f.s.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
+}
+
+func (f *pfsFixture) getPortForwardActions(expectedCreates, expectedDeletes int) (creates []PortForwardCreateAction, deletes []PortForwardDeleteAction) {
+	f.t.Helper()
+
+	time.Sleep(time.Second)
+
+	actions := f.st.Actions()
+	for _, a := range actions {
+		typ := reflect.TypeOf(a)
+		if typ == PortForwardCreateActionType {
+			creates = append(creates, a.(PortForwardCreateAction))
+		} else if typ == PortForwardDeleteActionType {
+			deletes = append(deletes, a.(PortForwardDeleteAction))
+		}
+		if len(creates) == expectedCreates && len(deletes) == expectedDeletes {
+			f.st.ClearActions()
+			return creates, deletes
+		}
+
+	}
+	f.t.Fatalf("Expected %d PortForwardCreateActions and %d PortForwardDelete actions "+
+		"(as of last count: %d Create, %d Delete)",
+		expectedCreates, expectedDeletes, len(creates), len(deletes))
+	return creates, deletes
 }
 
 func (f *pfsFixture) TearDown() {
