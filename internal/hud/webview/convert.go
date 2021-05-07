@@ -24,28 +24,6 @@ const UISessionName = "Tiltfile"
 func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*proto_webview.View, error) {
 	ret := &proto_webview.View{}
 
-	rpv := tiltfileResourceProtoView(s)
-	ret.UiResources = append(ret.UiResources, rpv)
-
-	for _, name := range s.ManifestDefinitionOrder {
-		mt, ok := s.ManifestTargets[name]
-		if !ok {
-			continue
-		}
-
-		// Skip manifests that don't come from the tiltfile.
-		if mt.Manifest.Source != model.ManifestSourceTiltfile {
-			continue
-		}
-
-		r, err := toUIResource(mt, s)
-		if err != nil {
-			return nil, err
-		}
-
-		ret.UiResources = append(ret.UiResources, r)
-	}
-
 	logList, err := s.LogStore.ToLogList(logCheckpoint)
 	if err != nil {
 		return nil, err
@@ -53,6 +31,11 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 
 	ret.LogList = logList
 	ret.UiSession = s.UISessions[types.NamespacedName{Name: UISessionName}]
+	for _, r := range s.UIResources {
+		ret.UiResources = append(ret.UiResources, r)
+	}
+
+	sortUIResources(ret.UiResources, s.ManifestDefinitionOrder)
 
 	// We grandfather in TiltStartTime from the old protocol,
 	// because it tells the UI to reload.
@@ -63,6 +46,30 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 	ret.TiltStartTime = start
 
 	return ret, nil
+}
+
+func sortUIResources(resources []*v1alpha1.UIResource, order []model.ManifestName) {
+	resourceOrder := make(map[string]int, len(order))
+	for i, name := range order {
+		resourceOrder[name.String()] = i
+	}
+	resourceOrder[store.TiltfileManifestName.String()] = -1
+	sort.Slice(resources, func(i, j int) bool {
+		objI := resources[i]
+		objJ := resources[j]
+		orderI, hasI := resourceOrder[objI.Name]
+		orderJ, hasJ := resourceOrder[objJ.Name]
+		if !hasI {
+			orderI = 1000
+		}
+		if !hasJ {
+			orderJ = 1000
+		}
+		if orderI != orderJ {
+			return orderI < orderJ
+		}
+		return objI.Name < objJ.Name
+	})
 }
 
 // Converts EngineState into the public data model representation, a UISession.
@@ -112,9 +119,30 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 	return ret
 }
 
+// Converts an EngineState into a list of UIResources.
+// The order of the list is non-deterministic.
+func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
+	ret := make([]*v1alpha1.UIResource, 0, len(state.ManifestTargets)+1)
+	ret = append(ret, TiltfileResourceProtoView(state))
+	for _, mt := range state.ManifestTargets {
+		// Skip manifests that don't come from the tiltfile.
+		if mt.Manifest.Source != model.ManifestSourceTiltfile {
+			continue
+		}
+
+		r, err := ToUIResource(mt, state)
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, r)
+	}
+	return ret, nil
+}
+
 // Converts a ManifestTarget into the public data model representation,
 // a UIResource.
-func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIResource, error) {
+func ToUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIResource, error) {
 	ms := mt.State
 	endpoints := store.ManifestTargetEndpoints(mt)
 
@@ -158,7 +186,7 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIRe
 	return r, nil
 }
 
-func tiltfileResourceProtoView(s store.EngineState) *v1alpha1.UIResource {
+func TiltfileResourceProtoView(s store.EngineState) *v1alpha1.UIResource {
 	ltfb := s.TiltfileState.LastBuild()
 	ctfb := s.TiltfileState.CurrentBuild
 

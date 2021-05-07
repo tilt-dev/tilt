@@ -150,11 +150,11 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case uisession.UISessionUpdateStatusAction:
 		uisession.HandleUISessionUpdateStatusAction(state, action)
 	case uiresource.UIResourceCreateAction:
-		uiresource.HandleUIResourceCreateAction(ctx, state, action)
+		uiresource.HandleUIResourceCreateAction(state, action)
 	case uiresource.UIResourceUpdateStatusAction:
-		uiresource.HandleUIResourceUpdateStatusAction(ctx, state, action)
+		uiresource.HandleUIResourceUpdateStatusAction(state, action)
 	case uiresource.UIResourceDeleteAction:
-		uiresource.HandleUIResourceDeleteAction(ctx, state, action)
+		uiresource.HandleUIResourceDeleteAction(state, action)
 	case store.PodResetRestartsAction:
 		handlePodResetRestartsAction(state, action)
 	case k8swatch.ServiceChangeAction:
