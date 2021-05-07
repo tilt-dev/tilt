@@ -40,7 +40,7 @@ func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, resources []
 func newWebsocketReader(conn WebsocketConn, persistent bool, handler ViewHandler) *WebsocketReader {
 	return &WebsocketReader{
 		conn:         conn,
-		marshaller:   jsonpb.Marshaler{OrigName: false, EmitDefaults: true},
+		marshaller:   jsonpb.Marshaler{},
 		unmarshaller: jsonpb.Unmarshaler{},
 		persistent:   persistent,
 		handler:      handler,

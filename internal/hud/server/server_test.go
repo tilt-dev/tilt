@@ -348,7 +348,7 @@ func TestHandleNewSnapshot(t *testing.T) {
 	lastReq := f.snapshotHTTP.lastReq
 	if assert.NotNil(t, lastReq) {
 		var snapshot proto_webview.Snapshot
-		jspb := &grpcRuntime.JSONPb{OrigName: false, EmitDefaults: true}
+		jspb := &grpcRuntime.JSONPb{}
 		decoder := jspb.NewDecoder(lastReq.Body)
 		err := decoder.Decode(&snapshot)
 		require.NoError(t, err)

@@ -71,7 +71,7 @@ func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, er
 
 func (s snapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error) {
 	b := &bytes.Buffer{}
-	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	jsEncoder := &runtime.JSONPb{}
 	err := jsEncoder.NewEncoder(b).Encode(snapshot)
 	if err != nil {
 		return "", errors.Wrap(err, "encoding snapshot")
