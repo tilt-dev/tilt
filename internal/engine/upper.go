@@ -146,9 +146,9 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	case k8swatch.KubernetesDiscoveryDeleteAction:
 		k8swatch.HandleKubernetesDiscoveryDeleteAction(ctx, state, action)
 	case uisession.UISessionCreateAction:
-		uisession.HandleUISessionCreateAction(ctx, state, action)
+		uisession.HandleUISessionCreateAction(state, action)
 	case uisession.UISessionUpdateStatusAction:
-		uisession.HandleUISessionUpdateStatusAction(ctx, state, action)
+		uisession.HandleUISessionUpdateStatusAction(state, action)
 	case uiresource.UIResourceCreateAction:
 		uiresource.HandleUIResourceCreateAction(ctx, state, action)
 	case uiresource.UIResourceUpdateStatusAction:
