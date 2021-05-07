@@ -46,9 +46,10 @@ export const OneHundredResources = () => (
 
 export const UpgradeAvailable = () => {
   let view = twoResourceView()
-  view.suggestedTiltVersion = "0.18.1"
-  view.runningTiltBuild = { version: "0.18.0", dev: false }
-  view.versionSettings = { checkUpdates: true }
+  let status = view.uiSession!.status
+  status!.suggestedTiltVersion = "0.18.1"
+  status!.runningTiltBuild = { version: "0.18.0", dev: false }
+  status!.versionSettings = { checkUpdates: true }
   return <OverviewResourceBar view={view} />
 }
 

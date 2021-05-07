@@ -28,8 +28,9 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   let isSnapshot = usePathBuilder().isSnapshot()
   let snapshot = useSnapshotAction()
   let view = props.view
-  let runningBuild = view?.runningTiltBuild
-  let suggestedVersion = view?.suggestedTiltVersion
+  let session = view?.uiSession?.status
+  let runningBuild = session?.runningTiltBuild
+  let suggestedVersion = session?.suggestedTiltVersion
   let resources = view?.uiResources || []
   let hasK8s = resources.some((r) => {
     let specs = r.status?.specs ?? []
@@ -42,10 +43,10 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
     showUpdate: showUpdate(view),
     suggestedVersion,
     runningBuild,
-    tiltCloudUsername: view.tiltCloudUsername ?? "",
-    tiltCloudSchemeHost: view.tiltCloudSchemeHost ?? "",
-    tiltCloudTeamID: view.tiltCloudTeamID ?? "",
-    tiltCloudTeamName: view.tiltCloudTeamName ?? "",
+    tiltCloudUsername: session?.tiltCloudUsername ?? "",
+    tiltCloudSchemeHost: session?.tiltCloudSchemeHost ?? "",
+    tiltCloudTeamID: session?.tiltCloudTeamID ?? "",
+    tiltCloudTeamName: session?.tiltCloudTeamName ?? "",
   }
 
   return (

@@ -53,7 +53,8 @@ class AppController {
       let data: Proto.webviewView = JSON.parse(event.data)
       let toCheckpoint = data.logList?.toCheckpoint
       if (toCheckpoint && toCheckpoint > 0) {
-        let tiltStartTime = data.tiltStartTime
+        let tiltStartTime =
+          data.tiltStartTime || data.uiSession?.status?.tiltStartTime
         let response: Proto.webviewAckWebsocketRequest = {
           toCheckpoint,
           tiltStartTime,

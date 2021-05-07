@@ -142,7 +142,7 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, _ s
 
 	ws.setTiltStartTime(tiltStartTime)
 
-	if view.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
+	if view.UiSession.Status.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
 		// If we're showing the nudge and no one's told the engine
 		// state about it yet... tell the engine state.
 		s.Dispatch(store.AnalyticsNudgeSurfacedAction{})

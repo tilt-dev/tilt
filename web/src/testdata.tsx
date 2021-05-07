@@ -3,6 +3,7 @@ import { RouteComponentProps } from "react-router-dom"
 import { TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
+type UISession = Proto.v1alpha1UISession
 type Link = Proto.v1alpha1UIResourceLink
 
 const unnamedEndpointLink: Link = { url: "1.2.3.4:8080" }
@@ -10,12 +11,8 @@ const namedEndpointLink: Link = { url: "1.2.3.4:9090", name: "debugger" }
 
 type view = {
   uiResources: Array<UIResource>
+  uiSession?: UISession
   logList?: Proto.webviewLogList
-  featureFlags?: { [featureFlag: string]: boolean }
-  tiltfileKey?: string
-  runningTiltBuild?: Proto.webviewTiltBuild
-  suggestedTiltVersion?: string
-  versionSettings?: Proto.webviewVersionSettings
 }
 
 let runningTiltBuild = {
@@ -314,7 +311,10 @@ function oneResourceTest(): UIResource {
 }
 
 function oneResourceView(): view {
-  return { uiResources: [oneResource()], tiltfileKey: "test", runningTiltBuild }
+  return {
+    uiResources: [oneResource()],
+    uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
+  }
 }
 
 function twoResourceView(): view {
@@ -356,7 +356,10 @@ function twoResourceView(): view {
       specs: vigodaSpecs(),
     },
   }
-  return { uiResources: [vigoda, snack], tiltfileKey: "test", runningTiltBuild }
+  return {
+    uiResources: [vigoda, snack],
+    uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
+  }
 }
 
 export function tenResourceView(): view {
@@ -375,7 +378,10 @@ export function nResourceView(n: number): view {
       resources.push(res)
     }
   }
-  return { uiResources: resources, tiltfileKey: "test", runningTiltBuild }
+  return {
+    uiResources: resources,
+    uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
+  }
 }
 
 function oneResourceFailedToBuild(): UIResource[] {
