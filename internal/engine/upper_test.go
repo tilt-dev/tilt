@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
+
 	"github.com/davecgh/go-spew/spew"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -3920,13 +3922,6 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	dockerClient := docker.NewFakeClient()
 
-	ns := k8s.Namespace("default")
-	kdms := k8swatch.NewManifestSubscriber(ns, cdc)
-	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
-	rd := k8swatch.NewContainerRestartDetector()
-	pw := k8swatch.NewPodWatcher(b.kClient, of, rd, cdc)
-	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
-
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	require.NoError(t, st.AddSubscriber(ctx, fSub))
@@ -3964,6 +3959,12 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(
 		configAccess, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	ns := k8s.Namespace("default")
+	kdms := k8swatch.NewManifestSubscriber(ns, cdc)
+	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
+	rd := kubernetesdiscovery.NewContainerRestartDetector()
+	kdc := kubernetesdiscovery.NewReconciler(b.kClient, of, rd, st)
+	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
 	ewm := k8swatch.NewEventWatchManager(b.kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
@@ -3982,6 +3983,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fwc,
 		cmds,
 		plsc,
+		kdc,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -4026,7 +4028,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	uss := uisession.NewSubscriber()
 	urs := uiresource.NewSubscriber()
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, pfr, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, pfr, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

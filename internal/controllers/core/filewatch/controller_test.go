@@ -46,7 +46,7 @@ func newFixture(t *testing.T) *fixture {
 	testingStore := store.NewTestingStore()
 	controller := NewController(testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker())
 
-	ctrlFixture := fake.NewFixture(t, controller)
+	ctrlFixture := fake.NewControllerFixture(t, controller)
 
 	return &fixture{
 		ControllerFixture: ctrlFixture,

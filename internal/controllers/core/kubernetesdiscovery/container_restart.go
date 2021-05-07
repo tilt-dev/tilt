@@ -1,4 +1,4 @@
-package k8swatch
+package kubernetesdiscovery
 
 import (
 	"fmt"
@@ -13,10 +13,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
-
-type Dispatcher interface {
-	Dispatch(action store.Action)
-}
 
 type ContainerRestartDetector struct{}
 

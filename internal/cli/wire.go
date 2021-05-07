@@ -7,6 +7,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
+
 	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
@@ -99,9 +101,8 @@ var BaseWireSet = wire.NewSet(
 	engine.NewBuildController,
 	cmd.WireSet,
 	local.NewServerController,
-	k8swatch.NewContainerRestartDetector,
+	kubernetesdiscovery.NewContainerRestartDetector,
 	k8swatch.NewManifestSubscriber,
-	k8swatch.NewPodWatcher,
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
 	uisession.NewSubscriber,
