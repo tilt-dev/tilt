@@ -49,6 +49,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
+	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -4020,10 +4021,11 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
+	pfr := apiportforward.NewReconciler(b.kClient)
 	uss := uisession.NewSubscriber()
 	urs := uiresource.NewSubscriber()
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, pfr, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

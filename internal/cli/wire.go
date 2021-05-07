@@ -27,6 +27,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine"
@@ -114,6 +115,7 @@ var BaseWireSet = wire.NewSet(
 	k8srollout.NewPodMonitor,
 	telemetry.NewStartTracker,
 	session.NewController,
+	apiportforward.NewReconciler, // TODO(maia): remove as subscriber once this is a true reconciler
 
 	build.ProvideClock,
 	provideClock,
