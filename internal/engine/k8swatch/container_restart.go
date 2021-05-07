@@ -24,11 +24,7 @@ func NewContainerRestartDetector() *ContainerRestartDetector {
 	return &ContainerRestartDetector{}
 }
 
-func (c *ContainerRestartDetector) Detect(dispatcher Dispatcher, prevStatus *v1alpha1.KubernetesDiscoveryStatus, current v1alpha1.KubernetesDiscovery) {
-	if prevStatus == nil {
-		// there is no prior state, so there's nothing to compare to
-		return
-	}
+func (c *ContainerRestartDetector) Detect(dispatcher Dispatcher, prevStatus v1alpha1.KubernetesDiscoveryStatus, current v1alpha1.KubernetesDiscovery) {
 	mn := model.ManifestName(current.Annotations[v1alpha1.AnnotationManifest])
 	if mn == "" {
 		// log actions are dispatched by manifest, so if this spec isn't associated with a manifest,
@@ -36,7 +32,7 @@ func (c *ContainerRestartDetector) Detect(dispatcher Dispatcher, prevStatus *v1a
 		return
 	}
 	prevPods := podsByUID(prevStatus)
-	currentPods := podsByUID(&current.Status)
+	currentPods := podsByUID(current.Status)
 	for uid, currentPod := range currentPods {
 		c.handlePod(dispatcher, mn, prevPods[uid], currentPod)
 	}
@@ -59,7 +55,7 @@ func (c *ContainerRestartDetector) logRestarts(dispatcher Dispatcher, mn model.M
 	}
 }
 
-func podsByUID(status *v1alpha1.KubernetesDiscoveryStatus) map[types.UID]*v1alpha1.Pod {
+func podsByUID(status v1alpha1.KubernetesDiscoveryStatus) map[types.UID]*v1alpha1.Pod {
 	pods := make(map[types.UID]*v1alpha1.Pod)
 	for _, p := range status.Pods {
 		pods[types.UID(p.UID)] = &p

@@ -71,9 +71,16 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	pb2 := basePB.WithPodName("pod2")
 	f.podEvent(pb1.Build())
 	f.podEvent(pb2.Build())
+
+	// must wait for both pods to be seen BEFORE the build is triggered
+	f.WaitUntilManifestState("pods were not seen", manifest.Name, func(state store.ManifestState) bool {
+		return len(state.K8sRuntimeState().Pods) == 2
+	})
+
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
+
 	// Should not have sent container info b/c too many pods
 	assert.Equal(t, store.ContainerInfo{}, call.oneImageState().OneContainerInfo())
 
@@ -218,6 +225,11 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	podB := basePB.WithPodName("pod2").Build()
 	f.podEvent(podA)
 	f.podEvent(podB)
+
+	// must wait for both pods to be seen BEFORE the build is triggered
+	f.WaitUntilManifestState("pods were not seen", manifest.Name, func(state store.ManifestState) bool {
+		return len(state.K8sRuntimeState().Pods) == 2
+	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 

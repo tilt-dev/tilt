@@ -3911,6 +3911,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
 	ctx, cancel := context.WithCancel(ctx)
 
+	cdc := controllers.ProvideDeferredClient()
+
 	watcher := fsevent.NewFakeMultiWatcher()
 	b := newFakeBuildAndDeployer(t)
 
@@ -3919,10 +3921,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	dockerClient := docker.NewFakeClient()
 
 	ns := k8s.Namespace("default")
-	kdms := k8swatch.NewManifestSubscriber(ns)
+	kdms := k8swatch.NewManifestSubscriber(ns, cdc)
 	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
 	rd := k8swatch.NewContainerRestartDetector()
-	pw := k8swatch.NewPodWatcher(b.kClient, of, rd)
+	pw := k8swatch.NewPodWatcher(b.kClient, of, rd, cdc)
 	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
 
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
@@ -3938,7 +3940,6 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
-	cdc := controllers.ProvideDeferredClient()
 	plm := runtimelog.NewPodLogManager(cdc)
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})

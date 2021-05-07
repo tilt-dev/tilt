@@ -4,6 +4,13 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/tilt-dev/tilt/pkg/apis"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -22,13 +29,19 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 )
 
+type watcherSet map[watcherID]bool
+
 // watcherID is to disambiguate between K8s object keys and tilt-apiserver KubernetesDiscovery object keys.
 type watcherID types.NamespacedName
-type watcherSet map[watcherID]bool
+
+func (w watcherID) String() string {
+	return types.NamespacedName(w).String()
+}
 
 type PodWatcher struct {
 	kCli         k8s.Client
 	ownerFetcher k8s.OwnerFetcher
+	ctrlClient   ctrlclient.Client
 
 	// restartDetector compares a previous version of status with the latest and emits log events
 	// for any containers on the pod that restarted.
@@ -64,10 +77,12 @@ type PodWatcher struct {
 	knownPods map[types.UID]podMeta
 }
 
-func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, restartDetector *ContainerRestartDetector) *PodWatcher {
+func NewPodWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, restartDetector *ContainerRestartDetector,
+	ctrlClient ctrlclient.Client) *PodWatcher {
 	return &PodWatcher{
 		kCli:                   kCli,
 		ownerFetcher:           ownerFetcher,
+		ctrlClient:             ctrlClient,
 		restartDetector:        restartDetector,
 		watchedNamespaces:      make(map[k8s.Namespace]nsWatch),
 		uidWatchers:            make(map[types.UID]watcherSet),
@@ -90,11 +105,12 @@ type watcher struct {
 	// spec is the current version of the KubernetesDiscoverySpec being used for this watcher.
 	//
 	// It's used to simplify diffing logic and determine if action is needed.
-	spec v1alpha1.KubernetesDiscoverySpec
+	spec      v1alpha1.KubernetesDiscoverySpec
+	startTime time.Time
 	// lastUpdate is the last version of the status that was persisted.
 	//
 	// It's used for diffing to detect container restarts as well as avoid spurious updates.
-	lastUpdate *v1alpha1.KubernetesDiscoveryStatus
+	lastUpdate v1alpha1.KubernetesDiscoveryStatus
 	// extraSelectors are label selectors used to match pods that don't transitively match any known UID.
 	extraSelectors []labels.Selector
 }
@@ -207,6 +223,7 @@ func (w *PodWatcher) addOrReplace(ctx context.Context, st store.RStore, key watc
 
 	pw := watcher{
 		spec:           *kd.Spec.DeepCopy(),
+		startTime:      time.Now(),
 		extraSelectors: extraSelectors,
 	}
 
@@ -215,7 +232,9 @@ func (w *PodWatcher) addOrReplace(ctx context.Context, st store.RStore, key watc
 	// always emit an update status event so that any Pods that PodWatcher _already_ knows about get populated
 	// this is extremely common as usually PodWatcher receives the Pod event before the caller is able to
 	// propagate their watch via the KubernetesDiscovery spec to be seen here
-	w.updateStatus(ctx, st, key)
+	if err := w.updateStatus(ctx, st, key); err != nil {
+		return fmt.Errorf("failed to update KubernetesDiscovery %q: %v", key, err)
+	}
 	return nil
 }
 
@@ -301,36 +320,73 @@ func (w *PodWatcher) setupUIDWatch(_ context.Context, uid types.UID, watcherID w
 	uidWatchers[watcherID] = true
 }
 
+// isOutdatedSpec ensures that the spec used to generate the status is the same as the "latest" spec *in the store*.
+//
+// This is a temporary hack - once this is a reconciler, it should just compare against the latest spec in the
+// apiserver, but currently, there's a race between apiserver getting updated, corresponding store action being
+// processed, AND subscribers (such as this one) running.
+//
+// In practice, writing an outdated status to a spec would actually be fairly harmless as it'd just mean some
+// temporarily stale data that would be cleaned up on the next reconcile (though striving to have the status
+// always logically match the spec is also a good thing). The real problem and reason for this check is actually
+// for tests: the fake apiserver ctrlclient.Client overwrites the _entire_ object (not just status), which means
+// an outdated status update will blow away the spec changes and result in the next reconcile thinking that it's
+// up-to-date.
+func (w *PodWatcher) isOutdatedSpec(st store.RStore, key watcherID, spec v1alpha1.KubernetesDiscoverySpec) bool {
+	state := st.RLockState()
+	defer st.RUnlockState()
+	kd := state.KubernetesDiscoveries[types.NamespacedName(key)]
+	if kd == nil {
+		// there's nothing in store, so inherently this spec is newer
+		return false
+	}
+	return !equality.Semantic.DeepEqual(spec, kd.Spec)
+}
+
 // updateStatus builds the latest status for the given KubernetesDiscovery spec key and persists it.
 //
 // mu must be held by caller.
 //
 // If the status has not changed since the last status update performed (by the PodWatcher), it will be skipped.
-func (w *PodWatcher) updateStatus(ctx context.Context, st store.RStore, key watcherID) {
-	storeKey := types.NamespacedName(key)
-	watcher := w.watchers[key]
+func (w *PodWatcher) updateStatus(ctx context.Context, st store.RStore, watcherID watcherID) error {
+	watcher := w.watchers[watcherID]
+	if w.isOutdatedSpec(st, watcherID, watcher.spec) {
+		// the spec was modified compared to what the watcher is using, so don't attempt an update
+		// since the new status would be mismatched; instead wait for reconciliation with the new spec,
+		// which will update the status with the latest data
+		return nil
+	}
+
 	status := w.buildStatus(ctx, watcher)
-	if watcher.lastUpdate != nil && equality.Semantic.DeepEqual(watcher.lastUpdate, &status) {
-		return
+	if equality.Semantic.DeepEqual(watcher.lastUpdate, status) {
+		// the status hasn't changed - avoid a spurious update
+		return nil
 	}
 
-	var kd *v1alpha1.KubernetesDiscovery
-	state := st.RLockState()
-	if kd = state.KubernetesDiscoveries[storeKey]; kd != nil {
-		kd = kd.DeepCopy()
-	}
-	st.RUnlockState()
-
-	if kd == nil {
-		// the spec has been deleted, don't bother trying to update status
-		return
+	key := types.NamespacedName(watcherID)
+	var kd v1alpha1.KubernetesDiscovery
+	if err := w.ctrlClient.Get(ctx, key, &kd); err != nil {
+		if apierrors.IsNotFound(err) {
+			// if the spec got deleted, there's nothing to update
+			return nil
+		}
+		return fmt.Errorf("failed to get KubernetesDiscovery status for %q: %v", watcherID, err)
 	}
 
 	kd.Status = status
-	st.Dispatch(NewKubernetesDiscoveryUpdateStatusAction(kd))
-	w.restartDetector.Detect(st, watcher.lastUpdate, *kd)
-	watcher.lastUpdate = status.DeepCopy()
-	w.watchers[key] = watcher
+	if err := w.ctrlClient.Status().Update(ctx, &kd); err != nil {
+		if apierrors.IsNotFound(err) {
+			// similar to above but for the event that it gets deleted between get + update
+			return nil
+		}
+		return fmt.Errorf("failed to update KubernetesDiscovery status for %q: %v", watcherID, err)
+	}
+
+	st.Dispatch(NewKubernetesDiscoveryUpdateStatusAction(&kd))
+	w.restartDetector.Detect(st, watcher.lastUpdate, kd)
+	watcher.lastUpdate = *status.DeepCopy()
+	w.watchers[watcherID] = watcher
+	return nil
 }
 
 // buildStatus creates the current state for the given KubernetesDiscovery object key.
@@ -379,7 +435,10 @@ func (w *PodWatcher) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 		}
 	}
 
-	return v1alpha1.KubernetesDiscoveryStatus{Pods: pods}
+	return v1alpha1.KubernetesDiscoveryStatus{
+		MonitorStartTime: apis.NewMicroTime(watcher.startTime),
+		Pods:             pods,
+	}
 }
 
 func (w *PodWatcher) upsertPod(pod *v1.Pod) {
@@ -479,7 +538,7 @@ func (w *PodWatcher) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []tri
 	return results
 }
 
-func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st store.RStore) {
+func (w *PodWatcher) handlePodChange(ctx context.Context, pod *v1.Pod, st store.RStore) {
 	objTree, err := w.ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
 	if err != nil {
 		return
@@ -491,7 +550,11 @@ func (w *PodWatcher) dispatchPodChange(ctx context.Context, pod *v1.Pod, st stor
 	triageResults := w.triagePodTree(pod, objTree)
 
 	for i := range triageResults {
-		w.updateStatus(ctx, st, triageResults[i].watcherID)
+		watcherID := triageResults[i].watcherID
+		if err := w.updateStatus(ctx, st, watcherID); err != nil {
+			st.Dispatch(store.NewErrorAction(err))
+			return
+		}
 	}
 }
 
@@ -515,8 +578,11 @@ func (w *PodWatcher) handlePodDelete(ctx context.Context, st store.RStore, names
 
 	// because we don't know if any watchers matched on this Pod by label previously,
 	// trigger an update on every watcher, which will return early if it didn't change
-	for key := range w.watchers {
-		w.updateStatus(ctx, st, key)
+	for watcherID := range w.watchers {
+		if err := w.updateStatus(ctx, st, watcherID); err != nil {
+			st.Dispatch(store.NewErrorAction(err))
+			return
+		}
 	}
 }
 
@@ -532,7 +598,7 @@ func (w *PodWatcher) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.O
 			if ok {
 				w.upsertPod(pod)
 
-				go w.dispatchPodChange(ctx, pod, st)
+				go w.handlePodChange(ctx, pod, st)
 				continue
 			}
 
