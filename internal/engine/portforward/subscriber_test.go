@@ -2,31 +2,23 @@ package portforward
 
 import (
 	"context"
-	"reflect"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
+	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-)
-
-var (
-	PortForwardCreateActionType = reflect.TypeOf(PortForwardCreateAction{})
-	PortForwardDeleteActionType = reflect.TypeOf(PortForwardDeleteAction{})
 )
 
 func TestPortForward(t *testing.T) {
 	f := newPFSFixture(t)
+	f.Start()
 	defer f.TearDown()
 
 	state := f.st.LockMutableStateForTesting()
@@ -45,7 +37,9 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	// f.getPortForwardActions(0)
+	f.waitUntilStatePortForwards("no port forwards running yet", func(pfs map[string]*PortForward) bool {
+		return len(pfs) == 0
+	})
 
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
@@ -54,39 +48,42 @@ func TestPortForward(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	creates, _ := f.getPortForwardActions(1, 0)
-	pfA := creates[0].PortForward
-	assert.Equal(t, "pod-A", pfA.Spec.PodName)
-	if assert.Len(t, pfA.Spec.Forwards, 1) {
-		assert.Equal(t, int32(8080), pfA.Spec.Forwards[0].LocalPort)
-		assert.Equal(t, int32(8081), pfA.Spec.Forwards[0].ContainerPort)
-	}
+	f.waitUntilStatePortForwards("one port forward for pod A", func(pfs map[string]*PortForward) bool {
+		if len(pfs) != 1 {
+			return false
+		}
+		for _, pf := range pfs {
+			assert.Equal(t, "pod-A", pf.Spec.PodName)
+			f.assertOneForward(8080, 8081, pf)
+		}
+		return true
+	})
 
-	state = f.st.LockMutableStateForTesting()
-	mt = state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-B", Phase: string(v1.PodRunning)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	creates, _ = f.getPortForwardActions(1, 0)
-
-	pfB := creates[0].PortForward
-	assert.Equal(t, "pod-B", pfB.Spec.PodName)
-	if assert.Len(t, pfB.Spec.Forwards, 1) {
-		assert.Equal(t, int32(8080), pfB.Spec.Forwards[0].LocalPort)
-		assert.Equal(t, int32(8081), pfB.Spec.Forwards[0].ContainerPort)
-	}
-
-	state = f.st.LockMutableStateForTesting()
-	mt = state.ManifestTargets["fe"]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-		v1alpha1.Pod{Name: "pod-B", Phase: string(v1.PodPending)})
-	f.st.UnlockMutableState()
-
-	f.onChange()
-	_, deletes := f.getPortForwardActions(0, 1)
-	assert.Equal(t, pfB.Name, deletes[0].Name)
+	// assert.Equal(t, 1, len(f.s.activeForwards))
+	// assert.Equal(t, "pod-A", f.kCli.LastForwardPortPodID().String())
+	// firstPodForwardCtx := f.kCli.LastForwardContext()
+	//
+	// state = f.st.LockMutableStateForTesting()
+	// mt = state.ManifestTargets["fe"]
+	// mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+	// 	v1alpha1.Pod{Name: "pod-B", Phase: string(v1.PodRunning)})
+	// f.st.UnlockMutableState()
+	//
+	// f.onChange()
+	// assert.Equal(t, 1, len(f.s.activeForwards))
+	// assert.Equal(t, "pod-id2", f.kCli.LastForwardPortPodID().String())
+	//
+	// state = f.st.LockMutableStateForTesting()
+	// mt = state.ManifestTargets["fe"]
+	// mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+	// 	v1alpha1.Pod{Name: "pod-id2", Phase: string(v1.PodPending)})
+	// f.st.UnlockMutableState()
+	//
+	// f.onChange()
+	// assert.Equal(t, 0, len(f.s.activeForwards))
+	//
+	// assert.Equal(t, context.Canceled, firstPodForwardCtx.Err(),
+	// 	"Expected first port-forward to be canceled")
 }
 
 // func TestMultiplePortForwardsForOnePod(t *testing.T) {
@@ -420,33 +417,39 @@ func TestPortForward(t *testing.T) {
 
 type pfsFixture struct {
 	*tempdir.TempDirFixture
-	t      *testing.T
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
-	st     *store.TestingStore
+	st     *store.Store
 	s      *Subscriber
-	out    *bufsync.ThreadSafeBuffer
+	done   chan error
 }
 
 func newPFSFixture(t *testing.T) *pfsFixture {
+	reducer := func(ctx context.Context, engineState *store.EngineState, action store.Action) {
+		switch action := action.(type) {
+		case PortForwardCreateAction:
+			HandlePortForwardCreateAction(engineState, action)
+		case PortForwardDeleteAction:
+			HandlePortForwardDeleteAction(engineState, action)
+		default:
+			t.Fatalf("unrecognized action: %T", action)
+		}
+	}
+
 	f := tempdir.NewTempDirFixture(t)
-	st := store.NewTestingStore()
+	st := store.NewStore(reducer, store.LogActionsFlag(false))
 	kCli := k8s.NewFakeK8sClient(t)
 
-	out := bufsync.NewThreadSafeBuffer()
-	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx = logger.WithLogger(ctx, l)
 	return &pfsFixture{
 		TempDirFixture: f,
-		t:              t,
 		ctx:            ctx,
 		cancel:         cancel,
 		st:             st,
 		kCli:           kCli,
 		s:              NewSubscriber(kCli),
-		out:            out,
+		done:           make(chan error),
 	}
 }
 
@@ -454,34 +457,68 @@ func (f *pfsFixture) onChange() {
 	f.s.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
 }
+func (f pfsFixture) Start() {
+	go func() {
+		err := f.st.Loop(f.ctx)
+		f.done <- err
+	}()
+}
 
-func (f *pfsFixture) getPortForwardActions(expectedCreates, expectedDeletes int) (creates []PortForwardCreateAction, deletes []PortForwardDeleteAction) {
-	f.t.Helper()
-
-	time.Sleep(time.Second)
-
-	actions := f.st.Actions()
-	for _, a := range actions {
-		typ := reflect.TypeOf(a)
-		if typ == PortForwardCreateActionType {
-			creates = append(creates, a.(PortForwardCreateAction))
-		} else if typ == PortForwardDeleteActionType {
-			deletes = append(deletes, a.(PortForwardDeleteAction))
-		}
-		if len(creates) == expectedCreates && len(deletes) == expectedDeletes {
-			f.st.ClearActions()
-			return creates, deletes
-		}
-
+func (f pfsFixture) WaitUntilDone() {
+	err := <-f.done
+	if err != nil && err != context.Canceled {
+		f.T().Fatalf("Loop failed unexpectedly: %v", err)
 	}
-	f.t.Fatalf("Expected %d PortForwardCreateActions and %d PortForwardDelete actions "+
-		"(as of last count: %d Create, %d Delete)",
-		expectedCreates, expectedDeletes, len(creates), len(deletes))
-	return creates, deletes
+}
+
+func (f *pfsFixture) assertForward(fwd Forward, expectedLocal, expectedContainer int32) {
+	assert.Equal(f.T(), expectedLocal, fwd.LocalPort)
+	assert.Equal(f.T(), expectedContainer, fwd.ContainerPort)
+}
+
+func (f *pfsFixture) assertOneForward(expectedLocal, expectedContainer int32, pf *PortForward) {
+	if assert.Len(f.T(), pf.Spec.Forwards, 1) {
+		assert.Equal(f.T(), expectedLocal, pf.Spec.Forwards[0].LocalPort)
+		assert.Equal(f.T(), expectedContainer, pf.Spec.Forwards[0].ContainerPort)
+	}
+}
+
+func (f *pfsFixture) waitUntilStatePortForwards(msg string, isDone func(map[string]*PortForward) bool) {
+	f.T().Helper()
+
+	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	defer cancel()
+
+	isCanceled := false
+
+	for {
+		state := f.st.RLockState()
+		done := isDone(state.PortForwards)
+		fatalErr := state.FatalError
+		f.st.RUnlockState()
+		if done {
+			return
+		}
+		if fatalErr != nil {
+			f.T().Fatalf("Store had fatal error: %v", fatalErr)
+		}
+
+		if isCanceled {
+			f.T().Fatalf("Timed out waiting for: %s", msg)
+		}
+
+		select {
+		case <-ctx.Done():
+			// Let the loop run the isDone test one more time
+			isCanceled = true
+		case <-time.Tick(10 * time.Millisecond):
+		}
+	}
 }
 
 func (f *pfsFixture) TearDown() {
 	f.kCli.TearDown()
 	f.TempDirFixture.TearDown()
 	f.cancel()
+	f.WaitUntilDone()
 }
