@@ -67,6 +67,10 @@ type PodBuilder struct {
 	resourceVersion string
 	unknownOwner    bool
 
+	// contextNamespace allows setting a fallback default namespace instead of `default` to simulate
+	// a namespace override in the active config context.
+	contextNamespace k8s.Namespace
+
 	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
 	// If there's no entry at index i, we'll use a dummy value.
 	imageRefs map[int]string
@@ -209,6 +213,19 @@ func (b PodBuilder) WithDeploymentUID(deploymentUID types.UID) PodBuilder {
 	return b
 }
 
+// WithContextNamespace sets the fallback namespace used if the entities in the manifest YAML do
+// not specify any namespace.
+//
+// This simulates having a namespace set on the active kubeconfig context, which Tilt also infers
+// and uses, but is not explicitly accessible to PodBuilder.
+//
+// If this is not set AND the entities do not reference a namespace, they will be assigned a namespace
+// value of k8s.DefaultNamespace (`default`).
+func (b PodBuilder) WithContextNamespace(ns k8s.Namespace) PodBuilder {
+	b.contextNamespace = ns
+	return b
+}
+
 func (b PodBuilder) buildReplicaSetName() string {
 	return fmt.Sprintf("%s-replicaset", b.manifest.Name)
 }
@@ -234,27 +251,26 @@ func (b PodBuilder) DeploymentUID() types.UID {
 	return types.UID(fmt.Sprintf("%s-fakeUID", b.buildDeploymentName()))
 }
 
-func (b PodBuilder) buildDeployment() *appsv1.Deployment {
+func (b PodBuilder) buildDeployment(ns k8s.Namespace) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      b.buildDeploymentName(),
-			Namespace: k8s.DefaultNamespace.String(),
+			Namespace: ns.String(),
 			Labels:    k8s.NewTiltLabelMap(),
 			UID:       b.DeploymentUID(),
 		},
 	}
 }
 
-func (b PodBuilder) buildReplicaSet() *appsv1.ReplicaSet {
-	dep := b.buildDeployment()
+func (b PodBuilder) buildReplicaSet(deployment *appsv1.Deployment) *appsv1.ReplicaSet {
 	return &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      b.buildReplicaSetName(),
-			Namespace: k8s.DefaultNamespace.String(),
+			Namespace: deployment.Namespace,
 			UID:       b.buildReplicaSetUID(),
 			Labels:    k8s.NewTiltLabelMap(),
 			OwnerReferences: []metav1.OwnerReference{
-				k8s.RuntimeObjToOwnerRef(dep),
+				k8s.RuntimeObjToOwnerRef(deployment),
 			},
 		},
 	}
@@ -371,6 +387,28 @@ func (b PodBuilder) validateContainerIDs(numContainers int) {
 	}
 }
 
+func (b PodBuilder) determineNamespace(entities []k8s.K8sEntity) k8s.Namespace {
+	// N.B. we want to be careful to not coerce values to `default`, which might not be the implicit default based
+	// 	on configured context, so we really want to leave this as an empty string in that case
+	nsVal := entities[0].NamespaceOrDefault("")
+	for i := 1; i < len(entities)-1; i++ {
+		if string(entities[i].Namespace()) != nsVal {
+			b.t.Fatalf("PodBuilder only works with Manifests that reference exactly 1 namespace (found %s and %s)",
+				nsVal, entities[i].Namespace())
+		}
+	}
+	if nsVal != "" {
+		return k8s.Namespace(nsVal)
+	}
+	if b.contextNamespace != "" {
+		return b.contextNamespace
+	}
+	// this is actually redundant as long as k8s.Namespace::String() is used which
+	// coerces empty string to this, but that behavior is actually a bit sketchy,
+	// so this is done explicitly
+	return k8s.DefaultNamespace
+}
+
 type PodObjectTree []k8s.K8sEntity
 
 func (p PodObjectTree) Pod() k8s.K8sEntity {
@@ -388,8 +426,8 @@ func (p PodObjectTree) Deployment() k8s.K8sEntity {
 // Simulates a Pod -> ReplicaSet -> Deployment ref tree
 func (b PodBuilder) ObjectTreeEntities() PodObjectTree {
 	pod := b.Build()
-	rs := b.buildReplicaSet()
-	dep := b.buildDeployment()
+	dep := b.buildDeployment(k8s.Namespace(pod.Namespace))
+	rs := b.buildReplicaSet(dep)
 	return PodObjectTree{
 		k8s.NewK8sEntity(pod),
 		k8s.NewK8sEntity(rs),
@@ -412,6 +450,8 @@ func (b PodBuilder) Build() *v1.Pod {
 		b.t.Fatalf("PodBuilder only works with Manifests with exactly 1 PodTemplateSpec: %v", tSpecs)
 	}
 
+	ns := b.determineNamespace(entities)
+
 	tSpec := tSpecs[0]
 	spec := tSpec.Spec
 	numContainers := len(spec.Containers)
@@ -429,8 +469,9 @@ func (b PodBuilder) Build() *v1.Pod {
 		spec.Containers[i] = container
 	}
 
+	deployment := b.buildDeployment(ns)
 	ownerRefs := []metav1.OwnerReference{
-		k8s.RuntimeObjToOwnerRef(b.buildReplicaSet()),
+		k8s.RuntimeObjToOwnerRef(b.buildReplicaSet(deployment)),
 	}
 	if b.unknownOwner {
 		ownerRefs = nil
@@ -439,7 +480,7 @@ func (b PodBuilder) Build() *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              string(b.PodName()),
-			Namespace:         k8s.DefaultNamespace.String(),
+			Namespace:         ns.String(),
 			CreationTimestamp: b.buildCreationTime(),
 			DeletionTimestamp: b.buildDeletionTime(),
 			Labels:            labels,
