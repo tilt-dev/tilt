@@ -19,7 +19,8 @@ import (
 )
 
 type Subscriber struct {
-	kClient k8s.Client
+	kClient            k8s.Client
+	disabledForTesting bool
 }
 
 func NewSubscriber(kClient k8s.Client) *Subscriber {
@@ -28,9 +29,15 @@ func NewSubscriber(kClient k8s.Client) *Subscriber {
 	}
 }
 
+func (s *Subscriber) DisableForTesting() { s.disabledForTesting = true }
+
 // Figure out the diff between what port forwards ought to be running (given the
 // current manifests and pods) and what the EngineState/API think ought to be running
 func (s *Subscriber) diff(st store.RStore) (toStart []*PortForward, toShutdown []string) {
+	if s.disabledForTesting {
+		return
+	}
+
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -82,7 +89,11 @@ func (s *Subscriber) diff(st store.RStore) (toStart []*PortForward, toShutdown [
 		oldPF, onState := statePFs[pf.Name]
 		if onState {
 			// This PortForward is already on the state -- do we need to do anything further?
-			if equality.Semantic.DeepEqual(oldPF.Spec, pf.Spec) && equality.Semantic.DeepEqual(oldPF.ObjectMeta, pf.ObjectMeta) {
+			// NOTE(maia): we compare the ManifestName annotation so that if a user changes
+			//   just the manifest name, the PF logs will go to the correct place.
+			if equality.Semantic.DeepEqual(oldPF.Spec, pf.Spec) &&
+				oldPF.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] ==
+					pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] {
 				// Nothing has changed, nothing to do
 				continue
 			}
@@ -103,7 +114,10 @@ func (s *Subscriber) diff(st store.RStore) (toStart []*PortForward, toShutdown [
 	return toStart, toShutdown
 }
 
-func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+	if summary.IsLogOnly() {
+		return
+	}
 	toStart, toShutdown := s.diff(st)
 	for _, name := range toShutdown {
 		st.Dispatch(NewPortForwardDeleteAction(name))

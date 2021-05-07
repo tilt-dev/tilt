@@ -5,11 +5,9 @@ import (
 )
 
 func HandlePortForwardCreateAction(state *store.EngineState, action PortForwardCreateAction) {
+	// will also overwrite an existing PortForward of the same name
 	pf := action.PortForward
-	_, exists := state.PortForwards[pf.Name]
-	if !exists {
-		state.PortForwards[pf.Name] = pf
-	}
+	state.PortForwards[pf.Name] = pf
 }
 
 func HandlePortForwardDeleteAction(state *store.EngineState, action PortForwardDeleteAction) {

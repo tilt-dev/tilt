@@ -3944,6 +3944,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfs := portforward.NewSubscriber(b.kClient)
+	pfs.DisableForTesting()
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
