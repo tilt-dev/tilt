@@ -44,6 +44,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
+	"github.com/tilt-dev/tilt/internal/engine/uiresource"
+	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/git"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -101,6 +103,8 @@ var BaseWireSet = wire.NewSet(
 	k8swatch.NewPodWatcher,
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
+	uisession.NewSubscriber,
+	uiresource.NewSubscriber,
 	configs.NewConfigsController,
 	telemetry.NewController,
 	dcwatch.NewEventWatcher,
