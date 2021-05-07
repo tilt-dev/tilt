@@ -8,14 +8,11 @@ import (
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type Reconciler struct {
@@ -62,7 +59,11 @@ func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portF
 		existing, isActive := r.activeForwards[name]
 		if isActive {
 			// We're already running this PortForward -- do we need to do anything further?
-			if equality.Semantic.DeepEqual(existing.Spec, desired.Spec) && equality.Semantic.DeepEqual(existing.ObjectMeta, desired.ObjectMeta) {
+			// NOTE(maia): we compare the ManifestName annotation so that if a user changes
+			//   just the manifest name, the PF logs will go to the correct place.
+			if equality.Semantic.DeepEqual(existing.Spec, desired.Spec) &&
+				existing.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] ==
+					desired.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] {
 				// Nothing has changed, nothing to do
 				continue
 			}
@@ -104,12 +105,7 @@ func (r *Reconciler) OnChange(ctx context.Context, st store.RStore, summary stor
 
 	for _, entry := range toStart {
 		// Treat port-forwarding errors as part of the pod log
-		ctx := logger.CtxWithLogHandler(entry.ctx, PodLogActionWriter{
-			Store:        st,
-			PodID:        k8s.PodID(entry.Spec.PodName),
-			ManifestName: model.ManifestName(entry.ObjectMeta.Annotations[v1alpha1.AnnotationManifest]),
-		})
-
+		ctx := store.MustObjectLogHandler(entry.ctx, st, entry.PortForward)
 		for _, forward := range entry.Spec.Forwards {
 			entry := entry
 			forward := forward
@@ -185,15 +181,4 @@ func newEntry(ctx context.Context, pf *PortForward) portForwardEntry {
 		ctx:         ctx,
 		cancel:      cancel,
 	}
-}
-
-type PodLogActionWriter struct {
-	Store        store.RStore
-	PodID        k8s.PodID
-	ManifestName model.ManifestName
-}
-
-func (w PodLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	w.Store.Dispatch(store.NewLogAction(w.ManifestName, k8sconv.SpanIDForPod(w.ManifestName, w.PodID), level, fields, p))
-	return nil
 }
