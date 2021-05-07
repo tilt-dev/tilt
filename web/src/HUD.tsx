@@ -67,21 +67,7 @@ export default class HUD extends Component<HudProps, HudState> {
     })
 
     this.state = {
-      view: {
-        needsAnalyticsNudge: false,
-        fatalError: undefined,
-        runningTiltBuild: {
-          version: "",
-          date: "",
-          dev: false,
-        },
-        suggestedTiltVersion: "",
-        versionSettings: { checkUpdates: true },
-        featureFlags: {},
-        tiltCloudUsername: "",
-        tiltCloudSchemeHost: "",
-        tiltCloudTeamID: "",
-      },
+      view: {},
       snapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
@@ -122,8 +108,12 @@ export default class HUD extends Component<HudProps, HudState> {
       Object.assign(newState, state)
       newState.logStore = prevState.logStore ?? new LogStore()
 
-      let oldStartTime = prevState.view?.tiltStartTime
-      let newStartTime = newState.view?.tiltStartTime
+      let prevSession = prevState.view?.uiSession?.status
+      let newSession = newState.view?.uiSession?.status
+      let oldStartTime =
+        prevState.view?.tiltStartTime || prevSession?.tiltStartTime
+      let newStartTime =
+        newState.view?.tiltStartTime || newSession?.tiltStartTime
       if (oldStartTime && newStartTime && oldStartTime != newStartTime) {
         // If Tilt restarts, reload the page to get new JS.
         // https://github.com/tilt-dev/tilt/issues/4421
@@ -208,11 +198,12 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   private getFeatures(): Features {
-    if (this.state.view) {
-      return new Features(this.state.view.featureFlags)
-    }
-
-    return new Features({})
+    let featureFlags = {} as { [key: string]: boolean }
+    let flagList = this.state.view.uiSession?.status?.featureFlags || []
+    flagList.forEach((flag) => {
+      featureFlags[flag.name || ""] = !!flag.value
+    })
+    return new Features(featureFlags)
   }
 
   handleSetHighlight(highlight: SnapshotHighlight) {
@@ -248,16 +239,18 @@ export default class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.view
+    let session = this.state.view.uiSession?.status
 
-    let needsNudge = view?.needsAnalyticsNudge ?? false
+    let needsNudge = session?.needsAnalyticsNudge ?? false
     let resources = view?.uiResources ?? []
-    if (!resources?.length || !view?.tiltfileKey) {
+    if (!resources?.length || !session?.tiltfileKey) {
       return <HeroScreen message={"Loading…"} />
     }
 
-    let runningBuild = view?.runningTiltBuild
-    let suggestedVersion = view?.suggestedTiltVersion
-    const versionSettings = view?.versionSettings
+    let tiltfileKey = session?.tiltfileKey
+    let runningBuild = session?.runningTiltBuild
+    let suggestedVersion = session?.suggestedTiltVersion
+    const versionSettings = session?.versionSettings
     const checkUpdates = versionSettings?.checkUpdates ?? true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
@@ -271,7 +264,7 @@ export default class HUD extends Component<HudProps, HudState> {
     let validateResource = (name: string) =>
       resources.some((res) => res.metadata?.name === name)
     return (
-      <tiltfileKeyContext.Provider value={view.tiltfileKey}>
+      <tiltfileKeyContext.Provider value={tiltfileKey}>
         <StarredResourcesContextProvider>
           <ReactOutlineManager>
             <ResourceNavProvider validateResource={validateResource}>
@@ -327,9 +320,10 @@ export default class HUD extends Component<HudProps, HudState> {
       this.setState({ showSnapshotModal: false, snapshotLink: "" })
     let handleSendSnapshot = () =>
       this.sendSnapshot(this.snapshotFromState(this.state))
-    let tiltCloudUsername = (view && view.tiltCloudUsername) || null
-    let tiltCloudSchemeHost = (view && view.tiltCloudSchemeHost) || ""
-    let tiltCloudTeamID = (view && view.tiltCloudTeamID) || null
+    let session = view?.uiSession?.status
+    let tiltCloudUsername = session?.tiltCloudUsername || null
+    let tiltCloudSchemeHost = session?.tiltCloudSchemeHost || ""
+    let tiltCloudTeamID = session?.tiltCloudTeamID || null
     let highlightedLines = this.state.snapshotHighlight
       ? Math.abs(
           parseInt(this.state.snapshotHighlight.endingLogID, 10) -
@@ -351,7 +345,8 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderFatalErrorModal(view: Proto.webviewView | null) {
-    let error = view && view.fatalError
+    let session = view?.uiSession?.status
+    let error = session?.fatalError
     let handleClose = () =>
       this.setState({ showFatalErrorModal: ShowFatalErrorModal.Hide })
     return (

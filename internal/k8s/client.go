@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -369,12 +370,7 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 
 	_, errs := k.helmKubeClient.Delete(toDelete)
 	for _, err := range errs {
-		if apierrors.IsNotFound(err) {
-			continue
-		}
-
-		// Helm has it's own custom not found error.
-		if strings.Contains(err.Error(), "object not found") {
+		if isNotFoundError(err) {
 			continue
 		}
 		return nil, errors.Wrap(err, "kubernetes delete")
@@ -470,25 +466,18 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 		l.Infof("→ %s/%s", e.GVK().Kind, e.Name())
 	}
 
-	rawYAML, err := SerializeSpecYAMLToBuffer(entities)
-	if err != nil {
-		return errors.Wrap(err, "kubernetes delete")
-	}
-
-	resources, err := k.helmKubeClient.Build(rawYAML, false)
-	if err != nil {
+	resources, err := k.prepareUpdate(ctx, entities)
+	if utilerrors.FilterOut(err, isMissingKindError) != nil {
 		return errors.Wrap(err, "kubernetes delete")
 	}
 
 	_, errs := k.helmKubeClient.Delete(resources)
 	for _, err := range errs {
-		if apierrors.IsNotFound(err) {
+		if err == nil || isNotFoundError(err) {
 			continue
 		}
 
-		if err != nil {
-			return errors.Wrap(err, "kubernetes delete")
-		}
+		return errors.Wrap(err, "kubernetes delete")
 	}
 
 	return nil

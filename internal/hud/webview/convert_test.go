@@ -190,14 +190,14 @@ func TestNeedsNudgeSet(t *testing.T) {
 
 	v := stateToProtoView(t, *state)
 
-	assert.False(t, v.NeedsAnalyticsNudge,
+	assert.False(t, v.UiSession.Status.NeedsAnalyticsNudge,
 		"LastSuccessfulDeployTime not set, so NeedsNudge should not be set")
 
 	targ.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}
 	state.UpsertManifestTarget(targ)
 
 	v = stateToProtoView(t, *state)
-	assert.True(t, v.NeedsAnalyticsNudge)
+	assert.True(t, v.UiSession.Status.NeedsAnalyticsNudge)
 }
 
 func TestTriggerMode(t *testing.T) {
@@ -220,7 +220,9 @@ func TestFeatureFlags(t *testing.T) {
 	state.Features = map[string]bool{"foo_feature": true}
 
 	v := stateToProtoView(t, *state)
-	assert.Equal(t, v.FeatureFlags, map[string]bool{"foo_feature": true})
+	assert.Equal(t, v.UiSession.Status.FeatureFlags, []v1alpha1.UIFeatureFlag{
+		v1alpha1.UIFeatureFlag{Name: "foo_feature", Value: true},
+	})
 }
 
 func TestReadinessCheckFailing(t *testing.T) {

@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -35,4 +36,14 @@ func TestCRD(t *testing.T) {
 	assert.Contains(t, contents, "nonImage: bobo\n")
 	assert.NotContains(t, contents, "image: bobo\n")
 	assert.Contains(t, contents, "imagePullPolicy: IfNotPresent\n")
+}
+
+// Make sure that running 'tilt down' with no resources installed
+// yet handles 'not found' correctly
+func TestCRDNotFound(t *testing.T) {
+	f := newK8sFixture(t, "crd")
+	defer f.TearDown()
+
+	err := f.tilt.Down(ioutil.Discard)
+	require.NoError(t, err)
 }

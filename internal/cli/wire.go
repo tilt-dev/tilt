@@ -27,6 +27,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine"
@@ -44,6 +45,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
+	"github.com/tilt-dev/tilt/internal/engine/uiresource"
+	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/git"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -101,6 +104,8 @@ var BaseWireSet = wire.NewSet(
 	k8swatch.NewPodWatcher,
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
+	uisession.NewSubscriber,
+	uiresource.NewSubscriber,
 	configs.NewConfigsController,
 	telemetry.NewController,
 	dcwatch.NewEventWatcher,
@@ -110,6 +115,7 @@ var BaseWireSet = wire.NewSet(
 	k8srollout.NewPodMonitor,
 	telemetry.NewStartTracker,
 	session.NewController,
+	apiportforward.NewReconciler, // TODO(maia): remove as subscriber once this is a true reconciler
 
 	build.ProvideClock,
 	provideClock,

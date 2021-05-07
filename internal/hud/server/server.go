@@ -129,7 +129,7 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	jsEncoder := &runtime.JSONPb{}
 
 	w.Header().Set("Content-Type", "application/json")
 	err = jsEncoder.NewEncoder(w).Encode(view)
@@ -347,7 +347,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	jspb := &runtime.JSONPb{}
 	decoder := jspb.NewDecoder(bytes.NewBuffer(b))
 	var snapshot *proto_webview.Snapshot
 

@@ -3,6 +3,7 @@ package engine
 import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
@@ -16,6 +17,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
+	"github.com/tilt-dev/tilt/internal/engine/uiresource"
+	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -70,6 +73,9 @@ func ProvideSubscribers(
 	podm *k8srollout.PodMonitor,
 	sc *session.Controller,
 	mc *metrics.Controller,
+	pfr *apiportforward.Reconciler,
+	uss *uisession.Subscriber,
+	urs *uiresource.Subscriber,
 ) []store.Subscriber {
 	apiSubscribers := ProvideSubscribersAPIOnly(hudsc, tscm, cb, ts)
 
@@ -96,6 +102,9 @@ func ProvideSubscribers(
 		podm,
 		sc,
 		mc,
+		pfr, // TODO(maia): remove as subscriber once this is a true reconciler
+		uss,
+		urs,
 	}
 	return append(apiSubscribers, legacySubscribers...)
 }
