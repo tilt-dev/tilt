@@ -1,6 +1,7 @@
 package webview
 
 import (
+	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,42 +33,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 			continue
 		}
 
-		ms := mt.State
-		endpoints := store.ManifestTargetEndpoints(mt)
-
-		bh := ToBuildsTerminated(ms.BuildHistory, s.LogStore)
-		lastDeploy := metav1.NewMicroTime(ms.LastSuccessfulDeployTime)
-		cb := ToBuildRunning(ms.CurrentBuild)
-
-		specs, err := ToAPITargetSpecs(mt.Manifest.TargetSpecs())
-		if err != nil {
-			return nil, err
-		}
-
-		// NOTE(nick): Right now, the UX is designed to show the output exactly one
-		// pod. A better UI might summarize the pods in other ways (e.g., show the
-		// "most interesting" pod that's crash looping, or show logs from all pods
-		// at once).
-		hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
-
-		r := &v1alpha1.UIResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: name.String(),
-			},
-			Status: v1alpha1.UIResourceStatus{
-				LastDeployTime:    lastDeploy,
-				BuildHistory:      bh,
-				PendingBuildSince: metav1.NewMicroTime(pendingBuildSince),
-				CurrentBuild:      cb,
-				EndpointLinks:     ToAPILinks(endpoints),
-				Specs:             specs,
-				TriggerMode:       int32(mt.Manifest.TriggerMode),
-				HasPendingChanges: hasPendingChanges,
-				Queued:            s.ManifestInTriggerQueue(name),
-			},
-		}
-
-		err = populateResourceInfoView(mt, r)
+		r, err := toUIResource(mt, s)
 		if err != nil {
 			return nil, err
 		}
@@ -81,39 +47,112 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 	}
 
 	ret.LogList = logList
-	ret.NeedsAnalyticsNudge = NeedsNudge(s)
-	ret.RunningTiltBuild = &proto_webview.TiltBuild{
-		Version:   s.TiltBuildInfo.Version,
-		CommitSHA: s.TiltBuildInfo.CommitSHA,
-		Dev:       s.TiltBuildInfo.Dev,
-		Date:      s.TiltBuildInfo.Date,
-	}
-	ret.SuggestedTiltVersion = s.SuggestedTiltVersion
-	ret.FeatureFlags = make(map[string]bool)
-	for k, v := range s.Features {
-		ret.FeatureFlags[k] = v
-	}
-	ret.TiltCloudUsername = s.CloudStatus.Username
-	ret.TiltCloudTeamName = s.CloudStatus.TeamName
-	ret.TiltCloudSchemeHost = cloudurl.URL(s.CloudAddress).String()
-	ret.TiltCloudTeamID = s.TeamID
-	if s.FatalError != nil {
-		ret.FatalError = s.FatalError.Error()
-	}
+	ret.UiSession = toUISession(s)
 
-	ret.VersionSettings = &proto_webview.VersionSettings{
-		CheckUpdates: s.VersionSettings.CheckUpdates,
-	}
-
+	// We grandfather in TiltStartTime from the old protocol,
+	// because it tells the UI to reload.
 	start, err := timeToProto(s.TiltStartTime)
 	if err != nil {
 		return nil, err
 	}
 	ret.TiltStartTime = start
 
-	ret.TiltfileKey = s.TiltfilePath
-
 	return ret, nil
+}
+
+// Converts EngineState into the public data model representation, a UISession.
+func toUISession(s store.EngineState) *v1alpha1.UISession {
+	ret := &v1alpha1.UISession{
+		ObjectMeta: metav1.ObjectMeta{
+			// We call the main session the Tiltfile session, for compatibility
+			// with the other Session API.
+			Name: "Tiltfile",
+		},
+		Status: v1alpha1.UISessionStatus{},
+	}
+
+	status := &(ret.Status)
+	status.NeedsAnalyticsNudge = NeedsNudge(s)
+	status.RunningTiltBuild = v1alpha1.TiltBuild{
+		Version:   s.TiltBuildInfo.Version,
+		CommitSHA: s.TiltBuildInfo.CommitSHA,
+		Dev:       s.TiltBuildInfo.Dev,
+		Date:      s.TiltBuildInfo.Date,
+	}
+	status.SuggestedTiltVersion = s.SuggestedTiltVersion
+	status.FeatureFlags = []v1alpha1.UIFeatureFlag{}
+	for k, v := range s.Features {
+		status.FeatureFlags = append(status.FeatureFlags, v1alpha1.UIFeatureFlag{
+			Name:  k,
+			Value: v,
+		})
+	}
+	sort.Slice(status.FeatureFlags, func(i, j int) bool {
+		return status.FeatureFlags[i].Name < status.FeatureFlags[j].Name
+	})
+	status.TiltCloudUsername = s.CloudStatus.Username
+	status.TiltCloudTeamName = s.CloudStatus.TeamName
+	status.TiltCloudSchemeHost = cloudurl.URL(s.CloudAddress).String()
+	status.TiltCloudTeamID = s.TeamID
+	if s.FatalError != nil {
+		status.FatalError = s.FatalError.Error()
+	}
+
+	status.VersionSettings = v1alpha1.VersionSettings{
+		CheckUpdates: s.VersionSettings.CheckUpdates,
+	}
+
+	status.TiltStartTime = metav1.NewTime(s.TiltStartTime)
+
+	status.TiltfileKey = s.TiltfilePath
+
+	return ret
+}
+
+// Converts a ManifestTarget into the public data model representation,
+// a UIResource.
+func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIResource, error) {
+	ms := mt.State
+	endpoints := store.ManifestTargetEndpoints(mt)
+
+	bh := ToBuildsTerminated(ms.BuildHistory, s.LogStore)
+	lastDeploy := metav1.NewMicroTime(ms.LastSuccessfulDeployTime)
+	cb := ToBuildRunning(ms.CurrentBuild)
+
+	specs, err := ToAPITargetSpecs(mt.Manifest.TargetSpecs())
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE(nick): Right now, the UX is designed to show the output exactly one
+	// pod. A better UI might summarize the pods in other ways (e.g., show the
+	// "most interesting" pod that's crash looping, or show logs from all pods
+	// at once).
+	hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
+
+	name := mt.Manifest.Name
+	r := &v1alpha1.UIResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name.String(),
+		},
+		Status: v1alpha1.UIResourceStatus{
+			LastDeployTime:    lastDeploy,
+			BuildHistory:      bh,
+			PendingBuildSince: metav1.NewMicroTime(pendingBuildSince),
+			CurrentBuild:      cb,
+			EndpointLinks:     ToAPILinks(endpoints),
+			Specs:             specs,
+			TriggerMode:       int32(mt.Manifest.TriggerMode),
+			HasPendingChanges: hasPendingChanges,
+			Queued:            s.ManifestInTriggerQueue(name),
+		},
+	}
+
+	err = populateResourceInfoView(mt, r)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func tiltfileResourceProtoView(s store.EngineState) *v1alpha1.UIResource {
@@ -121,16 +160,17 @@ func tiltfileResourceProtoView(s store.EngineState) *v1alpha1.UIResource {
 	ctfb := s.TiltfileState.CurrentBuild
 
 	pctfb := ToBuildRunning(ctfb)
-	pltfb := ToBuildTerminated(ltfb, s.LogStore)
+	history := []v1alpha1.UIBuildTerminated{}
+	if !ltfb.Empty() {
+		history = append(history, ToBuildTerminated(ltfb, s.LogStore))
+	}
 	tr := &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: store.TiltfileManifestName.String(),
 		},
 		Status: v1alpha1.UIResourceStatus{
-			CurrentBuild: pctfb,
-			BuildHistory: []v1alpha1.UIBuildTerminated{
-				pltfb,
-			},
+			CurrentBuild:  pctfb,
+			BuildHistory:  history,
 			RuntimeStatus: v1alpha1.RuntimeStatusNotApplicable,
 			UpdateStatus:  s.TiltfileState.UpdateStatus(model.TriggerModeAuto),
 		},

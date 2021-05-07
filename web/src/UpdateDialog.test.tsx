@@ -1,11 +1,15 @@
 import { showUpdate } from "./UpdateDialog"
 
 it("compares versions correctly", () => {
-  function v(current: string, suggested: string) {
+  function v(current: string, suggested: string): Proto.webviewView {
     return {
-      runningTiltBuild: { version: current },
-      suggestedTiltVersion: suggested,
-      versionSettings: { checkUpdates: true },
+      uiSession: {
+        status: {
+          runningTiltBuild: { version: current },
+          suggestedTiltVersion: suggested,
+          versionSettings: { checkUpdates: true },
+        },
+      },
     }
   }
 

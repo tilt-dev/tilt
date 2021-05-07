@@ -176,13 +176,26 @@ type UIResourceLink struct {
 	Name string `json:"name,omitempty" protobuf:"bytes,2,opt,name=name"`
 }
 
+// UIResourceTargetType identifies the different categories of
+// task in a resource.
 type UIResourceTargetType string
 
-const UIResourceTargetTypeUnspecified = UIResourceTargetType("unspecified")
-const UIResourceTargetTypeImage = UIResourceTargetType("image")
-const UIResourceTargetTypeKubernetes = UIResourceTargetType("k8s")
-const UIResourceTargetTypeDockerCompose = UIResourceTargetType("docker-compose")
-const UIResourceTargetTypeLocal = UIResourceTargetType("local")
+const (
+	// The target type is unspecified.
+	UIResourceTargetTypeUnspecified UIResourceTargetType = "unspecified"
+
+	// The target is a container image build.
+	UIResourceTargetTypeImage UIResourceTargetType = "image"
+
+	// The target is a Kubernetes resource deployment.
+	UIResourceTargetTypeKubernetes UIResourceTargetType = "k8s"
+
+	// The target is a Docker Compose service deployment.
+	UIResourceTargetTypeDockerCompose UIResourceTargetType = "docker-compose"
+
+	// The target is a local command or server.
+	UIResourceTargetTypeLocal UIResourceTargetType = "local"
+)
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.
 type UIResourceTargetSpec struct {

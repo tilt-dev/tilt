@@ -15,9 +15,10 @@ type props = {
 }
 
 export function showUpdate(view: Proto.webviewView): boolean {
-  let runningBuild = view?.runningTiltBuild
-  let suggestedVersion = view?.suggestedTiltVersion
-  const versionSettings = view?.versionSettings
+  let session = view?.uiSession?.status
+  let runningBuild = session?.runningTiltBuild
+  let suggestedVersion = session?.suggestedTiltVersion
+  const versionSettings = session?.versionSettings
   const checkUpdates = versionSettings?.checkUpdates
   if (!checkUpdates || !suggestedVersion || !runningBuild) {
     return false

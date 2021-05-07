@@ -2,6 +2,7 @@ package k8swatch
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -168,9 +169,10 @@ func CheckForContainerCrash(state *store.EngineState, mt *store.ManifestTarget) 
 	// The pod isn't what we expect!
 	ms.NeedsRebuildFromCrash = true
 	ms.LiveUpdatedContainerIDs = container.NewIDSet()
-	//msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
-	//le := store.NewLogAction(ms.Name, ms.LastBuild().SpanID, logger.WarnLvl, nil, []byte(msg+"\n"))
-	//handleLogAction(state, le)
+
+	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
+	le := store.NewLogAction(ms.Name, ms.LastBuild().SpanID, logger.WarnLvl, nil, []byte(msg+"\n"))
+	state.LogStore.Append(le, state.Secrets)
 }
 
 // If there's more than one pod, prune the deleting/dead ones so
