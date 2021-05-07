@@ -340,6 +340,9 @@ func (c *FakeK8sClient) TearDown() {
 }
 
 func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.UpsertError != nil {
 		return nil, c.UpsertError
 	}
@@ -366,6 +369,9 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeou
 }
 
 func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.DeleteError != nil {
 		err := c.DeleteError
 		c.DeleteError = nil
@@ -384,6 +390,9 @@ func (c *FakeK8sClient) Delete(ctx context.Context, entities []K8sEntity) error 
 //
 // Entities are keyed by UID.
 func (c *FakeK8sClient) Inject(entities ...K8sEntity) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.t.Helper()
 	for i, entity := range entities {
 		if entity.UID() == "" {
@@ -395,6 +404,9 @@ func (c *FakeK8sClient) Inject(entities ...K8sEntity) {
 }
 
 func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.getByReferenceCallCount++
 	resp, ok := c.entities[ref.UID]
 	if !ok {
@@ -404,7 +416,10 @@ func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectRef
 	return resp.meta(), nil
 }
 
-func (c *FakeK8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
+func (c *FakeK8sClient) ListMeta(_ context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.listCallCount++
 	if c.listReturnsEmpty {
 		return nil, nil
@@ -429,10 +444,16 @@ func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, 
 }
 
 func (c *FakeK8sClient) SetLogReaderForPodContainer(pID PodID, cName container.Name, reader io.Reader) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.PodLogsByPodAndContainer[PodAndCName{pID, cName}] = ReaderCloser{Reader: reader}
 }
 
 func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.ContainerLogsError != nil {
 		return nil, c.ContainerLogsError
 	}
@@ -497,6 +518,9 @@ func (c *FakeK8sClient) CreatePortForwarder(ctx context.Context, namespace Names
 }
 
 func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.Runtime != "" {
 		return c.Runtime
 	}
@@ -504,14 +528,23 @@ func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime 
 }
 
 func (c *FakeK8sClient) LocalRegistry(ctx context.Context) container.Registry {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	return c.Registry
 }
 
 func (c *FakeK8sClient) NodeIP(ctx context.Context) NodeIP {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	return c.FakeNodeIP
 }
 
 func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	var stdinBytes []byte
 	var err error
 	if stdin != nil {
