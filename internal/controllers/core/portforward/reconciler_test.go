@@ -240,7 +240,6 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient(t)
 	r := NewReconciler(kCli)
-	r.SetActive()
 
 	out := bufsync.NewThreadSafeBuffer()
 	l := logger.NewLogger(logger.DebugLvl, out)
