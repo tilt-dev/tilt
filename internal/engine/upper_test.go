@@ -1514,13 +1514,15 @@ func TestPodEventOrdering(t *testing.T) {
 				return spanID != "" && strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
 			})
 
+			f.WaitUntilManifestState("two pods seen", "fe", func(ms store.ManifestState) bool {
+				return ms.K8sRuntimeState().PodLen() == 2
+			})
+
 			f.withManifestState("fe", func(ms store.ManifestState) {
 				runtime := ms.K8sRuntimeState()
 				require.Equal(t, uidNow, runtime.PodAncestorUID)
-				if assert.Equal(t, 2, runtime.PodLen()) {
-					timecmp.AssertTimeEqual(t, now, runtime.Pods["pod-a"].CreatedAt)
-					timecmp.AssertTimeEqual(t, now, runtime.Pods["pod-b"].CreatedAt)
-				}
+				timecmp.AssertTimeEqual(t, now, runtime.Pods["pod-a"].CreatedAt)
+				timecmp.AssertTimeEqual(t, now, runtime.Pods["pod-b"].CreatedAt)
 			})
 
 			assert.NoError(t, f.Stop())
