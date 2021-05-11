@@ -58,6 +58,30 @@ func TestDelete(t *testing.T) {
 	assert.Equal(t, 5, len(f.helmKube.deletes))
 }
 
+func TestDeleteMissingKind(t *testing.T) {
+	f := newClientTestFixture(t)
+	f.helmKube.buildErrFn = func(e K8sEntity) error {
+		if e.GVK().Kind == "StatefulSet" {
+			return fmt.Errorf(`no matches for kind "StatefulSet" in version "apps/v1"`)
+		}
+		return nil
+	}
+
+	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
+	assert.Nil(t, err)
+	err = f.client.Delete(f.ctx, postgres)
+	assert.Nil(t, err)
+	assert.Equal(t, 4, len(f.helmKube.deletes))
+
+	kinds := []string{}
+	for _, r := range f.helmKube.deletes {
+		kinds = append(kinds, r.Object.GetObjectKind().GroupVersionKind().Kind)
+	}
+	assert.Equal(t,
+		[]string{"ConfigMap", "PersistentVolume", "PersistentVolumeClaim", "Service"},
+		kinds)
+}
+
 func TestUpsertMutableAndImmutable(t *testing.T) {
 	f := newClientTestFixture(t)
 	eDeploy := MustParseYAMLFromString(t, testyaml.SanchoYAML)[0]
@@ -150,10 +174,11 @@ func TestGetGroup(t *testing.T) {
 }
 
 type fakeHelmKubeClient struct {
-	updates   kube.ResourceList
-	creates   kube.ResourceList
-	deletes   kube.ResourceList
-	updateErr error
+	updates    kube.ResourceList
+	creates    kube.ResourceList
+	deletes    kube.ResourceList
+	updateErr  error
+	buildErrFn func(e K8sEntity) error
 }
 
 func (c *fakeHelmKubeClient) Apply(target kube.ResourceList) (*kube.Result, error) {
@@ -182,6 +207,18 @@ func (c *fakeHelmKubeClient) Build(r io.Reader, validate bool) (kube.ResourceLis
 	}
 	list := kube.ResourceList{}
 	for _, e := range entities {
+		if c.buildErrFn != nil {
+			err := c.buildErrFn(e)
+			if err != nil {
+				// Stop processing further resources.
+				//
+				// NOTE(nick): The real client behavior is more complex than this,
+				// where sometimes it seems to continue and other times it doesn't,
+				// but we want our code to handle "worst" case conditions.
+				return list, err
+			}
+		}
+
 		list = append(list, &resource.Info{
 			// Create a fake HTTP client that returns 404 for every request.
 			Client: &restfake.RESTClient{
