@@ -132,19 +132,17 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 
 var _ store.Subscriber = &Subscriber{}
 
-// Extract the port-forward specs from the manifest. If any of them
-// have ContainerPort = 0, populate them with the default port for the pod.
-// Quietly drop forwards that we can't populate.
+// Extract the port-forward specs from the manifest.
+//
+// If any of them have ContainerPort = 0, populate them with the documented
+// ports on the pod. If there's no default documented ports for the pod,
+// populate it with the local port.
 func populatePortForwards(m model.Manifest, pod v1alpha1.Pod) []model.PortForward {
 	cPorts := store.AllPodContainerPorts(pod)
 	fwds := m.K8sTarget().PortForwards
 	forwards := make([]model.PortForward, 0, len(fwds))
 	for _, forward := range fwds {
-		if forward.ContainerPort == 0 {
-			if len(cPorts) == 0 {
-				continue
-			}
-
+		if forward.ContainerPort == 0 && len(cPorts) > 0 {
 			forward.ContainerPort = int(cPorts[0])
 			for _, cPort := range cPorts {
 				if int(forward.LocalPort) == int(cPort) {
@@ -153,15 +151,12 @@ func populatePortForwards(m model.Manifest, pod v1alpha1.Pod) []model.PortForwar
 				}
 			}
 		}
+		if forward.ContainerPort == 0 {
+			forward.ContainerPort = forward.LocalPort
+		}
 		forwards = append(forwards, forward)
 	}
 	return forwards
-}
-
-func PortForwardsAreValid(m model.Manifest, pod v1alpha1.Pod) bool {
-	expectedFwds := m.K8sTarget().PortForwards
-	actualFwds := populatePortForwards(m, pod)
-	return len(actualFwds) == len(expectedFwds)
 }
 
 func modelForwardsToApiForwards(forwards []model.PortForward) []v1alpha1.Forward {
