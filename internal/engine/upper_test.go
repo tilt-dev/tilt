@@ -4095,6 +4095,10 @@ type initOption func(ia InitAction) InitAction
 
 func (f *testFixture) Init(action InitAction) {
 	f.t.Helper()
+
+	ctx, cancel := context.WithCancel(f.ctx)
+	defer cancel()
+
 	watchFiles := action.EngineMode.WatchesFiles()
 	f.upperInitResult = make(chan error, 10)
 
@@ -4105,6 +4109,8 @@ func (f *testFixture) Init(action InitAction) {
 			log.Printf("upper exited: %v\n", err)
 			f.cancel()
 		}
+		cancel()
+
 		select {
 		case f.upperInitResult <- err:
 		default:
@@ -4129,22 +4135,18 @@ func (f *testFixture) Init(action InitAction) {
 			return true
 		}
 
-		select {
-		case x := <-f.upperInitResult:
-			// this is a weird case - if there was an error early on,
-			// the file watches might never have been set up, but this
-			// isn't a useful place for the test to fail, so just put
-			// the error we stole back on the channel (nobody else can
-			// be listening for it yet, so there's no race here) and
-			// pretend everything is okay with file watching
-			f.upperInitResult <- x
-			return true
-		default:
-		}
-
 		// wait for FileWatch objects to exist AND have a status indicating they're running
 		var fwList v1alpha1.FileWatchList
-		if err := f.ctrlClient.List(f.ctx, &fwList); err != nil {
+		if err := f.ctrlClient.List(ctx, &fwList); err != nil {
+			// If the context was canceled but the file watches haven't been set up,
+			// that's OK. Just continue executing the rest of the test.
+			//
+			// If the error wasn't intended, the error will be properly
+			// handled in TearDown().
+			if ctx.Done() != nil {
+				return true
+			}
+
 			return false
 		}
 		activeWatches := 0
