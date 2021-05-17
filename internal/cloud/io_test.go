@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 )
@@ -14,6 +16,7 @@ func TestWriteSnapshotTo(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	buf := bytes.NewBuffer(nil)
 	state := store.NewState()
+	state.UISessions[types.NamespacedName{Name: webview.UISessionName}] = webview.ToUISession(*state)
 	err := WriteSnapshotTo(ctx, *state, buf)
 	assert.NoError(t, err)
 	assert.Equal(t, `{

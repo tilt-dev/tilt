@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -15,6 +16,10 @@ import (
 
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
+
+// We call the main session the Tiltfile session, for compatibility
+// with the other Session API.
+const UISessionName = "Tiltfile"
 
 func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*proto_webview.View, error) {
 	ret := &proto_webview.View{}
@@ -47,7 +52,7 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 	}
 
 	ret.LogList = logList
-	ret.UiSession = toUISession(s)
+	ret.UiSession = s.UISessions[types.NamespacedName{Name: UISessionName}]
 
 	// We grandfather in TiltStartTime from the old protocol,
 	// because it tells the UI to reload.
@@ -61,12 +66,10 @@ func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*
 }
 
 // Converts EngineState into the public data model representation, a UISession.
-func toUISession(s store.EngineState) *v1alpha1.UISession {
+func ToUISession(s store.EngineState) *v1alpha1.UISession {
 	ret := &v1alpha1.UISession{
 		ObjectMeta: metav1.ObjectMeta{
-			// We call the main session the Tiltfile session, for compatibility
-			// with the other Session API.
-			Name: "Tiltfile",
+			Name: UISessionName,
 		},
 		Status: v1alpha1.UISessionStatus{},
 	}
