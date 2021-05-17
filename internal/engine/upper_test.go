@@ -478,7 +478,10 @@ func TestUpper_Up(t *testing.T) {
 
 	// cancel the context to simulate a Ctrl-C
 	f.cancel()
-	assert.ErrorIs(t, <-storeErr, context.Canceled, "Upper returned unexpected error")
+	err := <-storeErr
+	if assert.NotNil(t, err, "Store returned nil error (expected context canceled)") {
+		assert.Contains(t, err.Error(), context.Canceled.Error(), "Store error was not as expected")
+	}
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
