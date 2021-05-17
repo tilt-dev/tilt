@@ -73,6 +73,7 @@ require (
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
+	github.com/wojas/genericr v0.2.0
 	go.opencensus.io v0.22.4
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20200615180055-61b64bc45990
