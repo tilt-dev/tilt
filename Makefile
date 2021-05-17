@@ -33,18 +33,18 @@ build:
 
 test-go:
 ifneq ($(CIRCLECI),true)
-		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s ./...
+		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s ./...
 else
 		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s
 endif
 
 test-go-helm-only:
 ifneq ($(CIRCLECI),true)
-		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s ./internal/tiltfile -run "(?i)(.*)Helm(.*)"
+		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s ./internal/tiltfile -run "(?i)(.*)Helm(.*)"
 else
 		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/tiltfile -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 80s -run "(?i)(.*)Helm(.*)"
+		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/tiltfile -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s -run "(?i)(.*)Helm(.*)"
 endif
 
 test: test-go test-js
@@ -53,14 +53,14 @@ test: test-go test-js
 # TODO(matt) skiplargetiltfiletests only skips the tiltfile DC+Helm tests at the moment
 # we might also want to skip the ones in engine
 shorttest:
-	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 80s ./...
+	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
 
 shorttestsum:
 ifneq ($(CIRCLECI),true)
-	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 80s ./...
+	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
 else
 	mkdir -p test-results
-	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 80s
+	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 100s
 endif
 
 integration:

@@ -43,3 +43,30 @@ func TestCreateFileWatch(t *testing.T) {
 	assert.Equal(t, cwd, fw.Spec.Ignores[0].BasePath)
 	assert.Equal(t, []string{"web/node_modules"}, fw.Spec.Ignores[0].Patterns)
 }
+
+func TestCreateFileWatchNoIgnore(t *testing.T) {
+	f := newServerFixture(t)
+	defer f.TearDown()
+
+	out := bytes.NewBuffer(nil)
+
+	cmd := newCreateFileWatchCmd()
+	cmd.helper.streams.Out = out
+	c := cmd.register()
+	err := c.Flags().Parse([]string{})
+	require.NoError(t, err)
+
+	err = cmd.run(f.ctx, []string{"my-watch", "src"})
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), `filewatch.tilt.dev/my-watch created`)
+
+	var fw v1alpha1.FileWatch
+	err = f.client.Get(f.ctx, types.NamespacedName{Name: "my-watch"}, &fw)
+	require.NoError(t, err)
+
+	cwd, _ := os.Getwd()
+	assert.Equal(t, []string{
+		filepath.Join(cwd, "src"),
+	}, fw.Spec.WatchedPaths)
+	assert.Equal(t, 0, len(fw.Spec.Ignores))
+}
