@@ -2,6 +2,7 @@ package uiresource
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -59,10 +60,13 @@ func TestDeleteManifest(t *testing.T) {
 
 	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.Equal(t, 2, len(f.store.Actions()))
-	assert.Equal(t, "(Tiltfile)",
-		f.store.Actions()[0].(UIResourceCreateAction).UIResource.Name)
-	assert.Equal(t, "fe",
-		f.store.Actions()[1].(UIResourceCreateAction).UIResource.Name)
+
+	names := []string{
+		f.store.Actions()[0].(UIResourceCreateAction).UIResource.Name,
+		f.store.Actions()[1].(UIResourceCreateAction).UIResource.Name,
+	}
+	sort.Strings(names)
+	assert.Equal(t, []string{"(Tiltfile)", "fe"}, names)
 
 	f.store.WithState(func(state *store.EngineState) {
 		state.RemoveManifestTarget("fe")
