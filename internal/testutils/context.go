@@ -44,7 +44,7 @@ func ForkedCtxAndAnalyticsForTest(w io.Writer) (context.Context, *analytics.Memo
 	return ForkedCtxAndAnalyticsWithOpterForTest(w, opter)
 }
 
-func FailOnNonCanceledErr(t *testing.T, err error, message string) {
+func FailOnNonCanceledErr(t testing.TB, err error, message string) {
 	if err != nil && err != context.Canceled {
 		fmt.Printf("%s: %v\n", message, err)
 		t.Error(err)
