@@ -31,6 +31,7 @@ var ErrNamespaceNotExists = errors.New("namespace does not exist")
 var _ rest.StandardStorage = &filepathREST{}
 var _ rest.Scoper = &filepathREST{}
 var _ rest.Storage = &filepathREST{}
+var _ rest.ShortNamesProvider = &filepathREST{}
 
 // NewFilepathREST instantiates a new REST storage.
 func NewFilepathREST(
@@ -92,6 +93,10 @@ func (f *filepathREST) NewList() runtime.Object {
 
 func (f *filepathREST) NamespaceScoped() bool {
 	return f.strategy.NamespaceScoped()
+}
+
+func (f *filepathREST) ShortNames() []string {
+	return f.strategy.ShortNames()
 }
 
 func (f *filepathREST) Get(

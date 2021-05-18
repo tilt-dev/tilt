@@ -520,11 +520,12 @@ github.com/tilt-dev/localregistry-go
 ## explicit
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober
-# github.com/tilt-dev/tilt-apiserver v0.3.1
+# github.com/tilt-dev/tilt-apiserver v0.3.2
 ## explicit
 github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource
+github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/util
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder/rest
