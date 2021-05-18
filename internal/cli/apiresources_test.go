@@ -23,7 +23,7 @@ func TestAPIResources(t *testing.T) {
 
 	// output spacing is dependent on longest resource name, so a regex is used to keep this test
 	// from being overly brittle
-	outputRe := regexp.MustCompile(`filewatches[ ]+tilt.dev/v1alpha1[ ]+false[ ]+FileWatch`)
+	outputRe := regexp.MustCompile(`filewatches[ ]+fw[ ]+tilt.dev/v1alpha1[ ]+false[ ]+FileWatch`)
 
 	cmdOutput := out.String()
 	assert.Truef(t, outputRe.MatchString(cmdOutput),

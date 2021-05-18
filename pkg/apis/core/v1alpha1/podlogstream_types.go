@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -98,6 +99,7 @@ type PodLogStreamSpec struct {
 
 var _ resource.Object = &PodLogStream{}
 var _ resourcestrategy.Validater = &PodLogStream{}
+var _ resourcerest.ShortNamesProvider = &PodLogStream{}
 
 func (in *PodLogStream) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
@@ -125,6 +127,10 @@ func (in *PodLogStream) GetGroupVersionResource() schema.GroupVersionResource {
 
 func (in *PodLogStream) IsStorageVersion() bool {
 	return true
+}
+
+func (in *PodLogStream) ShortNames() []string {
+	return []string{"pls"}
 }
 
 func (in *PodLogStream) Validate(ctx context.Context) field.ErrorList {

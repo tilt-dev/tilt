@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -72,6 +73,7 @@ type IgnoreDef struct {
 
 var _ resource.Object = &FileWatch{}
 var _ resourcestrategy.Validater = &FileWatch{}
+var _ resourcerest.ShortNamesProvider = &FileWatch{}
 
 func (in *FileWatch) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
@@ -79,6 +81,10 @@ func (in *FileWatch) GetObjectMeta() *metav1.ObjectMeta {
 
 func (in *FileWatch) NamespaceScoped() bool {
 	return false
+}
+
+func (in *FileWatch) ShortNames() []string {
+	return []string{"fw"}
 }
 
 func (in *FileWatch) New() runtime.Object {
