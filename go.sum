@@ -1130,6 +1130,8 @@ github.com/weppos/publicsuffix-go v0.5.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8Ln
 github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa h1:rW+Lu6281ed/4XGuVIa4/YebTRNvoUJlfJ44ktEVwZk=
 github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa/go.mod h1:2rx5KE5FLD0HRfkkpyn8JwbVLBdhgeiOb2D2D9LLKM4=
 github.com/willf/bitset v1.1.11-0.20200630133818-d5bec3311243/go.mod h1:RjeCKbqT1RxIR/KWY6phxZiaY1IyutSBfGjNPySAYV4=
+github.com/wojas/genericr v0.2.0 h1:pr3jrA2dnChfwK0IlKNnu/OnLQATNL+mK1Ft94RtDWc=
+github.com/wojas/genericr v0.2.0/go.mod h1:I+Dk5IWkJB1eAc/qh3Ry/zIp5TvkrTp+OYbhhjclYr8=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
 github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415/go.mod h1:GwrjFmJcFw6At/Gs6z4yjiIwzuJ1/+UwLxMQDVQXShQ=
 github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f/go.mod h1:5yf86TLmAcydyeJq5YvxkGPE2fm/u4myDekKRoLuqhs=

@@ -4,16 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/wojas/genericr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type TiltServerControllerManager struct {
@@ -51,10 +53,23 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 	ctx, m.cancel = context.WithCancel(ctx)
 
 	// controller-runtime internals don't really make use of verbosity levels, so in lieu of a better
-	// mechanism, all its logs are redirected to klog, for which there is already special handling
+	// mechanism, all its logs are redirected to a custom logger that filters out logs
+	// we don't care about.
+	//
 	// V(3) was picked because while controller-runtime is a bit chatty at startup, once steady state
 	// is reached, most of the logging is generally useful (e.g. reconciler errors)
-	ctrl.SetLogger(klogr.New().V(3).WithName("tilt"))
+	ctxLog := logger.Get(ctx)
+	logr := genericr.New(func(e genericr.Entry) {
+		// We don't care about the startup or teardown sequence.
+		if e.Message == "Starting EventSource" ||
+			e.Message == "error received after stop sequence was engaged" {
+			return
+		}
+		if e.Level <= 3 {
+			ctxLog.Debugf("%s", e.String())
+		}
+	})
+	timeout := time.Duration(0)
 
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{
 		Scheme: m.scheme,
@@ -70,7 +85,9 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 		LeaderElection:   false,
 		LeaderElectionID: "tilt-apiserver-ctrl",
 
-		ClientBuilder: m.builder,
+		ClientBuilder:           m.builder,
+		Logger:                  logr,
+		GracefulShutdownTimeout: &timeout,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to create controller manager: %v", err)
