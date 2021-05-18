@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
@@ -25,6 +27,14 @@ import (
 var fooManifest = model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
 
 func stateToProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
+	s.UISessions[types.NamespacedName{Name: UISessionName}] = ToUISession(s)
+
+	resources, err := ToUIResourceList(s)
+	require.NoError(t, err)
+	for _, r := range resources {
+		s.UIResources[types.NamespacedName{Name: r.Name}] = r
+	}
+
 	v, err := StateToProtoView(s, 0)
 	if err != nil {
 		t.Fatal(err)

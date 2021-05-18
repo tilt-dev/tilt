@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"go/build"
 	"io"
@@ -133,6 +135,29 @@ func (d *TiltDriver) Up(out io.Writer, args ...string) (*TiltUpResponse, error) 
 func (d *TiltDriver) Args(args []string, out io.Writer) error {
 	cmd := d.cmd(append([]string{"args"}, args...), out)
 	return cmd.Run()
+}
+
+func (d *TiltDriver) APIResources() ([]string, error) {
+	var out bytes.Buffer
+	cmd := d.cmd([]string{"api-resources", "-o=name"}, &out)
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+	var resources []string
+	s := bufio.NewScanner(&out)
+	for s.Scan() {
+		resources = append(resources, s.Text())
+	}
+	return resources, nil
+}
+
+func (d *TiltDriver) Get(apiType string, names ...string) ([]byte, error) {
+	var out bytes.Buffer
+	args := append([]string{"get", "-o=json", apiType}, names...)
+	cmd := d.cmd(args, &out)
+	err := cmd.Run()
+	return out.Bytes(), err
 }
 
 type TiltUpResponse struct {

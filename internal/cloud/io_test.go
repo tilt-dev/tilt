@@ -5,7 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 )
@@ -13,8 +16,17 @@ import (
 func TestWriteSnapshotTo(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	buf := bytes.NewBuffer(nil)
+
 	state := store.NewState()
-	err := WriteSnapshotTo(ctx, *state, buf)
+	state.UISessions[types.NamespacedName{Name: webview.UISessionName}] = webview.ToUISession(*state)
+
+	resources, err := webview.ToUIResourceList(*state)
+	require.NoError(t, err)
+	for _, r := range resources {
+		state.UIResources[types.NamespacedName{Name: r.Name}] = r
+	}
+
+	err = WriteSnapshotTo(ctx, *state, buf)
 	assert.NoError(t, err)
 	assert.Equal(t, `{
   "view": {

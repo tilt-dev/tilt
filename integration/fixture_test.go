@@ -194,12 +194,28 @@ func (f *fixture) StartTearDown() {
 
 	isTiltStillUp := f.activeTiltUp != nil && f.activeTiltUp.Err() == nil
 	if f.t.Failed() && isTiltStillUp {
-		fmt.Printf("Test failed, dumping engine state\n----\n")
+		fmt.Printf("Test failed, dumping internals\n----\n")
+		fmt.Printf("Engine\n----\n")
 		err := f.tilt.DumpEngine(os.Stdout)
 		if err != nil {
-			fmt.Printf("Error: %v", err)
+			fmt.Printf("Error dumping engine: %v", err)
 		}
-		fmt.Printf("\n----\n")
+
+		fmt.Printf("\n----\nAPI Server\n----\n")
+		apiTypes, err := f.tilt.APIResources()
+		if err != nil {
+			fmt.Printf("Error determining available API resources: %v\n", err)
+		} else {
+			for _, apiType := range apiTypes {
+				fmt.Printf("\n----\n%s\n----\n", strings.ToUpper(apiType))
+				getOut, err := f.tilt.Get(apiType)
+				fmt.Print(string(getOut))
+				if err != nil {
+					fmt.Printf("Error getting %s: %v", apiType, err)
+				}
+				fmt.Printf("\n----\n")
+			}
+		}
 
 		err = f.activeTiltUp.KillAndDumpThreads()
 		if err != nil {

@@ -1,26 +1,29 @@
 package uiresource
 
 import (
-	"context"
-
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func HandleUIResourceCreateAction(_ context.Context, state *store.EngineState, a UIResourceCreateAction) {
+func HandleUIResourceCreateAction(state *store.EngineState, a UIResourceCreateAction) {
 	key := apis.Key(a.UIResource)
 	if _, ok := state.UIResources[key]; !ok {
 		state.UIResources[key] = a.UIResource
 	}
 }
 
-func HandleUIResourceUpdateStatusAction(ctx context.Context, state *store.EngineState, a UIResourceUpdateStatusAction) {
+func HandleUIResourceUpdateStatusAction(state *store.EngineState, a UIResourceUpdateStatusAction) {
 	key := apis.KeyFromMeta(*a.ObjectMeta)
-	if _, ok := state.UIResources[key]; ok {
-		state.UIResources[key].Status = *a.Status
+	if orig, ok := state.UIResources[key]; ok {
+		state.UIResources[key] = &v1alpha1.UIResource{
+			ObjectMeta: orig.ObjectMeta,
+			Spec:       orig.Spec,
+			Status:     *a.Status,
+		}
 	}
 }
 
-func HandleUIResourceDeleteAction(_ context.Context, state *store.EngineState, a UIResourceDeleteAction) {
+func HandleUIResourceDeleteAction(state *store.EngineState, a UIResourceDeleteAction) {
 	delete(state.UIResources, a.Name)
 }
