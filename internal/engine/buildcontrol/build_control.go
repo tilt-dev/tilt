@@ -20,7 +20,8 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 
 	// Don't build anything if there are pending config file changes.
 	// We want the Tiltfile to re-run first.
-	if len(state.PendingConfigFileChanges) > 0 {
+	tiltfileHasPendingChanges, _ := state.TiltfileState.HasPendingChanges()
+	if tiltfileHasPendingChanges {
 		holds.Fill(targets, store.HoldTiltfileReload)
 		return nil, holds
 	}

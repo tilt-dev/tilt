@@ -265,7 +265,7 @@ func tiltfileTarget(state store.EngineState) session.Target {
 		target.State.Active = &session.TargetStateActive{
 			StartTime: apis.NewMicroTime(state.TiltfileState.CurrentBuild.StartTime),
 		}
-	} else if len(state.PendingConfigFileChanges) != 0 {
+	} else if hasPendingChanges, _ := state.TiltfileState.HasPendingChanges(); hasPendingChanges {
 		target.State.Waiting = &session.TargetStateWaiting{
 			WaitReason: "config-changed",
 		}
