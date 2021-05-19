@@ -25,13 +25,13 @@ type podManifest struct {
 
 type PodMonitor struct {
 	pods            map[podManifest]podStatus
-	trackingStarted map[podManifest]bool
+	trackingStarted map[podManifest]time.Time
 }
 
 func NewPodMonitor() *PodMonitor {
 	return &PodMonitor{
 		pods:            make(map[podManifest]podStatus),
-		trackingStarted: make(map[podManifest]bool),
+		trackingStarted: make(map[podManifest]time.Time),
 	}
 }
 
@@ -54,7 +54,11 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 		key := podManifest{pod: podID, manifest: manifest.Name}
 		active[key] = true
 
-		currentStatus := newPodStatus(pod, manifest.Name)
+		lastUpdateTime := ms.ActiveBuild().FinishTime
+		if lastUpdateTime.IsZero() {
+			lastUpdateTime = ms.LastBuild().FinishTime
+		}
+		currentStatus := newPodStatus(pod, lastUpdateTime, manifest.Name)
 		if !podStatusesEqual(currentStatus, m.pods[key]) {
 			updates = append(updates, currentStatus)
 			m.pods[key] = currentStatus
@@ -83,13 +87,22 @@ func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 }
 
 func (m *PodMonitor) print(ctx context.Context, update podStatus) {
+	reusingPod := update.podStartTime.Before(update.updateFinishTime)
 	key := podManifest{pod: update.podID, manifest: update.manifestName}
-	if !m.trackingStarted[key] {
-		logger.Get(ctx).Infof("\nTracking new pod rollout (%s):", update.podID)
-		m.trackingStarted[key] = true
+	if ts, ok := m.trackingStarted[key]; !ok || ts.Before(update.updateFinishTime) {
+		if !reusingPod {
+			logger.Get(ctx).Infof("\nTracking new pod rollout (%s):", update.podID)
+		} else {
+			logger.Get(ctx).Infof("\nUsing existing pod that matches spec (%s)", update.podID)
+		}
+		m.trackingStarted[key] = update.updateFinishTime
 	}
 
-	m.printCondition(ctx, "Scheduled", update.scheduled, update.startTime)
+	if reusingPod {
+		return
+	}
+
+	m.printCondition(ctx, "Scheduled", update.scheduled, update.podStartTime)
 	m.printCondition(ctx, "Initialized", update.initialized, update.scheduled.LastTransitionTime.Time)
 	m.printCondition(ctx, "Ready", update.ready, update.initialized.LastTransitionTime.Time)
 }
@@ -134,16 +147,22 @@ func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1alp
 }
 
 type podStatus struct {
-	podID        k8s.PodID
-	manifestName model.ManifestName
-	startTime    time.Time
-	scheduled    v1alpha1.PodCondition
-	initialized  v1alpha1.PodCondition
-	ready        v1alpha1.PodCondition
+	podID            k8s.PodID
+	manifestName     model.ManifestName
+	updateFinishTime time.Time
+	podStartTime     time.Time
+	scheduled        v1alpha1.PodCondition
+	initialized      v1alpha1.PodCondition
+	ready            v1alpha1.PodCondition
 }
 
-func newPodStatus(pod v1alpha1.Pod, manifestName model.ManifestName) podStatus {
-	s := podStatus{podID: k8s.PodID(pod.Name), manifestName: manifestName, startTime: pod.CreatedAt.Time}
+func newPodStatus(pod v1alpha1.Pod, updateFinishTime time.Time, manifestName model.ManifestName) podStatus {
+	s := podStatus{
+		podID:            k8s.PodID(pod.Name),
+		manifestName:     manifestName,
+		updateFinishTime: updateFinishTime,
+		podStartTime:     pod.CreatedAt.Time,
+	}
 	for _, condition := range pod.Conditions {
 		switch v1.PodConditionType(condition.Type) {
 		case v1.PodScheduled:

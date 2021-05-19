@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -63,6 +65,56 @@ func TestMonitorReady(t *testing.T) {
 	f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	assertSnapshot(t, f.out.String())
+}
+
+func TestAttachToExistingPod(t *testing.T) {
+	f := newPMFixture(t)
+	defer f.TearDown()
+
+	start := time.Now()
+	p := v1alpha1.Pod{
+		Name:      "pod-id",
+		CreatedAt: apis.NewTime(start),
+		Conditions: []v1alpha1.PodCondition{
+			{
+				Type:               string(v1.PodScheduled),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(time.Second)),
+			},
+			{
+				Type:               string(v1.PodInitialized),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(5 * time.Second)),
+			},
+			{
+				Type:               string(v1.PodReady),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(10 * time.Second)),
+			},
+		},
+	}
+
+	state := store.NewState()
+
+	setBuildFinishTime := func(ft time.Time) {
+		mt := manifestutils.NewManifestTargetWithPod(
+			model.Manifest{Name: "server"}, p)
+		mt.State.BuildHistory = []model.BuildRecord{{FinishTime: ft}}
+		state.UpsertManifestTarget(mt)
+		f.store.SetState(*state)
+	}
+
+	setBuildFinishTime(start.Add(20 * time.Second))
+	f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	// a previous implementation of this wouldn't re-log pod info on subsequent builds, so
+	// make sure if we attach to an existing pod twice, we get a log each time
+	setBuildFinishTime(start.Add(30 * time.Second))
+	f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	// two builds, two logs
+	msg := "Using existing pod that matches spec (pod-id)\n\nUsing existing pod that matches spec (pod-id)"
+	require.Contains(t, f.out.String(), msg)
 }
 
 type pmFixture struct {
