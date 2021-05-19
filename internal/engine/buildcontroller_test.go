@@ -115,6 +115,12 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 
 	f.podEvent(p1)
 	f.podEvent(p2)
+	// need to wait for both pods to be seen or the next build call might only know about one of them (and so
+	// would have container info)
+	f.WaitUntilManifestState("pods not seen", manifest.Name, func(state store.ManifestState) bool {
+		return len(state.K8sRuntimeState().Pods) == 2
+	})
+
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()

@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
+
 	"github.com/davecgh/go-spew/spew"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -476,7 +478,10 @@ func TestUpper_Up(t *testing.T) {
 
 	// cancel the context to simulate a Ctrl-C
 	f.cancel()
-	assert.ErrorIs(t, <-storeErr, context.Canceled, "Upper returned unexpected error")
+	err := <-storeErr
+	if assert.NotNil(t, err, "Store returned nil error (expected context canceled)") {
+		assert.Contains(t, err.Error(), context.Canceled.Error(), "Store error was not as expected")
+	}
 
 	state := f.upper.store.RLockState()
 	defer f.upper.store.RUnlockState()
@@ -1505,6 +1510,11 @@ func TestPodEventOrdering(t *testing.T) {
 				f.podEvent(pb.Build())
 			}
 
+			// ensure that the pod events have been processed
+			f.WaitUntilManifestState("pods seen", "fe", func(ms store.ManifestState) bool {
+				return len(ms.K8sRuntimeState().Pods) == 2
+			})
+
 			f.upper.store.Dispatch(
 				store.NewLogAction("fe", k8sconv.SpanIDForPod(manifest.Name, podBNow.PodName()), logger.InfoLvl, nil, []byte("pod b log\n")))
 
@@ -1514,15 +1524,17 @@ func TestPodEventOrdering(t *testing.T) {
 				return spanID != "" && strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
 			})
 
-			f.WaitUntilManifestState("two pods seen", "fe", func(ms store.ManifestState) bool {
-				return ms.K8sRuntimeState().PodLen() == 2
-			})
-
 			f.withManifestState("fe", func(ms store.ManifestState) {
-				runtime := ms.K8sRuntimeState()
-				require.Equal(t, uidNow, runtime.PodAncestorUID)
-				timecmp.AssertTimeEqual(t, now, runtime.Pods["pod-a"].CreatedAt)
-				timecmp.AssertTimeEqual(t, now, runtime.Pods["pod-b"].CreatedAt)
+				krs := ms.K8sRuntimeState()
+				require.Equal(t, uidNow, krs.PodAncestorUID)
+				podA := krs.Pods["pod-a"]
+				if assert.Equal(t, "pod-a-now", podA.UID) {
+					timecmp.AssertTimeEqual(t, now, podA.CreatedAt)
+				}
+				podB := krs.Pods["pod-b"]
+				if assert.Equal(t, "pod-b-now", podB.UID) {
+					timecmp.AssertTimeEqual(t, now, podB.CreatedAt)
+				}
 			})
 
 			assert.NoError(t, f.Stop())
@@ -3922,13 +3934,6 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	dockerClient := docker.NewFakeClient()
 
-	ns := k8s.Namespace("default")
-	kdms := k8swatch.NewManifestSubscriber(ns, cdc)
-	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
-	rd := k8swatch.NewContainerRestartDetector()
-	pw := k8swatch.NewPodWatcher(b.kClient, of, rd, cdc)
-	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
-
 	fSub := fixtureSub{ch: make(chan bool, 1000)}
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	require.NoError(t, st.AddSubscriber(ctx, fSub))
@@ -3967,6 +3972,12 @@ func newTestFixture(t *testing.T) *testFixture {
 	hudsc := server.ProvideHeadsUpServerController(
 		configAccess, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
+	ns := k8s.Namespace("default")
+	kdms := k8swatch.NewManifestSubscriber(ns, cdc)
+	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
+	rd := kubernetesdiscovery.NewContainerRestartDetector()
+	kdc := kubernetesdiscovery.NewReconciler(b.kClient, of, rd, st)
+	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
 	ewm := k8swatch.NewEventWatchManager(b.kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
@@ -3985,6 +3996,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fwc,
 		cmds,
 		plsc,
+		kdc,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -4029,7 +4041,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	uss := uisession.NewSubscriber()
 	urs := uiresource.NewSubscriber()
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, pw, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, pfr, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, pfr, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

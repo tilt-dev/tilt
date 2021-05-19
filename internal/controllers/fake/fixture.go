@@ -42,7 +42,7 @@ type ControllerFixture struct {
 	Client     ctrlclient.Client
 }
 
-func NewFixture(t testing.TB, c controller) *ControllerFixture {
+func NewControllerFixture(t testing.TB, c controller) *ControllerFixture {
 	t.Helper()
 
 	ctx, cancel := context.WithCancel(context.Background())

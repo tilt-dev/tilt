@@ -31,6 +31,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+const stdTimeout = time.Second
+
 func TestManifestsWithNoWatches(t *testing.T) {
 	f := newMSFixture(t)
 

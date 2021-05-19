@@ -4,6 +4,8 @@ import (
 	"github.com/google/wire"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
+
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
@@ -12,6 +14,7 @@ import (
 
 var controllerSet = wire.NewSet(
 	filewatch.NewController,
+	kubernetesdiscovery.NewReconciler,
 
 	ProvideControllers,
 )
@@ -19,11 +22,13 @@ var controllerSet = wire.NewSet(
 func ProvideControllers(
 	fileWatch *filewatch.Controller,
 	cmds *cmd.Controller,
-	podlogstreams *podlogstream.Controller) []Controller {
+	podlogstreams *podlogstream.Controller,
+	kubernetesDiscovery *kubernetesdiscovery.Reconciler) []Controller {
 	return []Controller{
 		fileWatch,
 		cmds,
 		podlogstreams,
+		kubernetesDiscovery,
 	}
 }
 
