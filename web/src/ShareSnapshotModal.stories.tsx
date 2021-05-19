@@ -2,7 +2,7 @@ import React from "react"
 import ReactModal from "react-modal"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 
-ReactModal.setAppElement(document.body)
+ReactModal.setAppElement("#root")
 
 let handleSendSnapshot = () => console.log("sendSnapshot")
 let handleClose = () => console.log("close")

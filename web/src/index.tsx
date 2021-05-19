@@ -6,7 +6,7 @@ import { HUDFromContext } from "./HUD"
 import "./index.scss"
 import { InterfaceVersionProvider } from "./InterfaceVersion"
 
-ReactModal.setAppElement(document.body)
+ReactModal.setAppElement("#root")
 
 let app = (
   <BrowserRouter>

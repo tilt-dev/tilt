@@ -9,6 +9,9 @@ import SocketBar from "./SocketBar"
 import { oneResourceView } from "./testdata"
 import { SocketState } from "./types"
 
+// Note: `body` is used as the app element _only_ in a test env
+// since the app root element isn't available; in prod, it should
+// be set as the app root so that accessibility features are set correctly
 ReactModal.setAppElement(document.body)
 
 declare global {
