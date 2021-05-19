@@ -87,8 +87,6 @@ type EngineState struct {
 	Tiltignore    model.Dockerignore
 	WatchSettings model.WatchSettings
 
-	PendingConfigFileChanges map[string]time.Time
-
 	TriggerQueue []model.ManifestName
 
 	IsProfiling bool
@@ -154,6 +152,10 @@ func (e *EngineState) AnalyticsEffectiveOpt() analytics.Opt {
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
+	if id.Type == model.TargetTypeConfigs {
+		return []model.ManifestName{model.TiltfileManifestName}
+	}
+
 	result := make([]model.ManifestName, 0)
 	for mn, mt := range e.ManifestTargets {
 		manifest := mt.Manifest
@@ -475,7 +477,6 @@ func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.LogStore = logstore.NewLogStore()
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
-	ret.PendingConfigFileChanges = make(map[string]time.Time)
 	ret.Secrets = model.SecretSet{}
 	ret.DockerPruneSettings = model.DefaultDockerPruneSettings()
 	ret.VersionSettings = model.VersionSettings{
@@ -483,7 +484,10 @@ func NewState() *EngineState {
 	}
 	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
-	ret.TiltfileState = &ManifestState{}
+	ret.TiltfileState = &ManifestState{
+		Name:          model.TiltfileManifestName,
+		BuildStatuses: make(map[model.TargetID]*BuildStatus),
+	}
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
 		ret.AnalyticsEnvOpt = analytics.OptOut

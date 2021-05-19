@@ -540,6 +540,11 @@ func handleConfigsReloaded(
 
 	b := state.TiltfileState.CurrentBuild
 
+	// Remove pending file changes that were consumed by this build.
+	for _, status := range state.TiltfileState.BuildStatuses {
+		status.ClearPendingChangesBefore(b.StartTime)
+	}
+
 	// Track the new secrets and go back to scrub them.
 	newSecrets := model.SecretSet{}
 	for k, v := range event.Secrets {
@@ -670,13 +675,6 @@ func handleConfigsReloaded(
 	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
 
 	state.UpdateSettings = event.UpdateSettings
-
-	// Remove pending file changes that were consumed by this build.
-	for file, modTime := range state.PendingConfigFileChanges {
-		if timecmp.BeforeOrEqual(modTime, state.TiltfileState.LastBuild().StartTime) {
-			delete(state.PendingConfigFileChanges, file)
-		}
-	}
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {

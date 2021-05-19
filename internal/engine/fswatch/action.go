@@ -122,13 +122,6 @@ func processFileWatchStatus(ctx context.Context, state *store.EngineState, fw *f
 		return
 	}
 
-	if targetID.Type == model.TargetTypeConfigs {
-		for _, f := range latestEvent.SeenFiles {
-			state.PendingConfigFileChanges[f] = latestEvent.Time.Time
-		}
-		return
-	}
-
 	mns := state.ManifestNamesForTargetID(targetID)
 	for _, mn := range mns {
 		ms, ok := state.ManifestState(mn)

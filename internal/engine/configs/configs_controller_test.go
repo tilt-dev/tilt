@@ -176,7 +176,10 @@ func newCCFixture(t *testing.T) *ccFixture {
 
 	state := st.LockMutableStateForTesting()
 	state.TiltfilePath = f.JoinPath("Tiltfile")
-	state.PendingConfigFileChanges["Tiltfile"] = time.Now()
+	state.TiltfileState.AddPendingFileChange(model.TargetID{
+		Type: model.TargetTypeConfigs,
+		Name: "singleton",
+	}, f.JoinPath("Tiltfile"), time.Now())
 	st.UnlockMutableState()
 
 	return &ccFixture{
