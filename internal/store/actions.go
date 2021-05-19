@@ -7,7 +7,6 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -142,23 +141,6 @@ func (TiltCloudStatusReceivedAction) Action() {}
 type UserStartedTiltCloudRegistrationAction struct{}
 
 func (UserStartedTiltCloudRegistrationAction) Action() {}
-
-// The user can indicate "yes, I know the pod restarted N times, stop showing me"
-type PodResetRestartsAction struct {
-	PodID           k8s.PodID
-	ManifestName    model.ManifestName
-	VisibleRestarts int
-}
-
-func NewPodResetRestartsAction(podID k8s.PodID, mn model.ManifestName, visibleRestarts int) PodResetRestartsAction {
-	return PodResetRestartsAction{
-		PodID:           podID,
-		ManifestName:    mn,
-		VisibleRestarts: visibleRestarts,
-	}
-}
-
-func (PodResetRestartsAction) Action() {}
 
 type PanicAction struct {
 	Err error
