@@ -589,6 +589,9 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	f.withManifestState("foobar", func(ms store.ManifestState) {
 		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagChangedFiles))
 		assert.True(t, ms.LastBuild().HasBuildType(model.BuildTypeImage))
+		timecmp.AssertTimeEqual(t,
+			ms.LastBuild().StartTime,
+			ms.K8sRuntimeState().UpdateStartTime[pb.PodName()])
 	})
 
 	err := f.Stop()

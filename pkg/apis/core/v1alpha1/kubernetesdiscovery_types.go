@@ -203,8 +203,6 @@ type Pod struct {
 	//
 	// Tilt uses this to associate Pods with the build that triggered them.
 	PodTemplateSpecHash string `json:"podTemplateSpecHash,omitempty" protobuf:"bytes,10,opt,name=podTemplateSpecHash"`
-	// UpdateStartedAt is when Tilt started a deployment update for this Pod.
-	UpdateStartedAt metav1.Time `json:"updateStartedAt,omitempty" protobuf:"bytes,11,opt,name=updateStartedAt"`
 	// Status is a concise description for the Pod's current state.
 	//
 	// This is based off the status output from `kubectl get pod` and is not an "enum-like"

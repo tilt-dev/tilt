@@ -33,7 +33,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -244,8 +243,15 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 	ms.CurrentBuild = bs
 
 	if ms.IsK8s() {
-		for _, pod := range ms.K8sRuntimeState().Pods {
-			pod.UpdateStartedAt = apis.NewTime(action.StartTime)
+		krs := ms.K8sRuntimeState()
+		for podID := range krs.Pods {
+			krs.UpdateStartTime[podID] = action.StartTime
+		}
+		// remove stale pods
+		for podID := range krs.UpdateStartTime {
+			if _, ok := krs.Pods[podID]; !ok {
+				delete(krs.UpdateStartTime, podID)
+			}
 		}
 	} else if manifest.IsDC() {
 		// Attach the SpanID and initialize the runtime state if we haven't yet.
@@ -428,9 +434,10 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			ms.LiveUpdatedContainerIDs[cID] = true
 		}
 
-		bestPod := ms.MostRecentPod()
+		krs := ms.K8sRuntimeState()
+		bestPod := krs.MostRecentPod()
 		if timecmp.AfterOrEqual(bestPod.CreatedAt, bs.StartTime) ||
-			timecmp.Equal(bestPod.UpdateStartedAt, bs.StartTime) {
+			timecmp.Equal(krs.UpdateStartTime[k8s.PodID(bestPod.Name)], bs.StartTime) {
 			k8swatch.CheckForContainerCrash(engineState, mt)
 		}
 	}
