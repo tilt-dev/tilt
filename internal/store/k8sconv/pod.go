@@ -19,7 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func Pod(ctx context.Context, pod *v1.Pod, ancestorUID types.UID, baselineRestarts int32) *v1alpha1.Pod {
+func Pod(ctx context.Context, pod *v1.Pod, ancestorUID types.UID) *v1alpha1.Pod {
 	podInfo := &v1alpha1.Pod{
 		UID:            string(pod.UID),
 		Name:           pod.Name,
@@ -31,11 +31,10 @@ func Pod(ctx context.Context, pod *v1.Pod, ancestorUID types.UID, baselineRestar
 		InitContainers: PodContainers(ctx, pod, pod.Status.InitContainerStatuses),
 		Containers:     PodContainers(ctx, pod, pod.Status.ContainerStatuses),
 
-		AncestorUID:          string(ancestorUID),
-		BaselineRestartCount: baselineRestarts,
-		PodTemplateSpecHash:  pod.Labels[k8s.TiltPodTemplateHashLabel],
-		Status:               PodStatusToString(*pod),
-		Errors:               PodStatusErrorMessages(*pod),
+		AncestorUID:         string(ancestorUID),
+		PodTemplateSpecHash: pod.Labels[k8s.TiltPodTemplateHashLabel],
+		Status:              PodStatusToString(*pod),
+		Errors:              PodStatusErrorMessages(*pod),
 	}
 	return podInfo
 }

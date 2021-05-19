@@ -1469,14 +1469,6 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 							Format:      "",
 						},
 					},
-					"baselineRestartCount": {
-						SchemaProps: spec.SchemaProps{
-							Description: "BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.\n\nThis is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
 					"podTemplateSpecHash": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PodTemplateSpecHash is a hash of the Pod template spec.\n\nTilt uses this to associate Pods with the build that triggered them.",
@@ -1508,7 +1500,7 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 						},
 					},
 				},
-				Required: []string{"uid", "name", "namespace", "createdAt", "phase", "deleting", "containers", "baselineRestartCount", "status", "errors"},
+				Required: []string{"uid", "name", "namespace", "createdAt", "phase", "deleting", "containers", "status", "errors"},
 			},
 		},
 		Dependencies: []string{

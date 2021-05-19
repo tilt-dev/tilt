@@ -80,7 +80,7 @@ type Reconciler struct {
 	knownDescendentPodUIDs map[types.UID]k8s.UIDSet
 
 	// knownPods is an index of all the known pods and associated Tilt-derived metadata, by UID.
-	knownPods map[types.UID]podMeta
+	knownPods map[types.UID]*v1.Pod
 }
 
 func (w *Reconciler) SetClient(client ctrlclient.Client) {
@@ -104,17 +104,8 @@ func NewReconciler(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, restartDetect
 		uidWatchers:            make(map[types.UID]watcherSet),
 		watchers:               make(map[watcherID]watcher),
 		knownDescendentPodUIDs: make(map[types.UID]k8s.UIDSet),
-		knownPods:              make(map[types.UID]podMeta),
+		knownPods:              make(map[types.UID]*v1.Pod),
 	}
-}
-
-// podMeta contains both the actual Pod as received from Kubernetes as well as any Tilt-derived metadata that
-// is consistent across all watchers.
-type podMeta struct {
-	// pod is the Pod as received from Kubernetes.
-	pod *v1.Pod
-	// baselineRestarts is the sum of container restarts as determined when the Pod was first seen.
-	baselineRestarts int32
 }
 
 type watcher struct {
@@ -391,12 +382,12 @@ func (w *Reconciler) updateStatus(ctx context.Context, st Dispatcher, watcherID 
 func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.KubernetesDiscoveryStatus {
 	seenPodUIDs := k8s.NewUIDSet()
 	var pods []v1alpha1.Pod
-	maybeTrackPod := func(pm podMeta, ancestorUID types.UID) {
-		if pm.pod == nil || seenPodUIDs.Contains(pm.pod.UID) {
+	maybeTrackPod := func(pod *v1.Pod, ancestorUID types.UID) {
+		if pod == nil || seenPodUIDs.Contains(pod.UID) {
 			return
 		}
-		seenPodUIDs.Add(pm.pod.UID)
-		pods = append(pods, *k8sconv.Pod(ctx, pm.pod, ancestorUID, pm.baselineRestarts))
+		seenPodUIDs.Add(pod.UID)
+		pods = append(pods, *k8sconv.Pod(ctx, pod, ancestorUID))
 	}
 
 	for i := range watcher.spec.Watches {
@@ -413,8 +404,7 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 
 	// TODO(milas): we should only match against Pods in namespaces referenced by the WatchRefs for this spec
 	if len(watcher.spec.ExtraSelectors) != 0 {
-		for podUID, pm := range w.knownPods {
-			pod := pm.pod
+		for podUID, pod := range w.knownPods {
 			if seenPodUIDs.Contains(podUID) {
 				// because we're brute forcing this - make an attempt to
 				// reduce work and not bother to try matching on Pods that
@@ -424,7 +414,7 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 			podLabels := labels.Set(pod.Labels)
 			for _, selector := range watcher.extraSelectors {
 				if selector.Matches(podLabels) {
-					maybeTrackPod(pm, "")
+					maybeTrackPod(pod, "")
 					break
 				}
 			}
@@ -440,19 +430,7 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 func (w *Reconciler) upsertPod(pod *v1.Pod) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
-	uid := pod.UID
-
-	pm, isKnown := w.knownPods[uid]
-	if !isKnown {
-		// the first time a Pod is seen, the sum of restarts across all containers is used as the baseline
-		// restart count so that everything that happened before Tilt was aware of the Pod can be ignored
-		for i := range pod.Status.ContainerStatuses {
-			pm.baselineRestarts += pod.Status.ContainerStatuses[i].RestartCount
-		}
-	}
-	pm.pod = pod
-	w.knownPods[uid] = pm
+	w.knownPods[pod.UID] = pod
 }
 
 // triageResult is a KubernetesDiscovery key and the UID (if any) of the watch ref that matched the Pod event.
@@ -559,8 +537,8 @@ func (w *Reconciler) handlePodDelete(ctx context.Context, st Dispatcher, namespa
 	defer w.mu.Unlock()
 
 	var podUID types.UID
-	for uid, pm := range w.knownPods {
-		if pm.pod.Namespace == namespace.String() && pm.pod.Name == name {
+	for uid, pod := range w.knownPods {
+		if pod.Namespace == namespace.String() && pod.Name == name {
 			delete(w.knownPods, uid)
 			podUID = uid
 			break

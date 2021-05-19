@@ -195,10 +195,6 @@ type Pod struct {
 	//
 	// +optional
 	AncestorUID string `json:"ancestorUID,omitempty" protobuf:"bytes,15,opt,name=ancestorUID"`
-	// BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.
-	//
-	// This is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.
-	BaselineRestartCount int32 `json:"baselineRestartCount" protobuf:"varint,9,opt,name=baselineRestartCount"`
 	// PodTemplateSpecHash is a hash of the Pod template spec.
 	//
 	// Tilt uses this to associate Pods with the build that triggered them.
