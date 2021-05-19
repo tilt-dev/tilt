@@ -740,7 +740,6 @@ func (in *Pod) DeepCopyInto(out *Pod) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	in.UpdateStartedAt.DeepCopyInto(&out.UpdateStartedAt)
 	if in.Errors != nil {
 		in, out := &in.Errors, &out.Errors
 		*out = make([]string, len(*in))

@@ -80,6 +80,8 @@ type K8sRuntimeState struct {
 	LastReadyOrSucceededTime    time.Time
 	HasEverDeployedSuccessfully bool
 
+	UpdateStartTime map[k8s.PodID]time.Time
+
 	PodReadinessMode model.PodReadinessMode
 }
 
@@ -103,6 +105,7 @@ func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 		Pods:                           make(map[k8s.PodID]*v1alpha1.Pod),
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
+		UpdateStartTime:                make(map[k8s.PodID]time.Time),
 	}
 }
 

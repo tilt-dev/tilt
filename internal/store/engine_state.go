@@ -913,13 +913,14 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			state.ContainerState.Status, state.ContainerID, state.SpanID, state.StartTime, runStatus)
 	case K8sRuntimeState:
 		pod := state.MostRecentPod()
+		podID := k8s.PodID(pod.Name)
 		return view.K8sResourceInfo{
 			PodName:            pod.Name,
 			PodCreationTime:    pod.CreatedAt.Time,
-			PodUpdateStartTime: pod.UpdateStartedAt.Time,
+			PodUpdateStartTime: state.UpdateStartTime[podID],
 			PodStatus:          pod.Status,
 			PodRestarts:        int(VisiblePodContainerRestarts(pod)),
-			SpanID:             k8sconv.SpanIDForPod(mt.Manifest.Name, k8s.PodID(pod.Name)),
+			SpanID:             k8sconv.SpanIDForPod(mt.Manifest.Name, podID),
 			RunStatus:          runStatus,
 			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}

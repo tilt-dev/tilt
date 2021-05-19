@@ -101,6 +101,7 @@ func (f *k8sFixture) Curl(url string) (string, error) {
 }
 
 func (f *k8sFixture) CurlUntil(ctx context.Context, url string, expectedContents string) {
+	f.t.Helper()
 	f.WaitUntil(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
 		return f.Curl(url)
 	}, expectedContents)

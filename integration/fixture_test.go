@@ -109,6 +109,7 @@ func (f *fixture) DumpLogs() {
 }
 
 func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string, error), expectedContents string) {
+	f.t.Helper()
 	for {
 		actualContents, err := fun()
 		if err == nil && strings.Contains(actualContents, expectedContents) {

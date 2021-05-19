@@ -516,9 +516,6 @@ message Pod {
   // Tilt uses this to associate Pods with the build that triggered them.
   optional string podTemplateSpecHash = 10;
 
-  // UpdateStartedAt is when Tilt started a deployment update for this Pod.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time updateStartedAt = 11;
-
   // Status is a concise description for the Pod's current state.
   //
   // This is based off the status output from `kubectl get pod` and is not an "enum-like"

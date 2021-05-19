@@ -1484,13 +1484,6 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 							Format:      "",
 						},
 					},
-					"updateStartedAt": {
-						SchemaProps: spec.SchemaProps{
-							Description: "UpdateStartedAt is when Tilt started a deployment update for this Pod.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
-						},
-					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Status is a concise description for the Pod's current state.\n\nThis is based off the status output from `kubectl get pod` and is not an \"enum-like\" value.",

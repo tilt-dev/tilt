@@ -4,6 +4,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/apis"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -241,7 +244,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 		r.Status.K8sResourceInfo = &v1alpha1.UIResourceKubernetes{
 			PodName:            pod.Name,
 			PodCreationTime:    pod.CreatedAt,
-			PodUpdateStartTime: pod.UpdateStartedAt,
+			PodUpdateStartTime: apis.NewTime(kState.UpdateStartTime[k8s.PodID(pod.Name)]),
 			PodStatus:          pod.Status,
 			PodStatusMessage:   strings.Join(pod.Errors, "\n"),
 			AllContainersReady: store.AllPodContainersReady(pod),
