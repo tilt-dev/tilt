@@ -24,7 +24,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
         isOpen={this.props.isOpen}
         className="ShareSnapshotModal"
       >
-        <h2 className="ShareSnapshotModal-title">Share a Shapshot</h2>
+        <h2 className="ShareSnapshotModal-title">Share a Snapshot</h2>
         <section className="ShareSnapshotModal-pane u-flexColumn">
           <p className="ShareSnapshotModal-description">
             Get a link to a{" "}

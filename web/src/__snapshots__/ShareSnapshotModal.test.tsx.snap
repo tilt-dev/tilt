@@ -30,7 +30,7 @@ exports[`ShareSnapshotModal renders team link 1`] = `
     <h2
       className="ShareSnapshotModal-title"
     >
-      Share a Shapshot
+      Share a Snapshot
     </h2>
     <section
       className="ShareSnapshotModal-pane u-flexColumn"
@@ -155,7 +155,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
     <h2
       className="ShareSnapshotModal-title"
     >
-      Share a Shapshot
+      Share a Snapshot
     </h2>
     <section
       className="ShareSnapshotModal-pane u-flexColumn"
@@ -260,7 +260,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
     <h2
       className="ShareSnapshotModal-title"
     >
-      Share a Shapshot
+      Share a Snapshot
     </h2>
     <section
       className="ShareSnapshotModal-pane u-flexColumn"
@@ -372,7 +372,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
     <h2
       className="ShareSnapshotModal-title"
     >
-      Share a Shapshot
+      Share a Snapshot
     </h2>
     <section
       className="ShareSnapshotModal-pane u-flexColumn"
