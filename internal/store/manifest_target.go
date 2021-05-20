@@ -47,6 +47,16 @@ func (mt *ManifestTarget) UpdateStatus() v1alpha1.UpdateStatus {
 		if us == v1alpha1.UpdateStatusInProgress {
 			return v1alpha1.UpdateStatusPending
 		}
+
+		// If the local_resource has auto_init=False and has not built yet (i.e. it has
+		// not been manually triggered), use UpdateStatusNone to indicate that the resource
+		// has not yet had a reason to trigger so that it blocks the serve_cmd from executing.
+		// Once manually triggered, a no-op build will exist, and subsequent calls will return
+		// UpdateStatusNotApplicable so that the server controller knows it does not need to
+		// wait for anything.
+		if !m.TriggerMode.AutoInitial() && !mt.State.StartedFirstBuild() {
+			return v1alpha1.UpdateStatusNone
+		}
 		return v1alpha1.UpdateStatusNotApplicable
 	}
 
