@@ -49,25 +49,16 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 	current := m.makeSpecsFromEngineState(ctx, st)
 	for key, kd := range current {
 		existing := m.lastUpdate[key]
-		if kd != nil && existing == nil {
-			if err := m.createKubernetesDiscovery(ctx, st, key, kd); err != nil {
+		if existing == nil {
+			if err := m.createKubernetesDiscovery(ctx, st, key, &kd); err != nil {
 				st.Dispatch(store.NewErrorAction(err))
 				return
 			}
-		} else if kd != nil && existing != nil {
-			if !equality.Semantic.DeepEqual(existing, &kd.Spec) {
-				err := m.updateKubernetesDiscovery(ctx, st, key, func(toUpdate *v1alpha1.KubernetesDiscovery) {
-					toUpdate.Spec = kd.Spec
-				})
-				if err != nil {
-					st.Dispatch(store.NewErrorAction(err))
-					return
-				}
-			}
-		} else if kd == nil && existing != nil {
-			// this manifest still exists but was modified such that it has
-			// no K8s entities to watch, so just delete the API spec
-			if err := m.deleteKubernetesDiscovery(ctx, st, key); err != nil {
+		} else if !equality.Semantic.DeepEqual(existing, &kd.Spec) {
+			err := m.updateKubernetesDiscovery(ctx, st, key, func(toUpdate *v1alpha1.KubernetesDiscovery) {
+				toUpdate.Spec = kd.Spec
+			})
+			if err != nil {
 				st.Dispatch(store.NewErrorAction(err))
 				return
 			}
@@ -76,7 +67,7 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 
 	for key := range m.lastUpdate {
 		if _, ok := current[key]; !ok {
-			// this manifest was deleted entirely
+			// this manifest was deleted or changed such that it has nothing to watch
 			if err := m.deleteKubernetesDiscovery(ctx, st, key); err != nil {
 				st.Dispatch(store.NewErrorAction(err))
 				return
@@ -98,12 +89,11 @@ func (m *ManifestSubscriber) getKubernetesDiscovery(ctx context.Context, key typ
 
 func (m *ManifestSubscriber) createKubernetesDiscovery(ctx context.Context, st store.RStore, key types.NamespacedName, kd *v1alpha1.KubernetesDiscovery) error {
 	err := m.client.Create(ctx, kd)
-	if err == nil {
-		m.lastUpdate[key] = kd.Spec.DeepCopy()
-		st.Dispatch(NewKubernetesDiscoveryCreateAction(kd))
-	} else if !apierrors.IsAlreadyExists(err) {
+	if err != nil {
 		return fmt.Errorf("failed to create KubernetesDiscovery %q: %v", key, err)
 	}
+	m.lastUpdate[key] = kd.Spec.DeepCopy()
+	st.Dispatch(NewKubernetesDiscoveryCreateAction(kd))
 	return nil
 }
 
@@ -149,17 +139,17 @@ func (m *ManifestSubscriber) deleteKubernetesDiscovery(ctx context.Context, st s
 	return nil
 }
 
-func (m *ManifestSubscriber) makeSpecsFromEngineState(ctx context.Context, st store.RStore) map[types.NamespacedName]*v1alpha1.KubernetesDiscovery {
+func (m *ManifestSubscriber) makeSpecsFromEngineState(ctx context.Context, st store.RStore) map[types.NamespacedName]v1alpha1.KubernetesDiscovery {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	results := make(map[types.NamespacedName]*v1alpha1.KubernetesDiscovery)
+	results := make(map[types.NamespacedName]v1alpha1.KubernetesDiscovery)
 	claims := make(map[types.UID]types.NamespacedName)
 	for _, mt := range state.Targets() {
 		key := KeyForManifest(mt.Manifest.Name)
 		kd := m.kubernetesDiscoveryFromManifest(ctx, key, mt, claims)
 		if kd != nil {
-			results[key] = kd
+			results[key] = *kd
 		}
 	}
 
