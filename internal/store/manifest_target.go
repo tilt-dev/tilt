@@ -29,11 +29,6 @@ func (mt *ManifestTarget) UpdateStatus() v1alpha1.UpdateStatus {
 	m := mt.Manifest
 	us := mt.State.UpdateStatus(m.TriggerMode)
 
-	if us == v1alpha1.UpdateStatusPending {
-		// A resource with no update command can still be in pending mode.
-		return us
-	}
-
 	if m.IsLocal() && m.LocalTarget().UpdateCmd.Empty() {
 		// NOTE(nick): We currently model a local_resource(serve_cmd) as a Manifest
 		// with a no-op Update. BuildController treats it like any other
@@ -48,16 +43,23 @@ func (mt *ManifestTarget) UpdateStatus() v1alpha1.UpdateStatus {
 			return v1alpha1.UpdateStatusPending
 		}
 
-		// If the local_resource has auto_init=False and has not built yet (i.e. it has
-		// not been manually triggered), use UpdateStatusNone to indicate that the resource
-		// has not yet had a reason to trigger so that it blocks the serve_cmd from executing.
-		// Once manually triggered, a no-op build will exist, and subsequent calls will return
-		// UpdateStatusNotApplicable so that the server controller knows it does not need to
-		// wait for anything.
-		if !m.TriggerMode.AutoInitial() && !mt.State.StartedFirstBuild() {
-			return v1alpha1.UpdateStatusNone
+		if us == v1alpha1.UpdateStatusOK {
+			// The no-op build job completed, but it's confusing/misleading to show
+			// the status of something non-existent as having succeeded, so instead
+			// return the special N/A status so that it can be distinguished from a
+			// true update.
+			//
+			// Note that for local resources with auto_init=False that have not been
+			// triggered, the update status will be UpdateStatusNone until such a time
+			// as they are triggered, and will be UpdateStatusNotApplicable thereafter.
+			//
+			// This is a bit odd, but currently this is how the server controller
+			// determines whether to launch the serve_cmd, so it needs to be able to
+			// distinguish between "resource has never been triggered" (so the server
+			// should not be launched) and "resource has been triggered but has no
+			// update command to wait for" (and thus the server should be launched).
+			return v1alpha1.UpdateStatusNotApplicable
 		}
-		return v1alpha1.UpdateStatusNotApplicable
 	}
 
 	return us
