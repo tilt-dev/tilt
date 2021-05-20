@@ -2421,7 +2421,6 @@ func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) commo
 					"version": {
 						SchemaProps: spec.SchemaProps{
 							Description: "A semantic version string.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2429,7 +2428,6 @@ func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) commo
 					"commitSHA": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The Git digest of the commit this binary was built at.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2437,7 +2435,6 @@ func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) commo
 					"date": {
 						SchemaProps: spec.SchemaProps{
 							Description: "A human-readable string representing when the binary was built.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2445,13 +2442,11 @@ func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) commo
 					"dev": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Indicates whether this is a development build (true) or an official release (false).",
-							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"version", "commitSHA", "date", "dev"},
 			},
 		},
 	}
@@ -2561,7 +2556,6 @@ func schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref common.ReferenceCallback) c
 					"name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The name of the flag.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2569,13 +2563,11 @@ func schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref common.ReferenceCallback) c
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The value of the flag.",
-							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"name", "value"},
 			},
 		},
 	}
@@ -3117,7 +3109,6 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"needsAnalyticsNudge": {
 						SchemaProps: spec.SchemaProps{
 							Description: "NeedsAnalyticsNudge reports whether the UI hasn't opted in or out of analytics, and the UI should nudge them to do so.",
-							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -3132,7 +3123,6 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"suggestedTiltVersion": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SuggestedTiltVersion tells the UI the recommended version for this user. If the version is different than what's running, the UI may display a prompt to upgrade.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3147,7 +3137,6 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"tiltCloudUsername": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TiltCloudUsername reports the username if the user is signed into TiltCloud.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3155,7 +3144,6 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"tiltCloudTeamName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TiltCloudUsername reports the human-readable team name if the user is signed into TiltCloud and the Tiltfile declares a team.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3163,7 +3151,6 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"tiltCloudSchemeHost": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance associated with this Tilt process. Usually https://cloud.tilt.dev",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3171,7 +3158,6 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"tiltCloudTeamID": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TiltCloudTeamID reports the unique team id if the user is signed into TiltCloud and the Tiltfile declares a team.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3179,7 +3165,6 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"fatalError": {
 						SchemaProps: spec.SchemaProps{
 							Description: "A FatalError is an error that forces Tilt to stop its control loop. The API server will stay up and continue to serve the UI, but no further builds will happen.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3194,13 +3179,11 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"tiltfileKey": {
 						SchemaProps: spec.SchemaProps{
 							Description: "An identifier for the Tiltfile that is running. Clients can use this to store data associated with a particular project in LocalStorage or other persistent storage.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"featureFlags", "needsAnalyticsNudge", "runningTiltBuild", "suggestedTiltVersion", "versionSettings", "tiltCloudUsername", "tiltCloudTeamName", "tiltCloudSchemeHost", "tiltCloudTeamID", "fatalError", "tiltStartTime", "tiltfileKey"},
 			},
 		},
 		Dependencies: []string{
@@ -3218,13 +3201,11 @@ func schema_pkg_apis_core_v1alpha1_VersionSettings(ref common.ReferenceCallback)
 					"checkUpdates": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether version updates have been enabled/disabled from the Tiltfile.",
-							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"checkUpdates"},
 			},
 		},
 	}

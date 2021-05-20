@@ -841,48 +841,60 @@ message TargetStateWaiting {
 // Information about the running tilt binary.
 message TiltBuild {
   // A semantic version string.
+  // +optional
   optional string version = 1;
 
   // The Git digest of the commit this binary was built at.
+  // +optional
   optional string commitSHA = 2;
 
   // A human-readable string representing when the binary was built.
+  // +optional
   optional string date = 3;
 
   // Indicates whether this is a development build (true) or an official release (false).
+  // +optional
   optional bool dev = 4;
 }
 
 // UIBuildRunning respresents an in-progress build/update in the user interface.
 message UIBuildRunning {
   // The time when the build started.
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
 
   // The log span where the build logs are stored in the logstore.
+  // +optional
   optional string spanID = 2;
 }
 
 // UIBuildRunning respresents a finished build/update in the user interface.
 message UIBuildTerminated {
   // A non-empty string if the build failed with an error.
+  // +optional
   optional string error = 1;
 
   // A list of warnings encountered while running the build.
   // These warnings will also be printed to the build's log.
+  // +optional
   repeated string warnings = 2;
 
   // The time when the build started.
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 3;
 
   // The time when the build finished.
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishTime = 4;
 
   // The log span where the build logs are stored in the logstore.
+  // +optional
   optional string spanID = 5;
 
   // A crash rebuild happens when Tilt live-updated a container, then
   // the pod crashed, wiping out the live-updates. Tilt does a full
   // build+deploy to reset the pod state to what's on disk.
+  // +optional
   optional bool isCrashRebuild = 6;
 }
 
@@ -897,9 +909,11 @@ message UIBuildTerminated {
 // with a Tilt contributor).
 message UIFeatureFlag {
   // The name of the flag.
+  // +optional
   optional string name = 1;
 
   // The value of the flag.
+  // +optional
   optional bool value = 2;
 }
 
@@ -923,41 +937,52 @@ message UIResourceKubernetes {
   //
   // The active pod tends to be what Tilt defaults to for port-forwards,
   // live-updates, etc.
+  // +optional
   optional string podName = 1;
 
   // The creation time of the active pod.
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Time podCreationTime = 2;
 
   // The last update time of the active pod
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Time podUpdateStartTime = 3;
 
   // The status of the active pod.
+  // +optional
   optional string podStatus = 4;
 
   // Extra error messaging around the current status of the active pod.
+  // +optional
   optional string podStatusMessage = 5;
 
   // Whether all the containers in the pod are currently healthy
   // and have passed readiness checks.
+  // +optional
   optional bool allContainersReady = 6;
 
   // The number of pod restarts.
+  // +optional
   optional int32 podRestarts = 7;
 
   // The span where this pod stores its logs in the Tilt logstore.
+  // +optional
   optional string spanID = 8;
 
   // The list of all resources deployed in the Kubernetes deploy
   // for this resource.
+  // +optional
   repeated string displayNames = 9;
 }
 
 // UIResourceLink represents a link assocatiated with a UIResource.
 message UIResourceLink {
   // A URL to link to.
+  // +optional
   optional string url = 1;
 
   // The display label on a URL.
+  // +optional
   optional string name = 2;
 }
 
@@ -972,9 +997,11 @@ message UIResourceList {
 // UIResourceLocal contains status information specific to local commands.
 message UIResourceLocal {
   // The PID of the actively running local command.
+  // +optional
   optional int64 pid = 1;
 
   // Whether this represents a test job.
+  // +optional
   optional bool isTest = 2;
 }
 
@@ -987,37 +1014,47 @@ message UIResourceSpec {
 // UIResourceStatus defines the observed state of UIResource
 message UIResourceStatus {
   // The last time this resource was deployed.
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastDeployTime = 1;
 
   // Bit mask representing whether this resource is run when:
   // 1) When a file changes
   // 2) When the resource initializes
+  // +optional
   optional int32 triggerMode = 2;
 
   // Past completed builds.
+  // +optional
   repeated UIBuildTerminated buildHistory = 3;
 
   // The currently running build, if any.
+  // +optional
   optional UIBuildRunning currentBuild = 4;
 
   // When the build was put in the pending queue.
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime pendingBuildSince = 5;
 
   // True if the build was put in the pending queue due to file changes.
+  // +optional
   optional bool hasPendingChanges = 6;
 
   // Links attached to this resource.
+  // +optional
   repeated UIResourceLink endpointLinks = 7;
 
   // Extra data about Kubernetes resources.
+  // +optional
   optional UIResourceKubernetes k8sResourceInfo = 8;
 
   // Extra data about Local resources
+  // +optional
   optional UIResourceLocal localResourceInfo = 9;
 
   // The RuntimeStatus is a simple, high-level summary of the runtime state of a server.
   //
   // Not all resources run servers.
+  // +optional
   optional string runtimeStatus = 10;
 
   // The UpdateStatus is a simple, high-level summary of any update tasks to bring
@@ -1025,24 +1062,30 @@ message UIResourceStatus {
   //
   // If the resource runs a server, this may include both build tasks and live-update
   // syncing.
+  // +optional
   optional string updateStatus = 14;
 
   // Information about all the target specs that this resource summarizes.
+  // +optional
   repeated UIResourceTargetSpec specs = 12;
 
   // Queued is a simple indicator of whether the resource is queued for an update.
+  // +optional
   optional bool queued = 13;
 }
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.
 message UIResourceTargetSpec {
   // The ID of the target.
+  // +optional
   optional string id = 1;
 
   // The type of the target.
+  // +optional
   optional string type = 2;
 
   // Whether the target has a live update assocated with it.
+  // +optional
   optional bool hasLiveUpdate = 3;
 }
 
@@ -1080,60 +1123,73 @@ message UISessionSpec {
 message UISessionStatus {
   // FeatureFlags reports a list of experimental features that have been
   // enabled.
+  // +optional
   repeated UIFeatureFlag featureFlags = 1;
 
   // NeedsAnalyticsNudge reports whether the UI hasn't opted in or out
   // of analytics, and the UI should nudge them to do so.
+  // +optional
   optional bool needsAnalyticsNudge = 2;
 
   // RunningTiltBuild reports the currently running version of tilt
   // that this UI is talking to.
+  // +optional
   optional TiltBuild runningTiltBuild = 3;
 
   // SuggestedTiltVersion tells the UI the recommended version for this
   // user. If the version is different than what's running, the UI
   // may display a prompt to upgrade.
+  // +optional
   optional string suggestedTiltVersion = 4;
 
   // VersionSettings indicates whether version updates have been enabled/disabled
   // from the Tiltfile.
+  // +optional
   optional VersionSettings versionSettings = 12;
 
   // TiltCloudUsername reports the username if the user is signed into
   // TiltCloud.
+  // +optional
   optional string tiltCloudUsername = 5;
 
   // TiltCloudUsername reports the human-readable team name if the user is
   // signed into TiltCloud and the Tiltfile declares a team.
+  // +optional
   optional string tiltCloudTeamName = 6;
 
   // TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance
   // associated with this Tilt process. Usually https://cloud.tilt.dev
+  // +optional
   optional string tiltCloudSchemeHost = 7;
 
   // TiltCloudTeamID reports the unique team id if the user is signed into
   // TiltCloud and the Tiltfile declares a team.
+  // +optional
   optional string tiltCloudTeamID = 8;
 
   // A FatalError is an error that forces Tilt to stop its control loop.
   // The API server will stay up and continue to serve the UI, but
   // no further builds will happen.
+  // +optional
   optional string fatalError = 9;
 
   // The time that this instance of tilt started.
   // Clients can use this to determine if the API server has restarted
   // and all the objects need to be refreshed.
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Time tiltStartTime = 10;
 
   // An identifier for the Tiltfile that is running.
   // Clients can use this to store data associated with a particular
   // project in LocalStorage or other persistent storage.
+  // +optional
   optional string tiltfileKey = 11;
 }
 
 // Information about how the Tilt binary handles updates.
 message VersionSettings {
   // Whether version updates have been enabled/disabled from the Tiltfile.
+  // +optional
   optional bool checkUpdates = 1;
 }
 
