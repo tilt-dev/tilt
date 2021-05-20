@@ -7,10 +7,7 @@ package buildcontrol
 
 import (
 	"context"
-
 	"github.com/google/wire"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
-
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -19,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
 // Injectors from wire.go:

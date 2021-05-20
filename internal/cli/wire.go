@@ -28,7 +28,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
-	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -99,7 +98,6 @@ var BaseWireSet = wire.NewSet(
 	podlogstream.NewController,
 	portforward.NewSubscriber,
 	engine.NewBuildController,
-	cmd.WireSet,
 	local.NewServerController,
 	kubernetesdiscovery.NewContainerRestartDetector,
 	k8swatch.NewManifestSubscriber,

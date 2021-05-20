@@ -52,6 +52,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	ctrluiresource "github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
+	ctrluisession "github.com/tilt-dev/tilt/internal/controllers/core/uisession"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -3969,6 +3971,8 @@ func newTestFixture(t *testing.T) *testFixture {
 		cmds,
 		plsc,
 		kdc,
+		ctrluisession.NewReconciler(),
+		ctrluiresource.NewReconciler(),
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
