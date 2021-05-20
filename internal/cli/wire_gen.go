@@ -7,8 +7,16 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	client2 "github.com/tilt-dev/tilt/internal/cli/client"
@@ -63,12 +71,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 // Injectors from wire.go:
@@ -312,8 +314,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
 	portforwardReconciler := portforward2.NewReconciler(client)
-	uisessionSubscriber := uisession2.NewSubscriber()
-	uiresourceSubscriber := uiresource2.NewSubscriber()
+	uisessionSubscriber := uisession2.NewSubscriber(deferredClient)
+	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
 	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, manifestSubscriber, serviceWatcher, podLogManager, subscriber, fswatchManifestSubscriber, buildController, configsController, eventWatcher, dockerComposeLogManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, metricsController, portforwardReconciler, uisessionSubscriber, uiresourceSubscriber)
 	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
@@ -505,8 +507,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
 	portforwardReconciler := portforward2.NewReconciler(client)
-	uisessionSubscriber := uisession2.NewSubscriber()
-	uiresourceSubscriber := uiresource2.NewSubscriber()
+	uisessionSubscriber := uisession2.NewSubscriber(deferredClient)
+	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
 	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, manifestSubscriber, serviceWatcher, podLogManager, subscriber, fswatchManifestSubscriber, buildController, configsController, eventWatcher, dockerComposeLogManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, metricsController, portforwardReconciler, uisessionSubscriber, uiresourceSubscriber)
 	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {

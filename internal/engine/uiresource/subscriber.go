@@ -3,23 +3,28 @@ package uiresource
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // Creates UIResource objects from the EngineState
 type Subscriber struct {
-	lastResources map[types.NamespacedName]*v1alpha1.UIResource
+	client ctrlclient.Client
 }
 
-func NewSubscriber() *Subscriber {
+func NewSubscriber(client ctrlclient.Client) *Subscriber {
 	return &Subscriber{
-		lastResources: make(map[types.NamespacedName]*v1alpha1.UIResource),
+		client: client,
 	}
 }
 
@@ -41,35 +46,65 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 	}
 
 	// Collect a list of all the resources to reconcile and their most recent version.
+	storedList := &v1alpha1.UIResourceList{}
+	err = s.client.List(ctx, storedList)
+
+	if err != nil {
+		// If the cache hasn't started yet, that's OK.
+		// We'll get it on the next OnChange()
+		if strings.Contains(err.Error(), "cache not started") {
+			return
+		}
+
+		logger.Get(ctx).Infof("listing uiresource: %v", err)
+		return
+	}
+
+	storedMap := make(map[types.NamespacedName]v1alpha1.UIResource)
 	toReconcile := make(map[types.NamespacedName]*v1alpha1.UIResource, len(currentResources))
-	for _, r := range s.lastResources {
+	for _, r := range storedList.Items {
+		storedMap[types.NamespacedName{Name: r.Name}] = r
 		toReconcile[types.NamespacedName{Name: r.Name}] = nil
 	}
 	for _, r := range currentResources {
 		toReconcile[types.NamespacedName{Name: r.Name}] = r
 	}
 
-	for name, current := range toReconcile {
-		if current == nil {
-			// If there's no current version of this resource, we should delete it.
+	for name, resource := range toReconcile {
+		if resource == nil {
+			err := s.client.Delete(ctx, &v1alpha1.UIResource{ObjectMeta: metav1.ObjectMeta{Name: name.Name}})
+			if err != nil && apierrors.IsNotFound(err) {
+				st.Dispatch(store.NewErrorAction(fmt.Errorf("deleting resource %s: %v", name.Name, err)))
+				return
+			}
 			st.Dispatch(NewUIResourceDeleteAction(name))
-			delete(s.lastResources, name)
 			continue
 		}
 
-		last, exists := s.lastResources[name]
-		if !exists {
-			// If there's a current version but no last version of this resource,
-			// create it.
-			st.Dispatch(NewUIResourceCreateAction(current))
-			s.lastResources[name] = current
+		stored, isStored := storedMap[name]
+		if !isStored {
+			err := s.client.Create(ctx, resource)
+			if err != nil {
+				logger.Get(ctx).Infof("creating uiresource %s: %v", name.Name, err)
+				return
+			}
+			st.Dispatch(NewUIResourceCreateAction(resource))
 			continue
 		}
 
-		if !equality.Semantic.DeepEqual(last.Status, current.Status) {
-			// If the current version is different than the last version, update it.
-			st.Dispatch(NewUIResourceUpdateStatusAction(current))
-			s.lastResources[name] = current
+		if !apicmp.DeepEqual(resource.Status, stored.Status) {
+			update := &v1alpha1.UIResource{
+				ObjectMeta: *stored.ObjectMeta.DeepCopy(),
+				Spec:       *stored.Spec.DeepCopy(),
+				Status:     *resource.Status.DeepCopy(),
+			}
+			err = s.client.Status().Update(ctx, update)
+			if err != nil {
+				logger.Get(ctx).Infof("updating uiresource %s: %v", name.Name, err)
+				return
+			}
+			st.Dispatch(NewUIResourceUpdateStatusAction(resource))
+			continue
 		}
 	}
 }

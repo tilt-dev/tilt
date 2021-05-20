@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
@@ -105,10 +106,11 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	tc := fake.NewTiltClient()
 	return &fixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		ctx:            context.Background(),
-		sub:            NewSubscriber(),
+		sub:            NewSubscriber(tc),
 		store: &testStore{
 			TestingStore: store.NewTestingStore(),
 		},
