@@ -26,40 +26,56 @@ func (s *WatchSet) newWatch() *watchNode {
 	defer s.mu.Unlock()
 
 	s.counter++
-	return &watchNode{
-		id: s.counter,
-		s:  s,
-		ch: make(chan watch.Event, 10),
-	}
-}
 
-// Start sending events to this watch.
-func (s *WatchSet) start(w *watchNode) {
-	s.mu.Lock()
-	s.nodes[w.id] = w
-	s.mu.Unlock()
+	return &watchNode{
+		id:       s.counter,
+		s:        s,
+		updateCh: make(chan watch.Event),
+		outCh:    make(chan watch.Event),
+	}
 }
 
 func (s *WatchSet) notifyWatchers(ev watch.Event) {
 	s.mu.RLock()
 	for _, w := range s.nodes {
-		w.ch <- ev
+		w.updateCh <- ev
 	}
 	s.mu.RUnlock()
 }
 
 type watchNode struct {
-	s  *WatchSet
-	id int
-	ch chan watch.Event
+	s        *WatchSet
+	id       int
+	updateCh chan watch.Event
+	outCh    chan watch.Event
+}
+
+// Start sending events to this watch.
+func (w *watchNode) Start(initEvents []watch.Event) {
+	w.s.mu.Lock()
+	w.s.nodes[w.id] = w
+	w.s.mu.Unlock()
+
+	go func() {
+		for _, e := range initEvents {
+			w.outCh <- e
+		}
+
+		for e := range w.updateCh {
+			w.outCh <- e
+		}
+		close(w.outCh)
+	}()
 }
 
 func (w *watchNode) Stop() {
 	w.s.mu.Lock()
 	delete(w.s.nodes, w.id)
 	w.s.mu.Unlock()
+
+	close(w.updateCh)
 }
 
 func (w *watchNode) ResultChan() <-chan watch.Event {
-	return w.ch
+	return w.outCh
 }
