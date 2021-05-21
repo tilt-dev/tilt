@@ -130,11 +130,8 @@ func maybeUpdateStateForPod(ms *store.ManifestState, pod *v1alpha1.Pod) bool {
 	if existing == nil {
 		// the first time a Pod is seen, the sum of restarts across all containers is used as the baseline
 		// restart count so that everything that happened before Tilt was aware of the Pod can be ignored
-		var baselineRestarts int32
-		for i := range pod.Containers {
-			baselineRestarts += pod.Containers[i].Restarts
-		}
-		runtime.BaselineRestarts[podID] = baselineRestarts
+		// (this is also updated after a live update by the build controller)
+		runtime.BaselineRestarts[podID] = store.AllPodContainerRestarts(*pod)
 	} else if equality.Semantic.DeepEqual(existing, pod) {
 		return false
 	}
