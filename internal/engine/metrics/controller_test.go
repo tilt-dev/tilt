@@ -56,8 +56,7 @@ func newFixture(t *testing.T) *fixture {
 
 	st := store.NewTestingStore()
 
-	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
-	ctx := logger.WithLogger(context.Background(), l)
+	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout))
 
 	exp := NewDeferredExporter()
 	mc := NewController(exp, model.TiltBuild{}, "")
