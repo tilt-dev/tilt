@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
+
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -241,6 +242,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
+		podID := k8s.PodID(pod.Name)
 		r.Status.K8sResourceInfo = &v1alpha1.UIResourceKubernetes{
 			PodName:            pod.Name,
 			PodCreationTime:    pod.CreatedAt,
@@ -248,7 +250,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 			PodStatus:          pod.Status,
 			PodStatusMessage:   strings.Join(pod.Errors, "\n"),
 			AllContainersReady: store.AllPodContainersReady(pod),
-			PodRestarts:        int32(store.VisiblePodContainerRestarts(pod)),
+			PodRestarts:        kState.VisiblePodContainerRestarts(podID),
 			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 

@@ -89,6 +89,7 @@ func UpdateK8sRuntimeState(ctx context.Context, state *store.EngineState, key ty
 	for podID := range krs.Pods {
 		if !seenPods[podID] {
 			delete(krs.Pods, podID)
+			delete(krs.BaselineRestarts, podID)
 		}
 	}
 
@@ -122,9 +123,16 @@ func maybeUpdateStateForPod(ms *store.ManifestState, pod *v1alpha1.Pod) bool {
 		// Track a new ancestor ID, and delete all existing tracked pods.
 		runtime.Pods = make(map[k8s.PodID]*v1alpha1.Pod)
 		runtime.PodAncestorUID = matchedAncestorUID
+		runtime.BaselineRestarts = make(map[k8s.PodID]int32)
 	}
 
-	if existing := runtime.Pods[podID]; existing != nil && equality.Semantic.DeepEqual(existing, pod) {
+	existing := runtime.Pods[podID]
+	if existing == nil {
+		// the first time a Pod is seen, the sum of restarts across all containers is used as the baseline
+		// restart count so that everything that happened before Tilt was aware of the Pod can be ignored
+		// (this is also updated after a live update by the build controller)
+		runtime.BaselineRestarts[podID] = store.AllPodContainerRestarts(*pod)
+	} else if equality.Semantic.DeepEqual(existing, pod) {
 		return false
 	}
 

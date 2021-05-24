@@ -923,7 +923,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodCreationTime:    pod.CreatedAt.Time,
 			PodUpdateStartTime: state.UpdateStartTime[podID],
 			PodStatus:          pod.Status,
-			PodRestarts:        int(VisiblePodContainerRestarts(pod)),
+			PodRestarts:        int(state.VisiblePodContainerRestarts(podID)),
 			SpanID:             k8sconv.SpanIDForPod(mt.Manifest.Name, podID),
 			RunStatus:          runStatus,
 			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,

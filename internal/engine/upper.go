@@ -414,10 +414,11 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			return
 		}
 	} else {
-		for _, pod := range ms.K8sRuntimeState().Pods {
+		krs := ms.K8sRuntimeState()
+		for podID, pod := range krs.Pods {
 			// Reset the baseline, so that we don't show restarts
 			// from before any live-updates
-			pod.BaselineRestartCount = store.AllPodContainerRestarts(*pod)
+			krs.BaselineRestarts[podID] = store.AllPodContainerRestarts(*pod)
 		}
 	}
 

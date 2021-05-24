@@ -83,6 +83,10 @@ type K8sRuntimeState struct {
 	UpdateStartTime map[k8s.PodID]time.Time
 
 	PodReadinessMode model.PodReadinessMode
+
+	// BaselineRestarts is used as a floor for container restarts to avoid alerting on restarts
+	// that happened either before Tilt started or before a Live Update change.
+	BaselineRestarts map[k8s.PodID]int32
 }
 
 func (K8sRuntimeState) RuntimeState() {}
@@ -106,6 +110,7 @@ func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
 		UpdateStartTime:                make(map[k8s.PodID]time.Time),
+		BaselineRestarts:               make(map[k8s.PodID]int32),
 	}
 }
 
@@ -253,8 +258,12 @@ func AllPodContainerRestarts(p v1alpha1.Pod) int32 {
 	return result
 }
 
-func VisiblePodContainerRestarts(p v1alpha1.Pod) int32 {
-	return AllPodContainerRestarts(p) - p.BaselineRestartCount
+func (s K8sRuntimeState) VisiblePodContainerRestarts(podID k8s.PodID) int32 {
+	p := s.Pods[podID]
+	if p == nil {
+		return 0
+	}
+	return AllPodContainerRestarts(*p) - s.BaselineRestarts[podID]
 }
 
 func AllPodContainerPorts(p v1alpha1.Pod) []int32 {
