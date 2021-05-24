@@ -463,8 +463,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())
-	l := logger.NewLogger(logger.DebugLvl, out)
-	ctx = logger.WithLogger(ctx, l)
+	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
 
 	st := newPLMStore(t, out)
 	fc := fake.NewTiltClient()

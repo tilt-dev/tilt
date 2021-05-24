@@ -117,6 +117,13 @@ func NewLogger(minLevel Level, writer io.Writer) Logger {
 	})
 }
 
+func NewTestLogger(writer io.Writer) Logger {
+	return NewFuncLogger(false, DebugLvl, func(level Level, fields Fields, bytes []byte) error {
+		_, err := writer.Write(bytes)
+		return err
+	})
+}
+
 func WithLogger(ctx context.Context, logger Logger) context.Context {
 	return context.WithValue(ctx, LoggerContextKey, logger)
 }

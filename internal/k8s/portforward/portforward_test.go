@@ -391,6 +391,5 @@ func TestGetPortsReturnsDynamicallyAssignedLocalPort(t *testing.T) {
 }
 
 func newCtx() context.Context {
-	l := logger.NewLogger(logger.DebugLvl, os.Stdout)
-	return logger.WithLogger(context.Background(), l)
+	return logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout))
 }

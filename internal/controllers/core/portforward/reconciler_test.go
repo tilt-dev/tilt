@@ -242,9 +242,8 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 	r := NewReconciler(kCli)
 
 	out := bufsync.NewThreadSafeBuffer()
-	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx = logger.WithLogger(ctx, l)
+	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
 	return &pfrFixture{
 		TempDirFixture: f,
 		ctx:            ctx,

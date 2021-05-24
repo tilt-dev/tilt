@@ -24,8 +24,7 @@ func TestRuntimeReadNodeConfig(t *testing.T) {
 	runtimeAsync := newRuntimeAsync(core)
 
 	out := &bytes.Buffer{}
-	l := logger.NewLogger(logger.DebugLvl, out)
-	ctx := logger.WithLogger(context.Background(), l)
+	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(out))
 	runtime := runtimeAsync.Runtime(ctx)
 	assert.Equal(t, container.RuntimeReadFailure, runtime)
 	assert.Contains(t, out.String(), "Tilt could not read your node configuration")
