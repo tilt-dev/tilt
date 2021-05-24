@@ -162,6 +162,49 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 		}
 	}
 
+	ps.StartBuildStep(ctx, "Building image")
+	allowBuildkit := true
+	ctx = ps.AttachLogger(ctx)
+	digest, err := d.buildFromDfToDigest(ctx, db, paths, filter, allowBuildkit)
+	if err != nil {
+		isMysteriousCorruption := strings.Contains(err.Error(), "failed precondition") &&
+			strings.Contains(err.Error(), "failed commit on ref")
+		if isMysteriousCorruption {
+			// We've seen weird corruption issues on buildkit
+			// that look like
+			//
+			// Build Failed: ImageBuild: failed to create LLB definition:
+			// failed commit on ref "unknown-sha256:b72fa303a3a5fbf52c723bfcfb93948bb53b3d7e8d22418e9d171a27ad7dcd84":
+			// "unknown-sha256:b72fa303a3a5fbf52c723bfcfb93948bb53b3d7e8d22418e9d171a27ad7dcd84"
+			// failed size validation: 80941 != 80929: failed precondition
+			//
+			// Build Failed: ImageBuild: failed to load cache key: failed commit on
+			// ref
+			// "unknown-sha256:d8ad5905555e3af3fa9122515f2b3d4762d4e8734b7ed12f1271bcdee3541267":
+			// unexpected commit size 69764, expected 76810: failed precondition
+			//
+			// If this happens, just try again without buildkit.
+			allowBuildkit = false
+			logger.Get(ctx).Infof("Detected Buildkit corruption. Rebuilding without Buildkit")
+			digest, err = d.buildFromDfToDigest(ctx, db, paths, filter, allowBuildkit)
+		}
+
+		if err != nil {
+			return container.TaggedRefs{}, err
+		}
+	}
+
+	tagged, err := d.TagRefs(ctx, refs, digest)
+	if err != nil {
+		return container.TaggedRefs{}, errors.Wrap(err, "PushImage")
+	}
+
+	return tagged, nil
+}
+
+// A helper function that builds the paths to the given docker image,
+// then returns the output digest.
+func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, error) {
 	pr, pw := io.Pipe()
 	go func(ctx context.Context) {
 		err := tarContextAndUpdateDf(ctx, pw, dockerfile.Dockerfile(db.Dockerfile), paths, filter)
@@ -176,34 +219,27 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 		_ = pr.Close()
 	}()
 
-	ps.StartBuildStep(ctx, "Building image")
+	options := Options(pr, db)
+	if !allowBuildkit {
+		options.ForceLegacyBuilder = true
+	}
 	imageBuildResponse, err := d.dCli.ImageBuild(
 		ctx,
 		pr,
-		Options(pr, db),
+		options,
 	)
 	if err != nil {
-		return container.TaggedRefs{}, err
+		return "", err
 	}
 
 	defer func() {
 		err := imageBuildResponse.Body.Close()
 		if err != nil {
-			logger.Get(ctx).Infof("unable to close imagePushResponse: %s", err)
+			logger.Get(ctx).Infof("unable to close imageBuildResponse: %s", err)
 		}
 	}()
 
-	digest, err := d.getDigestFromBuildOutput(ps.AttachLogger(ctx), imageBuildResponse.Body)
-	if err != nil {
-		return container.TaggedRefs{}, err
-	}
-
-	tagged, err := d.TagRefs(ctx, refs, digest)
-	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "PushImage")
-	}
-
-	return tagged, nil
+	return d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body)
 }
 
 func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
