@@ -3,10 +3,10 @@ import AppController from "./AppController"
 import PathBuilder from "./PathBuilder"
 
 let fakeSetHistoryLocation = jest.fn()
-let fakeSetAppState = jest.fn()
+let fakeOnAppChange = jest.fn()
 
 const HUD = {
-  setAppState: fakeSetAppState,
+  onAppChange: fakeOnAppChange,
   setHistoryLocation: fakeSetHistoryLocation,
 }
 
@@ -32,7 +32,7 @@ describe("AppController", () => {
     ac.setStateFromSnapshot()
 
     await flushPromises()
-    expect(fakeSetAppState.mock.calls.length).toBe(1)
+    expect(fakeOnAppChange.mock.calls.length).toBe(1)
     expect(fakeSetHistoryLocation.mock.calls.length).toBe(0)
   })
 
@@ -47,7 +47,7 @@ describe("AppController", () => {
     ac.setStateFromSnapshot()
 
     await flushPromises()
-    expect(fakeSetAppState.mock.calls.length).toBe(1)
+    expect(fakeOnAppChange.mock.calls.length).toBe(1)
     expect(fakeSetHistoryLocation.mock.calls.length).toBe(1)
     expect(fakeSetHistoryLocation.mock.calls[0][0]).toBe("/snapshot/aaaaaa/foo")
   })
@@ -70,8 +70,8 @@ describe("AppController", () => {
     ac.setStateFromSnapshot()
 
     await flushPromises()
-    expect(fakeSetAppState.mock.calls.length).toBe(2)
-    expect(fakeSetAppState.mock.calls[1][0]).toStrictEqual({
+    expect(fakeOnAppChange.mock.calls.length).toBe(2)
+    expect(fakeOnAppChange.mock.calls[1][0]).toStrictEqual({
       snapshotHighlight: snapshotHighlight,
     })
   })

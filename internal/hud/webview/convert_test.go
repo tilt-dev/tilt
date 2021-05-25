@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,11 @@ import (
 
 var fooManifest = model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
 
-func stateToProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
+func completeProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
+	return summaryToProtoView(t, s, 0, nil)
+}
+
+func summaryToProtoView(t *testing.T, s store.EngineState, checkpoint logstore.Checkpoint, summary *store.ChangeSummary) *proto_webview.View {
 	s.UISessions[types.NamespacedName{Name: UISessionName}] = ToUISession(s)
 
 	resources, err := ToUIResourceList(s)
@@ -35,7 +40,7 @@ func stateToProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
 		s.UIResources[types.NamespacedName{Name: r.Name}] = r
 	}
 
-	v, err := StateToProtoView(s, 0)
+	v, err := ChangeSummaryToProtoView(s, checkpoint, summary)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +67,7 @@ func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 			f.JoinPath("a", "b", "c", "foo"):    time.Now(),
 			f.JoinPath("a", "b", "c", "d", "e"): time.Now(),
 		}
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	require.Len(t, v.UiResources, 2)
 }
@@ -79,7 +84,7 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 		},
 	})
 	state := newState([]model.Manifest{m})
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	expected := []v1alpha1.UIResourceLink{
 		v1alpha1.UIResourceLink{URL: "http://localhost:8000/"},
@@ -105,7 +110,7 @@ func TestStateToWebViewLinksAndPortForwards(t *testing.T) {
 		},
 	})
 	state := newState([]model.Manifest{m})
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	expected := []v1alpha1.UIResourceLink{
 		v1alpha1.UIResourceLink{URL: "www.apple.edu", Name: "apple"},
@@ -127,7 +132,7 @@ func TestStateToWebViewLocalResourceLink(t *testing.T) {
 		},
 	})
 	state := newState([]model.Manifest{m})
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	expected := []v1alpha1.UIResourceLink{
 		v1alpha1.UIResourceLink{URL: "www.apple.edu", Name: "apple"},
@@ -141,7 +146,7 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
 	assert.NoError(t, err)
 	state := newState([]model.Manifest{m})
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.UiResources))
 
@@ -153,7 +158,7 @@ func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
 	displayNames := []string{"foo:namespace", "foo:secret"}
 	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
 	state := newState([]model.Manifest{m})
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.UiResources))
 
@@ -168,11 +173,35 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 	es.LogStore.Append(
 		store.NewLogAction(store.TiltfileManifestName, spanID, logger.InfoLvl, nil, []byte("hello")),
 		nil)
-	v := stateToProtoView(t, *es)
+	v := completeProtoView(t, *es)
 	_, ok := findResource("(Tiltfile)", v)
 	require.True(t, ok, "no resource named (Tiltfile) found")
 	assert.Equal(t, "hello", string(v.LogList.Segments[0].Text))
 	assert.Equal(t, "(Tiltfile)", string(v.LogList.Spans[string(spanID)].ManifestName))
+}
+
+func TestSessionOnlyUpdate(t *testing.T) {
+	displayNames := []string{"foo:namespace"}
+	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
+	state := newState([]model.Manifest{m})
+
+	summary := store.ChangeSummary{}
+	summary.UISessions.Add(types.NamespacedName{Name: "Tiltfile"})
+	v := summaryToProtoView(t, *state, 0, &summary)
+	assert.Nil(t, v.UiResources)
+	assert.NotNil(t, v.UiSession)
+}
+
+func TestResourceOnlyUpdate(t *testing.T) {
+	displayNames := []string{"foo:namespace"}
+	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
+	state := newState([]model.Manifest{m})
+
+	summary := store.ChangeSummary{}
+	summary.UIResources.Add(types.NamespacedName{Name: "foo"})
+	v := summaryToProtoView(t, *state, 0, &summary)
+	assert.Equal(t, 1, len(v.UiResources))
+	assert.Nil(t, v.UiSession)
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {
@@ -198,7 +227,7 @@ func TestNeedsNudgeSet(t *testing.T) {
 	targ.State = &store.ManifestState{}
 	state.UpsertManifestTarget(targ)
 
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	assert.False(t, v.UiSession.Status.NeedsAnalyticsNudge,
 		"LastSuccessfulDeployTime not set, so NeedsNudge should not be set")
@@ -206,7 +235,7 @@ func TestNeedsNudgeSet(t *testing.T) {
 	targ.State = &store.ManifestState{LastSuccessfulDeployTime: time.Now()}
 	state.UpsertManifestTarget(targ)
 
-	v = stateToProtoView(t, *state)
+	v = completeProtoView(t, *state)
 	assert.True(t, v.UiSession.Status.NeedsAnalyticsNudge)
 }
 
@@ -218,7 +247,7 @@ func TestTriggerMode(t *testing.T) {
 	targ.State = &store.ManifestState{}
 	state.UpsertManifestTarget(targ)
 
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 	assert.Equal(t, 2, len(v.UiResources))
 
 	newM, _ := findResource(model.ManifestName("foo"), v)
@@ -229,7 +258,7 @@ func TestFeatureFlags(t *testing.T) {
 	state := newState(nil)
 	state.Features = map[string]bool{"foo_feature": true}
 
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 	assert.Equal(t, v.UiSession.Status.FeatureFlags, []v1alpha1.UIFeatureFlag{
 		v1alpha1.UIFeatureFlag{Name: "foo_feature", Value: true},
 	})
@@ -254,7 +283,7 @@ func TestReadinessCheckFailing(t *testing.T) {
 		},
 	}
 
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 	rv, ok := findResource(m.Name, v)
 	require.True(t, ok)
 	require.Equal(t, v1alpha1.RuntimeStatusPending, v1alpha1.RuntimeStatus(rv.RuntimeStatus))
@@ -273,7 +302,7 @@ func TestLocalResource(t *testing.T) {
 	state := newState([]model.Manifest{m})
 	lrs := store.LocalRuntimeState{Status: v1alpha1.RuntimeStatusNotApplicable}
 	state.ManifestTargets[m.Name].State.RuntimeState = lrs
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.UiResources))
 	r := v.UiResources[1]
@@ -311,7 +340,7 @@ func TestBuildHistory(t *testing.T) {
 	state := newState([]model.Manifest{m})
 	state.ManifestTargets[m.Name].State.BuildHistory = buildRecords
 
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 	require.Equal(t, 2, len(v.UiResources))
 	r := v.UiResources[1]
 	require.Equal(t, "foo", r.Name)
@@ -347,7 +376,7 @@ func TestSpecs(t *testing.T) {
 		{"local", []v1alpha1.UIResourceTargetType{v1alpha1.UIResourceTargetTypeLocal}, false},
 	}
 	state := newState([]model.Manifest{mNoLiveUpd, mLiveUpd, mLocal})
-	v := stateToProtoView(t, *state)
+	v := completeProtoView(t, *state)
 
 	require.Equal(t, 4, len(v.UiResources))
 	for i, r := range v.UiResources {

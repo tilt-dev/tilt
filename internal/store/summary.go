@@ -19,6 +19,10 @@ func NewChangeSet(names ...types.NamespacedName) ChangeSet {
 	return cs
 }
 
+func (s *ChangeSet) Empty() bool {
+	return len(s.Changes) == 0
+}
+
 // Add a changed resource name.
 func (s *ChangeSet) Add(nn types.NamespacedName) {
 	if s.Changes == nil {

@@ -25,18 +25,43 @@ import (
 // with the other Session API.
 const UISessionName = "Tiltfile"
 
-func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*proto_webview.View, error) {
+// Given a change summary, send down all the API objects that have changed.
+// If no change summary is provided, send down all API objects.
+func ChangeSummaryToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint, summary *store.ChangeSummary) (*proto_webview.View, error) {
 	ret := &proto_webview.View{}
 
-	logList, err := s.LogStore.ToLogList(logCheckpoint)
-	if err != nil {
-		return nil, err
+	if summary == nil || summary.Log {
+		logList, err := s.LogStore.ToLogList(logCheckpoint)
+		if err != nil {
+			return nil, err
+		}
+
+		ret.LogList = logList
 	}
 
-	ret.LogList = logList
-	ret.UiSession = s.UISessions[types.NamespacedName{Name: UISessionName}]
-	for _, r := range s.UIResources {
-		ret.UiResources = append(ret.UiResources, r)
+	if summary == nil || !summary.UISessions.Empty() {
+		ret.UiSession = s.UISessions[types.NamespacedName{Name: UISessionName}]
+	}
+
+	if summary == nil {
+		for _, r := range s.UIResources {
+			ret.UiResources = append(ret.UiResources, r)
+		}
+	} else {
+		for id := range summary.UIResources.Changes {
+			r, exists := s.UIResources[id]
+			if exists {
+				ret.UiResources = append(ret.UiResources, r)
+			} else {
+				now := metav1.Now()
+				ret.UiResources = append(ret.UiResources, &v1alpha1.UIResource{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              id.Name,
+						DeletionTimestamp: &now,
+					},
+				})
+			}
+		}
 	}
 
 	sortUIResources(ret.UiResources, s.ManifestDefinitionOrder)

@@ -160,6 +160,17 @@ message VersionSettings {
   bool check_updates = 1;
 }
 
+// Our websocket service has two kinds of View messages:
+//
+// 1) On initialization, we send down the complete view state
+//    (TiltStartTime, UISession, UIResources, and LogList)
+//
+// 2) On every change, we send down the resources that have
+//    changed since the last send().
+//    (new logs and any updated UISession/UIResource objects).
+//
+// All other fields are obsolete, but are needed for deserializing
+// old snapshots.
 message View {
   string log = 1;
   repeated Resource resources = 2;
@@ -196,8 +207,7 @@ message View {
   reserved "metrics_serving";
   reserved 18;
 
-  // New API-server based data models. These will eventually obsolete the fields
-  // above.
+  // New API-server based data models.
   github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UISession ui_session = 19;
   repeated github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UIResource ui_resources = 20;
 }
@@ -230,12 +240,12 @@ message UploadSnapshotResponse {
   string url = 1;
 }
 
-// The webclient needs to notify the server what logs it has,
-// so the server knows what to send.
+// NOTE(nick): This is obsolete.
 //
-// The socket protocol doesn't have any concept of a StatusCode
-// to confirm that the receiver got the message, so we need to send this
-// in a separate message.
+// Our websocket service has two kinds of messages:
+// 1) On initialization, we send down the complete view state
+// 2) On every change, we send down the resources that have
+//    changed since the last send().
 message AckWebsocketRequest {
   // The to_checkpoint on the received LogList
   int32 to_checkpoint = 1;

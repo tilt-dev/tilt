@@ -3,7 +3,7 @@ import PathBuilder from "./PathBuilder"
 import { Snapshot, SocketState } from "./types"
 
 interface HudInt {
-  setAppState: <K extends keyof HudState>(state: Pick<HudState, K>) => void
+  onAppChange: <K extends keyof HudState>(state: Pick<HudState, K>) => void
   setHistoryLocation: (path: string) => void
 }
 
@@ -21,12 +21,12 @@ class AppController {
   /**
    * @param pathBuilder a PathBuilder
    * @param component The top-level component for the app.
-   *     Has one method, setAppState, that sets the global state of the
-   *     app.
+   *     Has one method, onAppChange, that receives all the updates
+   *     for the application.
    */
   constructor(pathBuilder: PathBuilder, component: HudInt) {
-    if (!component.setAppState) {
-      throw new Error("App component has no setAppState method")
+    if (!component.onAppChange) {
+      throw new Error("App component has no onAppChange method")
     }
 
     this.pb = pathBuilder
@@ -51,19 +51,9 @@ class AppController {
       this.tryConnectCount = 0
 
       let data: Proto.webviewView = JSON.parse(event.data)
-      let toCheckpoint = data.logList?.toCheckpoint
-      if (toCheckpoint && toCheckpoint > 0) {
-        let tiltStartTime =
-          data.tiltStartTime || data.uiSession?.status?.tiltStartTime
-        let response: Proto.webviewAckWebsocketRequest = {
-          toCheckpoint,
-          tiltStartTime,
-        }
-        socket.send(JSON.stringify(response))
-      }
 
       // @ts-ignore
-      this.component.setAppState({
+      this.component.onAppChange({
         view: data,
         socketState: SocketState.Active,
       })
@@ -85,7 +75,7 @@ class AppController {
     }
 
     if (wasAlive) {
-      this.component.setAppState({
+      this.component.onAppChange({
         socketState: SocketState.Closed,
       })
       this.createNewSocket()
@@ -111,7 +101,7 @@ class AppController {
       let state: SocketState = this.loadCount
         ? SocketState.Reconnecting
         : SocketState.Loading
-      this.component.setAppState({
+      this.component.onAppChange({
         socketState: state,
       })
       this.createNewSocket()
@@ -125,21 +115,21 @@ class AppController {
       .then((data: Snapshot) => {
         data.view = data.view || {}
 
-        this.component.setAppState({
+        this.component.onAppChange({
           view: data.view,
         })
         if (data.path) {
           this.component.setHistoryLocation(this.pb.path(data.path))
         }
         if (data.snapshotHighlight) {
-          this.component.setAppState({
+          this.component.onAppChange({
             snapshotHighlight: data.snapshotHighlight,
           })
         }
       })
       .catch((err) => {
         console.error(err)
-        this.component.setAppState({ error: err })
+        this.component.onAppChange({ error: err })
       })
   }
 }

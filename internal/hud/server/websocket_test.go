@@ -33,10 +33,10 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 		close(done)
 	}()
 
-	st.NotifySubscribers(ctx, store.LegacyChangeSummary())
+	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
 	conn.AssertNextWriteMsg(t).Ack()
 
-	st.NotifySubscribers(ctx, store.LegacyChangeSummary())
+	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
 	conn.AssertNextWriteMsg(t).Ack()
 
 	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
@@ -59,7 +59,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 		close(done)
 	}()
 
-	st.NotifySubscribers(ctx, store.LegacyChangeSummary())
+	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
 
 	m := conn.AssertNextWriteMsg(t)
 
@@ -91,7 +91,7 @@ func TestWebsocketNextWriterError(t *testing.T) {
 		close(done)
 	}()
 
-	st.NotifySubscribers(ctx, store.LegacyChangeSummary())
+	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
 	time.Sleep(10 * time.Millisecond)
 
 	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
@@ -135,16 +135,10 @@ func (c *fakeConn) newMessageToRead(r io.Reader) {
 	c.readCh <- readerOrErr{reader: r}
 }
 
-func (c *fakeConn) WriteJSON(v interface{}) error {
-	msg := msg{callback: make(chan error)}
-	c.writeCh <- msg
-	return <-msg.callback
-}
-
 func (c *fakeConn) AssertNextWriteMsg(t *testing.T) msg {
 	select {
 	case <-time.After(250 * time.Millisecond):
-		t.Fatal("timed out waiting for WriteJSON")
+		t.Fatal("timed out waiting for Writer to Close")
 	case msg := <-c.writeCh:
 		return msg
 	}
@@ -152,8 +146,9 @@ func (c *fakeConn) AssertNextWriteMsg(t *testing.T) msg {
 }
 
 func (c *fakeConn) AssertClose(t *testing.T, done chan bool) {
+	t.Helper()
 	select {
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(250 * time.Millisecond):
 		t.Fatal("timed out waiting for close")
 	case <-done:
 		assert.True(t, c.closed)
