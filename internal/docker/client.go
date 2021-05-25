@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/blang/semver"
@@ -57,9 +58,6 @@ var minDockerVersionExperimentalBuildkit = semver.MustParse("1.38.0")
 // microk8s exposes its own docker socket
 // https://github.com/ubuntu/microk8s/blob/master/docs/dockerd.md
 const microK8sDockerHost = "unix:///var/snap/microk8s/current/docker.sock"
-
-// generate a session key
-var sessionSharedKey = identity.NewID()
 
 // Create an interface so this can be mocked out.
 type Client interface {
@@ -122,10 +120,9 @@ type Cli struct {
 	builderVersion types.BuilderVersion
 	serverVersion  types.Version
 
-	creds     dockerCreds
-	initError error
-	initDone  chan bool
-	env       Env
+	authConfigs     map[string]types.AuthConfig
+	authConfigsOnce sync.Once
+	env             Env
 }
 
 func NewDockerClient(ctx context.Context, env Env) Client {
@@ -163,10 +160,11 @@ func NewDockerClient(ctx context.Context, env Env) Client {
 		env:            env,
 		builderVersion: builderVersion,
 		serverVersion:  serverVersion,
-		initDone:       make(chan bool),
 	}
 
-	go cli.backgroundInit(ctx)
+	if builderVersion == types.BuilderV1 {
+		go cli.initAuthConfigs(ctx)
+	}
 
 	return cli
 }
@@ -275,11 +273,6 @@ func CreateClientOpts(ctx context.Context, env Env) ([]client.Opt, error) {
 	return result, nil
 }
 
-type dockerCreds struct {
-	authConfigs map[string]types.AuthConfig
-	sessionID   string
-}
-
 func (c *Cli) startBuildkitSession(ctx context.Context, key string, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
 	session, err := session.NewSession(ctx, "tilt", key)
 	if err != nil {
@@ -333,18 +326,9 @@ func (c *Cli) startBuildkitSession(ctx context.Context, key string, sshSpecs []s
 //
 // Protocol (1) is very slow. If you're using the gcloud credential store,
 // fetching all the creds ahead of time can take ~3 seconds.
-// Protocol (2) is more efficient, but also more complex to manage.
-func (c *Cli) initCreds(ctx context.Context) dockerCreds {
-	creds := dockerCreds{}
-
-	if c.builderVersion == types.BuilderBuildKit {
-		session, err := c.startBuildkitSession(ctx, sessionSharedKey, nil, nil)
-		if err != nil {
-			logger.Get(ctx).Warnf("Docker BuildKit session failed to init: %v", err)
-		} else if session != nil {
-			creds.sessionID = session.ID()
-		}
-	} else {
+// Protocol (2) is more efficient, but also more complex to manage. We manage it lazily.
+func (c *Cli) initAuthConfigs(ctx context.Context) {
+	c.authConfigsOnce.Do(func() {
 		configFile := config.LoadDefaultConfigFile(ioutil.Discard)
 
 		// If we fail to get credentials for some reason, that's OK.
@@ -355,34 +339,8 @@ func (c *Cli) initCreds(ctx context.Context) dockerCreds {
 		for k, auth := range credentials {
 			authConfigs[k] = types.AuthConfig(auth)
 		}
-		creds.authConfigs = authConfigs
-	}
-
-	return creds
-}
-
-// Initialization that we do in the background, because
-// it may need to read from files or call out to gcloud.
-//
-// TODO(nick): Update ImagePush to use these auth credentials. This is less important
-// for local k8s (Minikube, Docker-for-Mac, MicroK8s) because they don't push.
-func (c *Cli) backgroundInit(ctx context.Context) {
-	result := make(chan dockerCreds, 1)
-
-	go func() {
-		result <- c.initCreds(ctx)
-	}()
-
-	select {
-	case creds := <-result:
-		c.creds = creds
-	case <-time.After(10 * time.Second):
-		// TODO(nick): If we move logging before the wire() call, we should
-		// print here instead of logging indirectly
-		c.initError = fmt.Errorf("Timeout fetching docker auth credentials")
-	}
-
-	close(c.initDone)
+		c.authConfigs = authConfigs
+	})
 }
 
 func (c *Cli) CheckConnected() error                  { return nil }
@@ -400,12 +358,6 @@ func (c *Cli) ServerVersion() types.Version {
 }
 
 func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
-	<-c.initDone
-
-	if c.initError != nil {
-		logger.Get(ctx).Verbosef("%v", c.initError)
-	}
-
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
 	if err != nil {
 		return nil, errors.Wrap(err, "ImagePush#ParseRepositoryInfo")
@@ -446,20 +398,19 @@ func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.Read
 }
 
 func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
-	<-c.initDone
-
-	if c.initError != nil {
-		logger.Get(ctx).Verbosef("%v", c.initError)
-	}
-
 	// Always use a one-time session when using buildkit, since credential
 	// passing is fast and we want to get the latest creds.
 	// https://github.com/tilt-dev/tilt/issues/4043
 	var oneTimeSession *session.Session
-	sessionID := c.creds.sessionID
+	sessionID := ""
 
 	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0
-	isUsingBuildkit := c.builderVersion == types.BuilderBuildKit
+	builderVersion := c.builderVersion
+	if options.ForceLegacyBuilder {
+		builderVersion = types.BuilderV1
+	}
+
+	isUsingBuildkit := builderVersion == types.BuilderBuildKit
 	if isUsingBuildkit {
 		var err error
 		oneTimeSession, err = c.startBuildkitSession(ctx, identity.NewID(), options.SSHSpecs, options.SecretSpecs)
@@ -473,9 +424,15 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	}
 
 	opts := types.ImageBuildOptions{}
-	opts.Version = c.builderVersion
-	opts.AuthConfigs = c.creds.authConfigs
-	opts.SessionID = sessionID
+	opts.Version = builderVersion
+
+	if isUsingBuildkit {
+		opts.SessionID = sessionID
+	} else {
+		c.initAuthConfigs(ctx)
+		opts.AuthConfigs = c.authConfigs
+	}
+
 	opts.Remove = options.Remove
 	opts.Context = options.Context
 	opts.BuildArgs = options.BuildArgs
