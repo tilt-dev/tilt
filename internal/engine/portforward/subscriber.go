@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
@@ -20,12 +22,14 @@ import (
 
 type Subscriber struct {
 	kClient            k8s.Client
+	ctrlClient         ctrlclient.Client
 	disabledForTesting bool
 }
 
-func NewSubscriber(kClient k8s.Client) *Subscriber {
+func NewSubscriber(kClient k8s.Client, ctrlClient ctrlclient.Client) *Subscriber {
 	return &Subscriber{
-		kClient: kClient,
+		kClient:    kClient,
+		ctrlClient: ctrlClient,
 	}
 }
 
@@ -33,7 +37,7 @@ func (s *Subscriber) DisableForTesting() { s.disabledForTesting = true }
 
 // Figure out the diff between what port forwards ought to be running (given the
 // current manifests and pods) and what the EngineState/API think ought to be running
-func (s *Subscriber) diff(st store.RStore) (toStart []*PortForward, toShutdown []string) {
+func (s *Subscriber) diff(st store.RStore) (toStart, toShutdown []*PortForward) {
 	if s.disabledForTesting {
 		return
 	}
@@ -105,9 +109,9 @@ func (s *Subscriber) diff(st store.RStore) (toStart []*PortForward, toShutdown [
 
 	// Find any PFs on the state that our latest loop doesn't think should exist;
 	// these need to be shut down
-	for pfName := range statePFs {
-		if !expectedPFs[pfName] {
-			toShutdown = append(toShutdown, pfName)
+	for name, pf := range statePFs {
+		if !expectedPFs[name] {
+			toShutdown = append(toShutdown, pf)
 		}
 	}
 
@@ -119,18 +123,42 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		return
 	}
 	toStart, toShutdown := s.diff(st)
-	for _, name := range toShutdown {
-		st.Dispatch(NewPortForwardDeleteAction(name))
-		// TODO(maia): delete PF object in API
+	for _, pf := range toShutdown {
+		s.deletePF(ctx, st, pf)
 	}
 
 	for _, pf := range toStart {
-		st.Dispatch(NewPortForwardCreateAction(pf))
-		// TODO(maia): create PF object in API
+		s.createPF(ctx, st, pf)
 	}
 }
 
 var _ store.Subscriber = &Subscriber{}
+
+// Delete the PortForward API object. Should be idempotent.
+func (s *Subscriber) deletePF(ctx context.Context, st store.RStore, pf *PortForward) {
+	err := s.ctrlClient.Delete(ctx, pf)
+	if err != nil &&
+		!apierrors.IsNotFound(err) {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf(
+			"deleting PortForward from apiserver: %v", err)))
+		return
+	}
+	st.Dispatch(NewPortForwardDeleteAction(pf.Name))
+}
+
+// Create/update a PortForward API object, if necessary. Should be idempotent.
+func (s *Subscriber) createPF(ctx context.Context, st store.RStore, pf *PortForward) {
+	err := s.ctrlClient.Create(ctx, pf)
+	if err != nil &&
+		!apierrors.IsNotFound(err) &&
+		!apierrors.IsConflict(err) &&
+		!apierrors.IsAlreadyExists(err) {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf(
+			"creating PortForward on apiserver: %v", err)))
+		return
+	}
+	st.Dispatch(NewPortForwardCreateAction(pf))
+}
 
 // Extract the port-forward specs from the manifest.
 //

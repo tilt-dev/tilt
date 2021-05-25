@@ -53,6 +53,7 @@ func AllResourceObjects() []resource.Object {
 		&UISession{},
 		&UIResource{},
 		&UIButton{},
+		&PortForward{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
 	}
@@ -67,6 +68,7 @@ func AllResourceLists() []runtime.Object {
 		&UISessionList{},
 		&UIResourceList{},
 		&UIButtonList{},
+		&PortForwardList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.
 	}

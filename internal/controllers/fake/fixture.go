@@ -51,7 +51,9 @@ func NewControllerFixture(t testing.TB, c controller) *ControllerFixture {
 	ctx = logger.WithLogger(ctx, logger.NewTestLogger(os.Stdout))
 
 	cli := NewTiltClient()
-	c.SetClient(cli)
+	if c != nil {
+		c.SetClient(cli)
+	}
 
 	return &ControllerFixture{
 		t:          t,

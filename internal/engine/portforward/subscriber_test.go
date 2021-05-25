@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	v1 "k8s.io/api/core/v1"
@@ -416,6 +418,7 @@ type pfsFixture struct {
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
+	ctrl   *fake.ControllerFixture
 	st     *store.Store
 	s      *Subscriber
 	done   chan error
@@ -429,22 +432,29 @@ func newPFSFixture(t *testing.T) *pfsFixture {
 		case PortForwardDeleteAction:
 			HandlePortForwardDeleteAction(engineState, action)
 		default:
-			t.Fatalf("unrecognized action: %T", action)
+			t.Fatalf("unrecognized action (%T): %+v", action, action)
 		}
 	}
 
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewStore(reducer, store.LogActionsFlag(false))
 	kCli := k8s.NewFakeK8sClient(t)
+	t.Cleanup(kCli.TearDown)
+
+	// only testing object create/delete, not reconciliation, so pass a nil reconciler
+	ctrl := fake.NewControllerFixture(t, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
 	return &pfsFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		cancel:         cancel,
 		st:             st,
+		ctrl:           ctrl,
 		kCli:           kCli,
-		s:              NewSubscriber(kCli),
+		s:              NewSubscriber(kCli, ctrl.Client),
 		done:           make(chan error),
 	}
 }
