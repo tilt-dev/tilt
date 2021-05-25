@@ -218,7 +218,3 @@ func (s *testStore) Dispatch(action store.Action) {
 		_, _ = s.out.Write(logAction.Message())
 	}
 }
-
-func normalize(s string) string {
-	return strings.Replace(s, "\r\n", "\n", -1)
-}
