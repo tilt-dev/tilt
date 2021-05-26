@@ -107,7 +107,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 				logger.Get(ctx).Infof("updating uiresource %s: %v", name.Name, err)
 				return
 			}
-			st.Dispatch(NewUIResourceUpdateStatusAction(resource))
+			st.Dispatch(NewUIResourceUpdateStatusAction(update))
 			continue
 		}
 	}
