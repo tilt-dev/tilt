@@ -59,7 +59,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			logger.Get(ctx).Infof("updating uisession: %v", err)
 			return
 		}
-		st.Dispatch(NewUISessionUpdateStatusAction(session))
+		st.Dispatch(NewUISessionUpdateStatusAction(update))
 	}
 }
 
