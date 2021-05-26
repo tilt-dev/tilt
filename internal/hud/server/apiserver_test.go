@@ -65,6 +65,13 @@ func TestAPIServerDynamicClient(t *testing.T) {
 				{"namespace": "my-namespace", "uid": "my-uid"},
 			},
 		},
+		"UIButton": map[string]interface{}{
+			"text": "I'm a button!",
+			"location": map[string]interface{}{
+				"componentType": "Resource",
+				"componentID":   "my-resource",
+			},
+		},
 	}
 
 	for _, obj := range v1alpha1.AllResourceObjects() {
