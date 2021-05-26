@@ -3,7 +3,7 @@ import MenuItem from "@material-ui/core/MenuItem"
 import { PopoverOrigin } from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
-import React, { useRef, useState } from "react"
+import React, { ChangeEvent, useRef, useState } from "react"
 import { useHistory } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
@@ -14,7 +14,7 @@ import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import LogActions from "./LogActions"
-import { FilterLevel, FilterSet, FilterSource } from "./logfilters"
+import { EMPTY_TERM, FilterLevel, FilterSet, FilterSource } from "./logfilters"
 import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { usePathBuilder } from "./PathBuilder"
@@ -326,6 +326,42 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
   )
 }
 
+// Very copy pasta
+function FilterSearchField(props: FilterRadioButtonProps) {
+  const { filterSet } = props
+
+  const [value, setValue] = useState(filterSet.term || "")
+
+  const history = useHistory()
+  const l = history.location
+  const onChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const term = event.target.value || EMPTY_TERM
+    // Set the internal input/component state (which will probably be taken care of with some material ui component logic)
+    setValue(term)
+
+    // Prepare term and other filters for history update
+    // const encodedTerm = encodeURI(term)
+    const search = new URLSearchParams(l.search)
+    search.set("level", filterSet.level)
+    search.set("source", filterSet.source)
+    search.set("term", term)
+
+    history.push({
+      pathname: l.pathname,
+      search: search.toString(),
+    })
+  }
+
+  return (
+    <input
+      type="text"
+      placeholder="Filter logs by string"
+      value={value}
+      onChange={onChange}
+    />
+  )
+}
+
 type CopyButtonProps = {
   podId: string
 }
@@ -493,6 +529,11 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         />
         <FilterRadioButton
           level={FilterLevel.warn}
+          filterSet={props.filterSet}
+          alerts={alerts}
+        />
+        <FilterSearchField
+          level={FilterLevel.all}
           filterSet={props.filterSet}
           alerts={alerts}
         />

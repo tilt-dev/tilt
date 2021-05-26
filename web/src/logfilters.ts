@@ -3,6 +3,8 @@
 import { Location } from "history"
 import { useHistory } from "react-router"
 
+export const EMPTY_TERM = ""
+
 export enum FilterLevel {
   all = "",
 
@@ -23,9 +25,17 @@ export enum FilterSource {
   runtime = "runtime",
 }
 
+// The term could have more metadata associated with it
+interface FilterTerm {
+  type: "string" | "regex"
+  content: string | null
+  union: "include" | "exclude"
+}
+
 export type FilterSet = {
   level: FilterLevel
   source: FilterSource
+  term?: string // Optional for now; Is an empty string an acceptable empty state?
 }
 
 // Infers filter set from the history React hook.
@@ -42,6 +52,7 @@ export function filterSetFromLocation(l: Location): FilterSet {
   let filters = {
     level: FilterLevel.all,
     source: FilterSource.all,
+    term: EMPTY_TERM,
   }
   switch (params.get("level")) {
     case FilterLevel.warn:
@@ -61,9 +72,17 @@ export function filterSetFromLocation(l: Location): FilterSet {
       break
   }
 
+  const filterTerm = params.get("term")
+  if (filterTerm) {
+    // TODO: Apply some form of term standardization, like lowercasing and trimming
+    filters.term = filterTerm.toLowerCase()
+  } else {
+    filters.term = EMPTY_TERM
+  }
+
   return filters
 }
 
 export function filterSetsEqual(a: FilterSet, b: FilterSet): boolean {
-  return a.source === b.source && a.level === b.level
+  return a.source === b.source && a.level === b.level && a.term === b.term
 }

@@ -66,11 +66,28 @@ let LogEnd = styled.div`
 
 let anser = new Anser()
 
+function newLineText(text: string, textToHighlight?: string): string {
+  if (!textToHighlight) {
+    return text
+  }
+
+  // TODO: This logic will be a wee bit more complicated because we need to 1) find matches, 2) escape html outside of matches, 3) add html around matches
+  // Array of match indices
+  // Wrap the highlighted text in `mark` elements
+  // Escape the html of non-matches
+  // OR: maybe we can just escape everything and then add
+
+  // return textToHighlight.replaceAll(new RegExp(`(${textToHighlight})`, 'g'), "<mark>$1</mark>")
+  return text
+}
+
 function newLineEl(
   line: LogLine,
   showManifestPrefix: boolean,
-  extraClasses: string[]
+  extraClasses: string[],
+  textToHighlight?: string
 ): Element {
+  // console.log('newLineEle', line.spanId)
   let text = line.text
   let level = line.level
   let buildEvent = line.buildEvent
@@ -108,10 +125,13 @@ function newLineEl(
   let code = document.createElement("code")
   code.classList.add("LogPaneLine-content")
 
+  // TODO: Add search term mark logic here; not sure if search terms will need to be reset when they change
+  const textWithHighlight = newLineText(line.text, textToHighlight)
+
   // newline ensures this takes up at least one line
   let spacer = "\n"
   code.innerHTML = anser.linkify(
-    anser.ansiToHtml(anser.escapeForHtml(line.text) + spacer, {
+    anser.ansiToHtml(anser.escapeForHtml(textWithHighlight) + spacer, {
       use_classes: true,
     })
   )
@@ -181,7 +201,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   // The element containing all the log lines.
   rootRef: React.RefObject<any> = React.createRef()
 
-  // The blinking cursor at the end fo the component.
+  // The blinking cursor at the end of the component.
   private cursorRef: React.RefObject<HTMLParagraphElement> = React.createRef()
 
   // Track the scrollTop of the root element to see if the user is scrolling upwards.
@@ -375,6 +395,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   }
 
   resetRender() {
+    // console.log("running resetRender")
     let root = this.rootRef.current
     let cursor = this.cursorRef.current
     if (root) {
@@ -397,6 +418,22 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       this.props.raf.cancelAnimationFrame(this.autoscrollRafId)
       this.autoscrollRafId = 0
     }
+  }
+
+  // TODO: Consider when the filter term is interpretted as plain text or regex if that's the approach we go with
+  matchesTermFilter(line: LogLine): boolean {
+    const filterTerm = this.props.filterSet.term
+
+    // If there's no term to filter by, consider everything a match
+    if (!filterTerm || filterTerm.length === 0) {
+      return true
+    }
+
+    if (line.text && line.text.toLowerCase().includes(filterTerm)) {
+      return true
+    }
+
+    return false
   }
 
   // If we have a level filter on, check if this line matches the level filter.
@@ -430,7 +467,9 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return false
     }
 
-    return this.matchesLevelFilter(line)
+    const matchesTerm = this.matchesTermFilter(line)
+    // console.log(line, matchesTerm)
+    return this.matchesLevelFilter(line) && matchesTerm
   }
 
   // Index this line so that we can display prologues to errors.
@@ -454,6 +493,8 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
   // Render new logs that have come in since the current checkpoint.
   readLogsFromLogStore() {
+    // console.log("readLogsFromLogStore")
+    // console.log(this.props.logStore)
     let mn = this.props.manifestName
     let logStore = this.props.logStore
     let startCheckpoint = this.logCheckpoint
@@ -629,7 +670,12 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       extraClasses.push("is-startOfAlert")
     }
 
-    let lineEl = newLineEl(entry.line, showManifestName, extraClasses)
+    let lineEl = newLineEl(
+      entry.line,
+      showManifestName,
+      extraClasses,
+      this.props.filterSet.term
+    )
     if (isStartOfAlert) {
       lineEl.appendChild(this.newAlertNavEl(entry.line))
     }
