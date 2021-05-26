@@ -52,6 +52,7 @@ func AllResourceObjects() []resource.Object {
 		&PodLogStream{},
 		&UISession{},
 		&UIResource{},
+		&UIButton{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
 	}
@@ -65,6 +66,7 @@ func AllResourceLists() []runtime.Object {
 		&PodLogStreamList{},
 		&UISessionList{},
 		&UIResourceList{},
+		&UIButtonList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.
 	}

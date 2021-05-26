@@ -893,6 +893,56 @@ message UIBuildTerminated {
   optional bool isCrashRebuild = 6;
 }
 
+// UIButton
+// +k8s:openapi-gen=true
+message UIButton {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional UIButtonSpec spec = 2;
+
+  optional UIButtonStatus status = 3;
+}
+
+// UIButtonList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message UIButtonList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated UIButton items = 2;
+}
+
+// UIButtonSpec defines the desired state of UIButton
+message UIButtonSpec {
+  // Location associates the button with another component for layout.
+  optional UIComponentLocation location = 1;
+
+  // Text to appear on the button itself.
+  optional string text = 2;
+}
+
+// UIButtonStatus defines the observed state of UIButton
+message UIButtonStatus {
+  // LastClickedAt is the timestamp of the last time the button was clicked.
+  //
+  // If the button has never clicked before, this will be the zero-value/null.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastClickedAt = 1;
+}
+
+// UIComponentLocation specifies where to put a UI component.
+message UIComponentLocation {
+  // ComponentID is the identifier of the parent component to associate this component with.
+  //
+  // For example, this is a resource name if the ComponentType is Resource.
+  optional string componentID = 1;
+
+  // ComponentType is the type of the parent component.
+  optional string componentType = 2;
+}
+
+message UIComponentLocationResource {
+  optional string resourceName = 1;
+}
+
 // Configures Tilt to enable non-default features (e.g., experimental or
 // deprecated).
 //
