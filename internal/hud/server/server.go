@@ -49,12 +49,12 @@ type overrideTriggerModePayload struct {
 }
 
 type HeadsUpServer struct {
-	ctx               context.Context
-	store             *store.Store
-	router            *mux.Router
-	a                 *tiltanalytics.TiltAnalytics
-	uploader          cloud.SnapshotUploader
-	numWebsocketConns int32
+	ctx      context.Context
+	store    *store.Store
+	router   *mux.Router
+	a        *tiltanalytics.TiltAnalytics
+	uploader cloud.SnapshotUploader
+	wsList   *WebsocketList
 }
 
 func ProvideHeadsUpServer(
@@ -62,7 +62,8 @@ func ProvideHeadsUpServer(
 	store *store.Store,
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
-	uploader cloud.SnapshotUploader) (*HeadsUpServer, error) {
+	uploader cloud.SnapshotUploader,
+	wsList *WebsocketList) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
 		ctx:      ctx,
@@ -70,6 +71,7 @@ func ProvideHeadsUpServer(
 		router:   r,
 		a:        analytics,
 		uploader: uploader,
+		wsList:   wsList,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)

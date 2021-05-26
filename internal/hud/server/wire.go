@@ -18,4 +18,5 @@ var WireSet = wire.NewSet(
 	ProvideTiltDynamic,
 	ProvideHeadsUpServer,
 	ProvideHeadsUpServerController,
+	NewWebsocketList,
 )

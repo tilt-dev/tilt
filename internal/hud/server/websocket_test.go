@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"runtime"
@@ -24,14 +25,17 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 	_ = st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
-	ws := NewWebsocketSubscriber(ctx, conn)
+	ws := NewWebsocketSubscriber(ctx, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
 
 	done := make(chan bool)
 	go func() {
 		ws.Stream(ctx, st)
+		_ = st.RemoveSubscriber(context.Background(), ws)
 		close(done)
 	}()
+
+	conn.AssertNextWriteMsg(t).Ack()
 
 	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
 	conn.AssertNextWriteMsg(t).Ack()
@@ -50,14 +54,17 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 	_ = st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
-	ws := NewWebsocketSubscriber(ctx, conn)
+	ws := NewWebsocketSubscriber(ctx, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
 
 	done := make(chan bool)
 	go func() {
 		ws.Stream(ctx, st)
+		_ = st.RemoveSubscriber(context.Background(), ws)
 		close(done)
 	}()
+
+	conn.AssertNextWriteMsg(t).Ack()
 
 	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
 
@@ -82,12 +89,13 @@ func TestWebsocketNextWriterError(t *testing.T) {
 
 	conn := newFakeConn()
 	conn.nextWriterError = fmt.Errorf("fake NextWriter error")
-	ws := NewWebsocketSubscriber(ctx, conn)
+	ws := NewWebsocketSubscriber(ctx, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
 
 	done := make(chan bool)
 	go func() {
 		ws.Stream(ctx, st)
+		_ = st.RemoveSubscriber(context.Background(), ws)
 		close(done)
 	}()
 
