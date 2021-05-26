@@ -1,6 +1,11 @@
 import React, { Component, useEffect, useState } from "react"
 import { MemoryRouter } from "react-router"
-import { FilterLevel, FilterSource } from "./logfilters"
+import {
+  EMPTY_FILTER_TERM,
+  FilterLevel,
+  FilterSet,
+  FilterSource,
+} from "./logfilters"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewLogPane from "./OverviewLogPane"
 import { appendLines } from "./testlogs"
@@ -26,7 +31,11 @@ export default {
   ],
 }
 
-let defaultFilter = { source: FilterSource.all, level: FilterLevel.all }
+let defaultFilter: FilterSet = {
+  source: FilterSource.all,
+  level: FilterLevel.all,
+  term: EMPTY_FILTER_TERM,
+}
 
 export const ThreeLines = () => {
   let logStore = new LogStore()
@@ -306,7 +315,11 @@ export const BuildLogAndRunLog = (args: any) => {
     <LogStoreProvider value={logStore}>
       <OverviewLogPane
         manifestName={"vigoda_1"}
-        filterSet={{ source: args.source, level: args.level }}
+        filterSet={{
+          source: args.source,
+          level: args.level,
+          term: EMPTY_FILTER_TERM,
+        }}
       />
     </LogStoreProvider>
   )
