@@ -24,7 +24,13 @@ import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import LogActions from "./LogActions"
-import { EMPTY_TERM, FilterLevel, FilterSet, FilterSource } from "./logfilters"
+import {
+  EMPTY_TERM,
+  FilterLevel,
+  FilterSet,
+  FilterSource,
+  TermState,
+} from "./logfilters"
 import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { usePathBuilder } from "./PathBuilder"
