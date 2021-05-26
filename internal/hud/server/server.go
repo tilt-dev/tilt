@@ -16,6 +16,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
@@ -49,12 +50,13 @@ type overrideTriggerModePayload struct {
 }
 
 type HeadsUpServer struct {
-	ctx      context.Context
-	store    *store.Store
-	router   *mux.Router
-	a        *tiltanalytics.TiltAnalytics
-	uploader cloud.SnapshotUploader
-	wsList   *WebsocketList
+	ctx        context.Context
+	store      *store.Store
+	router     *mux.Router
+	a          *tiltanalytics.TiltAnalytics
+	uploader   cloud.SnapshotUploader
+	wsList     *WebsocketList
+	ctrlClient ctrlclient.Client
 }
 
 func ProvideHeadsUpServer(
@@ -63,15 +65,17 @@ func ProvideHeadsUpServer(
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
 	uploader cloud.SnapshotUploader,
-	wsList *WebsocketList) (*HeadsUpServer, error) {
+	wsList *WebsocketList,
+	ctrlClient ctrlclient.Client) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
-		ctx:      ctx,
-		store:    store,
-		router:   r,
-		a:        analytics,
-		uploader: uploader,
-		wsList:   wsList,
+		ctx:        ctx,
+		store:      store,
+		router:     r,
+		a:          analytics,
+		uploader:   uploader,
+		wsList:     wsList,
+		ctrlClient: ctrlClient,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
@@ -114,9 +118,7 @@ func (s *HeadsUpServer) Router() http.Handler {
 }
 
 func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
-	state := s.store.RLockState()
-	view, err := webview.ChangeSummaryToProtoView(state, 0, nil)
-	s.store.RUnlockState()
+	view, err := webview.CompleteView(req.Context(), s.ctrlClient, s.store)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)
 		return
@@ -144,9 +146,7 @@ func (s *HeadsUpServer) DumpEngineJSON(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
-	state := s.store.RLockState()
-	view, err := webview.ChangeSummaryToProtoView(state, 0, nil)
-	s.store.RUnlockState()
+	view, err := webview.CompleteView(req.Context(), s.ctrlClient, s.store)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)
 		return

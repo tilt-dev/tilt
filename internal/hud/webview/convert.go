@@ -1,15 +1,20 @@
 package webview
 
 import (
+	"context"
 	"sort"
 	"strings"
+
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -25,50 +30,68 @@ import (
 // with the other Session API.
 const UISessionName = "Tiltfile"
 
-// Given a change summary, send down all the API objects that have changed.
-// If no change summary is provided, send down all API objects.
-func ChangeSummaryToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint, summary *store.ChangeSummary) (*proto_webview.View, error) {
+// Create the complete snapshot of the webview.
+func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore) (*proto_webview.View, error) {
 	ret := &proto_webview.View{}
-
-	if summary == nil || summary.Log {
-		logList, err := s.LogStore.ToLogList(logCheckpoint)
-		if err != nil {
-			return nil, err
-		}
-
-		ret.LogList = logList
+	session := &v1alpha1.UISession{}
+	err := client.Get(ctx, types.NamespacedName{Name: UISessionName}, session)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
 	}
 
-	if summary == nil || !summary.UISessions.Empty() {
-		ret.UiSession = s.UISessions[types.NamespacedName{Name: UISessionName}]
+	if err == nil {
+		ret.UiSession = session
 	}
 
-	if summary == nil {
-		for _, r := range s.UIResources {
-			ret.UiResources = append(ret.UiResources, r)
-		}
-	} else {
-		for id := range summary.UIResources.Changes {
-			r, exists := s.UIResources[id]
-			if exists {
-				ret.UiResources = append(ret.UiResources, r)
-			} else {
-				now := metav1.Now()
-				ret.UiResources = append(ret.UiResources, &v1alpha1.UIResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              id.Name,
-						DeletionTimestamp: &now,
-					},
-				})
-			}
-		}
+	resourceList := &v1alpha1.UIResourceList{}
+	err = client.List(ctx, resourceList)
+	if err != nil {
+		return nil, err
 	}
 
-	sortUIResources(ret.UiResources, s.ManifestDefinitionOrder)
+	for _, item := range resourceList.Items {
+		item := item
+		ret.UiResources = append(ret.UiResources, &item)
+	}
+
+	s := st.RLockState()
+	defer st.RUnlockState()
+	logList, err := s.LogStore.ToLogList(0)
+	if err != nil {
+		return nil, err
+	}
+
+	ret.LogList = logList
 
 	// We grandfather in TiltStartTime from the old protocol,
 	// because it tells the UI to reload.
-	start, err := timeToProto(s.TiltStartTime)
+	start, err := ptypes.TimestampProto(s.TiltStartTime)
+	if err != nil {
+		return nil, err
+	}
+	ret.TiltStartTime = start
+
+	sortUIResources(ret.UiResources, s.ManifestDefinitionOrder)
+
+	return ret, nil
+}
+
+// Create a view that only contains logs since the given checkpoint.
+func LogUpdate(st store.RStore, checkpoint logstore.Checkpoint) (*proto_webview.View, error) {
+	ret := &proto_webview.View{}
+
+	s := st.RLockState()
+	defer st.RUnlockState()
+	logList, err := s.LogStore.ToLogList(checkpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	ret.LogList = logList
+
+	// We grandfather in TiltStartTime from the old protocol,
+	// because it tells the UI to reload.
+	start, err := ptypes.TimestampProto(s.TiltStartTime)
 	if err != nil {
 		return nil, err
 	}

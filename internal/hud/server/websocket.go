@@ -11,6 +11,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 
@@ -33,6 +34,7 @@ var upgrader = websocket.Upgrader{
 type WebsocketSubscriber struct {
 	ctx        context.Context
 	st         store.RStore
+	ctrlClient ctrlclient.Client
 	mu         sync.Mutex
 	conn       WebsocketConn
 	initDone   chan bool
@@ -50,9 +52,10 @@ type WebsocketConn interface {
 
 var _ WebsocketConn = &websocket.Conn{}
 
-func NewWebsocketSubscriber(ctx context.Context, st store.RStore, conn WebsocketConn) *WebsocketSubscriber {
+func NewWebsocketSubscriber(ctx context.Context, ctrlClient ctrlclient.Client, st store.RStore, conn WebsocketConn) *WebsocketSubscriber {
 	return &WebsocketSubscriber{
 		ctx:        ctx,
+		ctrlClient: ctrlClient,
 		st:         st,
 		conn:       conn,
 		initDone:   make(chan bool),
@@ -65,7 +68,7 @@ func (ws *WebsocketSubscriber) TearDown(ctx context.Context) {
 }
 
 // Should be called exactly once. Consumes messages until the socket closes.
-func (ws *WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
+func (ws *WebsocketSubscriber) Stream(ctx context.Context) {
 	go func() {
 		// No-op consumption of all control messages, as recommended here:
 		// https://godoc.org/github.com/gorilla/websocket#hdr-Control_Messages
@@ -83,9 +86,20 @@ func (ws *WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 	defer cancel()
 
 	go func() {
+		defer close(ws.initDone)
+
 		// initialize the stream with a full view
-		ws.onChangeHelper(ctx, store, 0, nil)
-		close(ws.initDone)
+		view, err := webview.CompleteView(ctx, ws.ctrlClient, ws.st)
+		if err != nil {
+			// not much to do
+			return
+		}
+
+		ws.sendView(ctx, view)
+
+		if view.UiSession != nil {
+			ws.onSessionUpdateSent(ctx, view.UiSession)
+		}
 	}()
 
 	<-ws.streamDone
@@ -113,27 +127,12 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, sum
 		return
 	}
 
-	ws.onChangeHelper(ctx, s, ws.clientCheckpoint, &store.ChangeSummary{Log: summary.Log})
-}
-
-func (ws *WebsocketSubscriber) onChangeHelper(ctx context.Context, s store.RStore, checkpoint logstore.Checkpoint, summary *store.ChangeSummary) {
-	state := s.RLockState()
-	view, err := webview.ChangeSummaryToProtoView(state, checkpoint, summary)
-	s.RUnlockState()
+	view, err := webview.LogUpdate(s, ws.clientCheckpoint)
 	if err != nil {
-		logger.Get(ctx).Infof("error converting view to proto for websocket: %v", err)
-		return
-	}
-
-	if view.LogList != nil {
-		ws.clientCheckpoint = logstore.Checkpoint(view.LogList.ToCheckpoint)
+		return // Not much we can do on error right now.
 	}
 
 	ws.sendView(ctx, view)
-
-	if view.UiSession != nil {
-		ws.onSessionUpdateSent(ctx, view.UiSession)
-	}
 
 	// A simple throttle -- don't call ws.OnChange too many times in quick succession,
 	//     it eats up a lot of CPU/allocates a lot of memory.
@@ -203,6 +202,10 @@ func (ws *WebsocketSubscriber) sendView(ctx context.Context, view *proto_webview
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
+	if view.LogList != nil {
+		ws.clientCheckpoint = logstore.Checkpoint(view.LogList.ToCheckpoint)
+	}
+
 	// A little hack that initializes tiltStartTime for this websocket
 	// on the first send.
 	if ws.tiltStartTime == nil {
@@ -235,11 +238,11 @@ func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	ws := NewWebsocketSubscriber(s.ctx, s.store, conn)
+	ws := NewWebsocketSubscriber(s.ctx, s.ctrlClient, s.store, conn)
 	s.wsList.Add(ws)
 	_ = s.store.AddSubscriber(s.ctx, ws)
 
-	ws.Stream(s.ctx, s.store)
+	ws.Stream(s.ctx)
 
 	// When we remove ourselves as a subscriber, the Store waits for any outstanding OnChange
 	// events to complete, then calls TearDown.

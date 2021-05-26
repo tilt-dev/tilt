@@ -14,7 +14,6 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/cloud"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
@@ -157,7 +156,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	deferred.SetOutput(l)
 	ctx = redirectLogs(ctx, l)
 	if c.outputSnapshotOnExit != "" {
-		defer cloud.WriteSnapshot(ctx, cmdUpDeps.Store, c.outputSnapshotOnExit)
+		defer cmdUpDeps.Snapshotter.WriteSnapshot(ctx, c.outputSnapshotOnExit)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
