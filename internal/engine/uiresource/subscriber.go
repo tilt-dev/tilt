@@ -74,7 +74,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		if resource == nil {
 			// If there's no current version of this resource, we should delete it.
 			err := s.client.Delete(ctx, &v1alpha1.UIResource{ObjectMeta: metav1.ObjectMeta{Name: name.Name}})
-			if err != nil && apierrors.IsNotFound(err) {
+			if err != nil && !apierrors.IsNotFound(err) {
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("deleting resource %s: %v", name.Name, err)))
 				return
 			}
