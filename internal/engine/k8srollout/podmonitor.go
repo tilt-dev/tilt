@@ -54,7 +54,16 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 		key := podManifest{pod: podID, manifest: manifest.Name}
 		active[key] = true
 
-		currentStatus := newPodStatus(pod, manifest.Name)
+		// pod status updates during an active build are likely to be misleading or lost
+		// in the noise, so wait until the build finishes to process them
+		if !mt.State.ActiveBuild().Empty() {
+			continue
+		}
+		// ignore updates to pods that don't match the currently deployed pod template spec
+		if !mt.State.K8sRuntimeState().HasOKPodTemplateSpecHash(&pod) {
+			continue
+		}
+		currentStatus := newPodStatus(pod, mt.State.LastBuild().StartTime, manifest.Name)
 		if !podStatusesEqual(currentStatus, m.pods[key]) {
 			updates = append(updates, currentStatus)
 			m.pods[key] = currentStatus
@@ -83,13 +92,19 @@ func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 }
 
 func (m *PodMonitor) print(ctx context.Context, update podStatus) {
+	reusingPod := update.podStartTime.Before(update.updateStartTime)
+	if reusingPod {
+		logger.Get(ctx).Infof("\nExisting pod still matches build (%s)", update.podID)
+		return
+	}
+
 	key := podManifest{pod: update.podID, manifest: update.manifestName}
 	if !m.trackingStarted[key] {
 		logger.Get(ctx).Infof("\nTracking new pod rollout (%s):", update.podID)
 		m.trackingStarted[key] = true
 	}
 
-	m.printCondition(ctx, "Scheduled", update.scheduled, update.startTime)
+	m.printCondition(ctx, "Scheduled", update.scheduled, update.podStartTime)
 	m.printCondition(ctx, "Initialized", update.initialized, update.scheduled.LastTransitionTime.Time)
 	m.printCondition(ctx, "Ready", update.ready, update.initialized.LastTransitionTime.Time)
 }
@@ -134,16 +149,22 @@ func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1alp
 }
 
 type podStatus struct {
-	podID        k8s.PodID
-	manifestName model.ManifestName
-	startTime    time.Time
-	scheduled    v1alpha1.PodCondition
-	initialized  v1alpha1.PodCondition
-	ready        v1alpha1.PodCondition
+	podID           k8s.PodID
+	manifestName    model.ManifestName
+	updateStartTime time.Time
+	podStartTime    time.Time
+	scheduled       v1alpha1.PodCondition
+	initialized     v1alpha1.PodCondition
+	ready           v1alpha1.PodCondition
 }
 
-func newPodStatus(pod v1alpha1.Pod, manifestName model.ManifestName) podStatus {
-	s := podStatus{podID: k8s.PodID(pod.Name), manifestName: manifestName, startTime: pod.CreatedAt.Time}
+func newPodStatus(pod v1alpha1.Pod, updateStartTime time.Time, manifestName model.ManifestName) podStatus {
+	s := podStatus{
+		podID:           k8s.PodID(pod.Name),
+		manifestName:    manifestName,
+		updateStartTime: updateStartTime,
+		podStartTime:    pod.CreatedAt.Time,
+	}
 	for _, condition := range pod.Conditions {
 		switch v1.PodConditionType(condition.Type) {
 		case v1.PodScheduled:
