@@ -4061,8 +4061,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	pfr := apiportforward.NewReconciler(b.kClient)
-	uss := uisession.NewSubscriber()
-	urs := uiresource.NewSubscriber()
+	uss := uisession.NewSubscriber(cdc)
+	urs := uiresource.NewSubscriber(cdc)
 
 	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, pfr, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
