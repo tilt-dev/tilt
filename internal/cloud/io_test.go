@@ -3,14 +3,16 @@ package cloud
 import (
 	"bytes"
 	"testing"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
 func TestWriteSnapshotTo(t *testing.T) {
@@ -18,23 +20,26 @@ func TestWriteSnapshotTo(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 
 	state := store.NewState()
-	state.UISessions[types.NamespacedName{Name: webview.UISessionName}] = webview.ToUISession(*state)
+	snapshot := &proto_webview.Snapshot{
+		View: &proto_webview.View{
+			UiSession: webview.ToUISession(*state),
+		},
+	}
 
 	resources, err := webview.ToUIResourceList(*state)
 	require.NoError(t, err)
-	for _, r := range resources {
-		state.UIResources[types.NamespacedName{Name: r.Name}] = r
-	}
+	snapshot.View.UiResources = resources
 
-	err = WriteSnapshotTo(ctx, *state, buf)
+	now := time.Unix(1551202573, 0)
+	startTime, err := ptypes.TimestampProto(now)
+	require.NoError(t, err)
+	snapshot.View.TiltStartTime = startTime
+
+	err = WriteSnapshotTo(ctx, snapshot, buf)
 	assert.NoError(t, err)
 	assert.Equal(t, `{
   "view": {
-    "logList": {
-      "fromCheckpoint": -1,
-      "toCheckpoint": -1
-    },
-    "tiltStartTime": "0001-01-01T00:00:00Z",
+    "tiltStartTime": "2019-02-26T17:36:13Z",
     "uiSession": {
       "metadata": {
         "name": "Tiltfile"

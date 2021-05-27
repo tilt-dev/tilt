@@ -181,6 +181,7 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics, su
 
 func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
 	wire.Build(UpWireSet,
+		cloud.NewSnapshotter,
 		wire.Struct(new(CmdUpDeps), "*"))
 	return CmdUpDeps{}, nil
 }
@@ -190,12 +191,13 @@ type CmdUpDeps struct {
 	TiltBuild    model.TiltBuild
 	Token        token.Token
 	CloudAddress cloudurl.Address
-	Store        *store.Store
 	Prompt       *prompt.TerminalPrompt
+	Snapshotter  *cloud.Snapshotter
 }
 
 func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, error) {
 	wire.Build(UpWireSet,
+		cloud.NewSnapshotter,
 		wire.Value(engineanalytics.CmdTags(map[string]string{})),
 		wire.Struct(new(CmdCIDeps), "*"),
 	)
@@ -207,7 +209,7 @@ type CmdCIDeps struct {
 	TiltBuild    model.TiltBuild
 	Token        token.Token
 	CloudAddress cloudurl.Address
-	Store        *store.Store
+	Snapshotter  *cloud.Snapshotter
 }
 
 func wireCmdUpdog(ctx context.Context,

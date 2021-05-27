@@ -195,7 +195,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
 	websocketList := server.NewWebsocketList()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList)
+	deferredClient := controllers.ProvideDeferredClient()
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList, deferredClient)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -205,7 +206,6 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
-	deferredClient := controllers.ProvideDeferredClient()
 	clientBuilder := controllers.NewClientBuilder(deferredClient)
 	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
 	if err != nil {
@@ -326,13 +326,14 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
+	snapshotter := cloud.NewSnapshotter(storeStore, deferredClient)
 	cmdUpDeps := CmdUpDeps{
 		Upper:        upper,
 		TiltBuild:    tiltBuild,
 		Token:        tokenToken,
 		CloudAddress: address,
-		Store:        storeStore,
 		Prompt:       terminalPrompt,
+		Snapshotter:  snapshotter,
 	}
 	return cmdUpDeps, nil
 }
@@ -388,7 +389,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
 	websocketList := server.NewWebsocketList()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList)
+	deferredClient := controllers.ProvideDeferredClient()
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList, deferredClient)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -398,7 +400,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
-	deferredClient := controllers.ProvideDeferredClient()
 	clientBuilder := controllers.NewClientBuilder(deferredClient)
 	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
 	if err != nil {
@@ -520,12 +521,13 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
+	snapshotter := cloud.NewSnapshotter(storeStore, deferredClient)
 	cmdCIDeps := CmdCIDeps{
 		Upper:        upper,
 		TiltBuild:    tiltBuild,
 		Token:        tokenToken,
 		CloudAddress: address,
-		Store:        storeStore,
+		Snapshotter:  snapshotter,
 	}
 	return cmdCIDeps, nil
 }
@@ -578,7 +580,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
 	websocketList := server.NewWebsocketList()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList)
+	deferredClient := controllers.ProvideDeferredClient()
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList, deferredClient)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -588,7 +591,6 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
-	deferredClient := controllers.ProvideDeferredClient()
 	clientBuilder := controllers.NewClientBuilder(deferredClient)
 	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
 	if err != nil {
@@ -944,8 +946,8 @@ type CmdUpDeps struct {
 	TiltBuild    model.TiltBuild
 	Token        token.Token
 	CloudAddress cloudurl.Address
-	Store        *store.Store
 	Prompt       *prompt.TerminalPrompt
+	Snapshotter  *cloud.Snapshotter
 }
 
 type CmdCIDeps struct {
@@ -953,7 +955,7 @@ type CmdCIDeps struct {
 	TiltBuild    model.TiltBuild
 	Token        token.Token
 	CloudAddress cloudurl.Address
-	Store        *store.Store
+	Snapshotter  *cloud.Snapshotter
 }
 
 type CmdUpdogDeps struct {

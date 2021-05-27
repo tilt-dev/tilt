@@ -6,10 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,24 +25,21 @@ import (
 var fooManifest = model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
 
 func completeProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
-	return summaryToProtoView(t, s, 0, nil)
-}
+	st := store.NewTestingStore()
+	st.SetState(s)
 
-func summaryToProtoView(t *testing.T, s store.EngineState, checkpoint logstore.Checkpoint, summary *store.ChangeSummary) *proto_webview.View {
-	s.UISessions[types.NamespacedName{Name: UISessionName}] = ToUISession(s)
+	view, err := LogUpdate(st, 0)
+	require.NoError(t, err)
+
+	view.UiSession = ToUISession(s)
 
 	resources, err := ToUIResourceList(s)
 	require.NoError(t, err)
-	for _, r := range resources {
-		s.UIResources[types.NamespacedName{Name: r.Name}] = r
-	}
+	view.UiResources = resources
 
-	v, err := ChangeSummaryToProtoView(s, checkpoint, summary)
-	if err != nil {
-		t.Fatal(err)
-	}
+	sortUIResources(view.UiResources, s.ManifestDefinitionOrder)
 
-	return v
+	return view
 }
 
 func TestStateToWebViewRelativeEditPaths(t *testing.T) {
@@ -178,30 +172,6 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 	require.True(t, ok, "no resource named (Tiltfile) found")
 	assert.Equal(t, "hello", string(v.LogList.Segments[0].Text))
 	assert.Equal(t, "(Tiltfile)", string(v.LogList.Spans[string(spanID)].ManifestName))
-}
-
-func TestSessionOnlyUpdate(t *testing.T) {
-	displayNames := []string{"foo:namespace"}
-	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
-	state := newState([]model.Manifest{m})
-
-	summary := store.ChangeSummary{}
-	summary.UISessions.Add(types.NamespacedName{Name: "Tiltfile"})
-	v := summaryToProtoView(t, *state, 0, &summary)
-	assert.Nil(t, v.UiResources)
-	assert.NotNil(t, v.UiSession)
-}
-
-func TestResourceOnlyUpdate(t *testing.T) {
-	displayNames := []string{"foo:namespace"}
-	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
-	state := newState([]model.Manifest{m})
-
-	summary := store.ChangeSummary{}
-	summary.UIResources.Add(types.NamespacedName{Name: "foo"})
-	v := summaryToProtoView(t, *state, 0, &summary)
-	assert.Equal(t, 1, len(v.UiResources))
-	assert.Nil(t, v.UiSession)
 }
 
 func TestRelativeTiltfilePath(t *testing.T) {

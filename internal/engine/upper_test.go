@@ -4730,15 +4730,9 @@ func assertContainsOnce(t *testing.T, s string, val string) {
 }
 
 type fakeSnapshotUploader struct {
-	count int
 }
 
 var _ cloud.SnapshotUploader = &fakeSnapshotUploader{}
-
-func (f *fakeSnapshotUploader) TakeAndUpload(state store.EngineState) (cloud.SnapshotID, error) {
-	f.count++
-	return cloud.SnapshotID(fmt.Sprintf("snapshot%d", f.count)), nil
-}
 
 func (f *fakeSnapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (cloud.SnapshotID, error) {
 	panic("not implemented")

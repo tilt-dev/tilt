@@ -2,26 +2,13 @@ package webview
 
 import (
 	"fmt"
-	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
-
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 )
-
-func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
-	ts, err := ptypes.TimestampProto(t)
-	if err != nil {
-		return nil, err
-	}
-
-	return ts, nil
-}
 
 func toAPITargetSpec(spec model.TargetSpec) (v1alpha1.UIResourceTargetSpec, error) {
 	switch typ := spec.(type) {
