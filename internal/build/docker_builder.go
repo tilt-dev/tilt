@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/k8s"
 
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
@@ -35,6 +36,9 @@ type dockerImageBuilder struct {
 }
 
 type DockerBuilder interface {
+	// Returns whether this docker builder is going to build to the given kubernetes context.
+	WillBuildToKubeContext(kctx k8s.KubeContext) bool
+
 	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error)
 	DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) error
@@ -53,6 +57,10 @@ func NewDockerImageBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *d
 		dCli:        dCli,
 		extraLabels: extraLabels,
 	}
+}
+
+func (d *dockerImageBuilder) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
+	return d.dCli.Env().WillBuildToKubeContext(kctx)
 }
 
 func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error) {

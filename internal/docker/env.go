@@ -33,9 +33,31 @@ type Env struct {
 	// https://github.com/kubernetes/minikube/issues/4143
 	IsOldMinikube bool
 
+	// Some Kubernetes contexts have a Docker daemon that they use directly
+	// as their container runtime. Any images built on that daemon will
+	// show up automatically in the runtime.
+	//
+	// We store this as a field of the Docker Env, because this
+	// really affects how we interact with the Docker Env (rather than
+	// how we interact with the K8s Env).
+	//
+	// In theory, you can have more than one, but in practice,
+	// this is very difficult to set up.
+	BuildToKubeContexts []string
+
 	// If the env failed to load for some reason, propagate that error
 	// so that we can report it when the user tries to do a docker_build.
 	Error error
+}
+
+// Determines if this docker client can build images directly to the given cluster.
+func (e Env) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
+	for _, current := range e.BuildToKubeContexts {
+		if string(kctx) == current {
+			return true
+		}
+	}
+	return false
 }
 
 // Serializes this back to environment variables for os.Environ
@@ -60,7 +82,7 @@ func (e Env) AsEnviron() []string {
 type ClusterEnv Env
 type LocalEnv Env
 
-func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) LocalEnv {
+func ProvideLocalEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.Env, cEnv ClusterEnv) LocalEnv {
 	result := overlayOSEnvVars(Env{})
 
 	// The user may have already configured their local docker client
@@ -68,50 +90,64 @@ func ProvideLocalEnv(ctx context.Context, cEnv ClusterEnv) LocalEnv {
 	// the hosts of the LocalEnv and ClusterEnv.
 	if cEnv.Host == result.Host {
 		result.IsOldMinikube = cEnv.IsOldMinikube
+		result.BuildToKubeContexts = cEnv.BuildToKubeContexts
+	}
+
+	if env == k8s.EnvDockerDesktop && isDefaultHost(result) {
+		result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
 	}
 
 	return LocalEnv(result)
 }
 
-func ProvideClusterEnv(ctx context.Context, env k8s.Env, runtime container.Runtime, minikubeClient k8s.MinikubeClient) ClusterEnv {
+func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.Env, runtime container.Runtime, minikubeClient k8s.MinikubeClient) ClusterEnv {
 	result := Env{}
 
 	if runtime == container.RuntimeDocker {
 		if env == k8s.EnvMinikube {
 			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
-			envMap, err := minikubeClient.DockerEnv(ctx)
+			envMap, ok, err := minikubeClient.DockerEnv(ctx)
 			if err != nil {
 				return ClusterEnv{Error: err}
 			}
 
-			host := envMap["DOCKER_HOST"]
-			if host != "" {
-				result.Host = host
-			}
+			if ok {
+				host := envMap["DOCKER_HOST"]
+				if host != "" {
+					result.Host = host
+				}
 
-			apiVersion := envMap["DOCKER_API_VERSION"]
-			if apiVersion != "" {
-				result.APIVersion = apiVersion
-			}
+				apiVersion := envMap["DOCKER_API_VERSION"]
+				if apiVersion != "" {
+					result.APIVersion = apiVersion
+				}
 
-			certPath := envMap["DOCKER_CERT_PATH"]
-			if certPath != "" {
-				result.CertPath = certPath
-			}
+				certPath := envMap["DOCKER_CERT_PATH"]
+				if certPath != "" {
+					result.CertPath = certPath
+				}
 
-			tlsVerify := envMap["DOCKER_TLS_VERIFY"]
-			if tlsVerify != "" {
-				result.TLSVerify = tlsVerify
-			}
+				tlsVerify := envMap["DOCKER_TLS_VERIFY"]
+				if tlsVerify != "" {
+					result.TLSVerify = tlsVerify
+				}
 
-			result.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
+				result.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
+				result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+			}
 		} else if env == k8s.EnvMicroK8s {
 			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
 			result.Host = microK8sDockerHost
+			result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
 		}
 	}
 
-	return ClusterEnv(overlayOSEnvVars(Env(result)))
+	result = overlayOSEnvVars(result)
+	if env == k8s.EnvDockerDesktop && isDefaultHost(result) {
+		result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+	}
+
+	return ClusterEnv(result)
 }
 
 func isOldMinikube(ctx context.Context, minikubeClient k8s.MinikubeClient) bool {
@@ -128,6 +164,19 @@ func isOldMinikube(ctx context.Context, minikubeClient k8s.MinikubeClient) bool 
 	}
 
 	return minMinikubeVersionBuildkit.GTE(vParsed)
+}
+
+func isDefaultHost(e Env) bool {
+	if e.Host == "" {
+		return true
+	}
+
+	defaultHost, err := opts.ParseHost(true, "")
+	if err != nil {
+		return false
+	}
+
+	return e.Host == defaultHost
 }
 
 func overlayOSEnvVars(result Env) Env {
