@@ -4,9 +4,9 @@ import React from "react"
 import ReactDOM from "react-dom"
 import ReactModal from "react-modal"
 import { MemoryRouter } from "react-router"
-import HUD from "./HUD"
+import HUD, { mergeAppUpdate } from "./HUD"
 import SocketBar from "./SocketBar"
-import { oneResourceView } from "./testdata"
+import { oneResourceView, twoResourceView } from "./testdata"
 import { SocketState } from "./types"
 
 // Note: `body` is used as the app element _only_ in a test env
@@ -85,7 +85,7 @@ it("loads logs incrementally", async () => {
     fromCheckpoint: 0,
     toCheckpoint: 2,
   }
-  hud.setAppState({ view: resourceView })
+  hud.onAppChange({ view: resourceView })
 
   let resourceView2 = oneResourceView()
   resourceView2.logList = {
@@ -99,7 +99,7 @@ it("loads logs incrementally", async () => {
     fromCheckpoint: 2,
     toCheckpoint: 4,
   }
-  hud.setAppState({ view: resourceView2 })
+  hud.onAppChange({ view: resourceView2 })
 
   root.update()
   let snapshot = hud.snapshotFromState(hud.state)
@@ -115,6 +115,7 @@ it("loads logs incrementally", async () => {
     ],
   })
 })
+
 it("renders logs to snapshot", async () => {
   const root = mount(emptyHUD())
   const hud = root.find(HUD).instance() as HUD
@@ -132,7 +133,7 @@ it("renders logs to snapshot", async () => {
     fromCheckpoint: 0,
     toCheckpoint: 2,
   }
-  hud.setAppState({ view: resourceView })
+  hud.onAppChange({ view: resourceView })
 
   root.update()
   let snapshot = hud.snapshotFromState(hud.state)
@@ -144,5 +145,80 @@ it("renders logs to snapshot", async () => {
       { text: "line1\n", time: now, spanId: "_", level: "WARN" },
       { text: "line2\n", time: now, spanId: "_", fields: { buildEvent: "1" } },
     ],
+  })
+})
+
+describe("mergeAppUpdates", () => {
+  // It's important to maintain reference equality when nothing changes.
+  it("handles no view update", () => {
+    let resourceView = oneResourceView()
+    let prevState = { view: resourceView }
+    let result = mergeAppUpdate(prevState as any, {}) as any
+    expect(result.view).toBe(resourceView)
+  })
+
+  it("handles empty view update", () => {
+    let resourceView = oneResourceView()
+    let prevState = { view: resourceView }
+    let result = mergeAppUpdate(prevState as any, { view: {} })
+    expect(result.view).toBe(resourceView)
+  })
+
+  it("handles replace view update", () => {
+    let prevState = { view: oneResourceView() }
+    let update = { view: oneResourceView() }
+    let result = mergeAppUpdate(prevState as any, update)
+    expect(result.view).not.toBe(update.view)
+    expect(result.view).not.toBe(prevState.view)
+    expect(result.view.uiSession).toBe(update.view.uiSession)
+  })
+
+  it("handles add resource", () => {
+    let prevState = { view: oneResourceView() }
+    let update = { view: { uiResources: [twoResourceView().uiResources[1]] } }
+    let result = mergeAppUpdate(prevState as any, update)
+    expect(result.view).not.toBe(prevState.view)
+    expect(result.view.uiSession).toBe(prevState.view.uiSession)
+    expect(result.view.uiResources!.length).toEqual(2)
+    expect(result.view.uiResources![0].metadata!.name).toEqual("vigoda")
+    expect(result.view.uiResources![1].metadata!.name).toEqual("snack")
+  })
+
+  it("handles delete resource", () => {
+    let prevState = { view: twoResourceView() }
+    let update = {
+      view: {
+        uiResources: [
+          {
+            metadata: {
+              name: "vigoda",
+              deletionTimestamp: new Date().toString(),
+            },
+          },
+        ],
+      },
+    }
+    let result = mergeAppUpdate(prevState as any, update)
+    expect(result.view).not.toBe(prevState.view)
+    expect(result.view.uiResources!.length).toEqual(1)
+    expect(result.view.uiResources![0].metadata!.name).toEqual("snack")
+  })
+
+  it("handles replace resource", () => {
+    let prevState = { view: twoResourceView() }
+    let update = { view: { uiResources: [{ metadata: { name: "vigoda" } }] } }
+    let result = mergeAppUpdate(prevState as any, update)
+    expect(result.view).not.toBe(prevState.view)
+    expect(result.view.uiResources!.length).toEqual(2)
+    expect(result.view.uiResources![0]).toBe(update.view.uiResources[0])
+    expect(result.view.uiResources![1]).toBe(prevState.view.uiResources[1])
+  })
+
+  it("handles socket state", () => {
+    let prevState = { view: twoResourceView(), socketState: SocketState.Active }
+    let update = { socketState: SocketState.Reconnecting }
+    let result = mergeAppUpdate(prevState as any, update) as any
+    expect(result.view).toBe(prevState.view)
+    expect(result.socketState).toBe(SocketState.Reconnecting)
   })
 })

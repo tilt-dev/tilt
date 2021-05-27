@@ -20,7 +20,7 @@ import (
 type SnapshotID string
 
 func ToSnapshot(state store.EngineState) (*proto_webview.Snapshot, error) {
-	view, err := webview.StateToProtoView(state, 0)
+	view, err := webview.ChangeSummaryToProtoView(state, 0, nil)
 	if err != nil {
 		return nil, err
 	}

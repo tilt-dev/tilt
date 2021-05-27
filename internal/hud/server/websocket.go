@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
 	"github.com/tilt-dev/tilt/internal/hud/webview"
@@ -32,15 +30,12 @@ type WebsocketSubscriber struct {
 	conn       WebsocketConn
 	streamDone chan bool
 
-	mu               sync.Mutex
-	tiltStartTime    time.Time
 	clientCheckpoint logstore.Checkpoint
 }
 
 type WebsocketConn interface {
 	NextReader() (int, io.Reader, error)
 	Close() error
-	WriteJSON(v interface{}) error
 	NextWriter(messageType int) (io.WriteCloser, error)
 }
 
@@ -65,17 +60,10 @@ func (ws *WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 		// https://godoc.org/github.com/gorilla/websocket#hdr-Control_Messages
 		conn := ws.conn
 		for {
-			messageType, reader, err := conn.NextReader()
+			_, _, err := conn.NextReader()
 			if err != nil {
 				close(ws.streamDone)
 				break
-			}
-
-			if messageType == websocket.TextMessage {
-				err := ws.handleClientMessage(reader)
-				if err != nil {
-					logger.Get(ctx).Infof("Error parsing webclient message: %v", err)
-				}
 			}
 		}
 	}()
@@ -87,66 +75,49 @@ func (ws *WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 	_ = store.RemoveSubscriber(context.Background(), ws)
 }
 
-func (ws *WebsocketSubscriber) handleClientMessage(reader io.Reader) error {
-	decoder := (&runtime.JSONPb{OrigName: false}).NewDecoder(reader)
-	msg := &proto_webview.AckWebsocketRequest{}
-	err := decoder.Decode(msg)
-	if err != nil {
-		return err
-	}
-
-	return ws.updateClientCheckpoint(msg)
-}
-
-func (ws *WebsocketSubscriber) readClientCheckpoint() logstore.Checkpoint {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-	return ws.clientCheckpoint
-}
-
-func (ws *WebsocketSubscriber) setTiltStartTime(t time.Time) {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-	ws.tiltStartTime = t
-}
-
-func (ws *WebsocketSubscriber) updateClientCheckpoint(msg *proto_webview.AckWebsocketRequest) error {
-	t, err := ptypes.Timestamp(msg.TiltStartTime)
-	if err != nil {
-		return err
-	}
-
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-
-	if !t.Equal(ws.tiltStartTime) {
-		ws.clientCheckpoint = 0
-		return nil
-	}
-
-	ws.clientCheckpoint = logstore.Checkpoint(msg.ToCheckpoint)
-	return nil
+func (ws *WebsocketSubscriber) InitializeStream(ctx context.Context, s store.RStore) {
+	ws.onChangeHelper(ctx, s, 0, nil)
 }
 
 func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, summary store.ChangeSummary) {
-	checkpoint := ws.readClientCheckpoint()
+	ws.onChangeHelper(ctx, s, ws.clientCheckpoint, &summary)
+}
 
+func (ws *WebsocketSubscriber) onChangeHelper(ctx context.Context, s store.RStore, checkpoint logstore.Checkpoint, summary *store.ChangeSummary) {
 	state := s.RLockState()
-	view, err := webview.StateToProtoView(state, checkpoint)
-	tiltStartTime := state.TiltStartTime
+	view, err := webview.ChangeSummaryToProtoView(state, checkpoint, summary)
+	if view.UiSession != nil && view.UiSession.Status.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
+		// If we're showing the nudge and no one's told the engine
+		// state about it yet... tell the engine state.
+		s.Dispatch(store.AnalyticsNudgeSurfacedAction{})
+	}
+
 	s.RUnlockState()
 	if err != nil {
 		logger.Get(ctx).Infof("error converting view to proto for websocket: %v", err)
 		return
 	}
 
-	ws.setTiltStartTime(tiltStartTime)
-
-	if view.UiSession != nil && view.UiSession.Status.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
-		// If we're showing the nudge and no one's told the engine
-		// state about it yet... tell the engine state.
-		s.Dispatch(store.AnalyticsNudgeSurfacedAction{})
+	if view.LogList != nil {
+		ws.clientCheckpoint = logstore.Checkpoint(view.LogList.ToCheckpoint)
 	}
+
+	ws.sendView(ctx, s, view)
+
+	// A simple throttle -- don't call ws.OnChange too many times in quick succession,
+	//     it eats up a lot of CPU/allocates a lot of memory.
+	// This is safe b/c (as long as we're not holding a lock on the state, which
+	//     at this point in the code, we're not) the only thing ws.OnChange blocks
+	//     is subsequent ws.OnChange calls.
+	//
+	// In future, we can maybe solve this problem more elegantly by replacing our
+	//     JSON marshaling with jsoniter (though changing json marshalers is
+	//     always fraught with peril).
+	time.Sleep(time.Millisecond * 100)
+}
+
+// Sends the view to the websocket.
+func (ws *WebsocketSubscriber) sendView(ctx context.Context, s store.RStore, view *proto_webview.View) {
 
 	jsEncoder := &runtime.JSONPb{}
 	w, err := ws.conn.NextWriter(websocket.TextMessage)
@@ -165,17 +136,6 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, sum
 	if err != nil {
 		logger.Get(ctx).Verbosef("sending webview data: %v", err)
 	}
-
-	// A simple throttle -- don't call ws.OnChange too many times in quick succession,
-	//     it eats up a lot of CPU/allocates a lot of memory.
-	// This is safe b/c (as long as we're not holding a lock on the state, which
-	//     at this point in the code, we're not) the only thing ws.OnChange blocks
-	//     is subsequent ws.OnChange calls.
-	//
-	// In future, we can maybe solve this problem more elegantly by replacing our
-	//     JSON marshaling with jsoniter (though changing json marshalers is
-	//     always fraught with peril).
-	time.Sleep(time.Millisecond * 100)
 }
 
 func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) {
@@ -189,7 +149,7 @@ func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) 
 	ws := NewWebsocketSubscriber(s.ctx, conn)
 
 	// Fire a fake OnChange event to initialize the connection.
-	ws.OnChange(s.ctx, s.store, store.LegacyChangeSummary())
+	ws.InitializeStream(s.ctx, s.store)
 	_ = s.store.AddSubscriber(s.ctx, ws)
 
 	ws.Stream(s.ctx, s.store)

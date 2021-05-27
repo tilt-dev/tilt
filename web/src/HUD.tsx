@@ -102,37 +102,8 @@ export default class HUD extends Component<HudProps, HudState> {
     this.unlisten()
   }
 
-  setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
-    this.setState((prevState) => {
-      let newState: any = {}
-      Object.assign(newState, state)
-      newState.logStore = prevState.logStore ?? new LogStore()
-
-      let prevSession = prevState.view?.uiSession?.status
-      let newSession = newState.view?.uiSession?.status
-      let oldStartTime =
-        prevState.view?.tiltStartTime || prevSession?.tiltStartTime
-      let newStartTime =
-        newState.view?.tiltStartTime || newSession?.tiltStartTime
-      if (oldStartTime && newStartTime && oldStartTime != newStartTime) {
-        // If Tilt restarts, reload the page to get new JS.
-        // https://github.com/tilt-dev/tilt/issues/4421
-        window.location.reload()
-      }
-
-      let newLogList = newState.view?.logList
-      if (newLogList) {
-        let fromCheckpoint = newLogList.fromCheckpoint ?? 0
-        if (fromCheckpoint > 0) {
-          newState.logStore.append(newLogList)
-        } else if (fromCheckpoint === 0) {
-          // if the fromCheckpoint is 0 or undefined, create a brand new log store.
-          newState.logStore = new LogStore()
-          newState.logStore.append(newLogList)
-        }
-      }
-      return newState
-    })
+  onAppChange<K extends keyof HudState>(stateUpdates: Pick<HudState, K>) {
+    this.setState((prevState) => mergeAppUpdate(prevState, stateUpdates))
   }
 
   setHistoryLocation(path: string) {
@@ -182,7 +153,7 @@ export default class HUD extends Component<HudProps, HudState> {
           })
           .catch((err) => {
             console.error(err)
-            this.setAppState({
+            this.setState({
               showSnapshotModal: false,
               error: "Error decoding JSON response",
             })
@@ -190,7 +161,7 @@ export default class HUD extends Component<HudProps, HudState> {
       })
       .catch((err) => {
         console.error(err)
-        this.setAppState({
+        this.setState({
           showSnapshotModal: false,
           error: "Error posting snapshot",
         })
@@ -378,4 +349,81 @@ export function HUDFromContext(props: React.PropsWithChildren<{}>) {
   let history = useHistory()
   let interfaceVersion = useInterfaceVersion()
   return <HUD history={history} interfaceVersion={interfaceVersion} />
+}
+
+export function mergeAppUpdate<K extends keyof HudState>(
+  prevState: Readonly<HudState>,
+  stateUpdates: Pick<HudState, K>
+): Pick<HudState, K> {
+  // All fields are optional on a HudState, so it's ok to pretent
+  // a Pick<HudState> and a HudState are the same.
+  let state = stateUpdates as HudState
+
+  let oldStartTime = prevState.view?.tiltStartTime
+  let newStartTime = state.view?.tiltStartTime
+  if (oldStartTime && newStartTime && oldStartTime != newStartTime) {
+    // If Tilt restarts, reload the page to get new JS.
+    // https://github.com/tilt-dev/tilt/issues/4421
+    window.location.reload()
+    return prevState
+  }
+
+  let logListUpdate = state.view?.logList
+  let hasLogList = !!logListUpdate
+  let isRefresh = hasLogList && !logListUpdate?.fromCheckpoint
+  if (isRefresh) {
+    // If this is a full state refresh, replace the view field
+    // and the log store completely.
+    let newState = { ...state } as any
+    newState.view = state.view
+    newState.logStore = new LogStore()
+    newState.logStore.append(logListUpdate)
+    return newState
+  }
+
+  // Otherwise, merge the new state updates into the old state object.
+  let result = { ...state }
+
+  // We're going to merge in view updates manually.
+  result.view = prevState.view
+
+  if (logListUpdate) {
+    // We can assume state always has a log store.
+    prevState.logStore!.append(logListUpdate)
+  }
+
+  // Merge the UISession
+  let sessionUpdate = state.view?.uiSession
+  if (sessionUpdate) {
+    result.view = Object.assign({}, result.view, {
+      uiSession: sessionUpdate,
+    })
+  }
+
+  // Merge the UIResources
+  let resourceUpdates = state.view?.uiResources
+  if (resourceUpdates) {
+    let uiResources: Proto.v1alpha1UIResource[] = Array.from(
+      result.view?.uiResources || []
+    )
+    resourceUpdates.forEach((resUpdate: Proto.v1alpha1UIResource) => {
+      let index = uiResources.findIndex((r: Proto.v1alpha1UIResource) => {
+        return r?.metadata?.name === resUpdate?.metadata?.name
+      })
+      if (index === -1) {
+        uiResources.push(resUpdate)
+        return
+      }
+
+      uiResources[index] = resUpdate
+    })
+
+    uiResources = uiResources.filter((r: Proto.v1alpha1UIResource) => {
+      return !r?.metadata?.deletionTimestamp
+    })
+
+    result.view = Object.assign({}, result.view, { uiResources })
+  }
+
+  return result
 }
