@@ -4013,13 +4013,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	h := hud.NewFakeHud()
 	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, v1alpha1.NewScheme(), ccb)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
+
+	wsl := server.NewWebsocketList()
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
 		plsc,
 		kdc,
-		ctrluisession.NewReconciler(),
-		ctrluiresource.NewReconciler(),
+		ctrluisession.NewReconciler(wsl),
+		ctrluiresource.NewReconciler(wsl),
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)

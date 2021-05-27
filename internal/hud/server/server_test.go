@@ -403,7 +403,8 @@ func newTestFixture(t *testing.T) *serverFixture {
 	addr := cloudurl.Address("nonexistent.example.com")
 	uploader := cloud.NewSnapshotUploader(snapshotHTTP, addr)
 	up := user.NewFakePrefs()
-	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, uploader)
+	wsl := server.NewWebsocketList()
+	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, uploader, wsl)
 	if err != nil {
 		t.Fatal(err)
 	}

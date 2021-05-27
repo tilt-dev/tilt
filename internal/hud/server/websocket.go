@@ -5,13 +5,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
@@ -27,9 +32,13 @@ var upgrader = websocket.Upgrader{
 
 type WebsocketSubscriber struct {
 	ctx        context.Context
+	st         store.RStore
+	mu         sync.Mutex
 	conn       WebsocketConn
+	initDone   chan bool
 	streamDone chan bool
 
+	tiltStartTime    *timestamp.Timestamp
 	clientCheckpoint logstore.Checkpoint
 }
 
@@ -41,10 +50,12 @@ type WebsocketConn interface {
 
 var _ WebsocketConn = &websocket.Conn{}
 
-func NewWebsocketSubscriber(ctx context.Context, conn WebsocketConn) *WebsocketSubscriber {
+func NewWebsocketSubscriber(ctx context.Context, st store.RStore, conn WebsocketConn) *WebsocketSubscriber {
 	return &WebsocketSubscriber{
 		ctx:        ctx,
+		st:         st,
 		conn:       conn,
+		initDone:   make(chan bool),
 		streamDone: make(chan bool),
 	}
 }
@@ -68,30 +79,46 @@ func (ws *WebsocketSubscriber) Stream(ctx context.Context, store *store.Store) {
 		}
 	}()
 
-	<-ws.streamDone
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	// When we remove ourselves as a subscriber, the Store waits for any outstanding OnChange
-	// events to complete, then calls TearDown.
-	_ = store.RemoveSubscriber(context.Background(), ws)
+	go func() {
+		// initialize the stream with a full view
+		ws.onChangeHelper(ctx, store, 0, nil)
+		close(ws.initDone)
+	}()
+
+	<-ws.streamDone
 }
 
-func (ws *WebsocketSubscriber) InitializeStream(ctx context.Context, s store.RStore) {
-	ws.onChangeHelper(ctx, s, 0, nil)
+func (ws *WebsocketSubscriber) waitForInitOrClose(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-ws.streamDone:
+		return false
+	case <-ws.initDone:
+		return true
+	}
 }
 
 func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, summary store.ChangeSummary) {
-	ws.onChangeHelper(ctx, s, ws.clientCheckpoint, &summary)
+	// Currently, we only broadcast log changes from this OnChange handler.
+	// Everything else should be handled by reconcilers from the apiserver
+	if !summary.Log {
+		return
+	}
+
+	if !ws.waitForInitOrClose(ctx) {
+		return
+	}
+
+	ws.onChangeHelper(ctx, s, ws.clientCheckpoint, &store.ChangeSummary{Log: summary.Log})
 }
 
 func (ws *WebsocketSubscriber) onChangeHelper(ctx context.Context, s store.RStore, checkpoint logstore.Checkpoint, summary *store.ChangeSummary) {
 	state := s.RLockState()
 	view, err := webview.ChangeSummaryToProtoView(state, checkpoint, summary)
-	if view.UiSession != nil && view.UiSession.Status.NeedsAnalyticsNudge && !state.AnalyticsNudgeSurfaced {
-		// If we're showing the nudge and no one's told the engine
-		// state about it yet... tell the engine state.
-		s.Dispatch(store.AnalyticsNudgeSurfacedAction{})
-	}
-
 	s.RUnlockState()
 	if err != nil {
 		logger.Get(ctx).Infof("error converting view to proto for websocket: %v", err)
@@ -102,7 +129,11 @@ func (ws *WebsocketSubscriber) onChangeHelper(ctx context.Context, s store.RStor
 		ws.clientCheckpoint = logstore.Checkpoint(view.LogList.ToCheckpoint)
 	}
 
-	ws.sendView(ctx, s, view)
+	ws.sendView(ctx, view)
+
+	if view.UiSession != nil {
+		ws.onSessionUpdateSent(ctx, view.UiSession)
+	}
 
 	// A simple throttle -- don't call ws.OnChange too many times in quick succession,
 	//     it eats up a lot of CPU/allocates a lot of memory.
@@ -116,8 +147,67 @@ func (ws *WebsocketSubscriber) onChangeHelper(ctx context.Context, s store.RStor
 	time.Sleep(time.Millisecond * 100)
 }
 
+// Sends a UISession update on the websocket.
+func (ws *WebsocketSubscriber) SendUISessionUpdate(ctx context.Context, uiSession *v1alpha1.UISession) {
+	if !ws.waitForInitOrClose(ctx) {
+		return
+	}
+
+	ws.sendView(ctx, &proto_webview.View{
+		TiltStartTime: ws.tiltStartTime,
+		UiSession:     uiSession,
+	})
+	ws.onSessionUpdateSent(ctx, uiSession)
+}
+
+// If a session update triggered an analytics nudge, record it so that we don't
+// nudge again.
+func (ws *WebsocketSubscriber) onSessionUpdateSent(ctx context.Context, uiSession *v1alpha1.UISession) {
+	state := ws.st.RLockState()
+	surfaced := !state.AnalyticsNudgeSurfaced
+	ws.st.RUnlockState()
+
+	if uiSession != nil && uiSession.Status.NeedsAnalyticsNudge && !surfaced {
+		// If we're showing the nudge and no one's told the engine
+		// state about it yet... tell the engine state.
+		ws.st.Dispatch(store.AnalyticsNudgeSurfacedAction{})
+	}
+}
+
+// Sends a UIResource update on the websocket.
+func (ws *WebsocketSubscriber) SendUIResourceUpdate(ctx context.Context, nn types.NamespacedName, uiResource *v1alpha1.UIResource) {
+	if !ws.waitForInitOrClose(ctx) {
+		return
+	}
+
+	if uiResource == nil {
+		// If the UI resource doesn't exist, send a fake one down the
+		// stream that the UI will interpret as deletion.
+		now := metav1.Now()
+		uiResource = &v1alpha1.UIResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              nn.Name,
+				DeletionTimestamp: &now,
+			},
+		}
+	}
+
+	ws.sendView(ctx, &proto_webview.View{
+		TiltStartTime: ws.tiltStartTime,
+		UiResources:   []*v1alpha1.UIResource{uiResource},
+	})
+}
+
 // Sends the view to the websocket.
-func (ws *WebsocketSubscriber) sendView(ctx context.Context, s store.RStore, view *proto_webview.View) {
+func (ws *WebsocketSubscriber) sendView(ctx context.Context, view *proto_webview.View) {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+
+	// A little hack that initializes tiltStartTime for this websocket
+	// on the first send.
+	if ws.tiltStartTime == nil {
+		ws.tiltStartTime = view.TiltStartTime
+	}
 
 	jsEncoder := &runtime.JSONPb{}
 	w, err := ws.conn.NextWriter(websocket.TextMessage)
@@ -145,15 +235,16 @@ func (s *HeadsUpServer) ViewWebsocket(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	atomic.AddInt32(&s.numWebsocketConns, 1)
-	ws := NewWebsocketSubscriber(s.ctx, conn)
-
-	// Fire a fake OnChange event to initialize the connection.
-	ws.InitializeStream(s.ctx, s.store)
+	ws := NewWebsocketSubscriber(s.ctx, s.store, conn)
+	s.wsList.Add(ws)
 	_ = s.store.AddSubscriber(s.ctx, ws)
 
 	ws.Stream(s.ctx, s.store)
-	atomic.AddInt32(&s.numWebsocketConns, -1)
+
+	// When we remove ourselves as a subscriber, the Store waits for any outstanding OnChange
+	// events to complete, then calls TearDown.
+	_ = s.store.RemoveSubscriber(context.Background(), ws)
+	s.wsList.Remove(ws)
 }
 
 var _ store.TearDowner = &WebsocketSubscriber{}

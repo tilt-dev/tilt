@@ -194,7 +194,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader)
+	websocketList := server.NewWebsocketList()
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -237,8 +238,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(client, ownerFetcher, containerRestartDetector, storeStore)
-	uisessionReconciler := uisession.NewReconciler()
-	uiresourceReconciler := uiresource.NewReconciler()
+	uisessionReconciler := uisession.NewReconciler(websocketList)
+	uiresourceReconciler := uiresource.NewReconciler(websocketList)
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -386,7 +387,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader)
+	websocketList := server.NewWebsocketList()
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -429,8 +431,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(client, ownerFetcher, containerRestartDetector, storeStore)
-	uisessionReconciler := uisession.NewReconciler()
-	uiresourceReconciler := uiresource.NewReconciler()
+	uisessionReconciler := uisession.NewReconciler(websocketList)
+	uiresourceReconciler := uiresource.NewReconciler(websocketList)
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -575,7 +577,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	httpClient := cloud.ProvideHttpClient()
 	address := cloudurl.ProvideAddress()
 	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader)
+	websocketList := server.NewWebsocketList()
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -618,8 +621,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, k8sClient)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(k8sClient, ownerFetcher, containerRestartDetector, storeStore)
-	uisessionReconciler := uisession.NewReconciler()
-	uiresourceReconciler := uiresource.NewReconciler()
+	uisessionReconciler := uisession.NewReconciler(websocketList)
+	uiresourceReconciler := uiresource.NewReconciler(websocketList)
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()

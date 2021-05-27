@@ -9,6 +9,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -20,12 +21,13 @@ import (
 // UI.
 type Reconciler struct {
 	client ctrlclient.Client
+	wsList *server.WebsocketList
 }
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler() *Reconciler {
-	return &Reconciler{}
+func NewReconciler(wsList *server.WebsocketList) *Reconciler {
+	return &Reconciler{wsList: wsList}
 }
 
 func (r *Reconciler) SetClient(client ctrlclient.Client) {
@@ -40,11 +42,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if apierrors.IsNotFound(err) || resource.ObjectMeta.DeletionTimestamp != nil {
-		// TODO: Broadcast deletion.
+		r.wsList.ForEach(func(ws *server.WebsocketSubscriber) {
+			ws.SendUIResourceUpdate(ctx, req.NamespacedName, nil)
+		})
+
 		return ctrl.Result{}, nil
 	}
 
-	// TODO: Broadcast deletion.
+	r.wsList.ForEach(func(ws *server.WebsocketSubscriber) {
+		ws.SendUIResourceUpdate(ctx, req.NamespacedName, resource)
+	})
+
 	return ctrl.Result{}, nil
 }
 
