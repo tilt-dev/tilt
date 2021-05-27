@@ -128,8 +128,6 @@ type EngineState struct {
 	KubernetesDiscoveries map[types.NamespacedName]*KubernetesDiscovery `json:"-"`
 	PodLogStreams         map[string]*PodLogStream                      `json:"-"`
 	PortForwards          map[string]*PortForward                       `json:"-"`
-	UISessions            map[types.NamespacedName]*v1alpha1.UISession  `json:"-"`
-	UIResources           map[types.NamespacedName]*v1alpha1.UIResource `json:"-"`
 }
 
 type CloudStatus struct {
@@ -498,8 +496,6 @@ func NewState() *EngineState {
 	ret.PodLogStreams = make(map[string]*PodLogStream)
 	ret.PortForwards = make(map[string]*PortForward)
 	ret.KubernetesDiscoveries = make(map[types.NamespacedName]*KubernetesDiscovery)
-	ret.UISessions = make(map[types.NamespacedName]*v1alpha1.UISession)
-	ret.UIResources = make(map[types.NamespacedName]*v1alpha1.UIResource)
 
 	return ret
 }
