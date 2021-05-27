@@ -70,7 +70,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardSpec":             schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardStatus":           schema_pkg_apis_core_v1alpha1_PortForwardStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":                       schema_pkg_apis_core_v1alpha1_Probe(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":               schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Session":                     schema_pkg_apis_core_v1alpha1_Session(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionList":                 schema_pkg_apis_core_v1alpha1_SessionList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec":                 schema_pkg_apis_core_v1alpha1_SessionSpec(ref),
@@ -82,6 +81,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated":       schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting":          schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild":                   schema_pkg_apis_core_v1alpha1_TiltBuild(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec":                 schema_pkg_apis_core_v1alpha1_TriggerSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning":              schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated":           schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton":                    schema_pkg_apis_core_v1alpha1_UIButton(ref),
@@ -308,14 +308,20 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 					"restartOn": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Indicates objects that can trigger a restart of this command.\n\nWhen a restart is triggered, Tilt will try to gracefully shutdown any currently running process, waiting for it to exit before starting a new process. If the process doesn't shutdown within the allotted time, Tilt will kill the process abruptly.\n\nRestarts can happen even if the command is already done.\n\nLogs of the current process after the restart are discarded.",
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec"),
+						},
+					},
+					"startOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicates objects that can trigger a run of this command.\n\nAny triggers that occur while the cmd is already running will be ignored.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec"},
 	}
 }
 
@@ -1988,35 +1994,6 @@ func schema_pkg_apis_core_v1alpha1_Probe(ref common.ReferenceCallback) common.Op
 	}
 }
 
-func schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "RestartOnSpec indicates the set of objects that can trigger a restart of this object.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"fileWatches": {
-						SchemaProps: spec.SchemaProps{
-							Description: "A list of file watches that can trigger a restart.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"fileWatches"},
-			},
-		},
-	}
-}
-
 func schema_pkg_apis_core_v1alpha1_Session(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2445,6 +2422,48 @@ func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) commo
 						},
 					},
 				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TriggerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"fileWatches": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of file watches that can trigger a restart.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"buttons": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"fileWatches", "buttons"},
 			},
 		},
 	}

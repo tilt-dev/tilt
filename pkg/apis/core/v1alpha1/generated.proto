@@ -86,7 +86,12 @@ message CmdSpec {
   // Restarts can happen even if the command is already done.
   //
   // Logs of the current process after the restart are discarded.
-  optional RestartOnSpec restartOn = 5;
+  optional TriggerSpec restartOn = 5;
+
+  // Indicates objects that can trigger a run of this command.
+  //
+  // Any triggers that occur while the cmd is already running will be ignored.
+  optional TriggerSpec startOn = 6;
 }
 
 // CmdStateRunning is a running state of a local command.
@@ -688,12 +693,6 @@ message Probe {
   optional int32 failureThreshold = 6;
 }
 
-// RestartOnSpec indicates the set of objects that can trigger a restart of this object.
-message RestartOnSpec {
-  // A list of file watches that can trigger a restart.
-  repeated string fileWatches = 1;
-}
-
 // Session provides introspective data about the status of the Tilt process.
 // +k8s:openapi-gen=true
 message Session {
@@ -850,6 +849,13 @@ message TiltBuild {
   // Indicates whether this is a development build (true) or an official release (false).
   // +optional
   optional bool dev = 4;
+}
+
+message TriggerSpec {
+  // A list of file watches that can trigger a restart.
+  repeated string fileWatches = 1;
+
+  repeated string uiButtons = 2;
 }
 
 // UIBuildRunning respresents an in-progress build/update in the user interface.

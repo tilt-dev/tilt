@@ -39,7 +39,7 @@ type Controller struct {
 	mu             sync.Mutex
 	client         ctrlclient.Client
 	st             store.RStore
-	restartManager *RestartManager
+	triggerManager *TriggerManager
 }
 
 var _ store.TearDowner = &Controller{}
@@ -53,7 +53,7 @@ func NewController(ctx context.Context, execer Execer, proberManager ProberManag
 		client:         client,
 		updateCmds:     make(map[types.NamespacedName]*Cmd),
 		st:             st,
-		restartManager: NewRestartManager(client),
+		triggerManager: NewTriggerManager(client),
 	}
 }
 
@@ -92,7 +92,7 @@ func (c *Controller) TearDown(ctx context.Context) {
 func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) error {
 	cmd := &Cmd{}
 	err := c.client.Get(ctx, name, cmd)
-	c.restartManager.handleReconcileRequest(name, cmd)
+	c.triggerManager.handleReconcileRequest(name, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("cmd reconcile: %v", err)
 	}
@@ -103,15 +103,21 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
-	lastEventTime, err := c.restartManager.lastEventTime(ctx, cmd.Spec.RestartOn)
+	lastRestartEventTime, err := c.triggerManager.lastEventTime(ctx, cmd.Spec.RestartOn)
+	if err != nil {
+		return err
+	}
+	lastStartEventTime, err := c.triggerManager.lastEventTime(ctx, cmd.Spec.StartOn)
 	if err != nil {
 		return err
 	}
 
 	proc, ok := c.procs[name]
 	if ok {
-		needsRestart := !equality.Semantic.DeepEqual(proc.spec, cmd.Spec) ||
-			lastEventTime.After(proc.lastEventTime)
+		specChanged := !equality.Semantic.DeepEqual(proc.spec, cmd.Spec)
+		restartOnTriggered := lastRestartEventTime.After(proc.lastRestartEventTime)
+		startOnTriggered := !proc.lastFinishTime.IsZero() && lastStartEventTime.After(proc.lastStartEventTime) && lastStartEventTime.After(proc.lastStartEventTime)
+		needsRestart := specChanged || restartOnTriggered || startOnTriggered
 		if !needsRestart {
 			return nil
 		}
@@ -122,13 +128,21 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 
 		c.stop(name)
 	} else {
+		startOn := cmd.Spec.StartOn
+		// if there is a startOn spec, don't start until triggered
+		if lastStartEventTime.IsZero() &&
+			startOn != nil &&
+			(len(startOn.FileWatches) != 0 || len(startOn.UIButtons) != 0) {
+			return nil
+		}
 		proc = &currentProcess{}
 		c.procs[name] = proc
 	}
 
 	proc.spec = cmd.Spec
 	proc.isServer = cmd.ObjectMeta.Annotations[local.AnnotationOwnerKind] == "CmdServer"
-	proc.lastEventTime = lastEventTime
+	proc.lastRestartEventTime = lastRestartEventTime
+	proc.lastStartEventTime = lastStartEventTime
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	c.resetStatus(name, cmd)
@@ -301,6 +315,10 @@ func (c *Controller) processStatuses(
 				logger.Get(ctx).Errorf("Server exited with exit code 0")
 			}
 
+			proc.mu.Lock()
+			proc.lastFinishTime = time.Now()
+			proc.mu.Unlock()
+
 			c.updateStatus(name, func(status *CmdStatus) {
 				status.Waiting = nil
 				status.Running = nil
@@ -334,20 +352,17 @@ func (c *Controller) processStatuses(
 	}
 }
 
-func (r *Controller) enqueueFileWatch(obj client.Object) []reconcile.Request {
-	fw, ok := obj.(*FileWatch)
-	if !ok {
-		return nil
-	}
-
-	return r.restartManager.enqueue(fw)
+func (r *Controller) enqueueTrigger(obj client.Object) []reconcile.Request {
+	return r.triggerManager.enqueue(obj)
 }
 
 func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&Cmd{}).
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
-			handler.EnqueueRequestsFromMapFunc(handler.MapFunc(r.enqueueFileWatch))).
+			handler.EnqueueRequestsFromMapFunc(r.enqueueTrigger)).
+		Watches(&source.Kind{Type: &v1alpha1.UIButton{}},
+			handler.EnqueueRequestsFromMapFunc(r.enqueueTrigger)).
 		Complete(r)
 }
 
@@ -363,8 +378,11 @@ type currentProcess struct {
 	probeWorker *probe.Worker
 	isServer    bool
 
-	// tracks the last RestartOn event
-	lastEventTime time.Time
+	lastRestartEventTime time.Time
+	lastStartEventTime   time.Time
+
+	// time at which this process completed, or zero
+	lastFinishTime time.Time
 
 	mu sync.Mutex
 }
@@ -388,6 +406,13 @@ func (p *currentProcess) currentProcNum() int {
 	defer p.mu.Unlock()
 
 	return p.procNum
+}
+
+func (p *currentProcess) finishTime() time.Time {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return p.lastFinishTime
 }
 
 type statusAndMetadata struct {

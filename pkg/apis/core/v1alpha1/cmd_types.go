@@ -93,7 +93,12 @@ type CmdSpec struct {
 	// Restarts can happen even if the command is already done.
 	//
 	// Logs of the current process after the restart are discarded.
-	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,5,opt,name=restartOn"`
+	RestartOn *TriggerSpec `json:"restartOn,omitempty" protobuf:"bytes,5,opt,name=restartOn"`
+
+	// Indicates objects that can trigger a run of this command.
+	//
+	// Any triggers that occur while the cmd is already running will be ignored.
+	StartOn *TriggerSpec `json:"startOn,omitempty" protobuf:"bytes,6,opt,name=startOn"`
 }
 
 var _ resource.Object = &Cmd{}
@@ -213,8 +218,8 @@ func (in CmdStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*Cmd).Status = in
 }
 
-// RestartOnSpec indicates the set of objects that can trigger a restart of this object.
-type RestartOnSpec struct {
+type TriggerSpec struct {
 	// A list of file watches that can trigger a restart.
-	FileWatches []string `json:"fileWatches" protobuf:"bytes,1,rep,name=fileWatches"`
+	FileWatches []string `json:"fileWatches,omitempty" protobuf:"bytes,1,rep,name=fileWatches"`
+	UIButtons   []string `json:"uiButtons,omitempty" protobuf:"bytes,2,rep,name=uiButtons"`
 }

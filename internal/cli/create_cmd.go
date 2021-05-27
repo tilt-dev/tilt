@@ -140,8 +140,8 @@ func (c *createCmdCmd) workdir() (string, error) {
 }
 
 // Determine the restart conditions of the command.
-func (c *createCmdCmd) restartOn() *v1alpha1.RestartOnSpec {
-	return &v1alpha1.RestartOnSpec{
+func (c *createCmdCmd) restartOn() *v1alpha1.TriggerSpec {
+	return &v1alpha1.TriggerSpec{
 		FileWatches: c.filewatches,
 	}
 }
