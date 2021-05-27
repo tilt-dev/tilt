@@ -2448,7 +2448,7 @@ func schema_pkg_apis_core_v1alpha1_TriggerSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
-					"buttons": {
+					"uiButtons": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -2463,7 +2463,6 @@ func schema_pkg_apis_core_v1alpha1_TriggerSpec(ref common.ReferenceCallback) com
 						},
 					},
 				},
-				Required: []string{"fileWatches", "buttons"},
 			},
 		},
 	}
