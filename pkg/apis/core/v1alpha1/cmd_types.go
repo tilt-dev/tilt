@@ -97,7 +97,9 @@ type CmdSpec struct {
 
 	// Indicates objects that can trigger a run of this command.
 	//
-	// Any triggers that occur while the cmd is already running will be ignored.
+	// If there is a StartOn rule, the cmd's process will not be started until the first
+	// StartOn trigger occurs.
+	// StartOn triggers are ignored while the cmd's process is running.
 	StartOn *TriggerSpec `json:"startOn,omitempty" protobuf:"bytes,6,opt,name=startOn"`
 }
 

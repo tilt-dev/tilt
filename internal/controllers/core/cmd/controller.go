@@ -113,9 +113,14 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	}
 
 	proc, ok := c.procs[name]
+	// there is already a proc (which may or may not be running) for this cmd
 	if ok {
+		// any change to the spec means we should restart the process to pick up the changes
 		specChanged := !equality.Semantic.DeepEqual(proc.spec, cmd.Spec)
+		// a new restart event happened
 		restartOnTriggered := lastRestartEventTime.After(proc.lastRestartEventTime)
+		// a new start event happened *and* the existing proc is finished
+		// startOn is ignored when there's a running process for the cmd
 		startOnTriggered := !proc.lastFinishTime.IsZero() && lastStartEventTime.After(proc.lastStartEventTime) && lastStartEventTime.After(proc.lastStartEventTime)
 		needsRestart := specChanged || restartOnTriggered || startOnTriggered
 		if !needsRestart {
@@ -129,7 +134,7 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		c.stop(name)
 	} else {
 		startOn := cmd.Spec.StartOn
-		// if there is a startOn spec, don't start until triggered
+		// cmds with StartOn specs only start their initial proc when triggered
 		if lastStartEventTime.IsZero() &&
 			startOn != nil &&
 			(len(startOn.FileWatches) != 0 || len(startOn.UIButtons) != 0) {
