@@ -313,7 +313,7 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 					},
 					"startOn": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Indicates objects that can trigger a run of this command.\n\nAny triggers that occur while the cmd is already running will be ignored.",
+							Description: "Indicates objects that can trigger a run of this command.\n\nIf there is a StartOn rule, the cmd's process will not be started until the first StartOn trigger occurs. StartOn triggers are ignored while the cmd's process is running.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec"),
 						},
 					},
