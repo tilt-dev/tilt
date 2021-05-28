@@ -121,7 +121,7 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		restartOnTriggered := lastRestartEventTime.After(proc.lastRestartEventTime)
 		// a new start event happened *and* the existing proc is finished
 		// startOn is ignored when there's a running process for the cmd
-		startOnTriggered := !proc.lastFinishTime.IsZero() && lastStartEventTime.After(proc.lastStartEventTime) && lastStartEventTime.After(proc.lastStartEventTime)
+		startOnTriggered := !proc.lastFinishTime.IsZero() && lastStartEventTime.After(proc.lastFinishTime) && lastStartEventTime.After(proc.lastStartEventTime)
 		needsRestart := specChanged || restartOnTriggered || startOnTriggered
 		if !needsRestart {
 			return nil
