@@ -413,13 +413,6 @@ func (p *currentProcess) currentProcNum() int {
 	return p.procNum
 }
 
-func (p *currentProcess) finishTime() time.Time {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	return p.lastFinishTime
-}
-
 type statusAndMetadata struct {
 	pid      int
 	status   status
