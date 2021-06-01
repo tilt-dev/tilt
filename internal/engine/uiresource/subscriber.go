@@ -78,7 +78,6 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("deleting resource %s: %v", name.Name, err)))
 				return
 			}
-			st.Dispatch(NewUIResourceDeleteAction(name))
 			continue
 		}
 
@@ -91,7 +90,6 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 				logger.Get(ctx).Infof("creating uiresource %s: %v", name.Name, err)
 				return
 			}
-			st.Dispatch(NewUIResourceCreateAction(resource))
 			continue
 		}
 
@@ -107,7 +105,6 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 				logger.Get(ctx).Infof("updating uiresource %s: %v", name.Name, err)
 				return
 			}
-			st.Dispatch(NewUIResourceUpdateStatusAction(update))
 			continue
 		}
 	}

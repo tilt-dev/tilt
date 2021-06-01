@@ -23,8 +23,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
-	"github.com/tilt-dev/tilt/internal/engine/uiresource"
-	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -144,16 +142,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		k8swatch.HandleKubernetesDiscoveryUpdateStatusAction(ctx, state, action)
 	case k8swatch.KubernetesDiscoveryDeleteAction:
 		k8swatch.HandleKubernetesDiscoveryDeleteAction(ctx, state, action)
-	case uisession.UISessionCreateAction:
-		uisession.HandleUISessionCreateAction(state, action)
-	case uisession.UISessionUpdateStatusAction:
-		uisession.HandleUISessionUpdateStatusAction(state, action)
-	case uiresource.UIResourceCreateAction:
-		uiresource.HandleUIResourceCreateAction(state, action)
-	case uiresource.UIResourceUpdateStatusAction:
-		uiresource.HandleUIResourceUpdateStatusAction(state, action)
-	case uiresource.UIResourceDeleteAction:
-		uiresource.HandleUIResourceDeleteAction(state, action)
 	case k8swatch.ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
 	case store.K8sEventAction:

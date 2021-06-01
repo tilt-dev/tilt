@@ -40,7 +40,6 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			logger.Get(ctx).Infof("creating uisession: %v", err)
 			return
 		}
-		st.Dispatch(NewUISessionCreateAction(session))
 		return
 	} else if err != nil {
 		logger.Get(ctx).Infof("fetching uisession: %v", err)
@@ -59,7 +58,6 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			logger.Get(ctx).Infof("updating uisession: %v", err)
 			return
 		}
-		st.Dispatch(NewUISessionUpdateStatusAction(update))
 	}
 }
 
