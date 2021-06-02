@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/cli/cli/connhelper"
+
 	"github.com/blang/semver"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
@@ -237,7 +239,7 @@ func SupportsBuildkit(v types.Version, env Env) bool {
 // DOCKER_API_VERSION to set the version of the API to reach, leave empty for latest.
 // DOCKER_CERT_PATH to load the TLS certificates from.
 // DOCKER_TLS_VERIFY to enable or disable TLS verification, off by default.
-func CreateClientOpts(ctx context.Context, env Env) ([]client.Opt, error) {
+func CreateClientOpts(_ context.Context, env Env) ([]client.Opt, error) {
 	result := make([]client.Opt, 0)
 
 	if env.CertPath != "" {
@@ -259,7 +261,30 @@ func CreateClientOpts(ctx context.Context, env Env) ([]client.Opt, error) {
 	}
 
 	if env.Host != "" {
-		result = append(result, client.WithHost(env.Host))
+		// Docker 18.09+ supports DOCKER_HOST=ssh://remote-docker-host connection strings,
+		// but the Moby client doesn't natively know how to handle them
+		// adapted from https://github.com/docker/cli/blob/a32cd16160f1b41c1c4ae7bee4dac929d1484e59/cli/context/docker/load.go#L93-L134
+		connHelper, err := connhelper.GetConnectionHelper(env.Host)
+		if err != nil {
+			return nil, err
+		}
+		if connHelper != nil {
+			httpClient := &http.Client{
+				Transport: &http.Transport{
+					DialContext: connHelper.Dialer,
+				},
+			}
+			result = append(result,
+				client.WithHTTPClient(httpClient),
+				client.WithHost(connHelper.Host),
+				client.WithDialContext(connHelper.Dialer),
+			)
+		} else {
+			// N.B. GetConnectionHelper() returns nil if there's no special helper needed (i.e.
+			// 	for everything non-SSH), at which point we can just pass the host value through
+			// 	as-is to Moby code to let it handle it for http/https/tcp
+			result = append(result, client.WithHost(env.Host))
+		}
 	}
 
 	if env.APIVersion != "" {
