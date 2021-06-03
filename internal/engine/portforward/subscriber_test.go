@@ -60,14 +60,15 @@ func TestPortForwardNewPod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected := expectedPF{local: 8080, container: 8081}
 	f.waitUntilStatePortForwards("one port forward for pod A", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-A" && f.oneForwardMatches(pf, expectedPF{local: 8080, container: 8081})
+		return pf.Spec.PodName == "pod-A" && f.oneForwardMatches(pf, expected)
 	})
-	f.requirePortForwardAPIObject(pfName("pod-A"), 8080, 8081)
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-A"), expected)
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
@@ -76,15 +77,16 @@ func TestPortForwardNewPod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected = expectedPF{local: 8080, container: 8081}
 	f.waitUntilStatePortForwards("one port forward for pod B (replacing port forward for pod A)", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-B" && f.oneForwardMatches(pf, expectedPF{local: 8080, container: 8081})
+		return pf.Spec.PodName == "pod-B" && f.oneForwardMatches(pf, expected)
 	})
 	f.requirePortForwardAPIObjectDNE(pfName("pod-A"))
-	f.requirePortForwardAPIObject(pfName("pod-B"), 8080, 8081)
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-B"), expected)
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
@@ -121,14 +123,15 @@ func TestPortForwardChangePort(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected := expectedPF{local: 8080, container: 8081}
 	f.waitUntilStatePortForwards("initial port forward", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expectedPF{local: 8080, container: 8081})
+		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expected)
 	})
-	f.requirePortForwardAPIObject(pfName("pod-id"), 8080, 8081)
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-id"), expected)
 
 	state = f.st.LockMutableStateForTesting()
 	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
@@ -136,14 +139,15 @@ func TestPortForwardChangePort(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected = expectedPF{local: 8080, container: 8082}
 	f.waitUntilStatePortForwards("updated container port", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expectedPF{local: 8080, container: 8082})
+		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expected)
 	})
-	f.requirePortForwardAPIObject(pfName("pod-id"), 8080, 8082)
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-id"), expected)
 }
 
 func TestPortForwardChangeHost(t *testing.T) {
@@ -169,13 +173,15 @@ func TestPortForwardChangeHost(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected := expectedPF{local: 8080, container: 8081, host: "hostA"}
 	f.waitUntilStatePortForwards("initial port forward", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardWithHostMatches(8080, 8081, "hostA", pf)
+		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expected)
 	})
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-id"), expected)
 
 	state = f.st.LockMutableStateForTesting()
 	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
@@ -183,13 +189,15 @@ func TestPortForwardChangeHost(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected = expectedPF{local: 8080, container: 8081, host: "hostB"}
 	f.waitUntilStatePortForwards("updated host", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardWithHostMatches(8080, 8081, "hostB", pf)
+		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expected)
 	})
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-id"), expected)
 }
 
 func TestPortForwardChangeManifestName(t *testing.T) {
@@ -214,13 +222,15 @@ func TestPortForwardChangeManifestName(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected := expectedPF{local: 8080, container: 8081, mName: "fe"}
 	f.waitUntilStatePortForwards("one port forward for manifest fe", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expectedPF{local: 8080, container: 8081, mName: "fe"})
+		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expected)
 	})
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-id"), expected)
 
 	state = f.st.LockMutableStateForTesting()
 	// the exact same manifest, pod, etc., just with a different name
@@ -231,13 +241,15 @@ func TestPortForwardChangeManifestName(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected = expectedPF{local: 8080, container: 8081, mName: "not-fe"}
 	f.waitUntilStatePortForwards("one port forward for manifest not-fe", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expectedPF{local: 8080, container: 8081, mName: "not-fe"})
+		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expected)
 	})
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-id"), expected)
 }
 
 func TestMultipleForwardsOnePod(t *testing.T) {
@@ -268,6 +280,7 @@ func TestMultipleForwardsOnePod(t *testing.T) {
 	f.waitUntilStatePortForwards("no port forwards running yet", func(pfs map[string]*PortForward) bool {
 		return len(pfs) == 0
 	})
+	f.requireNoPortForwardAPIObjects()
 
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
@@ -276,13 +289,9 @@ func TestMultipleForwardsOnePod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("one port forward with multiple Forwards", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
 
+	pfOK := func(pf *PortForward) bool {
 		var seen8000, seen9000 bool
-		pf := f.onlyPFFromMap(pfs)
 		if pf.Spec.PodName != "pod-id" {
 			return false
 		}
@@ -290,17 +299,26 @@ func TestMultipleForwardsOnePod(t *testing.T) {
 		for _, fwd := range pf.Spec.Forwards {
 			if fwd.LocalPort == 8000 {
 				seen8000 = true
-				f.forwardWithHostMatches(fwd, 8000, 8080, "first-host")
+				f.forwardMatches(fwd, expectedPF{local: 8000, container: 8080, host: "first-host"})
 			} else if fwd.LocalPort == 9000 {
 				seen9000 = true
-				f.forwardWithHostMatches(fwd, 9000, 9090, "second-host")
+				f.forwardMatches(fwd, expectedPF{local: 9000, container: 9090, host: "second-host"})
 			} else {
 				t.Fatalf("found Forward to unexpected LocalPort: %+v", fwd)
 			}
 		}
 
 		return seen8000 && seen9000
+	}
+
+	f.waitUntilStatePortForwards("one port forward with multiple Forwards", func(pfs map[string]*PortForward) bool {
+		if len(pfs) != 1 {
+			return false
+		}
+		pf := f.onlyPFFromMap(pfs)
+		return pfOK(pf)
 	})
+	f.requirePortForwardAPIObject(pfName("pod-id"), pfOK)
 
 	state = f.st.LockMutableStateForTesting()
 	state.RemoveManifestTarget("fe")
@@ -310,6 +328,7 @@ func TestMultipleForwardsOnePod(t *testing.T) {
 	f.waitUntilStatePortForwards("port forward torn down", func(pfs map[string]*PortForward) bool {
 		return len(pfs) == 0
 	})
+	f.requireNoPortForwardAPIObjects()
 }
 
 func TestPortForwardAutoDiscovery(t *testing.T) {
@@ -335,13 +354,15 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected := expectedPF{local: 8080, container: 8000}
 	f.waitUntilStatePortForwards("running port forward with auto-discovered container port", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expectedPF{local: 8080, container: 8000})
+		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expected)
 	})
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-id"), expected)
 }
 
 func TestPortForwardAutoDiscovery2(t *testing.T) {
@@ -367,13 +388,15 @@ func TestPortForwardAutoDiscovery2(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
+	expected := expectedPF{local: 8080, container: 8080}
 	f.waitUntilStatePortForwards("running port forward with auto-discovered container port", func(pfs map[string]*PortForward) bool {
 		if len(pfs) != 1 {
 			return false
 		}
 		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expectedPF{local: 8080, container: 8080})
+		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(pf, expected)
 	})
+	f.requirePortForwardAPIObjectOneFwd(pfName("pod-id"), expected)
 }
 
 func TestPopulatePortForward(t *testing.T) {
@@ -423,50 +446,6 @@ func TestPopulatePortForward(t *testing.T) {
 		})
 	}
 }
-
-// func TestPortForwardAPICreateDelete(t *testing.T) {
-// 	newPF := model.PortForward{ContainerPort: 8080, LocalPort: 8081}
-// 	cases := []struct {
-// 		name     string
-// 		existing []PortForward
-// 	}{
-// 		{
-// 			name: "boop",
-// 		},
-// 	}
-//
-// 	for _, c := range cases {
-// 		t.Run(fmt.Sprintf(c.name), func(t *testing.T) {
-// 			f := newPFSFixture(t)
-// 			f.Start()
-// 			defer f.TearDown()
-//
-// 			state := f.st.LockMutableStateForTesting()
-// 			m := model.Manifest{Name: "fe"}.
-// 				WithDeployTarget(model.K8sTarget{PortForwards: []model.PortForward{newPF}})
-// 			mt := store.NewManifestTarget(m)
-// 			mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-// 				v1alpha1.Pod{Name: "pod-A", Phase: string(v1.PodRunning)})
-// 			state.UpsertManifestTarget(mt)
-// 			f.st.UnlockMutableState()
-//
-// 			f.onChange()
-//
-// 			f.waitUntilStatePortForwards("one matching port forward", func(pfs map[string]*PortForward) bool {
-// 				if len(pfs) != 1 {
-// 					return false
-// 				}
-// 				pf := f.onlyPFFromMap(pfs)
-// 				return pf.Spec.PodName == "pod-A" && f.oneForwardMatches(8080, 8081, pf)
-// 			})
-// 			// port-forward-pod-A
-// 			var pwList v1alpha1.PortForwardList
-// 			err := f.ctrl.Client.List(f.ctx, &pwList)
-// 			require.NoError(t, err)
-// 			spew.Dump(pwList)
-// 		})
-// 	}
-// }
 
 type pfsFixture struct {
 	*tempdir.TempDirFixture
@@ -560,16 +539,6 @@ func (f *pfsFixture) oneForwardMatches(pf *PortForward, expected expectedPF) boo
 	return expected.mName == "" || pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] == expected.mName
 }
 
-func (f *pfsFixture) forwardWithHostMatches(fwd Forward, expectedLocal, expectedContainer int32, expectedHost string) bool {
-	return expectedLocal == fwd.LocalPort &&
-		expectedContainer == fwd.ContainerPort &&
-		expectedHost == fwd.Host
-}
-
-func (f *pfsFixture) oneForwardWithHostMatches(expectedLocal, expectedContainer int32, expectedHost string, pf *PortForward) bool {
-	return len(pf.Spec.Forwards) == 1 && f.forwardWithHostMatches(pf.Spec.Forwards[0], expectedLocal, expectedContainer, expectedHost)
-}
-
 func (f *pfsFixture) onlyPFFromMap(pfs map[string]*PortForward) *PortForward {
 	require.Len(f.T(), pfs, 1, "`onlyPFFromMap` requires a map of length one (got %d)", len(pfs))
 	for _, pf := range pfs { // there's only one thing in the map, we just don't know its key 🙃
@@ -611,7 +580,7 @@ func (f *pfsFixture) waitUntilStatePortForwards(msg string, isDone func(map[stri
 	}
 }
 
-func (f *pfsFixture) requirePortForwardAPIObject(name string, expectedLocal, expectedContainer int32) {
+func (f *pfsFixture) requirePortForwardAPIObject(name string, fn func(pf *PortForward) bool) {
 	f.T().Helper()
 
 	key := types.NamespacedName{Name: name}
@@ -620,9 +589,16 @@ func (f *pfsFixture) requirePortForwardAPIObject(name string, expectedLocal, exp
 			return false
 		}
 
-		return f.oneForwardMatches(pf, expectedPF{local: expectedLocal, container: expectedContainer})
+		return fn(pf)
 
 	}, "Expected port forward API object not observed for key %s", key)
+}
+
+func (f *pfsFixture) requirePortForwardAPIObjectOneFwd(name string, expected expectedPF) {
+	f.T().Helper()
+	f.requirePortForwardAPIObject(name, func(pf *PortForward) bool {
+		return f.oneForwardMatches(pf, expected)
+	})
 }
 
 func (f *pfsFixture) requirePortForwardAPIObjectDNE(name string) {
