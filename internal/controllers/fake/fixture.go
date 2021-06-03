@@ -114,6 +114,12 @@ func (f *ControllerFixture) MustGet(key types.NamespacedName, out object) {
 	}
 }
 
+func (f *ControllerFixture) List(out ctrlclient.ObjectList) {
+	f.t.Helper()
+	err := f.Client.List(f.ctx, out)
+	require.NoError(f.t, err)
+}
+
 func (f *ControllerFixture) Create(o object) ctrl.Result {
 	f.t.Helper()
 	require.NoError(f.t, f.Client.Create(f.ctx, o))

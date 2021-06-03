@@ -3885,7 +3885,7 @@ func TestPortForwardActions(t *testing.T) {
 
 	f.Start([]model.Manifest{})
 
-	f.upper.store.Dispatch(portforward.NewPortForwardCreateAction(pfA))
+	f.upper.store.Dispatch(portforward.NewPortForwardUpsertAction(pfA))
 	f.WaitUntil("port forward A stored on state", func(st store.EngineState) bool {
 		return len(st.PortForwards) == 1 && equality.Semantic.DeepEqual(pfA, st.PortForwards[pfAName])
 	})

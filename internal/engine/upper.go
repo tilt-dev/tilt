@@ -194,8 +194,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		runtimelog.HandlePodLogStreamCreateAction(state, action)
 	case runtimelog.PodLogStreamDeleteAction:
 		runtimelog.HandlePodLogStreamDeleteAction(state, action)
-	case portforward.PortForwardCreateAction:
-		portforward.HandlePortForwardCreateAction(state, action)
+	case portforward.PortForwardUpsertAction:
+		portforward.HandlePortForwardUpsertAction(state, action)
 	case portforward.PortForwardDeleteAction:
 		portforward.HandlePortForwardDeleteAction(state, action)
 	default:

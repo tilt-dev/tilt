@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -19,6 +21,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+func pfName(podID string) string { return fmt.Sprintf("port-forward-%s", podID) }
 
 type Subscriber struct {
 	kClient            k8s.Client
@@ -73,7 +77,7 @@ func (s *Subscriber) diff(st store.RStore) (toStart, toShutdown []*PortForward) 
 
 		pf := &v1alpha1.PortForward{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("port-forward-%s", podID),
+				Name: pfName(podID.String()),
 				Annotations: map[string]string{
 					// Name of the manifest that this Port Forward corresponds to
 					// (we need this to route the logs correctly)
@@ -128,7 +132,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 	}
 
 	for _, pf := range toStart {
-		s.createPF(ctx, st, pf)
+		s.upsertPF(ctx, st, pf)
 	}
 }
 
@@ -147,17 +151,39 @@ func (s *Subscriber) deletePF(ctx context.Context, st store.RStore, pf *PortForw
 }
 
 // Create/update a PortForward API object, if necessary. Should be idempotent.
-func (s *Subscriber) createPF(ctx context.Context, st store.RStore, pf *PortForward) {
+func (s *Subscriber) upsertPF(ctx context.Context, st store.RStore, pf *PortForward) {
+	// TODO(maia): maybe simplify this code a bit by allowing create-on-update and just calling Update
+	//   (or is this just legacy bullshit?)
 	err := s.ctrlClient.Create(ctx, pf)
-	if err != nil &&
-		!apierrors.IsNotFound(err) &&
-		!apierrors.IsConflict(err) &&
-		!apierrors.IsAlreadyExists(err) {
-		st.Dispatch(store.NewErrorAction(fmt.Errorf(
-			"creating PortForward on apiserver: %v", err)))
-		return
+	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			// The port forward already exists, so update the existing object
+			err = s.updatePF(ctx, pf)
+			if err != nil {
+				st.Dispatch(store.NewErrorAction(fmt.Errorf(
+					"updating PortForward %s on apiserver: %v", pf.Name, err)))
+				return
+			}
+		} else {
+			st.Dispatch(store.NewErrorAction(fmt.Errorf(
+				"creating PortForward on apiserver: %v", err)))
+			return
+		}
 	}
-	st.Dispatch(NewPortForwardCreateAction(pf))
+	st.Dispatch(NewPortForwardUpsertAction(pf))
+}
+
+func (s *Subscriber) updatePF(ctx context.Context, pf *PortForward) error {
+	var existing PortForward
+	err := s.ctrlClient.Get(ctx, types.NamespacedName{Name: pf.Name}, &existing)
+	if err != nil {
+		return errors.Wrap(err, "getting existing PortForward object")
+	}
+	pf.ObjectMeta.ResourceVersion = existing.ObjectMeta.ResourceVersion
+	existing.ObjectMeta = pf.ObjectMeta
+	existing.Spec = pf.Spec
+
+	return s.ctrlClient.Update(ctx, &existing)
 }
 
 // Extract the port-forward specs from the manifest.
