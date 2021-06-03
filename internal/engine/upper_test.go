@@ -3972,7 +3972,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
-	pfs := portforward.NewSubscriber(b.kClient)
+	pfs := portforward.NewSubscriber(b.kClient, cdc)
 	pfs.DisableForTesting()
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
