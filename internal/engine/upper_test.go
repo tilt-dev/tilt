@@ -3885,7 +3885,7 @@ func TestPortForwardActions(t *testing.T) {
 
 	f.Start([]model.Manifest{})
 
-	f.upper.store.Dispatch(portforward.NewPortForwardCreateAction(pfA))
+	f.upper.store.Dispatch(portforward.NewPortForwardUpsertAction(pfA))
 	f.WaitUntil("port forward A stored on state", func(st store.EngineState) bool {
 		return len(st.PortForwards) == 1 && equality.Semantic.DeepEqual(pfA, st.PortForwards[pfAName])
 	})
@@ -3972,7 +3972,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient)
 	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
-	pfs := portforward.NewSubscriber(b.kClient)
+	pfs := portforward.NewSubscriber(b.kClient, cdc)
 	pfs.DisableForTesting()
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
