@@ -8,6 +8,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -227,19 +230,21 @@ func TestMultipleForwardsMultiplePods(t *testing.T) {
 
 type pfrFixture struct {
 	*tempdir.TempDirFixture
-	ctx    context.Context
-	cancel func()
-	kCli   *k8s.FakeK8sClient
-	st     *store.TestingStore
-	r      *Reconciler
-	out    *bufsync.ThreadSafeBuffer
+	ctx     context.Context
+	cancel  func()
+	kCli    *k8s.FakeK8sClient
+	ctrlCli ctrlclient.Client
+	st      *store.TestingStore
+	r       *Reconciler
+	out     *bufsync.ThreadSafeBuffer
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
 	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient(t)
-	r := NewReconciler(kCli)
+	ctrlCli := fake.NewTiltClient()
+	r := NewReconciler(kCli, ctrlCli)
 
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -250,6 +255,7 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 		cancel:         cancel,
 		st:             st,
 		kCli:           kCli,
+		ctrlCli:        ctrlCli,
 		r:              r,
 		out:            out,
 	}

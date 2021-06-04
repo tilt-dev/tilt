@@ -2,9 +2,16 @@ package portforward
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
@@ -16,16 +23,70 @@ import (
 )
 
 type Reconciler struct {
-	kClient k8s.Client
+	kClient    k8s.Client
+	ctrlClient ctrlclient.Client
 
 	// map of PortForward object name --> running forward(s)
-	activeForwards map[string]portForwardEntry
+	activeForwards map[types.NamespacedName]portForwardEntry
 }
 
-func NewReconciler(kClient k8s.Client) *Reconciler {
+var _ store.TearDowner = &Reconciler{}
+var _ reconcile.Reconciler = &Reconciler{}
+
+func NewReconciler(kClient k8s.Client, ctrlClient ctrlclient.Client) *Reconciler {
 	return &Reconciler{
 		kClient:        kClient,
-		activeForwards: make(map[string]portForwardEntry),
+		ctrlClient:     ctrlClient,
+		activeForwards: make(map[types.NamespacedName]portForwardEntry),
+	}
+}
+
+func (r *Reconciler) SetClient(client ctrlclient.Client) {
+	r.ctrlClient = client
+}
+
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&PortForward{}).Complete(r)
+}
+
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	fmt.Println("✨ reconciling request:", spew.Sdump(req))
+	err := r.reconcile(ctx, req.NamespacedName)
+	return ctrl.Result{}, err
+}
+
+func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) error {
+	pf := &PortForward{}
+	err := r.ctrlClient.Get(ctx, name, pf)
+	if apierrors.IsNotFound(err) || pf.ObjectMeta.DeletionTimestamp != nil {
+		// r.stop(name)
+		return nil
+	}
+	return nil
+}
+
+func (r *Reconciler) OnChange(ctx context.Context, st store.RStore,
+	summary store.ChangeSummary) {
+	fmt.Println("🚨🚨🚨 well shit 🚨🚨🚨")
+	if summary.IsLogOnly() {
+		return
+	}
+
+	toStart, toShutdown := r.diff(ctx, st)
+	for _, entry := range toShutdown {
+		// r.stop(entry.namespacedName())
+		entry.cancel()
+	}
+
+	for _, entry := range toStart {
+		// Treat port-forwarding errors as part of the pod log
+		ctx := store.MustObjectLogHandler(entry.ctx, st, entry.PortForward)
+		for _, forward := range entry.Spec.Forwards {
+			entry := entry
+			forward := forward
+			go r.startPortForwardLoop(ctx, entry, forward)
+		}
 	}
 }
 
@@ -38,7 +99,7 @@ func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portF
 	statePFs := state.PortForwards
 
 	for name, existing := range r.activeForwards {
-		if _, onState := statePFs[name]; !onState {
+		if _, onState := statePFs[name.Name]; !onState {
 			// This port forward is no longer on the state, shut it down.
 			toShutdown = r.addToShutdown(toShutdown, existing)
 			continue
@@ -46,7 +107,7 @@ func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portF
 	}
 
 	for name, desired := range statePFs {
-		existing, isActive := r.activeForwards[name]
+		existing, isActive := r.activeForwards[types.NamespacedName{Name: name}]
 		if isActive {
 			// We're already running this PortForward -- do we need to do anything further?
 			// NOTE(maia): we compare the ManifestName annotation so that if a user changes
@@ -70,34 +131,13 @@ func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portF
 }
 
 func (r *Reconciler) addToStart(toStart []portForwardEntry, entry portForwardEntry) []portForwardEntry {
-	r.activeForwards[entry.Name] = entry
+	r.activeForwards[entry.namespacedName()] = entry
 	return append(toStart, entry)
 }
 
 func (r *Reconciler) addToShutdown(toShutdown []portForwardEntry, entry portForwardEntry) []portForwardEntry {
-	delete(r.activeForwards, entry.Name)
+	delete(r.activeForwards, entry.namespacedName())
 	return append(toShutdown, entry)
-}
-
-func (r *Reconciler) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
-	if summary.IsLogOnly() {
-		return
-	}
-
-	toStart, toShutdown := r.diff(ctx, st)
-	for _, entry := range toShutdown {
-		entry.cancel()
-	}
-
-	for _, entry := range toStart {
-		// Treat port-forwarding errors as part of the pod log
-		ctx := store.MustObjectLogHandler(entry.ctx, st, entry.PortForward)
-		for _, forward := range entry.Spec.Forwards {
-			entry := entry
-			forward := forward
-			go r.startPortForwardLoop(ctx, entry, forward)
-		}
-	}
 }
 
 func (r *Reconciler) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward Forward) {
@@ -152,12 +192,31 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry portForwardEntry,
 	return nil
 }
 
+func (r *Reconciler) TearDown(ctx context.Context) {
+	// for name := range r.activeForwards {
+	// r.stop(name)
+	// }
+}
+
+// func (r *Reconciler) stop(name types.NamespacedName) {
+// 	entry, ok := r.activeForwards[name]
+// 	if !ok {
+// 		return
+// 	}
+// 	entry.cancel()
+// 	delete(r.activeForwards, name)
+// }
+
 var _ store.Subscriber = &Reconciler{}
 
 type portForwardEntry struct {
 	*PortForward
 	ctx    context.Context
 	cancel func()
+}
+
+func (entry portForwardEntry) namespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: entry.Name}
 }
 
 func newEntry(ctx context.Context, pf *PortForward) portForwardEntry {
