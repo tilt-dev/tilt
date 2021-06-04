@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/testutils"
-
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 func TestWebsocketCloseOnReadErr(t *testing.T) {
@@ -39,10 +39,10 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 
 	conn.AssertNextWriteMsg(t).Ack()
 
-	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
+	writeLogAndNotify(ctx, st)
 	conn.AssertNextWriteMsg(t).Ack()
 
-	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
+	writeLogAndNotify(ctx, st)
 	conn.AssertNextWriteMsg(t).Ack()
 
 	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
@@ -69,7 +69,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 
 	conn.AssertNextWriteMsg(t).Ack()
 
-	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
+	writeLogAndNotify(ctx, st)
 
 	m := conn.AssertNextWriteMsg(t)
 
@@ -103,11 +103,44 @@ func TestWebsocketNextWriterError(t *testing.T) {
 		close(done)
 	}()
 
-	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
+	writeLogAndNotify(ctx, st)
 	time.Sleep(10 * time.Millisecond)
 
 	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
 	conn.AssertClose(t, done)
+}
+
+// It's possible to get a ChangeSummary where Log is true but all logs have already been processed,
+// in which case ToLogList returns [-1,-1).
+// Presumably this happens when:
+// 1. store writes logevent A to logstore
+// 2. store notifies subscribers with a changesummary indicating there are logs
+// 3. store writes logevent B to logstore
+// 4. subscriber gets the changesummary from (2) and reads logevents A and B
+// 5. store notifies subscribers of logevent B
+// 6. subscriber reads logevents, but its checkpoint is already all caught up
+// https://github.com/tilt-dev/tilt/issues/4604
+func TestWebsocketIgnoreEmptyLogList(t *testing.T) {
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	st, _ := store.NewStoreWithFakeReducer()
+	_ = st.SetUpSubscribersForTesting(ctx)
+
+	conn := newFakeConn()
+	ctrlClient := fake.NewTiltClient()
+	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
+	require.NoError(t, st.AddSubscriber(ctx, ws))
+
+	done := make(chan bool)
+	go func() {
+		ws.Stream(ctx)
+		_ = st.RemoveSubscriber(context.Background(), ws)
+		close(done)
+	}()
+
+	conn.AssertNextWriteMsg(t).Ack()
+
+	ws.OnChange(ctx, st, store.ChangeSummary{Log: true})
+	require.NotEqual(t, -1, ws.clientCheckpoint)
 }
 
 type readerOrErr struct {
@@ -199,4 +232,11 @@ type msg struct {
 func (m msg) Ack() {
 	m.callback <- nil
 	close(m.callback)
+}
+
+func writeLogAndNotify(ctx context.Context, st *store.Store) {
+	state := st.LockMutableStateForTesting()
+	state.LogStore.Append(store.NewGlobalLogAction(logger.InfoLvl, []byte("test")), nil)
+	st.UnlockMutableState()
+	st.NotifySubscribers(ctx, store.ChangeSummary{Log: true})
 }
