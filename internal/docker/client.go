@@ -264,6 +264,9 @@ func CreateClientOpts(_ context.Context, env Env) ([]client.Opt, error) {
 		// Docker 18.09+ supports DOCKER_HOST=ssh://remote-docker-host connection strings,
 		// but the Moby client doesn't natively know how to handle them
 		// adapted from https://github.com/docker/cli/blob/a32cd16160f1b41c1c4ae7bee4dac929d1484e59/cli/context/docker/load.go#L93-L134
+		//
+		// WARNING: due to the complexity of this setup, there is currently NO integration test that covers
+		// 	using an SSH remote executor (CI DOES use a remote executor, but not via SSH)
 		connHelper, err := connhelper.GetConnectionHelper(env.Host)
 		if err != nil {
 			return nil, err
