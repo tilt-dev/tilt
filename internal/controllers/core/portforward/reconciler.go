@@ -60,7 +60,7 @@ func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) e
 	pf := &PortForward{}
 	err := r.ctrlClient.Get(ctx, name, pf)
 	if apierrors.IsNotFound(err) || pf.ObjectMeta.DeletionTimestamp != nil {
-		// r.stop(name)
+		r.stop(name)
 		return nil
 	}
 	return nil
@@ -75,11 +75,12 @@ func (r *Reconciler) OnChange(ctx context.Context, st store.RStore,
 
 	toStart, toShutdown := r.diff(ctx, st)
 	for _, entry := range toShutdown {
-		// r.stop(entry.namespacedName())
-		entry.cancel()
+		r.stop(entry.namespacedName())
 	}
 
 	for _, entry := range toStart {
+		r.activeForwards[entry.namespacedName()] = entry
+
 		// Treat port-forwarding errors as part of the pod log
 		ctx := store.MustObjectLogHandler(entry.ctx, st, entry.PortForward)
 		for _, forward := range entry.Spec.Forwards {
@@ -101,7 +102,7 @@ func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portF
 	for name, existing := range r.activeForwards {
 		if _, onState := statePFs[name.Name]; !onState {
 			// This port forward is no longer on the state, shut it down.
-			toShutdown = r.addToShutdown(toShutdown, existing)
+			toShutdown = append(toShutdown, existing)
 			continue
 		}
 	}
@@ -120,24 +121,14 @@ func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portF
 			}
 
 			// There's been a change to the spec for this PortForward, so tear down the old version
-			toShutdown = r.addToShutdown(toShutdown, existing)
+			toShutdown = append(toShutdown, existing)
 		}
 
 		// We're not running this PortForward(/the current version of this PortForward), so spin it up
 		entry := newEntry(ctx, desired)
-		toStart = r.addToStart(toStart, entry)
+		toStart = append(toStart, entry)
 	}
 	return toStart, toShutdown
-}
-
-func (r *Reconciler) addToStart(toStart []portForwardEntry, entry portForwardEntry) []portForwardEntry {
-	r.activeForwards[entry.namespacedName()] = entry
-	return append(toStart, entry)
-}
-
-func (r *Reconciler) addToShutdown(toShutdown []portForwardEntry, entry portForwardEntry) []portForwardEntry {
-	delete(r.activeForwards, entry.namespacedName())
-	return append(toShutdown, entry)
 }
 
 func (r *Reconciler) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward Forward) {
@@ -193,19 +184,19 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry portForwardEntry,
 }
 
 func (r *Reconciler) TearDown(ctx context.Context) {
-	// for name := range r.activeForwards {
-	// r.stop(name)
-	// }
+	for name := range r.activeForwards {
+		r.stop(name)
+	}
 }
 
-// func (r *Reconciler) stop(name types.NamespacedName) {
-// 	entry, ok := r.activeForwards[name]
-// 	if !ok {
-// 		return
-// 	}
-// 	entry.cancel()
-// 	delete(r.activeForwards, name)
-// }
+func (r *Reconciler) stop(name types.NamespacedName) {
+	entry, ok := r.activeForwards[name]
+	if !ok {
+		return
+	}
+	entry.cancel()
+	delete(r.activeForwards, name)
+}
 
 var _ store.Subscriber = &Reconciler{}
 
