@@ -152,8 +152,6 @@ func (s *Subscriber) deletePF(ctx context.Context, st store.RStore, pf *PortForw
 
 // Create/update a PortForward API object, if necessary. Should be idempotent.
 func (s *Subscriber) upsertPF(ctx context.Context, st store.RStore, pf *PortForward) {
-	// TODO(maia): maybe simplify this code a bit by allowing create-on-update and just calling Update
-	//   (or is this just legacy bullshit?)
 	err := s.ctrlClient.Create(ctx, pf)
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {

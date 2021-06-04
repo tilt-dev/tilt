@@ -459,10 +459,9 @@ func (f *pfsFixture) waitUntilStateAndAPIPortForward(msg string, name string, pf
 			return false
 		}
 
-		var pf *PortForward
-		for _, portForward := range pfs { // there's only one thing in the map, we just don't know its key 🙃
-			pf = portForward
-			break
+		pf, ok := pfs[name]
+		if !ok {
+			return false
 		}
 
 		return pfOK(pf)
