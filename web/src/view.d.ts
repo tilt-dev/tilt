@@ -26,8 +26,7 @@ declare namespace Proto {
     tiltStartTime?: string;
     tiltfileKey?: string;
     /**
-     * New API-server based data models. These will eventually obsolete the fields
-     * above.
+     * New API-server based data models.
      */
     uiSession?: v1alpha1UISession;
     uiResources?: v1alpha1UIResource[];
@@ -349,65 +348,17 @@ declare namespace Proto {
     Raw?: string;
   }
   export interface v1alpha1UISessionStatus {
-    /**
-     * FeatureFlags reports a list of experimental features that have been
-     * enabled.
-     */
     featureFlags?: v1alpha1UIFeatureFlag[];
-    /**
-     * NeedsAnalyticsNudge reports whether the UI hasn't opted in or out
-     * of analytics, and the UI should nudge them to do so.
-     */
     needsAnalyticsNudge?: boolean;
-    /**
-     * RunningTiltBuild reports the currently running version of tilt
-     * that this UI is talking to.
-     */
     runningTiltBuild?: corev1alpha1TiltBuild;
-    /**
-     * SuggestedTiltVersion tells the UI the recommended version for this
-     * user. If the version is different than what's running, the UI
-     * may display a prompt to upgrade.
-     */
     suggestedTiltVersion?: string;
-    /**
-     * VersionSettings indicates whether version updates have been enabled/disabled
-     * from the Tiltfile.
-     */
     versionSettings?: corev1alpha1VersionSettings;
-    /**
-     * TiltCloudUsername reports the username if the user is signed into
-     * TiltCloud.
-     */
     tiltCloudUsername?: string;
-    /**
-     * TiltCloudUsername reports the human-readable team name if the user is
-     * signed into TiltCloud and the Tiltfile declares a team.
-     */
     tiltCloudTeamName?: string;
     tiltCloudSchemeHost?: string;
-    /**
-     * TiltCloudTeamID reports the unique team id if the user is signed into
-     * TiltCloud and the Tiltfile declares a team.
-     */
     tiltCloudTeamID?: string;
-    /**
-     * A FatalError is an error that forces Tilt to stop its control loop.
-     * The API server will stay up and continue to serve the UI, but
-     * no further builds will happen.
-     */
     fatalError?: string;
-    /**
-     * The time that this instance of tilt started.
-     * Clients can use this to determine if the API server has restarted
-     * and all the objects need to be refreshed.
-     */
     tiltStartTime?: string;
-    /**
-     * An identifier for the Tiltfile that is running.
-     * Clients can use this to store data associated with a particular
-     * project in LocalStorage or other persistent storage.
-     */
     tiltfileKey?: string;
   }
   export interface v1alpha1UISessionSpec {}
@@ -417,54 +368,25 @@ declare namespace Proto {
     status?: v1alpha1UISessionStatus;
   }
   export interface v1alpha1UIResourceTargetSpec {
-    /**
-     * The ID of the target.
-     */
     id?: string;
-    /**
-     * The type of the target.
-     */
     type?: string;
-    /**
-     * Whether the target has a live update assocated with it.
-     */
     hasLiveUpdate?: boolean;
   }
   export interface v1alpha1UIResourceStatus {
-    /**
-     * The last time this resource was deployed.
-     */
     lastDeployTime?: string;
     triggerMode?: number;
-    /**
-     * Past completed builds.
-     */
     buildHistory?: v1alpha1UIBuildTerminated[];
-    /**
-     * The currently running build, if any.
-     */
     currentBuild?: v1alpha1UIBuildRunning;
-    /**
-     * When the build was put in the pending queue.
-     */
     pendingBuildSince?: string;
-    /**
-     * True if the build was put in the pending queue due to file changes.
-     */
     hasPendingChanges?: boolean;
-    /**
-     * Links attached to this resource.
-     */
     endpointLinks?: v1alpha1UIResourceLink[];
-    /**
-     * Extra data about Kubernetes resources.
-     */
     k8sResourceInfo?: v1alpha1UIResourceKubernetes;
     localResourceInfo?: v1alpha1UIResourceLocal;
     /**
      * The RuntimeStatus is a simple, high-level summary of the runtime state of a server.
      *
      * Not all resources run servers.
+     * +optional
      */
     runtimeStatus?: string;
     /**
@@ -473,36 +395,19 @@ declare namespace Proto {
      *
      * If the resource runs a server, this may include both build tasks and live-update
      * syncing.
+     * +optional
      */
     updateStatus?: string;
-    /**
-     * Information about all the target specs that this resource summarizes.
-     */
     specs?: v1alpha1UIResourceTargetSpec[];
-    /**
-     * Queued is a simple indicator of whether the resource is queued for an update.
-     */
     queued?: boolean;
   }
   export interface v1alpha1UIResourceSpec {}
   export interface v1alpha1UIResourceLocal {
-    /**
-     * The PID of the actively running local command.
-     */
     pid?: string;
-    /**
-     * Whether this represents a test job.
-     */
     isTest?: boolean;
   }
   export interface v1alpha1UIResourceLink {
-    /**
-     * A URL to link to.
-     */
     url?: string;
-    /**
-     * The display label on a URL.
-     */
     name?: string;
   }
   export interface v1alpha1UIResourceKubernetes {
@@ -511,38 +416,16 @@ declare namespace Proto {
      *
      * The active pod tends to be what Tilt defaults to for port-forwards,
      * live-updates, etc.
+     * +optional
      */
     podName?: string;
-    /**
-     * The creation time of the active pod.
-     */
     podCreationTime?: string;
     podUpdateStartTime?: string;
-    /**
-     * The status of the active pod.
-     */
     podStatus?: string;
-    /**
-     * Extra error messaging around the current status of the active pod.
-     */
     podStatusMessage?: string;
-    /**
-     * Whether all the containers in the pod are currently healthy
-     * and have passed readiness checks.
-     */
     allContainersReady?: boolean;
-    /**
-     * The number of pod restarts.
-     */
     podRestarts?: number;
-    /**
-     * The span where this pod stores its logs in the Tilt logstore.
-     */
     spanID?: string;
-    /**
-     * The list of all resources deployed in the Kubernetes deploy
-     * for this resource.
-     */
     displayNames?: string[];
   }
   export interface v1alpha1UIResource {
@@ -551,76 +434,28 @@ declare namespace Proto {
     status?: v1alpha1UIResourceStatus;
   }
   export interface v1alpha1UIFeatureFlag {
-    /**
-     * The name of the flag.
-     */
     name?: string;
-    /**
-     * The value of the flag.
-     */
     value?: boolean;
   }
   export interface v1alpha1UIBuildTerminated {
-    /**
-     * A non-empty string if the build failed with an error.
-     */
     error?: string;
-    /**
-     * A list of warnings encountered while running the build.
-     * These warnings will also be printed to the build's log.
-     */
     warnings?: string[];
-    /**
-     * The time when the build started.
-     */
     startTime?: string;
-    /**
-     * The time when the build finished.
-     */
     finishTime?: string;
-    /**
-     * The log span where the build logs are stored in the logstore.
-     */
     spanID?: string;
-    /**
-     * A crash rebuild happens when Tilt live-updated a container, then
-     * the pod crashed, wiping out the live-updates. Tilt does a full
-     * build+deploy to reset the pod state to what's on disk.
-     */
     isCrashRebuild?: boolean;
   }
   export interface v1alpha1UIBuildRunning {
-    /**
-     * The time when the build started.
-     */
     startTime?: string;
-    /**
-     * The log span where the build logs are stored in the logstore.
-     */
     spanID?: string;
   }
   export interface corev1alpha1VersionSettings {
-    /**
-     * Whether version updates have been enabled/disabled from the Tiltfile.
-     */
     checkUpdates?: boolean;
   }
   export interface corev1alpha1TiltBuild {
-    /**
-     * A semantic version string.
-     */
     version?: string;
-    /**
-     * The Git digest of the commit this binary was built at.
-     */
     commitSHA?: string;
-    /**
-     * A human-readable string representing when the binary was built.
-     */
     date?: string;
-    /**
-     * Indicates whether this is a development build (true) or an official release (false).
-     */
     dev?: boolean;
   }
 }
