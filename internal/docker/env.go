@@ -37,7 +37,7 @@ type Env struct {
 	// as their container runtime. Any images built on that daemon will
 	// show up automatically in the runtime.
 	//
-	// We store this as a field of the Docker Env, because this
+	// We used to store this as a property of the k8s env but now store it as a field of the Docker Env, because this
 	// really affects how we interact with the Docker Env (rather than
 	// how we interact with the K8s Env).
 	//
