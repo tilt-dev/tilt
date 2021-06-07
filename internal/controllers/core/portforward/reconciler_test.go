@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 
@@ -228,21 +227,19 @@ func TestMultipleForwardsMultiplePods(t *testing.T) {
 
 type pfrFixture struct {
 	*fake.ControllerFixture
-	t       *testing.T
-	ctx     context.Context
-	cancel  func()
-	kCli    *k8s.FakeK8sClient
-	ctrlCli ctrlclient.Client
-	st      *store.TestingStore
-	r       *Reconciler
-	out     *bufsync.ThreadSafeBuffer
+	t      *testing.T
+	ctx    context.Context
+	cancel func()
+	kCli   *k8s.FakeK8sClient
+	st     *store.TestingStore
+	r      *Reconciler
+	out    *bufsync.ThreadSafeBuffer
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient(t)
-	ctrlCli := fake.NewTiltClient()
-	r := NewReconciler(st, kCli, ctrlCli)
+	r := NewReconciler(st, kCli)
 	cf := fake.NewControllerFixture(t, r)
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -254,7 +251,6 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 		cancel:            cancel,
 		st:                st,
 		kCli:              kCli,
-		ctrlCli:           ctrlCli,
 		r:                 r,
 		out:               out,
 	}

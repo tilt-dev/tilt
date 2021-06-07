@@ -4013,6 +4013,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	h := hud.NewFakeHud()
 	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, v1alpha1.NewScheme(), ccb)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
+	pfr := apiportforward.NewReconciler(st, b.kClient)
 
 	wsl := server.NewWebsocketList()
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
@@ -4022,6 +4023,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		kdc,
 		ctrluisession.NewReconciler(wsl),
 		ctrluiresource.NewReconciler(wsl),
+		pfr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -4062,11 +4064,10 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
-	pfr := apiportforward.NewReconciler(b.kClient)
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, pfr, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

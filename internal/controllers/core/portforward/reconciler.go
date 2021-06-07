@@ -32,11 +32,10 @@ type Reconciler struct {
 var _ store.TearDowner = &Reconciler{}
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(store store.RStore, kClient k8s.Client, ctrlClient ctrlclient.Client) *Reconciler {
+func NewReconciler(store store.RStore, kClient k8s.Client) *Reconciler {
 	return &Reconciler{
 		store:          store,
 		kClient:        kClient,
-		ctrlClient:     ctrlClient,
 		activeForwards: make(map[types.NamespacedName]portForwardEntry),
 	}
 }
