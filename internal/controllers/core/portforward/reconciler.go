@@ -67,7 +67,8 @@ func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) e
 
 	if active, ok := r.activeForwards[name]; ok {
 		if equality.Semantic.DeepEqual(active.Spec, pf.Spec) &&
-			equality.Semantic.DeepEqual(active.ObjectMeta.Annotations, pf.ObjectMeta.Annotations) {
+			equality.Semantic.DeepEqual(active.ObjectMeta.Annotations[v1alpha1.AnnotationManifest],
+				pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest]) {
 			// Nothing has changed, nothing to do
 			return nil
 		}
