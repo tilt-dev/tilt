@@ -3,7 +3,6 @@ package engine
 import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/controllers"
-	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
@@ -72,7 +71,6 @@ func ProvideSubscribers(
 	podm *k8srollout.PodMonitor,
 	sc *session.Controller,
 	mc *metrics.Controller,
-	pfr *apiportforward.Reconciler,
 	uss *uisession.Subscriber,
 	urs *uiresource.Subscriber,
 ) []store.Subscriber {
@@ -100,7 +98,6 @@ func ProvideSubscribers(
 		podm,
 		sc,
 		mc,
-		pfr, // TODO(maia): remove as subscriber once this is a true reconciler
 		uss,
 		urs,
 	}

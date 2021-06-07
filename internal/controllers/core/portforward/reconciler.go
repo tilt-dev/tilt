@@ -2,10 +2,8 @@ package portforward
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,6 +21,7 @@ import (
 )
 
 type Reconciler struct {
+	store      store.RStore
 	kClient    k8s.Client
 	ctrlClient ctrlclient.Client
 
@@ -33,8 +32,9 @@ type Reconciler struct {
 var _ store.TearDowner = &Reconciler{}
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(kClient k8s.Client, ctrlClient ctrlclient.Client) *Reconciler {
+func NewReconciler(store store.RStore, kClient k8s.Client, ctrlClient ctrlclient.Client) *Reconciler {
 	return &Reconciler{
+		store:          store,
 		kClient:        kClient,
 		ctrlClient:     ctrlClient,
 		activeForwards: make(map[types.NamespacedName]portForwardEntry),
@@ -51,7 +51,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	fmt.Println("✨ reconciling request:", spew.Sdump(req))
 	err := r.reconcile(ctx, req.NamespacedName)
 	return ctrl.Result{}, err
 }
@@ -59,76 +58,38 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) error {
 	pf := &PortForward{}
 	err := r.ctrlClient.Get(ctx, name, pf)
+
 	if apierrors.IsNotFound(err) || pf.ObjectMeta.DeletionTimestamp != nil {
+		// PortForward deleted in API server -- stop and remove it
 		r.stop(name)
 		return nil
 	}
+
+	if active, ok := r.activeForwards[name]; ok {
+		if equality.Semantic.DeepEqual(active.Spec, pf.Spec) &&
+			equality.Semantic.DeepEqual(active.ObjectMeta.Annotations, pf.ObjectMeta.Annotations) {
+			// Nothing has changed, nothing to do
+			return nil
+		}
+
+		// An update to a PortForward we're already running -- stop the existing one
+		r.stop(name)
+	}
+
+	// Create a new PortForward OR recreate a modified PortForward (stopped above)
+	entry := newEntry(ctx, pf)
+	r.activeForwards[name] = entry
+
+	// Treat port-forwarding errors as part of the pod log
+	ctx = store.MustObjectLogHandler(entry.ctx, r.store, entry.PortForward)
+
+	for _, forward := range entry.Spec.Forwards {
+		entry := entry
+		forward := forward
+		go r.startPortForwardLoop(ctx, entry, forward)
+	}
+
 	return nil
-}
-
-func (r *Reconciler) OnChange(ctx context.Context, st store.RStore,
-	summary store.ChangeSummary) {
-	fmt.Println("🚨🚨🚨 well shit 🚨🚨🚨")
-	if summary.IsLogOnly() {
-		return
-	}
-
-	toStart, toShutdown := r.diff(ctx, st)
-	for _, entry := range toShutdown {
-		r.stop(entry.namespacedName())
-	}
-
-	for _, entry := range toStart {
-		r.activeForwards[entry.namespacedName()] = entry
-
-		// Treat port-forwarding errors as part of the pod log
-		ctx := store.MustObjectLogHandler(entry.ctx, st, entry.PortForward)
-		for _, forward := range entry.Spec.Forwards {
-			entry := entry
-			forward := forward
-			go r.startPortForwardLoop(ctx, entry, forward)
-		}
-	}
-}
-
-// Figure out the diff between what's in the data store and
-// what port-forwarding is currently active.
-func (r *Reconciler) diff(ctx context.Context, st store.RStore) (toStart []portForwardEntry, toShutdown []portForwardEntry) {
-	state := st.RLockState()
-	defer st.RUnlockState()
-
-	statePFs := state.PortForwards
-
-	for name, existing := range r.activeForwards {
-		if _, onState := statePFs[name.Name]; !onState {
-			// This port forward is no longer on the state, shut it down.
-			toShutdown = append(toShutdown, existing)
-			continue
-		}
-	}
-
-	for name, desired := range statePFs {
-		existing, isActive := r.activeForwards[types.NamespacedName{Name: name}]
-		if isActive {
-			// We're already running this PortForward -- do we need to do anything further?
-			// NOTE(maia): we compare the ManifestName annotation so that if a user changes
-			//   just the manifest name, the PF logs will go to the correct place.
-			if equality.Semantic.DeepEqual(existing.Spec, desired.Spec) &&
-				existing.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] ==
-					desired.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] {
-				// Nothing has changed, nothing to do
-				continue
-			}
-
-			// There's been a change to the spec for this PortForward, so tear down the old version
-			toShutdown = append(toShutdown, existing)
-		}
-
-		// We're not running this PortForward(/the current version of this PortForward), so spin it up
-		entry := newEntry(ctx, desired)
-		toStart = append(toStart, entry)
-	}
-	return toStart, toShutdown
 }
 
 func (r *Reconciler) startPortForwardLoop(ctx context.Context, entry portForwardEntry, forward Forward) {
@@ -198,16 +159,10 @@ func (r *Reconciler) stop(name types.NamespacedName) {
 	delete(r.activeForwards, name)
 }
 
-var _ store.Subscriber = &Reconciler{}
-
 type portForwardEntry struct {
 	*PortForward
 	ctx    context.Context
 	cancel func()
-}
-
-func (entry portForwardEntry) namespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: entry.Name}
 }
 
 func newEntry(ctx context.Context, pf *PortForward) portForwardEntry {
