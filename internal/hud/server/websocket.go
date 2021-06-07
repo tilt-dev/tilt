@@ -132,6 +132,11 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, sum
 		return // Not much we can do on error right now.
 	}
 
+	// [-1,-1) means there are no logs
+	if view.LogList.ToCheckpoint == -1 && view.LogList.FromCheckpoint == -1 {
+		return
+	}
+
 	ws.sendView(ctx, view)
 
 	// A simple throttle -- don't call ws.OnChange too many times in quick succession,
