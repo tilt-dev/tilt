@@ -3,7 +3,7 @@ package buildcontrol
 import (
 	"fmt"
 
-	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 )
 
@@ -34,7 +34,7 @@ var AllUpdateModes = []UpdateMode{
 	UpdateModeKubectlExec,
 }
 
-func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runtime) (UpdateMode, error) {
+func ProvideUpdateMode(flag UpdateModeFlag, kubeContext k8s.KubeContext, env docker.ClusterEnv) (UpdateMode, error) {
 	valid := false
 	for _, mode := range AllUpdateModes {
 		if mode == UpdateMode(flag) {
@@ -48,8 +48,8 @@ func ProvideUpdateMode(flag UpdateModeFlag, env k8s.Env, runtime container.Runti
 
 	mode := UpdateMode(flag)
 	if mode == UpdateModeContainer {
-		if !env.UsesLocalDockerRegistry() || runtime != container.RuntimeDocker {
-			return "", fmt.Errorf("update mode %q is only valid with local Docker clusters like Docker For Mac, Minikube, and MicroK8s", flag)
+		if !docker.Env(env).WillBuildToKubeContext(kubeContext) {
+			return "", fmt.Errorf("update mode %q is only valid with local Docker clusters like Docker For Mac or Minikube", flag)
 		}
 	}
 

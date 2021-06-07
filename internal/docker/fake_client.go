@@ -82,6 +82,8 @@ type ExecCall struct {
 }
 
 type FakeClient struct {
+	FakeEnv Env
+
 	PushCount   int
 	PushImage   string
 	PushOptions types.ImagePushOptions
@@ -148,7 +150,7 @@ func (c *FakeClient) CheckConnected() error {
 	return c.CheckConnectedErr
 }
 func (c *FakeClient) Env() Env {
-	return Env{}
+	return c.FakeEnv
 }
 func (c *FakeClient) BuilderVersion() types.BuilderVersion {
 	return types.BuilderV1

@@ -11,6 +11,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -24,6 +25,10 @@ var _ ContainerUpdater = &DockerUpdater{}
 
 func NewDockerUpdater(dCli docker.Client) *DockerUpdater {
 	return &DockerUpdater{dCli: dCli}
+}
+
+func (cu *DockerUpdater) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
+	return cu.dCli.Env().WillBuildToKubeContext(kctx)
 }
 
 func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,

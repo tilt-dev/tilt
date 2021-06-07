@@ -48,6 +48,8 @@ func ProvideImageBuildAndDeployer(
 	docker docker.Client,
 	kClient k8s.Client,
 	env k8s.Env,
+	kubeContext k8s.KubeContext,
+	clusterEnv docker.ClusterEnv,
 	dir *dirs.TiltDevDir,
 	clock build.Clock,
 	kp KINDLoader,
@@ -55,7 +57,6 @@ func ProvideImageBuildAndDeployer(
 	wire.Build(
 		BaseWireSet,
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
-		k8s.ProvideContainerRuntime,
 	)
 
 	return nil, nil
@@ -70,18 +71,12 @@ func ProvideDockerComposeBuildAndDeployer(
 		BaseWireSet,
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		build.ProvideClock,
+		wire.Value(docker.ClusterEnv(docker.Env{})),
 
 		// EnvNone ensures that we get an exploding k8s client.
-		wire.Value(k8s.Env(k8s.EnvNone)),
 		wire.Value(k8s.KubeContextOverride("")),
 		k8s.ProvideClientConfig,
-		k8s.ProvideConfigNamespace,
 		k8s.ProvideKubeContext,
-		k8s.ProvideK8sClient,
-		k8s.ProvideRESTConfig,
-		k8s.ProvideClientset,
-		k8s.ProvidePortForwardClient,
-		k8s.ProvideContainerRuntime,
 		k8s.ProvideKubeConfig,
 	)
 
