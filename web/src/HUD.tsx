@@ -369,9 +369,7 @@ export function mergeAppUpdate<K extends keyof HudState>(
   }
 
   let logListUpdate = state.view?.logList
-  let hasLogList = !!logListUpdate
-  let isRefresh = hasLogList && !logListUpdate?.fromCheckpoint
-  if (isRefresh) {
+  if (state.view?.isComplete) {
     // If this is a full state refresh, replace the view field
     // and the log store completely.
     let newState = { ...state } as any

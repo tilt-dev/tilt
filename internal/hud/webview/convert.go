@@ -70,6 +70,7 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 		return nil, err
 	}
 	ret.TiltStartTime = start
+	ret.IsComplete = true
 
 	sortUIResources(ret.UiResources, s.ManifestDefinitionOrder)
 

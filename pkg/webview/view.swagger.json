@@ -1066,6 +1066,11 @@
           "items": {
             "$ref": "#/definitions/v1alpha1UIResource"
           }
+        },
+        "is_complete": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "indicates that this view is a complete representation of the app\nif false, this view just contains deltas from a previous view."
         }
       },
       "description": "1) On initialization, we send down the complete view state\n   (TiltStartTime, UISession, UIResources, and LogList)\n\n2) On every change, we send down the resources that have\n   changed since the last send().\n   (new logs and any updated UISession/UIResource objects).\n\nAll other fields are obsolete, but are needed for deserializing\nold snapshots.",
