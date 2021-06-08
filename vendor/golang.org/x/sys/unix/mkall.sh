@@ -70,29 +70,13 @@ aix_ppc64)
 	mksyscall="go run mksyscall_aix_ppc64.go -aix"
 	mktypes="GOARCH=$GOARCH go tool cgo -godefs"
 	;;
-darwin_386)
-	mkerrors="$mkerrors -m32"
-	mksyscall="go run mksyscall.go -l32"
-	mksysnum="go run mksysnum.go $(xcrun --show-sdk-path --sdk macosx)/usr/include/sys/syscall.h"
-	mktypes="GOARCH=$GOARCH go tool cgo -godefs"
-	mkasm="go run mkasm_darwin.go"
-	;;
 darwin_amd64)
 	mkerrors="$mkerrors -m64"
-	mksysnum="go run mksysnum.go $(xcrun --show-sdk-path --sdk macosx)/usr/include/sys/syscall.h"
-	mktypes="GOARCH=$GOARCH go tool cgo -godefs"
-	mkasm="go run mkasm_darwin.go"
-	;;
-darwin_arm)
-	mkerrors="$mkerrors"
-	mksyscall="go run mksyscall.go -l32"
-	mksysnum="go run mksysnum.go $(xcrun --show-sdk-path --sdk iphoneos)/usr/include/sys/syscall.h"
 	mktypes="GOARCH=$GOARCH go tool cgo -godefs"
 	mkasm="go run mkasm_darwin.go"
 	;;
 darwin_arm64)
 	mkerrors="$mkerrors -m64"
-	mksysnum="go run mksysnum.go $(xcrun --show-sdk-path --sdk iphoneos)/usr/include/sys/syscall.h"
 	mktypes="GOARCH=$GOARCH go tool cgo -godefs"
 	mkasm="go run mkasm_darwin.go"
 	;;
@@ -203,7 +187,7 @@ illumos_amd64)
         mksyscall="go run mksyscall_solaris.go"
 	mkerrors=
 	mksysnum=
-	mktypes=
+	mktypes="GOARCH=$GOARCH go tool cgo -godefs"
 	;;
 *)
 	echo 'unrecognized $GOOS_$GOARCH: ' "$GOOSARCH" 1>&2
@@ -226,8 +210,6 @@ esac
 				# aix/ppc64 script generates files instead of writing to stdin.
 				echo "$mksyscall -tags $GOOS,$GOARCH $syscall_goos $GOOSARCH_in && gofmt -w zsyscall_$GOOSARCH.go && gofmt -w zsyscall_"$GOOSARCH"_gccgo.go && gofmt -w zsyscall_"$GOOSARCH"_gc.go " ;
 			elif [ "$GOOS" == "darwin" ]; then
-			        # pre-1.12, direct syscalls
-			        echo "$mksyscall -tags $GOOS,$GOARCH,!go1.12 $syscall_goos syscall_darwin_${GOARCH}.1_11.go $GOOSARCH_in |gofmt >zsyscall_$GOOSARCH.1_11.go";
 			        # 1.12 and later, syscalls via libSystem
 				echo "$mksyscall -tags $GOOS,$GOARCH,go1.12 $syscall_goos $GOOSARCH_in |gofmt >zsyscall_$GOOSARCH.go";
 				# 1.13 and later, syscalls via libSystem (including syscallPtr)

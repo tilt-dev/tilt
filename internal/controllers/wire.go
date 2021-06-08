@@ -42,7 +42,7 @@ var WireSet = wire.NewSet(
 
 	v1alpha1.NewScheme,
 	NewControllerBuilder,
-	NewClientBuilder,
+	ProvideUncachedObjects,
 
 	ProvideDeferredClient,
 	wire.Bind(new(ctrlclient.Client), new(*DeferredClient)),

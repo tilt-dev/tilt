@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -336,6 +337,33 @@ func (rn *RNode) SetYNode(node *yaml.Node) {
 	*rn.value = *node
 }
 
+// GetKind returns the kind.
+func (rn *RNode) GetKind() string {
+	node, err := rn.Pipe(FieldMatcher{Name: KindField})
+	if err != nil {
+		return ""
+	}
+	return GetValue(node)
+}
+
+// GetName returns the name.
+func (rn *RNode) GetName() string {
+	f := rn.Field(MetadataField)
+	if f.IsNilOrEmpty() {
+		return ""
+	}
+	f = f.Value.Field(NameField)
+	if f.IsNilOrEmpty() {
+		return ""
+	}
+	return f.Value.YNode().Value
+}
+
+// SetName sets the metadata name field.
+func (rn *RNode) SetName(name string) error {
+	return rn.SetMapField(NewScalarRNode(name), MetadataField, NameField)
+}
+
 // GetNamespace gets the metadata namespace field.
 func (rn *RNode) GetNamespace() (string, error) {
 	meta, err := rn.GetMeta()
@@ -434,6 +462,19 @@ func (rn *RNode) GetDataMap() map[string]string {
 	return result
 }
 
+func (rn *RNode) GetBinaryDataMap() map[string]string {
+	n, err := rn.Pipe(Lookup(BinaryDataField))
+	if err != nil {
+		return nil
+	}
+	result := map[string]string{}
+	_ = n.VisitFields(func(node *MapNode) error {
+		result[GetValue(node.Key)] = GetValue(node.Value)
+		return nil
+	})
+	return result
+}
+
 func (rn *RNode) SetDataMap(m map[string]string) {
 	if rn == nil {
 		log.Fatal("cannot set data map on nil Rnode")
@@ -445,6 +486,21 @@ func (rn *RNode) SetDataMap(m map[string]string) {
 		return
 	}
 	if err := rn.LoadMapIntoConfigMapData(m); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (rn *RNode) SetBinaryDataMap(m map[string]string) {
+	if rn == nil {
+		log.Fatal("cannot set binaryData map on nil Rnode")
+	}
+	if err := rn.PipeE(Clear(BinaryDataField)); err != nil {
+		log.Fatal(err)
+	}
+	if len(m) == 0 {
+		return
+	}
+	if err := rn.LoadMapIntoConfigMapBinaryData(m); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -724,7 +780,7 @@ func (rn *RNode) GetValidatedMetadata() (ResourceMeta, error) {
 	return m, nil
 }
 
-// MatchesAnnotationSelector implements ifc.Kunstructured.
+// MatchesAnnotationSelector returns true on a selector match to annotations.
 func (rn *RNode) MatchesAnnotationSelector(selector string) (bool, error) {
 	s, err := labels.Parse(selector)
 	if err != nil {
@@ -737,7 +793,7 @@ func (rn *RNode) MatchesAnnotationSelector(selector string) (bool, error) {
 	return s.Matches(labels.Set(slice)), nil
 }
 
-// MatchesLabelSelector implements ifc.Kunstructured.
+// MatchesLabelSelector returns true on a selector match to labels.
 func (rn *RNode) MatchesLabelSelector(selector string) (bool, error) {
 	s, err := labels.Parse(selector)
 	if err != nil {
@@ -752,9 +808,8 @@ func (rn *RNode) MatchesLabelSelector(selector string) (bool, error) {
 
 // HasNilEntryInList returns true if the RNode contains a list which has
 // a nil item, along with the path to the missing item.
-// TODO(broken): This was copied from
-// api/k8sdeps/kunstruct/factory.go//checkListItemNil
-// and doesn't do what it claims to do (see TODO in unit test and pr 1513).
+// TODO(broken): This doesn't do what it claims to do.
+// (see TODO in unit test and pr 1513).
 func (rn *RNode) HasNilEntryInList() (bool, string) {
 	return hasNilEntryInList(rn.value)
 }
@@ -788,17 +843,18 @@ func FromMap(m map[string]interface{}) (*RNode, error) {
 	return Parse(string(c))
 }
 
-func (rn *RNode) Map() map[string]interface{} {
+func (rn *RNode) Map() (map[string]interface{}, error) {
 	if rn == nil || rn.value == nil {
-		return make(map[string]interface{})
+		return make(map[string]interface{}), nil
 	}
 	var result map[string]interface{}
 	if err := rn.value.Decode(&result); err != nil {
 		// Should not be able to create an RNode that cannot be decoded;
 		// this is an unrecoverable error.
-		log.Fatalf("failed to decode ynode: %v", err)
+		str, _ := rn.String()
+		return nil, fmt.Errorf("received error %w for the following resource:\n%s", err, str)
 	}
-	return result
+	return result, nil
 }
 
 // ConvertJSONToYamlNode parses input json string and returns equivalent yaml node
@@ -829,4 +885,124 @@ func checkKey(key string, elems []*Node) bool {
 		}
 	}
 	return count == len(elems)
+}
+
+// Deprecated: use pipes instead.
+// GetSlice returns the contents of the slice field at the given path.
+func (rn *RNode) GetSlice(path string) ([]interface{}, error) {
+	value, err := rn.GetFieldValue(path)
+	if err != nil {
+		return nil, err
+	}
+	if sliceValue, ok := value.([]interface{}); ok {
+		return sliceValue, nil
+	}
+	return nil, fmt.Errorf("node %s is not a slice", path)
+}
+
+// Deprecated: use pipes instead.
+// GetString returns the contents of the string field at the given path.
+func (rn *RNode) GetString(path string) (string, error) {
+	value, err := rn.GetFieldValue(path)
+	if err != nil {
+		return "", err
+	}
+	if v, ok := value.(string); ok {
+		return v, nil
+	}
+	return "", fmt.Errorf("node %s is not a string: %v", path, value)
+}
+
+// Deprecated: use slash paths instead.
+// GetFieldValue finds period delimited fields.
+// TODO: When doing kustomize var replacement, which is likely a
+// a primary use of this function and the reason it returns interface{}
+// rather than string, we do conversion from Nodes to Go types and back
+// to nodes.  We should figure out how to do replacement using raw nodes,
+// assuming we keep the var feature in kustomize.
+// The other end of this is: refvar.go:updateNodeValue.
+func (rn *RNode) GetFieldValue(path string) (interface{}, error) {
+	fields := convertSliceIndex(strings.Split(path, "."))
+	rn, err := rn.Pipe(Lookup(fields...))
+	if err != nil {
+		return nil, err
+	}
+	if rn == nil {
+		return nil, NoFieldError{path}
+	}
+	yn := rn.YNode()
+
+	// If this is an alias node, resolve it
+	if yn.Kind == yaml.AliasNode {
+		yn = yn.Alias
+	}
+
+	// Return value as map for DocumentNode and MappingNode kinds
+	if yn.Kind == yaml.DocumentNode || yn.Kind == yaml.MappingNode {
+		var result map[string]interface{}
+		if err := yn.Decode(&result); err != nil {
+			return nil, err
+		}
+		return result, err
+	}
+
+	// Return value as slice for SequenceNode kind
+	if yn.Kind == yaml.SequenceNode {
+		var result []interface{}
+		if err := yn.Decode(&result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+	if yn.Kind != yaml.ScalarNode {
+		return nil, fmt.Errorf("expected ScalarNode, got Kind=%d", yn.Kind)
+	}
+
+	switch yn.Tag {
+	case NodeTagString:
+		return yn.Value, nil
+	case NodeTagInt:
+		return strconv.Atoi(yn.Value)
+	case NodeTagFloat:
+		return strconv.ParseFloat(yn.Value, 64)
+	case NodeTagBool:
+		return strconv.ParseBool(yn.Value)
+	default:
+		// Possibly this should be an error or log.
+		return yn.Value, nil
+	}
+}
+
+// convertSliceIndex traverses the items in `fields` and find
+// if there is a slice index in the item and change it to a
+// valid Lookup field path. For example, 'ports[0]' will be
+// converted to 'ports' and '0'.
+func convertSliceIndex(fields []string) []string {
+	var res []string
+	for _, s := range fields {
+		if !strings.HasSuffix(s, "]") {
+			res = append(res, s)
+			continue
+		}
+		re := regexp.MustCompile(`^(.*)\[(\d+)\]$`)
+		groups := re.FindStringSubmatch(s)
+		if len(groups) == 0 {
+			// no match, add to result
+			res = append(res, s)
+			continue
+		}
+		if groups[1] != "" {
+			res = append(res, groups[1])
+		}
+		res = append(res, groups[2])
+	}
+	return res
+}
+
+type NoFieldError struct {
+	Field string
+}
+
+func (e NoFieldError) Error() string {
+	return fmt.Sprintf("no field named '%s'", e.Field)
 }

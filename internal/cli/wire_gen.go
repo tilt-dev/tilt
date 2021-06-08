@@ -206,8 +206,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
-	clientBuilder := controllers.NewClientBuilder(deferredClient)
-	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
+	uncachedObjects := controllers.ProvideUncachedObjects()
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, deferredClient, uncachedObjects)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -400,8 +400,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
-	clientBuilder := controllers.NewClientBuilder(deferredClient)
-	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
+	uncachedObjects := controllers.ProvideUncachedObjects()
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, deferredClient, uncachedObjects)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -591,8 +591,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
-	clientBuilder := controllers.NewClientBuilder(deferredClient)
-	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, clientBuilder)
+	uncachedObjects := controllers.ProvideUncachedObjects()
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, deferredClient, uncachedObjects)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
