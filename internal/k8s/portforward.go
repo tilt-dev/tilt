@@ -32,6 +32,8 @@ type PortForwarder interface {
 	// when the context passed at creation is canceled.
 	ForwardPorts() error
 
+	ReadyCh() chan error
+
 	// TODO(nick): If the port forwarder has any problems connecting to the pod,
 	// it just logs those as debug logs. I'm not sure that logs are the right API
 	// for this -- there are lots of cases (e.g., where you're deliberately
@@ -102,11 +104,8 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 		SubResource("portforward")
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating dialer")
-	}
 
-	readyChan := make(chan struct{}, 1)
+	readyChan := make(chan error, 1)
 
 	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
 

@@ -2,6 +2,7 @@ package portforward
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -108,6 +109,7 @@ func (r *Reconciler) startPortForwardLoop(ctx context.Context, entry portForward
 		if ctx.Err() != nil {
 			// If the context was canceled, we're satisfied.
 			// Ignore any errors.
+			// TODO: update status with "context cancelled"
 			return
 		}
 
@@ -116,6 +118,9 @@ func (r *Reconciler) startPortForwardLoop(ctx context.Context, entry portForward
 			logger.Get(ctx).Infof("Reconnecting... Error port-forwarding %s (%d -> %d): %v",
 				entry.ObjectMeta.Annotations[v1alpha1.AnnotationManifest],
 				forward.LocalPort, forward.ContainerPort, err)
+			// TODO: if not wasBackoff:
+			//   wasBackoff = True
+			//   update status = backoff
 		}
 
 		// If this failed in less than a second, then we should advance the backoff.
@@ -137,6 +142,21 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry portForwardEntry,
 		return err
 	}
 
+	go func() {
+		if pf.ReadyCh() == nil {
+			return
+		}
+		select {
+		case err := <-pf.ReadyCh():
+			if err == nil {
+				fmt.Println("✨ hooray it's ready")
+				// TODO: update status = running
+			} else {
+				// otherwise, if there's an error, we update the status for it
+				// one level up
+			}
+		}
+	}()
 	err = pf.ForwardPorts()
 	if err != nil {
 		return err

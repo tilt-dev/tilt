@@ -219,7 +219,7 @@ func TestParsePortsAndNew(t *testing.T) {
 
 		ctx := newCtx()
 		dialer := &fakeDialer{}
-		readyChan := make(chan struct{})
+		readyChan := make(chan error)
 
 		var pf *PortForwarder
 		if len(test.addresses) > 0 {
@@ -355,7 +355,7 @@ func TestGetPortsReturnsDynamicallyAssignedLocalPort(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(newCtx())
-	readyChan := make(chan struct{})
+	readyChan := make(chan error)
 	errChan := make(chan error)
 
 	defer func() {

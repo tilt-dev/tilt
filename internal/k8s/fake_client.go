@@ -609,6 +609,10 @@ func (pf FakePortForwarder) ForwardPorts() error {
 	}
 }
 
+func (pf FakePortForwarder) ReadyCh() chan error {
+	return nil
+}
+
 type FakePortForwardClient struct {
 	mu               sync.Mutex
 	portForwardCalls []PortForwardCall

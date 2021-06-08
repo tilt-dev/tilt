@@ -49,7 +49,7 @@ type PortForwarder struct {
 	dialer        httpstream.Dialer
 	streamConn    httpstream.Connection
 	listeners     []io.Closer
-	Ready         chan struct{}
+	Ready         chan error
 	requestIDLock sync.Mutex
 	requestID     int
 }
@@ -152,12 +152,12 @@ func parseAddresses(addressesToParse []string) ([]listenAddress, error) {
 }
 
 // New creates a new PortForwarder with localhost listen addresses.
-func New(ctx context.Context, dialer httpstream.Dialer, ports []string, readyChan chan struct{}) (*PortForwarder, error) {
+func New(ctx context.Context, dialer httpstream.Dialer, ports []string, readyChan chan error) (*PortForwarder, error) {
 	return NewOnAddresses(ctx, dialer, []string{"localhost"}, ports, readyChan)
 }
 
 // NewOnAddresses creates a new PortForwarder with custom listen addresses.
-func NewOnAddresses(ctx context.Context, dialer httpstream.Dialer, addresses []string, ports []string, readyChan chan struct{}) (*PortForwarder, error) {
+func NewOnAddresses(ctx context.Context, dialer httpstream.Dialer, addresses []string, ports []string, readyChan chan error) (*PortForwarder, error) {
 	if len(addresses) == 0 {
 		return nil, errors.New("you must specify at least 1 address")
 	}
@@ -215,6 +215,13 @@ func (pf *PortForwarder) forward() error {
 	}
 
 	if !listenSuccess {
+		// err := fmt.Errorf("unable to listen on any of the requested ports: %v", pf.ports)
+		// if pf.Ready != nil {
+		// 	pf.Ready <- err
+		// 	close(pf.Ready)
+		// }
+		// return err
+
 		return fmt.Errorf("unable to listen on any of the requested ports: %v", pf.ports)
 	}
 
@@ -397,6 +404,17 @@ func (pf *PortForwarder) Close() {
 			logger.Get(pf.ctx).Debugf("error closing listener: %v", err)
 		}
 	}
+
+	if pf.Ready != nil {
+		select {
+		case <-pf.Ready:
+			// already closed, nothing to do
+		default:
+			pf.Ready <- errors.New("port forward closed")
+			close(pf.Ready)
+		}
+
+	}
 }
 
 // GetPorts will return the ports that were forwarded; this can be used to
@@ -414,4 +432,8 @@ func (pf *PortForwarder) GetPorts() ([]ForwardedPort, error) {
 	default:
 		return nil, fmt.Errorf("listeners not ready")
 	}
+}
+
+func (pf *PortForwarder) ReadyCh() chan error {
+	return pf.Ready
 }
