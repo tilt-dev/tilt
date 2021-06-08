@@ -26,6 +26,10 @@ import (
 // even if the container doesn't have the correct image name.
 const MagicTestContainerID = "tilt-testcontainer"
 
+// MagicTestExplodingPort causes FakePortForwarder to fail to initialize (i.e. return an error as soon as ForwardPorts
+// is called without ever becoming ready).
+const MagicTestExplodingPort = 34743
+
 var _ Client = &FakeK8sClient{}
 
 // For keying PodLogsByPodAndContainer
@@ -590,7 +594,24 @@ type FakePortForwarder struct {
 	localPort int
 	namespace Namespace
 	ctx       context.Context
-	Done      chan error
+	ready     chan struct{}
+	done      chan error
+}
+
+var _ PortForwarder = FakePortForwarder{}
+
+func NewFakePortForwarder(ctx context.Context, localPort int, namespace Namespace) FakePortForwarder {
+	return FakePortForwarder{
+		localPort: localPort,
+		namespace: namespace,
+		ctx:       ctx,
+		ready:     make(chan struct{}, 1),
+		done:      make(chan error),
+	}
+}
+
+func (pf FakePortForwarder) Addresses() []string {
+	return []string{"127.0.0.1", "::1"}
 }
 
 func (pf FakePortForwarder) LocalPort() int {
@@ -601,12 +622,30 @@ func (pf FakePortForwarder) Namespace() Namespace {
 }
 
 func (pf FakePortForwarder) ForwardPorts() error {
+	// in the real port forwarder, the binding/listening logic can fail before the forwarder signals it's ready
+	// to simulate this in tests, there's a magic port number
+	if pf.localPort == MagicTestExplodingPort {
+		return errors.New("fake error starting port forwarding")
+	}
+
+	close(pf.ready)
+
 	select {
 	case <-pf.ctx.Done():
-		return pf.ctx.Err()
-	case <-pf.Done:
+		// NOTE: the context error should NOT be returned here
 		return nil
+	case err := <-pf.done:
+		return err
 	}
+}
+
+func (pf FakePortForwarder) ReadyCh() <-chan struct{} {
+	return pf.ready
+}
+
+// TriggerFailure allows tests to inject errors during forwarding that will be returned by ForwardPorts.
+func (pf FakePortForwarder) TriggerFailure(err error) {
+	pf.done <- err
 }
 
 type FakePortForwardClient struct {
@@ -614,7 +653,7 @@ type FakePortForwardClient struct {
 	portForwardCalls []PortForwardCall
 }
 
-func NewFakePortfowardClient() *FakePortForwardClient {
+func NewFakePortForwardClient() *FakePortForwardClient {
 	return &FakePortForwardClient{
 		portForwardCalls: []PortForwardCall{},
 	}
@@ -632,13 +671,7 @@ func (c *FakePortForwardClient) CreatePortForwarder(ctx context.Context, namespa
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	result := FakePortForwarder{
-		localPort: optionalLocalPort,
-		namespace: namespace,
-		ctx:       ctx,
-		Done:      make(chan error),
-	}
-
+	result := NewFakePortForwarder(ctx, optionalLocalPort, namespace)
 	c.portForwardCalls = append(c.portForwardCalls, PortForwardCall{
 		PodID:      podID,
 		RemotePort: remotePort,
