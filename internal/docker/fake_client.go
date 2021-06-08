@@ -203,7 +203,14 @@ func (c *FakeClient) ContainerRestartNoWait(ctx context.Context, containerID str
 	return nil
 }
 
-func (c *FakeClient) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
+func (c *FakeClient) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
+	if cmd.Argv[0] == "tar" {
+		c.CopyCount++
+		c.CopyContainer = string(cID)
+		c.CopyContent = in
+		return nil
+	}
+
 	execCall := ExecCall{
 		Container: cID.String(),
 		Cmd:       cmd,
@@ -219,13 +226,6 @@ func (c *FakeClient) ExecInContainer(ctx context.Context, cID container.ID, cmd 
 	}
 
 	return err
-}
-
-func (c *FakeClient) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
-	c.CopyCount++
-	c.CopyContainer = container
-	c.CopyContent = content
-	return nil
 }
 
 func (c *FakeClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {

@@ -82,11 +82,10 @@ type Client interface {
 	ContainerInspect(ctx context.Context, contianerID string) (types.ContainerJSON, error)
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
-	CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error
 
 	// Execute a command in a container, streaming the command output to `out`.
 	// Returns an ExitError if the command exits with a non-zero exit code.
-	ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error
+	ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error
 
 	ImagePush(ctx context.Context, image reference.NamedTagged) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
@@ -487,10 +486,6 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	return response, err
 }
 
-func (c *Cli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
-	return c.CopyToContainer(ctx, container, "/", content, types.CopyToContainerOptions{})
-}
-
 func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
 
 	// Don't wait on the container to fully start.
@@ -499,13 +494,14 @@ func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) er
 	return c.ContainerRestart(ctx, containerID, &dur)
 }
 
-func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
-
+func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
+	attachStdin := in != nil
 	cfg := types.ExecConfig{
 		Cmd:          cmd.Argv,
 		AttachStdout: true,
 		AttachStderr: true,
-		Tty:          true,
+		AttachStdin:  attachStdin,
+		Tty:          !attachStdin,
 	}
 
 	// ContainerExecCreate error-handling is awful, so before we Create
@@ -536,10 +532,29 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		return errors.Wrap(err, "ExecInContainer#print")
 	}
 
+	inputDone := make(chan struct{})
+	if attachStdin {
+		go func() {
+			_, err := io.Copy(connection.Conn, in)
+			if err != nil {
+				logger.Get(ctx).Debugf("copy error: %v", err)
+			}
+			err = connection.CloseWrite()
+			if err != nil {
+				logger.Get(ctx).Debugf("close write error: %v", err)
+			}
+			close(inputDone)
+		}()
+	} else {
+		close(inputDone)
+	}
+
 	_, err = io.Copy(out, connection.Reader)
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#copy")
 	}
+
+	<-inputDone
 
 	for {
 		inspected, err := c.ContainerExecInspect(ctx, execId.ID)

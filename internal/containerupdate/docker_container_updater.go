@@ -40,16 +40,22 @@ func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo store.Contai
 		return errors.Wrap(err, "rmPathsFromContainer")
 	}
 
-	// TODO(maia): catch errors -- CopyToContainer doesn't return errors if e.g. it
-	// fails to write a file b/c of permissions =(
-	err = cu.dCli.CopyToContainerRoot(ctx, cInfo.ContainerID.String(), archiveToCopy)
+	// Use `tar` to unpack the files into the container.
+	//
+	// Although docker has a copy API, it's buggy and not well-maintained
+	// (whereas the Exec API is part of the CRI and much more battle-tested).
+	// Discussion:
+	// https://github.com/tilt-dev/tilt/issues/3708
+	err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, model.Cmd{
+		Argv: tarArgv(),
+	}, archiveToCopy, l.Writer(logger.InfoLvl))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "copying files")
 	}
 
 	// Exec run's on container
 	for _, s := range cmds {
-		err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, s, l.Writer(logger.InfoLvl))
+		err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, s, nil, l.Writer(logger.InfoLvl))
 		if err != nil {
 			return build.WrapContainerExecError(err, cInfo.ContainerID, s)
 		}
@@ -75,7 +81,7 @@ func (cu *DockerUpdater) rmPathsFromContainer(ctx context.Context, cID container
 	}
 
 	out := bytes.NewBuffer(nil)
-	err := cu.dCli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)}, out)
+	err := cu.dCli.ExecInContainer(ctx, cID, model.Cmd{Argv: makeRmCmd(paths)}, nil, out)
 	if err != nil {
 		if docker.IsExitError(err) {
 			return fmt.Errorf("Error deleting files from container: %s", out.String())
