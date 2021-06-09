@@ -51,7 +51,7 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.Containe
 	buf := bytes.NewBuffer(nil)
 	tarWriter := io.MultiWriter(w, buf)
 	err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
-		[]string{"tar", "-C", "/", "-x", "-f", "-"}, archiveToCopy, tarWriter, tarWriter)
+		tarArgv(), archiveToCopy, tarWriter, tarWriter)
 	if err != nil {
 		return fmt.Errorf("copying changed files: %v", handleK8sExecError(buf, err))
 	}

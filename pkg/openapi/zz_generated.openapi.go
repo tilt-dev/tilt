@@ -54,6 +54,14 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":                  schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":                     schema_pkg_apis_core_v1alpha1_Handler(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":                   schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap":                    schema_pkg_apis_core_v1alpha1_ImageMap(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapList":                schema_pkg_apis_core_v1alpha1_ImageMapList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec":                schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus":              schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply":             schema_pkg_apis_core_v1alpha1_KubernetesApply(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyList":         schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec":         schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus":       schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery":         schema_pkg_apis_core_v1alpha1_KubernetesDiscovery(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryList":     schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec":     schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref),
@@ -1160,6 +1168,242 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 					},
 				},
 				Required: []string{"basePath"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMap(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMap expresses the mapping from an image reference to a real, pushed image in an image registry that a container runtime can access.\n\nAnother way to think about the ImageMap is that ImageMapSpec is a mutable image reference (where the image might not exist yet), but ImageMapStatus is an immutable image reference (where, if an image is specified, it always exists).\n\nImageMap does not specify how the image is built or who is responsible for building this. But any API that builds images should produce an ImageMap.\n\nFor example, a builder that builds to a local image registry might create a map from: 'my-apiserver:dev' to 'localhost:5000/my-apiserver:content-based-label'.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapSpec defines the desired state of ImageMap",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapStatus defines the observed state of ImageMap",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesApply(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesApply specifies a blob of YAML to apply, and a set of ImageMaps that the YAML depends on.\n\nThe KubernetesApply controller will resolve the ImageMaps into immutable image references. The controller will process the spec YAML, then apply it to the cluster. Those processing steps might include:\n\n- Injecting the resolved image references. - Adding custom labels so that Tilt can track the progress of the apply. - Modifying image pull rules to ensure the image is pulled correctly.\n\nThe controller won't apply anything until all ImageMaps resolve to real images.\n\nThe controller will watch all the image maps, and redeploy the entire YAML if any of the maps resolve to a new image.\n\nThe status field will contain both the raw applied object, and derived fields to help other controllers figure out how to watch the apply progress.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesApplyList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesApplySpec defines the desired state of KubernetesApply",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesApplyStatus defines the observed state of KubernetesApply",
+				Type:        []string{"object"},
 			},
 		},
 	}

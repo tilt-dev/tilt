@@ -406,6 +406,89 @@ message IgnoreDef {
   repeated string patterns = 2;
 }
 
+// ImageMap expresses the mapping from an image reference to a real, pushed
+// image in an image registry that a container runtime can access.
+//
+// Another way to think about the ImageMap is that ImageMapSpec is a mutable
+// image reference (where the image might not exist yet), but ImageMapStatus is
+// an immutable image reference (where, if an image is specified, it always
+// exists).
+//
+// ImageMap does not specify how the image is built or who is responsible for
+// building this. But any API that builds images should produce an ImageMap.
+//
+// For example, a builder that builds to a local image registry might create
+// a map from: 'my-apiserver:dev' to 'localhost:5000/my-apiserver:content-based-label'.
+//
+// +k8s:openapi-gen=true
+message ImageMap {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional ImageMapSpec spec = 2;
+
+  optional ImageMapStatus status = 3;
+}
+
+// ImageMapList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message ImageMapList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated ImageMap items = 2;
+}
+
+// ImageMapSpec defines the desired state of ImageMap
+message ImageMapSpec {
+}
+
+// ImageMapStatus defines the observed state of ImageMap
+message ImageMapStatus {
+}
+
+// KubernetesApply specifies a blob of YAML to apply, and a set of ImageMaps
+// that the YAML depends on.
+//
+// The KubernetesApply controller will resolve the ImageMaps into immutable image
+// references. The controller will process the spec YAML, then apply it to the cluster.
+// Those processing steps might include:
+//
+// - Injecting the resolved image references.
+// - Adding custom labels so that Tilt can track the progress of the apply.
+// - Modifying image pull rules to ensure the image is pulled correctly.
+//
+// The controller won't apply anything until all ImageMaps resolve to real images.
+//
+// The controller will watch all the image maps, and redeploy the entire YAML if
+// any of the maps resolve to a new image.
+//
+// The status field will contain both the raw applied object, and derived fields
+// to help other controllers figure out how to watch the apply progress.
+//
+// +k8s:openapi-gen=true
+message KubernetesApply {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional KubernetesApplySpec spec = 2;
+
+  optional KubernetesApplyStatus status = 3;
+}
+
+// KubernetesApplyList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message KubernetesApplyList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated KubernetesApply items = 2;
+}
+
+// KubernetesApplySpec defines the desired state of KubernetesApply
+message KubernetesApplySpec {
+}
+
+// KubernetesApplyStatus defines the observed state of KubernetesApply
+message KubernetesApplyStatus {
+}
+
 // KubernetesDiscovery
 // +k8s:openapi-gen=true
 message KubernetesDiscovery {
