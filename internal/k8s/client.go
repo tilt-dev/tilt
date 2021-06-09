@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -19,6 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -28,6 +31,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/cmd/wait"
 
 	// Client auth plugins! They will auto-init if we import them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -386,6 +390,26 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 		}
 		return nil, errors.Wrap(err, "kubernetes delete")
 	}
+
+	var wg sync.WaitGroup
+
+	for _, r := range list {
+
+		wg.Add(1)
+		go func(resourceInfo *resource.Info) {
+			waitOpt := &wait.WaitOptions{
+				DynamicClient: k.dynamic,
+				IOStreams:     genericclioptions.NewTestIOStreamsDiscard(),
+				Timeout:       30 * time.Second,
+				ForCondition:  "delete",
+			}
+
+			wait.IsDeleted(r, waitOpt)
+			wg.Done()
+		}(r)
+	}
+
+	wg.Wait()
 
 	result, err := k.helmKubeClient.Create(list)
 	if err != nil {
