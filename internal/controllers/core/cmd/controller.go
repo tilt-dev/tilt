@@ -125,9 +125,9 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		// any change to the spec means we should restart the process to pick up the changes
 		specChanged := !equality.Semantic.DeepEqual(proc.spec, cmd.Spec)
 		// a new restart event happened
-		restartOnTriggered := lastRestartEventTime.After(proc.lastRestartEventTime)
+		restartOnTriggered := lastRestartEventTime.After(proc.lastRestartOnEventTime)
 		// a new start event happened
-		startOnTriggered := lastStartEventTime.After(proc.lastStartEventTime)
+		startOnTriggered := lastStartEventTime.After(proc.lastStartOnEventTime)
 		needsRestart := specChanged || restartOnTriggered || startOnTriggered
 		if !needsRestart {
 			return nil
@@ -152,8 +152,8 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 
 	proc.spec = cmd.Spec
 	proc.isServer = cmd.ObjectMeta.Annotations[local.AnnotationOwnerKind] == "CmdServer"
-	proc.lastRestartEventTime = lastRestartEventTime
-	proc.lastStartEventTime = lastStartEventTime
+	proc.lastRestartOnEventTime = lastRestartEventTime
+	proc.lastStartOnEventTime = lastStartEventTime
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	c.resetStatus(name, cmd)
@@ -414,8 +414,8 @@ type currentProcess struct {
 	probeWorker *probe.Worker
 	isServer    bool
 
-	lastRestartEventTime time.Time
-	lastStartEventTime   time.Time
+	lastRestartOnEventTime time.Time
+	lastStartOnEventTime   time.Time
 
 	mu sync.Mutex
 }
