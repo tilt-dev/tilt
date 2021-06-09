@@ -146,16 +146,12 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry portForwardEntry,
 		if pf.ReadyCh() == nil {
 			return
 		}
-		select {
-		case err := <-pf.ReadyCh():
-			if err == nil {
-				fmt.Println("✨ hooray it's ready")
-				// TODO: update status = running
-			} else {
-				// otherwise, if there's an error, we update the status for it
-				// one level up
-			}
+		err := <-pf.ReadyCh()
+		if err == nil {
+			fmt.Println("✨ hooray it's ready")
+			// TODO: update status = running
 		}
+		// otherwise, if there's an error, we update the status for it one level up
 	}()
 	err = pf.ForwardPorts()
 	if err != nil {
