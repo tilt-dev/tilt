@@ -8,4 +8,8 @@ module.exports = {
     '@storybook/addon-links',
     '@storybook/preset-create-react-app'
   ],
+  typescript: {
+    // https://github.com/styleguidist/react-docgen-typescript/issues/356
+    reactDocgen: 'none',
+  },
 };

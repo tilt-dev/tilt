@@ -775,8 +775,8 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	ctx, cancel := context.WithCancel(ctx)
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewTiltDevDirAt(f.Path())
-	docker := docker.NewFakeClient()
-	docker.ContainerListOutput = map[string][]types.Container{
+	dockerClient := docker.NewFakeClient()
+	dockerClient.ContainerListOutput = map[string][]types.Container{
 		"pod": []types.Container{
 			types.Container{
 				ID: k8s.MagicTestContainerID,
@@ -788,7 +788,7 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	mode := buildcontrol.UpdateModeFlag(um)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kl := &fakeKINDLoader{}
-	bd, err := provideBuildAndDeployer(ctx, docker, k8s, dir, env, mode, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kl, ta)
+	bd, err := provideFakeBuildAndDeployer(ctx, dockerClient, k8s, dir, env, mode, dcc, fakeClock{now: time.Unix(1551202573, 0)}, kl, ta)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -799,7 +799,7 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 		TempDirFixture: f,
 		ctx:            ctx,
 		cancel:         cancel,
-		docker:         docker,
+		docker:         dockerClient,
 		k8s:            k8s,
 		bd:             bd,
 		st:             st,

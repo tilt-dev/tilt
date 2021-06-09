@@ -996,11 +996,11 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewTiltDevDirAt(f.Path())
 
-	docker := docker.NewFakeClient()
+	dockerClient := docker.NewFakeClient()
 
 	// Make the fake ImageExists always return true, which is the behavior we want
 	// when testing the ImageBuildAndDeployer.
-	docker.ImageAlwaysExists = true
+	dockerClient.ImageAlwaysExists = true
 
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
@@ -1008,7 +1008,9 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	kClient := k8s.NewFakeK8sClient(t)
 	kl := &fakeKINDLoader{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
-	ibd, err := ProvideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kl, ta)
+	kubeContext := k8s.KubeContext(fmt.Sprintf("%s-me", env))
+	clusterEnv := docker.ClusterEnv(docker.Env{})
+	ibd, err := ProvideImageBuildAndDeployer(ctx, dockerClient, kClient, env, kubeContext, clusterEnv, dir, clock, kl, ta)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1016,7 +1018,7 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 		TempDirFixture: f,
 		out:            out,
 		ctx:            ctx,
-		docker:         docker,
+		docker:         dockerClient,
 		k8s:            kClient,
 		ibd:            ibd,
 		st:             store.NewTestingStore(),

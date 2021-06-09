@@ -45,6 +45,7 @@ dist
 
 # web production
 /web/build
+/web/storybook-static
 
 # web env/misc
 .DS_Store

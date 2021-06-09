@@ -23,18 +23,17 @@ import (
 
 // Injectors from wire.go:
 
-func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
+func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
 	updateModeFlag := _wireUpdateModeFlagValue
-	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
+	updateMode, err := ProvideUpdateMode(updateModeFlag, kubeContext, clusterEnv)
 	if err != nil {
 		return nil, err
 	}
-	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, analytics2, updateMode, clock, runtime, kp)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, updateMode, clock, kp)
 	return imageBuildAndDeployer, nil
 }
 
@@ -50,13 +49,8 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
 	updateModeFlag := _wireBuildcontrolUpdateModeFlagValue
-	env := _wireEnvValue
 	kubeContextOverride := _wireKubeContextOverrideValue
 	clientConfig := k8s.ProvideClientConfig(kubeContextOverride)
-	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
-	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
-	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	config, err := k8s.ProvideKubeConfig(clientConfig, kubeContextOverride)
 	if err != nil {
 		return nil, err
@@ -65,10 +59,8 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	if err != nil {
 		return nil, err
 	}
-	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	updateMode, err := ProvideUpdateMode(updateModeFlag, env, runtime)
+	clusterEnv := _wireClusterEnvValue
+	updateMode, err := ProvideUpdateMode(updateModeFlag, kubeContext, clusterEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +71,8 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 
 var (
 	_wireBuildcontrolUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
-	_wireEnvValue                        = k8s.Env(k8s.EnvNone)
 	_wireKubeContextOverrideValue        = k8s.KubeContextOverride("")
+	_wireClusterEnvValue                 = docker.ClusterEnv(docker.Env{})
 )
 
 // wire.go:

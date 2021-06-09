@@ -41,11 +41,6 @@ type Connecter = rest.Connecter
 // Go prevents embedded interfaces that implement the same method.
 type CreaterUpdater = rest.CreaterUpdater
 
-// Exporter is an object that knows how to strip a RESTful resource for export. A store should implement this interface
-// if export is generally supported for that type. Errors can still be returned during the actual Export when certain
-// instances of the type are not exportable.
-type Exporter = rest.Exporter
-
 // Getter if implemented will expose GET endpoints for the resource and publish them in the Kubernetes
 // discovery service and OpenAPI.
 //

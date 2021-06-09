@@ -57,14 +57,14 @@ func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
 }
 
 type ImageBuildAndDeployer struct {
-	db        build.DockerBuilder
-	ib        *ImageBuilder
-	k8sClient k8s.Client
-	env       k8s.Env
-	runtime   container.Runtime
-	analytics *analytics.TiltAnalytics
-	clock     build.Clock
-	kl        KINDLoader
+	db          build.DockerBuilder
+	ib          *ImageBuilder
+	k8sClient   k8s.Client
+	env         k8s.Env
+	kubeContext k8s.KubeContext
+	analytics   *analytics.TiltAnalytics
+	clock       build.Clock
+	kl          KINDLoader
 }
 
 func NewImageBuildAndDeployer(
@@ -72,21 +72,21 @@ func NewImageBuildAndDeployer(
 	customBuilder build.CustomBuilder,
 	k8sClient k8s.Client,
 	env k8s.Env,
+	kubeContext k8s.KubeContext,
 	analytics *analytics.TiltAnalytics,
 	updMode UpdateMode,
 	c build.Clock,
-	runtime container.Runtime,
 	kl KINDLoader,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		db:        db,
-		ib:        NewImageBuilder(db, customBuilder, updMode),
-		k8sClient: k8sClient,
-		env:       env,
-		analytics: analytics,
-		clock:     c,
-		runtime:   runtime,
-		kl:        kl,
+		db:          db,
+		ib:          NewImageBuilder(db, customBuilder, updMode),
+		k8sClient:   k8sClient,
+		env:         env,
+		kubeContext: kubeContext,
+		analytics:   analytics,
+		clock:       c,
+		kl:          kl,
 	}
 }
 
@@ -199,8 +199,15 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 
 	// We can also skip the push of the image if it isn't used
 	// in any k8s resources! (e.g., it's consumed by another image).
-	if ibd.canAlwaysSkipPush() || !IsImageDeployedToK8s(iTarget, kTarget) || cbSkip {
-		ps.Printf(ctx, "Skipping push")
+
+	if cbSkip {
+		ps.Printf(ctx, "Skipping push: custom_build() configured to handle push itself")
+		return nil
+	} else if !IsImageDeployedToK8s(iTarget, kTarget) {
+		ps.Printf(ctx, "Skipping push: base image does not need deploy")
+		return nil
+	} else if ibd.db.WillBuildToKubeContext(ibd.kubeContext) {
+		ps.Printf(ctx, "Skipping push: building on cluster's container runtime")
 		return nil
 	}
 
@@ -363,7 +370,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
 		policy := v1.PullIfNotPresent
-		if ibd.canAlwaysSkipPush() {
+		if ibd.db.WillBuildToKubeContext(ibd.kubeContext) {
 			policy = v1.PullNever
 		}
 
@@ -411,14 +418,6 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 	}
 
 	return newK8sEntities, nil
-}
-
-// If we're using docker-for-desktop as our k8s backend,
-// we don't need to push to the central registry.
-// The k8s will use the image already available
-// in the local docker daemon.
-func (ibd *ImageBuildAndDeployer) canAlwaysSkipPush() bool {
-	return ibd.env.UsesLocalDockerRegistry() && ibd.runtime == container.RuntimeDocker
 }
 
 // Create a new ImageTarget with the Dockerfiles rewritten with the injected images.

@@ -31,7 +31,7 @@ require (
 	github.com/go-openapi/swag v0.19.13 // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
-	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.5
 	github.com/google/uuid v1.1.2
@@ -43,7 +43,7 @@ require (
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/jinzhu/gorm v1.9.12 // indirect
 	github.com/jonboulle/clockwork v0.2.2
-	github.com/json-iterator/go v1.1.10
+	github.com/json-iterator/go v1.1.11
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/mattn/go-colorable v0.1.7
@@ -69,7 +69,7 @@ require (
 	github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.2.0
-	github.com/tilt-dev/tilt-apiserver v0.3.3
+	github.com/tilt-dev/tilt-apiserver v0.4.0
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
@@ -77,9 +77,7 @@ require (
 	go.opencensus.io v0.22.4
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20200615180055-61b64bc45990
-	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	golang.org/x/text v0.3.5 // indirect
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.29.1
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
@@ -89,17 +87,17 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	helm.sh/helm/v3 v3.4.1
-	k8s.io/api v0.20.2
-	k8s.io/apimachinery v0.20.2
-	k8s.io/apiserver v0.20.2
-	k8s.io/cli-runtime v0.20.2
-	k8s.io/client-go v0.20.2
-	k8s.io/code-generator v0.20.2
+	k8s.io/api v0.21.1
+	k8s.io/apimachinery v0.21.1
+	k8s.io/apiserver v0.21.1
+	k8s.io/cli-runtime v0.21.1
+	k8s.io/client-go v0.21.1
+	k8s.io/code-generator v0.21.1
 	k8s.io/klog/v2 v2.8.0
-	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
-	k8s.io/kubectl v0.20.2
-	sigs.k8s.io/controller-runtime v0.8.2
-	sigs.k8s.io/kustomize/api v0.7.2
+	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
+	k8s.io/kubectl v0.21.1
+	sigs.k8s.io/controller-runtime v0.9.0
+	sigs.k8s.io/kustomize/api v0.8.8
 	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
 )
@@ -120,6 +118,7 @@ replace (
 
 	// controller-runtime uses a newer gnostic but apiserver + kube-openapi require an older version
 	// due to an incompatible change from yaml.v2 -> yaml.v3
+	// see https://github.com/kubernetes-sigs/controller-runtime/issues/1498
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
 
 	// can remove if/when https://github.com/pkg/browser/pull/30 is merged
@@ -128,9 +127,5 @@ replace (
 	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
-	// Workaround for:
-	// https://github.com/moby/term/issues/15
-	golang.org/x/sys => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
-
-	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.20.2-tilt-20210505
+	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.21.1-tilt-20210608
 )

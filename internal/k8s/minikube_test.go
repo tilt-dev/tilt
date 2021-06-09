@@ -25,10 +25,7 @@ export DOCKER_API_VERSION="1.35"
 # eval $(minikube docker-env)
 `)
 
-	env, err := dockerEnvFromOutput(output)
-	if err != nil {
-		t.Fatal(err)
-	}
+	env := dockerEnvFromOutput(output)
 
 	if len(env) != 4 ||
 		env["DOCKER_TLS_VERIFY"] != "1" ||

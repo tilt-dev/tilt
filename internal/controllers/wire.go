@@ -4,6 +4,8 @@ import (
 	"github.com/google/wire"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
@@ -16,6 +18,7 @@ import (
 var controllerSet = wire.NewSet(
 	filewatch.NewController,
 	kubernetesdiscovery.NewReconciler,
+	portforward.NewReconciler,
 
 	ProvideControllers,
 )
@@ -26,7 +29,8 @@ func ProvideControllers(
 	podlogstreams *podlogstream.Controller,
 	kubernetesDiscovery *kubernetesdiscovery.Reconciler,
 	uis *uisession.Reconciler,
-	uir *uiresource.Reconciler) []Controller {
+	uir *uiresource.Reconciler,
+	pfr *portforward.Reconciler) []Controller {
 	return []Controller{
 		fileWatch,
 		cmds,
@@ -34,6 +38,7 @@ func ProvideControllers(
 		kubernetesDiscovery,
 		uis,
 		uir,
+		pfr,
 	}
 }
 
@@ -42,7 +47,7 @@ var WireSet = wire.NewSet(
 
 	v1alpha1.NewScheme,
 	NewControllerBuilder,
-	NewClientBuilder,
+	ProvideUncachedObjects,
 
 	ProvideDeferredClient,
 	wire.Bind(new(ctrlclient.Client), new(*DeferredClient)),

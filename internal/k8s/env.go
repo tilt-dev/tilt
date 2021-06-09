@@ -35,12 +35,15 @@ const (
 	EnvNone  Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 
-func (e Env) UsesLocalDockerRegistry() bool {
-	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s
-}
-
 func (e Env) IsDevCluster() bool {
-	return e == EnvMinikube || e == EnvDockerDesktop || e == EnvMicroK8s || e == EnvCRC || e == EnvKIND5 || e == EnvKIND6 || e == EnvK3D || e == EnvKrucible
+	return e == EnvMinikube ||
+		e == EnvDockerDesktop ||
+		e == EnvMicroK8s ||
+		e == EnvCRC ||
+		e == EnvKIND5 ||
+		e == EnvKIND6 ||
+		e == EnvK3D ||
+		e == EnvKrucible
 }
 
 func ProvideKubeContext(config *api.Config) (KubeContext, error) {

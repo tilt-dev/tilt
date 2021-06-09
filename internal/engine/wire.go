@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -39,7 +40,7 @@ var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
 )
 
-func provideBuildAndDeployer(
+func provideFakeBuildAndDeployer(
 	ctx context.Context,
 	docker docker.Client,
 	kClient k8s.Client,
@@ -53,7 +54,31 @@ func provideBuildAndDeployer(
 	wire.Build(
 		DeployerWireSetTest,
 		k8s.ProvideContainerRuntime,
+		provideFakeKubeContext,
+		provideFakeDockerClusterEnv,
 	)
 
 	return nil, nil
+}
+
+func provideFakeKubeContext(env k8s.Env) k8s.KubeContext {
+	return k8s.KubeContext(string(env))
+}
+
+// A simplified version of the normal calculation we do
+// about whether we can build direct to a cluser
+func provideFakeDockerClusterEnv(c docker.Client, k8sEnv k8s.Env, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
+	env := c.Env()
+	isDockerRuntime := runtime == container.RuntimeDocker
+	isLocalDockerCluster := k8sEnv == k8s.EnvMinikube || k8sEnv == k8s.EnvMicroK8s || k8sEnv == k8s.EnvDockerDesktop
+	if isDockerRuntime && isLocalDockerCluster {
+		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+	}
+
+	fake, ok := c.(*docker.FakeClient)
+	if ok {
+		fake.FakeEnv = env
+	}
+
+	return docker.ClusterEnv(env)
 }

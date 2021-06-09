@@ -2,11 +2,14 @@ package uiresource
 
 import (
 	"context"
-	"sort"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -21,12 +24,15 @@ func TestCreate(t *testing.T) {
 	defer f.TearDown()
 
 	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Equal(t, 1, len(f.store.Actions()))
-	assert.Equal(t, "(Tiltfile)",
-		f.store.Actions()[0].(UIResourceCreateAction).UIResource.Name)
+
+	r := f.resource("(Tiltfile)")
+	require.NotNil(t, r)
+	assert.Equal(t, "(Tiltfile)", r.ObjectMeta.Name)
+	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 
 	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Equal(t, 1, len(f.store.Actions()))
+	r = f.resource("(Tiltfile)")
+	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 }
 
 func TestUpdateTiltfile(t *testing.T) {
@@ -34,18 +40,20 @@ func TestUpdateTiltfile(t *testing.T) {
 	defer f.TearDown()
 
 	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Equal(t, 1, len(f.store.Actions()))
-	assert.Equal(t, "(Tiltfile)",
-		f.store.Actions()[0].(UIResourceCreateAction).UIResource.Name)
+	r := f.resource("(Tiltfile)")
+	require.NotNil(t, r)
+	assert.Equal(t, "(Tiltfile)", r.ObjectMeta.Name)
+	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 
 	f.store.WithState(func(es *store.EngineState) {
 		es.TiltfileState.CurrentBuild.StartTime = time.Now()
 	})
 
 	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Equal(t, 2, len(f.store.Actions()))
-	assert.Equal(t, v1alpha1.UpdateStatusInProgress,
-		f.store.Actions()[1].(UIResourceUpdateStatusAction).Status.UpdateStatus)
+
+	r = f.resource("(Tiltfile)")
+	require.NotNil(t, r)
+	assert.Equal(t, "2", r.ObjectMeta.ResourceVersion)
 }
 
 func TestDeleteManifest(t *testing.T) {
@@ -60,48 +68,22 @@ func TestDeleteManifest(t *testing.T) {
 	})
 
 	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Equal(t, 2, len(f.store.Actions()))
-
-	names := []string{
-		f.store.Actions()[0].(UIResourceCreateAction).UIResource.Name,
-		f.store.Actions()[1].(UIResourceCreateAction).UIResource.Name,
-	}
-	sort.Strings(names)
-	assert.Equal(t, []string{"(Tiltfile)", "fe"}, names)
+	assert.Equal(t, "(Tiltfile)", f.resource("(Tiltfile)").ObjectMeta.Name)
+	assert.Equal(t, "fe", f.resource("fe").ObjectMeta.Name)
 
 	f.store.WithState(func(state *store.EngineState) {
 		state.RemoveManifestTarget("fe")
 	})
 
 	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Equal(t, 3, len(f.store.Actions()))
-	assert.Equal(t, "fe",
-		f.store.Actions()[2].(UIResourceDeleteAction).Name.Name)
-}
-
-type testStore struct {
-	*store.TestingStore
-}
-
-func (s *testStore) Dispatch(a store.Action) {
-	s.TestingStore.Dispatch(a)
-
-	state := s.LockMutableStateForTesting()
-	defer s.UnlockMutableState()
-	switch a := a.(type) {
-	case UIResourceUpdateStatusAction:
-		HandleUIResourceUpdateStatusAction(state, a)
-	case UIResourceCreateAction:
-		HandleUIResourceCreateAction(state, a)
-	case UIResourceDeleteAction:
-		HandleUIResourceDeleteAction(state, a)
-	}
+	assert.Nil(t, f.resource("fe"))
 }
 
 type fixture struct {
 	*tempdir.TempDirFixture
 	ctx   context.Context
-	store *testStore
+	store *store.TestingStore
+	tc    ctrlclient.Client
 	sub   *Subscriber
 }
 
@@ -110,9 +92,19 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		ctx:            context.Background(),
+		tc:             tc,
 		sub:            NewSubscriber(tc),
-		store: &testStore{
-			TestingStore: store.NewTestingStore(),
-		},
+		store:          store.NewTestingStore(),
 	}
+}
+
+func (f *fixture) resource(name string) *v1alpha1.UIResource {
+	r := &v1alpha1.UIResource{}
+	err := f.tc.Get(f.ctx, types.NamespacedName{Name: name}, r)
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+
+	require.NoError(f.T(), err)
+	return r
 }

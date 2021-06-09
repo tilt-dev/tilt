@@ -9,15 +9,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+type expectedPF struct {
+	podID     string
+	local     int32
+	container int32
+	host      string
+	mName     string
+}
 
 func TestPortForwardNewPod(t *testing.T) {
 	f := newPFSFixture(t)
@@ -38,9 +49,7 @@ func TestPortForwardNewPod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("no port forwards running yet", func(pfs map[string]*PortForward) bool {
-		return len(pfs) == 0
-	})
+	f.waitUntilNoStateOrAPIPortForwards("no port forwards running yet")
 
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
@@ -49,13 +58,7 @@ func TestPortForwardNewPod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("one port forward for pod A", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-A" && f.oneForwardMatches(8080, 8081, pf)
-	})
+	f.waitUntilStateAndAPIPortForwardAsExpected("one port forward for pod A", expectedPF{podID: "pod-A", local: 8080, container: 8081})
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
@@ -64,13 +67,8 @@ func TestPortForwardNewPod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("one port forward for pod B (replacing port forward for pod A)", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-B" && f.oneForwardMatches(8080, 8081, pf)
-	})
+	f.waitUntilPortForwardDNEOnStateOrAPI("port forward for pod A has been removed", "pod-A")
+	f.waitUntilStateAndAPIPortForwardAsExpected("new port forward for pod B", expectedPF{podID: "pod-B", local: 8080, container: 8081})
 
 	state = f.st.LockMutableStateForTesting()
 	mt = state.ManifestTargets["fe"]
@@ -79,9 +77,7 @@ func TestPortForwardNewPod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("port forward for pod B has been torn down", func(pfs map[string]*PortForward) bool {
-		return len(pfs) == 0
-	})
+	f.waitUntilNoStateOrAPIPortForwards("port forward for pod B has been torn down")
 }
 
 func TestPortForwardChangePort(t *testing.T) {
@@ -106,13 +102,7 @@ func TestPortForwardChangePort(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("initial port forward", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(8080, 8081, pf)
-	})
+	f.waitUntilStateAndAPIPortForwardAsExpected("initial port forward", expectedPF{podID: "pod-id", local: 8080, container: 8081})
 
 	state = f.st.LockMutableStateForTesting()
 	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
@@ -120,13 +110,7 @@ func TestPortForwardChangePort(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("updated container port", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(8080, 8082, pf)
-	})
+	f.waitUntilStateAndAPIPortForwardAsExpected("updated container port", expectedPF{podID: "pod-id", local: 8080, container: 8082})
 }
 
 func TestPortForwardChangeHost(t *testing.T) {
@@ -152,13 +136,7 @@ func TestPortForwardChangeHost(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("initial port forward", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardWithHostMatches(8080, 8081, "hostA", pf)
-	})
+	f.waitUntilStateAndAPIPortForwardAsExpected("initial port forward", expectedPF{podID: "pod-id", local: 8080, container: 8081, host: "hostA"})
 
 	state = f.st.LockMutableStateForTesting()
 	kTarget := state.ManifestTargets["fe"].Manifest.K8sTarget()
@@ -166,13 +144,7 @@ func TestPortForwardChangeHost(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("updated host", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardWithHostMatches(8080, 8081, "hostB", pf)
-	})
+	f.waitUntilStateAndAPIPortForwardAsExpected("updated host", expectedPF{podID: "pod-id", local: 8080, container: 8081, host: "hostB"})
 }
 
 func TestPortForwardChangeManifestName(t *testing.T) {
@@ -197,14 +169,7 @@ func TestPortForwardChangeManifestName(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("one port forward for manifest fe", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(8080, 8081, pf) &&
-			pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] == "fe"
-	})
+	f.waitUntilStateAndAPIPortForwardAsExpected("one port forward for manifest fe", expectedPF{podID: "pod-id", local: 8080, container: 8081, mName: "fe"})
 
 	state = f.st.LockMutableStateForTesting()
 	// the exact same manifest, pod, etc., just with a different name
@@ -215,14 +180,7 @@ func TestPortForwardChangeManifestName(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("one port forward for manifest not-fe", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(8080, 8081, pf) &&
-			pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] == "not-fe"
-	})
+	f.waitUntilStateAndAPIPortForwardAsExpected("manifest name has been updated", expectedPF{podID: "pod-id", local: 8080, container: 8081, mName: "not-fe"})
 }
 
 func TestMultipleForwardsOnePod(t *testing.T) {
@@ -250,9 +208,7 @@ func TestMultipleForwardsOnePod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("no port forwards running yet", func(pfs map[string]*PortForward) bool {
-		return len(pfs) == 0
-	})
+	f.waitUntilNoStateOrAPIPortForwards("no port forwards running yet")
 
 	state = f.st.LockMutableStateForTesting()
 	mt := state.ManifestTargets["fe"]
@@ -261,13 +217,8 @@ func TestMultipleForwardsOnePod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("one port forward with multiple Forwards", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-
+	f.waitUntilStateAndAPIPortForward("one port forward with multiple Forwards", pfName("pod-id"), func(pf *PortForward) bool {
 		var seen8000, seen9000 bool
-		pf := f.onlyPFFromMap(pfs)
 		if pf.Spec.PodName != "pod-id" {
 			return false
 		}
@@ -275,10 +226,10 @@ func TestMultipleForwardsOnePod(t *testing.T) {
 		for _, fwd := range pf.Spec.Forwards {
 			if fwd.LocalPort == 8000 {
 				seen8000 = true
-				f.forwardWithHostMatches(fwd, 8000, 8080, "first-host")
+				f.forwardMatches(fwd, expectedPF{local: 8000, container: 8080, host: "first-host"})
 			} else if fwd.LocalPort == 9000 {
 				seen9000 = true
-				f.forwardWithHostMatches(fwd, 9000, 9090, "second-host")
+				f.forwardMatches(fwd, expectedPF{local: 9000, container: 9090, host: "second-host"})
 			} else {
 				t.Fatalf("found Forward to unexpected LocalPort: %+v", fwd)
 			}
@@ -292,9 +243,7 @@ func TestMultipleForwardsOnePod(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("port forward torn down", func(pfs map[string]*PortForward) bool {
-		return len(pfs) == 0
-	})
+	f.waitUntilNoStateOrAPIPortForwards("port forward torn down")
 }
 
 func TestPortForwardAutoDiscovery(t *testing.T) {
@@ -320,13 +269,7 @@ func TestPortForwardAutoDiscovery(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("running port forward with auto-discovered container port", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(8080, 8000, pf)
-	})
+	f.waitUntilStateAndAPIPortForwardAsExpected("running port forward with auto-discovered container port", expectedPF{podID: "pod-id", local: 8080, container: 8000})
 }
 
 func TestPortForwardAutoDiscovery2(t *testing.T) {
@@ -352,23 +295,15 @@ func TestPortForwardAutoDiscovery2(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.onChange()
-	f.waitUntilStatePortForwards("running port forward with auto-discovered container port", func(pfs map[string]*PortForward) bool {
-		if len(pfs) != 1 {
-			return false
-		}
-		pf := f.onlyPFFromMap(pfs)
-		return pf.Spec.PodName == "pod-id" && f.oneForwardMatches(8080, 8080, pf)
-	})
-}
-
-type portForwardTestCase struct {
-	spec           []model.PortForward
-	containerPorts []int32
-	expected       []model.PortForward
+	f.waitUntilStateAndAPIPortForwardAsExpected("running port forward with auto-discovered container port", expectedPF{podID: "pod-id", local: 8080, container: 8080})
 }
 
 func TestPopulatePortForward(t *testing.T) {
-	cases := []portForwardTestCase{
+	cases := []struct {
+		spec           []model.PortForward
+		containerPorts []int32
+		expected       []model.PortForward
+	}{
 		{
 			spec:           []model.PortForward{{LocalPort: 8080}},
 			containerPorts: []int32{8080},
@@ -416,6 +351,7 @@ type pfsFixture struct {
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
+	ctrl   *fake.ControllerFixture
 	st     *store.Store
 	s      *Subscriber
 	done   chan error
@@ -423,13 +359,18 @@ type pfsFixture struct {
 
 func newPFSFixture(t *testing.T) *pfsFixture {
 	reducer := func(ctx context.Context, engineState *store.EngineState, action store.Action) {
+		t.Helper()
 		switch action := action.(type) {
-		case PortForwardCreateAction:
-			HandlePortForwardCreateAction(engineState, action)
+		case store.ErrorAction:
+			t.Fatalf("reducer received unexpected ErrorAction: %+v", action.Error)
+			return
+		case PortForwardUpsertAction:
+			HandlePortForwardUpsertAction(engineState, action)
 		case PortForwardDeleteAction:
 			HandlePortForwardDeleteAction(engineState, action)
 		default:
-			t.Fatalf("unrecognized action: %T", action)
+			t.Fatalf("unrecognized action (%T): %+v", action, action)
+			return
 		}
 	}
 
@@ -437,14 +378,19 @@ func newPFSFixture(t *testing.T) *pfsFixture {
 	st := store.NewStore(reducer, store.LogActionsFlag(false))
 	kCli := k8s.NewFakeK8sClient(t)
 
+	// only testing object create/delete, not reconciliation, so pass a nil reconciler
+	ctrl := fake.NewControllerFixture(t, nil)
+
 	ctx, cancel := context.WithCancel(context.Background())
+
 	return &pfsFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		cancel:         cancel,
 		st:             st,
+		ctrl:           ctrl,
 		kCli:           kCli,
-		s:              NewSubscriber(kCli),
+		s:              NewSubscriber(kCli, ctrl.Client),
 		done:           make(chan error),
 	}
 }
@@ -453,6 +399,7 @@ func (f *pfsFixture) onChange() {
 	f.s.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
 }
+
 func (f pfsFixture) Start() {
 	go func() {
 		err := f.st.Loop(f.ctx)
@@ -467,30 +414,112 @@ func (f pfsFixture) WaitUntilDone() {
 	}
 }
 
-func (f *pfsFixture) forwardMatches(fwd Forward, expectedLocal, expectedContainer int32) bool {
-	return expectedLocal == fwd.LocalPort && expectedContainer == fwd.ContainerPort
-}
-
-func (f *pfsFixture) oneForwardMatches(expectedLocal, expectedContainer int32, pf *PortForward) bool {
-	return len(pf.Spec.Forwards) == 1 && f.forwardMatches(pf.Spec.Forwards[0], expectedLocal, expectedContainer)
-}
-
-func (f *pfsFixture) forwardWithHostMatches(fwd Forward, expectedLocal, expectedContainer int32, expectedHost string) bool {
-	return expectedLocal == fwd.LocalPort &&
-		expectedContainer == fwd.ContainerPort &&
-		expectedHost == fwd.Host
-}
-
-func (f *pfsFixture) oneForwardWithHostMatches(expectedLocal, expectedContainer int32, expectedHost string, pf *PortForward) bool {
-	return len(pf.Spec.Forwards) == 1 && f.forwardWithHostMatches(pf.Spec.Forwards[0], expectedLocal, expectedContainer, expectedHost)
-}
-
-func (f *pfsFixture) onlyPFFromMap(pfs map[string]*PortForward) *PortForward {
-	require.Len(f.T(), pfs, 1, "`onlyPFFromMap` requires a map of length one (got %d)", len(pfs))
-	for _, pf := range pfs { // there's only one thing in the map, we just don't know its key 🙃
-		return pf
+func (f *pfsFixture) forwardMatches(fwd Forward, expected expectedPF) bool {
+	if expected.local != 0 && expected.local != fwd.LocalPort {
+		return false
 	}
-	return nil
+	if expected.container != 0 && expected.container != fwd.ContainerPort {
+		return false
+	}
+	if expected.host != "" && expected.host != fwd.Host {
+		return false
+	}
+	return true
+}
+
+func (f *pfsFixture) oneForwardMatches(pf *PortForward, expected expectedPF) bool {
+	if len(pf.Spec.Forwards) != 1 {
+		return false
+	}
+
+	if !f.forwardMatches(pf.Spec.Forwards[0], expected) {
+		return false
+	}
+	return expected.mName == "" || pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] == expected.mName
+}
+
+// Use this func to assert on an expected PortForward with a single Fwd.
+// For more complicated assertions, use waitUntilStateAndAPIPortForward directly.
+func (f *pfsFixture) waitUntilStateAndAPIPortForwardAsExpected(msg string, expected expectedPF) {
+	f.T().Helper()
+
+	if expected.podID == "" {
+		f.T().Fatal("must pass pod ID as part of expectedPF")
+	}
+
+	f.waitUntilStateAndAPIPortForward(msg, pfName(expected.podID), func(pf *PortForward) bool {
+		return f.oneForwardMatches(pf, expected)
+	})
+}
+
+func (f *pfsFixture) waitUntilStateAndAPIPortForward(msg string, name string, pfOK func(pf *PortForward) bool) {
+	f.T().Helper()
+	f.waitUntilStatePortForwards(msg, func(pfs map[string]*PortForward) bool {
+		if len(pfs) != 1 {
+			return false
+		}
+
+		pf, ok := pfs[name]
+		if !ok {
+			return false
+		}
+
+		return pfOK(pf)
+	})
+
+	key := types.NamespacedName{Name: name}
+	f.requireState(key, func(pf *PortForward) bool {
+		if pf == nil {
+			return false
+		}
+
+		return pfOK(pf)
+
+	}, "Expected port forward API object not observed for key %s", key)
+}
+
+func (f *pfsFixture) waitUntilNoStateOrAPIPortForwards(msg string) {
+	// State PFs
+	f.waitUntilStatePortForwards(msg, func(pfs map[string]*PortForward) bool {
+		return len(pfs) == 0
+	})
+
+	// API PFs
+	var foundPFs v1alpha1.PortForwardList
+	require.Eventuallyf(f.T(), func() bool {
+		var pfs v1alpha1.PortForwardList
+		f.ctrl.List(&pfs)
+		foundPFs = pfs
+		return len(pfs.Items) == 0
+	}, time.Second, 20*time.Millisecond, "Expected no port forward API objects to exist, but found %d: %+v", len(foundPFs.Items), foundPFs.Items)
+}
+
+func (f *pfsFixture) waitUntilPortForwardDNEOnStateOrAPI(msg string, podID string) {
+	name := pfName(podID)
+	// State PFs
+	f.waitUntilStatePortForwards(msg, func(pfs map[string]*PortForward) bool {
+		_, ok := pfs[name]
+		return !ok
+	})
+
+	// API PFs
+	var foundPF *PortForward
+	key := types.NamespacedName{Name: name}
+	f.requireState(key, func(pf *PortForward) bool {
+		foundPF = pf
+		return pf == nil
+	}, "Expected port forward API object %s to not exist, but found: %+v", name, foundPF)
+}
+
+func (f *pfsFixture) requireState(key types.NamespacedName, cond func(pf *PortForward) bool, msg string, args ...interface{}) {
+	f.T().Helper()
+	require.Eventuallyf(f.T(), func() bool {
+		var pf PortForward
+		if !f.ctrl.Get(key, &pf) {
+			return cond(nil)
+		}
+		return cond(&pf)
+	}, time.Second, 20*time.Millisecond, msg, args...)
 }
 
 func (f *pfsFixture) waitUntilStatePortForwards(msg string, isDone func(map[string]*PortForward) bool) {

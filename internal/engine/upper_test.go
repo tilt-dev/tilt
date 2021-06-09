@@ -3885,7 +3885,7 @@ func TestPortForwardActions(t *testing.T) {
 
 	f.Start([]model.Manifest{})
 
-	f.upper.store.Dispatch(portforward.NewPortForwardCreateAction(pfA))
+	f.upper.store.Dispatch(portforward.NewPortForwardUpsertAction(pfA))
 	f.WaitUntil("port forward A stored on state", func(st store.EngineState) bool {
 		return len(st.PortForwards) == 1 && equality.Semantic.DeepEqual(pfA, st.PortForwards[pfAName])
 	})
@@ -3970,9 +3970,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	env := k8s.EnvDockerDesktop
 	plm := runtimelog.NewPodLogManager(cdc)
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient)
-	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
-	pfs := portforward.NewSubscriber(b.kClient)
+	pfs := portforward.NewSubscriber(b.kClient, cdc)
 	pfs.DisableForTesting()
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
@@ -4011,8 +4010,13 @@ func newTestFixture(t *testing.T) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, v1alpha1.NewScheme(), ccb)
+	tscm, err := controllers.NewTiltServerControllerManager(
+		serverOptions,
+		v1alpha1.NewScheme(),
+		cdc,
+		controllers.UncachedObjects{&v1alpha1.FileWatch{}})
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
+	pfr := apiportforward.NewReconciler(st, b.kClient)
 
 	wsl := server.NewWebsocketList()
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
@@ -4022,6 +4026,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		kdc,
 		ctrluisession.NewReconciler(wsl),
 		ctrluiresource.NewReconciler(wsl),
+		pfr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -4062,11 +4067,10 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	de := metrics.NewDeferredExporter()
 	mc := metrics.NewController(de, model.TiltBuild{}, "")
-	pfr := apiportforward.NewReconciler(b.kClient)
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, pfr, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

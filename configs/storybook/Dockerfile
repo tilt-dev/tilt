@@ -5,4 +5,5 @@ WORKDIR /app
 ADD web/package.json package.json
 RUN yarn install
 ADD web .
-ENTRYPOINT yarn run storybook -h 0.0.0.0
+RUN yarn run build-storybook
+ENTRYPOINT npx http-server /app/storybook-static --host 0.0.0.0 --port 9009

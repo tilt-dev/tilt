@@ -1,0 +1,5 @@
+# 'linguist-generated=true': collapse diffs on github PRs
+# '-diff': treat files as binary in git diff (i.e., don't show the full diff)
+generated.proto linguist-generated=true -diff
+*.pb.go linguist-generated=true -diff
+zz_generated.* linguist-generated=true -diff

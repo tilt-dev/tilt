@@ -7,7 +7,6 @@ import (
 	context "context"
 	fmt "fmt"
 	math "math"
-
 	v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	proto "github.com/golang/protobuf/proto"
@@ -658,6 +657,17 @@ func (m *VersionSettings) GetCheckUpdates() bool {
 	return false
 }
 
+// Our websocket service has two kinds of View messages:
+//
+// 1) On initialization, we send down the complete view state
+//    (TiltStartTime, UISession, UIResources, and LogList)
+//
+// 2) On every change, we send down the resources that have
+//    changed since the last send().
+//    (new logs and any updated UISession/UIResource objects).
+//
+// All other fields are obsolete, but are needed for deserializing
+// old snapshots.
 type View struct {
 	Log       string      `protobuf:"bytes,1,opt,name=log,proto3" json:"log,omitempty"`
 	Resources []*Resource `protobuf:"bytes,2,rep,name=resources,proto3" json:"resources,omitempty"`
@@ -681,8 +691,7 @@ type View struct {
 	TiltStartTime *timestamp.Timestamp `protobuf:"bytes,14,opt,name=tilt_start_time,json=tiltStartTime,proto3" json:"tilt_start_time,omitempty"`
 	// an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile
 	TiltfileKey string `protobuf:"bytes,17,opt,name=tiltfile_key,json=tiltfileKey,proto3" json:"tiltfile_key,omitempty"`
-	// New API-server based data models. These will eventually obsolete the fields
-	// above.
+	// New API-server based data models.
 	UiSession            *v1alpha1.UISession    `protobuf:"bytes,19,opt,name=ui_session,json=uiSession,proto3" json:"ui_session,omitempty"`
 	UiResources          []*v1alpha1.UIResource `protobuf:"bytes,20,rep,name=ui_resources,json=uiResources,proto3" json:"ui_resources,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
@@ -1093,12 +1102,12 @@ func (m *UploadSnapshotResponse) GetUrl() string {
 	return ""
 }
 
-// The webclient needs to notify the server what logs it has,
-// so the server knows what to send.
+// NOTE(nick): This is obsolete.
 //
-// The socket protocol doesn't have any concept of a StatusCode
-// to confirm that the receiver got the message, so we need to send this
-// in a separate message.
+// Our websocket service has two kinds of messages:
+// 1) On initialization, we send down the complete view state
+// 2) On every change, we send down the resources that have
+//    changed since the last send().
 type AckWebsocketRequest struct {
 	// The to_checkpoint on the received LogList
 	ToCheckpoint int32 `protobuf:"varint,1,opt,name=to_checkpoint,json=toCheckpoint,proto3" json:"to_checkpoint,omitempty"`

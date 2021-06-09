@@ -3,11 +3,16 @@ package portforward
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -19,7 +24,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
-	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -32,14 +36,12 @@ func TestCreatePortForward(t *testing.T) {
 	f := newPFRFixture(t)
 	defer f.TearDown()
 
-	f.onChange()
 	require.Equal(t, 0, len(f.r.activeForwards))
 
-	state := f.st.LockMutableStateForTesting()
-	state.PortForwards[pfFooName] = f.makeSimplePF(pfFooName, 8000, 8080)
-	f.st.UnlockMutableState()
+	pf := f.makeSimplePF(pfFooName, 8000, 8080)
+	f.Create(pf)
+	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
 
-	f.onChange()
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
@@ -49,21 +51,20 @@ func TestDeletePortForward(t *testing.T) {
 	f := newPFRFixture(t)
 	defer f.TearDown()
 
-	state := f.st.LockMutableStateForTesting()
-	state.PortForwards[pfFooName] = f.makeSimplePF(pfFooName, 8000, 8080)
-	f.st.UnlockMutableState()
+	require.Equal(t, 0, len(f.r.activeForwards))
 
-	f.onChange()
+	pf := f.makeSimplePF(pfFooName, 8000, 8080)
+	f.Create(pf)
+	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
+
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
 	origForwardCtx := f.kCli.LastForwardContext()
 
-	state = f.st.LockMutableStateForTesting()
-	delete(state.PortForwards, pfFooName)
-	f.st.UnlockMutableState()
+	f.Delete(pf)
+	f.requirePortForwardDeleted(pfFooName)
 
-	f.onChange()
 	require.Equal(t, 0, len(f.r.activeForwards))
 	f.assertContextCancelled(t, origForwardCtx)
 }
@@ -72,21 +73,21 @@ func TestModifyPortForward(t *testing.T) {
 	f := newPFRFixture(t)
 	defer f.TearDown()
 
-	state := f.st.LockMutableStateForTesting()
-	state.PortForwards[pfFooName] = f.makeSimplePF(pfFooName, 8000, 8080)
-	f.st.UnlockMutableState()
+	require.Equal(t, 0, len(f.r.activeForwards))
 
-	f.onChange()
+	pf := f.makeSimplePF(pfFooName, 8000, 8080)
+	f.Create(pf)
+	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
+
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
 	origForwardCtx := f.kCli.LastForwardContext()
 
-	state = f.st.LockMutableStateForTesting()
-	state.PortForwards[pfFooName] = f.makeSimplePF(pfFooName, 8000, 9090)
-	f.st.UnlockMutableState()
+	pf = f.makeSimplePF(pfFooName, 8000, 9090)
+	f.GetAndUpdate(pf)
+	f.requirePortForwardWithVersion(pfFooName, 2, "updated PortForward appears")
 
-	f.onChange()
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
 	assert.Equal(t, 9090, f.kCli.LastForwardPortRemotePort())
@@ -100,23 +101,23 @@ func TestModifyPortForwardManifestName(t *testing.T) {
 	f := newPFRFixture(t)
 	defer f.TearDown()
 
+	require.Equal(t, 0, len(f.r.activeForwards))
+
 	fwds := []v1alpha1.Forward{f.makeForward(8000, 8080, "")}
 
-	state := f.st.LockMutableStateForTesting()
-	state.PortForwards[pfFooName] = f.makePF(pfFooName, "manifestA", "pod-pf_foo", "", fwds)
-	f.st.UnlockMutableState()
+	pf := f.makePF(pfFooName, "manifestA", "pod-pf_foo", "", fwds)
+	f.Create(pf)
+	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
 
-	f.onChange()
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
 	origForwardCtx := f.kCli.LastForwardContext()
 
-	state = f.st.LockMutableStateForTesting()
-	state.PortForwards[pfFooName] = f.makePF(pfFooName, "manifestB", "pod-pf_foo", "", fwds)
-	f.st.UnlockMutableState()
+	pf = f.makePF(pfFooName, "manifestB", "pod-pf_foo", "", fwds)
+	f.GetAndUpdate(pf)
+	f.requirePortForwardWithVersion(pfFooName, 2, "updated PortForward appears")
 
-	f.onChange()
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
@@ -128,18 +129,17 @@ func TestMultipleForwardsForOnePod(t *testing.T) {
 	f := newPFRFixture(t)
 	defer f.TearDown()
 
-	f.onChange()
-	assert.Equal(t, 0, len(f.r.activeForwards))
+	require.Equal(t, 0, len(f.r.activeForwards))
 
 	forwards := []v1alpha1.Forward{
 		f.makeForward(8000, 8080, "hostA"),
 		f.makeForward(8001, 8081, "hostB"),
 	}
-	state := f.st.LockMutableStateForTesting()
-	state.PortForwards[pfFooName] = f.makeSimplePFMultipleForwards(pfFooName, forwards)
-	f.st.UnlockMutableState()
 
-	f.onChange()
+	pf := f.makeSimplePFMultipleForwards(pfFooName, forwards)
+	f.Create(pf)
+	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
+
 	require.Equal(t, 1, len(f.r.activeForwards))
 	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
 
@@ -162,11 +162,9 @@ func TestMultipleForwardsForOnePod(t *testing.T) {
 	require.True(t, seen8080, "did not see port forward to remotePort 8080")
 	require.True(t, seen8081, "did not see port forward to remotePort 8081")
 
-	state = f.st.LockMutableStateForTesting()
-	delete(state.PortForwards, pfFooName)
-	f.st.UnlockMutableState()
+	f.Delete(pf)
+	f.requirePortForwardDeleted(pfFooName)
 
-	f.onChange()
 	require.Equal(t, 0, len(f.r.activeForwards))
 	for _, ctx := range contexts {
 		f.assertContextCancelled(t, ctx)
@@ -177,17 +175,17 @@ func TestMultipleForwardsMultiplePods(t *testing.T) {
 	f := newPFRFixture(t)
 	defer f.TearDown()
 
-	f.onChange()
-	assert.Equal(t, 0, len(f.r.activeForwards))
+	require.Equal(t, 0, len(f.r.activeForwards))
 
 	fwdsFoo := []v1alpha1.Forward{f.makeForward(8000, 8080, "host-foo")}
 	fwdsBar := []v1alpha1.Forward{f.makeForward(8001, 8081, "host-bar")}
-	state := f.st.LockMutableStateForTesting()
-	state.PortForwards[pfFooName] = f.makePF(pfFooName, "foo", "pod-pf_foo", "ns-foo", fwdsFoo)
-	state.PortForwards[pfBarName] = f.makePF(pfBarName, "bar", "pod-pf_bar", "ns-bar", fwdsBar)
-	f.st.UnlockMutableState()
+	pfFoo := f.makePF(pfFooName, "foo", "pod-pf_foo", "ns-foo", fwdsFoo)
+	pfBar := f.makePF(pfBarName, "bar", "pod-pf_bar", "ns-bar", fwdsBar)
+	f.Create(pfFoo)
+	f.Create(pfBar)
+	f.requirePortForwardWithVersion(pfFooName, 1, "initial API object pfFoo appears")
+	f.requirePortForwardWithVersion(pfBarName, 1, "initial API object pfBar appears")
 
-	f.onChange()
 	require.Equal(t, 2, len(f.r.activeForwards))
 	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
 
@@ -215,18 +213,17 @@ func TestMultipleForwardsMultiplePods(t *testing.T) {
 	require.True(t, seenFoo, "did not see port forward foo")
 	require.True(t, seenBar, "did not see port forward bar")
 
-	state = f.st.LockMutableStateForTesting()
-	delete(state.PortForwards, pfFooName)
-	f.st.UnlockMutableState()
+	f.Delete(pfFoo)
+	f.requirePortForwardDeleted(pfFooName)
 
-	f.onChange()
 	require.Equal(t, 1, len(f.r.activeForwards))
 	f.assertContextCancelled(t, ctxFoo)
 	f.assertContextNotCancelled(t, ctxBar)
 }
 
 type pfrFixture struct {
-	*tempdir.TempDirFixture
+	*fake.ControllerFixture
+	t      *testing.T
 	ctx    context.Context
 	cancel func()
 	kCli   *k8s.FakeK8sClient
@@ -236,34 +233,68 @@ type pfrFixture struct {
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
-	f := tempdir.NewTempDirFixture(t)
 	st := store.NewTestingStore()
 	kCli := k8s.NewFakeK8sClient(t)
-	r := NewReconciler(kCli)
-
+	r := NewReconciler(st, kCli)
+	cf := fake.NewControllerFixture(t, r)
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
 	return &pfrFixture{
-		TempDirFixture: f,
-		ctx:            ctx,
-		cancel:         cancel,
-		st:             st,
-		kCli:           kCli,
-		r:              r,
-		out:            out,
+		ControllerFixture: cf,
+		t:                 t,
+		ctx:               ctx,
+		cancel:            cancel,
+		st:                st,
+		kCli:              kCli,
+		r:                 r,
+		out:               out,
 	}
 }
 
-func (f *pfrFixture) onChange() {
-	f.r.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
-	time.Sleep(10 * time.Millisecond)
+func (f *pfrFixture) requireState(name string, cond func(pf *PortForward) bool, msg string, args ...interface{}) {
+	f.t.Helper()
+	key := types.NamespacedName{Name: name}
+	require.Eventuallyf(f.t, func() bool {
+		var pf PortForward
+		if !f.Get(key, &pf) {
+			return cond(nil)
+		}
+		return cond(&pf)
+	}, time.Second, 20*time.Millisecond, msg, args...)
+}
+
+func (f *pfrFixture) requirePortForwardWithVersion(name string, version int, msg string, args ...interface{}) {
+	f.t.Helper()
+
+	newMsg := fmt.Sprintf("[want PortForward.ResourceVersion == %d] %s", version, msg)
+	f.requireState(name, func(pf *PortForward) bool {
+		return pf.ResourceVersion == strconv.Itoa(version)
+	}, newMsg, args...)
+}
+
+func (f *pfrFixture) requirePortForwardDeleted(name string) {
+	f.t.Helper()
+	f.requireState(name, func(pf *PortForward) bool {
+		return pf == nil
+	}, "port forward deleted")
 }
 
 func (f *pfrFixture) TearDown() {
 	f.kCli.TearDown()
-	f.TempDirFixture.TearDown()
 	f.cancel()
+}
+
+// GetAndUpdate pulls the existing version of the PortForward and issues an
+// update (using the ResourceVersion of the existing Port Forward to avoid an
+// "object was modified" error)
+func (f *pfrFixture) GetAndUpdate(pf *PortForward) ctrl.Result {
+	f.t.Helper()
+	var existing PortForward
+	f.MustGet(f.KeyForObject(pf), &existing)
+	pf.SetResourceVersion(existing.GetResourceVersion())
+	require.NoError(f.t, f.Client.Update(f.ctx, pf))
+	return f.MustReconcile(f.KeyForObject(pf))
 }
 
 func (f *pfrFixture) assertContextCancelled(t *testing.T, ctx context.Context) {

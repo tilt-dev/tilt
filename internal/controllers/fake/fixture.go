@@ -51,7 +51,9 @@ func NewControllerFixture(t testing.TB, c controller) *ControllerFixture {
 	ctx = logger.WithLogger(ctx, logger.NewTestLogger(os.Stdout))
 
 	cli := NewTiltClient()
-	c.SetClient(cli)
+	if c != nil {
+		c.SetClient(cli)
+	}
 
 	return &ControllerFixture{
 		t:          t,
@@ -110,6 +112,12 @@ func (f *ControllerFixture) MustGet(key types.NamespacedName, out object) {
 		// don't try to read from object Kind, it's probably not properly populated
 		f.t.Fatalf("%T object %q does not exist", out, key.String())
 	}
+}
+
+func (f *ControllerFixture) List(out ctrlclient.ObjectList) {
+	f.t.Helper()
+	err := f.Client.List(f.ctx, out)
+	require.NoError(f.t, err)
 }
 
 func (f *ControllerFixture) Create(o object) ctrl.Result {
