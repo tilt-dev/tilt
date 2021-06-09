@@ -405,11 +405,11 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     const { term } = this.props.filterSet
 
     // Don't consider a filter term if the term hasn't been parsed for matching
-    if (term.state !== TermState.Parsed) {
+    if (!term || term.state !== TermState.Parsed) {
       return true
     }
 
-    return term.regex.test(line.text)
+    return term.regexp.test(line.text)
   }
 
   // If we have a level filter on, check if this line matches the level filter.

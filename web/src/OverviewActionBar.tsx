@@ -305,7 +305,7 @@ type FilterRadioButtonProps = {
   alerts?: Alert[]
 }
 
-function createLogSearch(
+export function createLogSearch(
   currentSearch: string,
   {
     level,
@@ -424,12 +424,13 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
 }
 
 export const FILTER_INPUT_DEBOUNCE = 500 // in ms
+export const FILTER_FIELD_ID = "FilterTermTextInput"
 
 const debounceFilterLogs = debounce((history: History, search: string) => {
   history.push({ pathname: location.pathname, search })
 }, FILTER_INPUT_DEBOUNCE)
 
-function FilterTermField(props: { filterSet: FilterSet }) {
+export function FilterTermField(props: { filterSet: FilterSet }) {
   // The global term is set from the url, which is passed
   // down through props and used to set the initial value
   const globalTerm = props.filterSet.term
@@ -496,14 +497,14 @@ function FilterTermField(props: { filterSet: FilterSet }) {
     <>
       <FilterTermTextField
         aria-invalid={globalTerm.state === TermState.Error}
-        id="FilterTermTextInput"
+        id={FILTER_FIELD_ID}
         InputProps={inputProps}
         onChange={onChange}
         placeholder="Filter logs by string"
         value={filterTerm}
         variant="outlined"
       />
-      <SrOnly component="label" htmlFor="FilterTermTextInput">
+      <SrOnly component="label" htmlFor={FILTER_FIELD_ID}>
         Filter resource logs by string
       </SrOnly>
     </>

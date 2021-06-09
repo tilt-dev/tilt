@@ -2,6 +2,7 @@
 
 import { Location } from "history"
 import { useLocation } from "react-router"
+import RegexEscape from "regex-escape"
 
 export enum FilterLevel {
   all = "",
@@ -31,7 +32,7 @@ export enum TermState {
 
 type EmptyTerm = { state: TermState.Empty }
 
-type ParsedTerm = { state: TermState.Parsed; regex: RegExp }
+type ParsedTerm = { state: TermState.Parsed; regexp: RegExp }
 
 type ErrorTerm = { state: TermState.Error; error: string }
 
@@ -51,9 +52,33 @@ export const EMPTY_FILTER_TERM: FilterTerm = {
   state: TermState.Empty,
 }
 
-export function parseFilterTerm(term: string): RegExp {
+export function parseTermInput(input: string): RegExp {
+  // Escape all characters that have special meaning in RegExp,
+  // so term can be treated as a string literal
+  const escapedInput = RegexEscape(input)
+
   // Filter terms are case-insensitive and can match multiple instances
-  return new RegExp(term, "gi")
+  return new RegExp(escapedInput, "gi")
+}
+
+export function createFilterTermState(input: string): FilterTerm {
+  if (!input) {
+    return EMPTY_FILTER_TERM
+  }
+
+  try {
+    return {
+      input,
+      regexp: parseTermInput(input),
+      state: TermState.Parsed,
+    }
+  } catch (error) {
+    return {
+      input,
+      state: TermState.Error,
+      error: error?.message,
+    }
+  }
 }
 
 // Infers filter set from the history React hook.
@@ -93,11 +118,7 @@ export function filterSetFromLocation(l: Location): FilterSet {
 
   const input = params.get("term")
   if (input) {
-    filters.term = {
-      input,
-      regex: parseFilterTerm(input),
-      state: TermState.Parsed,
-    }
+    filters.term = createFilterTermState(input)
   }
 
   return filters

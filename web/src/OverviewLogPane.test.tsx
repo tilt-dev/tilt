@@ -1,6 +1,11 @@
 import { mount } from "enzyme"
 import { MemoryRouter } from "react-router"
-import { FilterLevel, FilterSource } from "./logfilters"
+import {
+  createFilterTermState,
+  EMPTY_FILTER_TERM,
+  FilterLevel,
+  FilterSource,
+} from "./logfilters"
 import { LogUpdateAction } from "./LogStore"
 import {
   OverviewLogComponent,
@@ -50,7 +55,11 @@ it("filters by source", () => {
   expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(40)
 
   let root2 = logPaneMount(
-    <BuildLogAndRunLog level="" source={FilterSource.runtime} />
+    <BuildLogAndRunLog
+      level=""
+      source={FilterSource.runtime}
+      term={EMPTY_FILTER_TERM}
+    />
   )
   let el2 = root2.getDOMNode()
   expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(20)
@@ -60,7 +69,11 @@ it("filters by source", () => {
   )
 
   let root3 = logPaneMount(
-    <BuildLogAndRunLog level="" source={FilterSource.build} />
+    <BuildLogAndRunLog
+      level=""
+      source={FilterSource.build}
+      term={EMPTY_FILTER_TERM}
+    />
   )
   let el3 = root3.getDOMNode()
   expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(20)
@@ -69,12 +82,18 @@ it("filters by source", () => {
 })
 
 it("filters by level", () => {
-  let root = logPaneMount(<BuildLogAndRunLog source="" level="" />)
+  let root = logPaneMount(
+    <BuildLogAndRunLog source="" level="" term={EMPTY_FILTER_TERM} />
+  )
   let el = root.getDOMNode()
   expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(40)
 
   let root2 = logPaneMount(
-    <BuildLogAndRunLog level={FilterLevel.warn} source="" />
+    <BuildLogAndRunLog
+      level={FilterLevel.warn}
+      source=""
+      term={EMPTY_FILTER_TERM}
+    />
   )
   let el2 = root2.getDOMNode()
   expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(
@@ -94,7 +113,11 @@ it("filters by level", () => {
   )
 
   let root3 = logPaneMount(
-    <BuildLogAndRunLog level={FilterLevel.error} source="" />
+    <BuildLogAndRunLog
+      level={FilterLevel.error}
+      source=""
+      term={EMPTY_FILTER_TERM}
+    />
   )
   let el3 = root3.getDOMNode()
   expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(
@@ -111,6 +134,37 @@ it("filters by level", () => {
   )
   expect(alertEnd.innerHTML).toEqual(
     expect.stringContaining("Vigoda pod error line")
+  )
+})
+
+it("filters by term", () => {
+  const noFilterRoot = logPaneMount(
+    <BuildLogAndRunLog source="" level="" term={EMPTY_FILTER_TERM} />
+  )
+  const noTermEl = noFilterRoot.getDOMNode()
+  expect(noTermEl.querySelectorAll(".LogPaneLine")).toHaveLength(40)
+
+  const termWithResults = createFilterTermState("line 5")
+  const filterWithResults = logPaneMount(
+    <BuildLogAndRunLog source="" level="" term={termWithResults} />
+  )
+  const elWithResults = filterWithResults.getDOMNode()
+
+  expect(elWithResults.querySelectorAll(".LogPaneLine")).toHaveLength(2)
+  expect(elWithResults.innerHTML).toEqual(expect.stringContaining("line 5"))
+  expect(elWithResults.innerHTML).toEqual(
+    expect.not.stringContaining("line 15")
+  )
+
+  const termWithNoResults = createFilterTermState("spaghetti")
+  const filterWithNoResults = logPaneMount(
+    <BuildLogAndRunLog source="" level="" term={termWithNoResults} />
+  )
+  const elWithNoResults = filterWithNoResults.getDOMNode()
+
+  expect(elWithNoResults.querySelectorAll(".LogPaneLine")).toHaveLength(0)
+  expect(elWithNoResults.innerHTML).toEqual(
+    expect.not.stringContaining("Vigoda")
   )
 })
 

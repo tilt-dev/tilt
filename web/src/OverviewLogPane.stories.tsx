@@ -318,7 +318,7 @@ export const BuildLogAndRunLog = (args: any) => {
         filterSet={{
           source: args.source,
           level: args.level,
-          term: EMPTY_FILTER_TERM,
+          term: args.term || EMPTY_FILTER_TERM,
         }}
       />
     </LogStoreProvider>
@@ -328,16 +328,19 @@ export const BuildLogAndRunLog = (args: any) => {
 BuildLogAndRunLog.args = {
   source: "",
   level: "",
+  term: EMPTY_FILTER_TERM,
 }
 
 BuildLogAndRunLog.argTypes = {
   source: {
+    name: "Source",
     control: {
       type: "select",
       options: [FilterSource.all, FilterSource.build, FilterSource.runtime],
     },
   },
   level: {
+    name: "Level",
     control: {
       type: "select",
       options: [FilterLevel.all, FilterLevel.warn, FilterLevel.error],

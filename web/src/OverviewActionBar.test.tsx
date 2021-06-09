@@ -1,6 +1,6 @@
 import MenuItem from "@material-ui/core/MenuItem"
-import { mount } from "enzyme"
-import { createMemoryHistory } from "history"
+import { mount, ReactWrapper } from "enzyme"
+import { createMemoryHistory, MemoryHistory } from "history"
 import { MemoryRouter, Router } from "react-router"
 import {
   cleanupMockAnalyticsCalls,
@@ -11,8 +11,11 @@ import { FilterLevel, FilterSource } from "./logfilters"
 import {
   ActionBarTopRow,
   ButtonLeftPill,
+  createLogSearch,
   Endpoint,
   FilterRadioButton,
+  FILTER_FIELD_ID,
+  FILTER_INPUT_DEBOUNCE,
 } from "./OverviewActionBar"
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
 
@@ -22,6 +25,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanupMockAnalyticsCalls()
+  jest.useRealTimers()
 })
 
 it("shows endpoints", () => {
@@ -99,4 +103,167 @@ it("shows buttons", () => {
 
   let endpoints = topBar.find(Endpoint)
   expect(endpoints).toHaveLength(2)
+})
+
+describe("Term filter input", () => {
+  const FILTER_INPUT = `input#${FILTER_FIELD_ID}`
+  let history: MemoryHistory
+  let root: ReactWrapper<any, Readonly<{}>, React.Component<{}, {}, any>>
+
+  beforeEach(() => (history = createMemoryHistory()))
+
+  it("renders with no initial value if there is no existing term filter", () => {
+    history.push({
+      pathname: "/",
+      search: createLogSearch("", {}).toString(),
+    })
+
+    root = mount(
+      <Router history={history}>
+        <FullBar />
+      </Router>
+    )
+
+    const inputField = root.find(FILTER_INPUT)
+    expect(inputField.props().value).toBe("")
+  })
+
+  it("renders with an initial value if there is an existing term filter", () => {
+    history.push({
+      pathname: "/",
+      search: createLogSearch("", { term: "bleep bloop" }).toString(),
+    })
+
+    root = mount(
+      <Router history={history}>
+        <FullBar />
+      </Router>
+    )
+
+    const inputField = root.find(FILTER_INPUT)
+    expect(inputField.props().value).toBe("bleep bloop")
+  })
+
+  it("changes the global term filter state when its value changes", () => {
+    jest.useFakeTimers()
+
+    root = mount(
+      <Router history={history}>
+        <FullBar />
+      </Router>
+    )
+
+    const inputField = root.find(FILTER_INPUT)
+    inputField.simulate("change", { target: { value: "docker" } })
+
+    jest.runTimersToTime(FILTER_INPUT_DEBOUNCE)
+
+    expect(history.location.search.toString()).toEqual("?term=docker")
+  })
+
+  it("uses debouncing to update the global term filter state", () => {
+    jest.useFakeTimers()
+
+    root = mount(
+      <Router history={history}>
+        <FullBar />
+      </Router>
+    )
+
+    const inputField = root.find(FILTER_INPUT)
+    inputField.simulate("change", { target: { value: "doc" } })
+
+    jest.runTimersToTime(FILTER_INPUT_DEBOUNCE / 2)
+
+    // The debouncing time hasn't passed yet, so we don't expect to see any changes
+    expect(history.location.search.toString()).toEqual("")
+
+    inputField.simulate("change", { target: { value: "docker" } })
+
+    // The debouncing time hasn't passed yet, so we don't expect to see any changes
+    expect(history.location.search.toString()).toEqual("")
+
+    jest.runTimersToTime(FILTER_INPUT_DEBOUNCE)
+
+    // Since the debouncing time has passed, we expect to see the final
+    // change reflected
+    expect(history.location.search.toString()).toEqual("?term=docker")
+  })
+
+  it("retains any current level and source filters when its value changes", () => {
+    jest.useFakeTimers()
+
+    history.push({ pathname: "/", search: "level=warn&source=build" })
+
+    root = mount(
+      <Router history={history}>
+        <FullBar />
+      </Router>
+    )
+
+    const inputField = root.find(FILTER_INPUT)
+    inputField.simulate("change", { target: { value: "help" } })
+
+    jest.runTimersToTime(FILTER_INPUT_DEBOUNCE)
+
+    expect(history.location.search.toString()).toEqual(
+      "?level=warn&source=build&term=help"
+    )
+  })
+})
+
+describe("createLogSearch", () => {
+  let currentSearch: URLSearchParams
+  beforeEach(() => (currentSearch = new URLSearchParams()))
+
+  it("sets the params that are passed in", () => {
+    expect(
+      createLogSearch(currentSearch.toString(), {
+        level: FilterLevel.all,
+        term: "find me",
+        source: FilterSource.build,
+      }).toString()
+    ).toBe("level=&source=build&term=find+me")
+
+    expect(
+      createLogSearch(currentSearch.toString(), {
+        level: FilterLevel.warn,
+      }).toString()
+    ).toBe("level=warn")
+
+    expect(
+      createLogSearch(currentSearch.toString(), {
+        term: "",
+        source: FilterSource.runtime,
+      }).toString()
+    ).toBe("source=runtime&term=")
+  })
+
+  it("overrides params if a new value is defined", () => {
+    currentSearch.set("level", FilterLevel.warn)
+    expect(
+      createLogSearch(currentSearch.toString(), {
+        level: FilterLevel.error,
+      }).toString()
+    ).toBe("level=error")
+    currentSearch.delete("level")
+
+    currentSearch.set("level", "a meaningless value")
+    currentSearch.set("term", "")
+    expect(
+      createLogSearch(currentSearch.toString(), {
+        level: FilterLevel.all,
+        term: "service",
+      }).toString()
+    ).toBe("level=&term=service")
+  })
+
+  it("preserves existing params if no new value is defined", () => {
+    currentSearch.set("source", FilterSource.build)
+    expect(
+      createLogSearch(currentSearch.toString(), {
+        term: "test",
+      }).toString()
+    ).toBe("source=build&term=test")
+  })
 })
