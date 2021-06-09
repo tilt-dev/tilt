@@ -505,10 +505,12 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(source string, p
 		}
 
 		diFile := filepath.Join(path, ".dockerignore")
-		customDiFile := dbDockerfilePath + ".dockerignore"
-		_, err := os.Stat(customDiFile)
-		if !os.IsNotExist(err) {
-			diFile = customDiFile
+		if dbDockerfilePath != "" {
+			customDiFile := dbDockerfilePath + ".dockerignore"
+			_, err := os.Stat(customDiFile)
+			if !os.IsNotExist(err) {
+				diFile = customDiFile
+			}
 		}
 
 		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, diFile)

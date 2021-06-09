@@ -1181,6 +1181,60 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+// When the custom_build lists one dep, it should pick
+// up the dockerignore from that directory.
+func TestDockerignoreCustomBuildRelativeDirs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(".dockerignore", "src/sub/a.txt")
+	f.file("src/.dockerignore", "sub/b.txt")
+	f.file("src/sub/.dockerignore", "c.txt")
+
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+custom_build('gcr.io/foo', 'build-image', deps=['./src'])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters("src/sub/b.txt"),
+		fileChangeFilters("src/sub/b.txt"),
+		buildMatches("src/sub/a.txt"),
+		fileChangeMatches("src/sub/a.txt"),
+		buildMatches("src/sub/c.txt"),
+		fileChangeMatches("src/sub/c.txt"),
+	)
+}
+
+// When the custom_build lists multiple deps, it should pick
+// up the dockerignores from both those directories.
+func TestDockerignoreCustomBuildMultipleDeps(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(".dockerignore", "src/sub/a.txt")
+	f.file("src/.dockerignore", "sub/b.txt")
+	f.file("src/sub/.dockerignore", "c.txt")
+
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+custom_build('gcr.io/foo', 'build-image', deps=['./src', './src/sub'])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters("src/sub/b.txt"),
+		fileChangeFilters("src/sub/b.txt"),
+		buildMatches("src/sub/a.txt"),
+		fileChangeMatches("src/sub/a.txt"),
+		buildFilters("src/sub/c.txt"),
+		fileChangeFilters("src/sub/c.txt"),
+	)
+}
+
 func TestDockerignorePathFilterSubdir(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -5417,10 +5471,11 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 }
 
 func newFixture(t *testing.T) *fixture {
-
 	out := new(bytes.Buffer)
 	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
 	f := tempdir.NewTempDirFixture(t)
+	f.Chdir()
+
 	kCli := k8s.NewFakeK8sClient(t)
 
 	r := &fixture{
