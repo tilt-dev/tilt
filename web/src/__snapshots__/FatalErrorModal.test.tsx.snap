@@ -2,7 +2,7 @@
 
 exports[`FatalErrorModal does render if there is a fatal error and the modal hasn't been closed 1`] = `
 <div
-  className="ReactModal__Overlay ReactModal__Overlay--after-open"
+  className="ReactModal__Overlay"
   onClick={[Function]}
   onMouseDown={[Function]}
   style={
@@ -18,7 +18,7 @@ exports[`FatalErrorModal does render if there is a fatal error and the modal has
 >
   <div
     aria-modal={true}
-    className="ReactModal__Content ReactModal__Content--after-open FatalErrorModal"
+    className="ReactModal__Content FatalErrorModal"
     onClick={[Function]}
     onKeyDown={[Function]}
     onMouseDown={[Function]}
