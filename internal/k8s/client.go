@@ -404,7 +404,7 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 				ForCondition:  "delete",
 			}
 
-			wait.IsDeleted(r, waitOpt)
+			_, _, _ := wait.IsDeleted(r, waitOpt)
 			wg.Done()
 		}(r)
 	}
