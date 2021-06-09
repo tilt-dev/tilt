@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/resource"
+	dynfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	restfake "k8s.io/client-go/rest/fake"
@@ -271,6 +272,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.tracker = tracker
 
 	core := cs.CoreV1()
+	dc := dynfake.NewSimpleDynamicClient(scheme.Scheme)
 	runtimeAsync := newRuntimeAsync(core)
 	registryAsync := newRegistryAsync(EnvUnknown, core, runtimeAsync)
 	helmKube := &fakeHelmKubeClient{}
@@ -280,6 +282,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 		env:               EnvUnknown,
 		core:              core,
 		portForwardClient: NewFakePortfowardClient(),
+		dynamic:           dc,
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,
 		helmKubeClient:    helmKube,
