@@ -110,6 +110,7 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan stat
 }
 
 func (fe *FakeExecer) RequireNoKnownProcess(t *testing.T, cmd string) {
+	t.Helper()
 	fe.mu.Lock()
 	defer fe.mu.Unlock()
 

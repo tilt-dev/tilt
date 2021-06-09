@@ -86,14 +86,14 @@ message CmdSpec {
   // Restarts can happen even if the command is already done.
   //
   // Logs of the current process after the restart are discarded.
-  optional TriggerSpec restartOn = 5;
+  optional RestartOnSpec restartOn = 5;
 
-  // Indicates objects that can trigger a run of this command.
+  // Indicates objects that can trigger a start/restart of this command.
   //
-  // If there is a StartOn rule, the cmd's process will not be started until the first
-  // StartOn trigger occurs.
-  // StartOn triggers are ignored while the cmd's process is running.
-  optional TriggerSpec startOn = 6;
+  // Restarts behave the same as RestartOn. The key difference is that
+  // a Cmd with any StartOn triggers will not have its command run until its
+  // StartOn is satisfied.
+  optional StartOnSpec startOn = 6;
 }
 
 // CmdStateRunning is a running state of a local command.
@@ -695,6 +695,12 @@ message Probe {
   optional int32 failureThreshold = 6;
 }
 
+// RestartOnSpec indicates the set of objects that can trigger a restart of this object.
+message RestartOnSpec {
+  // A list of file watches that can trigger a restart.
+  repeated string fileWatches = 1;
+}
+
 // Session provides introspective data about the status of the Tilt process.
 // +k8s:openapi-gen=true
 message Session {
@@ -744,6 +750,15 @@ message SessionStatus {
   //
   // +optional
   optional string error = 5;
+}
+
+// StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
+message StartOnSpec {
+  // Any events that predate this time will be ignored.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startAfter = 1;
+
+  // A list of ui buttons that can trigger a run.
+  repeated string uiButtons = 2;
 }
 
 // TCPSocketAction describes an action based on opening a socket
@@ -851,13 +866,6 @@ message TiltBuild {
   // Indicates whether this is a development build (true) or an official release (false).
   // +optional
   optional bool dev = 4;
-}
-
-message TriggerSpec {
-  // A list of file watches that can trigger a restart.
-  repeated string fileWatches = 1;
-
-  repeated string uiButtons = 2;
 }
 
 // UIBuildRunning respresents an in-progress build/update in the user interface.

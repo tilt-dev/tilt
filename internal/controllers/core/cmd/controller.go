@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -39,21 +41,25 @@ type Controller struct {
 	mu             sync.Mutex
 	client         ctrlclient.Client
 	st             store.RStore
-	triggerManager *TriggerManager
+	startManager   *StartManager
+	restartManager *RestartManager
+	clock          clockwork.Clock
 }
 
 var _ store.TearDowner = &Controller{}
 
-func NewController(ctx context.Context, execer Execer, proberManager ProberManager, client ctrlclient.Client, st store.RStore) *Controller {
+func NewController(ctx context.Context, execer Execer, proberManager ProberManager, client ctrlclient.Client, st store.RStore, clock clockwork.Clock) *Controller {
 	return &Controller{
 		globalCtx:      ctx,
+		clock:          clock,
 		execer:         execer,
 		procs:          make(map[types.NamespacedName]*currentProcess),
 		proberManager:  proberManager,
 		client:         client,
 		updateCmds:     make(map[types.NamespacedName]*Cmd),
 		st:             st,
-		triggerManager: NewTriggerManager(client),
+		startManager:   NewStartManager(client),
+		restartManager: NewRestartManager(client),
 	}
 }
 
@@ -92,7 +98,8 @@ func (c *Controller) TearDown(ctx context.Context) {
 func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) error {
 	cmd := &Cmd{}
 	err := c.client.Get(ctx, name, cmd)
-	c.triggerManager.handleReconcileRequest(name, cmd)
+	c.startManager.handleReconcileRequest(name, cmd)
+	c.restartManager.handleReconcileRequest(name, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("cmd reconcile: %v", err)
 	}
@@ -103,11 +110,11 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
-	lastRestartEventTime, err := c.triggerManager.lastEventTime(ctx, cmd.Spec.RestartOn)
+	lastRestartEventTime, err := c.restartManager.lastEventTime(ctx, cmd.Spec.RestartOn)
 	if err != nil {
 		return err
 	}
-	lastStartEventTime, err := c.triggerManager.lastEventTime(ctx, cmd.Spec.StartOn)
+	lastStartEventTime, err := c.startManager.lastEventTime(ctx, cmd.Spec.StartOn)
 	if err != nil {
 		return err
 	}
@@ -119,9 +126,8 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		specChanged := !equality.Semantic.DeepEqual(proc.spec, cmd.Spec)
 		// a new restart event happened
 		restartOnTriggered := lastRestartEventTime.After(proc.lastRestartEventTime)
-		// a new start event happened *and* the existing proc is finished
-		// startOn is ignored when there's a running process for the cmd
-		startOnTriggered := !proc.lastFinishTime.IsZero() && lastStartEventTime.After(proc.lastFinishTime) && lastStartEventTime.After(proc.lastStartEventTime)
+		// a new start event happened
+		startOnTriggered := lastStartEventTime.After(proc.lastStartEventTime)
 		needsRestart := specChanged || restartOnTriggered || startOnTriggered
 		if !needsRestart {
 			return nil
@@ -134,10 +140,10 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		c.stop(name)
 	} else {
 		startOn := cmd.Spec.StartOn
-		// cmds with StartOn specs only start their initial proc when triggered
-		if lastStartEventTime.IsZero() &&
-			startOn != nil &&
-			(len(startOn.FileWatches) != 0 || len(startOn.UIButtons) != 0) {
+		startOnSpecIsEmpty := startOn == nil || len(startOn.UIButtons) == 0
+		// cmds with non-empty StartOn specs don't start until triggered
+		if !startOnSpecIsEmpty && lastStartEventTime.IsZero() {
+			c.setStatusWaitingOnStartOn(cmd)
 			return nil
 		}
 		proc = &currentProcess{}
@@ -182,7 +188,7 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		proc.probeWorker = probeWorker
 	}
 
-	startedAt := metav1.NowMicro()
+	startedAt := apis.NewMicroTime(c.clock.Now())
 	go c.processStatuses(ctx, statusCh, proc, name, startedAt, stillHasSameProcNum)
 
 	serveCmd := model.Cmd{
@@ -299,6 +305,29 @@ func (c *Controller) updateStatus(name types.NamespacedName, update func(status 
 	c.st.Dispatch(local.NewCmdUpdateStatusAction(cmd))
 }
 
+const waitingOnStartOnReason = "cmd StartOn has not been triggered"
+
+func (c *Controller) setStatusWaitingOnStartOn(cmd *Cmd) {
+	if cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason {
+		return
+	}
+
+	updated := cmd.DeepCopy()
+	updated.Status = CmdStatus{
+		Waiting: &CmdStateWaiting{
+			Reason: waitingOnStartOnReason,
+		},
+	}
+
+	err := c.client.Status().Update(c.globalCtx, updated)
+	if err != nil && !apierrors.IsNotFound(err) {
+		c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		return
+	}
+
+	c.st.Dispatch(local.NewCmdUpdateStatusAction(updated))
+}
+
 func (c *Controller) processStatuses(
 	ctx context.Context,
 	statusCh chan statusAndMetadata,
@@ -319,10 +348,6 @@ func (c *Controller) processStatuses(
 			if proc.isServer && sm.exitCode == 0 {
 				logger.Get(ctx).Errorf("Server exited with exit code 0")
 			}
-
-			proc.mu.Lock()
-			proc.lastFinishTime = time.Now()
-			proc.mu.Unlock()
 
 			c.updateStatus(name, func(status *CmdStatus) {
 				status.Waiting = nil
@@ -357,17 +382,23 @@ func (c *Controller) processStatuses(
 	}
 }
 
-func (r *Controller) enqueueTrigger(obj client.Object) []reconcile.Request {
-	return r.triggerManager.enqueue(obj)
+func (r *Controller) enqueueObject(obj client.Object) []reconcile.Request {
+	switch o := obj.(type) {
+	case *FileWatch:
+		return r.restartManager.enqueue(o)
+	case *UIButton:
+		return r.startManager.enqueue(o)
+	}
+	return nil
 }
 
 func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&Cmd{}).
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
-			handler.EnqueueRequestsFromMapFunc(r.enqueueTrigger)).
+			handler.EnqueueRequestsFromMapFunc(r.enqueueObject)).
 		Watches(&source.Kind{Type: &v1alpha1.UIButton{}},
-			handler.EnqueueRequestsFromMapFunc(r.enqueueTrigger)).
+			handler.EnqueueRequestsFromMapFunc(r.enqueueObject)).
 		Complete(r)
 }
 
@@ -385,9 +416,6 @@ type currentProcess struct {
 
 	lastRestartEventTime time.Time
 	lastStartEventTime   time.Time
-
-	// time at which this process completed, or zero
-	lastFinishTime time.Time
 
 	mu sync.Mutex
 }

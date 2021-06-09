@@ -70,10 +70,12 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardSpec":             schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardStatus":           schema_pkg_apis_core_v1alpha1_PortForwardStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":                       schema_pkg_apis_core_v1alpha1_Probe(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":               schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Session":                     schema_pkg_apis_core_v1alpha1_Session(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionList":                 schema_pkg_apis_core_v1alpha1_SessionList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec":                 schema_pkg_apis_core_v1alpha1_SessionSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus":               schema_pkg_apis_core_v1alpha1_SessionStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec":                 schema_pkg_apis_core_v1alpha1_StartOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":             schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target":                      schema_pkg_apis_core_v1alpha1_Target(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetState":                 schema_pkg_apis_core_v1alpha1_TargetState(ref),
@@ -81,7 +83,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated":       schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting":          schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild":                   schema_pkg_apis_core_v1alpha1_TiltBuild(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec":                 schema_pkg_apis_core_v1alpha1_TriggerSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning":              schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated":           schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton":                    schema_pkg_apis_core_v1alpha1_UIButton(ref),
@@ -308,20 +309,20 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 					"restartOn": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Indicates objects that can trigger a restart of this command.\n\nWhen a restart is triggered, Tilt will try to gracefully shutdown any currently running process, waiting for it to exit before starting a new process. If the process doesn't shutdown within the allotted time, Tilt will kill the process abruptly.\n\nRestarts can happen even if the command is already done.\n\nLogs of the current process after the restart are discarded.",
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec"),
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
 						},
 					},
 					"startOn": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Indicates objects that can trigger a run of this command.\n\nIf there is a StartOn rule, the cmd's process will not be started until the first StartOn trigger occurs. StartOn triggers are ignored while the cmd's process is running.",
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec"),
+							Description: "Indicates objects that can trigger a start/restart of this command.\n\nRestarts behave the same as RestartOn. The key difference is that a Cmd with any StartOn triggers will not have its command run until its StartOn is satisfied.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TriggerSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"},
 	}
 }
 
@@ -1994,6 +1995,35 @@ func schema_pkg_apis_core_v1alpha1_Probe(ref common.ReferenceCallback) common.Op
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "RestartOnSpec indicates the set of objects that can trigger a restart of this object.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"fileWatches": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of file watches that can trigger a restart.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"fileWatches"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_Session(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2177,6 +2207,44 @@ func schema_pkg_apis_core_v1alpha1_SessionStatus(ref common.ReferenceCallback) c
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "StartOnSpec indicates the set of objects that can trigger a start/restart of this object.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startAfter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Any events that predate this time will be ignored.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"uiButtons": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of ui buttons that can trigger a run.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"startAfter", "uiButtons"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -2419,47 +2487,6 @@ func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) commo
 							Description: "Indicates whether this is a development build (true) or an official release (false).",
 							Type:        []string{"boolean"},
 							Format:      "",
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_TriggerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"fileWatches": {
-						SchemaProps: spec.SchemaProps{
-							Description: "A list of file watches that can trigger a restart.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-					"uiButtons": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
 						},
 					},
 				},

@@ -93,14 +93,14 @@ type CmdSpec struct {
 	// Restarts can happen even if the command is already done.
 	//
 	// Logs of the current process after the restart are discarded.
-	RestartOn *TriggerSpec `json:"restartOn,omitempty" protobuf:"bytes,5,opt,name=restartOn"`
+	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,5,opt,name=restartOn"`
 
-	// Indicates objects that can trigger a run of this command.
+	// Indicates objects that can trigger a start/restart of this command.
 	//
-	// If there is a StartOn rule, the cmd's process will not be started until the first
-	// StartOn trigger occurs.
-	// StartOn triggers are ignored while the cmd's process is running.
-	StartOn *TriggerSpec `json:"startOn,omitempty" protobuf:"bytes,6,opt,name=startOn"`
+	// Restarts behave the same as RestartOn. The key difference is that
+	// a Cmd with any StartOn triggers will not have its command run until its
+	// StartOn is satisfied.
+	StartOn *StartOnSpec `json:"startOn,omitempty" protobuf:"bytes,6,opt,name=startOn"`
 }
 
 var _ resource.Object = &Cmd{}
@@ -220,8 +220,16 @@ func (in CmdStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*Cmd).Status = in
 }
 
-type TriggerSpec struct {
+// RestartOnSpec indicates the set of objects that can trigger a restart of this object.
+type RestartOnSpec struct {
 	// A list of file watches that can trigger a restart.
-	FileWatches []string `json:"fileWatches,omitempty" protobuf:"bytes,1,rep,name=fileWatches"`
-	UIButtons   []string `json:"uiButtons,omitempty" protobuf:"bytes,2,rep,name=uiButtons"`
+	FileWatches []string `json:"fileWatches" protobuf:"bytes,1,rep,name=fileWatches"`
+}
+
+// StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
+type StartOnSpec struct {
+	// Any events that predate this time will be ignored.
+	StartAfter metav1.Time `json:"startAfter" protobuf:"bytes,1,opt,name=startAfter"`
+	// A list of ui buttons that can trigger a run.
+	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
 }
