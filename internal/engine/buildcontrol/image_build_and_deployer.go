@@ -262,7 +262,7 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 	// Create API objects.
 	spec := kTarget.KubernetesApplySpec
 
-	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, spec, kTarget, results)
+	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, spec, results)
 	if err != nil {
 		return nil, err
 	}
@@ -331,21 +331,19 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 	iTargetMap map[model.TargetID]model.ImageTarget,
 	spec v1alpha1.KubernetesApplySpec,
-
-	// TODO(nick): remove this field once ApplySpec has everything we need.
-	k8sTarget model.K8sTarget,
-
 	results store.BuildResultSet) ([]k8s.K8sEntity, error) {
 	newK8sEntities := []k8s.K8sEntity{}
 
-	// TODO(nick): The parsed YAML should probably be a part of the model?
-	// It doesn't make much sense to re-parse it and inject labels on every deploy.
 	entities, err := k8s.ParseYAMLFromString(spec.YAML)
 	if err != nil {
 		return nil, err
 	}
 
-	locators := k8s.ToImageLocators(k8sTarget.ImageLocators)
+	locators, err := k8s.ParseImageLocators(spec.ImageLocators)
+	if err != nil {
+		return nil, err
+	}
+
 	imageMapNames := spec.ImageMaps
 	injectedImageMaps := map[string]bool{}
 	for _, e := range entities {

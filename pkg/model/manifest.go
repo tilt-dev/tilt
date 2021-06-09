@@ -462,10 +462,6 @@ var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	return a.String() == b.String()
 })
 
-var imageLocatorEqual = cmp.Comparer(func(a, b K8sImageLocator) bool {
-	return a.EqualsImageLocator(b)
-})
-
 // Determine whether interfaces x and y are equal, excluding fields that don't invalidate a build.
 func equalForBuildInvalidation(x, y interface{}) bool {
 	return cmp.Equal(x, y,
@@ -480,7 +476,6 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		registryAllowUnexported,
 		portForwardPathAllowUnexported,
 		dockerRefEqual,
-		imageLocatorEqual,
 
 		// deps changes don't invalidate a build, so don't compare fields used only for deps
 		ignoreCustomBuildDepsField,

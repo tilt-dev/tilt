@@ -4,23 +4,48 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 // A selector matches an entity if all non-empty selector fields match the corresponding entity fields
 type ObjectSelector struct {
-	apiVersion       *regexp.Regexp
-	apiVersionString string
-	kind             *regexp.Regexp
-	kindString       string
+	spec v1alpha1.ObjectSelector
 
-	// TODO(dmiller): do something like this instead https://github.com/tilt-dev/tilt/blob/c2b2df88de3777eed5f1bb9f54b5c555707c8b42/internal/container/selector.go#L9
-	name            *regexp.Regexp
-	nameString      string
-	namespace       *regexp.Regexp
-	namespaceString string
+	apiVersion *regexp.Regexp
+	kind       *regexp.Regexp
+	name       *regexp.Regexp
+	namespace  *regexp.Regexp
+}
+
+func ParseObjectSelector(spec v1alpha1.ObjectSelector) (ObjectSelector, error) {
+	ret := ObjectSelector{spec: spec}
+	var err error
+
+	ret.apiVersion, err = regexp.Compile(spec.APIVersionRegexp)
+	if err != nil {
+		return ObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
+	}
+
+	ret.kind, err = regexp.Compile(spec.KindRegexp)
+	if err != nil {
+		return ObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
+	}
+
+	ret.name, err = regexp.Compile(spec.NameRegexp)
+	if err != nil {
+		return ObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
+	}
+
+	ret.namespace, err = regexp.Compile(spec.NamespaceRegexp)
+	if err != nil {
+		return ObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
+	}
+
+	return ret, nil
 }
 
 var splitOptions = sliceutils.NewEscapeSplitOptions()
@@ -61,30 +86,12 @@ func SelectorFromString(s string) (ObjectSelector, error) {
 // If an arg is an empty string it will become an empty regex that matches all input
 // Otherwise the arg must match the input exactly
 func NewFullmatchCaseInsensitiveObjectSelector(apiVersion string, kind string, name string, namespace string) (ObjectSelector, error) {
-	ret := ObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
-	var err error
-
-	ret.apiVersion, err = regexp.Compile(exactOrEmptyRegex(apiVersion))
-	if err != nil {
-		return ObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
-	}
-
-	ret.kind, err = regexp.Compile(exactOrEmptyRegex(kind))
-	if err != nil {
-		return ObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
-	}
-
-	ret.name, err = regexp.Compile(exactOrEmptyRegex(name))
-	if err != nil {
-		return ObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
-	}
-
-	ret.namespace, err = regexp.Compile(exactOrEmptyRegex(namespace))
-	if err != nil {
-		return ObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
-	}
-
-	return ret, nil
+	return ParseObjectSelector(v1alpha1.ObjectSelector{
+		APIVersionRegexp: exactOrEmptyRegex(apiVersion),
+		KindRegexp:       exactOrEmptyRegex(kind),
+		NameRegexp:       exactOrEmptyRegex(name),
+		NamespaceRegexp:  exactOrEmptyRegex(namespace),
+	})
 }
 
 func makeCaseInsensitive(s string) string {
@@ -124,37 +131,16 @@ func MustNameSelector(name string) ObjectSelector {
 // If an arg is an empty string, it will become an empty regex that matches all input
 // Otherwise the arg will match input from the beginning (prefix matching)
 func NewPartialMatchObjectSelector(apiVersion string, kind string, name string, namespace string) (ObjectSelector, error) {
-	ret := ObjectSelector{apiVersionString: apiVersion, kindString: kind, nameString: name, namespaceString: namespace}
-	var err error
-
-	ret.apiVersion, err = regexp.Compile(makeCaseInsensitive(apiVersion))
-	if err != nil {
-		return ObjectSelector{}, errors.Wrap(err, "error parsing apiVersion regexp")
-	}
-
-	ret.kind, err = regexp.Compile(makeCaseInsensitive(kind))
-	if err != nil {
-		return ObjectSelector{}, errors.Wrap(err, "error parsing kind regexp")
-	}
-
-	ret.name, err = regexp.Compile(makeCaseInsensitive(name))
-	if err != nil {
-		return ObjectSelector{}, errors.Wrap(err, "error parsing name regexp")
-	}
-
-	ret.namespace, err = regexp.Compile(makeCaseInsensitive(namespace))
-	if err != nil {
-		return ObjectSelector{}, errors.Wrap(err, "error parsing namespace regexp")
-	}
-
-	return ret, nil
+	return ParseObjectSelector(v1alpha1.ObjectSelector{
+		APIVersionRegexp: makeCaseInsensitive(apiVersion),
+		KindRegexp:       makeCaseInsensitive(kind),
+		NameRegexp:       makeCaseInsensitive(name),
+		NamespaceRegexp:  makeCaseInsensitive(namespace),
+	})
 }
 
 func (o1 ObjectSelector) EqualsSelector(o2 ObjectSelector) bool {
-	return o1.name == o2.name &&
-		o1.namespace == o2.namespace &&
-		o1.kind == o2.kind &&
-		o1.apiVersion == o2.apiVersion
+	return cmp.Equal(o1.spec, o2.spec)
 }
 
 func (k ObjectSelector) Matches(e K8sEntity) bool {
@@ -163,4 +149,8 @@ func (k ObjectSelector) Matches(e K8sEntity) bool {
 		k.kind.MatchString(gvk.Kind) &&
 		k.name.MatchString(e.Name()) &&
 		k.namespace.MatchString(e.Namespace().String())
+}
+
+func (k ObjectSelector) ToSpec() v1alpha1.ObjectSelector {
+	return k.spec
 }

@@ -5,14 +5,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-)
 
-type K8sImageLocator interface {
-	EqualsImageLocator(other interface{}) bool
-}
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+)
 
 // Whether or not to wait for pods to become ready before
 // marking the k8s resource healthy.
@@ -51,13 +48,6 @@ type K8sTarget struct {
 	ObjectRefs []v1.ObjectReference
 
 	PodReadinessMode PodReadinessMode
-
-	// Implementations of k8s.ImageLocator
-	//
-	// NOTE(nick): Untangling the circular dependency between k8s and pkg/model is
-	// a longer project. The k8s package needs to be split up a bit between the
-	// API objects and the client objects.
-	ImageLocators []K8sImageLocator
 
 	// Map configRef -> number of times we (expect to) inject it.
 	// NOTE(maia): currently this map is only for use in metrics, though someday
