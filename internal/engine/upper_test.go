@@ -3970,7 +3970,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	env := k8s.EnvDockerDesktop
 	plm := runtimelog.NewPodLogManager(cdc)
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient)
-	ccb := controllers.NewClientBuilder(cdc).WithUncached(&v1alpha1.FileWatch{})
 	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfs := portforward.NewSubscriber(b.kClient, cdc)
 	pfs.DisableForTesting()
@@ -4011,7 +4010,11 @@ func newTestFixture(t *testing.T) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	tscm, err := controllers.NewTiltServerControllerManager(serverOptions, v1alpha1.NewScheme(), ccb)
+	tscm, err := controllers.NewTiltServerControllerManager(
+		serverOptions,
+		v1alpha1.NewScheme(),
+		cdc,
+		controllers.UncachedObjects{&v1alpha1.FileWatch{}})
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
 
 	wsl := server.NewWebsocketList()

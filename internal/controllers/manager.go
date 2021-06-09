@@ -11,17 +11,24 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/cluster"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
+type UncachedObjects []ctrlclient.Object
+
+func ProvideUncachedObjects() UncachedObjects {
+	return nil
+}
+
 type TiltServerControllerManager struct {
-	config  *rest.Config
-	scheme  *runtime.Scheme
-	builder cluster.ClientBuilder
+	config          *rest.Config
+	scheme          *runtime.Scheme
+	deferredClient  *DeferredClient
+	uncachedObjects UncachedObjects
+
 	manager ctrl.Manager
 	cancel  context.CancelFunc
 }
@@ -30,11 +37,12 @@ var _ store.SetUpper = &TiltServerControllerManager{}
 var _ store.Subscriber = &TiltServerControllerManager{}
 var _ store.TearDowner = &TiltServerControllerManager{}
 
-func NewTiltServerControllerManager(config *server.APIServerConfig, scheme *runtime.Scheme, builder cluster.ClientBuilder) (*TiltServerControllerManager, error) {
+func NewTiltServerControllerManager(config *server.APIServerConfig, scheme *runtime.Scheme, deferredClient *DeferredClient, uncachedObjects UncachedObjects) (*TiltServerControllerManager, error) {
 	return &TiltServerControllerManager{
-		config:  config.GenericConfig.LoopbackClientConfig,
-		scheme:  scheme,
-		builder: builder,
+		config:          config.GenericConfig.LoopbackClientConfig,
+		scheme:          scheme,
+		deferredClient:  deferredClient,
+		uncachedObjects: uncachedObjects,
 	}, nil
 }
 
@@ -85,13 +93,16 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 		LeaderElection:   false,
 		LeaderElectionID: "tilt-apiserver-ctrl",
 
-		ClientBuilder:           m.builder,
+		ClientDisableCacheFor:   m.uncachedObjects,
 		Logger:                  logr,
 		GracefulShutdownTimeout: &timeout,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to create controller manager: %v", err)
 	}
+
+	// provide the deferred client with the real client now that it has been initialized
+	m.deferredClient.initialize(mgr.GetClient())
 
 	go func() {
 		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {

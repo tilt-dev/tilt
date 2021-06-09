@@ -49,6 +49,8 @@ type fakeConnection struct {
 	closeChan chan bool
 }
 
+var _ httpstream.Connection = &fakeConnection{}
+
 func newFakeConnection() httpstream.Connection {
 	return &fakeConnection{
 		closeChan: make(chan bool),
@@ -57,6 +59,9 @@ func newFakeConnection() httpstream.Connection {
 
 func (c *fakeConnection) CreateStream(headers http.Header) (httpstream.Stream, error) {
 	return nil, nil
+}
+
+func (c *fakeConnection) RemoveStreams(_ ...httpstream.Stream) {
 }
 
 func (c *fakeConnection) Close() error {

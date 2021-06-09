@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
 
 	"github.com/go-openapi/spec"
 	"sigs.k8s.io/kustomize/kyaml/errors"
@@ -22,14 +21,32 @@ import (
 // globalSchema contains global state information about the openapi
 var globalSchema openapiData
 
+// kubernetesOpenAPIVersion specifies which builtin kubernetes schema to use
+var kubernetesOpenAPIVersion string
+
+// customSchemaFile stores the custom OpenApi schema if it is provided
+var customSchema []byte
+
 // openapiData contains the parsed openapi state.  this is in a struct rather than
 // a list of vars so that it can be reset from tests.
 type openapiData struct {
-	setup                          sync.Once
-	schema                         spec.Schema
-	schemaByResourceType           map[yaml.TypeMeta]*spec.Schema
+	// schema holds the OpenAPI schema data
+	schema spec.Schema
+
+	// schemaForResourceType is a map of Resource types to their schemas
+	schemaByResourceType map[yaml.TypeMeta]*spec.Schema
+
+	// namespaceabilityByResourceType stores whether a given Resource type
+	// is namespaceable or not
 	namespaceabilityByResourceType map[yaml.TypeMeta]bool
-	noUseBuiltInSchema             bool
+
+	// noUseBuiltInSchema stores whether we want to prevent using the built-n
+	// Kubernetes schema as part of the global schema
+	noUseBuiltInSchema bool
+
+	// schemaInit stores whether or not we've parsed the schema already,
+	// so that we only reparse the when necessary (to speed up performance)
+	schemaInit bool
 }
 
 // ResourceSchema wraps the OpenAPI Schema.
@@ -348,25 +365,20 @@ func (rs *ResourceSchema) PatchStrategyAndKeyList() (string, []string) {
 		// empty patch strategy
 		return "", []string{}
 	}
-
 	mkList, found := rs.Schema.Extensions[kubernetesMergeKeyMapList]
 	if found {
 		// mkList is []interface, convert to []string
 		mkListStr := make([]string, len(mkList.([]interface{})))
-
 		for i, v := range mkList.([]interface{}) {
 			mkListStr[i] = v.(string)
 		}
-
 		return ps.(string), mkListStr
 	}
-
 	mk, found := rs.Schema.Extensions[kubernetesMergeKeyExtensionKey]
 	if !found {
 		// no mergeKey -- may be a primitive associative list (e.g. finalizers)
 		return ps.(string), []string{}
 	}
-
 	return ps.(string), []string{mk.(string)}
 }
 
@@ -387,9 +399,9 @@ func (rs *ResourceSchema) PatchStrategyAndKey() (string, string) {
 }
 
 const (
-	// kubernetesAPIDefaultVersion is the latest version number of the statically compiled in
+	// kubernetesOpenAPIDefaultVersion is the latest version number of the statically compiled in
 	// OpenAPI schema for kubernetes built-in types
-	kubernetesAPIDefaultVersion = kubernetesapi.DefaultOpenApi
+	kubernetesOpenAPIDefaultVersion = kubernetesapi.DefaultOpenAPI
 
 	// kustomizationAPIAssetName is the name of the asset containing the statically compiled in
 	// OpenAPI definitions for Kustomization built-in types
@@ -419,29 +431,97 @@ const (
 	kindKey = "kind"
 )
 
+// SetSchema sets the kubernetes OpenAPI schema version to use
+func SetSchema(openAPIField map[string]string, schema []byte, reset bool) error {
+	// this should only be set once
+	schemaIsSet := (kubernetesOpenAPIVersion != "") || customSchema != nil
+	if schemaIsSet && !reset {
+		return nil
+	}
+
+	version, exists := openAPIField["version"]
+	if exists && schema != nil {
+		return fmt.Errorf("builtin version and custom schema provided, cannot use both")
+	}
+
+	if schema != nil { // use custom schema
+		customSchema = schema
+		kubernetesOpenAPIVersion = "custom"
+		return nil
+	}
+
+	// use builtin version
+	kubernetesOpenAPIVersion = strings.ReplaceAll(version, ".", "")
+	if kubernetesOpenAPIVersion == "" {
+		return nil
+	}
+	if _, ok := kubernetesapi.OpenAPIMustAsset[kubernetesOpenAPIVersion]; !ok {
+		return fmt.Errorf("the specified OpenAPI version is not built in")
+	}
+	customSchema = nil
+	return nil
+}
+
+// GetSchemaVersion returns what kubernetes OpenAPI version is being used
+func GetSchemaVersion() string {
+	switch {
+	case kubernetesOpenAPIVersion == "" && customSchema == nil:
+		return kubernetesOpenAPIDefaultVersion
+	case customSchema != nil:
+		return "using custom schema from file provided"
+	default:
+		return kubernetesOpenAPIVersion
+	}
+}
+
 // initSchema parses the json schema
 func initSchema() {
-	globalSchema.setup.Do(func() {
-		if globalSchema.noUseBuiltInSchema {
-			// don't parse the built in schema
-			return
-		}
+	if globalSchema.schemaInit {
+		return
+	}
+	globalSchema.schemaInit = true
 
-		// parse the swagger, this should never fail
-		assetName := filepath.Join(
-			"kubernetesapi",
-			kubernetesAPIDefaultVersion,
-			"swagger.json")
-		if err := parse(kubernetesapi.OpenApiMustAsset[kubernetesAPIDefaultVersion](assetName)); err != nil {
+	if customSchema != nil {
+		err := parse(customSchema)
+		if err != nil {
+			panic("invalid schema file")
+		}
+		if err = parse(kustomizationapi.MustAsset(kustomizationAPIAssetName)); err != nil {
 			// this should never happen
 			panic(err)
 		}
+		return
+	}
 
-		if err := parse(kustomizationapi.MustAsset(kustomizationAPIAssetName)); err != nil {
-			// this should never happen
-			panic(err)
-		}
-	})
+	if kubernetesOpenAPIVersion == "" {
+		parseBuiltinSchema(kubernetesOpenAPIDefaultVersion)
+	} else {
+		parseBuiltinSchema(kubernetesOpenAPIVersion)
+	}
+}
+
+// parseBuiltinSchema calls parse to parse the json schemas
+func parseBuiltinSchema(version string) {
+	if globalSchema.noUseBuiltInSchema {
+		// don't parse the built in schema
+		return
+	}
+
+	// parse the swagger, this should never fail
+	assetName := filepath.Join(
+		"kubernetesapi",
+		version,
+		"swagger.json")
+
+	if err := parse(kubernetesapi.OpenAPIMustAsset[version](assetName)); err != nil {
+		// this should never happen
+		panic(err)
+	}
+
+	if err := parse(kustomizationapi.MustAsset(kustomizationAPIAssetName)); err != nil {
+		// this should never happen
+		panic(err)
+	}
 }
 
 // parse parses and indexes a single json schema
