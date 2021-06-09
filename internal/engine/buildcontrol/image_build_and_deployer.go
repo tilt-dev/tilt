@@ -346,8 +346,8 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 	}
 
 	locators := k8s.ToImageLocators(k8sTarget.ImageLocators)
-	depIDs := k8sTarget.DependencyIDs()
-	injectedDepIDs := map[model.TargetID]bool{}
+	imageMapNames := spec.ImageMaps
+	injectedImageMaps := map[string]bool{}
 	for _, e := range entities {
 		e, err = k8s.InjectLabels(e, []model.LabelPair{
 			k8s.TiltManagedByLabel(),
@@ -383,7 +383,11 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			policy = v1.PullNever
 		}
 
-		for _, depID := range depIDs {
+		for _, imageMapName := range imageMapNames {
+			depID := model.TargetID{
+				Type: model.TargetTypeImage,
+				Name: model.TargetName(imageMapName),
+			}
 			ref := store.ClusterImageRefFromBuildResult(results[depID])
 			if ref == nil {
 				return nil, fmt.Errorf("Internal error: missing image build result for dependency ID: %s", depID)
@@ -399,7 +403,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 				return nil, err
 			}
 			if replaced {
-				injectedDepIDs[depID] = true
+				injectedImageMaps[imageMapName] = true
 
 				if !iTarget.OverrideCmd.Empty() || iTarget.OverrideArgs.ShouldOverride {
 					e, err = k8s.InjectCommandAndArgs(e, ref, iTarget.OverrideCmd, iTarget.OverrideArgs)
@@ -420,9 +424,9 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		newK8sEntities = append(newK8sEntities, e)
 	}
 
-	for _, depID := range depIDs {
-		if !injectedDepIDs[depID] {
-			return nil, fmt.Errorf("Docker image missing from yaml: %s", depID)
+	for _, name := range imageMapNames {
+		if !injectedImageMaps[name] {
+			return nil, fmt.Errorf("Docker image missing from yaml: %s", name)
 		}
 	}
 

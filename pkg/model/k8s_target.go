@@ -59,8 +59,6 @@ type K8sTarget struct {
 	// API objects and the client objects.
 	ImageLocators []K8sImageLocator
 
-	dependencyIDs []TargetID
-
 	// Map configRef -> number of times we (expect to) inject it.
 	// NOTE(maia): currently this map is only for use in metrics, though someday
 	// we want a better way of mapping configRefs -> their injection point(s)
@@ -92,7 +90,14 @@ func (k8s K8sTarget) HasJob() bool {
 }
 
 func (k8s K8sTarget) DependencyIDs() []TargetID {
-	return k8s.dependencyIDs
+	result := make([]TargetID, 0, len(k8s.ImageMaps))
+	for _, name := range k8s.ImageMaps {
+		result = append(result, TargetID{
+			Type: TargetTypeImage,
+			Name: TargetName(name),
+		})
+	}
+	return result
 }
 
 func (k8s K8sTarget) RefInjectCounts() map[string]int {
@@ -119,7 +124,16 @@ func (k8s K8sTarget) ID() TargetID {
 }
 
 func (k8s K8sTarget) WithDependencyIDs(ids []TargetID) K8sTarget {
-	k8s.dependencyIDs = DedupeTargetIDs(ids)
+	ids = DedupeTargetIDs(ids)
+	k8s.ImageMaps = make([]string, 0, len(ids))
+
+	for _, id := range ids {
+		if id.Type != TargetTypeImage {
+			panic(fmt.Sprintf("Invalid k8s dependency: %+v", id))
+		}
+		k8s.ImageMaps = append(k8s.ImageMaps, string(id.Name))
+	}
+
 	return k8s
 }
 
