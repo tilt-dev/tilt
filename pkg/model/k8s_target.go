@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -30,8 +31,13 @@ const PodReadinessWait PodReadinessMode = "wait"
 const PodReadinessIgnore PodReadinessMode = "ignore"
 
 type K8sTarget struct {
+	// An apiserver-driven data model for applying Kubernetes YAML.
+	//
+	// This will eventually replace K8sTarget. We represent this as an embedded
+	// struct while we're migrating fields.
+	v1alpha1.KubernetesApplySpec
+
 	Name         TargetName
-	YAML         string
 	PortForwards []PortForward
 	// labels for pods that we should watch and associate with this resource
 	ExtraPodSelectors []labels.Set
@@ -65,6 +71,13 @@ type K8sTarget struct {
 	// zero+ links assoc'd with this resource (to be displayed in UIs,
 	// in addition to any port forwards/LB endpoints)
 	Links []Link
+}
+
+func NewK8sTargetForTesting(yaml string) K8sTarget {
+	apply := v1alpha1.KubernetesApplySpec{
+		YAML: yaml,
+	}
+	return K8sTarget{KubernetesApplySpec: apply}
 }
 
 func (k8s K8sTarget) Empty() bool { return reflect.DeepEqual(k8s, K8sTarget{}) }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -55,16 +56,20 @@ func NewTarget(
 		}
 	}
 
+	apply := v1alpha1.KubernetesApplySpec{
+		YAML: yaml,
+	}
+
 	return model.K8sTarget{
-		Name:              name,
-		YAML:              yaml,
-		PortForwards:      portForwards,
-		ExtraPodSelectors: extraPodSelectors,
-		DisplayNames:      displayNames,
-		ObjectRefs:        objectRefs,
-		PodReadinessMode:  podReadinessMode,
-		ImageLocators:     myLocators,
-		Links:             links,
+		KubernetesApplySpec: apply,
+		Name:                name,
+		PortForwards:        portForwards,
+		ExtraPodSelectors:   extraPodSelectors,
+		DisplayNames:        displayNames,
+		ObjectRefs:          objectRefs,
+		PodReadinessMode:    podReadinessMode,
+		ImageLocators:       myLocators,
+		Links:               links,
 	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 

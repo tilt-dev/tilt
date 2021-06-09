@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -258,7 +259,10 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
-	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, kTarget, results)
+	// Create API objects.
+	spec := kTarget.KubernetesApplySpec
+
+	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, spec, kTarget, results)
 	if err != nil {
 		return nil, err
 	}
@@ -325,13 +329,18 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 }
 
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
-	iTargetMap map[model.TargetID]model.ImageTarget, k8sTarget model.K8sTarget,
+	iTargetMap map[model.TargetID]model.ImageTarget,
+	spec v1alpha1.KubernetesApplySpec,
+
+	// TODO(nick): remove this field once ApplySpec has everything we need.
+	k8sTarget model.K8sTarget,
+
 	results store.BuildResultSet) ([]k8s.K8sEntity, error) {
 	newK8sEntities := []k8s.K8sEntity{}
 
 	// TODO(nick): The parsed YAML should probably be a part of the model?
 	// It doesn't make much sense to re-parse it and inject labels on every deploy.
-	entities, err := k8s.ParseYAMLFromString(k8sTarget.YAML)
+	entities, err := k8s.ParseYAMLFromString(spec.YAML)
 	if err != nil {
 		return nil, err
 	}
