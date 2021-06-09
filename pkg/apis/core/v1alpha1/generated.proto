@@ -941,7 +941,7 @@ message UIButtonStatus {
   // LastClickedAt is the timestamp of the last time the button was clicked.
   //
   // If the button has never clicked before, this will be the zero-value/null.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastClickedAt = 1;
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastClickedAt = 1;
 }
 
 // UIComponentLocation specifies where to put a UI component.
