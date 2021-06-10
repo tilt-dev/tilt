@@ -31,6 +31,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uisession"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -240,8 +241,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	reconciler := kubernetesdiscovery.NewReconciler(client, ownerFetcher, containerRestartDetector, storeStore)
 	uisessionReconciler := uisession.NewReconciler(websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(websocketList)
+	uibuttonReconciler := uibutton.NewReconciler(websocketList)
 	portforwardReconciler := portforward.NewReconciler(storeStore, client)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, portforwardReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -434,8 +436,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	reconciler := kubernetesdiscovery.NewReconciler(client, ownerFetcher, containerRestartDetector, storeStore)
 	uisessionReconciler := uisession.NewReconciler(websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(websocketList)
+	uibuttonReconciler := uibutton.NewReconciler(websocketList)
 	portforwardReconciler := portforward.NewReconciler(storeStore, client)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, portforwardReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -625,8 +628,9 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	reconciler := kubernetesdiscovery.NewReconciler(k8sClient, ownerFetcher, containerRestartDetector, storeStore)
 	uisessionReconciler := uisession.NewReconciler(websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(websocketList)
+	uibuttonReconciler := uibutton.NewReconciler(websocketList)
 	portforwardReconciler := portforward.NewReconciler(storeStore, k8sClient)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, portforwardReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)

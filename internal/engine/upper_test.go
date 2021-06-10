@@ -54,6 +54,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	ctrluibutton "github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	ctrluiresource "github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	ctrluisession "github.com/tilt-dev/tilt/internal/controllers/core/uisession"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -4026,6 +4027,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		kdc,
 		ctrluisession.NewReconciler(wsl),
 		ctrluiresource.NewReconciler(wsl),
+		ctrluibutton.NewReconciler(wsl),
 		pfr,
 	))
 

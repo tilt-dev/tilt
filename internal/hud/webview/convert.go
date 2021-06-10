@@ -54,6 +54,17 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 		ret.UiResources = append(ret.UiResources, &item)
 	}
 
+	buttonList := &v1alpha1.UIButtonList{}
+	err = client.List(ctx, buttonList)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range buttonList.Items {
+		item := item
+		ret.UiButtons = append(ret.UiButtons, &item)
+	}
+
 	s := st.RLockState()
 	defer st.RUnlockState()
 	logList, err := s.LogStore.ToLogList(0)

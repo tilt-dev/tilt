@@ -202,6 +202,30 @@ func (ws *WebsocketSubscriber) SendUIResourceUpdate(ctx context.Context, nn type
 	})
 }
 
+// Sends a UIButton update on the websocket.
+func (ws *WebsocketSubscriber) SendUIButtonUpdate(ctx context.Context, nn types.NamespacedName, uiButton *v1alpha1.UIButton) {
+	if !ws.waitForInitOrClose(ctx) {
+		return
+	}
+
+	if uiButton == nil {
+		// If the UI button doesn't exist, send a fake one down the
+		// stream that the UI will interpret as deletion.
+		now := metav1.Now()
+		uiButton = &v1alpha1.UIButton{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              nn.Name,
+				DeletionTimestamp: &now,
+			},
+		}
+	}
+
+	ws.sendView(ctx, &proto_webview.View{
+		TiltStartTime: ws.tiltStartTime,
+		UiButtons:     []*v1alpha1.UIButton{uiButton},
+	})
+}
+
 // Sends the view to the websocket.
 func (ws *WebsocketSubscriber) sendView(ctx context.Context, view *proto_webview.View) {
 	ws.mu.Lock()
