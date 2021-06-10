@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -48,23 +49,27 @@ func NewTarget(
 	// Use a min component count of 2 for computing names,
 	// so that the resource type appears
 	displayNames := UniqueNames(sorted, 2)
-	myLocators := []model.K8sImageLocator{}
+	myLocators := []v1alpha1.KubernetesImageLocator{}
 	for _, locator := range allLocators {
 		if LocatorMatchesOne(locator, entities) {
-			myLocators = append(myLocators, locator)
+			myLocators = append(myLocators, locator.ToSpec())
 		}
 	}
 
+	apply := v1alpha1.KubernetesApplySpec{
+		YAML:          yaml,
+		ImageLocators: myLocators,
+	}
+
 	return model.K8sTarget{
-		Name:              name,
-		YAML:              yaml,
-		PortForwards:      portForwards,
-		ExtraPodSelectors: extraPodSelectors,
-		DisplayNames:      displayNames,
-		ObjectRefs:        objectRefs,
-		PodReadinessMode:  podReadinessMode,
-		ImageLocators:     myLocators,
-		Links:             links,
+		KubernetesApplySpec: apply,
+		Name:                name,
+		PortForwards:        portForwards,
+		ExtraPodSelectors:   extraPodSelectors,
+		DisplayNames:        displayNames,
+		ObjectRefs:          objectRefs,
+		PodReadinessMode:    podReadinessMode,
+		Links:               links,
 	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 
@@ -89,10 +94,27 @@ func NewK8sOnlyManifestFromYAML(yaml string) (model.Manifest, error) {
 	return manifest, nil
 }
 
-func ToImageLocators(locators []model.K8sImageLocator) []ImageLocator {
+func ParseImageLocators(locators []v1alpha1.KubernetesImageLocator) ([]ImageLocator, error) {
 	result := []ImageLocator{}
 	for _, locator := range locators {
-		result = append(result, locator.(ImageLocator))
+		selector, err := ParseObjectSelector(locator.ObjectSelector)
+		if err != nil {
+			return nil, errors.Wrap(err, "parsing image locator")
+		}
+
+		if locator.Object != nil {
+			parsedLocator, err := NewJSONPathImageObjectLocator(selector, locator.Path, locator.Object.RepoField, locator.Object.TagField)
+			if err != nil {
+				return nil, errors.Wrap(err, "parsing image locator")
+			}
+			result = append(result, parsedLocator)
+		} else {
+			parsedLocator, err := NewJSONPathImageLocator(selector, locator.Path)
+			if err != nil {
+				return nil, errors.Wrap(err, "parsing image locator")
+			}
+			result = append(result, parsedLocator)
+		}
 	}
-	return result
+	return result, nil
 }

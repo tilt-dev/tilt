@@ -11,6 +11,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s/jsonpath"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type ImageLocator interface {
@@ -30,6 +31,8 @@ type ImageLocator interface {
 	// Returns a new entity with the injected ref.  Returns a boolean indicated
 	// whether there was at least one successful injection.
 	Inject(e K8sEntity, selector container.RefSelector, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error)
+
+	ToSpec() v1alpha1.KubernetesImageLocator
 }
 
 const imagePullPolicyKey = "imagePullPolicy"
@@ -65,6 +68,13 @@ func NewJSONPathImageLocator(selector ObjectSelector, path string) (*JSONPathIma
 		selector: selector,
 		path:     p,
 	}, nil
+}
+
+func (l *JSONPathImageLocator) ToSpec() v1alpha1.KubernetesImageLocator {
+	return v1alpha1.KubernetesImageLocator{
+		ObjectSelector: l.selector.ToSpec(),
+		Path:           l.path.String(),
+	}
 }
 
 func (l *JSONPathImageLocator) EqualsImageLocator(other interface{}) bool {
@@ -260,6 +270,17 @@ func (l *JSONPathImageObjectLocator) Inject(e K8sEntity, selector container.RefS
 		return e, false, err
 	}
 	return e, modified, nil
+}
+
+func (l *JSONPathImageObjectLocator) ToSpec() v1alpha1.KubernetesImageLocator {
+	return v1alpha1.KubernetesImageLocator{
+		ObjectSelector: l.selector.ToSpec(),
+		Path:           l.path.String(),
+		Object: &v1alpha1.KubernetesImageObjectDescriptor{
+			RepoField: l.repoField,
+			TagField:  l.tagField,
+		},
+	}
 }
 
 var _ ImageLocator = &JSONPathImageObjectLocator{}

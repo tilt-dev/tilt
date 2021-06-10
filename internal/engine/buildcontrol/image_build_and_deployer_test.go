@@ -1056,7 +1056,7 @@ metadata:
   name: %s-deployment
 spec: {}
 status: {}`, name, name)
-	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.NewK8sTargetForTesting(yaml))
 }
 
 type fakeKINDLoader struct {

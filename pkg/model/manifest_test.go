@@ -159,14 +159,14 @@ var equalitytests = []struct {
 	},
 	{
 		"k8s.YAML equal",
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
+		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
+		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
 		false,
 	},
 	{
 		"k8s.YAML unequal",
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
+		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("goodbye world")),
 		true,
 	},
 	{
@@ -209,8 +209,8 @@ var equalitytests = []struct {
 	},
 	{
 		"Name & k8s YAML unequal",
-		Manifest{Name: "foo"}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
-		Manifest{Name: "bar"}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		Manifest{Name: "foo"}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
+		Manifest{Name: "bar"}.WithDeployTarget(NewK8sTargetForTesting("goodbye world")),
 		true,
 	},
 	{
