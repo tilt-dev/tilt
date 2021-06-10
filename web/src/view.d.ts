@@ -30,6 +30,11 @@ declare namespace Proto {
      */
     uiSession?: v1alpha1UISession;
     uiResources?: v1alpha1UIResource[];
+    /**
+     * indicates that this view is a complete representation of the app
+     * if false, this view just contains deltas from a previous view.
+     */
+    isComplete?: boolean;
   }
   export interface webviewVersionSettings {
     checkUpdates?: boolean;

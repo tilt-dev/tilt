@@ -384,6 +384,21 @@ export function nResourceView(n: number): view {
   }
 }
 
+function logList(
+  lines: string[],
+  checkpointStart: number = 0
+): Proto.webviewLogList {
+  let now = new Date().toString()
+  return {
+    spans: {
+      "": {},
+    },
+    segments: lines.map((s) => ({ text: `${s}\n`, time: now })),
+    fromCheckpoint: checkpointStart,
+    toCheckpoint: checkpointStart + lines.length,
+  }
+}
+
 function oneResourceFailedToBuild(): UIResource[] {
   return [
     {
@@ -4439,6 +4454,7 @@ export {
   oneResourceUnrecognizedError,
   oneResourceTest,
   oneResourceTestWithName,
+  logList,
   logPaneDOM,
   unnamedEndpointLink,
   namedEndpointLink,

@@ -5,8 +5,9 @@ import ReactDOM from "react-dom"
 import ReactModal from "react-modal"
 import { MemoryRouter } from "react-router"
 import HUD, { mergeAppUpdate } from "./HUD"
+import LogStore from "./LogStore"
 import SocketBar from "./SocketBar"
-import { oneResourceView, twoResourceView } from "./testdata"
+import { logList, oneResourceView, twoResourceView } from "./testdata"
 import { SocketState } from "./types"
 
 // Note: `body` is used as the app element _only_ in a test env
@@ -220,5 +221,25 @@ describe("mergeAppUpdates", () => {
     let result = mergeAppUpdate(prevState as any, update) as any
     expect(result.view).toBe(prevState.view)
     expect(result.socketState).toBe(SocketState.Reconnecting)
+  })
+
+  it("handles complete view", () => {
+    let prevLogStore = new LogStore()
+    let prevState = { view: twoResourceView(), logStore: prevLogStore }
+
+    let update = {
+      view: {
+        uiResources: [{ metadata: { name: "vigoda" } }],
+        logList: logList(["line1", "line2"]),
+        isComplete: true,
+      },
+    }
+    let result = mergeAppUpdate<"view" | "logStore">(prevState as any, update)
+    expect(result.view).toBe(update.view)
+    expect(result.logStore).not.toBe(prevState.logStore)
+    expect(result.logStore?.allLog().map((ll) => ll.text)).toEqual([
+      "line1",
+      "line2",
+    ])
   })
 })
