@@ -3,6 +3,7 @@ import { RouteComponentProps } from "react-router-dom"
 import { TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
+type UIButton = Proto.v1alpha1UIButton
 type UISession = Proto.v1alpha1UISession
 type Link = Proto.v1alpha1UIResourceLink
 
@@ -11,6 +12,7 @@ const namedEndpointLink: Link = { url: "1.2.3.4:9090", name: "debugger" }
 
 type view = {
   uiResources: Array<UIResource>
+  uiButtons: Array<UIButton>
   uiSession?: UISession
   logList?: Proto.webviewLogList
 }
@@ -314,6 +316,7 @@ function oneResourceView(): view {
   return {
     uiResources: [oneResource()],
     uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
+    uiButtons: [],
   }
 }
 
@@ -358,6 +361,7 @@ function twoResourceView(): view {
   }
   return {
     uiResources: [vigoda, snack],
+    uiButtons: [],
     uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
   }
 }
@@ -380,7 +384,42 @@ export function nResourceView(n: number): view {
   }
   return {
     uiResources: resources,
+    uiButtons: [],
     uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
+  }
+}
+
+function oneButtonView(): view {
+  return {
+    uiResources: [],
+    uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
+    uiButtons: [{ metadata: { name: "foo" }, spec: { text: "hello" } }],
+  }
+}
+
+function twoButtonView(): view {
+  return {
+    uiResources: [],
+    uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
+    uiButtons: [
+      { metadata: { name: "button1" }, spec: { text: "hello" } },
+      { metadata: { name: "button2" }, spec: { text: "goodbye" } },
+    ],
+  }
+}
+
+function logList(
+  lines: string[],
+  checkpointStart: number = 0
+): Proto.webviewLogList {
+  let now = new Date().toString()
+  return {
+    spans: {
+      "": {},
+    },
+    segments: lines.map((s) => ({ text: `${s}\n`, time: now })),
+    fromCheckpoint: checkpointStart,
+    toCheckpoint: checkpointStart + lines.length,
   }
 }
 
@@ -4439,6 +4478,9 @@ export {
   oneResourceUnrecognizedError,
   oneResourceTest,
   oneResourceTestWithName,
+  logList,
+  oneButtonView,
+  twoButtonView,
   logPaneDOM,
   unnamedEndpointLink,
   namedEndpointLink,

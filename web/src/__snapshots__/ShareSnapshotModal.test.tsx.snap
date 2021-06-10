@@ -2,7 +2,7 @@
 
 exports[`ShareSnapshotModal renders team link 1`] = `
 <div
-  className="ReactModal__Overlay ReactModal__Overlay--after-open"
+  className="ReactModal__Overlay"
   onClick={[Function]}
   onMouseDown={[Function]}
   style={
@@ -18,7 +18,7 @@ exports[`ShareSnapshotModal renders team link 1`] = `
 >
   <div
     aria-modal={true}
-    className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
+    className="ReactModal__Content ShareSnapshotModal"
     onClick={[Function]}
     onKeyDown={[Function]}
     onMouseDown={[Function]}
@@ -127,7 +127,7 @@ exports[`ShareSnapshotModal renders with modal closed 1`] = `null`;
 
 exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
 <div
-  className="ReactModal__Overlay ReactModal__Overlay--after-open"
+  className="ReactModal__Overlay"
   onClick={[Function]}
   onMouseDown={[Function]}
   style={
@@ -143,7 +143,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
 >
   <div
     aria-modal={true}
-    className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
+    className="ReactModal__Content ShareSnapshotModal"
     onClick={[Function]}
     onKeyDown={[Function]}
     onMouseDown={[Function]}
@@ -232,7 +232,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
 
 exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
 <div
-  className="ReactModal__Overlay ReactModal__Overlay--after-open"
+  className="ReactModal__Overlay"
   onClick={[Function]}
   onMouseDown={[Function]}
   style={
@@ -248,7 +248,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
 >
   <div
     aria-modal={true}
-    className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
+    className="ReactModal__Content ShareSnapshotModal"
     onClick={[Function]}
     onKeyDown={[Function]}
     onMouseDown={[Function]}
@@ -344,7 +344,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
 
 exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
 <div
-  className="ReactModal__Overlay ReactModal__Overlay--after-open"
+  className="ReactModal__Overlay"
   onClick={[Function]}
   onMouseDown={[Function]}
   style={
@@ -360,7 +360,7 @@ exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
 >
   <div
     aria-modal={true}
-    className="ReactModal__Content ReactModal__Content--after-open ShareSnapshotModal"
+    className="ReactModal__Content ShareSnapshotModal"
     onClick={[Function]}
     onKeyDown={[Function]}
     onMouseDown={[Function]}

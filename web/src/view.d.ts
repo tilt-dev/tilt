@@ -30,6 +30,12 @@ declare namespace Proto {
      */
     uiSession?: v1alpha1UISession;
     uiResources?: v1alpha1UIResource[];
+    uiButtons?: v1alpha1UIButton[];
+    /**
+     * indicates that this view is a complete representation of the app
+     * if false, this view just contains deltas from a previous view.
+     */
+    isComplete?: boolean;
   }
   export interface webviewVersionSettings {
     checkUpdates?: boolean;
@@ -436,6 +442,41 @@ declare namespace Proto {
   export interface v1alpha1UIFeatureFlag {
     name?: string;
     value?: boolean;
+  }
+  export interface v1alpha1UIComponentLocation {
+    /**
+     * ComponentID is the identifier of the parent component to associate this component with.
+     *
+     * For example, this is a resource name if the ComponentType is Resource.
+     */
+    componentID?: string;
+    /**
+     * ComponentType is the type of the parent component.
+     */
+    componentType?: string;
+  }
+  export interface v1alpha1UIButtonStatus {
+    /**
+     * LastClickedAt is the timestamp of the last time the button was clicked.
+     *
+     * If the button has never clicked before, this will be the zero-value/null.
+     */
+    lastClickedAt?: string;
+  }
+  export interface v1alpha1UIButtonSpec {
+    /**
+     * Location associates the button with another component for layout.
+     */
+    location?: v1alpha1UIComponentLocation;
+    /**
+     * Text to appear on the button itself.
+     */
+    text?: string;
+  }
+  export interface v1alpha1UIButton {
+    metadata?: v1ObjectMeta;
+    spec?: v1alpha1UIButtonSpec;
+    status?: v1alpha1UIButtonStatus;
   }
   export interface v1alpha1UIBuildTerminated {
     error?: string;

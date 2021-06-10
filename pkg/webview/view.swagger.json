@@ -359,6 +359,59 @@
       },
       "description": "UIBuildRunning respresents a finished build/update in the user interface."
     },
+    "v1alpha1UIButton": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/v1ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1alpha1UIButtonSpec"
+        },
+        "status": {
+          "$ref": "#/definitions/v1alpha1UIButtonStatus"
+        }
+      },
+      "title": "UIButton\n+k8s:openapi-gen=true"
+    },
+    "v1alpha1UIButtonSpec": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "$ref": "#/definitions/v1alpha1UIComponentLocation",
+          "description": "Location associates the button with another component for layout."
+        },
+        "text": {
+          "type": "string",
+          "description": "Text to appear on the button itself."
+        }
+      },
+      "title": "UIButtonSpec defines the desired state of UIButton"
+    },
+    "v1alpha1UIButtonStatus": {
+      "type": "object",
+      "properties": {
+        "lastClickedAt": {
+          "type": "string", "format": "date-time",
+          "description": "LastClickedAt is the timestamp of the last time the button was clicked.\n\nIf the button has never clicked before, this will be the zero-value/null."
+        }
+      },
+      "title": "UIButtonStatus defines the observed state of UIButton"
+    },
+    "v1alpha1UIComponentLocation": {
+      "type": "object",
+      "properties": {
+        "componentID": {
+          "type": "string",
+          "description": "ComponentID is the identifier of the parent component to associate this component with.\n\nFor example, this is a resource name if the ComponentType is Resource."
+        },
+        "componentType": {
+          "type": "string",
+          "description": "ComponentType is the type of the parent component."
+        }
+      },
+      "description": "UIComponentLocation specifies where to put a UI component."
+    },
     "v1alpha1UIFeatureFlag": {
       "type": "object",
       "properties": {
@@ -1066,6 +1119,17 @@
           "items": {
             "$ref": "#/definitions/v1alpha1UIResource"
           }
+        },
+        "ui_buttons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIButton"
+          }
+        },
+        "is_complete": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "indicates that this view is a complete representation of the app\nif false, this view just contains deltas from a previous view."
         }
       },
       "description": "1) On initialization, we send down the complete view state\n   (TiltStartTime, UISession, UIResources, and LogList)\n\n2) On every change, we send down the resources that have\n   changed since the last send().\n   (new logs and any updated UISession/UIResource objects).\n\nAll other fields are obsolete, but are needed for deserializing\nold snapshots.",
