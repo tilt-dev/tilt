@@ -106,7 +106,7 @@ import (
 
 var originalWD string
 
-const stdTimeout = time.Second
+const stdTimeout = 2 * time.Second
 
 type buildCompletionChannel chan bool
 
