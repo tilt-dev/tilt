@@ -71,6 +71,23 @@ type KubernetesApplyList struct {
 
 // KubernetesApplySpec defines the desired state of KubernetesApply
 type KubernetesApplySpec struct {
+	// The YAML to apply to the cluster. Required.
+	YAML string `json:"yaml" protobuf:"bytes,1,opt,name=yaml"`
+
+	// Names of image maps that this applier depends on.
+	//
+	// The controller will watch all the image maps, and redeploy the entire YAML
+	// if any of the maps resolve to a new image.
+	//
+	// +optional
+	ImageMaps []string `json:"imageMaps,omitempty" protobuf:"bytes,2,rep,name=imageMaps"`
+
+	// Descriptors of how to find images in the YAML.
+	//
+	// Needed when injecting images into CRDs.
+	//
+	// +optional
+	ImageLocators []KubernetesImageLocator `json:"imageLocators,omitempty" protobuf:"bytes,3,rep,name=imageLocators"`
 }
 
 var _ resource.Object = &KubernetesApply{}
@@ -105,8 +122,14 @@ func (in *KubernetesApply) IsStorageVersion() bool {
 }
 
 func (in *KubernetesApply) Validate(ctx context.Context) field.ErrorList {
-	// TODO(user): Modify it, adding your API validation here.
-	return nil
+	var fieldErrors field.ErrorList
+	if in.Spec.YAML == "" {
+		fieldErrors = append(fieldErrors, field.Required(field.NewPath("yaml"), "cannot be empty"))
+	}
+
+	// TODO(nick): Validate the image locators as well.
+
+	return fieldErrors
 }
 
 var _ resource.ObjectList = &KubernetesApplyList{}
@@ -131,4 +154,32 @@ var _ resource.StatusSubResource = &KubernetesApplyStatus{}
 
 func (in KubernetesApplyStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*KubernetesApply).Status = in
+}
+
+// Finds image references in Kubernetes YAML.
+type KubernetesImageLocator struct {
+	// Selects which objects to look in.
+	ObjectSelector ObjectSelector `json:"objectSelector" protobuf:"bytes,1,opt,name=objectSelector"`
+
+	// A JSON path to the image reference field.
+	//
+	// If Object is empty, the field should be a string.
+	//
+	// If Object is non-empty, the field should be an object with subfields.
+	Path string `json:"path" protobuf:"bytes,2,opt,name=path"`
+
+	// A descriptor of the path and structure of an object that describes an image
+	// reference. This is a common way to describe images in CRDs, breaking
+	// them down into an object rather than an image reference string.
+	//
+	// +optional
+	Object *KubernetesImageObjectDescriptor `json:"object,omitempty" protobuf:"bytes,3,opt,name=object"`
+}
+
+type KubernetesImageObjectDescriptor struct {
+	// The name of the field that contains the image repository.
+	RepoField string `json:"repoField" protobuf:"bytes,1,opt,name=repoField"`
+
+	// The name of the field that contains the image tag.
+	TagField string `json:"tagField" protobuf:"bytes,2,opt,name=tagField"`
 }
