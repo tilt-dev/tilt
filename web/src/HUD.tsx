@@ -351,6 +351,27 @@ export function HUDFromContext(props: React.PropsWithChildren<{}>) {
   return <HUD history={history} interfaceVersion={interfaceVersion} />
 }
 
+// returns a copy of `prev` that has the adds/updates/deletes from `updates` applied
+function mergeObjectUpdates<T extends { metadata?: Proto.v1ObjectMeta }>(
+  updates: T[] | undefined,
+  prev: T[] | undefined
+): T[] {
+  let next = Array.from(prev || [])
+  if (updates) {
+    updates.forEach((u) => {
+      let index = next.findIndex((o) => o?.metadata?.name === u?.metadata?.name)
+      if (index === -1) {
+        next.push(u)
+      } else {
+        next[index] = u
+      }
+    })
+    next = next.filter((o) => !o?.metadata?.deletionTimestamp)
+  }
+
+  return next
+}
+
 export function mergeAppUpdate<K extends keyof HudState>(
   prevState: Readonly<HudState>,
   stateUpdates: Pick<HudState, K>
@@ -398,29 +419,21 @@ export function mergeAppUpdate<K extends keyof HudState>(
     })
   }
 
-  // Merge the UIResources
-  let resourceUpdates = state.view?.uiResources
-  if (resourceUpdates) {
-    let uiResources: Proto.v1alpha1UIResource[] = Array.from(
-      result.view?.uiResources || []
-    )
-    resourceUpdates.forEach((resUpdate: Proto.v1alpha1UIResource) => {
-      let index = uiResources.findIndex((r: Proto.v1alpha1UIResource) => {
-        return r?.metadata?.name === resUpdate?.metadata?.name
-      })
-      if (index === -1) {
-        uiResources.push(resUpdate)
-        return
-      }
-
-      uiResources[index] = resUpdate
+  const uiResourceUpdates = state.view?.uiResources
+  if (uiResourceUpdates) {
+    result.view = Object.assign({}, result.view, {
+      uiResources: mergeObjectUpdates(
+        uiResourceUpdates,
+        result.view?.uiResources
+      ),
     })
+  }
 
-    uiResources = uiResources.filter((r: Proto.v1alpha1UIResource) => {
-      return !r?.metadata?.deletionTimestamp
+  const uiButtonUpdates = state.view?.uiButtons
+  if (uiButtonUpdates) {
+    result.view = Object.assign({}, result.view, {
+      uiButtons: mergeObjectUpdates(uiButtonUpdates, result.view?.uiButtons),
     })
-
-    result.view = Object.assign({}, result.view, { uiResources })
   }
 
   return result
