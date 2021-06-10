@@ -94,6 +94,13 @@ type CmdSpec struct {
 	//
 	// Logs of the current process after the restart are discarded.
 	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,5,opt,name=restartOn"`
+
+	// Indicates objects that can trigger a start/restart of this command.
+	//
+	// Restarts behave the same as RestartOn. The key difference is that
+	// a Cmd with any StartOn triggers will not have its command run until its
+	// StartOn is satisfied.
+	StartOn *StartOnSpec `json:"startOn,omitempty" protobuf:"bytes,6,opt,name=startOn"`
 }
 
 var _ resource.Object = &Cmd{}
@@ -217,4 +224,12 @@ func (in CmdStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 type RestartOnSpec struct {
 	// A list of file watches that can trigger a restart.
 	FileWatches []string `json:"fileWatches" protobuf:"bytes,1,rep,name=fileWatches"`
+}
+
+// StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
+type StartOnSpec struct {
+	// Any events that predate this time will be ignored.
+	StartAfter metav1.Time `json:"startAfter" protobuf:"bytes,1,opt,name=startAfter"`
+	// A list of ui buttons that can trigger a run.
+	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
 }

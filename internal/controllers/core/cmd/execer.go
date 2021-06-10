@@ -25,8 +25,9 @@ type Execer interface {
 }
 
 type fakeExecProcess struct {
-	exitCh  chan int
-	workdir string
+	exitCh    chan int
+	workdir   string
+	startTime time.Time
 }
 
 type FakeExecer struct {
@@ -54,8 +55,9 @@ func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, stat
 
 	e.mu.Lock()
 	e.processes[cmd.String()] = &fakeExecProcess{
-		exitCh:  exitCh,
-		workdir: cmd.Dir,
+		exitCh:    exitCh,
+		workdir:   cmd.Dir,
+		startTime: time.Now(),
 	}
 	e.mu.Unlock()
 
@@ -108,6 +110,7 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan stat
 }
 
 func (fe *FakeExecer) RequireNoKnownProcess(t *testing.T, cmd string) {
+	t.Helper()
 	fe.mu.Lock()
 	defer fe.mu.Unlock()
 

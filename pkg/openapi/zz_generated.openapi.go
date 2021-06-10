@@ -86,6 +86,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionList":                     schema_pkg_apis_core_v1alpha1_SessionList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec":                     schema_pkg_apis_core_v1alpha1_SessionSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus":                   schema_pkg_apis_core_v1alpha1_SessionStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec":                     schema_pkg_apis_core_v1alpha1_StartOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":                 schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target":                          schema_pkg_apis_core_v1alpha1_Target(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetState":                     schema_pkg_apis_core_v1alpha1_TargetState(ref),
@@ -322,11 +323,17 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
 						},
 					},
+					"startOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicates objects that can trigger a start/restart of this command.\n\nRestarts behave the same as RestartOn. The key difference is that a Cmd with any StartOn triggers will not have its command run until its StartOn is satisfied.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"},
 	}
 }
 
@@ -2599,6 +2606,44 @@ func schema_pkg_apis_core_v1alpha1_SessionStatus(ref common.ReferenceCallback) c
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "StartOnSpec indicates the set of objects that can trigger a start/restart of this object.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startAfter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Any events that predate this time will be ignored.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"uiButtons": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of ui buttons that can trigger a run.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"startAfter", "uiButtons"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3078,14 +3123,14 @@ func schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "LastClickedAt is the timestamp of the last time the button was clicked.\n\nIf the button has never clicked before, this will be the zero-value/null.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

@@ -143,7 +143,7 @@ type UIButtonStatus struct {
 	// LastClickedAt is the timestamp of the last time the button was clicked.
 	//
 	// If the button has never clicked before, this will be the zero-value/null.
-	LastClickedAt metav1.Time `json:"lastClickedAt,omitempty" protobuf:"bytes,1,opt,name=lastClickedAt"`
+	LastClickedAt metav1.MicroTime `json:"lastClickedAt,omitempty" protobuf:"bytes,1,opt,name=lastClickedAt"`
 }
 
 // UIButton implements ObjectWithStatusSubResource interface.

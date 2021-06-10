@@ -87,6 +87,13 @@ message CmdSpec {
   //
   // Logs of the current process after the restart are discarded.
   optional RestartOnSpec restartOn = 5;
+
+  // Indicates objects that can trigger a start/restart of this command.
+  //
+  // Restarts behave the same as RestartOn. The key difference is that
+  // a Cmd with any StartOn triggers will not have its command run until its
+  // StartOn is satisfied.
+  optional StartOnSpec startOn = 6;
 }
 
 // CmdStateRunning is a running state of a local command.
@@ -892,6 +899,15 @@ message SessionStatus {
   optional string error = 5;
 }
 
+// StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
+message StartOnSpec {
+  // Any events that predate this time will be ignored.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startAfter = 1;
+
+  // A list of ui buttons that can trigger a run.
+  repeated string uiButtons = 2;
+}
+
 // TCPSocketAction describes an action based on opening a socket
 message TCPSocketAction {
   // Number or name of the port to access on the container.
@@ -1072,7 +1088,7 @@ message UIButtonStatus {
   // LastClickedAt is the timestamp of the last time the button was clicked.
   //
   // If the button has never clicked before, this will be the zero-value/null.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastClickedAt = 1;
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastClickedAt = 1;
 }
 
 // UIComponentLocation specifies where to put a UI component.
