@@ -33,5 +33,5 @@ func NewPortForwardDeleteAction(pfName string) PortForwardDeleteAction {
 func (PortForwardDeleteAction) Action() {}
 
 func (a PortForwardDeleteAction) Summarize(s *store.ChangeSummary) {
-	s.PodLogStreams.Add(types.NamespacedName{Name: a.Name})
+	s.PortForwards.Add(types.NamespacedName{Name: a.Name})
 }
