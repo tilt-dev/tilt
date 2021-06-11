@@ -87,6 +87,13 @@ message CmdSpec {
   //
   // Logs of the current process after the restart are discarded.
   optional RestartOnSpec restartOn = 5;
+
+  // Indicates objects that can trigger a start/restart of this command.
+  //
+  // Restarts behave the same as RestartOn. The key difference is that
+  // a Cmd with any StartOn triggers will not have its command run until its
+  // StartOn is satisfied.
+  optional StartOnSpec startOn = 6;
 }
 
 // CmdStateRunning is a running state of a local command.
@@ -476,6 +483,23 @@ message KubernetesApplyList {
 
 // KubernetesApplySpec defines the desired state of KubernetesApply
 message KubernetesApplySpec {
+  // The YAML to apply to the cluster. Required.
+  optional string yaml = 1;
+
+  // Names of image maps that this applier depends on.
+  //
+  // The controller will watch all the image maps, and redeploy the entire YAML
+  // if any of the maps resolve to a new image.
+  //
+  // +optional
+  repeated string imageMaps = 2;
+
+  // Descriptors of how to find images in the YAML.
+  //
+  // Needed when injecting images into CRDs.
+  //
+  // +optional
+  repeated KubernetesImageLocator imageLocators = 3;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply
@@ -527,6 +551,34 @@ message KubernetesDiscoveryStatus {
   repeated Pod pods = 1;
 }
 
+// Finds image references in Kubernetes YAML.
+message KubernetesImageLocator {
+  // Selects which objects to look in.
+  optional ObjectSelector objectSelector = 1;
+
+  // A JSON path to the image reference field.
+  //
+  // If Object is empty, the field should be a string.
+  //
+  // If Object is non-empty, the field should be an object with subfields.
+  optional string path = 2;
+
+  // A descriptor of the path and structure of an object that describes an image
+  // reference. This is a common way to describe images in CRDs, breaking
+  // them down into an object rather than an image reference string.
+  //
+  // +optional
+  optional KubernetesImageObjectDescriptor object = 3;
+}
+
+message KubernetesImageObjectDescriptor {
+  // The name of the field that contains the image repository.
+  optional string repoField = 1;
+
+  // The name of the field that contains the image tag.
+  optional string tagField = 2;
+}
+
 // KubernetesWatchRef is similar to v1.ObjectReference from the Kubernetes API and is used to determine
 // what objects should be reported on based on discovery.
 message KubernetesWatchRef {
@@ -542,6 +594,25 @@ message KubernetesWatchRef {
   //
   // This is not directly used in discovery; it is extra metadata.
   optional string name = 3;
+}
+
+// Selector for any Kubernetes-style API.
+message ObjectSelector {
+  // A regular expression apiVersion match.
+  // +optional
+  optional string apiVersionRegexp = 1;
+
+  // A regular expression kind match.
+  // +optional
+  optional string kindRegexp = 2;
+
+  // A regular expression name match.
+  // +optional
+  optional string nameRegexp = 3;
+
+  // A regular expression namespace match.
+  // +optional
+  optional string namespaceRegexp = 4;
 }
 
 // Pod is a collection of containers that can run on a host.
@@ -828,6 +899,15 @@ message SessionStatus {
   optional string error = 5;
 }
 
+// StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
+message StartOnSpec {
+  // Any events that predate this time will be ignored.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startAfter = 1;
+
+  // A list of ui buttons that can trigger a run.
+  repeated string uiButtons = 2;
+}
+
 // TCPSocketAction describes an action based on opening a socket
 message TCPSocketAction {
   // Number or name of the port to access on the container.
@@ -1008,7 +1088,7 @@ message UIButtonStatus {
   // LastClickedAt is the timestamp of the last time the button was clicked.
   //
   // If the button has never clicked before, this will be the zero-value/null.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastClickedAt = 1;
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastClickedAt = 1;
 }
 
 // UIComponentLocation specifies where to put a UI component.

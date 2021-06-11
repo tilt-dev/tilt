@@ -147,7 +147,7 @@ metadata:
   name: %s
 spec: {}
 status: {}`, name)
-	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.NewK8sTargetForTesting(yaml))
 }
 
 func newK8sPVCManifest(name string, downPolicy string) model.Manifest {
@@ -160,7 +160,7 @@ metadata:
     tilt.dev/down-policy: %s
 spec: {}
 status: {}`, name, downPolicy)
-	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.NewK8sTargetForTesting(yaml))
 }
 
 type downFixture struct {
