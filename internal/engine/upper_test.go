@@ -574,7 +574,6 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
-	f.timerMaker.MaxTimerLock.Lock()
 	call := f.nextCallComplete()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
@@ -600,80 +599,6 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 	err := f.Stop()
 	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
-func TestUpper_UpWatchCoalescedFileChanges(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	manifest := f.newManifest("foobar")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	f.timerMaker.MaxTimerLock.Lock()
-	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
-
-	f.podEvent(pb.Build())
-
-	f.timerMaker.RestTimerLock.Lock()
-	fileRelPaths := []string{"fdas", "giueheh"}
-	for _, fileRelPath := range fileRelPaths {
-		f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
-	}
-	time.Sleep(time.Millisecond)
-	f.timerMaker.RestTimerLock.Unlock()
-
-	call = f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-
-	var fileAbsPaths []string
-	for _, fileRelPath := range fileRelPaths {
-		fileAbsPaths = append(fileAbsPaths, f.JoinPath(fileRelPath))
-	}
-	assert.Equal(t, fileAbsPaths, call.oneImageState().FilesChanged())
-
-	err := f.Stop()
-	assert.NoError(t, err)
-
-	f.assertAllBuildsConsumed()
-}
-
-func TestUpper_UpWatchCoalescedFileChangesHitMaxTimeout(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	manifest := f.newManifest("foobar")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
-
-	f.podEvent(pb.Build())
-
-	f.timerMaker.MaxTimerLock.Lock()
-	f.timerMaker.RestTimerLock.Lock()
-	fileRelPaths := []string{"fdas", "giueheh"}
-	for _, fileRelPath := range fileRelPaths {
-		f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
-	}
-	time.Sleep(time.Millisecond)
-	f.timerMaker.MaxTimerLock.Unlock()
-
-	call = f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-
-	var fileAbsPaths []string
-	for _, fileRelPath := range fileRelPaths {
-		fileAbsPaths = append(fileAbsPaths, f.JoinPath(fileRelPath))
-	}
-	assert.Equal(t, fileAbsPaths, call.oneImageState().FilesChanged())
-
-	err := f.Stop()
-	assert.NoError(t, err)
-
 	f.assertAllBuildsConsumed()
 }
 
@@ -3914,7 +3839,6 @@ type testFixture struct {
 	upper                      Upper
 	b                          *fakeBuildAndDeployer
 	fsWatcher                  *fsevent.FakeMultiWatcher
-	timerMaker                 *fsevent.FakeTimerMaker
 	docker                     *docker.FakeClient
 	kClient                    *k8s.FakeK8sClient
 	hud                        hud.HeadsUpDisplay
@@ -4040,7 +3964,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		clock:             clock,
 		b:                 b,
 		fsWatcher:         watcher,
-		timerMaker:        &timerMaker,
 		docker:            dockerClient,
 		kClient:           b.kClient,
 		hud:               h,
