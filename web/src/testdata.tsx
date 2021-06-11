@@ -389,22 +389,47 @@ export function nResourceView(n: number): view {
   }
 }
 
-function oneButtonView(): view {
+function oneButton(i: number, resourceName: string): UIButton {
   return {
-    uiResources: [],
-    uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
-    uiButtons: [{ metadata: { name: "foo" }, spec: { text: "hello" } }],
+    metadata: { name: `button${i + 1}` },
+    spec: {
+      text: `text${i + 1}`,
+      location: {
+        componentID: resourceName,
+        componentType: "resource",
+      },
+    },
   }
 }
 
-function twoButtonView(): view {
+function nButtonView(n: number): view {
+  const ts = new Date(Date.now()).toISOString()
+
   return {
-    uiResources: [],
-    uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
-    uiButtons: [
-      { metadata: { name: "button1" }, spec: { text: "hello" } },
-      { metadata: { name: "button2" }, spec: { text: "goodbye" } },
+    uiResources: [
+      {
+        metadata: {
+          name: "vigoda",
+        },
+        status: {
+          lastDeployTime: ts,
+          buildHistory: [
+            {
+              finishTime: ts,
+              startTime: ts,
+            },
+          ],
+          pendingBuildSince: ts,
+          currentBuild: {},
+          updateStatus: "ok",
+          endpointLinks: [],
+          runtimeStatus: "ok",
+          specs: vigodaSpecs(),
+        },
+      },
     ],
+    uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
+    uiButtons: Array.from({ length: n }, (_, i) => oneButton(i, "vigoda")),
   }
 }
 
@@ -4479,8 +4504,8 @@ export {
   oneResourceTest,
   oneResourceTestWithName,
   logList,
-  oneButtonView,
-  twoButtonView,
+  oneButton,
+  nButtonView,
   logPaneDOM,
   unnamedEndpointLink,
   namedEndpointLink,

@@ -9,9 +9,8 @@ import LogStore from "./LogStore"
 import SocketBar from "./SocketBar"
 import {
   logList,
-  oneButtonView,
+  nButtonView,
   oneResourceView,
-  twoButtonView,
   twoResourceView,
 } from "./testdata"
 import { SocketState } from "./types"
@@ -222,19 +221,19 @@ describe("mergeAppUpdates", () => {
   })
 
   it("handles add button", () => {
-    let prevState = { view: oneButtonView() }
-    let update = { view: { uiButtons: [twoButtonView().uiButtons[1]] } }
+    let prevState = { view: nButtonView(1) }
+    let update = { view: { uiButtons: [nButtonView(2).uiButtons[1]] } }
     let result = mergeAppUpdate(prevState as any, update)
     expect(result.view).not.toBe(prevState.view)
     expect(result.view.uiSession).toBe(prevState.view.uiSession)
     expect(result.view.uiResources).toBe(prevState.view.uiResources)
     expect(result.view.uiButtons!.length).toEqual(2)
-    expect(result.view.uiButtons![0].metadata!.name).toEqual("foo")
+    expect(result.view.uiButtons![0].metadata!.name).toEqual("button1")
     expect(result.view.uiButtons![1].metadata!.name).toEqual("button2")
   })
 
   it("handles delete button", () => {
-    let prevState = { view: twoButtonView() }
+    let prevState = { view: nButtonView(2) }
     let update = {
       view: {
         uiButtons: [
@@ -255,7 +254,7 @@ describe("mergeAppUpdates", () => {
   })
 
   it("handles replace button", () => {
-    let prevState = { view: twoButtonView() }
+    let prevState = { view: nButtonView(2) }
     let update = { view: { uiButtons: [{ metadata: { name: "button1" } }] } }
     let result = mergeAppUpdate(prevState as any, update)
     expect(result.view).not.toBe(prevState.view)

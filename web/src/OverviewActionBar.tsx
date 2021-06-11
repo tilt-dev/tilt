@@ -23,6 +23,7 @@ import { ResourceName } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
 type Link = Proto.v1alpha1UIResourceLink
+type UIButton = Proto.v1alpha1UIButton
 
 type OverviewActionBarProps = {
   // The current resource. May be null if there is no resource.
@@ -33,6 +34,9 @@ type OverviewActionBarProps = {
 
   // The current log filter.
   filterSet: FilterSet
+
+  // buttons for this resource
+  buttons?: UIButton[]
 }
 
 type FilterSourceMenuProps = {
@@ -205,6 +209,13 @@ let ButtonRoot = styled(InstrumentedButton)`
   }
   &.isEnabled:hover .fillStd {
     fill: ${Color.blue};
+  }
+`
+
+const WidgetRoot = styled.div`
+  display: flex;
+  ${ButtonRoot} + ${ButtonRoot} {
+    margin-left: ${SizeUnit(0.125)};
   }
 `
 
@@ -426,8 +437,36 @@ function openEndpointUrl(url: string) {
   window.open(url, url)
 }
 
+function ApiButton(props: { button: UIButton }) {
+  const onClick = () => {
+    // TODO - actually send the click to the API
+    // https://app.clubhouse.io/windmill/story/12081/clicking-a-uibutton-in-the-web-ui-updates-the-click-state-in-the-api-server
+    console.log(`clicked uibutton ${props.button.metadata?.name}`)
+  }
+  // button text is not included in analytics name since that can be user data
+  return (
+    <ButtonRoot analyticsName={"ui.web.uibutton"} onClick={onClick}>
+      {props.button.spec?.text ?? "Button"}
+    </ButtonRoot>
+  )
+}
+
+export function OverviewWidgets(props: { buttons?: UIButton[] }) {
+  if (!props.buttons?.length) {
+    return null
+  }
+
+  return (
+    <WidgetRoot key="widgets">
+      {props.buttons?.map((b) => (
+        <ApiButton button={b} key={b.metadata?.name} />
+      ))}
+    </WidgetRoot>
+  )
+}
+
 export default function OverviewActionBar(props: OverviewActionBarProps) {
-  let { resource, filterSet, alerts } = props
+  let { resource, filterSet, alerts, buttons } = props
   let endpoints = resource?.status?.endpointLinks || []
   let podId = resource?.status?.k8sResourceInfo?.podName || ""
   const resourceName = resource
@@ -454,22 +493,27 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     )
   })
 
-  let copyButton = podId ? <CopyButton podId={podId} /> : <div>&nbsp;</div>
+  let topRowEls = new Array<JSX.Element>()
+  if (endpointEls.length) {
+    topRowEls.push(
+      <EndpointSet key="endpointSet">
+        <EndpointIcon />
+        {endpointEls}
+      </EndpointSet>
+    )
+  }
+  if (podId) {
+    topRowEls.push(<CopyButton podId={podId} key="copyPodId" />)
+  }
 
-  let topRow =
-    endpointEls.length || podId ? (
-      <ActionBarTopRow key="top">
-        {endpointEls.length ? (
-          <EndpointSet>
-            <EndpointIcon />
-            {endpointEls}
-          </EndpointSet>
-        ) : (
-          <EndpointSet />
-        )}
-        {copyButton}
-      </ActionBarTopRow>
-    ) : null
+  const widgets = OverviewWidgets({ buttons })
+  if (widgets) {
+    topRowEls.push(widgets)
+  }
+
+  const topRow = topRowEls.length ? (
+    <ActionBarTopRow key="top">{topRowEls}</ActionBarTopRow>
+  ) : null
 
   return (
     <ActionBarRoot>
