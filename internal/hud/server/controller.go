@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -124,9 +125,12 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	apiRouter.PathPrefix("/version").Handler(apiserverHandler)
 	apiRouter.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
 
-	apiTLSConfig, err := start.TLSConfig(serving)
-	if err != nil {
-		return fmt.Errorf("Starting apiserver: %v", err)
+	var apiTLSConfig *tls.Config
+	if serving.Cert != nil {
+		apiTLSConfig, err = start.TLSConfig(serving)
+		if err != nil {
+			return fmt.Errorf("Starting apiserver: %v", err)
+		}
 	}
 
 	webRouter := mux.NewRouter()
