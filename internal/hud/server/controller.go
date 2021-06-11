@@ -6,19 +6,32 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
+	"regexp"
 
 	"github.com/gorilla/mux"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubectl/pkg/proxy"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+// apiServerProxyPrefix routes web HUD requests to the apiserver as it cannot contact it directly.
+//
+// This prefix is stripped from the subsequent request to the apiserver, e.g. to list API versions,
+// `/proxy/apis` --> `/apis`.
+//
+// NOTE: The kubectl ProxyHandler code has some odd behavior in this regard in that it only strips
+// 	the prefix if it does not start with `/api`. As a result, something like a prefix of `/apiserver`
+// 	will cause problems because `/apiserver/apis/foo` will be passed as-is, which is why `/proxy` was
+// 	chosen here.
+const apiServerProxyPrefix = "/proxy"
 
 type HeadsUpServerController struct {
 	configAccess    clientcmd.ConfigAccess
@@ -133,19 +146,26 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 		}
 	}
 
+	proxyHandler, err := newAPIServerProxyHandler(config.GenericConfig.LoopbackClientConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create apiserver proxy: %v", err)
+	}
+
 	webRouter := mux.NewRouter()
 	webRouter.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
+	// the path prefix here must be kept in sync with the prefix configured in the proxy handler
+	// (it needs to know what to strip before forwarding the request)
+	webRouter.PathPrefix(apiServerProxyPrefix).Handler(proxyHandler)
 	webRouter.PathPrefix("/").Handler(s.hudServer.Router())
 
-	webListener := net.Listener(s.webListener)
 	s.webServer = &http.Server{
-		Addr:    webListener.Addr().String(),
+		Addr:    s.webListener.Addr().String(),
 		Handler: webRouter,
 
 		// blackhole any server errors
 		ErrorLog: log.New(ioutil.Discard, "", 0),
 	}
-	runServer(ctx, s.webServer, webListener)
+	runServer(ctx, s.webServer, s.webListener)
 
 	s.apiServer = &http.Server{
 		Addr:           serving.Listener.Addr().String(),
@@ -220,6 +240,27 @@ func (s *HeadsUpServerController) removeFromAPIServerConfig() error {
 	delete(newConfig.Clusters, name)
 
 	return clientcmd.ModifyConfig(s.configAccess, *newConfig, true)
+}
+
+func newAPIServerProxyHandler(config *rest.Config) (http.Handler, error) {
+	// all requests to the proxy handler are same origin from the HUD server, so there is
+	// no CORS policy in place because we explicitly want to reject all other origin requests
+	// in the future, it's worth considering adding a CSRF token for a bit of extra robustness;
+	// but it's not critical because the content returned by the proxy for GETs is not embeddable
+	// and for POST cannot accept form data (only JSON or protobuf), so XHR same origin policy
+	// is sufficient
+	fs := &proxy.FilterServer{
+		AcceptHosts: []*regexp.Regexp{
+			// filtering by Host header is not useful, just ignore it
+			regexp.MustCompile(`.+`),
+		},
+		AcceptPaths: []*regexp.Regexp{
+			regexp.MustCompile(`^/apis/tilt\.dev/\w+/uibuttons`),
+		},
+	}
+
+	// the prefix here must be kept in sync with the route definition on the mux
+	return proxy.NewProxyHandler(apiServerProxyPrefix, fs, config, 0)
 }
 
 var _ store.SetUpper = &HeadsUpServerController{}
