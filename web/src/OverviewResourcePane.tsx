@@ -76,7 +76,8 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
 
   const buttons = props.view.uiButtons?.filter(
     (b) =>
-      b.spec?.location?.componentType === "resource" &&
+      b.spec?.location &&
+      (b.spec.location.componentType ?? "").toLowerCase() === "resource" &&
       b.spec.location.componentID === name
   )
 
