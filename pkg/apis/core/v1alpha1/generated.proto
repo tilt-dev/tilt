@@ -902,6 +902,8 @@ message SessionStatus {
 // StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
 message StartOnSpec {
   // Any events that predate this time will be ignored.
+  //
+  // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startAfter = 1;
 
   // A list of ui buttons that can trigger a run.

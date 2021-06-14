@@ -229,7 +229,9 @@ type RestartOnSpec struct {
 // StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
 type StartOnSpec struct {
 	// Any events that predate this time will be ignored.
-	StartAfter metav1.Time `json:"startAfter" protobuf:"bytes,1,opt,name=startAfter"`
+	//
+	// +optional
+	StartAfter metav1.Time `json:"startAfter,omitempty" protobuf:"bytes,1,opt,name=startAfter"`
 	// A list of ui buttons that can trigger a run.
 	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
 }
