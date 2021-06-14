@@ -56,6 +56,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":                       schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap":                        schema_pkg_apis_core_v1alpha1_ImageMap(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapList":                    schema_pkg_apis_core_v1alpha1_ImageMapList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs":            schema_pkg_apis_core_v1alpha1_ImageMapOverrideArgs(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand":         schema_pkg_apis_core_v1alpha1_ImageMapOverrideCommand(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec":                    schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus":                  schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply":                 schema_pkg_apis_core_v1alpha1_KubernetesApply(ref),
@@ -1180,7 +1182,7 @@ func schema_pkg_apis_core_v1alpha1_ImageMap(ref common.ReferenceCallback) common
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ImageMap expresses the mapping from an image reference to a real, pushed image in an image registry that a container runtime can access.\n\nAnother way to think about the ImageMap is that ImageMapSpec is a mutable image reference (where the image might not exist yet), but ImageMapStatus is an immutable image reference (where, if an image is specified, it always exists).\n\nImageMap does not specify how the image is built or who is responsible for building this. But any API that builds images should produce an ImageMap.\n\nFor example, a builder that builds to a local image registry might create a map from: 'my-apiserver:dev' to 'localhost:5000/my-apiserver:content-based-label'.",
+				Description: "ImageMap expresses the mapping from an image reference to a real, pushed image in an image registry that a container runtime can access.\n\nAnother way to think about the ImageMap is that ImageMapSpec is a mutable image reference (where the image might not exist yet), but ImageMapStatus is an immutable image reference (where, if an image is specified, it always exists).\n\nImageMap does not specify how the image is built or who is responsible for building this. But any API that builds images should produce an ImageMap.\n\nFor example, a builder that builds to a local image registry might create a map from: 'my-apiserver:dev' to 'localhost:5000/my-apiserver:content-based-label'.\n\nImageMap doesn't follow the usual Kubernetes-style API semantics (where the Status is the result of running the Spec). It's closer to a ConfigMap. Though the Status does represent a real runtime result (an image in a registry).",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
@@ -1272,14 +1274,111 @@ func schema_pkg_apis_core_v1alpha1_ImageMapList(ref common.ReferenceCallback) co
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_ImageMapOverrideArgs(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapArgsOverride defines args to inject when the image is injected. Only applies to types that embed a v1.Container with a Command field.\n\nhttps://pkg.go.dev/k8s.io/api/core/v1#Container",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of args strings.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"args"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapOverrideCommand(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapCommandOverride defines a command to inject when the image is injected. Only applies to types that embed a v1.Container with a Command field.\n\nhttps://pkg.go.dev/k8s.io/api/core/v1#Container",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"command": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of command strings.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"command"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "ImageMapSpec defines the desired state of ImageMap",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"selector": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A named image reference.\n\nDeployment tools expect this image reference to match an image in the YAML being deployed, and will replace that image reference.\n\nBy default, this selector will match an image if the names match (tags on both the selector and the matched reference are ignored).",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"matchExact": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If specified, then tags on both the selector and the matched reference are used for matching. The selector will only match the reference if the tags match exactly.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"matchInEnvVars": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If specified, then the selector will also match any strings in container env variables.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"overrideCommand": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If specified, the injector will replace the 'command' field in the container when it replaces the image.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand"),
+						},
+					},
+					"overrideArgs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If specified, the injector will replace the 'args' field in the container when it replaces the image.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs"),
+						},
+					},
+				},
+				Required: []string{"selector"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand"},
 	}
 }
 
@@ -1289,6 +1388,17 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 			SchemaProps: spec.SchemaProps{
 				Description: "ImageMapStatus defines the observed state of ImageMap",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A fully-qualified image reference, including a name and an immutable tag.\n\nThe image will not necessarily have the same repo URL as the selector. Many Kubernetes clusters let you push to a local registry for local development.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"image"},
 			},
 		},
 	}
