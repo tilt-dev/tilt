@@ -4,9 +4,7 @@ import { Router } from "react-router"
 import { FilterLevel, FilterSource, useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
-import { oneResource } from "./testdata"
-
-type UIResource = Proto.v1alpha1UIResource
+import { oneButton, oneResource } from "./testdata"
 
 export default {
   title: "New UI/Log View/OverviewActionBar",
@@ -68,7 +66,10 @@ export const FullBar = () => {
     { url: "http://localhost:4002" },
   ]
   res.status.k8sResourceInfo = { podName: "my-pod-deadbeef" }
-  return <OverviewActionBar resource={res} filterSet={filterSet} />
+  let buttons = [oneButton(1, "vigoda")]
+  return (
+    <OverviewActionBar resource={res} filterSet={filterSet} buttons={buttons} />
+  )
 }
 
 export const EmptyBar = () => {

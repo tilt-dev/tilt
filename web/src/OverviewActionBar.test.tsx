@@ -87,3 +87,16 @@ it("navigates to build warning filter", () => {
   buildItem.simulate("click")
   expect(history.location.search).toEqual("?source=build&level=warn")
 })
+
+it("shows buttons", () => {
+  let root = mount(
+    <MemoryRouter initialEntries={["/"]}>
+      <FullBar />
+    </MemoryRouter>
+  )
+  let topBar = root.find(ActionBarTopRow)
+  expect(topBar).toHaveLength(1)
+
+  let endpoints = topBar.find(Endpoint)
+  expect(endpoints).toHaveLength(2)
+})

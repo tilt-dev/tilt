@@ -74,6 +74,12 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     resources.forEach((r) => alerts.push(...combinedAlerts(r, logStore)))
   }
 
+  const buttons = props.view.uiButtons?.filter(
+    (b) =>
+      b.spec?.location?.componentType === "resource" &&
+      b.spec.location.componentID === name
+  )
+
   // Hide the HTML element scrollbars, since this pane does all scrolling internally.
   // TODO(nick): Remove this when the old UI is deleted.
   useEffect(() => {
@@ -88,7 +94,12 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
       />
       <Main>
         <OverviewResourceSidebar {...props} name={name} />
-        <OverviewResourceDetails resource={r} name={name} alerts={alerts} />
+        <OverviewResourceDetails
+          resource={r}
+          name={name}
+          alerts={alerts}
+          buttons={buttons}
+        />
       </Main>
     </OverviewResourcePaneRoot>
   )

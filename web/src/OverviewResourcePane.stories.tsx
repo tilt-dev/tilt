@@ -4,7 +4,12 @@ import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { ResourceNavProvider } from "./ResourceNav"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
-import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
+import {
+  nButtonView,
+  nResourceView,
+  tenResourceView,
+  twoResourceView,
+} from "./testdata"
 
 type UIResource = Proto.v1alpha1UIResource
 
@@ -47,6 +52,34 @@ export const TwoResources = () => (
 
 export const TenResources = () => (
   <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
+)
+
+export const TwoButtons = () => {
+  const view = nButtonView(2)
+  return <OverviewResourcePaneHarness name="vigoda" view={view} />
+}
+
+export const TwoButtonsWithEndpoint = () => {
+  const view = nButtonView(2)
+  view.uiResources[0].status!.endpointLinks = [{ name: "endpoint", url: "foo" }]
+  return <OverviewResourcePaneHarness name="vigoda" view={view} />
+}
+
+export const TwoButtonsWithPodID = () => {
+  const view = nButtonView(2)
+  view.uiResources[0].status!.k8sResourceInfo = { podName: "abcdefg" }
+  return <OverviewResourcePaneHarness name="vigoda" view={view} />
+}
+
+export const TwoButtonsWithEndpointAndPodID = () => {
+  const view = nButtonView(2)
+  view.uiResources[0].status!.k8sResourceInfo = { podName: "abcdefg" }
+  view.uiResources[0].status!.endpointLinks = [{ name: "endpoint", url: "foo" }]
+  return <OverviewResourcePaneHarness name="vigoda" view={view} />
+}
+
+export const TenButtons = () => (
+  <OverviewResourcePaneHarness name="vigoda" view={nButtonView(10)} />
 )
 
 export const FullResourceBar = () => {

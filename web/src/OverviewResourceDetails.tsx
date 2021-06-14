@@ -8,9 +8,11 @@ import { Color } from "./style-helpers"
 import { ResourceName } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
+type UIButton = Proto.v1alpha1UIButton
 
 type OverviewResourceDetailsProps = {
   resource?: UIResource
+  buttons?: UIButton[]
   alerts?: Alert[]
   name: string
 }
@@ -34,7 +36,7 @@ let NotFound = styled.div`
 export default function OverviewResourceDetails(
   props: OverviewResourceDetailsProps
 ) {
-  let { name, resource, alerts } = props
+  let { name, resource, alerts, buttons } = props
   let manifestName = resource?.metadata?.name || ""
   let all = name === "" || name === ResourceName.all
   let notFound = !all && !manifestName
@@ -46,6 +48,7 @@ export default function OverviewResourceDetails(
         resource={resource}
         filterSet={filterSet}
         alerts={alerts}
+        buttons={buttons}
       />
       {notFound ? (
         <NotFound>No resource '{name}'</NotFound>
