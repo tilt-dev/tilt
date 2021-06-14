@@ -28,17 +28,18 @@ func (Extension) OnStart(env *starkit.Environment) error {
 }
 
 func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var cmdVal, cmdBatVal starlark.Value
+	var cmdVal, cmdBatVal, cmdDirVal starlark.Value
 	var period value.Duration
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"cmd", &cmdVal,
 		"cmd_bat?", &cmdBatVal,
-		"period?", &period)
+		"period?", &period,
+		"cmd_dir?", &cmdDirVal)
 	if err != nil {
 		return starlark.None, err
 	}
 
-	cmd, err := value.ValueGroupToCmdHelper(thread, cmdVal, cmdBatVal, nil)
+	cmd, err := value.ValueGroupToCmdHelper(thread, cmdVal, cmdBatVal, cmdDirVal, nil)
 	if err != nil {
 		return nil, err
 	}

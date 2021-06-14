@@ -109,30 +109,45 @@ func StringSliceToList(slice []string) *starlark.List {
 // there's a "main" command, and then various per-platform overrides.
 // https://docs.bazel.build/versions/master/be/general.html#genrule.cmd_bat
 // This helper function abstracts out the precedence rules.
-func ValueGroupToCmdHelper(t *starlark.Thread, cmdVal, cmdBatVal starlark.Value, env map[string]string) (model.Cmd, error) {
+func ValueGroupToCmdHelper(t *starlark.Thread, cmdVal, cmdBatVal, cmdDir starlark.Value, env map[string]string) (model.Cmd, error) {
 	if cmdBatVal != nil && runtime.GOOS == "windows" {
-		return ValueToBatCmd(t, cmdBatVal, env)
+		return ValueToBatCmd(t, cmdBatVal, cmdDir, env)
 	}
-	return ValueToHostCmd(t, cmdVal, env)
+	return ValueToHostCmd(t, cmdVal, cmdDir, env)
 }
 
 // provides dockerfile-style behavior of:
 // a string gets interpreted as a shell command (like, sh -c 'foo bar $X')
 // an array of strings gets interpreted as a raw argv to exec
-func ValueToHostCmd(t *starlark.Thread, v starlark.Value, env map[string]string) (model.Cmd, error) {
-	return valueToCmdHelper(t, v, env, model.ToHostCmd)
+func ValueToHostCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, dir, env, model.ToHostCmd)
 }
 
-func ValueToBatCmd(t *starlark.Thread, v starlark.Value, env map[string]string) (model.Cmd, error) {
-	return valueToCmdHelper(t, v, env, model.ToBatCmd)
+func ValueToBatCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, dir, env, model.ToBatCmd)
 }
 
-func ValueToUnixCmd(t *starlark.Thread, v starlark.Value, env map[string]string) (model.Cmd, error) {
-	return valueToCmdHelper(t, v, env, model.ToUnixCmd)
+func ValueToUnixCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, dir, env, model.ToUnixCmd)
 }
 
-func valueToCmdHelper(t *starlark.Thread, cmdVal starlark.Value, cmdEnv map[string]string, stringToCmd func(string) model.Cmd) (model.Cmd, error) {
-	dir := starkit.AbsWorkingDir(t)
+func valueToCmdHelper(t *starlark.Thread, cmdVal, cmdDirVal starlark.Value, cmdEnv map[string]string, stringToCmd func(string) model.Cmd) (model.Cmd, error) {
+
+	var dir string
+	var dirErr error
+
+	switch cmdDirVal.(type) {
+	case nil:
+		dir = starkit.AbsWorkingDir(t)
+	case starlark.NoneType:
+		dir = starkit.AbsWorkingDir(t)
+	case starlark.String:
+		dir, dirErr = ValueToAbsPath(t, cmdDirVal)
+		if dirErr != nil {
+			return model.Cmd{}, errors.Wrap(dirErr, "error on directory string")
+		}
+	}
+
 	env, err := envTuples(cmdEnv)
 	if err != nil {
 		return model.Cmd{}, err

@@ -163,11 +163,13 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var commandVal starlark.Value
 	var triggers starlark.Value
-	if err := s.unpackArgs(fn.Name(), args, kwargs, "cmd", &commandVal, "trigger?", &triggers); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs,
+		"cmd", &commandVal,
+		"trigger?", &triggers); err != nil {
 		return nil, err
 	}
 
-	command, err := value.ValueToUnixCmd(thread, commandVal, nil)
+	command, err := value.ValueToUnixCmd(thread, commandVal, nil, nil)
 	if err != nil {
 		return nil, err
 	}
