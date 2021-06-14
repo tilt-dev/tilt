@@ -374,38 +374,78 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 }
 
 func TestExitControlCI_TriggerMode_Local(t *testing.T) {
+	type tc struct {
+		triggerMode model.TriggerMode
+		serveCmd    bool
+	}
+	var tcs []tc
 	for triggerMode := range model.TriggerModes {
-		t.Run(triggerModeString(triggerMode), func(t *testing.T) {
+		for _, hasServeCmd := range []bool{false, true} {
+			tcs = append(tcs, tc{
+				triggerMode: triggerMode,
+				serveCmd:    hasServeCmd,
+			})
+		}
+	}
+
+	for _, tc := range tcs {
+		name := triggerModeString(tc.triggerMode)
+		if !tc.serveCmd {
+			name += "_EmptyServeCmd"
+		}
+		t.Run(name, func(t *testing.T) {
 			f := newFixture(t, store.EngineModeCI)
 			defer f.TearDown()
 
 			f.store.WithState(func(state *store.EngineState) {
-				manifest := manifestbuilder.New(f, "fe").
+				mb := manifestbuilder.New(f, "fe").
 					WithLocalResource("echo hi", nil).
-					WithTriggerMode(triggerMode).Build()
+					WithTriggerMode(tc.triggerMode)
+
+				if tc.serveCmd {
+					mb = mb.WithLocalServeCmd("while true; echo hi; done")
+				}
+
+				manifest := mb.Build()
 				state.UpsertManifestTarget(store.NewManifestTarget(manifest))
 			})
 
-			if triggerMode.AutoInitial() {
-				// because this resource SHOULD start automatically, no exit signal should be received until it's ready
+			if tc.triggerMode.AutoInitial() {
+				// because this resource SHOULD start automatically, no exit signal should be received before
+				// a build has completed
 				f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 				f.store.requireNoExitSignal()
 
+				// N.B. a build is triggered regardless of if there is an update_cmd! it's a fake build produced
+				// 	by the engine in this case, which is why this test doesn't have cases for empty update_cmd
 				f.store.WithState(func(state *store.EngineState) {
 					mt := state.ManifestTargets["fe"]
 					mt.State.AddCompletedBuild(model.BuildRecord{
 						StartTime:  time.Now(),
 						FinishTime: time.Now(),
 					})
-					mt.State.RuntimeState = store.LocalRuntimeState{
-						CmdName:                  "echo hi",
-						Status:                   v1alpha1.RuntimeStatusOK,
-						PID:                      1234,
-						StartTime:                time.Now(),
-						LastReadyOrSucceededTime: time.Now(),
-						Ready:                    true,
-					}
 				})
+
+				if tc.serveCmd {
+					// the serve_cmd hasn't started yet, so no exit signal should be received still even though
+					// a build occurred
+					f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+					f.store.requireNoExitSignal()
+
+					// only mimic a runtime state if there is a serve_cmd since this won't be populated
+					// otherwise
+					f.store.WithState(func(state *store.EngineState) {
+						mt := state.ManifestTargets["fe"]
+						mt.State.RuntimeState = store.LocalRuntimeState{
+							CmdName:                  "echo hi",
+							Status:                   v1alpha1.RuntimeStatusOK,
+							PID:                      1234,
+							StartTime:                time.Now(),
+							LastReadyOrSucceededTime: time.Now(),
+							Ready:                    true,
+						}
+					})
+				}
 			}
 
 			// for auto_init=True, it's now ready, so can exit
