@@ -141,10 +141,10 @@ func valueToCmdHelper(t *starlark.Thread, cmdVal, cmdDirVal starlark.Value, cmdE
 		dir = starkit.AbsWorkingDir(t)
 	case starlark.NoneType:
 		dir = starkit.AbsWorkingDir(t)
-	case starlark.String:
+	default:
 		dir, dirErr = ValueToAbsPath(t, cmdDirVal)
 		if dirErr != nil {
-			return model.Cmd{}, errors.Wrap(dirErr, "error on directory string")
+			return model.Cmd{}, errors.Wrap(dirErr, "a command directory must be empty or a string")
 		}
 	}
 
