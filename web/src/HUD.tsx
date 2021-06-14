@@ -24,12 +24,7 @@ import ShareSnapshotModal from "./ShareSnapshotModal"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
-import {
-  ShowErrorModal,
-  ShowFatalErrorModal,
-  SnapshotHighlight,
-  SocketState,
-} from "./types"
+import { ShowErrorModal, ShowFatalErrorModal, SocketState } from "./types"
 
 type HudProps = {
   history: History
@@ -60,10 +55,6 @@ export default class HUD extends Component<HudProps, HudState> {
     this.unlisten = this.history.listen((location: any, action: string) => {
       let tags = navigationToTags(location, action)
       incr("ui.web.navigation", tags)
-
-      this.handleClearHighlight()
-      let selection = document.getSelection()
-      selection && selection.removeAllRanges()
     })
 
     this.state = {
@@ -79,8 +70,6 @@ export default class HUD extends Component<HudProps, HudState> {
       logStore: new LogStore(),
     }
 
-    this.handleClearHighlight = this.handleClearHighlight.bind(this)
-    this.handleSetHighlight = this.handleSetHighlight.bind(this)
     this.handleOpenModal = this.handleOpenModal.bind(this)
     this.handleShowCopySuccess = this.handleShowCopySuccess.bind(this)
   }
@@ -175,18 +164,6 @@ export default class HUD extends Component<HudProps, HudState> {
       featureFlags[flag.name || ""] = !!flag.value
     })
     return new Features(featureFlags)
-  }
-
-  handleSetHighlight(highlight: SnapshotHighlight) {
-    this.setState({
-      snapshotHighlight: highlight,
-    })
-  }
-
-  handleClearHighlight() {
-    this.setState({
-      snapshotHighlight: undefined,
-    })
   }
 
   handleShowCopySuccess() {

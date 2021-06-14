@@ -121,11 +121,6 @@ class AppController {
         if (data.path) {
           this.component.setHistoryLocation(this.pb.path(data.path))
         }
-        if (data.snapshotHighlight) {
-          this.component.onAppChange({
-            snapshotHighlight: data.snapshotHighlight,
-          })
-        }
       })
       .catch((err) => {
         console.error(err)
