@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -20,8 +19,6 @@ type ImageTarget struct {
 	// User-supplied args override when the container runs.
 	// (i.e. overrides k8s yaml "args")
 	OverrideArgs OverrideArgs
-
-	cachePaths []string
 
 	// TODO(nick): It might eventually make sense to represent
 	// Tiltfile as a separate nodes in the build graph, rather
@@ -170,16 +167,6 @@ func (i ImageTarget) MaybeIgnoreRegistry() ImageTarget {
 		i.Refs = i.Refs.WithoutRegistry()
 	}
 	return i
-}
-
-func (i ImageTarget) WithCachePaths(paths []string) ImageTarget {
-	i.cachePaths = append(append([]string{}, i.cachePaths...), paths...)
-	sort.Strings(i.cachePaths)
-	return i
-}
-
-func (i ImageTarget) CachePaths() []string {
-	return i.cachePaths
 }
 
 func (i ImageTarget) WithRepos(repos []LocalGitRepo) ImageTarget {

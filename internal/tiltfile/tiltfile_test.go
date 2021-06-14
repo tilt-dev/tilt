@@ -5752,11 +5752,6 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 
 			assert.Equal(f.t, opt.image.matchInEnvVars, image.MatchInEnvVars)
 
-			if opt.cache != "" {
-				assert.Contains(f.t, image.CachePaths(), opt.cache,
-					"manifest %v cache paths don't include expected value", m.Name)
-			}
-
 			if !image.IsDockerBuild() {
 				f.t.Fatalf("expected docker build but manifest %v has no docker build info", m.Name)
 			}
@@ -6238,7 +6233,6 @@ func withEnvVars(envVars ...string) envVarHelper {
 // docker build helper
 type dbHelper struct {
 	image    imageHelper
-	cache    string
 	matchers []interface{}
 }
 

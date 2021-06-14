@@ -86,18 +86,6 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		"ImageTarget.cachePaths unequal",
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"bar"}}),
-		true,
-	},
-	{
-		"ImageTarget.cachePaths equal",
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
-		false,
-	},
-	{
 		"ImageTarget.ConfigurationRef unequal",
 		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ConfigurationRef: img1}}),
 		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ConfigurationRef: img2}}),
