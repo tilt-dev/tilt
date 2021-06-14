@@ -2636,7 +2636,7 @@ func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) com
 						},
 					},
 				},
-				Required: []string{"startAfter", "uiButtons"},
+				Required: []string{"uiButtons"},
 			},
 		},
 		Dependencies: []string{
