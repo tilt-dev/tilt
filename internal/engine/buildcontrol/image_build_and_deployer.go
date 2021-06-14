@@ -403,8 +403,8 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			if replaced {
 				injectedImageMaps[imageMapName] = true
 
-				if !iTarget.OverrideCmd.Empty() || iTarget.OverrideArgs.ShouldOverride {
-					e, err = k8s.InjectCommandAndArgs(e, ref, iTarget.OverrideCmd, iTarget.OverrideArgs)
+				if iTarget.OverrideCommand != nil || iTarget.OverrideArgs != nil {
+					e, err = k8s.InjectCommandAndArgs(e, ref, iTarget.OverrideCommand, iTarget.OverrideArgs)
 					if err != nil {
 						return nil, err
 					}

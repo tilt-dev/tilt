@@ -5,20 +5,15 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type ImageTarget struct {
-	Refs           container.RefSet
-	BuildDetails   BuildDetails
-	MatchInEnvVars bool
+	// An apiserver-driven data model for injecting the image into other resources.
+	v1alpha1.ImageMapSpec
 
-	// User-supplied command to run when the container runs
-	// (i.e. overrides k8s yaml "command", container ENTRYPOINT, etc.)
-	OverrideCmd Cmd
-
-	// User-supplied args override when the container runs.
-	// (i.e. overrides k8s yaml "args")
-	OverrideArgs OverrideArgs
+	Refs         container.RefSet
+	BuildDetails BuildDetails
 
 	// TODO(nick): It might eventually make sense to represent
 	// Tiltfile as a separate nodes in the build graph, rather
@@ -27,13 +22,6 @@ type ImageTarget struct {
 	dockerignores []Dockerignore
 	repos         []LocalGitRepo
 	dependencyIDs []TargetID
-}
-
-// Represent OverrideArgs as a special struct, to cleanly distinguish
-// "replace with 0 args" from "don't replace"
-type OverrideArgs struct {
-	ShouldOverride bool
-	Args           []string
 }
 
 func MustNewImageTarget(ref container.RefSelector) ImageTarget {
@@ -180,7 +168,9 @@ func (i ImageTarget) WithDockerignores(dockerignores []Dockerignore) ImageTarget
 }
 
 func (i ImageTarget) WithOverrideCommand(cmd Cmd) ImageTarget {
-	i.OverrideCmd = cmd
+	i.ImageMapSpec.OverrideCommand = &v1alpha1.ImageMapOverrideCommand{
+		Command: cmd.Argv,
+	}
 	return i
 }
 

@@ -3819,7 +3819,7 @@ k8s_yaml('foo.yaml')
 
 	m := f.assertNextManifest("foo")
 	assert.Equal(t,
-		model.OverrideArgs{ShouldOverride: true, Args: []string{"bar"}},
+		&v1alpha1.ImageMapOverrideArgs{Args: []string{"bar"}},
 		m.ImageTargets[0].OverrideArgs)
 }
 
@@ -3896,7 +3896,7 @@ k8s_yaml('foo.yaml')
 
 	f.load()
 	assert.Equal(t,
-		model.OverrideArgs{ShouldOverride: true, Args: []string{"bar"}},
+		&v1alpha1.ImageMapOverrideArgs{Args: []string{"bar"}},
 		f.assertNextManifest("foo").ImageTargets[0].OverrideArgs)
 }
 
@@ -5759,9 +5759,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
 				case entrypointHelper:
-					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCmd.Argv) {
+					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCommand.Command) {
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
-							matcher.cmd.Argv, image.OverrideCmd.Argv)
+							matcher.cmd.Argv, image.OverrideCommand.Command)
 					}
 				case model.LiveUpdate:
 					lu := image.LiveUpdateInfo()
@@ -5795,9 +5795,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				case disablePushHelper:
 					assert.Equal(f.t, matcher.disabled, cbInfo.DisablePush)
 				case entrypointHelper:
-					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCmd.Argv) {
+					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCommand.Command) {
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
-							matcher.cmd.Argv, image.OverrideCmd.Argv)
+							matcher.cmd.Argv, image.OverrideCommand.Command)
 					}
 				case model.LiveUpdate:
 					lu := image.LiveUpdateInfo()
