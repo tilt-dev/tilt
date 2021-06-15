@@ -3,6 +3,7 @@ package integration
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"go/build"
 	"io"
@@ -46,12 +47,12 @@ func NewTiltDriver(t testing.TB, options ...TiltDriverOption) *TiltDriver {
 	return td
 }
 
-func (d *TiltDriver) cmd(args []string, out io.Writer) *exec.Cmd {
+func (d *TiltDriver) cmd(ctx context.Context, args []string, out io.Writer) *exec.Cmd {
 	// rely on the Tilt binary in GOPATH that should have been created by `go install` from the
 	// fixture to avoid accidentally picking up a system install of tilt with higher precedence
 	// on system PATH
 	tiltBin := filepath.Join(build.Default.GOPATH, "bin", "tilt")
-	cmd := exec.Command(tiltBin, args...)
+	cmd := exec.CommandContext(ctx, tiltBin, args...)
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.Env = os.Environ()
@@ -72,18 +73,18 @@ func (d *TiltDriver) cmd(args []string, out io.Writer) *exec.Cmd {
 	return cmd
 }
 
-func (d *TiltDriver) DumpEngine(out io.Writer) error {
-	cmd := d.cmd([]string{"dump", "engine"}, out)
+func (d *TiltDriver) DumpEngine(ctx context.Context, out io.Writer) error {
+	cmd := d.cmd(ctx, []string{"dump", "engine"}, out)
 	return cmd.Run()
 }
 
-func (d *TiltDriver) Down(out io.Writer) error {
-	cmd := d.cmd([]string{"down"}, out)
+func (d *TiltDriver) Down(ctx context.Context, out io.Writer) error {
+	cmd := d.cmd(ctx, []string{"down"}, out)
 	return cmd.Run()
 }
 
-func (d *TiltDriver) CI(out io.Writer, args ...string) error {
-	cmd := d.cmd(append([]string{
+func (d *TiltDriver) CI(ctx context.Context, out io.Writer, args ...string) error {
+	cmd := d.cmd(ctx, append([]string{
 		"ci",
 
 		// Debug logging for integration tests
@@ -96,7 +97,7 @@ func (d *TiltDriver) CI(out io.Writer, args ...string) error {
 	return cmd.Run()
 }
 
-func (d *TiltDriver) Up(out io.Writer, args ...string) (*TiltUpResponse, error) {
+func (d *TiltDriver) Up(ctx context.Context, out io.Writer, args ...string) (*TiltUpResponse, error) {
 	mandatoryArgs := []string{"up",
 		// Can't attach a HUD or install browsers in headless mode
 		"--hud=false",
@@ -109,7 +110,7 @@ func (d *TiltDriver) Up(out io.Writer, args ...string) (*TiltUpResponse, error) 
 		"--web-mode=prod",
 	}
 
-	cmd := d.cmd(append(mandatoryArgs, args...), out)
+	cmd := d.cmd(ctx, append(mandatoryArgs, args...), out)
 	err := cmd.Start()
 	if err != nil {
 		return nil, err
@@ -132,14 +133,14 @@ func (d *TiltDriver) Up(out io.Writer, args ...string) (*TiltUpResponse, error) 
 	return response, nil
 }
 
-func (d *TiltDriver) Args(args []string, out io.Writer) error {
-	cmd := d.cmd(append([]string{"args"}, args...), out)
+func (d *TiltDriver) Args(ctx context.Context, args []string, out io.Writer) error {
+	cmd := d.cmd(ctx, append([]string{"args"}, args...), out)
 	return cmd.Run()
 }
 
-func (d *TiltDriver) APIResources() ([]string, error) {
+func (d *TiltDriver) APIResources(ctx context.Context) ([]string, error) {
 	var out bytes.Buffer
-	cmd := d.cmd([]string{"api-resources", "-o=name"}, &out)
+	cmd := d.cmd(ctx, []string{"api-resources", "-o=name"}, &out)
 	err := cmd.Run()
 	if err != nil {
 		return nil, err
@@ -152,10 +153,10 @@ func (d *TiltDriver) APIResources() ([]string, error) {
 	return resources, nil
 }
 
-func (d *TiltDriver) Get(apiType string, names ...string) ([]byte, error) {
+func (d *TiltDriver) Get(ctx context.Context, apiType string, names ...string) ([]byte, error) {
 	var out bytes.Buffer
 	args := append([]string{"get", "-o=json", apiType}, names...)
-	cmd := d.cmd(args, &out)
+	cmd := d.cmd(ctx, args, &out)
 	err := cmd.Run()
 	return out.Bytes(), err
 }

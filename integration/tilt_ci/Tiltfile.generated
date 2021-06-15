@@ -1,0 +1,15 @@
+# AUTOMATICALLY GENERATED - DO NOT EDIT
+# Run TestTiltCI to re-generate
+
+local_resource(name="local-no_auto_init-serve_cmd", auto_init=False, trigger_mode=TRIGGER_MODE_AUTO, serve_cmd="while true; do echo \"serve for local-no_auto_init-serve_cmd\"; sleep 5000; done")
+local_resource(name="local-no_auto_init-update_cmd", auto_init=False, trigger_mode=TRIGGER_MODE_AUTO, cmd="echo \"update for local-no_auto_init-update_cmd\"")
+local_resource(name="local-no_auto_init-update_cmd-serve_cmd", auto_init=False, trigger_mode=TRIGGER_MODE_AUTO, cmd="echo \"update for local-no_auto_init-update_cmd-serve_cmd\"", serve_cmd="while true; do echo \"serve for local-no_auto_init-update_cmd-serve_cmd\"; sleep 5000; done")
+local_resource(name="local-serve_cmd", auto_init=True, trigger_mode=TRIGGER_MODE_AUTO, serve_cmd="while true; do echo \"serve for local-serve_cmd\"; sleep 5000; done")
+local_resource(name="local-update_cmd", auto_init=True, trigger_mode=TRIGGER_MODE_AUTO, cmd="echo \"update for local-update_cmd\"")
+local_resource(name="local-update_cmd-serve_cmd", auto_init=True, trigger_mode=TRIGGER_MODE_AUTO, cmd="echo \"update for local-update_cmd-serve_cmd\"", serve_cmd="while true; do echo \"serve for local-update_cmd-serve_cmd\"; sleep 5000; done")
+local_resource(name="local-trigger_manual-no_auto_init-serve_cmd", auto_init=False, trigger_mode=TRIGGER_MODE_MANUAL, serve_cmd="while true; do echo \"serve for local-trigger_manual-no_auto_init-serve_cmd\"; sleep 5000; done")
+local_resource(name="local-trigger_manual-no_auto_init-update_cmd", auto_init=False, trigger_mode=TRIGGER_MODE_MANUAL, cmd="echo \"update for local-trigger_manual-no_auto_init-update_cmd\"")
+local_resource(name="local-trigger_manual-no_auto_init-update_cmd-serve_cmd", auto_init=False, trigger_mode=TRIGGER_MODE_MANUAL, cmd="echo \"update for local-trigger_manual-no_auto_init-update_cmd-serve_cmd\"", serve_cmd="while true; do echo \"serve for local-trigger_manual-no_auto_init-update_cmd-serve_cmd\"; sleep 5000; done")
+local_resource(name="local-trigger_manual-serve_cmd", auto_init=True, trigger_mode=TRIGGER_MODE_MANUAL, serve_cmd="while true; do echo \"serve for local-trigger_manual-serve_cmd\"; sleep 5000; done")
+local_resource(name="local-trigger_manual-update_cmd", auto_init=True, trigger_mode=TRIGGER_MODE_MANUAL, cmd="echo \"update for local-trigger_manual-update_cmd\"")
+local_resource(name="local-trigger_manual-update_cmd-serve_cmd", auto_init=True, trigger_mode=TRIGGER_MODE_MANUAL, cmd="echo \"update for local-trigger_manual-update_cmd-serve_cmd\"", serve_cmd="while true; do echo \"serve for local-trigger_manual-update_cmd-serve_cmd\"; sleep 5000; done")

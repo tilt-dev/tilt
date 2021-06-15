@@ -55,7 +55,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 	client := NewTiltDriver(t, TiltDriverUseRandomFreePort)
 	client.Environ["TILT_DISABLE_ANALYTICS"] = "true"
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	f := &fixture{
 		t:             t,
 		ctx:           ctx,
@@ -150,14 +150,14 @@ func (f *fixture) LogWriter() io.Writer {
 }
 
 func (f *fixture) TiltCI(args ...string) {
-	err := f.tilt.CI(f.LogWriter(), args...)
+	err := f.tilt.CI(f.ctx, f.LogWriter(), args...)
 	if err != nil {
 		f.t.Fatalf("TiltCI: %v", err)
 	}
 }
 
 func (f *fixture) TiltUp(args ...string) {
-	response, err := f.tilt.Up(f.LogWriter(), args...)
+	response, err := f.tilt.Up(f.ctx, f.LogWriter(), args...)
 	if err != nil {
 		f.t.Fatalf("TiltUp: %v", err)
 	}
@@ -197,19 +197,19 @@ func (f *fixture) StartTearDown() {
 	if f.t.Failed() && isTiltStillUp {
 		fmt.Printf("Test failed, dumping internals\n----\n")
 		fmt.Printf("Engine\n----\n")
-		err := f.tilt.DumpEngine(os.Stdout)
+		err := f.tilt.DumpEngine(f.ctx, os.Stdout)
 		if err != nil {
 			fmt.Printf("Error dumping engine: %v", err)
 		}
 
 		fmt.Printf("\n----\nAPI Server\n----\n")
-		apiTypes, err := f.tilt.APIResources()
+		apiTypes, err := f.tilt.APIResources(f.ctx)
 		if err != nil {
 			fmt.Printf("Error determining available API resources: %v\n", err)
 		} else {
 			for _, apiType := range apiTypes {
 				fmt.Printf("\n----\n%s\n----\n", strings.ToUpper(apiType))
-				getOut, err := f.tilt.Get(apiType)
+				getOut, err := f.tilt.Get(f.ctx, apiType)
 				fmt.Print(string(getOut))
 				if err != nil {
 					fmt.Printf("Error getting %s: %v", apiType, err)
@@ -259,7 +259,9 @@ func (f *fixture) TearDown() {
 	// or more scriptability in the Tiltfile.
 	f.tilt.Environ["SKIP_NAMESPACE"] = "true"
 
-	err := f.tilt.Down(os.Stdout)
+	ctx, cancel := context.WithTimeout(f.ctx, 30*time.Second)
+	defer cancel()
+	err := f.tilt.Down(ctx, os.Stdout)
 	if err != nil {
 		f.t.Errorf("Running tilt down: %v", err)
 	}
