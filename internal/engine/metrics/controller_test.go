@@ -22,24 +22,24 @@ func TestEnableMetrics(t *testing.T) {
 	ms := model.DefaultMetricsSettings()
 	ms.Enabled = true
 	f.st.SetState(newLoggedInEngineState(ms))
-	f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	remote := f.exp.remote
 	assert.NotNil(t, remote)
 
-	f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	assert.Same(t, remote, f.exp.remote)
 
 	// Verify that changing the metrics settings creates a new remote exporter.
 	ms.Insecure = true
 	f.st.SetState(newLoggedInEngineState(ms))
-	f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	assert.NotSame(t, remote, f.exp.remote)
 
 	// Verify that disabling the metrics settings nulls out the remote exporter.
 	ms.Enabled = false
 	f.st.SetState(newLoggedInEngineState(ms))
-	f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.mc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	assert.Nil(t, f.exp.remote)
 }
 

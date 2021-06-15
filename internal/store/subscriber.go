@@ -12,9 +12,17 @@ import (
 // call OnChange for a given subscriber when the last call completes.
 //
 // Subscribers are only allowed to read state. If they want to
-// modify state, they should call store.Dispatch()
+// modify state, they should call store.Dispatch().
+//
+// If OnChange returns an error, the store will dispatch an ErrorAction.
+//
+// Over time, we want to port all subscribers to use controller-runtime's
+// Reconciler interface. In the intermediate period, we expect this interface
+// will evolve to support all the features of Reconciler, like requeuing.
+//
+// https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/reconcile
 type Subscriber interface {
-	OnChange(ctx context.Context, st RStore, summary ChangeSummary)
+	OnChange(ctx context.Context, st RStore, summary ChangeSummary) error
 }
 
 // Some subscribers need to do SetUp or TearDown.
@@ -176,7 +184,10 @@ func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 	defer e.activeMu.Unlock()
 
 	activeChange := e.movePendingToActive()
-	e.subscriber.OnChange(ctx, store, *activeChange)
+	err := e.subscriber.OnChange(ctx, store, *activeChange)
+	if err != nil {
+		store.Dispatch(NewErrorAction(err))
+	}
 	e.clearActive()
 }
 

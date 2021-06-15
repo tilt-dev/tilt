@@ -139,7 +139,7 @@ func TestWebsocketIgnoreEmptyLogList(t *testing.T) {
 
 	conn.AssertNextWriteMsg(t).Ack()
 
-	ws.OnChange(ctx, st, store.ChangeSummary{Log: true})
+	_ = ws.OnChange(ctx, st, store.ChangeSummary{Log: true})
 	require.NotEqual(t, -1, ws.clientCheckpoint)
 }
 

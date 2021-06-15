@@ -91,7 +91,7 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 	return setup, teardown
 }
 
-func (m *DockerComposeLogManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (m *DockerComposeLogManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	setup, teardown := m.diff(ctx, st)
 	for _, watch := range teardown {
 		watch.cancel()
@@ -100,6 +100,7 @@ func (m *DockerComposeLogManager) OnChange(ctx context.Context, st store.RStore,
 	for _, watch := range setup {
 		go m.consumeLogs(watch, st)
 	}
+	return nil
 }
 
 func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st store.RStore) {

@@ -122,9 +122,9 @@ func (s *Subscriber) diff(st store.RStore) (toStart, toShutdown []*PortForward) 
 	return toStart, toShutdown
 }
 
-func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() {
-		return
+		return nil
 	}
 	toStart, toShutdown := s.diff(st)
 	for _, pf := range toShutdown {
@@ -134,6 +134,8 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 	for _, pf := range toStart {
 		s.upsertPF(ctx, st, pf)
 	}
+
+	return nil
 }
 
 var _ store.Subscriber = &Subscriber{}

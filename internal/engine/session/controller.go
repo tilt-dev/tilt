@@ -55,28 +55,30 @@ func NewController(cli ctrlclient.Client) *Controller {
 	}
 }
 
-func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() {
-		return
+		return nil
 	}
 
 	if c.session == nil {
 		if initialized, err := c.initialize(ctx, st); err != nil {
 			st.Dispatch(store.NewErrorAction(fmt.Errorf("failed to initialize Session controller: %v", err)))
-			return
+			return nil
 		} else if !initialized {
 			// engine is still starting up, no-op until ready for initialization
-			return
+			return nil
 		}
 	}
 
 	newStatus := c.makeLatestStatus(st)
 	if err := c.handleLatestStatus(ctx, st, newStatus); err != nil {
 		if strings.Contains(err.Error(), context.Canceled.Error()) {
-			return
+			return nil
 		}
 		logger.Get(ctx).Debugf("failed to update Session status: %v", err)
 	}
+
+	return nil
 }
 
 func (c *Controller) initialize(ctx context.Context, st store.RStore) (bool, error) {

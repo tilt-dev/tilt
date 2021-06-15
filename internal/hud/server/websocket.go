@@ -116,25 +116,25 @@ func (ws *WebsocketSubscriber) waitForInitOrClose(ctx context.Context) bool {
 	}
 }
 
-func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, summary store.ChangeSummary) {
+func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, summary store.ChangeSummary) error {
 	// Currently, we only broadcast log changes from this OnChange handler.
 	// Everything else should be handled by reconcilers from the apiserver
 	if !summary.Log {
-		return
+		return nil
 	}
 
 	if !ws.waitForInitOrClose(ctx) {
-		return
+		return nil
 	}
 
 	view, err := webview.LogUpdate(s, ws.clientCheckpoint)
 	if err != nil {
-		return // Not much we can do on error right now.
+		return nil // Not much we can do on error right now.
 	}
 
 	// [-1,-1) means there are no logs
 	if view.LogList.ToCheckpoint == -1 && view.LogList.FromCheckpoint == -1 {
-		return
+		return nil
 	}
 
 	ws.sendView(ctx, view)
@@ -149,6 +149,7 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, sum
 	//     JSON marshaling with jsoniter (though changing json marshalers is
 	//     always fraught with peril).
 	time.Sleep(time.Millisecond * 100)
+	return nil
 }
 
 // Sends a UISession update on the websocket.

@@ -23,14 +23,14 @@ func TestCreate(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	r := f.resource("(Tiltfile)")
 	require.NotNil(t, r)
 	assert.Equal(t, "(Tiltfile)", r.ObjectMeta.Name)
 	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	r = f.resource("(Tiltfile)")
 	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 }
@@ -39,7 +39,7 @@ func TestUpdateTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	r := f.resource("(Tiltfile)")
 	require.NotNil(t, r)
 	assert.Equal(t, "(Tiltfile)", r.ObjectMeta.Name)
@@ -49,7 +49,7 @@ func TestUpdateTiltfile(t *testing.T) {
 		es.TiltfileState.CurrentBuild.StartTime = time.Now()
 	})
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	r = f.resource("(Tiltfile)")
 	require.NotNil(t, r)
@@ -67,7 +67,7 @@ func TestDeleteManifest(t *testing.T) {
 		state.UpsertManifestTarget(store.NewManifestTarget(m))
 	})
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.Equal(t, "(Tiltfile)", f.resource("(Tiltfile)").ObjectMeta.Name)
 	assert.Equal(t, "fe", f.resource("fe").ObjectMeta.Name)
 
@@ -75,7 +75,7 @@ func TestDeleteManifest(t *testing.T) {
 		state.RemoveManifestTarget("fe")
 	})
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.Nil(t, f.resource("fe"))
 }
 

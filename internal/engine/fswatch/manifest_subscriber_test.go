@@ -79,7 +79,7 @@ func TestWatchManager_disabledOnCIMode(t *testing.T) {
 	ms := NewManifestSubscriber(cli)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	ms.OnChange(ctx, testingStore, store.LegacyChangeSummary())
+	_ = ms.OnChange(ctx, testingStore, store.LegacyChangeSummary())
 
 	assert.Empty(t, testingStore.Actions())
 }

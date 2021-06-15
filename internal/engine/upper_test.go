@@ -4604,8 +4604,9 @@ type fixtureSub struct {
 	ch chan bool
 }
 
-func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	s.ch <- true
+	return nil
 }
 
 func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Action, containerState dockertypes.ContainerState) {

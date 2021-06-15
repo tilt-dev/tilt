@@ -34,15 +34,15 @@ func (s *Subscriber) currentResources(store store.RStore) ([]*v1alpha1.UIResourc
 	return webview.ToUIResourceList(state)
 }
 
-func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() {
-		return
+		return nil
 	}
 
 	currentResources, err := s.currentResources(st)
 	if err != nil {
 		st.Dispatch(store.NewErrorAction(fmt.Errorf("cannot convert UIResource: %v", err)))
-		return
+		return nil
 	}
 
 	// Collect a list of all the resources to reconcile and their most recent version.
@@ -53,11 +53,11 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		// If the cache hasn't started yet, that's OK.
 		// We'll get it on the next OnChange()
 		if strings.Contains(err.Error(), "cache not started") {
-			return
+			return nil
 		}
 
 		logger.Get(ctx).Infof("listing uiresource: %v", err)
-		return
+		return nil
 	}
 
 	storedMap := make(map[types.NamespacedName]v1alpha1.UIResource)
@@ -76,7 +76,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			err := s.client.Delete(ctx, &v1alpha1.UIResource{ObjectMeta: metav1.ObjectMeta{Name: name.Name}})
 			if err != nil && !apierrors.IsNotFound(err) {
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("deleting resource %s: %v", name.Name, err)))
-				return
+				return nil
 			}
 			continue
 		}
@@ -88,7 +88,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			err := s.client.Create(ctx, resource)
 			if err != nil {
 				logger.Get(ctx).Infof("creating uiresource %s: %v", name.Name, err)
-				return
+				return nil
 			}
 			continue
 		}
@@ -103,11 +103,13 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			err = s.client.Status().Update(ctx, update)
 			if err != nil {
 				logger.Get(ctx).Infof("updating uiresource %s: %v", name.Name, err)
-				return
+				return nil
 			}
 			continue
 		}
 	}
+
+	return nil
 }
 
 var _ store.Subscriber = &Subscriber{}

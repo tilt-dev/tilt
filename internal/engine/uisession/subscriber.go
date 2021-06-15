@@ -22,9 +22,9 @@ func NewSubscriber(client ctrlclient.Client) *Subscriber {
 	return &Subscriber{client: client}
 }
 
-func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() {
-		return
+		return nil
 	}
 
 	state := st.RLockState()
@@ -38,12 +38,12 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		err := s.client.Create(ctx, session)
 		if err != nil {
 			logger.Get(ctx).Infof("creating uisession: %v", err)
-			return
+			return nil
 		}
-		return
+		return nil
 	} else if err != nil {
 		logger.Get(ctx).Infof("fetching uisession: %v", err)
-		return
+		return nil
 	}
 
 	if !apicmp.DeepEqual(session.Status, stored.Status) {
@@ -56,9 +56,11 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		err = s.client.Status().Update(ctx, update)
 		if err != nil {
 			logger.Get(ctx).Infof("updating uisession: %v", err)
-			return
+			return nil
 		}
 	}
+
+	return nil
 }
 
 var _ store.Subscriber = &Subscriber{}

@@ -98,13 +98,13 @@ func (p *TerminalPrompt) TearDown(ctx context.Context) {
 	}
 }
 
-func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if !p.isEnabled(st) {
-		return
+		return nil
 	}
 
 	if p.printed {
-		return
+		return nil
 	}
 
 	build := p.tiltBuild(st)
@@ -142,7 +142,7 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore, _ store.
 	t, err := p.openInput()
 	if err != nil {
 		st.Dispatch(store.ErrorAction{Error: err})
-		return
+		return nil
 	}
 	p.term = t
 
@@ -218,6 +218,8 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore, _ store.
 			}
 		}
 	}()
+
+	return nil
 }
 
 type runeMessage struct {

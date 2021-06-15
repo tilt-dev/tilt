@@ -1,6 +1,8 @@
 package store
 
 import (
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -72,6 +74,10 @@ type ChangeSummary struct {
 
 	UISessions  ChangeSet
 	UIResources ChangeSet
+
+	// If non-zero, that means we tried to apply this change and got
+	// an error.
+	LastBackoff time.Duration
 }
 
 func (s ChangeSummary) IsLogOnly() bool {

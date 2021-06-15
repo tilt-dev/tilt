@@ -54,7 +54,7 @@ func TestManifestsWithNoWatches(t *testing.T) {
 
 	f.store.UnlockMutableState()
 
-	f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	require.Never(t, func() bool {
 		state := f.store.RLockState()
@@ -235,7 +235,7 @@ func (f *msFixture) upsertManifest(mn model.ManifestName, yaml string, ls ...lab
 	state.UpsertManifestTarget(mt)
 	f.store.UnlockMutableState()
 
-	f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	// verify that a change summary was properly generated
 	f.cs.waitForChangeAndReset(KeyForManifest(mn))
 
@@ -256,7 +256,7 @@ func (f *msFixture) addDeployedEntity(m model.Manifest, entity k8s.K8sEntity) {
 	mState.RuntimeState = runtimeState
 	f.store.UnlockMutableState()
 
-	f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 }
 
 func (f *msFixture) requireDiscoveryState(mn model.ManifestName, cond func(kd *v1alpha1.KubernetesDiscovery) bool, msg string, args ...interface{}) {
@@ -379,10 +379,11 @@ func (c *changeSubscriber) waitForChangeAndReset(key types.NamespacedName) {
 	}, stdTimeout, 20*time.Millisecond, "Change for key[%s] was never seen", key.String())
 }
 
-func (c *changeSubscriber) OnChange(_ context.Context, _ store.RStore, summary store.ChangeSummary) {
+func (c *changeSubscriber) OnChange(_ context.Context, _ store.RStore, summary store.ChangeSummary) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for key := range summary.KubernetesDiscoveries.Changes {
 		c.changes.Add(key)
 	}
+	return nil
 }

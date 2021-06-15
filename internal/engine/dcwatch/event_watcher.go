@@ -26,9 +26,9 @@ func NewEventWatcher(dcc dockercompose.DockerComposeClient, docker docker.LocalC
 	}
 }
 
-func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if !w.watching {
-		return
+		return nil
 	}
 
 	// TODO(nick): This should respond dynamically if the path changes.
@@ -38,7 +38,7 @@ func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, _ store.Ch
 
 	if len(configPaths) == 0 {
 		// No DC manifests to watch
-		return
+		return nil
 	}
 
 	w.watching = true
@@ -46,10 +46,12 @@ func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, _ store.Ch
 	if err != nil {
 		err = errors.Wrap(err, "Subscribing to docker-compose events")
 		st.Dispatch(store.NewErrorAction(err))
-		return
+		return nil
 	}
 
 	go w.dispatchEventLoop(ctx, ch, st)
+
+	return nil
 }
 
 func (w *EventWatcher) startWatch(ctx context.Context, configPath []string) (<-chan string, error) {

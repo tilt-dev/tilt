@@ -62,11 +62,11 @@ func (c *Controller) newMetricsState(rStore store.RStore) MetricsState {
 	}
 }
 
-func (c *Controller) OnChange(ctx context.Context, rStore store.RStore, _ store.ChangeSummary) {
+func (c *Controller) OnChange(ctx context.Context, rStore store.RStore, _ store.ChangeSummary) error {
 	newMetricsState := c.newMetricsState(rStore)
 	oldMetricsState := c.metrics
 	if newMetricsState == oldMetricsState {
-		return
+		return nil
 	}
 
 	c.metrics = newMetricsState
@@ -96,7 +96,7 @@ func (c *Controller) OnChange(ctx context.Context, rStore store.RStore, _ store.
 		oce, err := ocagent.NewExporter(options...)
 		if err != nil {
 			logger.Get(ctx).Debugf("Creating metrics exporter: %v", err)
-			return
+			return nil
 		}
 
 		err = c.exporter.SetRemote(oce)
@@ -109,6 +109,8 @@ func (c *Controller) OnChange(ctx context.Context, rStore store.RStore, _ store.
 		// If we're exporting for the first time, flush now.
 		c.exporter.Flush()
 	}
+
+	return nil
 }
 
 func (c *Controller) makeResourceDetector(state MetricsState) func(ctx context.Context) (*resource.Resource, error) {

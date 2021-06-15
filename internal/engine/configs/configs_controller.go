@@ -183,17 +183,18 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 	})
 }
 
-func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if cc.disabledForTesting {
-		return
+		return nil
 	}
 
 	entry, ok := cc.needsBuild(ctx, st)
 	if !ok {
-		return
+		return nil
 	}
 
 	cc.loadTiltfile(ctx, st, entry)
+	return nil
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {

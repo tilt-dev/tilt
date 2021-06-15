@@ -164,7 +164,8 @@ func (s *updogSubscriber) SetUp(ctx context.Context, _ store.RStore) error {
 	}
 	return nil
 }
-func (s *updogSubscriber) OnChange(_ context.Context, _ store.RStore, _ store.ChangeSummary) {
+func (s *updogSubscriber) OnChange(_ context.Context, _ store.RStore, _ store.ChangeSummary) error {
+	return nil
 }
 
 func provideUpdogCmdSubscribers(

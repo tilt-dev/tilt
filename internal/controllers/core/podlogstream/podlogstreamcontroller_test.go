@@ -486,7 +486,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 func (f *plmFixture) onChange(mn model.ManifestName, podID k8s.PodID) {
 	podNN := types.NamespacedName{Name: string(podID), Namespace: "default"}
 	kdNN := k8swatch.KeyForManifest(mn)
-	f.plm.OnChange(f.ctx, f.store, store.ChangeSummary{
+	_ = f.plm.OnChange(f.ctx, f.store, store.ChangeSummary{
 		KubernetesDiscoveries: store.NewChangeSet(kdNN),
 	})
 

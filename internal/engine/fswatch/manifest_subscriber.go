@@ -47,16 +47,16 @@ func NewManifestSubscriber(client ctrlclient.Client) *ManifestSubscriber {
 	}
 }
 
-func (w ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+func (w ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() || !summary.Legacy {
-		return
+		return nil
 	}
 
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	if !state.EngineMode.WatchesFiles() {
-		return
+		return nil
 	}
 
 	watchesToProcess := FileWatchesFromManifests(state)
@@ -84,7 +84,7 @@ func (w ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 				// which point things should be consistent (or repeat until such at time)
 				// (if this were a real reconciler, it'd just explicitly request a requeue here)
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("apiserver update error: %v", err)))
-				return
+				return nil
 			}
 
 		} else {
@@ -93,7 +93,7 @@ func (w ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 				st.Dispatch(NewFileWatchCreateAction(fw))
 			} else if !apierrors.IsAlreadyExists(err) {
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("apiserver create error: %v", err)))
-				return
+				return nil
 			}
 		}
 	}
@@ -107,10 +107,11 @@ func (w ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 				st.Dispatch(NewFileWatchDeleteAction(name))
 			} else if !apierrors.IsNotFound(err) {
 				st.Dispatch(store.NewErrorAction(fmt.Errorf("apiserver delete error: %v", err)))
-				return
+				return nil
 			}
 		}
 	}
+	return nil
 }
 
 func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) *filewatches.FileWatchSpec {

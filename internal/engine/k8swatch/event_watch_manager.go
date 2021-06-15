@@ -71,7 +71,7 @@ func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 	}
 }
 
-func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	taskList := m.diff(st)
 
 	m.mu.Lock()
@@ -92,6 +92,7 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ sto
 	if len(taskList.newUIDs) > 0 {
 		m.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
+	return nil
 }
 
 func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace, tiltStartTime time.Time) {
