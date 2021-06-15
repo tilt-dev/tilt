@@ -1544,12 +1544,19 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							},
 						},
 					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The timeout on the apply operation.\n\nWe've had problems with both: 1) CRD apiservers that take an arbitrarily long time to apply, and 2) Infinite loops in the apimachinery So we offer the ability to set a timeout on Kubernetes apply operations.\n\nThe default timeout is 30s.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 				},
 				Required: []string{"yaml"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 

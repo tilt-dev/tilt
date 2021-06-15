@@ -812,6 +812,7 @@ func (in *KubernetesApplySpec) DeepCopyInto(out *KubernetesApplySpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	out.Timeout = in.Timeout
 	return
 }
 

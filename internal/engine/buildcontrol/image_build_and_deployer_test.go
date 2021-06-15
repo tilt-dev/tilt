@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -434,11 +435,10 @@ func TestK8sUpsertTimeout(t *testing.T) {
 
 	timeout := 123 * time.Second
 
-	state := f.st.LockMutableStateForTesting()
-	state.UpdateSettings = state.UpdateSettings.WithK8sUpsertTimeout(123 * time.Second)
-	f.st.UnlockMutableState()
-
 	manifest := NewSanchoDockerBuildManifest(f)
+	k8sTarget := manifest.DeployTarget.(model.K8sTarget)
+	k8sTarget.Timeout = metav1.Duration{Duration: timeout}
+	manifest.DeployTarget = k8sTarget
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), nil)
 	if err != nil {

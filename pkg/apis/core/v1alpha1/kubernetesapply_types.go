@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,6 +28,8 @@ import (
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
+
+const KubernetesApplyTimeoutDefault = 30 * time.Second
 
 // +genclient
 // +genclient:nonNamespaced
@@ -88,6 +91,18 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	ImageLocators []KubernetesImageLocator `json:"imageLocators,omitempty" protobuf:"bytes,3,rep,name=imageLocators"`
+
+	// The timeout on the apply operation.
+	//
+	// We've had problems with both:
+	// 1) CRD apiservers that take an arbitrarily long time to apply, and
+	// 2) Infinite loops in the apimachinery
+	// So we offer the ability to set a timeout on Kubernetes apply operations.
+	//
+	// The default timeout is 30s.
+	//
+	// +optional
+	Timeout metav1.Duration `json:"timeout,omitempty" protobuf:"bytes,4,opt,name=timeout"`
 }
 
 var _ resource.Object = &KubernetesApply{}

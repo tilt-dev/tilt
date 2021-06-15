@@ -229,7 +229,12 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 	}
 
 	if len(resources.k8s) > 0 || len(unresourced) > 0 {
-		manifests, err = s.translateK8s(resources.k8s)
+		us, err := updatesettings.GetState(result)
+		if err != nil {
+			return nil, result, err
+		}
+
+		manifests, err = s.translateK8s(resources.k8s, us)
 		if err != nil {
 			return nil, result, err
 		}
@@ -1006,7 +1011,7 @@ func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadiness
 	return model.PodReadinessWait
 }
 
-func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
+func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings model.UpdateSettings) ([]model.Manifest, error) {
 	var result []model.Manifest
 	locators := s.k8sImageLocatorsList()
 	registry := s.decideRegistry()
@@ -1030,7 +1035,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities,
 			s.defaultedPortForwards(r.portForwards), r.extraPodSelectors,
 			r.dependencyIDs, r.imageRefMap, s.inferPodReadinessMode(r),
-			locators, r.links)
+			locators, r.links, updateSettings)
 		if err != nil {
 			return nil, err
 		}
