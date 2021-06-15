@@ -420,6 +420,11 @@ message IgnoreDef {
 // For example, a builder that builds to a local image registry might create
 // a map from: 'my-apiserver:dev' to 'localhost:5000/my-apiserver:content-based-label'.
 //
+// ImageMap doesn't follow the usual Kubernetes-style API semantics
+// (where the Status is the result of running the Spec). It's closer to a
+// ConfigMap. Though the Status does represent a real runtime result
+// (an image in a registry).
+//
 // +k8s:openapi-gen=true
 message ImageMap {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
@@ -437,12 +442,70 @@ message ImageMapList {
   repeated ImageMap items = 2;
 }
 
+// ImageMapArgsOverride defines args to inject when the image
+// is injected. Only applies to types that embed a v1.Container
+// with a Command field.
+//
+// https://pkg.go.dev/k8s.io/api/core/v1#Container
+message ImageMapOverrideArgs {
+  // A list of args strings.
+  repeated string args = 1;
+}
+
+// ImageMapCommandOverride defines a command to inject when the image
+// is injected. Only applies to types that embed a v1.Container
+// with a Command field.
+//
+// https://pkg.go.dev/k8s.io/api/core/v1#Container
+message ImageMapOverrideCommand {
+  // A list of command strings.
+  repeated string command = 1;
+}
+
 // ImageMapSpec defines the desired state of ImageMap
 message ImageMapSpec {
+  // A named image reference.
+  //
+  // Deployment tools expect this image reference to match an image
+  // in the YAML being deployed, and will replace that image reference.
+  //
+  // By default, this selector will match an image if the names match
+  // (tags on both the selector and the matched reference are ignored).
+  optional string selector = 1;
+
+  // If specified, then tags on both the selector and the matched
+  // reference are used for matching. The selector will only
+  // match the reference if the tags match exactly.
+  //
+  // +optional
+  optional bool matchExact = 2;
+
+  // If specified, then the selector will also match any strings
+  // in container env variables.
+  //
+  // +optional
+  optional bool matchInEnvVars = 3;
+
+  // If specified, the injector will replace the 'command'
+  // field in the container when it replaces the image.
+  //
+  // +optional
+  optional ImageMapOverrideCommand overrideCommand = 4;
+
+  // If specified, the injector will replace the 'args'
+  // field in the container when it replaces the image.
+  //
+  // +optional
+  optional ImageMapOverrideArgs overrideArgs = 5;
 }
 
 // ImageMapStatus defines the observed state of ImageMap
 message ImageMapStatus {
+  // A fully-qualified image reference, including a name and an immutable tag.
+  //
+  // The image will not necessarily have the same repo URL as the selector. Many
+  // Kubernetes clusters let you push to a local registry for local development.
+  optional string image = 1;
 }
 
 // KubernetesApply specifies a blob of YAML to apply, and a set of ImageMaps
