@@ -9,8 +9,8 @@ import MenuItem from "@material-ui/core/MenuItem"
 import { PopoverOrigin } from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
-import moment from "moment"
 import { History } from "history"
+import moment from "moment"
 import React, { ChangeEvent, useRef, useState } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
@@ -24,13 +24,7 @@ import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import LogActions from "./LogActions"
-import {
-  EMPTY_TERM,
-  FilterLevel,
-  FilterSet,
-  FilterSource,
-  TermState,
-} from "./logfilters"
+import { EMPTY_TERM, FilterLevel, FilterSet, FilterSource } from "./logfilters"
 import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { usePathBuilder } from "./PathBuilder"
@@ -261,8 +255,9 @@ const FilterTermTextField = styled(TextField)`
   & .MuiOutlinedInput-root {
     border-radius: ${SizeUnit(0.125)};
     border: 1px solid ${Color.grayLighter};
-    background-color: ${Color.gray};
+    background-color: ${Color.grayDark};
     transition: border-color ${AnimDuration.default} ease;
+    width: ${SizeUnit(8.125)};
 
     &:hover {
       border-color: ${Color.blue};
@@ -427,17 +422,43 @@ export const FILTER_INPUT_DEBOUNCE = 500 // in ms
 export const FILTER_FIELD_ID = "FilterTermTextInput"
 
 const debounceFilterLogs = debounce((history: History, search: string) => {
-  history.push({ pathname: location.pathname, search })
+  history.push({ search })
 }, FILTER_INPUT_DEBOUNCE)
 
-export function FilterTermField(props: { filterSet: FilterSet }) {
-  // The global term is set from the url, which is passed
-  // down through props and used to set the initial value
-  const globalTerm = props.filterSet.term
-  const [filterTerm, setFilterTerm] = useState(globalTerm.input ?? EMPTY_TERM)
+export function FilterTermField(props: { initialTerm: string }) {
+  const [filterTerm, setFilterTerm] = useState(props.initialTerm ?? EMPTY_TERM)
 
   const history = useHistory()
-  const location = history.location
+  const { location } = history
+
+  /**
+   * Note about term updates:
+   * Debouncing allows us to wait to execute log filtration until a set
+   * amount of time has passed without the filter term changing. To implement
+   * debouncing, it's necessary to separate the term field's value from the url
+   * search params, otherwise the field that a user types in doesn't update.
+   * The term field updates without any debouncing, while the url search params
+   * (which actually triggers log filtering) updates with the debounce delay.
+   */
+  const setTerm = (term: string) => {
+    setFilterTerm(term)
+
+    const search = createLogSearch(location.search, { term })
+
+    // Don't use the debounce delay if clearing the filter term
+    if (term === EMPTY_TERM) {
+      history.push({ search: search.toString() })
+    } else {
+      debounceFilterLogs(history, search.toString())
+    }
+  }
+
+  const onChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const term = event.target.value ?? EMPTY_TERM
+    setTerm(term)
+  }
 
   const inputProps: InputProps = {
     startAdornment: (
@@ -449,23 +470,12 @@ export function FilterTermField(props: { filterSet: FilterSet }) {
 
   // If there's a search term, add a button to clear that term
   if (filterTerm) {
-    const onClearClick = () => {
-      // Clear the input field's value
-      setFilterTerm(EMPTY_TERM)
-
-      // Clear the global term's value
-      const emptyTermSearch = createLogSearch(location.search, {
-        term: EMPTY_TERM,
-      })
-      history.push({
-        pathname: location.pathname,
-        search: emptyTermSearch.toString(),
-      })
-    }
-
     const endAdornment = (
       <InputAdornment position="end">
-        <ClearFilterTermTextButton analyticsName="TODO" onClick={onClearClick}>
+        <ClearFilterTermTextButton
+          analyticsName="TODO"
+          onClick={() => setTerm(EMPTY_TERM)}
+        >
           <SrOnly>Clear filter term</SrOnly>
           <CloseSvg fill={Color.grayLightest} role="presentation" />
         </ClearFilterTermTextButton>
@@ -475,37 +485,20 @@ export function FilterTermField(props: { filterSet: FilterSet }) {
     inputProps.endAdornment = endAdornment
   }
 
-  /**
-   * Note: debouncing allows us to wait to execute log filtration until a set
-   * amount of time has passed without the filter term changing. To implement
-   * debouncing, it's necessary to separate the term field's value from the url
-   * search params, otherwise the field that a user types in doesn't update.
-   * The term field updates without any debouncing, while the url search params
-   * (which actually triggers log filtering) updates with the debounce delay.
-   */
-  const onChange = (
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const term = event.target.value ?? EMPTY_TERM
-    const search = createLogSearch(location.search, { term })
-
-    setFilterTerm(term)
-    debounceFilterLogs(history, search.toString())
-  }
-
+  // TODO (LT): Add `aria-invalid` markup that will show if
+  // there's an error parsing an input string to regexp
   return (
     <>
       <FilterTermTextField
-        aria-invalid={globalTerm.state === TermState.Error}
         id={FILTER_FIELD_ID}
         InputProps={inputProps}
         onChange={onChange}
-        placeholder="Filter logs by string"
+        placeholder="Filter logs by text"
         value={filterTerm}
         variant="outlined"
       />
       <SrOnly component="label" htmlFor={FILTER_FIELD_ID}>
-        Filter resource logs by string
+        Filter resource logs by text
       </SrOnly>
     </>
   )
@@ -734,20 +727,20 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
       <ActionBarBottomRow>
         <FilterRadioButton
           level={FilterLevel.all}
-          filterSet={props.filterSet}
+          filterSet={filterSet}
           alerts={alerts}
         />
         <FilterRadioButton
           level={FilterLevel.error}
-          filterSet={props.filterSet}
+          filterSet={filterSet}
           alerts={alerts}
         />
         <FilterRadioButton
           level={FilterLevel.warn}
-          filterSet={props.filterSet}
+          filterSet={filterSet}
           alerts={alerts}
         />
-        <FilterTermField filterSet={props.filterSet} />
+        <FilterTermField initialTerm={filterSet.term.input} />
         <LogActions resourceName={resourceName} isSnapshot={isSnapshot} />
       </ActionBarBottomRow>
     </ActionBarRoot>
