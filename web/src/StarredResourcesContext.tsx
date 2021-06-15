@@ -7,7 +7,7 @@ import React, {
 import { incr } from "./analytics"
 import { usePersistentState } from "./LocalStorage"
 
-type StarredResourcesContext = {
+export type StarredResourcesContext = {
   starredResources: string[]
   starResource: (name: string) => void
   unstarResource: (name: string) => void

@@ -2,16 +2,17 @@ import React from "react"
 import { CellProps, Column, useSortBy, useTable } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
+import { buildAlerts } from "./alerts"
 import { incr } from "./analytics"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
-import SidebarTriggerButton from "./SidebarTriggerButton"
 import { useStarredResources } from "./StarredResourcesContext"
-import StarResourceButton from "./StarResourceButton"
-import { combinedStatus } from "./status"
+import { buildStatus, lastBuildDuration } from "./status"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
-import { isZeroTime } from "./time"
+import TableStarResourceButton from "./TableStarResourceButton"
+import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
+import TriggerButton from "./TriggerButton"
 import { TriggerModeToggle } from "./TriggerModeToggle"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
@@ -23,15 +24,18 @@ type Props = {
 type RowValues = {
   isStarred: boolean
   lastUpdateTime?: string
-  status: ResourceStatus
   name: string
   resourceType: string
   triggerMode?: number
   podId?: string
   endpoints: Proto.webviewLink[]
+  lastBuildDur: moment.Duration | null
+  buildStatus: ResourceStatus
+  buildAlertCount: number
 }
 
 let ResourceTable = styled.table`
+  margin-top: ${SizeUnit(0.5)};
   margin-left: ${SizeUnit(1)};
   margin-right: ${SizeUnit(1)};
   border-collapse: collapse;
@@ -49,6 +53,9 @@ let ResourceTableData = styled.td`
 `
 let ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray7};
+  font-size: ${FontSize.smallest};
+  padding-top: ${SizeUnit(0.5)};
+  padding-bottom: ${SizeUnit(0.5)};
 `
 
 let Endpoint = styled.a``
@@ -61,6 +68,10 @@ let DetailText = styled.div`
 `
 
 function columnDefs(): Column<RowValues>[] {
+  // Use the hooks here
+  const cxt = useStarredResources()
+
+  // const callback = (info) => cxt.someMethodWeNeed(info)
   return React.useMemo(
     () => [
       {
@@ -68,9 +79,10 @@ function columnDefs(): Column<RowValues>[] {
         accessor: "isStarred",
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
-            <StarResourceButton
+            <TableStarResourceButton
               resourceName={row.values.name}
               analyticsName="ui.web.overviewStarButton"
+              cxt={cxt}
             />
           )
         },
@@ -78,6 +90,7 @@ function columnDefs(): Column<RowValues>[] {
       {
         Header: "Last Updated",
         accessor: "lastUpdateTime",
+        maxWidth: 1,
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <TimeAgo
@@ -88,14 +101,14 @@ function columnDefs(): Column<RowValues>[] {
         },
       },
       {
-        Header: "Trigger Button",
+        Header: "Trigger",
+        maxWidth: 1,
         Cell: ({ row }: CellProps<RowValues>) => {
           let building = !isZeroTime(row.values.currentBuildStartTime)
           let hasBuilt = row.values.lastBuild !== null
           let onTrigger = triggerUpdate.bind(null, row.values.name)
-
           return (
-            <SidebarTriggerButton
+            <TriggerButton
               isTiltfile={row.values.isTiltfile}
               isSelected={false}
               hasPendingChanges={row.values.hasPendingChanges}
@@ -109,7 +122,7 @@ function columnDefs(): Column<RowValues>[] {
         },
       },
       {
-        Header: "Name",
+        Header: "Resource Name",
         accessor: "name",
       },
       {
@@ -118,7 +131,20 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Status",
-        accessor: "status",
+        accessor: "buildStatus",
+        Cell: ({ row }: CellProps<RowValues>) => {
+          return (
+            <>
+              <span>
+                {buildStatusText(
+                  row.values.buildStatus,
+                  row.values.lastBuildDur
+                )}
+              </span>
+              <span>{runtimeStatusText(row.values.runtimeStatus)}</span>
+            </>
+          )
+        },
       },
       {
         Header: "Pod ID",
@@ -145,7 +171,6 @@ function columnDefs(): Column<RowValues>[] {
               </Endpoint>
             )
           })
-
           return <div>{endpoints}</div>
         },
       },
@@ -187,12 +212,14 @@ function resourceViewToCell(r: webviewResource): RowValues {
   return {
     isStarred: (r.name && starCtx.starredResources.includes(r.name)) || false,
     lastUpdateTime: r.lastDeployTime,
-    status: combinedStatus(r),
     name: r.name || "",
     triggerMode: r.triggerMode,
     resourceType: resourceTypeLabel(r),
-    podId: r.podID,
+    podId: r.podID || "",
     endpoints: r.endpointLinks ?? [],
+    buildAlertCount: buildAlerts(r, null).length,
+    buildStatus: buildStatus(r),
+    lastBuildDur: lastBuildDuration(r) || null,
   }
 }
 
@@ -233,6 +260,44 @@ function resourceTypeLabel(res: webviewResource): string {
   return "Unknown"
 }
 
+function buildStatusText(
+  buildStatus: ResourceStatus,
+  buildDur: moment.Duration | null
+): string {
+  let buildDurString = buildDur ? ` in ${formatBuildDuration(buildDur)}` : ""
+
+  if (buildStatus === ResourceStatus.Pending) {
+    return "Pending"
+  } else if (buildStatus === ResourceStatus.Building) {
+    return "Updating…"
+  } else if (buildStatus === ResourceStatus.None) {
+    return "No update status"
+  } else if (buildStatus === ResourceStatus.Unhealthy) {
+    return "Update error"
+  } else if (buildStatus === ResourceStatus.Healthy) {
+    let msg = `Completed${buildDurString}`
+    return msg
+  }
+  return "Unknown"
+}
+
+function runtimeStatusText(status: ResourceStatus): string {
+  switch (status) {
+    case ResourceStatus.Building:
+      return "Server: deploying"
+    case ResourceStatus.Pending:
+      return "Server: pending"
+    case ResourceStatus.Warning:
+      return "Server: issues"
+    case ResourceStatus.Healthy:
+      return "Server: ready"
+    case ResourceStatus.Unhealthy:
+      return "Server: unhealthy"
+    default:
+      return ""
+  }
+}
+
 export default function OverviewTable(props: Props) {
   const columns = columnDefs()
 
@@ -254,6 +319,7 @@ export default function OverviewTable(props: Props) {
     },
     useSortBy
   )
+  // Here we need to grab all the contexts / hooks that we need and pass them do
 
   return (
     <ResourceTable {...getTableProps()}>
