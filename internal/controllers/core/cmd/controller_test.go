@@ -268,7 +268,7 @@ func TestRestartOnFileWatch(t *testing.T) {
 		[]reconcile.Request{
 			reconcile.Request{NamespacedName: types.NamespacedName{Name: "cmd-serve-1"}},
 		},
-		f.c.restartManager.enqueue(fw))
+		f.c.indexer.Enqueue(fw))
 }
 
 func setupStartOnTest(t *testing.T, f *fixture) {
@@ -571,7 +571,7 @@ func newFixture(t *testing.T) *fixture {
 	fc := fake.NewTiltClient()
 	sc := local.NewServerController(fc)
 	clock := clockwork.NewFakeClock()
-	c := NewController(ctx, fe, fpm, fc, st, clock)
+	c := NewController(ctx, fe, fpm, fc, st, clock, v1alpha1.NewScheme())
 
 	return &fixture{
 		TempDirFixture: f,

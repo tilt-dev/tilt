@@ -52,13 +52,13 @@ type Controller struct {
 var _ reconcile.Reconciler = &Controller{}
 var _ store.TearDowner = &Controller{}
 
-func NewController(ctx context.Context, client ctrlclient.Client, st store.RStore, kClient k8s.Client) *Controller {
+func NewController(ctx context.Context, client ctrlclient.Client, st store.RStore, kClient k8s.Client, podSource *PodSource) *Controller {
 	return &Controller{
 		ctx:             ctx,
 		client:          client,
 		st:              st,
 		kClient:         kClient,
-		podSource:       NewPodSource(ctx, kClient),
+		podSource:       podSource,
 		watches:         make(map[podLogKey]PodLogWatch),
 		hasClosedStream: make(map[podLogKey]bool),
 		statuses:        make(map[types.NamespacedName]*PodLogStreamStatus),

@@ -23,6 +23,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -64,7 +65,7 @@ func TestLogs(t *testing.T) {
 	streamNN := types.NamespacedName{Name: fmt.Sprintf("default-%s", podID)}
 	assert.Equal(t, []reconcile.Request{
 		reconcile.Request{NamespacedName: streamNN},
-	}, f.plsc.podSource.mapPodNameToEnqueue(podNN))
+	}, f.plsc.podSource.indexer.EnqueueKey(indexer.Key{Name: podNN, GVK: podGVK}))
 }
 
 func TestLogActions(t *testing.T) {
@@ -468,7 +469,8 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	st := newPLMStore(t, out)
 	fc := fake.NewTiltClient()
 	plm := runtimelog.NewPodLogManager(fc)
-	plsc := NewController(ctx, fc, st, kClient)
+	podSource := NewPodSource(ctx, kClient, v1alpha1.NewScheme())
+	plsc := NewController(ctx, fc, st, kClient, podSource)
 
 	return &plmFixture{
 		TempDirFixture: f,
@@ -497,7 +499,8 @@ func (f *plmFixture) onChange(mn model.ManifestName, podID k8s.PodID) {
 		assert.NoError(f.T(), err)
 	}
 
-	for _, req := range f.plsc.podSource.mapPodNameToEnqueue(podNN) {
+	reqs := f.plsc.podSource.indexer.EnqueueKey(indexer.Key{Name: podNN, GVK: podGVK})
+	for _, req := range reqs {
 		_, err := f.plsc.Reconcile(f.ctx, req)
 		assert.NoError(f.T(), err)
 	}

@@ -218,7 +218,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	execer := cmd.ProvideExecer()
 	proberManager := cmd.ProvideProberManager()
 	clock := clockwork.NewRealClock()
-	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock)
+	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
@@ -236,7 +236,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	podlogstreamController := podlogstream.NewController(ctx, deferredClient, storeStore, client)
+	podSource := podlogstream.NewPodSource(ctx, client, scheme)
+	podlogstreamController := podlogstream.NewController(ctx, deferredClient, storeStore, client, podSource)
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(client, ownerFetcher, containerRestartDetector, storeStore)
@@ -413,7 +414,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	execer := cmd.ProvideExecer()
 	proberManager := cmd.ProvideProberManager()
 	clock := clockwork.NewRealClock()
-	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock)
+	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
@@ -431,7 +432,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	podlogstreamController := podlogstream.NewController(ctx, deferredClient, storeStore, client)
+	podSource := podlogstream.NewPodSource(ctx, client, scheme)
+	podlogstreamController := podlogstream.NewController(ctx, deferredClient, storeStore, client, podSource)
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(client, ownerFetcher, containerRestartDetector, storeStore)
@@ -605,7 +607,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	execer := cmd.ProvideExecer()
 	proberManager := cmd.ProvideProberManager()
 	clock := clockwork.NewRealClock()
-	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock)
+	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
@@ -623,7 +625,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	podlogstreamController := podlogstream.NewController(ctx, deferredClient, storeStore, k8sClient)
+	podSource := podlogstream.NewPodSource(ctx, k8sClient, scheme)
+	podlogstreamController := podlogstream.NewController(ctx, deferredClient, storeStore, k8sClient, podSource)
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, k8sClient)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(k8sClient, ownerFetcher, containerRestartDetector, storeStore)
@@ -932,7 +935,7 @@ func wireClientGetter(ctx context.Context) (*client2.Getter, error) {
 var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher, ProvideKubeContextOverride)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.WireSet, user.WireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, podlogstream.NewController, portforward2.NewSubscriber, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewManifestSubscriber, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewManifestSubscriber, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.WireSet, user.WireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward2.NewSubscriber, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewManifestSubscriber, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewManifestSubscriber, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
