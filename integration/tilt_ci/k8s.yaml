@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-server-enabled
+  namespace: tilt-integration
+  labels:
+    app: k8s-server-enabled
+spec:
+  selector:
+    matchLabels:
+      app: k8s-server-enabled
+  template:
+    metadata:
+      labels:
+        app: k8s-server-enabled
+    spec:
+      containers:
+        - name: k8s-server-enabled
+          image: busybox
+          command: ["sh", "-c", "while true; do echo 'k8s-server-enabled running'; sleep 5; done"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-server-disabled
+  namespace: tilt-integration
+  labels:
+    app: k8s-server-disabled
+spec:
+  selector:
+    matchLabels:
+      app: k8s-server-disabled
+  template:
+    metadata:
+      labels:
+        app: k8s-server-disabled
+    spec:
+      containers:
+        - name: k8s-server-disabled
+          image: busybox
+          command: ["sh", "-c", "while true; do echo 'k8s-server-disabled running'; sleep 5; done"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k8s-job-enabled
+  labels:
+    app: k8s-job-enabled
+spec:
+  template:
+    metadata:
+      labels:
+        app: k8s-job-enabled
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k8s-job-enabled
+          image: busybox
+          command: ["sh", "-c", "echo 'k8s-job-enabled started'; sleep 5; echo 'k8s-job-enabled finished'"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k8s-job-disabled
+  labels:
+    app: k8s-job-disabled
+spec:
+  template:
+    metadata:
+      labels:
+        app: k8s-job-disabled
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k8s-job-disabled
+          image: busybox
+          command: ["sh", "-c", "echo 'k8s-job-disabled started'; sleep 5; echo 'k8s-job-disabled finished'"]

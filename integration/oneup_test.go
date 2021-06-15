@@ -35,5 +35,5 @@ func TestOneUp(t *testing.T) {
 	// minimal sanity check that the engine dump works - this really just ensures that there's no egregious
 	// serialization issues
 	var b bytes.Buffer
-	assert.NoErrorf(t, f.tilt.DumpEngine(&b), "Failed to dump engine state, command output:\n%s", b.String())
+	assert.NoErrorf(t, f.tilt.DumpEngine(f.ctx, &b), "Failed to dump engine state, command output:\n%s", b.String())
 }

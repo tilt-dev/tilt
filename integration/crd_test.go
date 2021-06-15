@@ -45,7 +45,7 @@ func TestCRDNotFound(t *testing.T) {
 	f := newK8sFixture(t, "crd")
 	defer f.TearDown()
 
-	err := f.tilt.Down(ioutil.Discard)
+	err := f.tilt.Down(f.ctx, ioutil.Discard)
 	require.NoError(t, err)
 }
 
@@ -62,7 +62,7 @@ func TestCRDPartialNotFound(t *testing.T) {
 	_, err = f.runCommand("kubectl", "get", "crd", "uselessmachines.tilt.dev")
 	assert.NoError(t, err)
 
-	err = f.tilt.Down(ioutil.Discard)
+	err = f.tilt.Down(f.ctx, ioutil.Discard)
 	require.NoError(t, err)
 
 	// Make sure the crds were deleted.

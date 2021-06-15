@@ -21,7 +21,7 @@ func TestTiltArgs(t *testing.T) {
 
 	f.logs.Reset()
 
-	err = f.tilt.Args([]string{"bar"}, f.LogWriter())
+	err = f.tilt.Args(f.ctx, []string{"bar"}, f.LogWriter())
 	if err != nil {
 		// Currently, Tilt starts printing logs before the webserver has bound to a port.
 		// If this happens, just sleep for a second and try again.
@@ -29,7 +29,7 @@ func TestTiltArgs(t *testing.T) {
 		fmt.Printf("Error setting args. Sleeping (%s): %v\n", duration, err)
 
 		time.Sleep(duration)
-		err = f.tilt.Args([]string{"bar"}, f.LogWriter())
+		err = f.tilt.Args(f.ctx, []string{"bar"}, f.LogWriter())
 		require.NoError(t, err)
 	}
 
