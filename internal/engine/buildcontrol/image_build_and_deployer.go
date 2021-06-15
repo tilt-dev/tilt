@@ -10,6 +10,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -261,8 +262,34 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 	// Create API objects.
 	spec := kTarget.KubernetesApplySpec
+	imageMaps := make(map[string]*v1alpha1.ImageMap)
+	for _, imageMapName := range spec.ImageMaps {
+		depID := model.TargetID{
+			Type: model.TargetTypeImage,
+			Name: model.TargetName(imageMapName),
+		}
 
-	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, iTargetMap, spec, results)
+		iTarget, ok := iTargetMap[depID]
+		if !ok {
+			return nil, fmt.Errorf("Internal error: missing image target for dependency ID: %s", depID)
+		}
+
+		ref := store.ClusterImageRefFromBuildResult(results[depID])
+		if ref == nil {
+			return nil, fmt.Errorf("Internal error: missing image build result for dependency ID: %s", depID)
+		}
+
+		name := string(depID.Name)
+		imageMaps[name] = &v1alpha1.ImageMap{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Spec:       iTarget.ImageMapSpec,
+			Status: v1alpha1.ImageMapStatus{
+				Image: ref.String(),
+			},
+		}
+	}
+
+	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, imageMaps, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -329,9 +356,8 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 }
 
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
-	iTargetMap map[model.TargetID]model.ImageTarget,
-	spec v1alpha1.KubernetesApplySpec,
-	results store.BuildResultSet) ([]k8s.K8sEntity, error) {
+	imageMaps map[string]*v1alpha1.ImageMap,
+	spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
 	newK8sEntities := []k8s.K8sEntity{}
 
 	entities, err := k8s.ParseYAMLFromString(spec.YAML)
@@ -359,14 +385,14 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		// Frequent applies don't work well with this setting, and makes things
 		// slower. See discussion:
 		// https://github.com/tilt-dev/tilt/issues/3209
-		if len(iTargetMap) > 0 {
+		if len(imageMaps) > 0 {
 			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		if len(iTargetMap) > 0 {
+		if len(imageMaps) > 0 {
 			// StatefulSet pods should be managed in parallel when we're doing iterative
 			// development. See discussion:
 			// https://github.com/tilt-dev/tilt/issues/1962
@@ -382,18 +408,18 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		}
 
 		for _, imageMapName := range imageMapNames {
-			depID := model.TargetID{
-				Type: model.TargetTypeImage,
-				Name: model.TargetName(imageMapName),
+			imageMap := imageMaps[imageMapName]
+			imageMapSpec := imageMap.Spec
+			selector, err := container.SelectorFromImageMap(imageMapSpec)
+			if err != nil {
+				return nil, err
 			}
-			ref := store.ClusterImageRefFromBuildResult(results[depID])
-			if ref == nil {
-				return nil, fmt.Errorf("Internal error: missing image build result for dependency ID: %s", depID)
-			}
+			matchInEnvVars := imageMapSpec.MatchInEnvVars
 
-			iTarget := iTargetMap[depID]
-			selector := iTarget.Refs.ConfigurationRef
-			matchInEnvVars := iTarget.MatchInEnvVars
+			ref, err := reference.ParseNamed(imageMap.Status.Image)
+			if err != nil {
+				return nil, fmt.Errorf("parsing image map status: %v", err)
+			}
 
 			var replaced bool
 			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, locators, matchInEnvVars, policy)
@@ -403,8 +429,8 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 			if replaced {
 				injectedImageMaps[imageMapName] = true
 
-				if iTarget.OverrideCommand != nil || iTarget.OverrideArgs != nil {
-					e, err = k8s.InjectCommandAndArgs(e, ref, iTarget.OverrideCommand, iTarget.OverrideArgs)
+				if imageMapSpec.OverrideCommand != nil || imageMapSpec.OverrideArgs != nil {
+					e, err = k8s.InjectCommandAndArgs(e, ref, imageMapSpec.OverrideCommand, imageMapSpec.OverrideArgs)
 					if err != nil {
 						return nil, err
 					}
