@@ -42,7 +42,7 @@ func (w *ServiceWatcher) diff(st store.RStore) watcherTaskList {
 	return w.watcherKnownState.createTaskList(state)
 }
 
-func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	taskList := w.diff(st)
 
 	w.mu.Lock()
@@ -63,6 +63,8 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, _ store.
 	if len(taskList.newUIDs) > 0 {
 		w.setupNewUIDs(ctx, st, taskList.newUIDs)
 	}
+
+	return nil
 }
 
 func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace) {

@@ -63,9 +63,9 @@ func (dp *DockerPruner) SetUp(ctx context.Context, _ store.RStore) error {
 	return nil
 }
 
-func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if dp.disabledForTesting || dp.disabledOnSetup {
-		return
+		return nil
 	}
 
 	state := st.RLockState()
@@ -78,23 +78,23 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, _ store.C
 	st.RUnlockState()
 
 	if !settings.Enabled {
-		return
+		return nil
 	}
 
 	// If user doesn't have at least one Docker build, they probably don't care about pruning
 	if !hasDockerBuild {
-		return
+		return nil
 	}
 
 	// Don't prune while we're building or about to build something, in case of weird side-effects.
 	if buildInProg || nextToBuild != "" {
-		return
+		return nil
 	}
 
 	// Prune as soon after startup as we can (waiting until we've built SOMETHING)
 	if dp.lastPruneTime.IsZero() && curBuildCount > 0 {
 		dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
-		return
+		return nil
 	}
 
 	// "Prune every X builds" takes precedence over "prune every Y hours"
@@ -103,7 +103,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, _ store.C
 		if buildsSince >= settings.NumBuilds {
 			dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
 		}
-		return
+		return nil
 	}
 
 	interval := settings.Interval
@@ -114,6 +114,8 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, _ store.C
 	if time.Since(dp.lastPruneTime) >= interval {
 		dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
 	}
+
+	return nil
 }
 
 func (dp *DockerPruner) PruneAndRecordState(ctx context.Context, maxAge time.Duration, keepRecent int, imgSelectors []container.RefSelector, curBuildCount int) {

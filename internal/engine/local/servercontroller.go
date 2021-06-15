@@ -50,9 +50,9 @@ func NewServerController(client ctrlclient.Client) *ServerController {
 	}
 }
 
-func (c *ServerController) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+func (c *ServerController) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() {
-		return
+		return nil
 	}
 
 	servers, owned, orphans := c.determineServers(ctx, st)
@@ -64,6 +64,7 @@ func (c *ServerController) OnChange(ctx context.Context, st store.RStore, summar
 	for _, orphan := range orphans {
 		c.deleteOrphanedCmd(ctx, st, orphan)
 	}
+	return nil
 }
 
 // Returns a list of server objects and the Cmd they own (if any).

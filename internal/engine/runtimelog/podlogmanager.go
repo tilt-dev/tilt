@@ -97,9 +97,9 @@ func (m *PodLogManager) diff(ctx context.Context, st store.RStore) (setup []*Pod
 	return setup, teardown
 }
 
-func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if len(summary.KubernetesDiscoveries.Changes) == 0 {
-		return
+		return nil
 	}
 
 	setup, teardown := m.diff(ctx, st)
@@ -110,6 +110,7 @@ func (m *PodLogManager) OnChange(ctx context.Context, st store.RStore, summary s
 	for _, pls := range setup {
 		m.createPls(ctx, st, pls)
 	}
+	return nil
 }
 
 // Delete the PodLogStream API object. Should be idempotent.

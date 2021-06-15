@@ -396,7 +396,7 @@ func newPFSFixture(t *testing.T) *pfsFixture {
 }
 
 func (f *pfsFixture) onChange() {
-	f.s.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.s.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	time.Sleep(10 * time.Millisecond)
 }
 

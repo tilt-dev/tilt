@@ -18,21 +18,21 @@ import (
 func TestCreate(t *testing.T) {
 	f := newFixture(t)
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	r := f.session("Tiltfile")
 	require.NotNil(t, r)
 	assert.Equal(t, "Tiltfile", r.ObjectMeta.Name)
 	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	r = f.session("Tiltfile")
 	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 }
 
 func TestUpdate(t *testing.T) {
 	f := newFixture(t)
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	r := f.session("Tiltfile")
 	require.NotNil(t, r)
@@ -43,7 +43,7 @@ func TestUpdate(t *testing.T) {
 		es.CloudStatus.Username = "sparkle"
 	})
 
-	f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	r = f.session("Tiltfile")
 	require.NotNil(t, r)

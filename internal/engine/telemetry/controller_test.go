@@ -191,7 +191,7 @@ func (tcf *tcFixture) run() {
 	tc := NewController(tcf.clock, tcf.sc)
 	tc.lastRunAt = tcf.lastRun
 	tcf.controller = tc
-	tc.OnChange(tcf.ctx, tcf.st, store.LegacyChangeSummary())
+	_ = tc.OnChange(tcf.ctx, tcf.st, store.LegacyChangeSummary())
 }
 
 func (tcf *tcFixture) assertNoLogs() {

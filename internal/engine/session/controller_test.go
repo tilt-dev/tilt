@@ -40,7 +40,7 @@ func TestExitControlCI_TiltfileFailure(t *testing.T) {
 		})
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithError("fake Tiltfile error")
 }
 
@@ -48,11 +48,11 @@ func TestExitControlIdempotent(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.NotNil(t, f.store.LastAction())
 
 	f.store.ClearLastAction()
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.Nil(t, f.store.LastAction())
 }
 
@@ -68,7 +68,7 @@ func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 		state.UpsertManifestTarget(store.NewManifestTarget(m2))
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -79,7 +79,7 @@ func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 		})
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithError("does not compile")
 }
 
@@ -104,7 +104,7 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 		})
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -128,7 +128,7 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 		})
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithError("Pod pod-a in error state due to container c1: ErrImagePull")
 }
 
@@ -146,7 +146,7 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 		})
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -179,7 +179,7 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 		})
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	// even though one of the containers is in an error state, CI shouldn't exit - expectation is that the target for
 	// the pod is in Waiting state
 	f.store.requireNoExitSignal()
@@ -196,7 +196,7 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 		pod.Containers[0] = c1
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithNoError()
 }
 
@@ -229,7 +229,7 @@ func TestExitControlCI_Success(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
 
 	// pod-a: ready / pod-b: ready
@@ -238,7 +238,7 @@ func TestExitControlCI_Success(t *testing.T) {
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-b", true))
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithNoError()
 }
 
@@ -262,7 +262,7 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 			pod("pod-a", false))
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -272,7 +272,7 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 		)
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithNoError()
 }
 
@@ -297,7 +297,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -306,7 +306,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-a", false))
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithNoError()
 }
 
@@ -331,7 +331,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -342,7 +342,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 		mt.State.RuntimeState = krs
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithNoError()
 }
 
@@ -361,7 +361,7 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
 
 	f.store.WithState(func(state *store.EngineState) {
@@ -369,7 +369,7 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
 	})
 
-	f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireExitSignalWithNoError()
 }
 
@@ -413,7 +413,7 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 			if tc.triggerMode.AutoInitial() {
 				// because this resource SHOULD start automatically, no exit signal should be received before
 				// a build has completed
-				f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+				_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 				f.store.requireNoExitSignal()
 
 				// N.B. a build is triggered regardless of if there is an update_cmd! it's a fake build produced
@@ -429,7 +429,7 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 				if tc.serveCmd {
 					// the serve_cmd hasn't started yet, so no exit signal should be received still even though
 					// a build occurred
-					f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+					_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 					f.store.requireNoExitSignal()
 
 					// only mimic a runtime state if there is a serve_cmd since this won't be populated
@@ -450,7 +450,7 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 
 			// for auto_init=True, it's now ready, so can exit
 			// for auto_init=False, it should NOT block on it, so can exit
-			f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+			_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 			f.store.requireExitSignalWithNoError()
 		})
 	}
@@ -472,7 +472,7 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 
 			if triggerMode.AutoInitial() {
 				// because this resource SHOULD start automatically, no exit signal should be received until it's ready
-				f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+				_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 				f.store.requireNoExitSignal()
 
 				f.store.WithState(func(state *store.EngineState) {
@@ -487,7 +487,7 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 
 			// for auto_init=True, it's now ready, so can exit
 			// for auto_init=False, it should NOT block on it, so can exit
-			f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+			_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 			f.store.requireExitSignalWithNoError()
 		})
 	}

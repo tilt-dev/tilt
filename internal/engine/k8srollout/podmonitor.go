@@ -70,7 +70,7 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 	return updates
 }
 
-func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	updates := m.diff(st)
 	for _, update := range updates {
 		ctx := logger.CtxWithLogHandler(ctx, podStatusWriter{
@@ -80,6 +80,8 @@ func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 		})
 		m.print(ctx, update)
 	}
+
+	return nil
 }
 
 func (m *PodMonitor) print(ctx context.Context, update podStatus) {

@@ -21,9 +21,9 @@ type AnalyticsReporter struct {
 	started bool
 }
 
-func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if ar.started {
-		return
+		return nil
 	}
 
 	state := st.RLockState()
@@ -51,6 +51,8 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore, _ st
 			}
 		}()
 	}
+
+	return nil
 }
 
 var _ store.Subscriber = &AnalyticsReporter{}

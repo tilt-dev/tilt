@@ -63,10 +63,11 @@ func (f *fakeSubscriber) assertOnChange(t *testing.T) {
 	}
 }
 
-func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore, summary ChangeSummary) {
+func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore, summary ChangeSummary) error {
 	call := onChangeCall{done: make(chan bool), summary: summary}
 	f.onChange <- call
 	<-call.done
+	return nil
 }
 
 func (f *fakeSubscriber) SetUp(ctx context.Context, st RStore) error {

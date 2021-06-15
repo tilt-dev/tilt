@@ -41,9 +41,9 @@ func NewManifestSubscriber(cfgNS k8s.Namespace, client ctrlclient.Client) *Manif
 // unnecessary API calls.
 //
 // Currently, any unexpected API errors are fatal.
-func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) {
+func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() {
-		return
+		return nil
 	}
 
 	current := m.makeSpecsFromEngineState(ctx, st)
@@ -52,7 +52,7 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 		if existing == nil {
 			if err := m.createKubernetesDiscovery(ctx, st, key, &kd); err != nil {
 				st.Dispatch(store.NewErrorAction(err))
-				return
+				return nil
 			}
 		} else if !equality.Semantic.DeepEqual(existing, &kd.Spec) {
 			err := m.updateKubernetesDiscovery(ctx, st, key, func(toUpdate *v1alpha1.KubernetesDiscovery) {
@@ -60,7 +60,7 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 			})
 			if err != nil {
 				st.Dispatch(store.NewErrorAction(err))
-				return
+				return nil
 			}
 		}
 	}
@@ -70,10 +70,12 @@ func (m *ManifestSubscriber) OnChange(ctx context.Context, st store.RStore, summ
 			// this manifest was deleted or changed such that it has nothing to watch
 			if err := m.deleteKubernetesDiscovery(ctx, st, key); err != nil {
 				st.Dispatch(store.NewErrorAction(err))
-				return
+				return nil
 			}
 		}
 	}
+
+	return nil
 }
 
 func (m *ManifestSubscriber) getKubernetesDiscovery(ctx context.Context, key types.NamespacedName) (*v1alpha1.KubernetesDiscovery, error) {
