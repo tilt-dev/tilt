@@ -5,7 +5,7 @@ import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import moment from "moment"
 import React, { useRef, useState } from "react"
-import { useHistory } from "react-router"
+import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { incr } from "./analytics"
@@ -70,7 +70,7 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
 
   let classes = useMenuStyles()
   let history = useHistory()
-  let l = history.location
+  let l = useLocation()
   let onClick = (e: any) => {
     let source = e.currentTarget.getAttribute("data-filter")
     let search = new URLSearchParams(l.search)
@@ -289,7 +289,7 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
   }
 
   let history = useHistory()
-  let l = history.location
+  let l = useLocation()
   let onClick = () => {
     let search = new URLSearchParams(l.search)
     search.set("level", level)

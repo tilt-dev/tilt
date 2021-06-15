@@ -1,6 +1,6 @@
 import Anser from "anser"
 import React, { Component } from "react"
-import { useHistory } from "react-router"
+import { useHistory, useLocation } from "react-router"
 import styled, { keyframes } from "styled-components"
 import "./AnsiLine.scss" // for line color CSS classes
 import {
@@ -688,7 +688,8 @@ type OverviewLogPaneProps = {
 }
 
 export default function OverviewLogPane(props: OverviewLogPaneProps) {
-  let history = useHistory() as any
+  let history = useHistory()
+  let location = useLocation() as any
   let pathBuilder = usePathBuilder()
   let logStore = useLogStore()
   let raf = useRaf()
@@ -700,7 +701,7 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
       raf={raf}
       filterSet={props.filterSet}
       history={history}
-      scrollToStoredLineIndex={history?.location?.state?.storedLineIndex}
+      scrollToStoredLineIndex={location?.state?.storedLineIndex}
     />
   )
 }

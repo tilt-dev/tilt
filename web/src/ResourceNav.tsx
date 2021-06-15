@@ -1,5 +1,5 @@
 import React, { useContext } from "react"
-import { matchPath, useHistory } from "react-router-dom"
+import { matchPath, useHistory, useLocation } from "react-router-dom"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceName } from "./types"
 
@@ -42,11 +42,12 @@ export function ResourceNavProvider(
   }
 
   let history = useHistory()
+  let location = useLocation()
   let pb = usePathBuilder()
   let selectedResource = ""
   let invalidResource = ""
 
-  let matchResource = matchPath(history.location.pathname, {
+  let matchResource = matchPath(location.pathname, {
     path: pb.path("/r/:name"),
   })
   let candidateResource = decodeURIComponent(
