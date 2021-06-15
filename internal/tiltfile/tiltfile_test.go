@@ -4324,6 +4324,70 @@ local_resource("test", "echo hi", serve_cmd="sleep 1000", serve_env={"KEY1": "va
 	))
 }
 
+func TestLocalResourceUpdateCmdDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("nested/inside.txt", "inside the nested directory")
+	f.file("Tiltfile", `
+local_resource("test", cmd="cat inside.txt", dir="nested")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		updateCmd(f.JoinPath(f.Path(), "nested"), "cat inside.txt", nil),
+	))
+}
+
+func TestLocalResourceUpdateCmdDirNone(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("here.txt", "same level")
+	f.file("Tiltfile", `
+local_resource("test", cmd="cat here.txt", dir=None)
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		updateCmd(f.Path(), "cat here.txt", nil),
+	))
+}
+
+func TestLocalResourceServeCmdDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("nested/inside.txt", "inside the nested directory")
+	f.file("Tiltfile", `
+local_resource("test", serve_cmd="cat inside.txt", serve_dir="nested")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		serveCmd(f.JoinPath(f.Path(), "nested"), "cat inside.txt", nil),
+	))
+}
+
+func TestLocalResourceServeCmdDirNone(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("here.txt", "same level")
+	f.file("Tiltfile", `
+local_resource("test", serve_cmd="cat here.txt", serve_dir=None)
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		serveCmd(f.Path(), "cat here.txt", nil),
+	))
+}
+
 func TestCustomBuildStoresTiltfilePath(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
