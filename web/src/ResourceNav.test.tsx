@@ -31,10 +31,6 @@ class Fixture {
 
   openResource(name: string) {
     act(() => this.nav?.openResource(name))
-
-    // Enzyme doesn't properly re-render context providers with hooks,
-    // so we manually re-render.
-    this.mount()
   }
 }
 

@@ -1,4 +1,5 @@
 import { mount } from "enzyme"
+import { MemoryRouter } from "react-router"
 import { FilterLevel, FilterSource } from "./logfilters"
 import { LogUpdateAction } from "./LogStore"
 import {
@@ -17,7 +18,11 @@ import { newFakeRaf, RafProvider, SyncRafProvider } from "./raf"
 import { appendLines } from "./testlogs"
 
 let logPaneMount = (pane: any) => {
-  return mount(<SyncRafProvider>{pane}</SyncRafProvider>)
+  return mount(
+    <MemoryRouter initialEntries={["/"]}>
+      <SyncRafProvider>{pane}</SyncRafProvider>
+    </MemoryRouter>
+  )
 }
 
 it("renders 3 lines in resource view", () => {
@@ -112,9 +117,11 @@ it("filters by level", () => {
 it("engages autoscrolls on scroll down", () => {
   let fakeRaf = newFakeRaf()
   let root = mount(
-    <RafProvider value={fakeRaf}>
-      <ManyLines count={100} />
-    </RafProvider>
+    <MemoryRouter initialEntries={["/"]}>
+      <RafProvider value={fakeRaf}>
+        <ManyLines count={100} />
+      </RafProvider>
+    </MemoryRouter>
   )
   let component = root
     .find(OverviewLogComponent)
@@ -138,9 +145,11 @@ it("renders bottom logs first", () => {
   let fakeRaf = newFakeRaf()
   let lineCount = 2 * renderWindow
   let root = mount(
-    <RafProvider value={fakeRaf}>
-      <ManyLines count={lineCount} />
-    </RafProvider>
+    <MemoryRouter initialEntries={["/"]}>
+      <RafProvider value={fakeRaf}>
+        <ManyLines count={lineCount} />
+      </RafProvider>
+    </MemoryRouter>
   )
 
   // Make sure no logs have been rendered yet.
@@ -177,9 +186,11 @@ it("renders new logs first", () => {
   let fakeRaf = newFakeRaf()
   let initLineCount = 2 * renderWindow
   let root = mount(
-    <RafProvider value={fakeRaf}>
-      <ManyLines count={initLineCount} />
-    </RafProvider>
+    <MemoryRouter initialEntries={["/"]}>
+      <RafProvider value={fakeRaf}>
+        <ManyLines count={initLineCount} />
+      </RafProvider>
+    </MemoryRouter>
   )
 
   let rootEl = root.getDOMNode()

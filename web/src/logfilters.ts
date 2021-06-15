@@ -1,7 +1,7 @@
 // Types and parsing logic for log filters.
 
 import { Location } from "history"
-import { useHistory } from "react-router"
+import { useLocation } from "react-router"
 
 export enum FilterLevel {
   all = "",
@@ -30,7 +30,7 @@ export type FilterSet = {
 
 // Infers filter set from the history React hook.
 export function useFilterSet(): FilterSet {
-  return filterSetFromLocation(useHistory().location)
+  return filterSetFromLocation(useLocation())
 }
 
 // The source of truth for log filters is the URL.
