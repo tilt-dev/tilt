@@ -87,8 +87,6 @@ type EngineState struct {
 	Tiltignore    model.Dockerignore
 	WatchSettings model.WatchSettings
 
-	PendingConfigFileChanges map[string]time.Time
-
 	TriggerQueue []model.ManifestName
 
 	IsProfiling bool
@@ -125,10 +123,11 @@ type EngineState struct {
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds          map[string]*Cmd                              `json:"-"`
-	FileWatches   map[types.NamespacedName]*v1alpha1.FileWatch `json:"-"`
-	PodLogStreams map[string]*PodLogStream                     `json:"-"`
-	PortForwards  map[string]*PortForward                      `json:"-"`
+	Cmds                  map[string]*Cmd                               `json:"-"`
+	FileWatches           map[types.NamespacedName]*v1alpha1.FileWatch  `json:"-"`
+	KubernetesDiscoveries map[types.NamespacedName]*KubernetesDiscovery `json:"-"`
+	PodLogStreams         map[string]*PodLogStream                      `json:"-"`
+	PortForwards          map[string]*PortForward                       `json:"-"`
 }
 
 type CloudStatus struct {
@@ -151,6 +150,10 @@ func (e *EngineState) AnalyticsEffectiveOpt() analytics.Opt {
 }
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
+	if id.Type == model.TargetTypeConfigs {
+		return []model.ManifestName{model.TiltfileManifestName}
+	}
+
 	result := make([]model.ManifestName, 0)
 	for mn, mt := range e.ManifestTargets {
 		manifest := mt.Manifest
@@ -472,7 +475,6 @@ func NewState() *EngineState {
 	ret := &EngineState{}
 	ret.LogStore = logstore.NewLogStore()
 	ret.ManifestTargets = make(map[model.ManifestName]*ManifestTarget)
-	ret.PendingConfigFileChanges = make(map[string]time.Time)
 	ret.Secrets = model.SecretSet{}
 	ret.DockerPruneSettings = model.DefaultDockerPruneSettings()
 	ret.VersionSettings = model.VersionSettings{
@@ -480,7 +482,10 @@ func NewState() *EngineState {
 	}
 	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
-	ret.TiltfileState = &ManifestState{}
+	ret.TiltfileState = &ManifestState{
+		Name:          model.TiltfileManifestName,
+		BuildStatuses: make(map[model.TargetID]*BuildStatus),
+	}
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
 		ret.AnalyticsEnvOpt = analytics.OptOut
@@ -490,6 +495,7 @@ func NewState() *EngineState {
 	ret.FileWatches = make(map[types.NamespacedName]*v1alpha1.FileWatch)
 	ret.PodLogStreams = make(map[string]*PodLogStream)
 	ret.PortForwards = make(map[string]*PortForward)
+	ret.KubernetesDiscoveries = make(map[types.NamespacedName]*KubernetesDiscovery)
 
 	return ret
 }
@@ -715,7 +721,7 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 	return ok, earliest
 }
 
-func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) model.UpdateStatus {
+func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) v1alpha1.UpdateStatus {
 	currentBuild := ms.CurrentBuild
 	hasPendingChanges, _ := ms.HasPendingChanges()
 	lastBuild := ms.LastBuild()
@@ -730,15 +736,15 @@ func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) model.Updat
 	}
 
 	if !currentBuild.Empty() {
-		return model.UpdateStatusInProgress
+		return v1alpha1.UpdateStatusInProgress
 	} else if hasPendingBuild {
-		return model.UpdateStatusPending
+		return v1alpha1.UpdateStatusPending
 	} else if lastBuildError {
-		return model.UpdateStatusError
+		return v1alpha1.UpdateStatusError
 	} else if !lastBuild.Empty() {
-		return model.UpdateStatusOK
+		return v1alpha1.UpdateStatusOK
 	}
-	return model.UpdateStatusNone
+	return v1alpha1.UpdateStatusNone
 }
 
 var _ model.TargetStatus = &ManifestState{}
@@ -890,7 +896,7 @@ func tiltfileResourceView(s EngineState) view.Resource {
 }
 
 func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
-	runStatus := model.RuntimeStatusUnknown
+	runStatus := v1alpha1.RuntimeStatusUnknown
 	if mt.State.RuntimeState != nil {
 		runStatus = mt.State.RuntimeState.RuntimeStatus()
 	}
@@ -907,13 +913,14 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			state.ContainerState.Status, state.ContainerID, state.SpanID, state.StartTime, runStatus)
 	case K8sRuntimeState:
 		pod := state.MostRecentPod()
+		podID := k8s.PodID(pod.Name)
 		return view.K8sResourceInfo{
 			PodName:            pod.Name,
 			PodCreationTime:    pod.CreatedAt.Time,
-			PodUpdateStartTime: pod.UpdateStartedAt.Time,
+			PodUpdateStartTime: state.UpdateStartTime[podID],
 			PodStatus:          pod.Status,
-			PodRestarts:        VisiblePodContainerRestarts(pod),
-			SpanID:             k8sconv.SpanIDForPod(k8s.PodID(pod.Name)),
+			PodRestarts:        int(state.VisiblePodContainerRestarts(podID)),
+			SpanID:             k8sconv.SpanIDForPod(mt.Manifest.Name, podID),
 			RunStatus:          runStatus,
 			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}

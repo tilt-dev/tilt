@@ -53,7 +53,7 @@ describe("SidebarResources", () => {
   })
 
   it("adds items to the starred list when items are starred", () => {
-    let items = twoResourceView().resources.map((r) => new SidebarItem(r))
+    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
@@ -84,7 +84,7 @@ describe("SidebarResources", () => {
   })
 
   it("removes items from the starred list when items are unstarred", () => {
-    let items = twoResourceView().resources.map((r) => new SidebarItem(r))
+    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r))
     starredItemsAccessor.set(items.map((i) => i.name))
 
     const root = mount(

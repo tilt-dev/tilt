@@ -37,6 +37,16 @@ func TestResourceVersionTooOldWarningsPrinted(t *testing.T) {
 	assert.Contains(t, out.String(), "watch ended")
 }
 
+func TestEmptyGroupVersionErrorsSilenced(t *testing.T) {
+	out := bytes.NewBuffer(nil)
+	initKlog(out)
+
+	klog.Error("couldn't get resource list for external.metrics.k8s.io/v1beta1: Got empty response for: external.metrics.k8s.io/v1beta1")
+	klog.Flush()
+
+	assert.Empty(t, out.String())
+}
+
 func PrintWatchEndedV4() {
 	klog.V(4).Infof("watch ended")
 }

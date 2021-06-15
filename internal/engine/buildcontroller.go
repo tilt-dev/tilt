@@ -80,13 +80,13 @@ func (c *BuildController) DisableForTesting() {
 	c.disabledForTesting = true
 }
 
-func (c *BuildController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (c *BuildController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if c.disabledForTesting {
-		return
+		return nil
 	}
 	entry, ok := c.needsBuild(ctx, st)
 	if !ok {
-		return
+		return nil
 	}
 
 	st.Dispatch(buildcontrol.BuildStartedAction{
@@ -112,6 +112,8 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, _ store
 		result, err := c.buildAndDeploy(ctx, st, entry)
 		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, entry.spanID, result, err))
 	}()
+
+	return nil
 }
 
 func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, entry buildEntry) (store.BuildResultSet, error) {

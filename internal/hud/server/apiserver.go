@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"strings"
 
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -14,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/options"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -132,7 +135,28 @@ func ProvideTiltServerOptions(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
 	return o.Config()
+}
+
+// Generate the server config, removing options that are not needed for testing.
+//
+// 1) Changes http -> https
+// 2) Skips OpenAPI installation
+func ProvideTiltServerOptionsForTesting(ctx context.Context) (*APIServerConfig, error) {
+	config, err := ProvideTiltServerOptions(ctx,
+		model.TiltBuild{}, ProvideMemConn(), "corgi-charge", testdata.CertKey(), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	config.GenericConfig.Config.SkipOpenAPIInstallation = true
+	config.GenericConfig.LoopbackClientConfig.TLSClientConfig = rest.TLSClientConfig{}
+	config.GenericConfig.LoopbackClientConfig.Host =
+		strings.Replace(config.GenericConfig.LoopbackClientConfig.Host, "https://", "http://", 1)
+	config.ExtraConfig.ServingInfo.Cert = nil
+
+	return config, nil
 }
 
 // Provide a dynamic API client for the Tilt server.

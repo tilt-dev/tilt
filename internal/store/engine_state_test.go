@@ -151,11 +151,11 @@ func TestRuntimeStateNonWorkload(t *testing.T) {
 		Build()
 	state := newState([]model.Manifest{m})
 	runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()
-	assert.Equal(t, model.RuntimeStatusPending, runtimeState.RuntimeStatus())
+	assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus())
 
 	runtimeState.HasEverDeployedSuccessfully = true
 
-	assert.Equal(t, model.RuntimeStatusOK, runtimeState.RuntimeStatus())
+	assert.Equal(t, v1alpha1.RuntimeStatusOK, runtimeState.RuntimeStatus())
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {

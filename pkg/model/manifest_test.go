@@ -86,18 +86,6 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		"ImageTarget.cachePaths unequal",
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"bar"}}),
-		true,
-	},
-	{
-		"ImageTarget.cachePaths equal",
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
-		Manifest{}.WithImageTarget(ImageTarget{cachePaths: []string{"foo"}}),
-		false,
-	},
-	{
 		"ImageTarget.ConfigurationRef unequal",
 		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ConfigurationRef: img1}}),
 		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ConfigurationRef: img2}}),
@@ -159,33 +147,33 @@ var equalitytests = []struct {
 	},
 	{
 		"k8s.YAML equal",
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
+		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
+		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
 		false,
 	},
 	{
 		"k8s.YAML unequal",
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
-		Manifest{}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
+		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("goodbye world")),
 		true,
 	},
 	{
 		"k8s.ExtraPodSelectors equal",
 		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
 		}),
 		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
 		}),
 		false,
 	},
 	{
 		"k8s.ExtraPodSelectors unequal",
 		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "bar"}.AsSelector()},
+			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
 		}),
 		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Selector{labels.Set{"foo": "baz"}.AsSelector()},
+			ExtraPodSelectors: []labels.Set{{"foo": "baz"}},
 		}),
 		true,
 	},
@@ -209,8 +197,8 @@ var equalitytests = []struct {
 	},
 	{
 		"Name & k8s YAML unequal",
-		Manifest{Name: "foo"}.WithDeployTarget(K8sTarget{YAML: "hello world"}),
-		Manifest{Name: "bar"}.WithDeployTarget(K8sTarget{YAML: "goodbye world"}),
+		Manifest{Name: "foo"}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
+		Manifest{Name: "bar"}.WithDeployTarget(NewK8sTargetForTesting("goodbye world")),
 		true,
 	},
 	{

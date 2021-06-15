@@ -9,7 +9,7 @@ import {
 } from "./testdata"
 import { UpdateStatus } from "./types"
 
-type Resource = Proto.webviewResource
+type UIResource = Proto.v1alpha1UIResource
 
 export default {
   title: "New UI/Shared/OverviewResourceBar",
@@ -34,9 +34,9 @@ export const TenResources = () => (
 
 export const TenResourcesErrorsAndWarnings = () => {
   let view = tenResourceView() as any
-  view.resources[0].updateStatus = UpdateStatus.Error
-  view.resources[1].buildHistory[0].warnings = ["warning time"]
-  view.resources[5].updateStatus = UpdateStatus.Error
+  view.uiResources[0].updateStatus = UpdateStatus.Error
+  view.uiResources[1].buildHistory[0].warnings = ["warning time"]
+  view.uiResources[5].updateStatus = UpdateStatus.Error
   return <OverviewResourceBar view={view} />
 }
 
@@ -46,14 +46,15 @@ export const OneHundredResources = () => (
 
 export const UpgradeAvailable = () => {
   let view = twoResourceView()
-  view.suggestedTiltVersion = "0.18.1"
-  view.runningTiltBuild = { version: "0.18.0", dev: false }
-  view.versionSettings = { checkUpdates: true }
+  let status = view.uiSession!.status
+  status!.suggestedTiltVersion = "0.18.1"
+  status!.runningTiltBuild = { version: "0.18.0", dev: false }
+  status!.versionSettings = { checkUpdates: true }
   return <OverviewResourceBar view={view} />
 }
 
 export const WithTests = () => {
   let view = twoResourceView()
-  view.resources.push(oneResourceTest(), oneResourceTest())
+  view.uiResources.push(oneResourceTest(), oneResourceTest())
   return <OverviewResourceBar view={view} />
 }

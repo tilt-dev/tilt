@@ -66,11 +66,8 @@ func (c *switchCli) ContainerList(ctx context.Context, options types.ContainerLi
 func (c *switchCli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
 	return c.client().ContainerRestartNoWait(ctx, containerID)
 }
-func (c *switchCli) CopyToContainerRoot(ctx context.Context, container string, content io.Reader) error {
-	return c.client().CopyToContainerRoot(ctx, container, content)
-}
-func (c *switchCli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, out io.Writer) error {
-	return c.client().ExecInContainer(ctx, cID, cmd, out)
+func (c *switchCli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
+	return c.client().ExecInContainer(ctx, cID, cmd, in, out)
 }
 func (c *switchCli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	return c.client().ImagePush(ctx, ref)

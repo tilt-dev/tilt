@@ -4,6 +4,10 @@ tasks:
     input_paths:
       - pkg/webview/log.proto
       - pkg/webview/view.proto
+      - pkg/apis/core/v1alpha1/generated.proto
+      - vendor/k8s.io/apimachinery/pkg/runtime/generated.proto
+      - vendor/k8s.io/apimachinery/pkg/runtime/schema/generated.proto
+      - vendor/k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto
     output_paths:
       - pkg/webview/log.pb.go
       - pkg/webview/view.pb.go
@@ -13,6 +17,7 @@ tasks:
       mkdir -p web/src
       protoc \
        -I. \
+       -I./vendor \
        -I/usr/include \
        -I"$(go env GOPATH)"/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
        --grpc-gateway_out=logtostderr=true:. \
@@ -20,6 +25,9 @@ tasks:
        --go_out=plugins=grpc,paths=source_relative:. \
        pkg/webview/*.proto
       goimports -local github.com/tilt-dev/tilt -w pkg/webview/*.pb.go
+      sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/view.pb.go 
+      sed -i 's|"$ref": "#/definitions/v1Time",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
+      sed -i 's|"$ref": "#/definitions/v1MicroTime",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
 
   proto-ts:
     dependencies:
@@ -31,6 +39,7 @@ tasks:
     command: |
       set -euo pipefail
       swagger-to-ts pkg/webview/view.swagger.json --camelcase --wrapper "declare namespace Proto" --output web/src/view.d.ts
+      sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/view.pb.go 
 
   wire:
     location: /go/src/github.com/tilt-dev/tilt

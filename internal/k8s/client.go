@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,7 +18,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -27,6 +31,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/cmd/wait"
 
 	// Client auth plugins! They will auto-init if we import them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -303,7 +308,7 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 }
 
 func (k *K8sClient) forceReplaceEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
-	resources, err := k.prepareUpdate(ctx, []K8sEntity{entity})
+	resources, err := k.prepareUpdateList(ctx, entity)
 	if err != nil {
 		return nil, errors.Wrap(err, "kubernetes replace")
 	}
@@ -316,13 +321,24 @@ func (k *K8sClient) forceReplaceEntity(ctx context.Context, entity K8sEntity) ([
 	return k.helmResultToEntities(result)
 }
 
-func (k *K8sClient) prepareUpdate(ctx context.Context, entities []K8sEntity) (kube.ResourceList, error) {
-	// Make sure that we've discovered the REST mapping for all these entities.
-	for _, e := range entities {
-		_, _ = k.gvr(ctx, e.GVK())
+// Make sure the type exists and create a ResourceList to help update it.
+func (k *K8sClient) prepareUpdateList(ctx context.Context, e K8sEntity) (kube.ResourceList, error) {
+	_, err := k.forceDiscovery(ctx, e.GVK())
+	if err != nil {
+		return nil, err
 	}
 
-	rawYAML, err := SerializeSpecYAMLToBuffer(entities)
+	return k.buildResourceList(ctx, e)
+}
+
+// Build a ResourceList usable by our helm client for interacting with a resource.
+//
+// Although the underlying API encourages you to batch these together (for
+// better parallelization), we've found that it's more robust to handle entities
+// individually to ensure an error in one doesn't affect the others (and the
+// real bottleneck isn't in building).
+func (k *K8sClient) buildResourceList(ctx context.Context, e K8sEntity) (kube.ResourceList, error) {
+	rawYAML, err := SerializeSpecYAMLToBuffer([]K8sEntity{e})
 	if err != nil {
 		return nil, err
 	}
@@ -369,16 +385,31 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 
 	_, errs := k.helmKubeClient.Delete(toDelete)
 	for _, err := range errs {
-		if apierrors.IsNotFound(err) {
-			continue
-		}
-
-		// Helm has it's own custom not found error.
-		if strings.Contains(err.Error(), "object not found") {
+		if isNotFoundError(err) {
 			continue
 		}
 		return nil, errors.Wrap(err, "kubernetes delete")
 	}
+
+	var wg sync.WaitGroup
+
+	for _, r := range list {
+
+		wg.Add(1)
+		go func(resourceInfo *resource.Info) {
+			waitOpt := &wait.WaitOptions{
+				DynamicClient: k.dynamic,
+				IOStreams:     genericclioptions.NewTestIOStreamsDiscard(),
+				Timeout:       30 * time.Second,
+				ForCondition:  "delete",
+			}
+
+			_, _, _ = wait.IsDeleted(resourceInfo, waitOpt)
+			wg.Done()
+		}(r)
+	}
+
+	wg.Wait()
 
 	result, err := k.helmKubeClient.Create(list)
 	if err != nil {
@@ -390,7 +421,7 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 // applyEntityAndMaybeForce `kubectl apply`'s the given entity, and if the call fails with
 // an immutible field error, attempts to `replace --force` it.
 func (k *K8sClient) applyEntityAndMaybeForce(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
-	resources, err := k.prepareUpdate(ctx, []K8sEntity{entity})
+	resources, err := k.prepareUpdateList(ctx, entity)
 	if err != nil {
 		return nil, errors.Wrap(err, "kubernetes apply")
 	}
@@ -408,7 +439,7 @@ func (k *K8sClient) applyEntityAndMaybeForce(ctx context.Context, entity K8sEnti
 		logger.Get(ctx).Infof("Updating %s failed. Attempting to delete + recreate: %s", entity.Name(), reason)
 
 		// Apply() is mutating, so we need to re-parse the entities.
-		resources, err := k.prepareUpdate(ctx, []K8sEntity{entity})
+		resources, err := k.prepareUpdateList(ctx, entity)
 		if err != nil {
 			return nil, errors.Wrap(err, "kubernetes apply")
 		}
@@ -470,31 +501,28 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 		l.Infof("→ %s/%s", e.GVK().Kind, e.Name())
 	}
 
-	rawYAML, err := SerializeSpecYAMLToBuffer(entities)
-	if err != nil {
-		return errors.Wrap(err, "kubernetes delete")
-	}
-
-	resources, err := k.helmKubeClient.Build(rawYAML, false)
-	if err != nil {
-		return errors.Wrap(err, "kubernetes delete")
+	var resources kube.ResourceList
+	for _, e := range entities {
+		resourceList, err := k.buildResourceList(ctx, e)
+		if utilerrors.FilterOut(err, isMissingKindError) != nil {
+			return errors.Wrap(err, "kubernetes delete")
+		}
+		resources = append(resources, resourceList...)
 	}
 
 	_, errs := k.helmKubeClient.Delete(resources)
 	for _, err := range errs {
-		if apierrors.IsNotFound(err) {
+		if err == nil || isNotFoundError(err) {
 			continue
 		}
 
-		if err != nil {
-			return errors.Wrap(err, "kubernetes delete")
-		}
+		return errors.Wrap(err, "kubernetes delete")
 	}
 
 	return nil
 }
 
-func (k *K8sClient) gvr(ctx context.Context, gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
+func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
 	rm, err := k.drm.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		// The REST mapper doesn't have any sort of internal invalidation
@@ -517,7 +545,7 @@ func (k *K8sClient) gvr(ctx context.Context, gvk schema.GroupVersionKind) (schem
 }
 
 func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
-	gvr, err := k.gvr(ctx, gvk)
+	gvr, err := k.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +566,7 @@ func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, n
 
 func (k *K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
 	gvk := ReferenceGVK(ref)
-	gvr, err := k.gvr(ctx, gvk)
+	gvr, err := k.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, err
 	}

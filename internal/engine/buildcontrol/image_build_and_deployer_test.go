@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -28,6 +29,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/yaml"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -433,11 +435,10 @@ func TestK8sUpsertTimeout(t *testing.T) {
 
 	timeout := 123 * time.Second
 
-	state := f.st.LockMutableStateForTesting()
-	state.UpdateSettings = state.UpdateSettings.WithK8sUpsertTimeout(123 * time.Second)
-	f.st.UnlockMutableState()
-
 	manifest := NewSanchoDockerBuildManifest(f)
+	k8sTarget := manifest.DeployTarget.(model.K8sTarget)
+	k8sTarget.Timeout = metav1.Duration{Duration: timeout}
+	manifest.DeployTarget = k8sTarget
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), nil)
 	if err != nil {
@@ -760,7 +761,7 @@ func TestDeployInjectOverrideCommandAndArgs(t *testing.T) {
 	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifestWithYaml(f, testyaml.SanchoYAMLWithCommand)
 	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
-	iTarg.OverrideArgs = model.OverrideArgs{ShouldOverride: true}
+	iTarg.OverrideArgs = &v1alpha1.ImageMapOverrideArgs{}
 	manifest = manifest.WithImageTarget(iTarg)
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
@@ -996,20 +997,21 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewTiltDevDirAt(f.Path())
 
-	docker := docker.NewFakeClient()
+	dockerClient := docker.NewFakeClient()
 
 	// Make the fake ImageExists always return true, which is the behavior we want
 	// when testing the ImageBuildAndDeployer.
-	docker.ImageAlwaysExists = true
+	dockerClient.ImageAlwaysExists = true
 
 	out := bufsync.NewThreadSafeBuffer()
-	l := logger.NewLogger(logger.DebugLvl, out)
 	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
-	ctx = logger.WithLogger(ctx, l)
-	kClient := k8s.NewFakeK8sClient()
+	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
+	kClient := k8s.NewFakeK8sClient(t)
 	kl := &fakeKINDLoader{}
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
-	ibd, err := ProvideImageBuildAndDeployer(ctx, docker, kClient, env, dir, clock, kl, ta)
+	kubeContext := k8s.KubeContext(fmt.Sprintf("%s-me", env))
+	clusterEnv := docker.ClusterEnv(docker.Env{})
+	ibd, err := ProvideImageBuildAndDeployer(ctx, dockerClient, kClient, env, kubeContext, clusterEnv, dir, clock, kl, ta)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1017,7 +1019,7 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 		TempDirFixture: f,
 		out:            out,
 		ctx:            ctx,
-		docker:         docker,
+		docker:         dockerClient,
 		k8s:            kClient,
 		ibd:            ibd,
 		st:             store.NewTestingStore(),
@@ -1055,7 +1057,7 @@ metadata:
   name: %s-deployment
 spec: {}
 status: {}`, name, name)
-	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.NewK8sTargetForTesting(yaml))
 }
 
 type fakeKINDLoader struct {

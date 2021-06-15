@@ -16,6 +16,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
+	"github.com/tilt-dev/tilt/internal/engine/uiresource"
+	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -50,7 +52,7 @@ func ProvideSubscribers(
 	hud hud.HeadsUpDisplay,
 	ts *hud.TerminalStream,
 	tp *prompt.TerminalPrompt,
-	pw *k8swatch.PodWatcher,
+	kdms *k8swatch.ManifestSubscriber,
 	sw *k8swatch.ServiceWatcher,
 	plm *runtimelog.PodLogManager,
 	pfs *portforward.Subscriber,
@@ -69,14 +71,15 @@ func ProvideSubscribers(
 	podm *k8srollout.PodMonitor,
 	sc *session.Controller,
 	mc *metrics.Controller,
-	mmc *metrics.ModeController,
+	uss *uisession.Subscriber,
+	urs *uiresource.Subscriber,
 ) []store.Subscriber {
 	apiSubscribers := ProvideSubscribersAPIOnly(hudsc, tscm, cb, ts)
 
 	legacySubscribers := []store.Subscriber{
 		hud,
 		tp,
-		pw,
+		kdms,
 		sw,
 		plm,
 		pfs,
@@ -95,7 +98,8 @@ func ProvideSubscribers(
 		podm,
 		sc,
 		mc,
-		mmc,
+		uss,
+		urs,
 	}
 	return append(apiSubscribers, legacySubscribers...)
 }

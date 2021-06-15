@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
@@ -16,7 +17,7 @@ const TiltfileResourceName = "(Tiltfile)"
 type ResourceInfoView interface {
 	resourceInfoView()
 	RuntimeSpanID() logstore.SpanID
-	RuntimeStatus() model.RuntimeStatus
+	RuntimeStatus() v1alpha1.RuntimeStatus
 	Status() string
 }
 
@@ -26,10 +27,10 @@ type DCResourceInfo struct {
 	ContainerID     container.ID
 	SpanID          logstore.SpanID
 	StartTime       time.Time
-	RunStatus       model.RuntimeStatus
+	RunStatus       v1alpha1.RuntimeStatus
 }
 
-func NewDCResourceInfo(configPaths []string, status string, cID container.ID, spanID logstore.SpanID, startTime time.Time, runtimeStatus model.RuntimeStatus) DCResourceInfo {
+func NewDCResourceInfo(configPaths []string, status string, cID container.ID, spanID logstore.SpanID, startTime time.Time, runtimeStatus v1alpha1.RuntimeStatus) DCResourceInfo {
 	return DCResourceInfo{
 		ConfigPaths:     configPaths,
 		ContainerStatus: status,
@@ -47,7 +48,7 @@ func (dcInfo DCResourceInfo) RuntimeSpanID() logstore.SpanID { return dcInfo.Spa
 func (dcInfo DCResourceInfo) Status() string {
 	return strings.Title(dcInfo.ContainerStatus)
 }
-func (dcInfo DCResourceInfo) RuntimeStatus() model.RuntimeStatus { return dcInfo.RunStatus }
+func (dcInfo DCResourceInfo) RuntimeStatus() v1alpha1.RuntimeStatus { return dcInfo.RunStatus }
 
 type K8sResourceInfo struct {
 	PodName            string
@@ -56,16 +57,16 @@ type K8sResourceInfo struct {
 	PodStatus          string
 	PodRestarts        int
 	SpanID             logstore.SpanID
-	RunStatus          model.RuntimeStatus
+	RunStatus          v1alpha1.RuntimeStatus
 	DisplayNames       []string
 }
 
 var _ ResourceInfoView = K8sResourceInfo{}
 
-func (K8sResourceInfo) resourceInfoView()                          {}
-func (k8sInfo K8sResourceInfo) RuntimeSpanID() logstore.SpanID     { return k8sInfo.SpanID }
-func (k8sInfo K8sResourceInfo) Status() string                     { return k8sInfo.PodStatus }
-func (k8sInfo K8sResourceInfo) RuntimeStatus() model.RuntimeStatus { return k8sInfo.RunStatus }
+func (K8sResourceInfo) resourceInfoView()                             {}
+func (k8sInfo K8sResourceInfo) RuntimeSpanID() logstore.SpanID        { return k8sInfo.SpanID }
+func (k8sInfo K8sResourceInfo) Status() string                        { return k8sInfo.PodStatus }
+func (k8sInfo K8sResourceInfo) RuntimeStatus() v1alpha1.RuntimeStatus { return k8sInfo.RunStatus }
 
 // This TiltfileResourceInfo is consistent with how the web UI models the tiltfile.
 type TiltfileResourceInfo struct {
@@ -76,8 +77,8 @@ var _ ResourceInfoView = TiltfileResourceInfo{}
 func (TiltfileResourceInfo) resourceInfoView()              {}
 func (TiltfileResourceInfo) RuntimeSpanID() logstore.SpanID { return "unknown" }
 func (TiltfileResourceInfo) Status() string                 { return "" }
-func (TiltfileResourceInfo) RuntimeStatus() model.RuntimeStatus {
-	return model.RuntimeStatusNotApplicable
+func (TiltfileResourceInfo) RuntimeStatus() v1alpha1.RuntimeStatus {
+	return v1alpha1.RuntimeStatusNotApplicable
 }
 
 type YAMLResourceInfo struct {
@@ -89,26 +90,26 @@ var _ ResourceInfoView = YAMLResourceInfo{}
 func (YAMLResourceInfo) resourceInfoView()                       {}
 func (yamlInfo YAMLResourceInfo) RuntimeSpanID() logstore.SpanID { return "unknown" }
 func (yamlInfo YAMLResourceInfo) Status() string                 { return "" }
-func (yamlInfo YAMLResourceInfo) RuntimeStatus() model.RuntimeStatus {
-	return model.RuntimeStatusNotApplicable
+func (yamlInfo YAMLResourceInfo) RuntimeStatus() v1alpha1.RuntimeStatus {
+	return v1alpha1.RuntimeStatusNotApplicable
 }
 
 type LocalResourceInfo struct {
-	status model.RuntimeStatus
+	status v1alpha1.RuntimeStatus
 	pid    int
 	spanID model.LogSpanID
 }
 
-func NewLocalResourceInfo(status model.RuntimeStatus, pid int, spanID model.LogSpanID) LocalResourceInfo {
+func NewLocalResourceInfo(status v1alpha1.RuntimeStatus, pid int, spanID model.LogSpanID) LocalResourceInfo {
 	return LocalResourceInfo{status: status, pid: pid, spanID: spanID}
 }
 
 var _ ResourceInfoView = LocalResourceInfo{}
 
-func (lri LocalResourceInfo) resourceInfoView()                  {}
-func (lri LocalResourceInfo) RuntimeSpanID() logstore.SpanID     { return lri.spanID }
-func (lri LocalResourceInfo) Status() string                     { return string(lri.status) }
-func (lri LocalResourceInfo) RuntimeStatus() model.RuntimeStatus { return lri.status }
+func (lri LocalResourceInfo) resourceInfoView()                     {}
+func (lri LocalResourceInfo) RuntimeSpanID() logstore.SpanID        { return lri.spanID }
+func (lri LocalResourceInfo) Status() string                        { return string(lri.status) }
+func (lri LocalResourceInfo) RuntimeStatus() v1alpha1.RuntimeStatus { return lri.status }
 
 type Resource struct {
 	Name           model.ManifestName
@@ -181,7 +182,7 @@ func (r Resource) DefaultCollapse() bool {
 		autoExpand = k8sInfo.PodRestarts > 0 || k8sInfo.PodStatus == "CrashLoopBackOff" || k8sInfo.PodStatus == "Error"
 	}
 
-	if r.IsDC() && r.DockerComposeTarget().RuntimeStatus() == model.RuntimeStatusError {
+	if r.IsDC() && r.DockerComposeTarget().RuntimeStatus() == v1alpha1.RuntimeStatusError {
 		autoExpand = true
 	}
 

@@ -17,7 +17,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 19.03.12
+          version: 20.10.6
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - run: make lint
@@ -72,7 +72,7 @@ jobs:
   build-windows:
     executor:
       name: win/default
-      size: "medium"
+      size: "large"
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose
       - run: choco update golang --version=1.16.2
@@ -86,13 +86,14 @@ jobs:
           path: test-results
 
   build-integration:
+    resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:0015947db3c4200b50c90d32deddca0a56ccabcc53e43d34edd45bd9b7d42a98
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:f79aebd720b58a8d9de1e98f496151e2f9cc2e3896182cfd9b5bb3b297d5ec28
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 19.03.12
+          version: 20.10.6
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
       - store_test_results:
           path: test-results
@@ -106,7 +107,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 19.03.12
+          version: 20.10.6
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
@@ -151,7 +152,7 @@ jobs:
       - image: cimg/base:2020.01
     steps:
       - setup_remote_docker:
-          version: 19.03.12
+          version: 20.10.6
       - checkout
       - run: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
       - gcp-cli/install
@@ -168,11 +169,12 @@ jobs:
           only_for_branches: master
           
   release:
+    resource_class: medium+
     docker:
       - image: gcr.io/windmill-public-containers/tilt-releaser
     steps:
       - setup_remote_docker:
-          version: 19.03.12
+          version: 20.10.6
       - slack/notify:
           mentions: "nick"
           message: "A Tilt release has started!"

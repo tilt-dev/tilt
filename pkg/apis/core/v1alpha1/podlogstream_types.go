@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -39,19 +40,19 @@ import (
 // +k8s:openapi-gen=true
 type PodLogStream struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   PodLogStreamSpec   `json:"spec,omitempty"`
-	Status PodLogStreamStatus `json:"status,omitempty"`
+	Spec   PodLogStreamSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status PodLogStreamStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // PodLogStreamList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type PodLogStreamList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Items []PodLogStream `json:"items"`
+	Items []PodLogStream `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // PodLogStreamSpec defines the desired state of PodLogStream
@@ -63,12 +64,12 @@ type PodLogStreamList struct {
 // which Kubernetes context to use?
 type PodLogStreamSpec struct {
 	// The name of the pod to watch. Required.
-	Pod string `json:"pod,omitempty"`
+	Pod string `json:"pod,omitempty" protobuf:"bytes,1,opt,name=pod"`
 
 	// The namespace of the pod to watch. Defaults to the kubecontext default namespace.
 	//
 	// +optional
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty" protobuf:"bytes,2,opt,name=namespace"`
 
 	// An RFC3339 timestamp from which to show logs. If this value
 	// precedes the time a pod was started, only logs since the pod start will be returned.
@@ -77,7 +78,7 @@ type PodLogStreamSpec struct {
 	// Translates directly to the underlying PodLogOptions.
 	//
 	// +optional
-	SinceTime *metav1.Time `json:"sinceTime,omitempty"`
+	SinceTime *metav1.Time `json:"sinceTime,omitempty" protobuf:"bytes,3,opt,name=sinceTime"`
 
 	// The names of containers to include in the stream.
 	//
@@ -85,7 +86,7 @@ type PodLogStreamSpec struct {
 	// will watch all containers in the pod.
 	//
 	// +optional
-	OnlyContainers []string `json:"onlyContainers,omitempty"`
+	OnlyContainers []string `json:"onlyContainers,omitempty" protobuf:"bytes,4,rep,name=onlyContainers"`
 
 	// The names of containers to exclude from the stream.
 	//
@@ -93,11 +94,12 @@ type PodLogStreamSpec struct {
 	// will watch all containers in the pod.
 	//
 	// +optional
-	IgnoreContainers []string `json:"ignoreContainers,omitempty"`
+	IgnoreContainers []string `json:"ignoreContainers,omitempty" protobuf:"bytes,5,rep,name=ignoreContainers"`
 }
 
 var _ resource.Object = &PodLogStream{}
 var _ resourcestrategy.Validater = &PodLogStream{}
+var _ resourcerest.ShortNamesProvider = &PodLogStream{}
 
 func (in *PodLogStream) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
@@ -127,6 +129,10 @@ func (in *PodLogStream) IsStorageVersion() bool {
 	return true
 }
 
+func (in *PodLogStream) ShortNames() []string {
+	return []string{"pls"}
+}
+
 func (in *PodLogStream) Validate(ctx context.Context) field.ErrorList {
 	// TODO(user): Modify it, adding your API validation here.
 	return nil
@@ -145,31 +151,31 @@ type PodLogStreamStatus struct {
 	// A list of containers being watched.
 	//
 	// +optional
-	ContainerStatuses []ContainerLogStreamStatus `json:"containerStatuses,omitempty"`
+	ContainerStatuses []ContainerLogStreamStatus `json:"containerStatuses,omitempty" protobuf:"bytes,1,rep,name=containerStatuses"`
 }
 
 // ContainerLogStreamStatus defines the current status of each individual
 // container log stream.
 type ContainerLogStreamStatus struct {
 	// The name of the container.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 
 	// True when the stream is set up and streaming logs properly.
 	//
 	// +optional
-	Active bool `json:"active,omitempty"`
+	Active bool `json:"active,omitempty" protobuf:"varint,2,opt,name=active"`
 
 	// True when the logs are done stream and the container is terminated.
 	//
 	// +optional
-	Terminated bool `json:"terminated,omitempty"`
+	Terminated bool `json:"terminated,omitempty" protobuf:"varint,3,opt,name=terminated"`
 
 	// The last error message encountered while streaming.
 	//
 	// Empty when the stream is actively streaming or successfully terminated.
 	//
 	// +optional
-	Error string `json:"error,omitempty"`
+	Error string `json:"error,omitempty" protobuf:"bytes,4,opt,name=error"`
 }
 
 // PodLogStream implements ObjectWithStatusSubResource interface.

@@ -20,7 +20,7 @@ func TestOnChange(t *testing.T) {
 	au := NewAnalyticsUpdater(a, cmdUpTags)
 	st := store.NewTestingStore()
 	setUserOpt(st, analytics.OptOut)
-	au.OnChange(context.Background(), st, store.LegacyChangeSummary())
+	_ = au.OnChange(context.Background(), st, store.LegacyChangeSummary())
 
 	assert.Equal(t, []analytics.Opt{analytics.OptOut}, to.Calls())
 }
@@ -35,7 +35,7 @@ func TestReportOnOptIn(t *testing.T) {
 	au := NewAnalyticsUpdater(a, cmdUpTags)
 	st := store.NewTestingStore()
 	setUserOpt(st, analytics.OptIn)
-	au.OnChange(context.Background(), st, store.LegacyChangeSummary())
+	_ = au.OnChange(context.Background(), st, store.LegacyChangeSummary())
 
 	assert.Equal(t, []analytics.Opt{analytics.OptOut, analytics.OptIn}, to.Calls())
 	if assert.Equal(t, 1, len(mem.Counts)) {
@@ -45,10 +45,10 @@ func TestReportOnOptIn(t *testing.T) {
 
 	// opt-out then back in again, and make sure it doesn't get re-reported.
 	setUserOpt(st, analytics.OptOut)
-	au.OnChange(context.Background(), st, store.LegacyChangeSummary())
+	_ = au.OnChange(context.Background(), st, store.LegacyChangeSummary())
 
 	setUserOpt(st, analytics.OptIn)
-	au.OnChange(context.Background(), st, store.LegacyChangeSummary())
+	_ = au.OnChange(context.Background(), st, store.LegacyChangeSummary())
 	assert.Equal(t, 1, len(mem.Counts))
 }
 

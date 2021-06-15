@@ -32,7 +32,7 @@ func TestToJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Contains(t, buf.String(), "YAML")
+	assert.Contains(t, buf.String(), "yaml")
 	assert.Contains(t, buf.String(), "kind: Deployment")
 
 	// Make sure the data can decode successfully.

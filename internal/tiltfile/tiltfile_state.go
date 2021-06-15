@@ -44,6 +44,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -228,7 +229,12 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 	}
 
 	if len(resources.k8s) > 0 || len(unresourced) > 0 {
-		manifests, err = s.translateK8s(resources.k8s)
+		us, err := updatesettings.GetState(result)
+		if err != nil {
+			return nil, result, err
+		}
+
+		manifests, err = s.translateK8s(resources.k8s, us)
 		if err != nil {
 			return nil, result, err
 		}
@@ -1005,7 +1011,7 @@ func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadiness
 	return model.PodReadinessWait
 }
 
-func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest, error) {
+func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings model.UpdateSettings) ([]model.Manifest, error) {
 	var result []model.Manifest
 	locators := s.k8sImageLocatorsList()
 	registry := s.decideRegistry()
@@ -1029,7 +1035,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource) ([]model.Manifest
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities,
 			s.defaultedPortForwards(r.portForwards), r.extraPodSelectors,
 			r.dependencyIDs, r.imageRefMap, s.inferPodReadinessMode(r),
-			locators, r.links)
+			locators, r.links, updateSettings)
 		if err != nil {
 			return nil, err
 		}
@@ -1220,17 +1226,22 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				"`default_registry()` call, if any) for errors", image.configurationRef)
 		}
 
-		iTarget := model.ImageTarget{
-			Refs:           refs,
-			MatchInEnvVars: image.matchInEnvVars,
-		}
-
+		var overrideCommand *v1alpha1.ImageMapOverrideCommand
 		if !image.entrypoint.Empty() {
-			iTarget = iTarget.WithOverrideCommand(image.entrypoint)
+			overrideCommand = &v1alpha1.ImageMapOverrideCommand{
+				Command: image.entrypoint.Argv,
+			}
 		}
 
-		if image.containerArgs.ShouldOverride {
-			iTarget.OverrideArgs = image.containerArgs
+		iTarget := model.ImageTarget{
+			Refs: refs,
+			ImageMapSpec: v1alpha1.ImageMapSpec{
+				Selector:        refs.ConfigurationRef.String(),
+				MatchInEnvVars:  image.matchInEnvVars,
+				MatchExact:      refs.ConfigurationRef.MatchExact(),
+				OverrideCommand: overrideCommand,
+				OverrideArgs:    image.overrideArgs,
+			},
 		}
 
 		lu := image.liveUpdate
@@ -1308,7 +1319,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		}
 
 		for _, iTarg := range iTargets {
-			if !iTarg.OverrideCmd.Empty() {
+			if iTarg.OverrideCommand != nil {
 				return nil, fmt.Errorf("docker_build/custom_build.entrypoint not supported for Docker Compose resources")
 			}
 		}

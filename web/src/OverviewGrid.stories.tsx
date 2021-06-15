@@ -4,7 +4,7 @@ import OverviewGrid from "./OverviewGrid"
 import { OverviewItem } from "./OverviewItemView"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
-type Resource = Proto.webviewResource
+type UIResource = Proto.v1alpha1UIResource
 
 export default {
   title: "New UI/Overview/OverviewGrid",
@@ -20,7 +20,7 @@ export default {
 }
 
 function toItems(view: Proto.webviewView) {
-  return (view.resources || []).map((res) => new OverviewItem(res))
+  return (view.uiResources || []).map((res) => new OverviewItem(res))
 }
 
 export const TwoResources = () => (

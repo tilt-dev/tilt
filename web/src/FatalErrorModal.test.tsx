@@ -10,6 +10,9 @@ let originalCreatePortal = ReactDOM.createPortal
 
 describe("FatalErrorModal", () => {
   beforeEach(() => {
+    // Note: `body` is used as the app element _only_ in a test env
+    // since the app root element isn't available; in prod, it should
+    // be set as the app root so that accessibility features are set correctly
     ReactModal.setAppElement(document.body)
     let mock: any = (node: any) => node
     ReactDOM.createPortal = mock

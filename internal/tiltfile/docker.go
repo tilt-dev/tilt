@@ -19,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -43,7 +44,7 @@ type dockerImage struct {
 	// Overrides the container args. Used as an escape hatch in case people want the old entrypoint behavior.
 	// See discussion here:
 	// https://github.com/tilt-dev/tilt/pull/2933
-	containerArgs model.OverrideArgs
+	overrideArgs *v1alpha1.ImageMapOverrideArgs
 
 	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
@@ -104,7 +105,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	var network value.Stringable
 	var ssh, secret, extraTags, cacheFrom value.StringOrStringList
 	var matchInEnvVars, pullParent bool
-	var containerArgsVal starlark.Sequence
+	var overrideArgsVal starlark.Sequence
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
 		"context", &contextVal,
@@ -117,7 +118,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"ignore?", &ignoreVal,
 		"only?", &onlyVal,
 		"entrypoint?", &entrypoint,
-		"container_args?", &containerArgsVal,
+		"container_args?", &overrideArgsVal,
 		"target?", &targetStage,
 		"ssh?", &ssh,
 		"secret?", &secret,
@@ -194,18 +195,18 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	entrypointCmd, err := value.ValueToUnixCmd(thread, entrypoint, nil)
+	entrypointCmd, err := value.ValueToUnixCmd(thread, entrypoint, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var containerArgs model.OverrideArgs
-	if containerArgsVal != nil {
-		args, err := value.SequenceToStringSlice(containerArgsVal)
+	var overrideArgs *v1alpha1.ImageMapOverrideArgs
+	if overrideArgsVal != nil {
+		args, err := value.SequenceToStringSlice(overrideArgsVal)
 		if err != nil {
 			return nil, fmt.Errorf("Argument 'container_args': %v", err)
 		}
-		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
+		overrideArgs = &v1alpha1.ImageMapOverrideArgs{Args: args}
 	}
 
 	for _, extraTag := range extraTags.Values {
@@ -229,7 +230,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		ignores:          ignores,
 		onlys:            onlys,
 		entrypoint:       entrypointCmd,
-		containerArgs:    containerArgs,
+		overrideArgs:     overrideArgs,
 		targetStage:      targetStage,
 		network:          network.Value,
 		extraTags:        extraTags.Values,
@@ -270,7 +271,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var liveUpdateVal, ignoreVal starlark.Value
 	var matchInEnvVars bool
 	var entrypoint starlark.Value
-	var containerArgsVal starlark.Sequence
+	var overrideArgsVal starlark.Sequence
 	var skipsLocalDocker bool
 	outputsImageRefTo := value.NewLocalPathUnpacker(thread)
 
@@ -285,7 +286,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"match_in_env_vars?", &matchInEnvVars,
 		"ignore?", &ignoreVal,
 		"entrypoint?", &entrypoint,
-		"container_args?", &containerArgsVal,
+		"container_args?", &overrideArgsVal,
 		"command_bat_val", &commandBatVal,
 		"outputs_image_ref_to", &outputsImageRefTo,
 
@@ -312,25 +313,25 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	entrypointCmd, err := value.ValueToUnixCmd(thread, entrypoint, nil)
+	entrypointCmd, err := value.ValueToUnixCmd(thread, entrypoint, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var containerArgs model.OverrideArgs
-	if containerArgsVal != nil {
-		args, err := value.SequenceToStringSlice(containerArgsVal)
+	var overrideArgs *v1alpha1.ImageMapOverrideArgs
+	if overrideArgsVal != nil {
+		args, err := value.SequenceToStringSlice(overrideArgsVal)
 		if err != nil {
 			return nil, fmt.Errorf("Argument 'container_args': %v", err)
 		}
-		containerArgs = model.OverrideArgs{ShouldOverride: true, Args: args}
+		overrideArgs = &v1alpha1.ImageMapOverrideArgs{Args: args}
 	}
 
 	if commandBat == nil {
 		commandBat = commandBatVal
 	}
 
-	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat, nil)
+	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 2 (command): %v", err)
 	} else if command.Empty() {
@@ -353,7 +354,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		matchInEnvVars:    matchInEnvVars,
 		ignores:           ignores,
 		entrypoint:        entrypointCmd,
-		containerArgs:     containerArgs,
+		overrideArgs:      overrideArgs,
 		outputsImageRefTo: outputsImageRefTo.Value,
 	}
 
@@ -505,10 +506,12 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(source string, p
 		}
 
 		diFile := filepath.Join(path, ".dockerignore")
-		customDiFile := dbDockerfilePath + ".dockerignore"
-		_, err := os.Stat(customDiFile)
-		if !os.IsNotExist(err) {
-			diFile = customDiFile
+		if dbDockerfilePath != "" {
+			customDiFile := dbDockerfilePath + ".dockerignore"
+			_, err := os.Stat(customDiFile)
+			if !os.IsNotExist(err) {
+				diFile = customDiFile
+			}
 		}
 
 		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, diFile)

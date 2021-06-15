@@ -105,6 +105,7 @@ func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) err
 	cmd := localexec.ExecCmdContext(ctx, c)
 	cmd.Stdout = writer
 	cmd.Stderr = writer
+	cmd.Dir = c.Dir
 
 	ps := build.NewPipelineState(ctx, 1, bd.clock)
 	ps.StartPipelineStep(ctx, "Running command: %v (in %q)", c.Argv, c.Dir)

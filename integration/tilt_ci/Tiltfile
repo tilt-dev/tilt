@@ -1,0 +1,7 @@
+load_dynamic('./Tiltfile.generated')
+
+k8s_yaml('k8s.yaml')
+k8s_resource('k8s-server-enabled', port_forwards='8000')
+
+k8s_resource('k8s-server-disabled', auto_init=False)
+k8s_resource('k8s-job-disabled', auto_init=False)

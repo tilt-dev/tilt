@@ -9,12 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/k8s"
-
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -356,7 +354,7 @@ type lcbadFixture struct {
 func newFixture(t testing.TB) *lcbadFixture {
 	// HACK(maia): we don't need any real container updaters on this LiveUpdBaD since we're testing
 	// a func further down the flow that takes a ContainerUpdater as an arg, so just pass nils
-	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, UpdateModeAuto, k8s.EnvDockerDesktop, container.RuntimeDocker, fakeClock{})
+	lubad := NewLiveUpdateBuildAndDeployer(nil, nil, UpdateModeAuto, k8s.KubeContext("fake-context"), fakeClock{})
 	fakeContainerUpdater := &containerupdate.FakeContainerUpdater{}
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	st := store.NewTestingStore()

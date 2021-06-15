@@ -5,6 +5,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -19,7 +20,8 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 
 	// Don't build anything if there are pending config file changes.
 	// We want the Tiltfile to re-run first.
-	if len(state.PendingConfigFileChanges) > 0 {
+	tiltfileHasPendingChanges, _ := state.TiltfileState.HasPendingChanges()
+	if tiltfileHasPendingChanges {
 		holds.Fill(targets, store.HoldTiltfileReload)
 		return nil, holds
 	}
@@ -363,7 +365,7 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 	}
 
 	// Never hold back a deploy in an error state.
-	if mt.State.RuntimeState.RuntimeStatus() == model.RuntimeStatusError {
+	if mt.State.RuntimeState.RuntimeStatus() == v1alpha1.RuntimeStatusError {
 		return false
 	}
 

@@ -30,7 +30,7 @@ func NewController(clock build.Clock, spans tracer.SpanSource) *Controller {
 	}
 }
 
-func (t *Controller) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (t *Controller) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	state := st.RLockState()
 	ts := state.TelemetrySettings
 	tc := ts.Cmd
@@ -42,7 +42,7 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 	}
 
 	if tc.Empty() || !t.lastRunAt.Add(period).Before(t.clock.Now()) {
-		return
+		return nil
 	}
 
 	t.runCounter++
@@ -57,7 +57,7 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 		if err != io.EOF {
 			t.logError(st, fmt.Errorf("Error gathering Telemetry data for experimental_telemetry_cmd %v", err))
 		}
-		return
+		return nil
 	}
 
 	// run the command with the contents of the spans as jsonlines on stdin
@@ -69,8 +69,9 @@ func (t *Controller) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 	if err != nil {
 		t.logError(st, fmt.Errorf("Telemetry command failed: %v\noutput: %s", err, out))
 		requeueFn()
-		return
+		return nil
 	}
+	return nil
 }
 
 func (t *Controller) logError(st store.RStore, err error) {

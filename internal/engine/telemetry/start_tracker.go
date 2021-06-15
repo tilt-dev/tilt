@@ -18,9 +18,9 @@ func NewStartTracker(tracer trace.Tracer) *StartTracker {
 	return &StartTracker{tracer: tracer, startFinished: false}
 }
 
-func (c *StartTracker) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (c *StartTracker) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if c.startFinished {
-		return
+		return nil
 	}
 
 	state := st.RLockState()
@@ -35,4 +35,6 @@ func (c *StartTracker) OnChange(ctx context.Context, st store.RStore, _ store.Ch
 		c.span.End()
 		c.startFinished = true
 	}
+
+	return nil
 }

@@ -7,11 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/timecmp"
-	"github.com/tilt-dev/tilt/pkg/apis"
-
-	"github.com/tilt-dev/tilt/internal/engine/portforward"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
@@ -25,7 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/metrics"
+	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -34,7 +29,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -137,12 +134,14 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		fswatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
 	case fswatch.FileWatchDeleteAction:
 		fswatch.HandleFileWatchDeleteEvent(ctx, state, action)
-	case k8swatch.PodChangeAction:
-		handlePodChangeAction(ctx, state, action)
-	case k8swatch.PodDeleteAction:
-		handlePodDeleteAction(ctx, state, action)
-	case store.PodResetRestartsAction:
-		handlePodResetRestartsAction(state, action)
+	case k8swatch.KubernetesDiscoveryCreateAction:
+		k8swatch.HandleKubernetesDiscoveryCreateAction(ctx, state, action)
+	case k8swatch.KubernetesDiscoveryUpdateAction:
+		k8swatch.HandleKubernetesDiscoveryUpdateAction(ctx, state, action)
+	case k8swatch.KubernetesDiscoveryUpdateStatusAction:
+		k8swatch.HandleKubernetesDiscoveryUpdateStatusAction(ctx, state, action)
+	case k8swatch.KubernetesDiscoveryDeleteAction:
+		k8swatch.HandleKubernetesDiscoveryDeleteAction(ctx, state, action)
 	case k8swatch.ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
 	case store.K8sEventAction:
@@ -183,10 +182,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		session.HandleSessionUpdateStatusAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
-	case metrics.MetricsModeAction:
-		handleMetricsModeAction(state, action)
-	case metrics.MetricsDashboardAction:
-		handleMetricsDashboardAction(state, action)
 	case server.OverrideTriggerModeAction:
 		handleOverrideTriggerModeAction(ctx, state, action)
 	case local.CmdCreateAction:
@@ -199,8 +194,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		runtimelog.HandlePodLogStreamCreateAction(state, action)
 	case runtimelog.PodLogStreamDeleteAction:
 		runtimelog.HandlePodLogStreamDeleteAction(state, action)
-	case portforward.PortForwardCreateAction:
-		portforward.HandlePortForwardCreateAction(state, action)
+	case portforward.PortForwardUpsertAction:
+		portforward.HandlePortForwardUpsertAction(state, action)
 	case portforward.PortForwardDeleteAction:
 		portforward.HandlePortForwardDeleteAction(state, action)
 	default:
@@ -234,8 +229,15 @@ func handleBuildStarted(ctx context.Context, state *store.EngineState, action bu
 	ms.CurrentBuild = bs
 
 	if ms.IsK8s() {
-		for _, pod := range ms.K8sRuntimeState().Pods {
-			pod.UpdateStartedAt = apis.NewTime(action.StartTime)
+		krs := ms.K8sRuntimeState()
+		for podID := range krs.Pods {
+			krs.UpdateStartTime[podID] = action.StartTime
+		}
+		// remove stale pods
+		for podID := range krs.UpdateStartTime {
+			if _, ok := krs.Pods[podID]; !ok {
+				delete(krs.UpdateStartTime, podID)
+			}
 		}
 	} else if manifest.IsDC() {
 		// Attach the SpanID and initialize the runtime state if we haven't yet.
@@ -400,10 +402,11 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			return
 		}
 	} else {
-		for _, pod := range ms.K8sRuntimeState().Pods {
+		krs := ms.K8sRuntimeState()
+		for podID, pod := range krs.Pods {
 			// Reset the baseline, so that we don't show restarts
 			// from before any live-updates
-			pod.BaselineRestartCount = store.AllPodContainerRestarts(*pod)
+			krs.BaselineRestarts[podID] = store.AllPodContainerRestarts(*pod)
 		}
 	}
 
@@ -418,10 +421,11 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			ms.LiveUpdatedContainerIDs[cID] = true
 		}
 
-		bestPod := ms.MostRecentPod()
+		krs := ms.K8sRuntimeState()
+		bestPod := krs.MostRecentPod()
 		if timecmp.AfterOrEqual(bestPod.CreatedAt, bs.StartTime) ||
-			timecmp.Equal(bestPod.UpdateStartedAt, bs.StartTime) {
-			checkForContainerCrash(ctx, engineState, mt)
+			timecmp.Equal(krs.UpdateStartTime[k8s.PodID(bestPod.Name)], bs.StartTime) {
+			k8swatch.CheckForContainerCrash(engineState, mt)
 		}
 	}
 
@@ -484,7 +488,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			if lt.ServeCmd.Empty() {
 				// local resources without a serve command are jobs that run and
 				// terminate; so there's no real runtime status
-				lrs.Status = model.RuntimeStatusNotApplicable
+				lrs.Status = v1alpha1.RuntimeStatusNotApplicable
 			}
 		}
 		ms.RuntimeState = lrs
@@ -529,6 +533,11 @@ func handleConfigsReloaded(
 	}
 
 	b := state.TiltfileState.CurrentBuild
+
+	// Remove pending file changes that were consumed by this build.
+	for _, status := range state.TiltfileState.BuildStatuses {
+		status.ClearPendingChangesBefore(b.StartTime)
+	}
 
 	// Track the new secrets and go back to scrub them.
 	newSecrets := model.SecretSet{}
@@ -660,13 +669,6 @@ func handleConfigsReloaded(
 	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
 
 	state.UpdateSettings = event.UpdateSettings
-
-	// Remove pending file changes that were consumed by this build.
-	for file, modTime := range state.PendingConfigFileChanges {
-		if timecmp.BeforeOrEqual(modTime, state.TiltfileState.LastBuild().StartTime) {
-			delete(state.PendingConfigFileChanges, file)
-		}
-	}
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
@@ -807,53 +809,6 @@ func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
 	state.CloudStatus.WaitingForStatusPostRegistration = true
-}
-
-func handleMetricsModeAction(state *store.EngineState, action metrics.MetricsModeAction) {
-	// Don't deploy the local metrics stack in CI mode.
-	if action.Serving.Mode == model.MetricsLocal && state.EngineMode != store.EngineModeUp {
-		return
-	}
-
-	state.MetricsServing = action.Serving
-	state.MetricsSettings = action.Settings
-
-	manifests := action.Manifests
-	manifestNames := map[model.ManifestName]bool{}
-	for _, m := range manifests {
-		manifestNames[m.Name] = true
-
-		mt, ok := state.ManifestTargets[m.ManifestName()]
-		if !ok {
-			mt = store.NewManifestTarget(m)
-		}
-
-		mt.Manifest = m
-		state.UpsertManifestTarget(mt)
-	}
-
-	// Go through all the existing manifest targets:
-	// 1) If they were from the metrics, but were removed from the latest
-	//    action, delete them.
-	// 2) If they were not from the metrics, preserve them.
-	newDefOrder := make([]model.ManifestName, 0)
-	for _, mt := range state.Targets() {
-		m := mt.Manifest
-		if m.Source == model.ManifestSourceMetrics {
-			if !manifestNames[m.Name] {
-				delete(state.ManifestTargets, m.Name)
-				continue
-			}
-		}
-
-		newDefOrder = append(newDefOrder, m.Name)
-	}
-
-	state.ManifestDefinitionOrder = newDefOrder
-}
-
-func handleMetricsDashboardAction(state *store.EngineState, action metrics.MetricsDashboardAction) {
-	state.MetricsServing.GrafanaHost = action.GrafanaHost
 }
 
 func handleOverrideTriggerModeAction(ctx context.Context, state *store.EngineState,

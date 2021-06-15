@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -25,8 +26,8 @@ type ManifestBuilder struct {
 
 	k8sPodReadiness    model.PodReadinessMode
 	k8sYAML            string
-	k8sPodSelectors    []labels.Selector
-	k8sImageLocators   []k8s.ImageLocator
+	k8sPodSelectors    []labels.Set
+	k8sImageLocators   []v1alpha1.KubernetesImageLocator
 	dcConfigPaths      []string
 	localCmd           string
 	localServeCmd      string
@@ -55,9 +56,10 @@ func New(f Fixture, name model.ManifestName) ManifestBuilder {
 }
 
 func (b ManifestBuilder) WithNamedJSONPathImageLocator(name, path string) ManifestBuilder {
-	selector := k8s.MustNameSelector(name)
-	jp := k8s.MustJSONPathImageLocator(selector, path)
-	b.k8sImageLocators = append(b.k8sImageLocators, jp)
+	b.k8sImageLocators = append(b.k8sImageLocators, v1alpha1.KubernetesImageLocator{
+		ObjectSelector: k8s.MustNameSelector(name).ToSpec(),
+		Path:           path,
+	})
 	return b
 }
 
@@ -71,7 +73,7 @@ func (b ManifestBuilder) WithK8sYAML(yaml string) ManifestBuilder {
 	return b
 }
 
-func (b ManifestBuilder) WithK8sPodSelectors(podSelectors []labels.Selector) ManifestBuilder {
+func (b ManifestBuilder) WithK8sPodSelectors(podSelectors []labels.Set) ManifestBuilder {
 	b.k8sPodSelectors = podSelectors
 	return b
 }
@@ -151,9 +153,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 	if b.k8sYAML != "" {
 		k8sTarget := k8s.MustTarget(model.TargetName(b.name), b.k8sYAML)
 		k8sTarget.ExtraPodSelectors = b.k8sPodSelectors
-		for _, locator := range b.k8sImageLocators {
-			k8sTarget.ImageLocators = append(k8sTarget.ImageLocators, locator)
-		}
+		k8sTarget.ImageLocators = append(k8sTarget.ImageLocators, b.k8sImageLocators...)
 		k8sTarget.PodReadinessMode = b.k8sPodReadiness
 
 		m = assembleK8s(

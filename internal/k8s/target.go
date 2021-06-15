@@ -5,10 +5,12 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -17,7 +19,7 @@ func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
-	target, err := NewTarget(name, entities, nil, nil, nil, nil, model.PodReadinessIgnore, nil, nil)
+	target, err := NewTarget(name, entities, nil, nil, nil, nil, model.PodReadinessIgnore, nil, nil, model.UpdateSettings{})
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
@@ -28,12 +30,13 @@ func NewTarget(
 	name model.TargetName,
 	entities []K8sEntity,
 	portForwards []model.PortForward,
-	extraPodSelectors []labels.Selector,
+	extraPodSelectors []labels.Set,
 	dependencyIDs []model.TargetID,
 	refInjectCounts map[string]int,
 	podReadinessMode model.PodReadinessMode,
 	allLocators []ImageLocator,
-	links []model.Link) (model.K8sTarget, error) {
+	links []model.Link,
+	updateSettings model.UpdateSettings) (model.K8sTarget, error) {
 	sorted := SortedEntities(entities)
 	yaml, err := SerializeSpecYAML(sorted)
 	if err != nil {
@@ -48,28 +51,33 @@ func NewTarget(
 	// Use a min component count of 2 for computing names,
 	// so that the resource type appears
 	displayNames := UniqueNames(sorted, 2)
-	myLocators := []model.K8sImageLocator{}
+	myLocators := []v1alpha1.KubernetesImageLocator{}
 	for _, locator := range allLocators {
 		if LocatorMatchesOne(locator, entities) {
-			myLocators = append(myLocators, locator)
+			myLocators = append(myLocators, locator.ToSpec())
 		}
 	}
 
+	apply := v1alpha1.KubernetesApplySpec{
+		YAML:          yaml,
+		ImageLocators: myLocators,
+		Timeout:       metav1.Duration{Duration: updateSettings.K8sUpsertTimeout()},
+	}
+
 	return model.K8sTarget{
-		Name:              name,
-		YAML:              yaml,
-		PortForwards:      portForwards,
-		ExtraPodSelectors: extraPodSelectors,
-		DisplayNames:      displayNames,
-		ObjectRefs:        objectRefs,
-		PodReadinessMode:  podReadinessMode,
-		ImageLocators:     myLocators,
-		Links:             links,
+		KubernetesApplySpec: apply,
+		Name:                name,
+		PortForwards:        portForwards,
+		ExtraPodSelectors:   extraPodSelectors,
+		DisplayNames:        displayNames,
+		ObjectRefs:          objectRefs,
+		PodReadinessMode:    podReadinessMode,
+		Links:               links,
 	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
 }
 
 func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity, allLocators []ImageLocator) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, model.PodReadinessIgnore, allLocators, nil)
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, model.PodReadinessIgnore, allLocators, nil, model.UpdateSettings{})
 	if err != nil {
 		return model.Manifest{}, err
 	}
@@ -89,10 +97,27 @@ func NewK8sOnlyManifestFromYAML(yaml string) (model.Manifest, error) {
 	return manifest, nil
 }
 
-func ToImageLocators(locators []model.K8sImageLocator) []ImageLocator {
+func ParseImageLocators(locators []v1alpha1.KubernetesImageLocator) ([]ImageLocator, error) {
 	result := []ImageLocator{}
 	for _, locator := range locators {
-		result = append(result, locator.(ImageLocator))
+		selector, err := ParseObjectSelector(locator.ObjectSelector)
+		if err != nil {
+			return nil, errors.Wrap(err, "parsing image locator")
+		}
+
+		if locator.Object != nil {
+			parsedLocator, err := NewJSONPathImageObjectLocator(selector, locator.Path, locator.Object.RepoField, locator.Object.TagField)
+			if err != nil {
+				return nil, errors.Wrap(err, "parsing image locator")
+			}
+			result = append(result, parsedLocator)
+		} else {
+			parsedLocator, err := NewJSONPathImageLocator(selector, locator.Path)
+			if err != nil {
+				return nil, errors.Wrap(err, "parsing image locator")
+			}
+			result = append(result, parsedLocator)
+		}
 	}
-	return result
+	return result, nil
 }

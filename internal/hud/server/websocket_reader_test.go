@@ -32,22 +32,6 @@ func TestViewsHandled(t *testing.T) {
 	f.tearDown()
 }
 
-func TestIncrementalLogAck(t *testing.T) {
-	f := newWebsocketReaderFixture(t)
-	f.start()
-
-	v := &proto_webview.View{Log: "hello world", LogList: &proto_webview.LogList{ToCheckpoint: 123}}
-	f.sendView(v)
-
-	f.assertHandlerCallCount(1)
-	assert.Equal(t, "hello world", f.handler.lastViewLog)
-
-	// Expect client to send an Ack, so make sure that that message was written to the conn
-	f.assertMessageWritten()
-
-	f.tearDown()
-}
-
 func TestHandlerErrorDoesntStopLoop(t *testing.T) {
 	f := newWebsocketReaderFixture(t)
 	f.start()
@@ -139,10 +123,6 @@ func (f *websocketReaderFixture) sendView(v *proto_webview.View) {
 	assert.NoError(f.t, err)
 
 	f.conn.newMessageToRead(buf)
-}
-
-func (f *websocketReaderFixture) assertMessageWritten() {
-	f.conn.AssertNextWriteMsg(f.t).Ack()
 }
 
 func (f *websocketReaderFixture) assertHandlerCallCount(n int) {

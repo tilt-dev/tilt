@@ -1,6 +1,8 @@
 package store
 
 import (
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -17,6 +19,10 @@ func NewChangeSet(names ...types.NamespacedName) ChangeSet {
 		cs.Add(name)
 	}
 	return cs
+}
+
+func (s *ChangeSet) Empty() bool {
+	return len(s.Changes) == 0
 }
 
 // Add a changed resource name.
@@ -54,8 +60,8 @@ type ChangeSummary struct {
 	// FileWatches with their specs changed.
 	FileWatchSpecs ChangeSet
 
-	// Pods that have changed.
-	Pods ChangeSet
+	// KubernetesDiscoveries that have changed.
+	KubernetesDiscoveries ChangeSet
 
 	// PodLogStreams with their specs changed
 	PodLogStreams ChangeSet
@@ -65,6 +71,13 @@ type ChangeSummary struct {
 
 	// PortForwards that have changed.
 	PortForwards ChangeSet
+
+	UISessions  ChangeSet
+	UIResources ChangeSet
+
+	// If non-zero, that means we tried to apply this change and got
+	// an error.
+	LastBackoff time.Duration
 }
 
 func (s ChangeSummary) IsLogOnly() bool {
@@ -76,10 +89,12 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.Log = s.Log || other.Log
 	s.CmdSpecs.AddAll(other.CmdSpecs)
 	s.FileWatchSpecs.AddAll(other.FileWatchSpecs)
-	s.Pods.AddAll(other.Pods)
+	s.KubernetesDiscoveries.AddAll(other.KubernetesDiscoveries)
 	s.PodLogStreams.AddAll(other.PodLogStreams)
 	s.Sessions.AddAll(other.Sessions)
 	s.PortForwards.AddAll(other.PortForwards)
+	s.UISessions.AddAll(other.UISessions)
+	s.UIResources.AddAll(other.UIResources)
 }
 
 func LegacyChangeSummary() ChangeSummary {

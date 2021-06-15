@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -35,26 +36,26 @@ type State struct {
 
 func (State) RuntimeState() {}
 
-func (s State) RuntimeStatus() model.RuntimeStatus {
+func (s State) RuntimeStatus() v1alpha1.RuntimeStatus {
 	if s.ContainerState.Error != "" || s.ContainerState.ExitCode != 0 {
-		return model.RuntimeStatusError
+		return v1alpha1.RuntimeStatusError
 	}
 	if s.ContainerState.Running ||
 		// Status strings taken from comments on:
 		// https://godoc.org/github.com/docker/docker/api/types#ContainerState
 		s.ContainerState.Status == "running" ||
 		s.ContainerState.Status == "exited" {
-		return model.RuntimeStatusOK
+		return v1alpha1.RuntimeStatusOK
 	}
 	if s.ContainerState.Status == "" {
-		return model.RuntimeStatusUnknown
+		return v1alpha1.RuntimeStatusUnknown
 	}
-	return model.RuntimeStatusPending
+	return v1alpha1.RuntimeStatusPending
 }
 
 func (s State) RuntimeStatusError() error {
 	status := s.RuntimeStatus()
-	if status != model.RuntimeStatusError {
+	if status != v1alpha1.RuntimeStatusError {
 		return nil
 	}
 	if s.ContainerState.Error != "" {

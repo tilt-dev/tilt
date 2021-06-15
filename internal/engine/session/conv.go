@@ -11,6 +11,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	session "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -82,7 +83,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 		}
 
 		for _, ctr := range store.AllPodContainers(pod) {
-			if k8sconv.ContainerStatusToRuntimeState(ctr) == model.RuntimeStatusError {
+			if k8sconv.ContainerStatusToRuntimeState(ctr) == v1alpha1.RuntimeStatusError {
 				target.State.Terminated = &session.TargetStateTerminated{
 					StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
 					Error: fmt.Sprintf("Pod %s in error state due to container %s: %s",
@@ -115,7 +116,8 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 
 func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
 	if mt.Manifest.LocalTarget().ServeCmd.Empty() {
-		// there is no runtime target
+		// there is no serve_cmd, so don't return a runtime target at all
+		// (there will still be a build target from the update cmd)
 		return nil
 	}
 
@@ -137,7 +139,15 @@ func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *ses
 			StartTime: apis.NewMicroTime(lrs.StartTime),
 			Ready:     lrs.Ready,
 		}
-	} else {
+	} else if mt.Manifest.TriggerMode.AutoInitial() || mt.State.StartedFirstBuild() {
+		// default to waiting unless this resource has auto_init=False and has never
+		// had a build triggered for other reasons (e.g. trigger_mode=TRIGGER_MODE_AUTO and
+		// a relevant file change or being manually invoked via UI)
+		// the latter case ensures there's no race condition between a build being
+		// triggered and the local process actually being launched
+		//
+		// otherwise, Terminated/Active/Waiting will all be nil, which indicates that
+		// the target is currently inactive
 		target.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
 	}
 
@@ -157,24 +167,24 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 
 	// HACK: RuntimeState is not populated until engine starts builds in some cases; to avoid weird race conditions,
 	// 	it defaults to pending assuming the resource isn't _actually_ disabled on startup via auto_init=False
-	var runtimeStatus model.RuntimeStatus
+	var runtimeStatus v1alpha1.RuntimeStatus
 	if mt.State.RuntimeState != nil {
 		runtimeStatus = mt.State.RuntimeState.RuntimeStatus()
 	} else if mt.Manifest.TriggerMode.AutoInitial() {
-		runtimeStatus = model.RuntimeStatusPending
+		runtimeStatus = v1alpha1.RuntimeStatusPending
 	}
 
 	switch runtimeStatus {
-	case model.RuntimeStatusPending:
+	case v1alpha1.RuntimeStatusPending:
 		target.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
-	case model.RuntimeStatusOK:
+	case v1alpha1.RuntimeStatusOK:
 		target.State.Active = &session.TargetStateActive{
 			StartTime: apis.NewMicroTime(mt.State.LastSuccessfulDeployTime),
 			// generic resources have no readiness concept so they're just ready by default
 			// (this also applies to Docker Compose, since we don't support its health checks)
 			Ready: true,
 		}
-	case model.RuntimeStatusError:
+	case v1alpha1.RuntimeStatusError:
 		errMsg := errToString(mt.State.RuntimeState.RuntimeStatusError())
 		if errMsg == "" {
 			errMsg = "Server target %q failed"
@@ -264,7 +274,7 @@ func tiltfileTarget(state store.EngineState) session.Target {
 		target.State.Active = &session.TargetStateActive{
 			StartTime: apis.NewMicroTime(state.TiltfileState.CurrentBuild.StartTime),
 		}
-	} else if len(state.PendingConfigFileChanges) != 0 {
+	} else if hasPendingChanges, _ := state.TiltfileState.HasPendingChanges(); hasPendingChanges {
 		target.State.Waiting = &session.TargetStateWaiting{
 			WaitReason: "config-changed",
 		}

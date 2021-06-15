@@ -34,7 +34,9 @@ var _ store.Subscriber = &ControllerBuilder{}
 var _ store.SetUpper = &ControllerBuilder{}
 var _ store.TearDowner = &ControllerBuilder{}
 
-func (c *ControllerBuilder) OnChange(_ context.Context, _ store.RStore, _ store.ChangeSummary) {}
+func (c *ControllerBuilder) OnChange(_ context.Context, _ store.RStore, _ store.ChangeSummary) error {
+	return nil
+}
 
 func (c *ControllerBuilder) SetUp(_ context.Context, _ store.RStore) error {
 	mgr := c.tscm.GetManager()

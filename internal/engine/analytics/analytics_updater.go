@@ -30,7 +30,7 @@ func NewAnalyticsUpdater(ta *analytics.TiltAnalytics, cmdTags CmdTags) *Analytic
 	}
 }
 
-func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -50,6 +50,8 @@ func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore, _ st
 
 		sub.ta.Incr(cmd, sub.cmdTags.AsMap())
 	}
+
+	return nil
 }
 
 var _ store.Subscriber = &AnalyticsUpdater{}

@@ -139,7 +139,7 @@ type execUpdaterFixture struct {
 }
 
 func newExecFixture(t testing.TB) *execUpdaterFixture {
-	fakeCli := k8s.NewFakeK8sClient()
+	fakeCli := k8s.NewFakeK8sClient(t)
 	cu := &ExecUpdater{
 		kCli: fakeCli,
 	}

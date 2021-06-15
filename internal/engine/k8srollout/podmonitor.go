@@ -18,15 +18,20 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
+type podManifest struct {
+	pod      k8s.PodID
+	manifest model.ManifestName
+}
+
 type PodMonitor struct {
-	pods            map[k8s.PodID]podStatus
-	trackingStarted map[k8s.PodID]bool
+	pods            map[podManifest]podStatus
+	trackingStarted map[podManifest]bool
 }
 
 func NewPodMonitor() *PodMonitor {
 	return &PodMonitor{
-		pods:            make(map[k8s.PodID]podStatus),
-		trackingStarted: make(map[k8s.PodID]bool),
+		pods:            make(map[podManifest]podStatus),
+		trackingStarted: make(map[podManifest]bool),
 	}
 }
 
@@ -35,7 +40,7 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 	defer st.RUnlockState()
 
 	updates := make([]podStatus, 0)
-	active := make(map[k8s.PodID]bool)
+	active := make(map[podManifest]bool)
 
 	for _, mt := range state.Targets() {
 		ms := mt.State
@@ -46,12 +51,13 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 			continue
 		}
 
-		active[podID] = true
+		key := podManifest{pod: podID, manifest: manifest.Name}
+		active[key] = true
 
 		currentStatus := newPodStatus(pod, manifest.Name)
-		if !podStatusesEqual(currentStatus, m.pods[podID]) {
+		if !podStatusesEqual(currentStatus, m.pods[key]) {
 			updates = append(updates, currentStatus)
-			m.pods[podID] = currentStatus
+			m.pods[key] = currentStatus
 		}
 	}
 
@@ -64,7 +70,7 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 	return updates
 }
 
-func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	updates := m.diff(st)
 	for _, update := range updates {
 		ctx := logger.CtxWithLogHandler(ctx, podStatusWriter{
@@ -74,12 +80,15 @@ func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 		})
 		m.print(ctx, update)
 	}
+
+	return nil
 }
 
 func (m *PodMonitor) print(ctx context.Context, update podStatus) {
-	if !m.trackingStarted[update.podID] {
+	key := podManifest{pod: update.podID, manifest: update.manifestName}
+	if !m.trackingStarted[key] {
 		logger.Get(ctx).Infof("\nTracking new pod rollout (%s):", update.podID)
-		m.trackingStarted[update.podID] = true
+		m.trackingStarted[key] = true
 	}
 
 	m.printCondition(ctx, "Scheduled", update.scheduled, update.startTime)
@@ -163,12 +172,12 @@ type podStatusWriter struct {
 }
 
 func (w podStatusWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	w.store.Dispatch(store.NewLogAction(w.manifestName, SpanIDForPod(w.podID), level, fields, p))
+	w.store.Dispatch(store.NewLogAction(w.manifestName, spanIDForPod(w.manifestName, w.podID), level, fields, p))
 	return nil
 }
 
-func SpanIDForPod(podID k8s.PodID) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("monitor:%s", podID))
+func spanIDForPod(mn model.ManifestName, podID k8s.PodID) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("monitor:%s:%s", mn, podID))
 }
 
 var _ store.Subscriber = &PodMonitor{}

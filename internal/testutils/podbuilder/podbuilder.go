@@ -56,7 +56,8 @@ type PodBuilder struct {
 	t        testing.TB
 	manifest model.Manifest
 
-	podID           string
+	podUID          types.UID
+	podName         string
 	phase           string
 	creationTime    time.Time
 	deletionTime    time.Time
@@ -65,6 +66,10 @@ type PodBuilder struct {
 	deploymentUID   types.UID
 	resourceVersion string
 	unknownOwner    bool
+
+	// contextNamespace allows setting a fallback default namespace instead of `default` to simulate
+	// a namespace override in the active config context.
+	contextNamespace k8s.Namespace
 
 	// keyed by container index -- i.e. the first container will have image: imageRefs[0] and ID: cIDs[0], etc.
 	// If there's no entry at index i, we'll use a dummy value.
@@ -80,6 +85,7 @@ func New(t testing.TB, manifest model.Manifest) PodBuilder {
 	return PodBuilder{
 		t:                      t,
 		manifest:               manifest,
+		creationTime:           time.Now(),
 		imageRefs:              make(map[int]string),
 		cIDs:                   make(map[int]string),
 		cReady:                 make(map[int]bool),
@@ -128,12 +134,17 @@ func (b PodBuilder) WithResourceVersion(rv string) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) WithPodID(podID string) PodBuilder {
-	msgs := validation.NameIsDNSSubdomain(podID, false)
+func (b PodBuilder) WithPodUID(uid types.UID) PodBuilder {
+	b.podUID = uid
+	return b
+}
+
+func (b PodBuilder) WithPodName(name string) PodBuilder {
+	msgs := validation.NameIsDNSSubdomain(name, false)
 	if len(msgs) != 0 {
-		b.t.Fatalf("pod id %q is invalid: %s", podID, msgs)
+		b.t.Fatalf("pod id %q is invalid: %s", name, msgs)
 	}
-	b.podID = podID
+	b.podName = name
 	return b
 }
 
@@ -183,19 +194,35 @@ func (b PodBuilder) WithDeletionTime(deletionTime time.Time) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) PodID() k8s.PodID {
-	if b.podID != "" {
-		return k8s.PodID(b.podID)
+func (b PodBuilder) PodName() k8s.PodID {
+	if b.podName != "" {
+		return k8s.PodID(b.podName)
 	}
-	return "fakePodID"
+	return k8s.PodID(fmt.Sprintf("%s-fakePodID", b.manifest.Name))
 }
 
-func (b PodBuilder) buildPodUID() types.UID {
-	return types.UID(fmt.Sprintf("%s-fakeUID", b.PodID()))
+func (b PodBuilder) PodUID() types.UID {
+	if b.podUID != "" {
+		return b.podUID
+	}
+	return types.UID(fmt.Sprintf("%s-fakeUID", b.PodName()))
 }
 
 func (b PodBuilder) WithDeploymentUID(deploymentUID types.UID) PodBuilder {
 	b.deploymentUID = deploymentUID
+	return b
+}
+
+// WithContextNamespace sets the fallback namespace used if the entities in the manifest YAML do
+// not specify any namespace.
+//
+// This simulates having a namespace set on the active kubeconfig context, which Tilt also infers
+// and uses, but is not explicitly accessible to PodBuilder.
+//
+// If this is not set AND the entities do not reference a namespace, they will be assigned a namespace
+// value of k8s.DefaultNamespace (`default`).
+func (b PodBuilder) WithContextNamespace(ns k8s.Namespace) PodBuilder {
+	b.contextNamespace = ns
 	return b
 }
 
@@ -204,11 +231,17 @@ func (b PodBuilder) buildReplicaSetName() string {
 }
 
 func (b PodBuilder) buildReplicaSetUID() types.UID {
+	if b.deploymentUID != "" {
+		// if there's a custom Deployment UID, use that as the base for the ReplicaSet since
+		// Deployments create ReplicaSets, and otherwise we can mix up this ReplicaSet with
+		// the "default" Deployment since they'd have the same UID
+		return types.UID(fmt.Sprintf("%s-rs-fakeUID", b.deploymentUID))
+	}
 	return types.UID(fmt.Sprintf("%s-fakeUID", b.buildReplicaSetName()))
 }
 
 func (b PodBuilder) buildDeploymentName() string {
-	return b.manifest.Name.String()
+	return fmt.Sprintf("%s-deployment", b.manifest.Name)
 }
 
 func (b PodBuilder) DeploymentUID() types.UID {
@@ -218,37 +251,33 @@ func (b PodBuilder) DeploymentUID() types.UID {
 	return types.UID(fmt.Sprintf("%s-fakeUID", b.buildDeploymentName()))
 }
 
-func (b PodBuilder) buildDeployment() *appsv1.Deployment {
+func (b PodBuilder) buildDeployment(ns k8s.Namespace) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      b.buildDeploymentName(),
-			Namespace: k8s.DefaultNamespace.String(),
+			Namespace: ns.String(),
 			Labels:    k8s.NewTiltLabelMap(),
 			UID:       b.DeploymentUID(),
 		},
 	}
 }
 
-func (b PodBuilder) buildReplicaSet() *appsv1.ReplicaSet {
-	dep := b.buildDeployment()
+func (b PodBuilder) buildReplicaSet(deployment *appsv1.Deployment) *appsv1.ReplicaSet {
 	return &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      b.buildReplicaSetName(),
-			Namespace: k8s.DefaultNamespace.String(),
+			Namespace: deployment.Namespace,
 			UID:       b.buildReplicaSetUID(),
 			Labels:    k8s.NewTiltLabelMap(),
 			OwnerReferences: []metav1.OwnerReference{
-				k8s.RuntimeObjToOwnerRef(dep),
+				k8s.RuntimeObjToOwnerRef(deployment),
 			},
 		},
 	}
 }
 
 func (b PodBuilder) buildCreationTime() metav1.Time {
-	if !b.creationTime.IsZero() {
-		return apis.NewTime(b.creationTime)
-	}
-	return apis.Now()
+	return apis.NewTime(b.creationTime)
 }
 
 func (b PodBuilder) buildDeletionTime() *metav1.Time {
@@ -294,7 +323,7 @@ func (b PodBuilder) buildImage(imageSpec string, index int) string {
 	// Use the pod ID as the image tag. This is kind of weird, but gets at the semantics
 	// we want (e.g., a new pod ID indicates that this is a new build).
 	// Tests that don't want this behavior should replace the image with setImage(pod, imageName)
-	return fmt.Sprintf("%s:%s", imageSpecRef.Name(), b.PodID())
+	return fmt.Sprintf("%s:%s", imageSpecRef.Name(), b.PodName())
 }
 
 func (b PodBuilder) buildContainerID(index int) string {
@@ -326,7 +355,7 @@ func (b PodBuilder) buildContainerStatuses(spec v1.PodSpec) []v1.ContainerStatus
 
 		state := v1.ContainerState{
 			Running: &v1.ContainerStateRunning{
-				StartedAt: apis.NewTime(time.Now()),
+				StartedAt: b.buildCreationTime(),
 			},
 		}
 
@@ -358,6 +387,28 @@ func (b PodBuilder) validateContainerIDs(numContainers int) {
 	}
 }
 
+func (b PodBuilder) determineNamespace(entities []k8s.K8sEntity) k8s.Namespace {
+	// N.B. we want to be careful to not coerce values to `default`, which might not be the implicit default based
+	// 	on configured context, so we really want to leave this as an empty string in that case
+	nsVal := entities[0].NamespaceOrDefault("")
+	for i := 1; i < len(entities)-1; i++ {
+		if string(entities[i].Namespace()) != nsVal {
+			b.t.Fatalf("PodBuilder only works with Manifests that reference exactly 1 namespace (found %s and %s)",
+				nsVal, entities[i].Namespace())
+		}
+	}
+	if nsVal != "" {
+		return k8s.Namespace(nsVal)
+	}
+	if b.contextNamespace != "" {
+		return b.contextNamespace
+	}
+	// this is actually redundant as long as k8s.Namespace::String() is used which
+	// coerces empty string to this, but that behavior is actually a bit sketchy,
+	// so this is done explicitly
+	return k8s.DefaultNamespace
+}
+
 type PodObjectTree []k8s.K8sEntity
 
 func (p PodObjectTree) Pod() k8s.K8sEntity {
@@ -375,8 +426,8 @@ func (p PodObjectTree) Deployment() k8s.K8sEntity {
 // Simulates a Pod -> ReplicaSet -> Deployment ref tree
 func (b PodBuilder) ObjectTreeEntities() PodObjectTree {
 	pod := b.Build()
-	rs := b.buildReplicaSet()
-	dep := b.buildDeployment()
+	dep := b.buildDeployment(k8s.Namespace(pod.Namespace))
+	rs := b.buildReplicaSet(dep)
 	return PodObjectTree{
 		k8s.NewK8sEntity(pod),
 		k8s.NewK8sEntity(rs),
@@ -399,6 +450,8 @@ func (b PodBuilder) Build() *v1.Pod {
 		b.t.Fatalf("PodBuilder only works with Manifests with exactly 1 PodTemplateSpec: %v", tSpecs)
 	}
 
+	ns := b.determineNamespace(entities)
+
 	tSpec := tSpecs[0]
 	spec := tSpec.Spec
 	numContainers := len(spec.Containers)
@@ -416,8 +469,9 @@ func (b PodBuilder) Build() *v1.Pod {
 		spec.Containers[i] = container
 	}
 
+	deployment := b.buildDeployment(ns)
 	ownerRefs := []metav1.OwnerReference{
-		k8s.RuntimeObjToOwnerRef(b.buildReplicaSet()),
+		k8s.RuntimeObjToOwnerRef(b.buildReplicaSet(deployment)),
 	}
 	if b.unknownOwner {
 		ownerRefs = nil
@@ -425,12 +479,12 @@ func (b PodBuilder) Build() *v1.Pod {
 
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:              string(b.PodID()),
-			Namespace:         k8s.DefaultNamespace.String(),
+			Name:              string(b.PodName()),
+			Namespace:         ns.String(),
 			CreationTimestamp: b.buildCreationTime(),
 			DeletionTimestamp: b.buildDeletionTime(),
 			Labels:            labels,
-			UID:               b.buildPodUID(),
+			UID:               b.PodUID(),
 			OwnerReferences:   ownerRefs,
 			ResourceVersion:   b.resourceVersion,
 		},

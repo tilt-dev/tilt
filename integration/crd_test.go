@@ -4,6 +4,8 @@ package integration
 
 import (
 	"context"
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -35,4 +37,37 @@ func TestCRD(t *testing.T) {
 	assert.Contains(t, contents, "nonImage: bobo\n")
 	assert.NotContains(t, contents, "image: bobo\n")
 	assert.Contains(t, contents, "imagePullPolicy: IfNotPresent\n")
+}
+
+// Make sure that running 'tilt down' with no resources installed
+// yet handles 'not found' correctly
+func TestCRDNotFound(t *testing.T) {
+	f := newK8sFixture(t, "crd")
+	defer f.TearDown()
+
+	err := f.tilt.Down(f.ctx, ioutil.Discard)
+	require.NoError(t, err)
+}
+
+// Make sure that running 'tilt down' tears down the CRD
+// even when the CR doesn't exist.
+func TestCRDPartialNotFound(t *testing.T) {
+	f := newK8sFixture(t, "crd")
+	defer f.TearDown()
+
+	out, err := f.runCommand("kubectl", "apply", "-f", filepath.Join(f.dir, "crd.yaml"))
+	assert.NoError(t, err)
+	assert.Contains(t, out.String(), "uselessmachines.tilt.dev created")
+
+	_, err = f.runCommand("kubectl", "get", "crd", "uselessmachines.tilt.dev")
+	assert.NoError(t, err)
+
+	err = f.tilt.Down(f.ctx, ioutil.Discard)
+	require.NoError(t, err)
+
+	// Make sure the crds were deleted.
+	out, err = f.runCommand("kubectl", "get", "crd", "uselessmachines.tilt.dev")
+	if assert.Error(t, err) {
+		assert.Contains(t, out.String(), `"uselessmachines.tilt.dev" not found`)
+	}
 }

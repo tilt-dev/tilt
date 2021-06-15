@@ -170,7 +170,7 @@ func (c *CloudStatusManager) needsLookup(requestKey statusRequestKey) bool {
 		requestKey != c.lastRequestKey
 }
 
-func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -183,7 +183,7 @@ func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore, _ st
 
 	if state.CloudStatus.WaitingForStatusPostRegistration && !currentlyMakingRequest {
 		go c.CheckStatus(ctx, st, state.CloudAddress, requestKey, true)
-		return
+		return nil
 	}
 
 	// c.currentlyMakingRequest is a bit of a race condition here:
@@ -196,6 +196,7 @@ func (c *CloudStatusManager) OnChange(ctx context.Context, st store.RStore, _ st
 
 	if needsLookup && allowedToPerformLookup {
 		go c.CheckStatus(ctx, st, state.CloudAddress, requestKey, false)
-		return
+		return nil
 	}
+	return nil
 }

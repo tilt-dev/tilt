@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
@@ -53,7 +55,7 @@ func TestLogs(t *testing.T) {
 		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 	f.AssertOutputContains("hello world!")
 	f.AssertLogStartTime(start)
 
@@ -80,7 +82,7 @@ func TestLogActions(t *testing.T) {
 		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 	f.ConsumeLogActionsUntil("hello world!")
 }
 
@@ -98,7 +100,7 @@ func TestLogsFailed(t *testing.T) {
 		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 	f.AssertOutputContains("Error streaming pod-id logs")
 	assert.Contains(t, f.out.String(), "my-error")
 
@@ -128,7 +130,7 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 	f.AssertOutputContains("hello world!\n")
 
 	// Wait until the previous log stream finishes.
@@ -143,7 +145,7 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 
 	// Set new logs, as if the pod restarted.
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
-	f.onChange(podID)
+	f.onChange("server", podID)
 	f.AssertOutputContains("goodbye world!\n")
 }
 
@@ -164,7 +166,7 @@ func TestMultiContainerLogs(t *testing.T) {
 		model.Manifest{Name: "server"}, pb.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 	f.AssertOutputContains("hello world!")
 	f.AssertOutputContains("goodbye world!")
 }
@@ -204,8 +206,8 @@ func TestContainerPrefixes(t *testing.T) {
 		pbSingleC.toStorePod(f.ctx)))
 	f.store.UnlockMutableState()
 
-	f.onChange(pID1)
-	f.onChange(pID2)
+	f.onChange("singleContainer", pID1)
+	f.onChange("singleContainer", pID2)
 
 	// Make sure we have expected logs
 	f.AssertOutputContains("hello world!")
@@ -235,8 +237,8 @@ func TestTerminatedContainerLogs(t *testing.T) {
 
 	// Fire OnChange twice, because we used to have a bug where
 	// we'd immediately teardown the log watch on the terminated container.
-	f.onChange(podID)
-	f.onChange(podID)
+	f.onChange("server", podID)
+	f.onChange("server", podID)
 
 	f.AssertOutputContains("hello world!")
 
@@ -244,7 +246,7 @@ func TestTerminatedContainerLogs(t *testing.T) {
 	// closes the log stream.
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 	f.AssertOutputContains("hello world!")
 	f.AssertOutputDoesNotContain("goodbye world!")
 }
@@ -280,7 +282,7 @@ func TestLogReconnection(t *testing.T) {
 		state.TiltStartTime = startTime
 	})
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 
 	_, _ = writer.Write([]byte("hello world!"))
 	f.AssertOutputContains("hello world!")
@@ -344,7 +346,7 @@ func TestInitContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, cNameInit, "init world!")
 	f.kClient.SetLogsForPodContainer(podID, cNameNormal, "hello world!")
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 
 	f.AssertOutputContains(cNameInit.String())
 	f.AssertOutputContains("init world!")
@@ -377,7 +379,7 @@ func TestIstioContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, istioSidecar, "hello istio!")
 	f.kClient.SetLogsForPodContainer(podID, cNormal, "hello world!")
 
-	f.onChange(podID)
+	f.onChange("server", podID)
 
 	f.AssertOutputDoesNotContain("istio")
 	f.AssertOutputContains("hello world!")
@@ -457,12 +459,11 @@ type plmFixture struct {
 
 func newPLMFixture(t *testing.T) *plmFixture {
 	f := tempdir.NewTempDirFixture(t)
-	kClient := k8s.NewFakeK8sClient()
+	kClient := k8s.NewFakeK8sClient(t)
 
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())
-	l := logger.NewLogger(logger.DebugLvl, out)
-	ctx = logger.WithLogger(ctx, l)
+	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
 
 	st := newPLMStore(t, out)
 	fc := fake.NewTiltClient()
@@ -482,10 +483,11 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	}
 }
 
-func (f *plmFixture) onChange(podID k8s.PodID) {
+func (f *plmFixture) onChange(mn model.ManifestName, podID k8s.PodID) {
 	podNN := types.NamespacedName{Name: string(podID), Namespace: "default"}
-	f.plm.OnChange(f.ctx, f.store, store.ChangeSummary{
-		Pods: store.NewChangeSet(podNN),
+	kdNN := k8swatch.KeyForManifest(mn)
+	_ = f.plm.OnChange(f.ctx, f.store, store.ChangeSummary{
+		KubernetesDiscoveries: store.NewChangeSet(kdNN),
 	})
 
 	// Reconcile any PodLogStreams

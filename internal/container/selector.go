@@ -1,7 +1,11 @@
 package container
 
 import (
+	"fmt"
+
 	"github.com/docker/distribution/reference"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type MatchType int
@@ -14,6 +18,21 @@ const (
 type RefSelector struct {
 	ref       reference.Named
 	matchType MatchType
+}
+
+func SelectorFromImageMap(spec v1alpha1.ImageMapSpec) (RefSelector, error) {
+	ref, err := reference.ParseNamed(spec.Selector)
+	if err != nil {
+		return RefSelector{}, fmt.Errorf("parsing image map spec (%s): %v", spec.Selector, err)
+	}
+	matchType := matchName
+	if spec.MatchExact {
+		matchType = matchExact
+	}
+	return RefSelector{
+		ref:       ref,
+		matchType: matchType,
+	}, nil
 }
 
 func NameSelector(ref reference.Named) RefSelector {
@@ -42,6 +61,10 @@ func MustParseTaggedSelector(s string) RefSelector {
 
 func (s RefSelector) RefsEqual(other RefSelector) bool {
 	return s.ref.String() == other.ref.String()
+}
+
+func (s RefSelector) MatchExact() bool {
+	return s.matchType == matchExact
 }
 
 func (s RefSelector) WithNameMatch() RefSelector {

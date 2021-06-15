@@ -5,18 +5,10 @@ package webview;
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 import "pkg/webview/log.proto";
+import "pkg/apis/core/v1alpha1/generated.proto";
 
 option go_package = "github.com/tilt-dev/tilt/pkg/webview";
 
-// Correspond to BuildAndDeployers
-enum UpdateType {
-  UPDATE_TYPE_UNSPECIFIED = 0;
-  UPDATE_TYPE_IMAGE = 1;
-  UPDATE_TYPE_LIVE_UPDATE = 2;
-  UPDATE_TYPE_DOCKER_COMPOSE = 3;
-  UPDATE_TYPE_K8S = 4;
-  UPDATE_TYPE_LOCAL = 5;
-}
 
 // Correspond to implementations of the TargetSpec interface
 enum TargetType {
@@ -34,13 +26,16 @@ message TargetSpec {
 }
 
 message BuildRecord {
-  repeated string edits = 1;
+  reserved "edits";
+  reserved 1;
+  
   string error = 2;
   repeated string warnings = 3;
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp finish_time  = 5;
 
-  repeated UpdateType update_types = 9;
+  reserved "update_types";
+  reserved 9;
 
   reserved "log";
   reserved 6;
@@ -70,37 +65,9 @@ message K8sResourceInfo {
   repeated string display_names = 10;
 }
 
-message DCResourceInfo {
-  repeated string config_paths = 1;
-  string container_status = 2;
-  string containerID = 3;
-
-  // service logs are now in the log store
-  reserved "log";
-  reserved 4;
-
-  google.protobuf.Timestamp start_time = 5;
-
-  // The span id for this docker-compose service's logs in the main logstore
-  string span_id = 6;
-}
-
-message YAMLResourceInfo {
-  repeated string k8s_resources = 1;
-}
-
 message LocalResourceInfo {
   int64 pid = 1;
   bool is_test = 2;
-}
-
-message Facet {
-  string name = 1;
-  string value = 2;
-
-  // If span_id is non-empty, that means the value is in the logstore
-  // instead of in the value field.
-  string span_id = 3;
 }
 
 message Link {
@@ -121,8 +88,13 @@ message Resource {
   int32 trigger_mode = 5;
   repeated BuildRecord build_history = 6;
   BuildRecord current_build = 7;
-  int32 pending_build_reason = 8;
-  repeated string pending_build_edits = 9;
+
+  reserved "pending_build_reason";
+  reserved 8;
+
+  reserved "pending_build_edits";
+  reserved 9;
+  
   google.protobuf.Timestamp pending_build_since = 10;
   bool has_pending_changes = 11;
 
@@ -133,14 +105,21 @@ message Resource {
   repeated Link endpoint_links = 28;
   string podID = 13;
   K8sResourceInfo k8s_resource_info = 14;
-  DCResourceInfo dc_resource_info = 15;
-  YAMLResourceInfo yaml_resource_info = 16;
+
+  reserved "dc_resource_info";
+  reserved 15;
+
+  reserved "yaml_resource_info";
+  reserved 16;
+  
   LocalResourceInfo local_resource_info = 17;
   string runtime_status = 18;
   string update_status = 29;
   bool is_tiltfile = 19;
   repeated TargetSpec specs = 27;
-  bool show_build_status = 20;
+
+  reserved "show_build_status";
+  reserved 20;
 
   // Resource logs are now stored in the log store.
   reserved "combined_log";
@@ -181,6 +160,17 @@ message VersionSettings {
   bool check_updates = 1;
 }
 
+// Our websocket service has two kinds of View messages:
+//
+// 1) On initialization, we send down the complete view state
+//    (TiltStartTime, UISession, UIResources, and LogList)
+//
+// 2) On every change, we send down the resources that have
+//    changed since the last send().
+//    (new logs and any updated UISession/UIResource objects).
+//
+// All other fields are obsolete, but are needed for deserializing
+// old snapshots.
 message View {
   string log = 1;
   repeated Resource resources = 2;
@@ -214,7 +204,17 @@ message View {
   // an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile
   string tiltfile_key = 17;
 
-  MetricsServing metrics_serving = 18;
+  reserved "metrics_serving";
+  reserved 18;
+
+  // New API-server based data models.
+  github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UISession ui_session = 19;
+  repeated github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UIResource ui_resources = 20;
+  repeated github.com.tilt_dev.tilt.pkg.apis.core.v1alpha1.UIButton ui_buttons = 22;
+
+  // indicates that this view is a complete representation of the app
+  // if false, this view just contains deltas from a previous view.
+  bool is_complete = 21;
 }
 
 message MetricsServing {
@@ -245,12 +245,12 @@ message UploadSnapshotResponse {
   string url = 1;
 }
 
-// The webclient needs to notify the server what logs it has,
-// so the server knows what to send.
+// NOTE(nick): This is obsolete.
 //
-// The socket protocol doesn't have any concept of a StatusCode
-// to confirm that the receiver got the message, so we need to send this
-// in a separate message.
+// Our websocket service has two kinds of messages:
+// 1) On initialization, we send down the complete view state
+// 2) On every change, we send down the resources that have
+//    changed since the last send().
 message AckWebsocketRequest {
   // The to_checkpoint on the received LogList
   int32 to_checkpoint = 1;

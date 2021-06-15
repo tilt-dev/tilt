@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -90,7 +89,7 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	deferred.SetOutput(l)
 	ctx = redirectLogs(ctx, l)
 	if c.outputSnapshotOnExit != "" {
-		defer cloud.WriteSnapshot(ctx, cmdCIDeps.Store, c.outputSnapshotOnExit)
+		defer cmdCIDeps.Snapshotter.WriteSnapshot(ctx, c.outputSnapshotOnExit)
 	}
 
 	engineMode := store.EngineModeCI

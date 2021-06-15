@@ -39,7 +39,7 @@ func (h *FakeHud) Run(ctx context.Context, dispatch func(action store.Action), r
 	return ctx.Err()
 }
 
-func (h *FakeHud) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (h *FakeHud) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	state := st.RLockState()
 	view := store.StateToView(state, st.StateMutex())
 	st.RUnlockState()
@@ -48,6 +48,8 @@ func (h *FakeHud) OnChange(ctx context.Context, st store.RStore, _ store.ChangeS
 	if err != nil {
 		logger.Get(ctx).Infof("Error updating HUD: %v", err)
 	}
+
+	return nil
 }
 
 func (h *FakeHud) update(v view.View, vs view.ViewState) error {
@@ -67,6 +69,7 @@ func (h *FakeHud) WaitUntilResource(t testing.TB, ctx context.Context, msg strin
 }
 
 func (h *FakeHud) WaitUntil(t testing.TB, ctx context.Context, msg string, isDone func(view.View) bool) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 

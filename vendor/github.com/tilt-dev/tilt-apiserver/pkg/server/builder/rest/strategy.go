@@ -41,6 +41,7 @@ type Strategy interface {
 	rest.RESTCreateStrategy
 	rest.RESTDeleteStrategy
 	rest.TableConvertor
+	rest.ShortNamesProvider
 }
 
 var _ Strategy = DefaultStrategy{}
@@ -74,6 +75,17 @@ func (d DefaultStrategy) NamespaceScoped() bool {
 		return n.NamespaceScoped()
 	}
 	return true
+}
+
+// ShortNames is used to register short names for easier scripting.
+func (d DefaultStrategy) ShortNames() []string {
+	if d.Object == nil {
+		return nil
+	}
+	if n, ok := d.Object.(rest.ShortNamesProvider); ok {
+		return n.ShortNames()
+	}
+	return nil
 }
 
 // PrepareForCreate calls the PrepareForCreate function on obj if supported, otherwise does nothing.

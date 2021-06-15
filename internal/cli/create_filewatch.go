@@ -140,6 +140,10 @@ func (c *createFileWatchCmd) ignores() ([]v1alpha1.IgnoreDef, error) {
 		return nil, err
 	}
 
+	if len(c.ignoreValues) == 0 {
+		return nil, nil
+	}
+
 	result.BasePath = cwd
 	result.Patterns = append([]string{}, c.ignoreValues...)
 	return []v1alpha1.IgnoreDef{result}, nil

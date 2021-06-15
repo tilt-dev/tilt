@@ -83,10 +83,9 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 		reason = reason.With(model.BuildReasonFlagInit)
 	}
 
-	for _, changeTime := range state.PendingConfigFileChanges {
-		if changeTime.After(lastStartTime) {
-			reason = reason.With(model.BuildReasonFlagChangedFiles)
-		}
+	hasPendingChanges, _ := tfState.HasPendingChanges()
+	if hasPendingChanges {
+		reason = reason.With(model.BuildReasonFlagChangedFiles)
 	}
 
 	if state.UserConfigState.ArgsChangeTime.After(lastStartTime) {
@@ -101,9 +100,11 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 		return buildEntry{}, false
 	}
 
-	filesChanged := make([]string, 0, len(state.PendingConfigFileChanges))
-	for k := range state.PendingConfigFileChanges {
-		filesChanged = append(filesChanged, k)
+	filesChanged := []string{}
+	for _, st := range state.TiltfileState.BuildStatuses {
+		for k := range st.PendingFileChanges {
+			filesChanged = append(filesChanged, k)
+		}
 	}
 	filesChanged = sliceutils.DedupedAndSorted(filesChanged)
 
@@ -182,17 +183,18 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 	})
 }
 
-func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if cc.disabledForTesting {
-		return
+		return nil
 	}
 
 	entry, ok := cc.needsBuild(ctx, st)
 	if !ok {
-		return
+		return nil
 	}
 
 	cc.loadTiltfile(ctx, st, entry)
+	return nil
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {

@@ -30,103 +30,146 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cmd":                      schema_pkg_apis_core_v1alpha1_Cmd(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdList":                  schema_pkg_apis_core_v1alpha1_CmdList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec":                  schema_pkg_apis_core_v1alpha1_CmdSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateRunning":          schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateTerminated":       schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting":          schema_pkg_apis_core_v1alpha1_CmdStateWaiting(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus":                schema_pkg_apis_core_v1alpha1_CmdStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container":                schema_pkg_apis_core_v1alpha1_Container(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerLogStreamStatus": schema_pkg_apis_core_v1alpha1_ContainerLogStreamStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerState":           schema_pkg_apis_core_v1alpha1_ContainerState(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateRunning":    schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated": schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting":    schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":               schema_pkg_apis_core_v1alpha1_ExecAction(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent":                schema_pkg_apis_core_v1alpha1_FileEvent(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":                schema_pkg_apis_core_v1alpha1_FileWatch(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":            schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec":            schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus":          schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":            schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":               schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":                  schema_pkg_apis_core_v1alpha1_Handler(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":                schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod":                      schema_pkg_apis_core_v1alpha1_Pod(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition":             schema_pkg_apis_core_v1alpha1_PodCondition(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStream":             schema_pkg_apis_core_v1alpha1_PodLogStream(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamList":         schema_pkg_apis_core_v1alpha1_PodLogStreamList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec":         schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamStatus":       schema_pkg_apis_core_v1alpha1_PodLogStreamStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForward":              schema_pkg_apis_core_v1alpha1_PortForward(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardList":          schema_pkg_apis_core_v1alpha1_PortForwardList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardSpec":          schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardStatus":        schema_pkg_apis_core_v1alpha1_PortForwardStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":                    schema_pkg_apis_core_v1alpha1_Probe(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":            schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Session":                  schema_pkg_apis_core_v1alpha1_Session(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionList":              schema_pkg_apis_core_v1alpha1_SessionList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec":              schema_pkg_apis_core_v1alpha1_SessionSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus":            schema_pkg_apis_core_v1alpha1_SessionStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":          schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target":                   schema_pkg_apis_core_v1alpha1_Target(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetState":              schema_pkg_apis_core_v1alpha1_TargetState(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateActive":        schema_pkg_apis_core_v1alpha1_TargetStateActive(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated":    schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting":       schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                            schema_pkg_apis_meta_v1_APIGroup(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":                        schema_pkg_apis_meta_v1_APIGroupList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResource":                         schema_pkg_apis_meta_v1_APIResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResourceList":                     schema_pkg_apis_meta_v1_APIResourceList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIVersions":                         schema_pkg_apis_meta_v1_APIVersions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Condition":                           schema_pkg_apis_meta_v1_Condition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.CreateOptions":                       schema_pkg_apis_meta_v1_CreateOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.DeleteOptions":                       schema_pkg_apis_meta_v1_DeleteOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Duration":                            schema_pkg_apis_meta_v1_Duration(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ExportOptions":                       schema_pkg_apis_meta_v1_ExportOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.FieldsV1":                            schema_pkg_apis_meta_v1_FieldsV1(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GetOptions":                          schema_pkg_apis_meta_v1_GetOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupKind":                           schema_pkg_apis_meta_v1_GroupKind(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupResource":                       schema_pkg_apis_meta_v1_GroupResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersion":                        schema_pkg_apis_meta_v1_GroupVersion(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionForDiscovery":            schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind":                    schema_pkg_apis_meta_v1_GroupVersionKind(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionResource":                schema_pkg_apis_meta_v1_GroupVersionResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.InternalEvent":                       schema_pkg_apis_meta_v1_InternalEvent(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector":                       schema_pkg_apis_meta_v1_LabelSelector(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelectorRequirement":            schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.List":                                schema_pkg_apis_meta_v1_List(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta":                            schema_pkg_apis_meta_v1_ListMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ListOptions":                         schema_pkg_apis_meta_v1_ListOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ManagedFieldsEntry":                  schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime":                           schema_pkg_apis_meta_v1_MicroTime(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta":                          schema_pkg_apis_meta_v1_ObjectMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.OwnerReference":                      schema_pkg_apis_meta_v1_OwnerReference(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadata":               schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadataList":           schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Patch":                               schema_pkg_apis_meta_v1_Patch(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PatchOptions":                        schema_pkg_apis_meta_v1_PatchOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Preconditions":                       schema_pkg_apis_meta_v1_Preconditions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.RootPaths":                           schema_pkg_apis_meta_v1_RootPaths(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR":           schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Status":                              schema_pkg_apis_meta_v1_Status(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusCause":                         schema_pkg_apis_meta_v1_StatusCause(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusDetails":                       schema_pkg_apis_meta_v1_StatusDetails(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Table":                               schema_pkg_apis_meta_v1_Table(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableColumnDefinition":               schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableOptions":                        schema_pkg_apis_meta_v1_TableOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRow":                            schema_pkg_apis_meta_v1_TableRow(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRowCondition":                   schema_pkg_apis_meta_v1_TableRowCondition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Time":                                schema_pkg_apis_meta_v1_Time(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Timestamp":                           schema_pkg_apis_meta_v1_Timestamp(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TypeMeta":                            schema_pkg_apis_meta_v1_TypeMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.UpdateOptions":                       schema_pkg_apis_meta_v1_UpdateOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.WatchEvent":                          schema_pkg_apis_meta_v1_WatchEvent(ref),
-		"k8s.io/apimachinery/pkg/runtime.RawExtension":                             schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
-		"k8s.io/apimachinery/pkg/runtime.TypeMeta":                                 schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
-		"k8s.io/apimachinery/pkg/runtime.Unknown":                                  schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
-		"k8s.io/apimachinery/pkg/version.Info":                                     schema_k8sio_apimachinery_pkg_version_Info(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cmd":                             schema_pkg_apis_core_v1alpha1_Cmd(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdList":                         schema_pkg_apis_core_v1alpha1_CmdList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec":                         schema_pkg_apis_core_v1alpha1_CmdSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateRunning":                 schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateTerminated":              schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting":                 schema_pkg_apis_core_v1alpha1_CmdStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus":                       schema_pkg_apis_core_v1alpha1_CmdStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container":                       schema_pkg_apis_core_v1alpha1_Container(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerLogStreamStatus":        schema_pkg_apis_core_v1alpha1_ContainerLogStreamStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerState":                  schema_pkg_apis_core_v1alpha1_ContainerState(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateRunning":           schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated":        schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting":           schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":                      schema_pkg_apis_core_v1alpha1_ExecAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent":                       schema_pkg_apis_core_v1alpha1_FileEvent(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":                       schema_pkg_apis_core_v1alpha1_FileWatch(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":                   schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec":                   schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus":                 schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward":                         schema_pkg_apis_core_v1alpha1_Forward(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":                   schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":                      schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":                         schema_pkg_apis_core_v1alpha1_Handler(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef":                       schema_pkg_apis_core_v1alpha1_IgnoreDef(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap":                        schema_pkg_apis_core_v1alpha1_ImageMap(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapList":                    schema_pkg_apis_core_v1alpha1_ImageMapList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs":            schema_pkg_apis_core_v1alpha1_ImageMapOverrideArgs(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand":         schema_pkg_apis_core_v1alpha1_ImageMapOverrideCommand(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec":                    schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus":                  schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply":                 schema_pkg_apis_core_v1alpha1_KubernetesApply(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyList":             schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec":             schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus":           schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery":             schema_pkg_apis_core_v1alpha1_KubernetesDiscovery(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryList":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus":       schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator":          schema_pkg_apis_core_v1alpha1_KubernetesImageLocator(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor": schema_pkg_apis_core_v1alpha1_KubernetesImageObjectDescriptor(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef":              schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ObjectSelector":                  schema_pkg_apis_core_v1alpha1_ObjectSelector(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod":                             schema_pkg_apis_core_v1alpha1_Pod(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition":                    schema_pkg_apis_core_v1alpha1_PodCondition(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStream":                    schema_pkg_apis_core_v1alpha1_PodLogStream(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamList":                schema_pkg_apis_core_v1alpha1_PodLogStreamList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec":                schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamStatus":              schema_pkg_apis_core_v1alpha1_PodLogStreamStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForward":                     schema_pkg_apis_core_v1alpha1_PortForward(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardList":                 schema_pkg_apis_core_v1alpha1_PortForwardList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardSpec":                 schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardStatus":               schema_pkg_apis_core_v1alpha1_PortForwardStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":                           schema_pkg_apis_core_v1alpha1_Probe(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":                   schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Session":                         schema_pkg_apis_core_v1alpha1_Session(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionList":                     schema_pkg_apis_core_v1alpha1_SessionList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec":                     schema_pkg_apis_core_v1alpha1_SessionSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus":                   schema_pkg_apis_core_v1alpha1_SessionStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec":                     schema_pkg_apis_core_v1alpha1_StartOnSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":                 schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target":                          schema_pkg_apis_core_v1alpha1_Target(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetState":                     schema_pkg_apis_core_v1alpha1_TargetState(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateActive":               schema_pkg_apis_core_v1alpha1_TargetStateActive(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated":           schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting":              schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild":                       schema_pkg_apis_core_v1alpha1_TiltBuild(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning":                  schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated":               schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton":                        schema_pkg_apis_core_v1alpha1_UIButton(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonList":                    schema_pkg_apis_core_v1alpha1_UIButtonList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonSpec":                    schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonStatus":                  schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation":             schema_pkg_apis_core_v1alpha1_UIComponentLocation(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocationResource":     schema_pkg_apis_core_v1alpha1_UIComponentLocationResource(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag":                   schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource":                      schema_pkg_apis_core_v1alpha1_UIResource(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes":            schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink":                  schema_pkg_apis_core_v1alpha1_UIResourceLink(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceList":                  schema_pkg_apis_core_v1alpha1_UIResourceList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal":                 schema_pkg_apis_core_v1alpha1_UIResourceLocal(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec":                  schema_pkg_apis_core_v1alpha1_UIResourceSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus":                schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec":            schema_pkg_apis_core_v1alpha1_UIResourceTargetSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISession":                       schema_pkg_apis_core_v1alpha1_UISession(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionList":                   schema_pkg_apis_core_v1alpha1_UISessionList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionSpec":                   schema_pkg_apis_core_v1alpha1_UISessionSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionStatus":                 schema_pkg_apis_core_v1alpha1_UISessionStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings":                 schema_pkg_apis_core_v1alpha1_VersionSettings(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                                   schema_pkg_apis_meta_v1_APIGroup(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":                               schema_pkg_apis_meta_v1_APIGroupList(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResource":                                schema_pkg_apis_meta_v1_APIResource(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResourceList":                            schema_pkg_apis_meta_v1_APIResourceList(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.APIVersions":                                schema_pkg_apis_meta_v1_APIVersions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ApplyOptions":                               schema_pkg_apis_meta_v1_ApplyOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Condition":                                  schema_pkg_apis_meta_v1_Condition(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.CreateOptions":                              schema_pkg_apis_meta_v1_CreateOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.DeleteOptions":                              schema_pkg_apis_meta_v1_DeleteOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Duration":                                   schema_pkg_apis_meta_v1_Duration(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.FieldsV1":                                   schema_pkg_apis_meta_v1_FieldsV1(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GetOptions":                                 schema_pkg_apis_meta_v1_GetOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupKind":                                  schema_pkg_apis_meta_v1_GroupKind(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupResource":                              schema_pkg_apis_meta_v1_GroupResource(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersion":                               schema_pkg_apis_meta_v1_GroupVersion(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionForDiscovery":                   schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind":                           schema_pkg_apis_meta_v1_GroupVersionKind(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionResource":                       schema_pkg_apis_meta_v1_GroupVersionResource(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.InternalEvent":                              schema_pkg_apis_meta_v1_InternalEvent(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector":                              schema_pkg_apis_meta_v1_LabelSelector(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelectorRequirement":                   schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.List":                                       schema_pkg_apis_meta_v1_List(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta":                                   schema_pkg_apis_meta_v1_ListMeta(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ListOptions":                                schema_pkg_apis_meta_v1_ListOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ManagedFieldsEntry":                         schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime":                                  schema_pkg_apis_meta_v1_MicroTime(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta":                                 schema_pkg_apis_meta_v1_ObjectMeta(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.OwnerReference":                             schema_pkg_apis_meta_v1_OwnerReference(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadata":                      schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadataList":                  schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Patch":                                      schema_pkg_apis_meta_v1_Patch(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.PatchOptions":                               schema_pkg_apis_meta_v1_PatchOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Preconditions":                              schema_pkg_apis_meta_v1_Preconditions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.RootPaths":                                  schema_pkg_apis_meta_v1_RootPaths(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR":                  schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Status":                                     schema_pkg_apis_meta_v1_Status(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusCause":                                schema_pkg_apis_meta_v1_StatusCause(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusDetails":                              schema_pkg_apis_meta_v1_StatusDetails(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Table":                                      schema_pkg_apis_meta_v1_Table(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TableColumnDefinition":                      schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TableOptions":                               schema_pkg_apis_meta_v1_TableOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRow":                                   schema_pkg_apis_meta_v1_TableRow(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRowCondition":                          schema_pkg_apis_meta_v1_TableRowCondition(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Time":                                       schema_pkg_apis_meta_v1_Time(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.Timestamp":                                  schema_pkg_apis_meta_v1_Timestamp(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.TypeMeta":                                   schema_pkg_apis_meta_v1_TypeMeta(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.UpdateOptions":                              schema_pkg_apis_meta_v1_UpdateOptions(ref),
+		"k8s.io/apimachinery/pkg/apis/meta/v1.WatchEvent":                                 schema_pkg_apis_meta_v1_WatchEvent(ref),
+		"k8s.io/apimachinery/pkg/runtime.RawExtension":                                    schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
+		"k8s.io/apimachinery/pkg/runtime.TypeMeta":                                        schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
+		"k8s.io/apimachinery/pkg/runtime.Unknown":                                         schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
+		"k8s.io/apimachinery/pkg/version.Info":                                            schema_k8sio_apimachinery_pkg_version_Info(ref),
 	}
 }
 
@@ -134,7 +177,7 @@ func schema_pkg_apis_core_v1alpha1_Cmd(ref common.ReferenceCallback) common.Open
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Cmd",
+				Description: "Cmd represents a process on the host machine.\n\nWhen the process exits, we will make a best-effort attempt (within OS limitations) to kill any spawned descendant processes.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
@@ -230,7 +273,7 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "CmdSpec defines the desired state of Cmd",
+				Description: "CmdSpec defines how to run a local command.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"args": {
@@ -278,15 +321,21 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 					},
 					"restartOn": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Indicates objects that can trigger a restart of this command.\n\nRestarts can happen even if the command is already done.\n\nLogs of the currently process after the restart are discarded.",
+							Description: "Indicates objects that can trigger a restart of this command.\n\nWhen a restart is triggered, Tilt will try to gracefully shutdown any currently running process, waiting for it to exit before starting a new process. If the process doesn't shutdown within the allotted time, Tilt will kill the process abruptly.\n\nRestarts can happen even if the command is already done.\n\nLogs of the current process after the restart are discarded.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
+						},
+					},
+					"startOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicates objects that can trigger a start/restart of this command.\n\nRestarts behave the same as RestartOn. The key difference is that a Cmd with any StartOn triggers will not have its command run until its StartOn is satisfied.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"},
 	}
 }
 
@@ -933,6 +982,44 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_Forward(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Forward defines a port forward to execute on a given pod.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"localPort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port to expose on the current machine. Required.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"containerPort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port on the Kubernetes pod to connect to. Required.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"host": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional host to bind to on the current machine (localhost by default)",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"localPort", "containerPort"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1091,6 +1178,720 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_ImageMap(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMap expresses the mapping from an image reference to a real, pushed image in an image registry that a container runtime can access.\n\nAnother way to think about the ImageMap is that ImageMapSpec is a mutable image reference (where the image might not exist yet), but ImageMapStatus is an immutable image reference (where, if an image is specified, it always exists).\n\nImageMap does not specify how the image is built or who is responsible for building this. But any API that builds images should produce an ImageMap.\n\nFor example, a builder that builds to a local image registry might create a map from: 'my-apiserver:dev' to 'localhost:5000/my-apiserver:content-based-label'.\n\nImageMap doesn't follow the usual Kubernetes-style API semantics (where the Status is the result of running the Spec). It's closer to a ConfigMap. Though the Status does represent a real runtime result (an image in a registry).",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapOverrideArgs(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapArgsOverride defines args to inject when the image is injected. Only applies to types that embed a v1.Container with a Command field.\n\nhttps://pkg.go.dev/k8s.io/api/core/v1#Container",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of args strings.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"args"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapOverrideCommand(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapCommandOverride defines a command to inject when the image is injected. Only applies to types that embed a v1.Container with a Command field.\n\nhttps://pkg.go.dev/k8s.io/api/core/v1#Container",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"command": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of command strings.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"command"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapSpec defines the desired state of ImageMap",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"selector": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A named image reference.\n\nDeployment tools expect this image reference to match an image in the YAML being deployed, and will replace that image reference.\n\nBy default, this selector will match an image if the names match (tags on both the selector and the matched reference are ignored).",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"matchExact": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If specified, then tags on both the selector and the matched reference are used for matching. The selector will only match the reference if the tags match exactly.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"matchInEnvVars": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If specified, then the selector will also match any strings in container env variables.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"overrideCommand": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If specified, the injector will replace the 'command' field in the container when it replaces the image.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand"),
+						},
+					},
+					"overrideArgs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If specified, the injector will replace the 'args' field in the container when it replaces the image.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs"),
+						},
+					},
+				},
+				Required: []string{"selector"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ImageMapStatus defines the observed state of ImageMap",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A fully-qualified image reference, including a name and an immutable tag.\n\nThe image will not necessarily have the same repo URL as the selector. Many Kubernetes clusters let you push to a local registry for local development.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"image"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesApply(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesApply specifies a blob of YAML to apply, and a set of ImageMaps that the YAML depends on.\n\nThe KubernetesApply controller will resolve the ImageMaps into immutable image references. The controller will process the spec YAML, then apply it to the cluster. Those processing steps might include:\n\n- Injecting the resolved image references. - Adding custom labels so that Tilt can track the progress of the apply. - Modifying image pull rules to ensure the image is pulled correctly.\n\nThe controller won't apply anything until all ImageMaps resolve to real images.\n\nThe controller will watch all the image maps, and redeploy the entire YAML if any of the maps resolve to a new image.\n\nThe status field will contain both the raw applied object, and derived fields to help other controllers figure out how to watch the apply progress.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesApplyList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesApplySpec defines the desired state of KubernetesApply",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"yaml": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The YAML to apply to the cluster. Required.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageMaps": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Names of image maps that this applier depends on.\n\nThe controller will watch all the image maps, and redeploy the entire YAML if any of the maps resolve to a new image.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"imageLocators": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Descriptors of how to find images in the YAML.\n\nNeeded when injecting images into CRDs.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator"),
+									},
+								},
+							},
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The timeout on the apply operation.\n\nWe've had problems with both: 1) CRD apiservers that take an arbitrarily long time to apply, and 2) Infinite loops in the apimachinery So we offer the ability to set a timeout on Kubernetes apply operations.\n\nThe default timeout is 30s.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+				},
+				Required: []string{"yaml"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesApplyStatus defines the observed state of KubernetesApply",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscovery(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesDiscovery",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesDiscoveryList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesDiscoverySpec defines the desired state of KubernetesDiscovery",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"watches": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Watches determine what resources are discovered.\n\nIf a discovered resource (e.g. Pod) matches the KubernetesWatchRef UID exactly, it will be reported. If a discovered resource is transitively owned by the KubernetesWatchRef UID, it will be reported.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef"),
+									},
+								},
+							},
+						},
+					},
+					"extraSelectors": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExtraSelectors are label selectors that will force discovery of a Pod even if it does not match the AncestorUID.\n\nThis should only be necessary in the event that a CRD creates Pods but does not set an owner reference to itself.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"watches"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef", "k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"monitorStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MonitorStartTime is the timestamp of when Kubernetes resource discovery was started.\n\nIt is zero if discovery has not been started yet.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"pods": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Pods that have been discovered based on the criteria in the spec.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"pods"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesImageLocator(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Finds image references in Kubernetes YAML.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"objectSelector": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Selects which objects to look in.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ObjectSelector"),
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A JSON path to the image reference field.\n\nIf Object is empty, the field should be a string.\n\nIf Object is non-empty, the field should be an object with subfields.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"object": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A descriptor of the path and structure of an object that describes an image reference. This is a common way to describe images in CRDs, breaking them down into an object rather than an image reference string.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor"),
+						},
+					},
+				},
+				Required: []string{"objectSelector", "path"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ObjectSelector"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesImageObjectDescriptor(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"repoField": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the field that contains the image repository.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tagField": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the field that contains the image tag.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"repoField", "tagField"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesWatchRef is similar to v1.ObjectReference from the Kubernetes API and is used to determine what objects should be reported on based on discovery.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID is a Kubernetes object UID.\n\nIt should either be the exact object UID or the transitive owner.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the Kubernetes namespace for discovery. Required.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the Kubernetes object name.\n\nThis is not directly used in discovery; it is extra metadata.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"uid", "namespace"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ObjectSelector(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Selector for any Kubernetes-style API.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"apiVersionRegexp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A regular expression apiVersion match.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kindRegexp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A regular expression kind match.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"nameRegexp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A regular expression name match.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespaceRegexp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A regular expression namespace match.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1098,6 +1899,14 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 				Description: "Pod is a collection of containers that can run on a host.\n\nThe Tilt API representation mirrors the Kubernetes API very closely. Irrelevant data is not included, and some fields might be simplified.\n\nThere might also be Tilt-specific status fields.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID is the unique Pod UID within the K8s cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Name is the Pod name within the K8s cluster.",
@@ -1179,12 +1988,11 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 							},
 						},
 					},
-					"baselineRestartCount": {
+					"ancestorUID": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BaselineRestartCount is the number of restarts across all containers before Tilt started observing the Pod.\n\nThis is used to ignore restarts for a Pod that was already executing before the Tilt daemon started.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
+							Description: "AncestorUID is the UID from the WatchRef that matched this Pod.\n\nIf the Pod matched based on extra label selectors, this will be empty.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"podTemplateSpecHash": {
@@ -1192,13 +2000,6 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 							Description: "PodTemplateSpecHash is a hash of the Pod template spec.\n\nTilt uses this to associate Pods with the build that triggered them.",
 							Type:        []string{"string"},
 							Format:      "",
-						},
-					},
-					"updateStartedAt": {
-						SchemaProps: spec.SchemaProps{
-							Description: "UpdateStartedAt is when Tilt started a deployment update for this Pod.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
 					"status": {
@@ -1225,7 +2026,7 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 						},
 					},
 				},
-				Required: []string{"name", "namespace", "createdAt", "phase", "deleting", "containers", "baselineRestartCount", "status", "errors"},
+				Required: []string{"uid", "name", "namespace", "createdAt", "phase", "deleting", "containers", "status", "errors"},
 			},
 		},
 		Dependencies: []string{
@@ -1579,7 +2380,7 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 				Description: "PortForwardSpec defines the desired state of PortForward",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"pod": {
+					"podName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The name of the pod to port forward to/from. Required.",
 							Default:     "",
@@ -1594,34 +2395,26 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
-					"container_port": {
+					"forwards": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The port on the Kubernetes pod to connect to. Required.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"local_port": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The port to expose on the current machine. Required.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"host": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional host to bind to on the current machine (localhost by default)",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "One or more port forwards to execute on the given pod. Required.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward"),
+									},
+								},
+							},
 						},
 					},
 				},
-				Required: []string{"pod", "container_port", "local_port"},
+				Required: []string{"podName", "forwards"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward"},
 	}
 }
 
@@ -1930,6 +2723,44 @@ func schema_pkg_apis_core_v1alpha1_SessionStatus(ref common.ReferenceCallback) c
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "StartOnSpec indicates the set of objects that can trigger a start/restart of this object.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startAfter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Any events that predate this time will be ignored.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"uiButtons": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of ui buttons that can trigger a run.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"uiButtons"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2131,6 +2962,1005 @@ func schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref common.ReferenceCallba
 					},
 				},
 				Required: []string{"waitReason"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Information about the running tilt binary.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A semantic version string.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"commitSHA": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The Git digest of the commit this binary was built at.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"date": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A human-readable string representing when the binary was built.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"dev": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicates whether this is a development build (true) or an official release (false).",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIBuildRunning respresents an in-progress build/update in the user interface.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The time when the build started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"spanID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The log span where the build logs are stored in the logstore.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIBuildRunning respresents a finished build/update in the user interface.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A non-empty string if the build failed with an error.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"warnings": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of warnings encountered while running the build. These warnings will also be printed to the build's log.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"startTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The time when the build started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"finishTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The time when the build finished.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"spanID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The log span where the build logs are stored in the logstore.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"isCrashRebuild": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A crash rebuild happens when Tilt live-updated a container, then the pod crashed, wiping out the live-updates. Tilt does a full build+deploy to reset the pod state to what's on disk.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIButton(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIButton",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIButtonList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIButtonList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIButtonSpec defines the desired state of UIButton",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"location": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Location associates the button with another component for layout.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation"),
+						},
+					},
+					"text": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Text to appear on the button itself.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"location", "text"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIButtonStatus defines the observed state of UIButton",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"lastClickedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastClickedAt is the timestamp of the last time the button was clicked.\n\nIf the button has never clicked before, this will be the zero-value/null.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIComponentLocation(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIComponentLocation specifies where to put a UI component.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"componentID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ComponentID is the identifier of the parent component to associate this component with.\n\nFor example, this is a resource name if the ComponentType is Resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"componentType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ComponentType is the type of the parent component.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"componentID", "componentType"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIComponentLocationResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"resourceName": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"resourceName"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Configures Tilt to enable non-default features (e.g., experimental or deprecated).\n\nThe Tilt features controlled by this are generally in an unfinished state, and not yet documented.\n\nAs a Tilt user, you don’t need to worry about this unless something else directs you to (e.g., an experimental feature doc, or a conversation with a Tilt contributor).",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the flag.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The value of the flag.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResource represents per-resource status data for rendering the web UI.\n\nTreat this as a legacy data structure that's more intended to make transition easier rather than a robust long-term API.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceKubernetes contains status information specific to Kubernetes.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"podName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the active pod.\n\nThe active pod tends to be what Tilt defaults to for port-forwards, live-updates, etc.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podCreationTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The creation time of the active pod.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"podUpdateStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last update time of the active pod",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"podStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The status of the active pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podStatusMessage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Extra error messaging around the current status of the active pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"allContainersReady": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether all the containers in the pod are currently healthy and have passed readiness checks.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"podRestarts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The number of pod restarts.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"spanID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The span where this pod stores its logs in the Tilt logstore.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"displayNames": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The list of all resources deployed in the Kubernetes deploy for this resource.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceLink(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceLink represents a link assocatiated with a UIResource.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"url": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A URL to link to.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The display label on a URL.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceLocal(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceLocal contains status information specific to local commands.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"pid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The PID of the actively running local command.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"isTest": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether this represents a test job.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceSpec is an empty struct. UIResource is a kludge for making Tilt's internal status readable, not for specifying behavior.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceStatus defines the observed state of UIResource",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"lastDeployTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last time this resource was deployed.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"triggerMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Bit mask representing whether this resource is run when: 1) When a file changes 2) When the resource initializes",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"buildHistory": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Past completed builds.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated"),
+									},
+								},
+							},
+						},
+					},
+					"currentBuild": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The currently running build, if any.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning"),
+						},
+					},
+					"pendingBuildSince": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When the build was put in the pending queue.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"hasPendingChanges": {
+						SchemaProps: spec.SchemaProps{
+							Description: "True if the build was put in the pending queue due to file changes.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"endpointLinks": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Links attached to this resource.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink"),
+									},
+								},
+							},
+						},
+					},
+					"k8sResourceInfo": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Extra data about Kubernetes resources.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes"),
+						},
+					},
+					"localResourceInfo": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Extra data about Local resources",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal"),
+						},
+					},
+					"runtimeStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The RuntimeStatus is a simple, high-level summary of the runtime state of a server.\n\nNot all resources run servers.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"updateStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The UpdateStatus is a simple, high-level summary of any update tasks to bring the resource up-to-date.\n\nIf the resource runs a server, this may include both build tasks and live-update syncing.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"specs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Information about all the target specs that this resource summarizes.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec"),
+									},
+								},
+							},
+						},
+					},
+					"queued": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Queued is a simple indicator of whether the resource is queued for an update.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceTargetSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"id": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The ID of the target.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The type of the target.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"hasLiveUpdate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the target has a live update assocated with it.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UISession(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UISession represents global status data for rendering the web UI.\n\nTreat this as a legacy data structure that's more intended to make transition easier rather than a robust long-term API.\n\nPer-resource status data should be stored in UIResource.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UISessionList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UISessionList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISession"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISession", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UISessionSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UISessionSpec is an empty struct. UISession is a kludge for making Tilt's internal status readable, not for specifying behavior.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "UISessionStatus defines the observed state of UISession",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"featureFlags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FeatureFlags reports a list of experimental features that have been enabled.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag"),
+									},
+								},
+							},
+						},
+					},
+					"needsAnalyticsNudge": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NeedsAnalyticsNudge reports whether the UI hasn't opted in or out of analytics, and the UI should nudge them to do so.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"runningTiltBuild": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RunningTiltBuild reports the currently running version of tilt that this UI is talking to.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild"),
+						},
+					},
+					"suggestedTiltVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SuggestedTiltVersion tells the UI the recommended version for this user. If the version is different than what's running, the UI may display a prompt to upgrade.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"versionSettings": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VersionSettings indicates whether version updates have been enabled/disabled from the Tiltfile.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings"),
+						},
+					},
+					"tiltCloudUsername": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiltCloudUsername reports the username if the user is signed into TiltCloud.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tiltCloudTeamName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiltCloudUsername reports the human-readable team name if the user is signed into TiltCloud and the Tiltfile declares a team.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tiltCloudSchemeHost": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance associated with this Tilt process. Usually https://cloud.tilt.dev",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tiltCloudTeamID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiltCloudTeamID reports the unique team id if the user is signed into TiltCloud and the Tiltfile declares a team.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"fatalError": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A FatalError is an error that forces Tilt to stop its control loop. The API server will stay up and continue to serve the UI, but no further builds will happen.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tiltStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The time that this instance of tilt started. Clients can use this to determine if the API server has restarted and all the objects need to be refreshed.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"tiltfileKey": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An identifier for the Tiltfile that is running. Clients can use this to store data associated with a particular project in LocalStorage or other persistent storage.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_VersionSettings(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Information about how the Tilt binary handles updates.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"checkUpdates": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether version updates have been enabled/disabled from the Tiltfile.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
 			},
 		},
 	}
@@ -2476,6 +4306,65 @@ func schema_pkg_apis_meta_v1_APIVersions(ref common.ReferenceCallback) common.Op
 	}
 }
 
+func schema_pkg_apis_meta_v1_ApplyOptions(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ApplyOptions may be provided when applying an API object. FieldManager is required for apply requests. ApplyOptions is equivalent to PatchOptions. It is provided as a convenience with documentation that speaks specifically to how the options fields relate to apply.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"dryRun": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When present, indicates that modifications should not be persisted. An invalid or unrecognized dryRun directive will result in an error response and no further processing of the request. Valid values are: - All: all dry run stages will be processed",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"force": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Force is going to \"force\" Apply requests. It means user will re-acquire conflicting fields owned by other people.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"fieldManager": {
+						SchemaProps: spec.SchemaProps{
+							Description: "fieldManager is a name associated with the actor or entity that is making these changes. The value must be less than or 128 characters long, and only contain printable characters, as defined by https://golang.org/pkg/unicode/#IsPrint. This field is required.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"force", "fieldManager"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_meta_v1_Condition(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2665,50 +4554,6 @@ func schema_pkg_apis_meta_v1_Duration(ref common.ReferenceCallback) common.OpenA
 				Description: "Duration is a wrapper around time.Duration which supports correct marshaling to YAML and JSON. In particular, it marshals into strings, which can be used as map keys in json.",
 				Type:        v1.Duration{}.OpenAPISchemaType(),
 				Format:      v1.Duration{}.OpenAPISchemaFormat(),
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_meta_v1_ExportOptions(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ExportOptions is the query options to the standard REST get call. Deprecated. Planned for removal in 1.18.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"export": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Should this value be exported.  Export strips fields that a user can not specify. Deprecated. Planned for removal in 1.18.",
-							Default:     false,
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"exact": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Should the export be exact.  Exact export maintains cluster-specific fields like 'Namespace'. Deprecated. Planned for removal in 1.18.",
-							Default:     false,
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"export", "exact"},
 			},
 		},
 	}

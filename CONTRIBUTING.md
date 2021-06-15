@@ -112,7 +112,7 @@ https://github.com/tilt-dev/tilt-apiserver
 To add a new first-party type, run:
 
 ```
-scripts/add-new-type.sh MyResourceType
+scripts/api-new-type.sh MyResourceType
 ```
 
 and follow the instructions.

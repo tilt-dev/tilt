@@ -26,24 +26,24 @@ import (
 var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
-	dcu     *containerupdate.DockerUpdater
-	ecu     *containerupdate.ExecUpdater
-	updMode UpdateMode
-	env     k8s.Env
-	runtime container.Runtime
-	clock   build.Clock
+	dcu         *containerupdate.DockerUpdater
+	ecu         *containerupdate.ExecUpdater
+	updMode     UpdateMode
+	kubeContext k8s.KubeContext
+	clock       build.Clock
 }
 
 func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
 	ecu *containerupdate.ExecUpdater,
-	updMode UpdateMode, env k8s.Env, runtime container.Runtime, c build.Clock) *LiveUpdateBuildAndDeployer {
+	updMode UpdateMode,
+	kubeContext k8s.KubeContext,
+	c build.Clock) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
-		dcu:     dcu,
-		ecu:     ecu,
-		updMode: updMode,
-		env:     env,
-		runtime: runtime,
-		clock:   c,
+		dcu:         dcu,
+		ecu:         ecu,
+		updMode:     updMode,
+		kubeContext: kubeContext,
+		clock:       c,
 	}
 }
 
@@ -254,7 +254,7 @@ func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.
 		return lubad.ecu
 	}
 
-	if lubad.runtime == container.RuntimeDocker && lubad.env.UsesLocalDockerRegistry() {
+	if lubad.dcu.WillBuildToKubeContext(lubad.kubeContext) {
 		return lubad.dcu
 	}
 

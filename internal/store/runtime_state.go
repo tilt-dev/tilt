@@ -28,7 +28,7 @@ type RuntimeState interface {
 	// or a task.
 	HasEverBeenReadyOrSucceeded() bool
 
-	RuntimeStatus() model.RuntimeStatus
+	RuntimeStatus() v1alpha1.RuntimeStatus
 
 	// If the runtime status is in Error mode,
 	// RuntimeStatusError() should report a reason.
@@ -37,7 +37,7 @@ type RuntimeState interface {
 
 type LocalRuntimeState struct {
 	CmdName                  string
-	Status                   model.RuntimeStatus
+	Status                   v1alpha1.RuntimeStatus
 	PID                      int
 	StartTime                time.Time
 	FinishTime               time.Time
@@ -50,13 +50,13 @@ var _ RuntimeState = LocalRuntimeState{}
 
 func (LocalRuntimeState) RuntimeState() {}
 
-func (l LocalRuntimeState) RuntimeStatus() model.RuntimeStatus {
+func (l LocalRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 	return l.Status
 }
 
 func (l LocalRuntimeState) RuntimeStatusError() error {
 	status := l.RuntimeStatus()
-	if status != model.RuntimeStatusError {
+	if status != v1alpha1.RuntimeStatusError {
 		return nil
 	}
 	return fmt.Errorf("Process %d exited with non-zero status", l.PID)
@@ -80,7 +80,13 @@ type K8sRuntimeState struct {
 	LastReadyOrSucceededTime    time.Time
 	HasEverDeployedSuccessfully bool
 
+	UpdateStartTime map[k8s.PodID]time.Time
+
 	PodReadinessMode model.PodReadinessMode
+
+	// BaselineRestarts is used as a floor for container restarts to avoid alerting on restarts
+	// that happened either before Tilt started or before a Live Update change.
+	BaselineRestarts map[k8s.PodID]int32
 }
 
 func (K8sRuntimeState) RuntimeState() {}
@@ -103,25 +109,27 @@ func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 		Pods:                           make(map[k8s.PodID]*v1alpha1.Pod),
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
+		UpdateStartTime:                make(map[k8s.PodID]time.Time),
+		BaselineRestarts:               make(map[k8s.PodID]int32),
 	}
 }
 
 func (s K8sRuntimeState) RuntimeStatusError() error {
 	status := s.RuntimeStatus()
-	if status != model.RuntimeStatusError {
+	if status != v1alpha1.RuntimeStatusError {
 		return nil
 	}
 	pod := s.MostRecentPod()
 	return fmt.Errorf("Pod %s in error state: %s", pod.Name, pod.Status)
 }
 
-func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
+func (s K8sRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 	if !s.HasEverDeployedSuccessfully {
-		return model.RuntimeStatusPending
+		return v1alpha1.RuntimeStatusPending
 	}
 
 	if s.PodReadinessMode == model.PodReadinessIgnore {
-		return model.RuntimeStatusOK
+		return v1alpha1.RuntimeStatusOK
 	}
 
 	pod := s.MostRecentPod()
@@ -129,24 +137,24 @@ func (s K8sRuntimeState) RuntimeStatus() model.RuntimeStatus {
 	switch v1.PodPhase(pod.Phase) {
 	case v1.PodRunning:
 		if AllPodContainersReady(pod) {
-			return model.RuntimeStatusOK
+			return v1alpha1.RuntimeStatusOK
 		}
-		return model.RuntimeStatusPending
+		return v1alpha1.RuntimeStatusPending
 
 	case v1.PodSucceeded:
-		return model.RuntimeStatusOK
+		return v1alpha1.RuntimeStatusOK
 
 	case v1.PodFailed:
-		return model.RuntimeStatusError
+		return v1alpha1.RuntimeStatusError
 	}
 
 	for _, c := range AllPodContainers(pod) {
-		if k8sconv.ContainerStatusToRuntimeState(c) == model.RuntimeStatusError {
-			return model.RuntimeStatusError
+		if k8sconv.ContainerStatusToRuntimeState(c) == v1alpha1.RuntimeStatusError {
+			return v1alpha1.RuntimeStatusError
 		}
 	}
 
-	return model.RuntimeStatusPending
+	return v1alpha1.RuntimeStatusPending
 }
 
 func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
@@ -194,14 +202,14 @@ func (s K8sRuntimeState) MostRecentPod() v1alpha1.Pod {
 	return bestPod
 }
 
-func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1.Pod) bool {
+func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1alpha1.Pod) bool {
 	// if it doesn't have a label, just let it through - maybe it's from a CRD w/ no pod template spec
-	hash, ok := pod.Labels[k8s.TiltPodTemplateHashLabel]
-	if !ok {
+	hash := k8s.PodTemplateSpecHash(pod.PodTemplateSpecHash)
+	if hash == "" {
 		return true
 	}
 
-	return s.DeployedPodTemplateSpecHashSet.Contains(k8s.PodTemplateSpecHash(hash))
+	return s.DeployedPodTemplateSpecHashSet.Contains(hash)
 }
 
 func (s K8sRuntimeState) DeployedUIDSet() k8s.UIDSet {
@@ -242,16 +250,20 @@ func AllPodContainersReady(p v1alpha1.Pod) bool {
 	return true
 }
 
-func AllPodContainerRestarts(p v1alpha1.Pod) int {
-	result := 0
+func AllPodContainerRestarts(p v1alpha1.Pod) int32 {
+	result := int32(0)
 	for _, c := range p.Containers {
-		result += int(c.Restarts)
+		result += c.Restarts
 	}
 	return result
 }
 
-func VisiblePodContainerRestarts(p v1alpha1.Pod) int {
-	return AllPodContainerRestarts(p) - p.BaselineRestartCount
+func (s K8sRuntimeState) VisiblePodContainerRestarts(podID k8s.PodID) int32 {
+	p := s.Pods[podID]
+	if p == nil {
+		return 0
+	}
+	return AllPodContainerRestarts(*p) - s.BaselineRestarts[podID]
 }
 
 func AllPodContainerPorts(p v1alpha1.Pod) []int32 {

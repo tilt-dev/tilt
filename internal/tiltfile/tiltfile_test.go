@@ -1181,6 +1181,60 @@ k8s_yaml('foo.yaml')
 	)
 }
 
+// When the custom_build lists one dep, it should pick
+// up the dockerignore from that directory.
+func TestDockerignoreCustomBuildRelativeDirs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(".dockerignore", "src/sub/a.txt")
+	f.file("src/.dockerignore", "sub/b.txt")
+	f.file("src/sub/.dockerignore", "c.txt")
+
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+custom_build('gcr.io/foo', 'build-image', deps=['./src'])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters("src/sub/b.txt"),
+		fileChangeFilters("src/sub/b.txt"),
+		buildMatches("src/sub/a.txt"),
+		fileChangeMatches("src/sub/a.txt"),
+		buildMatches("src/sub/c.txt"),
+		fileChangeMatches("src/sub/c.txt"),
+	)
+}
+
+// When the custom_build lists multiple deps, it should pick
+// up the dockerignores from both those directories.
+func TestDockerignoreCustomBuildMultipleDeps(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file(".dockerignore", "src/sub/a.txt")
+	f.file("src/.dockerignore", "sub/b.txt")
+	f.file("src/sub/.dockerignore", "c.txt")
+
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+custom_build('gcr.io/foo', 'build-image', deps=['./src', './src/sub'])
+k8s_yaml('foo.yaml')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		buildFilters("src/sub/b.txt"),
+		fileChangeFilters("src/sub/b.txt"),
+		buildMatches("src/sub/a.txt"),
+		fileChangeMatches("src/sub/a.txt"),
+		buildFilters("src/sub/c.txt"),
+		fileChangeFilters("src/sub/c.txt"),
+	)
+}
+
 func TestDockerignorePathFilterSubdir(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3765,7 +3819,7 @@ k8s_yaml('foo.yaml')
 
 	m := f.assertNextManifest("foo")
 	assert.Equal(t,
-		model.OverrideArgs{ShouldOverride: true, Args: []string{"bar"}},
+		&v1alpha1.ImageMapOverrideArgs{Args: []string{"bar"}},
 		m.ImageTargets[0].OverrideArgs)
 }
 
@@ -3842,7 +3896,7 @@ k8s_yaml('foo.yaml')
 
 	f.load()
 	assert.Equal(t,
-		model.OverrideArgs{ShouldOverride: true, Args: []string{"bar"}},
+		&v1alpha1.ImageMapOverrideArgs{Args: []string{"bar"}},
 		f.assertNextManifest("foo").ImageTargets[0].OverrideArgs)
 }
 
@@ -4270,6 +4324,70 @@ local_resource("test", "echo hi", serve_cmd="sleep 1000", serve_env={"KEY1": "va
 	))
 }
 
+func TestLocalResourceUpdateCmdDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("nested/inside.txt", "inside the nested directory")
+	f.file("Tiltfile", `
+local_resource("test", cmd="cat inside.txt", dir="nested")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		updateCmd(f.JoinPath(f.Path(), "nested"), "cat inside.txt", nil),
+	))
+}
+
+func TestLocalResourceUpdateCmdDirNone(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("here.txt", "same level")
+	f.file("Tiltfile", `
+local_resource("test", cmd="cat here.txt", dir=None)
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		updateCmd(f.Path(), "cat here.txt", nil),
+	))
+}
+
+func TestLocalResourceServeCmdDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("nested/inside.txt", "inside the nested directory")
+	f.file("Tiltfile", `
+local_resource("test", serve_cmd="cat inside.txt", serve_dir="nested")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		serveCmd(f.JoinPath(f.Path(), "nested"), "cat inside.txt", nil),
+	))
+}
+
+func TestLocalResourceServeCmdDirNone(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("here.txt", "same level")
+	f.file("Tiltfile", `
+local_resource("test", serve_cmd="cat here.txt", serve_dir=None)
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("test", localTarget(
+		serveCmd(f.Path(), "cat here.txt", nil),
+	))
+}
+
 func TestCustomBuildStoresTiltfilePath(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -4650,12 +4768,12 @@ func TestK8sUpsertTimeout(t *testing.T) {
 		{
 			name:            "default value if func not called",
 			tiltfile:        "print('hello world')",
-			expectedTimeout: model.DefaultK8sUpsertTimeout,
+			expectedTimeout: v1alpha1.KubernetesApplyTimeoutDefault,
 		},
 		{
 			name:            "default value if arg not specified",
 			tiltfile:        "update_settings(max_parallel_updates=123)",
-			expectedTimeout: model.DefaultK8sUpsertTimeout,
+			expectedTimeout: v1alpha1.KubernetesApplyTimeoutDefault,
 		},
 		{
 			name:            "set max parallel updates",
@@ -5417,11 +5535,12 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 }
 
 func newFixture(t *testing.T) *fixture {
-
 	out := new(bytes.Buffer)
 	ctx, ma, ta := testutils.ForkedCtxAndAnalyticsForTest(out)
 	f := tempdir.NewTempDirFixture(t)
-	kCli := k8s.NewFakeK8sClient()
+	f.Chdir()
+
+	kCli := k8s.NewFakeK8sClient(t)
 
 	r := &fixture{
 		ctx:            ctx,
@@ -5697,11 +5816,6 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 
 			assert.Equal(f.t, opt.image.matchInEnvVars, image.MatchInEnvVars)
 
-			if opt.cache != "" {
-				assert.Contains(f.t, image.CachePaths(), opt.cache,
-					"manifest %v cache paths don't include expected value", m.Name)
-			}
-
 			if !image.IsDockerBuild() {
 				f.t.Fatalf("expected docker build but manifest %v has no docker build info", m.Name)
 			}
@@ -5709,9 +5823,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
 				case entrypointHelper:
-					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCmd.Argv) {
+					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCommand.Command) {
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
-							matcher.cmd.Argv, image.OverrideCmd.Argv)
+							matcher.cmd.Argv, image.OverrideCommand.Command)
 					}
 				case model.LiveUpdate:
 					lu := image.LiveUpdateInfo()
@@ -5745,9 +5859,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				case disablePushHelper:
 					assert.Equal(f.t, matcher.disabled, cbInfo.DisablePush)
 				case entrypointHelper:
-					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCmd.Argv) {
+					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCommand.Command) {
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
-							matcher.cmd.Argv, image.OverrideCmd.Argv)
+							matcher.cmd.Argv, image.OverrideCommand.Command)
 					}
 				case model.LiveUpdate:
 					lu := image.LiveUpdateInfo()
@@ -6059,13 +6173,12 @@ func k8sObject(name string, kind string) k8sObjectHelper {
 }
 
 type extraPodSelectorsHelper struct {
-	labels []labels.Selector
+	labels []labels.Set
 }
 
-func extraPodSelectors(labels ...labels.Set) extraPodSelectorsHelper {
-	ret := extraPodSelectorsHelper{}
-	for _, ls := range labels {
-		ret.labels = append(ret.labels, ls.AsSelector())
+func extraPodSelectors(labelSets ...labels.Set) extraPodSelectorsHelper {
+	ret := extraPodSelectorsHelper{
+		labels: append([]labels.Set(nil), labelSets...),
 	}
 	return ret
 }
@@ -6184,7 +6297,6 @@ func withEnvVars(envVars ...string) envVarHelper {
 // docker build helper
 type dbHelper struct {
 	image    imageHelper
-	cache    string
 	matchers []interface{}
 }
 

@@ -1,10 +1,13 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+)
 
 const (
 	DefaultMaxParallelUpdates = 3
-	DefaultK8sUpsertTimeout   = 30 * time.Second
 )
 
 type UpdateSettings struct {
@@ -49,6 +52,6 @@ func (us UpdateSettings) WithK8sUpsertTimeout(timeout time.Duration) UpdateSetti
 func DefaultUpdateSettings() UpdateSettings {
 	return UpdateSettings{
 		maxParallelUpdates: DefaultMaxParallelUpdates,
-		k8sUpsertTimeout:   DefaultK8sUpsertTimeout,
+		k8sUpsertTimeout:   v1alpha1.KubernetesApplyTimeoutDefault,
 	}
 }

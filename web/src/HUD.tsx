@@ -25,12 +25,7 @@ import ShareSnapshotModal from "./ShareSnapshotModal"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
-import {
-  ShowErrorModal,
-  ShowFatalErrorModal,
-  SnapshotHighlight,
-  SocketState,
-} from "./types"
+import { ShowErrorModal, ShowFatalErrorModal, SocketState } from "./types"
 
 type HudProps = {
   history: History
@@ -61,29 +56,10 @@ export default class HUD extends Component<HudProps, HudState> {
     this.unlisten = this.history.listen((location: any, action: string) => {
       let tags = navigationToTags(location, action)
       incr("ui.web.navigation", tags)
-
-      this.handleClearHighlight()
-      let selection = document.getSelection()
-      selection && selection.removeAllRanges()
     })
 
     this.state = {
-      view: {
-        resources: [],
-        needsAnalyticsNudge: false,
-        fatalError: undefined,
-        runningTiltBuild: {
-          version: "",
-          date: "",
-          dev: false,
-        },
-        suggestedTiltVersion: "",
-        versionSettings: { checkUpdates: true },
-        featureFlags: {},
-        tiltCloudUsername: "",
-        tiltCloudSchemeHost: "",
-        tiltCloudTeamID: "",
-      },
+      view: {},
       snapshotLink: "",
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
@@ -95,8 +71,6 @@ export default class HUD extends Component<HudProps, HudState> {
       logStore: new LogStore(),
     }
 
-    this.handleClearHighlight = this.handleClearHighlight.bind(this)
-    this.handleSetHighlight = this.handleSetHighlight.bind(this)
     this.handleOpenModal = this.handleOpenModal.bind(this)
     this.handleShowCopySuccess = this.handleShowCopySuccess.bind(this)
   }
@@ -118,25 +92,8 @@ export default class HUD extends Component<HudProps, HudState> {
     this.unlisten()
   }
 
-  setAppState<K extends keyof HudState>(state: Pick<HudState, K>) {
-    this.setState((prevState) => {
-      let newState: any = {}
-      Object.assign(newState, state)
-      newState.logStore = prevState.logStore ?? new LogStore()
-
-      let newLogList = newState.view?.logList
-      if (newLogList) {
-        let fromCheckpoint = newLogList.fromCheckpoint ?? 0
-        if (fromCheckpoint > 0) {
-          newState.logStore.append(newLogList)
-        } else if (fromCheckpoint === 0) {
-          // if the fromCheckpoint is 0 or undefined, create a brand new log store.
-          newState.logStore = new LogStore()
-          newState.logStore.append(newLogList)
-        }
-      }
-      return newState
-    })
+  onAppChange<K extends keyof HudState>(stateUpdates: Pick<HudState, K>) {
+    this.setState((prevState) => mergeAppUpdate(prevState, stateUpdates))
   }
 
   setHistoryLocation(path: string) {
@@ -186,7 +143,7 @@ export default class HUD extends Component<HudProps, HudState> {
           })
           .catch((err) => {
             console.error(err)
-            this.setAppState({
+            this.setState({
               showSnapshotModal: false,
               error: "Error decoding JSON response",
             })
@@ -194,7 +151,7 @@ export default class HUD extends Component<HudProps, HudState> {
       })
       .catch((err) => {
         console.error(err)
-        this.setAppState({
+        this.setState({
           showSnapshotModal: false,
           error: "Error posting snapshot",
         })
@@ -202,23 +159,12 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   private getFeatures(): Features {
-    if (this.state.view) {
-      return new Features(this.state.view.featureFlags)
-    }
-
-    return new Features({})
-  }
-
-  handleSetHighlight(highlight: SnapshotHighlight) {
-    this.setState({
-      snapshotHighlight: highlight,
+    let featureFlags = {} as { [key: string]: boolean }
+    let flagList = this.state.view.uiSession?.status?.featureFlags || []
+    flagList.forEach((flag) => {
+      featureFlags[flag.name || ""] = !!flag.value
     })
-  }
-
-  handleClearHighlight() {
-    this.setState({
-      snapshotHighlight: undefined,
-    })
+    return new Features(featureFlags)
   }
 
   handleShowCopySuccess() {
@@ -242,16 +188,18 @@ export default class HUD extends Component<HudProps, HudState> {
 
   render() {
     let view = this.state.view
+    let session = this.state.view.uiSession?.status
 
-    let needsNudge = view?.needsAnalyticsNudge ?? false
-    let resources = view?.resources ?? []
-    if (!resources?.length || !view?.tiltfileKey) {
+    let needsNudge = session?.needsAnalyticsNudge ?? false
+    let resources = view?.uiResources ?? []
+    if (!resources?.length || !session?.tiltfileKey) {
       return <HeroScreen message={"Loading…"} />
     }
 
-    let runningBuild = view?.runningTiltBuild
-    let suggestedVersion = view?.suggestedTiltVersion
-    const versionSettings = view?.versionSettings
+    let tiltfileKey = session?.tiltfileKey
+    let runningBuild = session?.runningTiltBuild
+    let suggestedVersion = session?.suggestedTiltVersion
+    const versionSettings = session?.versionSettings
     const checkUpdates = versionSettings?.checkUpdates ?? true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
@@ -263,9 +211,9 @@ export default class HUD extends Component<HudProps, HudState> {
     }
 
     let validateResource = (name: string) =>
-      resources.some((res) => res.name === name)
+      resources.some((res) => res.metadata?.name === name)
     return (
-      <tiltfileKeyContext.Provider value={view.tiltfileKey}>
+      <tiltfileKeyContext.Provider value={tiltfileKey}>
         <StarredResourcesContextProvider>
           <ReactOutlineManager>
             <ResourceNavProvider validateResource={validateResource}>
@@ -325,9 +273,10 @@ export default class HUD extends Component<HudProps, HudState> {
       this.setState({ showSnapshotModal: false, snapshotLink: "" })
     let handleSendSnapshot = () =>
       this.sendSnapshot(this.snapshotFromState(this.state))
-    let tiltCloudUsername = (view && view.tiltCloudUsername) || null
-    let tiltCloudSchemeHost = (view && view.tiltCloudSchemeHost) || ""
-    let tiltCloudTeamID = (view && view.tiltCloudTeamID) || null
+    let session = view?.uiSession?.status
+    let tiltCloudUsername = session?.tiltCloudUsername || null
+    let tiltCloudSchemeHost = session?.tiltCloudSchemeHost || ""
+    let tiltCloudTeamID = session?.tiltCloudTeamID || null
     let highlightedLines = this.state.snapshotHighlight
       ? Math.abs(
           parseInt(this.state.snapshotHighlight.endingLogID, 10) -
@@ -349,7 +298,8 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderFatalErrorModal(view: Proto.webviewView | null) {
-    let error = view && view.fatalError
+    let session = view?.uiSession?.status
+    let error = session?.fatalError
     let handleClose = () =>
       this.setState({ showFatalErrorModal: ShowFatalErrorModal.Hide })
     return (
@@ -381,4 +331,92 @@ export function HUDFromContext(props: React.PropsWithChildren<{}>) {
   let history = useHistory()
   let interfaceVersion = useInterfaceVersion()
   return <HUD history={history} interfaceVersion={interfaceVersion} />
+}
+
+// returns a copy of `prev` that has the adds/updates/deletes from `updates` applied
+function mergeObjectUpdates<T extends { metadata?: Proto.v1ObjectMeta }>(
+  updates: T[] | undefined,
+  prev: T[] | undefined
+): T[] {
+  let next = Array.from(prev || [])
+  if (updates) {
+    updates.forEach((u) => {
+      let index = next.findIndex((o) => o?.metadata?.name === u?.metadata?.name)
+      if (index === -1) {
+        next.push(u)
+      } else {
+        next[index] = u
+      }
+    })
+    next = next.filter((o) => !o?.metadata?.deletionTimestamp)
+  }
+
+  return next
+}
+
+export function mergeAppUpdate<K extends keyof HudState>(
+  prevState: Readonly<HudState>,
+  stateUpdates: Pick<HudState, K>
+): Pick<HudState, K> {
+  // All fields are optional on a HudState, so it's ok to pretent
+  // a Pick<HudState> and a HudState are the same.
+  let state = stateUpdates as HudState
+
+  let oldStartTime = prevState.view?.tiltStartTime
+  let newStartTime = state.view?.tiltStartTime
+  if (oldStartTime && newStartTime && oldStartTime != newStartTime) {
+    // If Tilt restarts, reload the page to get new JS.
+    // https://github.com/tilt-dev/tilt/issues/4421
+    window.location.reload()
+    return prevState
+  }
+
+  let logListUpdate = state.view?.logList
+  if (state.view?.isComplete) {
+    // If this is a full state refresh, replace the view field
+    // and the log store completely.
+    let newState = { ...state } as any
+    newState.view = state.view
+    newState.logStore = new LogStore()
+    newState.logStore.append(logListUpdate)
+    return newState
+  }
+
+  // Otherwise, merge the new state updates into the old state object.
+  let result = { ...state }
+
+  // We're going to merge in view updates manually.
+  result.view = prevState.view
+
+  if (logListUpdate) {
+    // We can assume state always has a log store.
+    prevState.logStore!.append(logListUpdate)
+  }
+
+  // Merge the UISession
+  let sessionUpdate = state.view?.uiSession
+  if (sessionUpdate) {
+    result.view = Object.assign({}, result.view, {
+      uiSession: sessionUpdate,
+    })
+  }
+
+  const uiResourceUpdates = state.view?.uiResources
+  if (uiResourceUpdates) {
+    result.view = Object.assign({}, result.view, {
+      uiResources: mergeObjectUpdates(
+        uiResourceUpdates,
+        result.view?.uiResources
+      ),
+    })
+  }
+
+  const uiButtonUpdates = state.view?.uiButtons
+  if (uiButtonUpdates) {
+    result.view = Object.assign({}, result.view, {
+      uiButtons: mergeObjectUpdates(uiButtonUpdates, result.view?.uiButtons),
+    })
+  }
+
+  return result
 }

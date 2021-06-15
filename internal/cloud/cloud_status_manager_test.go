@@ -128,13 +128,13 @@ func TestStatusRefresh(t *testing.T) {
 
 	f.st.ClearActions()
 
-	f.um.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.um.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	store.AssertNoActionOfType(t, reflect.TypeOf(store.TiltCloudStatusReceivedAction{}), f.st.Actions)
 
 	// check that we periodically refresh
 	f.clock.Advance(24 * time.Hour)
 
-	f.um.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.um.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 	a = store.WaitForAction(t, reflect.TypeOf(store.TiltCloudStatusReceivedAction{}), f.st.Actions)
 	require.Equal(t, expected, a)
 }
@@ -173,7 +173,7 @@ func (f *cloudStatusManagerTestFixture) Run(mutateState func(state *store.Engine
 	}
 	mutateState(&state)
 	f.st.SetState(state)
-	f.um.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.um.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 }
 
 func (f *cloudStatusManagerTestFixture) waitForRequest(expectedURL string) http.Request {

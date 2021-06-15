@@ -7,6 +7,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
+
 	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
@@ -26,7 +28,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
-	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine"
@@ -44,6 +45,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
+	"github.com/tilt-dev/tilt/internal/engine/uiresource"
+	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/git"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -94,11 +97,13 @@ var BaseWireSet = wire.NewSet(
 	podlogstream.NewController,
 	portforward.NewSubscriber,
 	engine.NewBuildController,
-	cmd.WireSet,
 	local.NewServerController,
-	k8swatch.NewPodWatcher,
+	kubernetesdiscovery.NewContainerRestartDetector,
+	k8swatch.NewManifestSubscriber,
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
+	uisession.NewSubscriber,
+	uiresource.NewSubscriber,
 	configs.NewConfigsController,
 	telemetry.NewController,
 	dcwatch.NewEventWatcher,
@@ -174,6 +179,7 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics, su
 
 func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
 	wire.Build(UpWireSet,
+		cloud.NewSnapshotter,
 		wire.Struct(new(CmdUpDeps), "*"))
 	return CmdUpDeps{}, nil
 }
@@ -183,12 +189,13 @@ type CmdUpDeps struct {
 	TiltBuild    model.TiltBuild
 	Token        token.Token
 	CloudAddress cloudurl.Address
-	Store        *store.Store
 	Prompt       *prompt.TerminalPrompt
+	Snapshotter  *cloud.Snapshotter
 }
 
 func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, error) {
 	wire.Build(UpWireSet,
+		cloud.NewSnapshotter,
 		wire.Value(engineanalytics.CmdTags(map[string]string{})),
 		wire.Struct(new(CmdCIDeps), "*"),
 	)
@@ -200,7 +207,7 @@ type CmdCIDeps struct {
 	TiltBuild    model.TiltBuild
 	Token        token.Token
 	CloudAddress cloudurl.Address
-	Store        *store.Store
+	Snapshotter  *cloud.Snapshotter
 }
 
 func wireCmdUpdog(ctx context.Context,

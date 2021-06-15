@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"strings"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/gorilla/mux"
@@ -17,12 +16,11 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
-	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -51,21 +49,14 @@ type overrideTriggerModePayload struct {
 	TriggerMode   int      `json:"trigger_mode"`
 }
 
-type actionPayload struct {
-	Type            string             `json:"type"`
-	ManifestName    model.ManifestName `json:"manifest_name"`
-	PodID           k8s.PodID          `json:"pod_id"`
-	VisibleRestarts int                `json:"visible_restarts"`
-}
-
 type HeadsUpServer struct {
-	ctx               context.Context
-	store             *store.Store
-	router            *mux.Router
-	a                 *tiltanalytics.TiltAnalytics
-	metrics           *metrics.ModeController
-	uploader          cloud.SnapshotUploader
-	numWebsocketConns int32
+	ctx        context.Context
+	store      *store.Store
+	router     *mux.Router
+	a          *tiltanalytics.TiltAnalytics
+	uploader   cloud.SnapshotUploader
+	wsList     *WebsocketList
+	ctrlClient ctrlclient.Client
 }
 
 func ProvideHeadsUpServer(
@@ -73,26 +64,26 @@ func ProvideHeadsUpServer(
 	store *store.Store,
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
-	metrics *metrics.ModeController,
-	uploader cloud.SnapshotUploader) (*HeadsUpServer, error) {
+	uploader cloud.SnapshotUploader,
+	wsList *WebsocketList,
+	ctrlClient ctrlclient.Client) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
-		ctx:      ctx,
-		store:    store,
-		router:   r,
-		a:        analytics,
-		metrics:  metrics,
-		uploader: uploader,
+		ctx:        ctx,
+		store:      store,
+		router:     r,
+		a:          analytics,
+		uploader:   uploader,
+		wsList:     wsList,
+		ctrlClient: ctrlClient,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/dump/engine", s.DumpEngineJSON)
 	r.HandleFunc("/api/analytics", s.HandleAnalytics)
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
-	r.HandleFunc("/api/metrics_opt", s.HandleMetricsOpt)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/api/override/trigger_mode", s.HandleOverrideTriggerMode)
-	r.HandleFunc("/api/action", s.DispatchAction).Methods("POST")
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
@@ -127,15 +118,13 @@ func (s *HeadsUpServer) Router() http.Handler {
 }
 
 func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
-	state := s.store.RLockState()
-	view, err := webview.StateToProtoView(state, 0)
-	s.store.RUnlockState()
+	view, err := webview.CompleteView(req.Context(), s.ctrlClient, s.store)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	jsEncoder := &runtime.JSONPb{}
 
 	w.Header().Set("Content-Type", "application/json")
 	err = jsEncoder.NewEncoder(w).Encode(view)
@@ -157,9 +146,7 @@ func (s *HeadsUpServer) DumpEngineJSON(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
-	state := s.store.RLockState()
-	view, err := webview.StateToProtoView(state, 0)
-	s.store.RUnlockState()
+	view, err := webview.CompleteView(req.Context(), s.ctrlClient, s.store)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error converting view to proto: %v", err), http.StatusInternalServerError)
 		return
@@ -203,29 +190,6 @@ func (s *HeadsUpServer) HandleAnalyticsOpt(w http.ResponseWriter, req *http.Requ
 	s.store.Dispatch(store.AnalyticsUserOptAction{Opt: opt})
 }
 
-func (s *HeadsUpServer) HandleMetricsOpt(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(w, "must be POST request", http.StatusBadRequest)
-		return
-	}
-
-	defer req.Body.Close()
-	content, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error parsing: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	newState := model.MetricsMode(strings.TrimSpace(string(content)))
-	if newState != model.MetricsDisabled && newState != model.MetricsLocal && newState != model.MetricsDefault {
-		http.Error(w, fmt.Sprintf("unexpected state: %v", string(content)), http.StatusBadRequest)
-		return
-	}
-
-	s.a.Incr("metrics.mode.update", map[string]string{"mode": string(newState)})
-	s.metrics.SetUserMode(req.Context(), s.store, newState)
-}
-
 func (s *HeadsUpServer) HandleAnalytics(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
@@ -259,30 +223,6 @@ func (s *HeadsUpServer) HandleSetTiltfileArgs(w http.ResponseWriter, req *http.R
 	}
 
 	s.store.Dispatch(SetTiltfileArgsAction{args})
-}
-
-func (s *HeadsUpServer) DispatchAction(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(w, "must be POST request", http.StatusBadRequest)
-		return
-	}
-
-	var payload actionPayload
-	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&payload)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	switch payload.Type {
-	case "PodResetRestarts":
-		s.store.Dispatch(
-			store.NewPodResetRestartsAction(payload.PodID, payload.ManifestName, payload.VisibleRestarts))
-	default:
-		http.Error(w, fmt.Sprintf("Unknown action type: %s", payload.Type), http.StatusBadRequest)
-	}
-
 }
 
 func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) {
@@ -376,7 +316,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	jspb := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	jspb := &runtime.JSONPb{}
 	decoder := jspb.NewDecoder(bytes.NewBuffer(b))
 	var snapshot *proto_webview.Snapshot
 

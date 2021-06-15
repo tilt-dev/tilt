@@ -1,125 +1,71 @@
 package webview
 
-// TODO(dmiller): delete these tests once StateToWebView is deleted
 import (
 	"fmt"
-	"time"
 
-	"github.com/tilt-dev/tilt/internal/container"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
-
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
-
-	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
-func NewProtoDCResourceInfo(configPaths []string, status string, cID container.ID, startTime time.Time) (*proto_webview.DCResourceInfo, error) {
-	start, err := timeToProto(startTime)
-	if err != nil {
-		return nil, err
-	}
-	return &proto_webview.DCResourceInfo{
-		ConfigPaths:     configPaths,
-		ContainerStatus: string(status),
-		ContainerID:     string(cID),
-		StartTime:       start,
-	}, nil
-}
-
-func timeToProto(t time.Time) (*timestamp.Timestamp, error) {
-	ts, err := ptypes.TimestampProto(t)
-	if err != nil {
-		return nil, err
-	}
-
-	return ts, nil
-}
-
-func buildTypesToProtoUpdateTypes(bts []model.BuildType) ([]proto_webview.UpdateType, error) {
-	result := make([]proto_webview.UpdateType, len(bts))
-	for i, bt := range bts {
-		protoType, err := buildTypeToProto(bt)
-		if err != nil {
-			return nil, err
-		}
-		result[i] = protoType
-	}
-	return result, nil
-}
-
-func buildTypeToProto(bt model.BuildType) (proto_webview.UpdateType, error) {
-	switch bt {
-	case model.BuildTypeImage:
-		return proto_webview.UpdateType_UPDATE_TYPE_IMAGE, nil
-	case model.BuildTypeLiveUpdate:
-		return proto_webview.UpdateType_UPDATE_TYPE_LIVE_UPDATE, nil
-	case model.BuildTypeDockerCompose:
-		return proto_webview.UpdateType_UPDATE_TYPE_DOCKER_COMPOSE, nil
-	case model.BuildTypeK8s:
-		return proto_webview.UpdateType_UPDATE_TYPE_K8S, nil
-	case model.BuildTypeLocal:
-		return proto_webview.UpdateType_UPDATE_TYPE_LOCAL, nil
-	default:
-		return proto_webview.UpdateType_UPDATE_TYPE_UNSPECIFIED, fmt.Errorf("unknown build type '%v'", bt)
-	}
-}
-
-func targetSpecToProto(spec model.TargetSpec) (proto_webview.TargetSpec, error) {
+func toAPITargetSpec(spec model.TargetSpec) (v1alpha1.UIResourceTargetSpec, error) {
 	switch typ := spec.(type) {
 	case model.ImageTarget:
-		return proto_webview.TargetSpec{
-			Id:            typ.ID().String(),
-			Type:          proto_webview.TargetType_TARGET_TYPE_IMAGE,
+		return v1alpha1.UIResourceTargetSpec{
+			ID:            typ.ID().String(),
+			Type:          v1alpha1.UIResourceTargetTypeImage,
 			HasLiveUpdate: !typ.LiveUpdateInfo().Empty(),
 		}, nil
 	case model.DockerComposeTarget:
-		return proto_webview.TargetSpec{
-			Id:   typ.ID().String(),
-			Type: proto_webview.TargetType_TARGET_TYPE_DOCKER_COMPOSE,
+		return v1alpha1.UIResourceTargetSpec{
+			ID:   typ.ID().String(),
+			Type: v1alpha1.UIResourceTargetTypeDockerCompose,
 		}, nil
 	case model.K8sTarget:
-		return proto_webview.TargetSpec{
-			Id:   typ.ID().String(),
-			Type: proto_webview.TargetType_TARGET_TYPE_K8S,
+		return v1alpha1.UIResourceTargetSpec{
+			ID:   typ.ID().String(),
+			Type: v1alpha1.UIResourceTargetTypeKubernetes,
 		}, nil
 	case model.LocalTarget:
-		return proto_webview.TargetSpec{
-			Id:   typ.ID().String(),
-			Type: proto_webview.TargetType_TARGET_TYPE_LOCAL,
+		return v1alpha1.UIResourceTargetSpec{
+			ID:   typ.ID().String(),
+			Type: v1alpha1.UIResourceTargetTypeLocal,
 		}, nil
 	default:
-		return proto_webview.TargetSpec{}, fmt.Errorf("unknown TargetSpec type %T for spec: '%v'", spec, spec)
+		return v1alpha1.UIResourceTargetSpec{}, fmt.Errorf("unknown TargetSpec type %T for spec: '%v'", spec, spec)
 	}
 }
 
-func TargetSpecsToProto(specs []model.TargetSpec) ([]*proto_webview.TargetSpec, error) {
-	result := make([]*proto_webview.TargetSpec, len(specs))
+func ToAPITargetSpecs(specs []model.TargetSpec) ([]v1alpha1.UIResourceTargetSpec, error) {
+	result := make([]v1alpha1.UIResourceTargetSpec, len(specs))
 	for i, spec := range specs {
-		protoSpec, err := targetSpecToProto(spec)
+		protoSpec, err := toAPITargetSpec(spec)
 		if err != nil {
 			return nil, err
 		}
-		result[i] = &protoSpec
+		result[i] = protoSpec
 	}
 
 	return result, nil
 }
 
-func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*proto_webview.BuildRecord, error) {
+func ToBuildRunning(br model.BuildRecord) *v1alpha1.UIBuildRunning {
+	if br.Empty() {
+		return nil
+	}
+
+	return &v1alpha1.UIBuildRunning{
+		StartTime: metav1.NewMicroTime(br.StartTime),
+		SpanID:    string(br.SpanID),
+	}
+}
+
+func ToBuildTerminated(br model.BuildRecord, logStore *logstore.LogStore) v1alpha1.UIBuildTerminated {
 	e := ""
 	if br.Error != nil {
 		e = br.Error.Error()
-	}
-
-	start, err := timeToProto(br.StartTime)
-	if err != nil {
-		return nil, err
-	}
-	finish, err := timeToProto(br.FinishTime)
-	if err != nil {
-		return nil, err
 	}
 
 	warnings := []string{}
@@ -127,40 +73,30 @@ func ToProtoBuildRecord(br model.BuildRecord, logStore *logstore.LogStore) (*pro
 		warnings = logStore.Warnings(br.SpanID)
 	}
 
-	updateTypes, err := buildTypesToProtoUpdateTypes(br.BuildTypes)
-	if err != nil {
-		return nil, err
-	}
-	return &proto_webview.BuildRecord{
-		Edits: br.Edits,
+	return v1alpha1.UIBuildTerminated{
 		Error: e,
 		// TODO(nick): Remove this, and compute it client-side.
 		Warnings:       warnings,
-		StartTime:      start,
-		FinishTime:     finish,
-		UpdateTypes:    updateTypes,
+		StartTime:      metav1.NewMicroTime(br.StartTime),
+		FinishTime:     metav1.NewMicroTime(br.FinishTime),
 		IsCrashRebuild: br.Reason.IsCrashOnly(),
-		SpanId:         string(br.SpanID),
-	}, nil
-}
-
-func ToProtoBuildRecords(brs []model.BuildRecord, logStore *logstore.LogStore) ([]*proto_webview.BuildRecord, error) {
-	ret := make([]*proto_webview.BuildRecord, len(brs))
-	for i, br := range brs {
-		r, err := ToProtoBuildRecord(br, logStore)
-		if err != nil {
-			return nil, err
-		}
-		ret[i] = r
+		SpanID:         string(br.SpanID),
 	}
-	return ret, nil
 }
 
-func ToProtoLinks(lns []model.Link) []*proto_webview.Link {
-	ret := make([]*proto_webview.Link, len(lns))
+func ToBuildsTerminated(brs []model.BuildRecord, logStore *logstore.LogStore) []v1alpha1.UIBuildTerminated {
+	ret := make([]v1alpha1.UIBuildTerminated, len(brs))
+	for i, br := range brs {
+		ret[i] = ToBuildTerminated(br, logStore)
+	}
+	return ret
+}
+
+func ToAPILinks(lns []model.Link) []v1alpha1.UIResourceLink {
+	ret := make([]v1alpha1.UIResourceLink, len(lns))
 	for i, ln := range lns {
-		ret[i] = &proto_webview.Link{
-			Url:  ln.URLString(),
+		ret[i] = v1alpha1.UIResourceLink{
+			URL:  ln.URLString(),
 			Name: ln.Name,
 		}
 	}

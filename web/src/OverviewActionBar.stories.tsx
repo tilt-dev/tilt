@@ -4,9 +4,7 @@ import { Router } from "react-router"
 import { FilterLevel, FilterSource, useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
-import { oneResource } from "./testdata"
-
-type Resource = Proto.webviewResource
+import { oneButton, oneResource } from "./testdata"
 
 export default {
   title: "New UI/Log View/OverviewActionBar",
@@ -48,29 +46,37 @@ let defaultFilter = { source: FilterSource.all, level: FilterLevel.all }
 export const OverflowTextBar = () => {
   let filterSet = useFilterSet()
   let res = oneResource()
-  res.endpointLinks = [
+  res.status = res.status || {}
+  res.status.endpointLinks = [
     { url: "http://my-pod-grafana-long-service-name-deadbeef:4001" },
     { url: "http://my-pod-grafana-long-service-name-deadbeef:4002" },
   ]
-  res.podID = "my-pod-grafana-long-service-name-deadbeef"
+  res.status.k8sResourceInfo = {
+    podName: "my-pod-grafana-long-service-name-deadbeef",
+  }
   return <OverviewActionBar resource={res} filterSet={filterSet} />
 }
 
 export const FullBar = () => {
   let filterSet = useFilterSet()
   let res = oneResource()
-  res.endpointLinks = [
+  res.status = res.status || {}
+  res.status.endpointLinks = [
     { url: "http://localhost:4001" },
     { url: "http://localhost:4002" },
   ]
-  res.podID = "my-pod-deadbeef"
-  return <OverviewActionBar resource={res} filterSet={filterSet} />
+  res.status.k8sResourceInfo = { podName: "my-pod-deadbeef" }
+  let buttons = [oneButton(1, "vigoda")]
+  return (
+    <OverviewActionBar resource={res} filterSet={filterSet} buttons={buttons} />
+  )
 }
 
 export const EmptyBar = () => {
   let filterSet = useFilterSet()
   let res = oneResource()
-  res.endpointLinks = []
-  res.podID = ""
+  res.status = res.status || {}
+  res.status.endpointLinks = []
+  res.status.k8sResourceInfo = {}
   return <OverviewActionBar resource={res} filterSet={filterSet} />
 }

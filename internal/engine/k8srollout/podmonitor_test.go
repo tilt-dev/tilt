@@ -60,7 +60,7 @@ func TestMonitorReady(t *testing.T) {
 		model.Manifest{Name: "server"}, p))
 	f.store.SetState(*state)
 
-	f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	assertSnapshot(t, f.out.String())
 }
@@ -82,8 +82,7 @@ func newPMFixture(t *testing.T) *pmFixture {
 	pm := NewPodMonitor()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	l := logger.NewLogger(logger.DebugLvl, out)
-	ctx = logger.WithLogger(ctx, l)
+	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
 
 	return &pmFixture{
 		TempDirFixture: f,

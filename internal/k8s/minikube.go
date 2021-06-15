@@ -17,9 +17,17 @@ import (
 var envMatcher = regexp.MustCompile(`export (\w+)="([^"]+)"`)
 var versionMatcher = regexp.MustCompile(`^minikube version: v([0-9.]+)$`)
 
+// Error messages if Minikube is running OK but docker-env is unsupported.
+var dockerEnvUnsupportedMsgs = []string{
+	"ENV_DRIVER_CONFLICT",
+	"ENV_MULTINODE_CONFLICT",
+	"ENV_DOCKER_UNAVAILABLE",
+	"The docker-env command is only compatible",
+}
+
 type MinikubeClient interface {
 	Version(ctx context.Context) (string, error)
-	DockerEnv(ctx context.Context) (map[string]string, error)
+	DockerEnv(ctx context.Context) (map[string]string, bool, error)
 	NodeIP(ctx context.Context) (NodeIP, error)
 }
 
@@ -64,22 +72,32 @@ func minikubeVersionFromOutput(output []byte) (string, error) {
 	return "", fmt.Errorf("version not found in output:\n%s", string(output))
 }
 
-func (mc minikubeClient) DockerEnv(ctx context.Context) (map[string]string, error) {
+// Returns:
+// - A map of env variables for the minikube docker-env.
+// - True if this minikube supports a docker-env, false otherwise
+// - An error if minikube doesn't appear to be running.
+func (mc minikubeClient) DockerEnv(ctx context.Context) (map[string]string, bool, error) {
 	cmd := mc.cmd(ctx, "docker-env", "--shell", "sh")
 	output, err := cmd.Output()
 	if err != nil {
 		exitErr, isExitErr := err.(*exec.ExitError)
 		if isExitErr {
-			// TODO(nick): Maybe we should automatically run minikube start?
-			return nil, fmt.Errorf("Could not read docker env from minikube.\n"+
-				"Did you forget to run `minikube start`?\n%s", string(exitErr.Stderr))
+			stderr := string(exitErr.Stderr)
+			for _, msg := range dockerEnvUnsupportedMsgs {
+				if strings.Contains(stderr, msg) {
+					return nil, false, nil
+				}
+			}
+
+			return nil, false, fmt.Errorf("Could not read docker env from minikube.\n"+
+				"Did you forget to run `minikube start`?\n%s", stderr)
 		}
-		return nil, errors.Wrap(err, "Could not read docker env from minikube")
+		return nil, false, errors.Wrap(err, "Could not read docker env from minikube")
 	}
-	return dockerEnvFromOutput(output)
+	return dockerEnvFromOutput(output), true, nil
 }
 
-func dockerEnvFromOutput(output []byte) (map[string]string, error) {
+func dockerEnvFromOutput(output []byte) map[string]string {
 	result := make(map[string]string)
 	scanner := bufio.NewScanner(bytes.NewBuffer(output))
 	for scanner.Scan() {
@@ -91,7 +109,7 @@ func dockerEnvFromOutput(output []byte) (map[string]string, error) {
 		}
 	}
 
-	return result, nil
+	return result
 }
 
 func (mc minikubeClient) NodeIP(ctx context.Context) (NodeIP, error) {

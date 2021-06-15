@@ -2,26 +2,18 @@ package model
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type ImageTarget struct {
-	Refs           container.RefSet
-	BuildDetails   BuildDetails
-	MatchInEnvVars bool
+	// An apiserver-driven data model for injecting the image into other resources.
+	v1alpha1.ImageMapSpec
 
-	// User-supplied command to run when the container runs
-	// (i.e. overrides k8s yaml "command", container ENTRYPOINT, etc.)
-	OverrideCmd Cmd
-
-	// User-supplied args override when the container runs.
-	// (i.e. overrides k8s yaml "args")
-	OverrideArgs OverrideArgs
-
-	cachePaths []string
+	Refs         container.RefSet
+	BuildDetails BuildDetails
 
 	// TODO(nick): It might eventually make sense to represent
 	// Tiltfile as a separate nodes in the build graph, rather
@@ -32,15 +24,8 @@ type ImageTarget struct {
 	dependencyIDs []TargetID
 }
 
-// Represent OverrideArgs as a special struct, to cleanly distinguish
-// "replace with 0 args" from "don't replace"
-type OverrideArgs struct {
-	ShouldOverride bool
-	Args           []string
-}
-
 func MustNewImageTarget(ref container.RefSelector) ImageTarget {
-	return ImageTarget{Refs: container.MustSimpleRefSet(ref)}
+	return ImageTarget{}.MustWithRef(ref)
 }
 
 func ImageID(ref container.RefSelector) TargetID {
@@ -52,6 +37,13 @@ func ImageID(ref container.RefSelector) TargetID {
 		Type: TargetTypeImage,
 		Name: name,
 	}
+}
+
+func (i ImageTarget) MustWithRef(ref container.RefSelector) ImageTarget {
+	i.Refs = container.MustSimpleRefSet(ref)
+	i.ImageMapSpec.Selector = ref.String()
+	i.ImageMapSpec.MatchExact = ref.MatchExact()
+	return i
 }
 
 func (i ImageTarget) ID() TargetID {
@@ -172,16 +164,6 @@ func (i ImageTarget) MaybeIgnoreRegistry() ImageTarget {
 	return i
 }
 
-func (i ImageTarget) WithCachePaths(paths []string) ImageTarget {
-	i.cachePaths = append(append([]string{}, i.cachePaths...), paths...)
-	sort.Strings(i.cachePaths)
-	return i
-}
-
-func (i ImageTarget) CachePaths() []string {
-	return i.cachePaths
-}
-
 func (i ImageTarget) WithRepos(repos []LocalGitRepo) ImageTarget {
 	i.repos = append(append([]LocalGitRepo{}, i.repos...), repos...)
 	return i
@@ -193,7 +175,9 @@ func (i ImageTarget) WithDockerignores(dockerignores []Dockerignore) ImageTarget
 }
 
 func (i ImageTarget) WithOverrideCommand(cmd Cmd) ImageTarget {
-	i.OverrideCmd = cmd
+	i.ImageMapSpec.OverrideCommand = &v1alpha1.ImageMapOverrideCommand{
+		Command: cmd.Argv,
+	}
 	return i
 }
 

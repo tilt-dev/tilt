@@ -1,0 +1,12 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: failing-job
+spec:
+  template:
+    spec:
+      containers:
+        - name: failing-job
+          image: failing_job
+      restartPolicy: Never
+  backoffLimit: 4

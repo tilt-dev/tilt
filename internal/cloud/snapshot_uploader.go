@@ -11,24 +11,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
-	"github.com/tilt-dev/tilt/internal/hud/webview"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/token"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
 type SnapshotID string
 
-func ToSnapshot(state store.EngineState) (*proto_webview.Snapshot, error) {
-	view, err := webview.StateToProtoView(state, 0)
-	if err != nil {
-		return nil, err
-	}
-	return &proto_webview.Snapshot{View: view}, nil
-}
-
 type SnapshotUploader interface {
-	TakeAndUpload(state store.EngineState) (SnapshotID, error)
 	Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error)
 	IDToSnapshotURL(id SnapshotID) string
 }
@@ -61,17 +50,9 @@ type snapshotIDResponse struct {
 	ID string
 }
 
-func (s snapshotUploader) TakeAndUpload(state store.EngineState) (SnapshotID, error) {
-	snapshot, err := ToSnapshot(state)
-	if err != nil {
-		return "", err
-	}
-	return s.Upload(state.Token, state.TeamID, snapshot)
-}
-
 func (s snapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (SnapshotID, error) {
 	b := &bytes.Buffer{}
-	jsEncoder := &runtime.JSONPb{OrigName: false, EmitDefaults: true}
+	jsEncoder := &runtime.JSONPb{}
 	err := jsEncoder.NewEncoder(b).Encode(snapshot)
 	if err != nil {
 		return "", errors.Wrap(err, "encoding snapshot")

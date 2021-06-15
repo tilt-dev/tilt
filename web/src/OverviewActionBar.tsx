@@ -3,6 +3,7 @@ import MenuItem from "@material-ui/core/MenuItem"
 import { PopoverOrigin } from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
+import moment from "moment"
 import React, { useRef, useState } from "react"
 import { useHistory } from "react-router"
 import styled from "styled-components"
@@ -21,15 +22,22 @@ import { usePathBuilder } from "./PathBuilder"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceName } from "./types"
 
+type UIResource = Proto.v1alpha1UIResource
+type Link = Proto.v1alpha1UIResourceLink
+type UIButton = Proto.v1alpha1UIButton
+
 type OverviewActionBarProps = {
   // The current resource. May be null if there is no resource.
-  resource?: Proto.webviewResource
+  resource?: UIResource
 
   // All the alerts for the current resource.
   alerts?: Alert[]
 
   // The current log filter.
   filterSet: FilterSet
+
+  // buttons for this resource
+  buttons?: UIButton[]
 }
 
 type FilterSourceMenuProps = {
@@ -202,6 +210,13 @@ let ButtonRoot = styled(InstrumentedButton)`
   }
   &.isEnabled:hover .fillStd {
     fill: ${Color.blue};
+  }
+`
+
+const WidgetRoot = styled.div`
+  display: flex;
+  ${ButtonRoot} + ${ButtonRoot} {
+    margin-left: ${SizeUnit(0.125)};
   }
 `
 
@@ -389,7 +404,7 @@ let ActionBarBottomRow = styled.div`
 `
 
 type ActionBarProps = {
-  endpoints: Proto.webviewLink[]
+  endpoints: Link[]
   podId: string
 }
 
@@ -423,11 +438,74 @@ function openEndpointUrl(url: string) {
   window.open(url, url)
 }
 
+function ApiButton(props: { button: UIButton }) {
+  const [loading, setLoading] = useState(false)
+  const onClick = async () => {
+    const toUpdate = {
+      metadata: { ...props.button.metadata },
+      status: { ...props.button.status },
+    } as UIButton
+    // apiserver's date format time is _extremely_ strict to the point that it requires the full
+    // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
+    // so use an explicit RFC3339 moment format to ensure it passes
+    toUpdate.status!.lastClickedAt = moment().format(
+      "YYYY-MM-DDTHH:mm:ss.SSSSSSZ"
+    )
+
+    // TODO(milas): currently the loading state just disables the button for the duration of
+    //  the AJAX request to avoid duplicate clicks - there is no progress tracking at the
+    //  moment, so there's no fancy spinner animation or propagation of result of action(s)
+    //  that occur as a result of click right now
+    setLoading(true)
+    const url = `/proxy/apis/tilt.dev/v1alpha1/uibuttons/${
+      toUpdate.metadata!.name
+    }/status`
+    try {
+      await fetch(url, {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(toUpdate),
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+  // button text is not included in analytics name since that can be user data
+  return (
+    <ButtonRoot
+      analyticsName={"ui.web.uibutton"}
+      onClick={onClick}
+      disabled={loading}
+    >
+      {props.button.spec?.text ?? "Button"}
+    </ButtonRoot>
+  )
+}
+
+export function OverviewWidgets(props: { buttons?: UIButton[] }) {
+  if (!props.buttons?.length) {
+    return null
+  }
+
+  return (
+    <WidgetRoot key="widgets">
+      {props.buttons?.map((b) => (
+        <ApiButton button={b} key={b.metadata?.name} />
+      ))}
+    </WidgetRoot>
+  )
+}
+
 export default function OverviewActionBar(props: OverviewActionBarProps) {
-  let { resource, filterSet, alerts } = props
-  let endpoints = resource?.endpointLinks || []
-  let podId = resource?.podID || ""
-  const resourceName = resource ? resource.name || "" : ResourceName.all
+  let { resource, filterSet, alerts, buttons } = props
+  let endpoints = resource?.status?.endpointLinks || []
+  let podId = resource?.status?.k8sResourceInfo?.podName || ""
+  const resourceName = resource
+    ? resource.metadata?.name || ""
+    : ResourceName.all
   const isSnapshot = usePathBuilder().isSnapshot()
   const logStore = useLogStore()
 
@@ -449,22 +527,27 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     )
   })
 
-  let copyButton = podId ? <CopyButton podId={podId} /> : <div>&nbsp;</div>
+  let topRowEls = new Array<JSX.Element>()
+  if (endpointEls.length) {
+    topRowEls.push(
+      <EndpointSet key="endpointSet">
+        <EndpointIcon />
+        {endpointEls}
+      </EndpointSet>
+    )
+  }
+  if (podId) {
+    topRowEls.push(<CopyButton podId={podId} key="copyPodId" />)
+  }
 
-  let topRow =
-    endpointEls.length || podId ? (
-      <ActionBarTopRow key="top">
-        {endpointEls.length ? (
-          <EndpointSet>
-            <EndpointIcon />
-            {endpointEls}
-          </EndpointSet>
-        ) : (
-          <EndpointSet />
-        )}
-        {copyButton}
-      </ActionBarTopRow>
-    ) : null
+  const widgets = OverviewWidgets({ buttons })
+  if (widgets) {
+    topRowEls.push(widgets)
+  }
+
+  const topRow = topRowEls.length ? (
+    <ActionBarTopRow key="top">{topRowEls}</ActionBarTopRow>
+  ) : null
 
   return (
     <ActionBarRoot>

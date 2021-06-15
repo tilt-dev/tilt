@@ -25,8 +25,9 @@ type Execer interface {
 }
 
 type fakeExecProcess struct {
-	exitCh  chan int
-	workdir string
+	exitCh    chan int
+	workdir   string
+	startTime time.Time
 }
 
 type FakeExecer struct {
@@ -54,8 +55,9 @@ func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, stat
 
 	e.mu.Lock()
 	e.processes[cmd.String()] = &fakeExecProcess{
-		exitCh:  exitCh,
-		workdir: cmd.Dir,
+		exitCh:    exitCh,
+		workdir:   cmd.Dir,
+		startTime: time.Now(),
 	}
 	e.mu.Unlock()
 
@@ -108,6 +110,7 @@ func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan stat
 }
 
 func (fe *FakeExecer) RequireNoKnownProcess(t *testing.T, cmd string) {
+	t.Helper()
 	fe.mu.Lock()
 	defer fe.mu.Unlock()
 
@@ -170,7 +173,24 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	// This is to prevent this goroutine from blocking, since we know there's only going to be one result
 	processExitCh := make(chan error, 1)
 	go func() {
-		processExitCh <- c.Wait()
+		// Cmd Wait() does not have quite the semantics we want,
+		// because it will block indefinitely on any descendant processes.
+		// This can lead to Cmd appearing to hang.
+		//
+		// Instead, we exit immediately if the main process exits.
+		//
+		// Details:
+		// https://github.com/tilt-dev/tilt/issues/4456
+		state, err := c.Process.Wait()
+		procutil.KillProcessGroup(c)
+
+		if err != nil {
+			processExitCh <- err
+		} else if !state.Success() {
+			processExitCh <- &exec.ExitError{ProcessState: state}
+		} else {
+			processExitCh <- nil
+		}
 		close(processExitCh)
 	}()
 

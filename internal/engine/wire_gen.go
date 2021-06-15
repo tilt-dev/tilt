@@ -14,6 +14,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -25,20 +26,22 @@ import (
 
 // Injectors from wire.go:
 
-func provideBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
+func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
 	dockerUpdater := containerupdate.NewDockerUpdater(docker2)
 	execUpdater := containerupdate.NewExecUpdater(kClient)
+	kubeContext := provideFakeKubeContext(env)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	buildcontrolUpdateMode, err := buildcontrol.ProvideUpdateMode(updateMode, env, runtime)
+	clusterEnv := provideFakeDockerClusterEnv(docker2, env, kubeContext, runtime)
+	buildcontrolUpdateMode, err := buildcontrol.ProvideUpdateMode(updateMode, kubeContext, clusterEnv)
 	if err != nil {
 		return nil, err
 	}
-	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, buildcontrolUpdateMode, env, runtime, clock)
+	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, buildcontrolUpdateMode, kubeContext, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, analytics2, buildcontrolUpdateMode, clock, runtime, kp)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, buildcontrolUpdateMode, clock, kp)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock)
@@ -68,3 +71,25 @@ var DeployerWireSetTest = wire.NewSet(
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
 )
+
+func provideFakeKubeContext(env k8s.Env) k8s.KubeContext {
+	return k8s.KubeContext(string(env))
+}
+
+// A simplified version of the normal calculation we do
+// about whether we can build direct to a cluser
+func provideFakeDockerClusterEnv(c docker.Client, k8sEnv k8s.Env, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
+	env := c.Env()
+	isDockerRuntime := runtime == container.RuntimeDocker
+	isLocalDockerCluster := k8sEnv == k8s.EnvMinikube || k8sEnv == k8s.EnvMicroK8s || k8sEnv == k8s.EnvDockerDesktop
+	if isDockerRuntime && isLocalDockerCluster {
+		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+	}
+
+	fake, ok := c.(*docker.FakeClient)
+	if ok {
+		fake.FakeEnv = env
+	}
+
+	return docker.ClusterEnv(env)
+}

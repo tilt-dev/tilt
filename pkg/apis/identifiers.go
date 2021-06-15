@@ -6,6 +6,12 @@ import (
 	"regexp"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+
 	"k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -13,6 +19,14 @@ import (
 const MaxNameLength = validation.DNS1123SubdomainMaxLength
 
 var invalidPathCharacters = regexp.MustCompile(`[` + strings.Join(path.NameMayNotContain, "") + `]`)
+
+func Key(o resource.Object) types.NamespacedName {
+	return KeyFromMeta(*o.GetObjectMeta())
+}
+
+func KeyFromMeta(objMeta metav1.ObjectMeta) types.NamespacedName {
+	return types.NamespacedName{Name: objMeta.Name, Namespace: objMeta.Namespace}
+}
 
 // SanitizeName ensures a value is suitable for usage as an apiserver identifier.
 func SanitizeName(name string) string {

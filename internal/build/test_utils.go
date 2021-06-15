@@ -48,7 +48,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	env := k8s.EnvGKE
 
-	dEnv := docker.ProvideClusterEnv(ctx, env, wmcontainer.RuntimeDocker, k8s.FakeMinikube{})
+	dEnv := docker.ProvideClusterEnv(ctx, "gke", env, wmcontainer.RuntimeDocker, k8s.FakeMinikube{})
 	dCli := docker.NewDockerClient(ctx, docker.Env(dEnv))
 	_, ok := dCli.(*docker.Cli)
 	// If it wasn't an actual Docker client, it's an exploding client

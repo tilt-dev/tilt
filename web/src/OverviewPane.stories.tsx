@@ -4,7 +4,7 @@ import OverviewPane from "./OverviewPane"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
-type Resource = Proto.webviewResource
+type UIResource = Proto.v1alpha1UIResource
 
 export default {
   title: "New UI/OverviewPane",

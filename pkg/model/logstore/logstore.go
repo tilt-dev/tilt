@@ -2,6 +2,7 @@ package logstore
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,8 +19,8 @@ import (
 // But the initial page load loads all the existing logs.
 // https://github.com/tilt-dev/tilt/issues/3359
 //
-// Until that issue is fixed, we cap the logs at about 1MB.
-const defaultMaxLogLengthInBytes = 1000 * 1000
+// Until that issue is fixed, we cap the logs at about 2MB.
+const defaultMaxLogLengthInBytes = 2 * 1000 * 1000
 
 const newlineByte = byte('\n')
 
@@ -771,23 +772,23 @@ func (s *LogStore) ensureMaxLength() {
 		return
 	}
 
-	// First, count the number of bytes in each manifest.
-	manifestByteCount := manifestByteCount{}
-	for _, segment := range s.segments {
-		manifestByteCount[s.spans[segment.SpanID].ManifestName] += segment.Len()
-	}
+	manifestWeightMap := s.createManifestWeightMap()
 
 	// Next, repeatedly cut the longest manifest in half until
 	// we've reached the target number of bytes to cut.
 	leftToCut := s.len - s.logTruncationTarget()
 	for leftToCut > 0 {
-		mn := manifestByteCount.longestManifestName()
-		amountToCut := manifestByteCount[mn] / 2
+		mn := manifestWeightMap.heaviest()
+		byteCount := manifestWeightMap[mn].byteCount
+		amountToCut := byteCount - (byteCount / 2) // ceiling(byteCount/2)
 		if amountToCut > leftToCut {
 			amountToCut = leftToCut
 		}
 		leftToCut -= amountToCut
-		manifestByteCount[mn] = manifestByteCount[mn] - amountToCut
+
+		// A better algorithm would also update the start time, but
+		// this is hard to compute without truncating first.
+		manifestWeightMap[mn].byteCount -= amountToCut
 	}
 
 	// Lastly, go through all the segments, and truncate the manifests
@@ -797,8 +798,8 @@ func (s *LogStore) ensureMaxLength() {
 	for i := len(s.segments) - 1; i >= 0; i-- {
 		segment := s.segments[i]
 		mn := s.spans[segment.SpanID].ManifestName
-		manifestByteCount[mn] -= segment.Len()
-		if manifestByteCount[mn] < 0 {
+		manifestWeightMap[mn].byteCount -= segment.Len()
+		if manifestWeightMap[mn].byteCount < 0 {
 			trimmedSegmentCount++
 			continue
 		}
@@ -812,6 +813,21 @@ func (s *LogStore) ensureMaxLength() {
 	s.recomputeDerivedValues()
 }
 
+// Count the number of bytes and start time in each manifest.
+func (s *LogStore) createManifestWeightMap() manifestWeightMap {
+	manifestWeightMap := manifestWeightMap{}
+	for _, segment := range s.segments {
+		mn := s.spans[segment.SpanID].ManifestName
+		weight, ok := manifestWeightMap[mn]
+		if !ok {
+			weight = &manifestWeight{name: mn, byteCount: 0, start: segment.Time}
+			manifestWeightMap[mn] = weight
+		}
+		weight.byteCount += segment.Len()
+	}
+	return manifestWeightMap
+}
+
 // https://github.com/golang/go/wiki/SliceTricks#reversing
 func reverseLogSegments(a []LogSegment) {
 	for i := len(a)/2 - 1; i >= 0; i-- {
@@ -820,17 +836,49 @@ func reverseLogSegments(a []LogSegment) {
 	}
 }
 
-// Helper struct to find the manifest with the most logs.
-type manifestByteCount map[model.ManifestName]int
+type manifestWeight struct {
+	name      model.ManifestName
+	byteCount int
+	start     time.Time
+}
 
-func (s manifestByteCount) longestManifestName() model.ManifestName {
-	longest := model.ManifestName("")
-	longestCount := -1
-	for key, count := range s {
-		if count > longestCount {
-			longest = key
-			longestCount = count
+// Helper struct to find the manifest with the most logs.
+type manifestWeightMap map[model.ManifestName]*manifestWeight
+
+// There are 3 types of logs we need to consider:
+// 1) Jobs that print short, critical information at the start.
+// 2) Jobs that print lots of health checks continuously.
+// 3) Jobs that print recent test results.
+//
+// Truncating purely on recency would be bad for (1).
+// Truncating purely on length would be bad for (3).
+//
+// So we weight based on both recency and length.
+func (s manifestWeightMap) heaviest() model.ManifestName {
+	weightsByTime := []*manifestWeight{}
+	for _, v := range s {
+		weightsByTime = append(weightsByTime, v)
+	}
+
+	// Sort manifests by most recent first.
+	sort.Slice(weightsByTime, func(i, j int) bool {
+		return weightsByTime[i].start.After(weightsByTime[j].start)
+	})
+
+	heaviest := model.ManifestName("")
+	heaviestValue := -1
+	for i, weight := range weightsByTime {
+		// We compute: weightValue = order * byteCount where the manifest with
+		// most recent logs has order 1, the next one has order 2, and so on.
+		//
+		// This helps ensures older logs get truncated first.
+		order := i + 1
+		weightValue := order * weight.byteCount
+		if weightValue > heaviestValue {
+			heaviest = weight.name
+			heaviestValue = weightValue
 		}
 	}
-	return longest
+
+	return heaviest
 }

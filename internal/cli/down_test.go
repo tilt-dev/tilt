@@ -147,7 +147,7 @@ metadata:
   name: %s
 spec: {}
 status: {}`, name)
-	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.NewK8sTargetForTesting(yaml))
 }
 
 func newK8sPVCManifest(name string, downPolicy string) model.Manifest {
@@ -160,7 +160,7 @@ metadata:
     tilt.dev/down-policy: %s
 spec: {}
 status: {}`, name, downPolicy)
-	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.K8sTarget{YAML: yaml})
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.NewK8sTargetForTesting(yaml))
 }
 
 type downFixture struct {
@@ -179,7 +179,7 @@ func newDownFixture(t *testing.T) downFixture {
 	ctx, cancel := context.WithCancel(ctx)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	kCli := k8s.NewFakeK8sClient()
+	kCli := k8s.NewFakeK8sClient(t)
 	downDeps := DownDeps{tfl, dcc, kCli}
 	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (deps DownDeps, err error) {
 		return downDeps, nil

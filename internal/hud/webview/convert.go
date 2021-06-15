@@ -1,14 +1,24 @@
 package webview
 
 import (
-	"os"
-	"path/filepath"
+	"context"
 	"sort"
 	"strings"
 
+	"github.com/golang/protobuf/ptypes"
+
+	"github.com/tilt-dev/tilt/internal/k8s"
+
+	"github.com/tilt-dev/tilt/pkg/apis"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
-	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -16,252 +26,295 @@ import (
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
-func StateToProtoView(s store.EngineState, logCheckpoint logstore.Checkpoint) (*proto_webview.View, error) {
-	ret := &proto_webview.View{}
+// We call the main session the Tiltfile session, for compatibility
+// with the other Session API.
+const UISessionName = "Tiltfile"
 
-	rpv, err := tiltfileResourceProtoView(s)
+// Create the complete snapshot of the webview.
+func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore) (*proto_webview.View, error) {
+	ret := &proto_webview.View{}
+	session := &v1alpha1.UISession{}
+	err := client.Get(ctx, types.NamespacedName{Name: UISessionName}, session)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+
+	if err == nil {
+		ret.UiSession = session
+	}
+
+	resourceList := &v1alpha1.UIResourceList{}
+	err = client.List(ctx, resourceList)
 	if err != nil {
 		return nil, err
 	}
-	ret.Resources = append(ret.Resources, rpv)
 
-	for _, name := range s.ManifestDefinitionOrder {
-		mt, ok := s.ManifestTargets[name]
-		if !ok {
-			continue
-		}
-
-		// Skip manifests that don't come from the tiltfile.
-		if mt.Manifest.Source != model.ManifestSourceTiltfile {
-			continue
-		}
-
-		ms := mt.State
-
-		var absWatchDirs []string
-		for i, p := range mt.Manifest.LocalPaths() {
-			if i > 50 {
-				// to avoid pathological perf cases, stop after 50
-				break
-			}
-			fi, err := os.Stat(p)
-
-			// Treat this as a directory if there's an error
-			if err != nil || fi.IsDir() {
-				absWatchDirs = append(absWatchDirs, p)
-			}
-		}
-
-		var pendingBuildEdits []string
-		for _, status := range ms.BuildStatuses {
-			for f := range status.PendingFileChanges {
-				pendingBuildEdits = append(pendingBuildEdits, f)
-			}
-		}
-
-		pendingBuildEdits = ospath.FileListDisplayNames(absWatchDirs, pendingBuildEdits)
-
-		buildHistory := append([]model.BuildRecord{}, ms.BuildHistory...)
-		for i, build := range buildHistory {
-			build.Edits = ospath.FileListDisplayNames(absWatchDirs, build.Edits)
-			buildHistory[i] = build
-		}
-
-		currentBuild := ms.CurrentBuild
-		currentBuild.Edits = ospath.FileListDisplayNames(absWatchDirs, ms.CurrentBuild.Edits)
-
-		// Sort the strings to make the outputs deterministic.
-		sort.Strings(pendingBuildEdits)
-
-		endpoints := store.ManifestTargetEndpoints(mt)
-
-		podID := ms.MostRecentPod().Name
-
-		bh, err := ToProtoBuildRecords(buildHistory, s.LogStore)
-		if err != nil {
-			return nil, err
-		}
-		lastDeploy, err := timeToProto(ms.LastSuccessfulDeployTime)
-		if err != nil {
-			return nil, err
-		}
-		cb, err := ToProtoBuildRecord(currentBuild, s.LogStore)
-		if err != nil {
-			return nil, err
-		}
-
-		specs, err := TargetSpecsToProto(mt.Manifest.TargetSpecs())
-		if err != nil {
-			return nil, err
-		}
-
-		// NOTE(nick): Right now, the UX is designed to show the output exactly one
-		// pod. A better UI might summarize the pods in other ways (e.g., show the
-		// "most interesting" pod that's crash looping, or show logs from all pods
-		// at once).
-		hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
-		pbs, err := timeToProto(pendingBuildSince)
-		if err != nil {
-			return nil, err
-		}
-
-		r := &proto_webview.Resource{
-			Name:               name.String(),
-			LastDeployTime:     lastDeploy,
-			BuildHistory:       bh,
-			PendingBuildEdits:  pendingBuildEdits,
-			PendingBuildSince:  pbs,
-			PendingBuildReason: int32(mt.NextBuildReason()),
-			CurrentBuild:       cb,
-			EndpointLinks:      ToProtoLinks(endpoints),
-			PodID:              podID,
-			Specs:              specs,
-			ShowBuildStatus:    len(mt.Manifest.ImageTargets) > 0 || mt.Manifest.IsDC(),
-			TriggerMode:        int32(mt.Manifest.TriggerMode),
-			HasPendingChanges:  hasPendingChanges,
-			Queued:             s.ManifestInTriggerQueue(name),
-		}
-
-		err = protoPopulateResourceInfoView(mt, r)
-		if err != nil {
-			return nil, err
-		}
-
-		ret.Resources = append(ret.Resources, r)
+	for _, item := range resourceList.Items {
+		item := item
+		ret.UiResources = append(ret.UiResources, &item)
 	}
 
-	logList, err := s.LogStore.ToLogList(logCheckpoint)
+	buttonList := &v1alpha1.UIButtonList{}
+	err = client.List(ctx, buttonList)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range buttonList.Items {
+		item := item
+		ret.UiButtons = append(ret.UiButtons, &item)
+	}
+
+	s := st.RLockState()
+	defer st.RUnlockState()
+	logList, err := s.LogStore.ToLogList(0)
 	if err != nil {
 		return nil, err
 	}
 
 	ret.LogList = logList
-	ret.NeedsAnalyticsNudge = NeedsNudge(s)
-	ret.RunningTiltBuild = &proto_webview.TiltBuild{
-		Version:   s.TiltBuildInfo.Version,
-		CommitSHA: s.TiltBuildInfo.CommitSHA,
-		Dev:       s.TiltBuildInfo.Dev,
-		Date:      s.TiltBuildInfo.Date,
+
+	// We grandfather in TiltStartTime from the old protocol,
+	// because it tells the UI to reload.
+	start, err := ptypes.TimestampProto(s.TiltStartTime)
+	if err != nil {
+		return nil, err
 	}
-	ret.SuggestedTiltVersion = s.SuggestedTiltVersion
-	ret.FeatureFlags = make(map[string]bool)
-	for k, v := range s.Features {
-		ret.FeatureFlags[k] = v
-	}
-	ret.TiltCloudUsername = s.CloudStatus.Username
-	ret.TiltCloudTeamName = s.CloudStatus.TeamName
-	ret.TiltCloudSchemeHost = cloudurl.URL(s.CloudAddress).String()
-	ret.TiltCloudTeamID = s.TeamID
-	if s.FatalError != nil {
-		ret.FatalError = s.FatalError.Error()
+	ret.TiltStartTime = start
+	ret.IsComplete = true
+
+	sortUIResources(ret.UiResources, s.ManifestDefinitionOrder)
+
+	return ret, nil
+}
+
+// Create a view that only contains logs since the given checkpoint.
+func LogUpdate(st store.RStore, checkpoint logstore.Checkpoint) (*proto_webview.View, error) {
+	ret := &proto_webview.View{}
+
+	s := st.RLockState()
+	defer st.RUnlockState()
+	logList, err := s.LogStore.ToLogList(checkpoint)
+	if err != nil {
+		return nil, err
 	}
 
-	ret.VersionSettings = &proto_webview.VersionSettings{
-		CheckUpdates: s.VersionSettings.CheckUpdates,
-	}
+	ret.LogList = logList
 
-	start, err := timeToProto(s.TiltStartTime)
+	// We grandfather in TiltStartTime from the old protocol,
+	// because it tells the UI to reload.
+	start, err := ptypes.TimestampProto(s.TiltStartTime)
 	if err != nil {
 		return nil, err
 	}
 	ret.TiltStartTime = start
 
-	ret.TiltfileKey = s.TiltfilePath
-	ret.MetricsServing = toMetricsServingProto(s.MetricsServing)
-
 	return ret, nil
 }
 
-func toMetricsServingProto(s store.MetricsServing) *proto_webview.MetricsServing {
-	return &proto_webview.MetricsServing{
-		Mode:        string(s.Mode),
-		GrafanaHost: s.GrafanaHost,
+func sortUIResources(resources []*v1alpha1.UIResource, order []model.ManifestName) {
+	resourceOrder := make(map[string]int, len(order))
+	for i, name := range order {
+		resourceOrder[name.String()] = i
 	}
+	resourceOrder[store.TiltfileManifestName.String()] = -1
+	sort.Slice(resources, func(i, j int) bool {
+		objI := resources[i]
+		objJ := resources[j]
+		orderI, hasI := resourceOrder[objI.Name]
+		orderJ, hasJ := resourceOrder[objJ.Name]
+		if !hasI {
+			orderI = 1000
+		}
+		if !hasJ {
+			orderJ = 1000
+		}
+		if orderI != orderJ {
+			return orderI < orderJ
+		}
+		return objI.Name < objJ.Name
+	})
 }
 
-func tiltfileResourceProtoView(s store.EngineState) (*proto_webview.Resource, error) {
+// Converts EngineState into the public data model representation, a UISession.
+func ToUISession(s store.EngineState) *v1alpha1.UISession {
+	ret := &v1alpha1.UISession{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: UISessionName,
+		},
+		Status: v1alpha1.UISessionStatus{},
+	}
+
+	status := &(ret.Status)
+	status.NeedsAnalyticsNudge = NeedsNudge(s)
+	status.RunningTiltBuild = v1alpha1.TiltBuild{
+		Version:   s.TiltBuildInfo.Version,
+		CommitSHA: s.TiltBuildInfo.CommitSHA,
+		Dev:       s.TiltBuildInfo.Dev,
+		Date:      s.TiltBuildInfo.Date,
+	}
+	status.SuggestedTiltVersion = s.SuggestedTiltVersion
+	status.FeatureFlags = []v1alpha1.UIFeatureFlag{}
+	for k, v := range s.Features {
+		status.FeatureFlags = append(status.FeatureFlags, v1alpha1.UIFeatureFlag{
+			Name:  k,
+			Value: v,
+		})
+	}
+	sort.Slice(status.FeatureFlags, func(i, j int) bool {
+		return status.FeatureFlags[i].Name < status.FeatureFlags[j].Name
+	})
+	status.TiltCloudUsername = s.CloudStatus.Username
+	status.TiltCloudTeamName = s.CloudStatus.TeamName
+	status.TiltCloudSchemeHost = cloudurl.URL(s.CloudAddress).String()
+	status.TiltCloudTeamID = s.TeamID
+	if s.FatalError != nil {
+		status.FatalError = s.FatalError.Error()
+	}
+
+	status.VersionSettings = v1alpha1.VersionSettings{
+		CheckUpdates: s.VersionSettings.CheckUpdates,
+	}
+
+	status.TiltStartTime = metav1.NewTime(s.TiltStartTime)
+
+	status.TiltfileKey = s.TiltfilePath
+
+	return ret
+}
+
+// Converts an EngineState into a list of UIResources.
+// The order of the list is non-deterministic.
+func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
+	ret := make([]*v1alpha1.UIResource, 0, len(state.ManifestTargets)+1)
+	ret = append(ret, TiltfileResourceProtoView(state))
+	for _, mt := range state.ManifestTargets {
+		// Skip manifests that don't come from the tiltfile.
+		if mt.Manifest.Source != model.ManifestSourceTiltfile {
+			continue
+		}
+
+		r, err := ToUIResource(mt, state)
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, r)
+	}
+	return ret, nil
+}
+
+// Converts a ManifestTarget into the public data model representation,
+// a UIResource.
+func ToUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIResource, error) {
+	ms := mt.State
+	endpoints := store.ManifestTargetEndpoints(mt)
+
+	bh := ToBuildsTerminated(ms.BuildHistory, s.LogStore)
+	lastDeploy := metav1.NewMicroTime(ms.LastSuccessfulDeployTime)
+	cb := ToBuildRunning(ms.CurrentBuild)
+
+	specs, err := ToAPITargetSpecs(mt.Manifest.TargetSpecs())
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE(nick): Right now, the UX is designed to show the output exactly one
+	// pod. A better UI might summarize the pods in other ways (e.g., show the
+	// "most interesting" pod that's crash looping, or show logs from all pods
+	// at once).
+	hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
+
+	name := mt.Manifest.Name
+	r := &v1alpha1.UIResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name.String(),
+		},
+		Status: v1alpha1.UIResourceStatus{
+			LastDeployTime:    lastDeploy,
+			BuildHistory:      bh,
+			PendingBuildSince: metav1.NewMicroTime(pendingBuildSince),
+			CurrentBuild:      cb,
+			EndpointLinks:     ToAPILinks(endpoints),
+			Specs:             specs,
+			TriggerMode:       int32(mt.Manifest.TriggerMode),
+			HasPendingChanges: hasPendingChanges,
+			Queued:            s.ManifestInTriggerQueue(name),
+		},
+	}
+
+	err = populateResourceInfoView(mt, r)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func TiltfileResourceProtoView(s store.EngineState) *v1alpha1.UIResource {
 	ltfb := s.TiltfileState.LastBuild()
 	ctfb := s.TiltfileState.CurrentBuild
 
-	ltfb.Edits = ospath.FileListDisplayNames([]string{filepath.Dir(s.TiltfilePath)}, ltfb.Edits)
-
-	pctfb, err := ToProtoBuildRecord(ctfb, s.LogStore)
-	if err != nil {
-		return nil, err
+	pctfb := ToBuildRunning(ctfb)
+	history := []v1alpha1.UIBuildTerminated{}
+	if !ltfb.Empty() {
+		history = append(history, ToBuildTerminated(ltfb, s.LogStore))
 	}
-	pltfb, err := ToProtoBuildRecord(ltfb, s.LogStore)
-	if err != nil {
-		return nil, err
-	}
-	tr := &proto_webview.Resource{
-		Name:         store.TiltfileManifestName.String(),
-		IsTiltfile:   true,
-		CurrentBuild: pctfb,
-		BuildHistory: []*proto_webview.BuildRecord{
-			pltfb,
+	tr := &v1alpha1.UIResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: store.TiltfileManifestName.String(),
 		},
-		RuntimeStatus: string(model.RuntimeStatusNotApplicable),
-		UpdateStatus:  string(s.TiltfileState.UpdateStatus(model.TriggerModeAuto)),
+		Status: v1alpha1.UIResourceStatus{
+			CurrentBuild:  pctfb,
+			BuildHistory:  history,
+			RuntimeStatus: v1alpha1.RuntimeStatusNotApplicable,
+			UpdateStatus:  s.TiltfileState.UpdateStatus(model.TriggerModeAuto),
+		},
 	}
-	start, err := timeToProto(ctfb.StartTime)
-	if err != nil {
-		return nil, err
-	}
-	finish, err := timeToProto(ltfb.FinishTime)
-	if err != nil {
-		return nil, err
-	}
+	start := metav1.NewMicroTime(ctfb.StartTime)
+	finish := metav1.NewMicroTime(ltfb.FinishTime)
 	if !ctfb.Empty() {
-		tr.PendingBuildSince = start
+		tr.Status.PendingBuildSince = start
 	} else {
-		tr.LastDeployTime = finish
+		tr.Status.LastDeployTime = finish
 	}
-	return tr, nil
+	return tr
 }
 
-func protoPopulateResourceInfoView(mt *store.ManifestTarget, r *proto_webview.Resource) error {
-	r.UpdateStatus = string(mt.UpdateStatus())
-	r.RuntimeStatus = string(model.RuntimeStatusNotApplicable)
+func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) error {
+	r.Status.UpdateStatus = mt.UpdateStatus()
+	r.Status.RuntimeStatus = v1alpha1.RuntimeStatusNotApplicable
 
 	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
-		r.YamlResourceInfo = &proto_webview.YAMLResourceInfo{
-			K8SResources: mt.Manifest.K8sTarget().DisplayNames,
-		}
 		return nil
 	}
 
 	if mt.Manifest.IsDC() {
-		dc := mt.Manifest.DockerComposeTarget()
 		dcState := mt.State.DCRuntimeState()
-		info, err := NewProtoDCResourceInfo(dc.ConfigPaths, dcState.ContainerState.Status, dcState.ContainerID, dcState.StartTime)
-		if err != nil {
-			return err
-		}
-		r.DcResourceInfo = info
-		r.RuntimeStatus = string(dcState.RuntimeStatus())
+		r.Status.RuntimeStatus = v1alpha1.RuntimeStatus(dcState.RuntimeStatus())
 		return nil
 	}
 	if mt.Manifest.IsLocal() {
 		lState := mt.State.LocalRuntimeState()
-		r.LocalResourceInfo = &proto_webview.LocalResourceInfo{Pid: int64(lState.PID), IsTest: mt.Manifest.LocalTarget().IsTest}
-		r.RuntimeStatus = string(lState.RuntimeStatus())
+		r.Status.LocalResourceInfo = &v1alpha1.UIResourceLocal{PID: int64(lState.PID), IsTest: mt.Manifest.LocalTarget().IsTest}
+		r.Status.RuntimeStatus = v1alpha1.RuntimeStatus(lState.RuntimeStatus())
 		return nil
 	}
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
-		r.K8SResourceInfo = &proto_webview.K8SResourceInfo{
+		podID := k8s.PodID(pod.Name)
+		r.Status.K8sResourceInfo = &v1alpha1.UIResourceKubernetes{
 			PodName:            pod.Name,
-			PodCreationTime:    pod.CreatedAt.String(),
-			PodUpdateStartTime: pod.UpdateStartedAt.String(),
+			PodCreationTime:    pod.CreatedAt,
+			PodUpdateStartTime: apis.NewTime(kState.UpdateStartTime[k8s.PodID(pod.Name)]),
 			PodStatus:          pod.Status,
 			PodStatusMessage:   strings.Join(pod.Errors, "\n"),
 			AllContainersReady: store.AllPodContainersReady(pod),
-			PodRestarts:        int32(store.VisiblePodContainerRestarts(pod)),
+			PodRestarts:        kState.VisiblePodContainerRestarts(podID),
 			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
 
-		r.RuntimeStatus = string(kState.RuntimeStatus())
+		r.Status.RuntimeStatus = v1alpha1.RuntimeStatus(kState.RuntimeStatus())
 		return nil
 	}
 

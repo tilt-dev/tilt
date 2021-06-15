@@ -31,6 +31,7 @@ var ErrNamespaceNotExists = errors.New("namespace does not exist")
 var _ rest.StandardStorage = &filepathREST{}
 var _ rest.Scoper = &filepathREST{}
 var _ rest.Storage = &filepathREST{}
+var _ rest.ShortNamesProvider = &filepathREST{}
 
 // NewFilepathREST instantiates a new REST storage.
 func NewFilepathREST(
@@ -92,6 +93,10 @@ func (f *filepathREST) NewList() runtime.Object {
 
 func (f *filepathREST) NamespaceScoped() bool {
 	return f.strategy.NamespaceScoped()
+}
+
+func (f *filepathREST) ShortNames() []string {
+	return f.strategy.ShortNames()
 }
 
 func (f *filepathREST) Get(
@@ -392,15 +397,15 @@ func (f *filepathREST) Watch(ctx context.Context, options *metainternalversion.L
 	danger := reflect.ValueOf(list).Elem()
 	items := danger.FieldByName("Items")
 
+	initEvents := []watch.Event{}
 	for i := 0; i < items.Len(); i++ {
 		obj := items.Index(i).Addr().Interface().(runtime.Object)
-		jw.ch <- watch.Event{
+		initEvents = append(initEvents, watch.Event{
 			Type:   watch.Added,
 			Object: obj,
-		}
+		})
 	}
-
-	f.watchSet.start(jw)
+	jw.Start(initEvents)
 
 	return jw, nil
 }

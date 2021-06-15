@@ -258,7 +258,8 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)
   let hasBuilt = item.lastBuild !== null
   let building = !isZeroTime(item.currentBuildStartTime)
-  let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+  let time = item.lastDeployTime || ""
+  let timeAgo = <TimeAgo date={time} formatter={formatter} />
   let isSelected = props.selected
 
   let isSelectedClass = isSelected ? "isSelected" : ""

@@ -3,8 +3,6 @@ import { mount } from "enzyme"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
-import { MenuButton } from "./GlobalNav"
-import MetricsDialog from "./MetricsDialog"
 import { TwoResources } from "./OverviewResourceBar.stories"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotActionProvider } from "./snapshot"
@@ -42,22 +40,4 @@ it("opens snapshot modal on s", () => {
   root.update()
   expect(opened).toEqual(1)
   root.unmount()
-})
-
-it("opens metrics dialog", () => {
-  const root = mount(
-    <MemoryRouter initialEntries={["/"]}>{TwoResources()}</MemoryRouter>
-  )
-
-  let buttons = root.find(MenuButton)
-  expect(buttons).toHaveLength(5)
-
-  let metricButton = buttons.at(2)
-  expect(metricButton.getDOMNode().innerHTML).toEqual(
-    expect.stringContaining("Metrics")
-  )
-
-  expect(root.find(MetricsDialog).props().open).toEqual(false)
-  metricButton.simulate("click")
-  expect(root.find(MetricsDialog).props().open).toEqual(true)
 })

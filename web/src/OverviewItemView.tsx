@@ -35,7 +35,7 @@ import {
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { TriggerModeToggle } from "./TriggerModeToggle"
-import { ResourceStatus, TargetType, TriggerMode } from "./types"
+import { ResourceName, ResourceStatus, TargetType, TriggerMode } from "./types"
 
 export const OverviewItemRoot = styled.li`
   display: flex;
@@ -45,11 +45,15 @@ export const OverviewItemRoot = styled.li`
   margin: 0 0 ${SizeUnit(0.75)} ${SizeUnit(0.75)};
 `
 
-type Resource = Proto.webviewResource
-type Build = Proto.webviewBuildRecord
+type UIResource = Proto.v1alpha1UIResource
+type UIResourceStatus = Proto.v1alpha1UIResourceStatus
+type Build = Proto.v1alpha1UIBuildTerminated
+type UILink = Proto.v1alpha1UIResourceLink
 
-function resourceTypeLabel(res: Resource): string {
-  if (res.isTiltfile) {
+function resourceTypeLabel(r: UIResource): string {
+  let res = (r.status || {}) as UIResourceStatus
+  let name = r.metadata?.name
+  if (name == "(Tiltfile)") {
     return "Tiltfile"
   }
   let specs = res.specs ?? []
@@ -87,24 +91,25 @@ export class OverviewItem {
   hasPendingChanges: boolean
   queued: boolean
   lastBuild: Build | null = null
-  endpoints: Proto.webviewLink[]
+  endpoints: UILink[]
   podId: string
 
   /**
    * Create a pared down OverviewItem from a ResourceView
    */
-  constructor(res: Resource) {
+  constructor(r: UIResource) {
+    let res = (r.status || {}) as UIResourceStatus
     let buildHistory = res.buildHistory || []
     let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
 
-    this.name = res.name ?? ""
-    this.isTiltfile = !!res.isTiltfile
+    this.name = r.metadata?.name ?? ""
+    this.isTiltfile = this.name === ResourceName.tiltfile
     this.isTest =
       (res.localResourceInfo && !!res.localResourceInfo.isTest) || false
-    this.buildStatus = buildStatus(res)
-    this.buildAlertCount = buildAlerts(res, null).length
-    this.runtimeStatus = runtimeStatus(res)
-    this.runtimeAlertCount = runtimeAlerts(res, null).length
+    this.buildStatus = buildStatus(r)
+    this.buildAlertCount = buildAlerts(r, null).length
+    this.runtimeStatus = runtimeStatus(r)
+    this.runtimeAlertCount = runtimeAlerts(r, null).length
     this.hasEndpoints = (res.endpointLinks || []).length > 0
     this.lastBuildDur = lastBuildDuration(res)
     this.lastDeployTime = res.lastDeployTime ?? ""
@@ -114,9 +119,9 @@ export class OverviewItem {
     this.hasPendingChanges = !!res.hasPendingChanges
     this.queued = !!res.queued
     this.lastBuild = lastBuild
-    this.resourceTypeLabel = resourceTypeLabel(res)
+    this.resourceTypeLabel = resourceTypeLabel(r)
     this.endpoints = res.endpointLinks ?? []
-    this.podId = res.podID ?? ""
+    this.podId = res.k8sResourceInfo?.podName ?? ""
   }
 }
 
@@ -357,7 +362,8 @@ function RuntimeBox(props: RuntimeBoxProps) {
   let { item } = props
 
   let formatter = timeAgoFormatter
-  let timeAgo = <TimeAgo date={item.lastDeployTime} formatter={formatter} />
+  let time = item.lastDeployTime || ""
+  let timeAgo = <TimeAgo date={time} formatter={formatter} />
 
   let building = !isZeroTime(item.currentBuildStartTime)
   let hasSuccessfullyDeployed = !isZeroTime(item.lastDeployTime)

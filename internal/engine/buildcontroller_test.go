@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -32,14 +32,16 @@ func TestBuildControllerOnePod(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
+	pb := f.registerForDeployer(manifest)
+
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	pod := podbuilder.New(f.T(), manifest).Build()
-	f.podEvent(pod, manifest.Name)
+	pod := pb.Build()
+	f.podEvent(pod)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -55,6 +57,9 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateManifest(f)
+	// basePB is used for all pods so that they share the same deployment
+	basePB := f.registerForDeployer(manifest)
+
 	f.Start([]model.Manifest{manifest})
 
 	// initial build
@@ -62,14 +67,20 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	p1 := podbuilder.New(t, manifest).WithPodID("pod1").Build()
-	p2 := podbuilder.New(t, manifest).WithPodID("pod2").Build()
+	pb1 := basePB.WithPodName("pod1")
+	pb2 := basePB.WithPodName("pod2")
+	f.podEvent(pb1.Build())
+	f.podEvent(pb2.Build())
 
-	f.podEvent(p1, manifest.Name)
-	f.podEvent(p2, manifest.Name)
+	// must wait for both pods to be seen BEFORE the build is triggered
+	f.WaitUntilManifestState("pods were not seen", manifest.Name, func(state store.ManifestState) bool {
+		return len(state.K8sRuntimeState().Pods) == 2
+	})
+
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
+
 	// Should not have sent container info b/c too many pods
 	assert.Equal(t, store.ContainerInfo{}, call.oneImageState().OneContainerInfo())
 
@@ -89,6 +100,9 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
+	// basePB is used for all pods so that they share the same deployment
+	basePB := f.registerForDeployer(manifest)
+
 	f.Start([]model.Manifest{manifest})
 
 	// initial build
@@ -96,11 +110,17 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	p1 := podbuilder.New(t, manifest).WithPodID("pod1").Build()
-	p2 := podbuilder.New(t, manifest).WithPodID("pod2").Build()
+	p1 := basePB.WithPodName("pod1").Build()
+	p2 := basePB.WithPodName("pod2").Build()
 
-	f.podEvent(p1, manifest.Name)
-	f.podEvent(p2, manifest.Name)
+	f.podEvent(p1)
+	f.podEvent(p2)
+	// need to wait for both pods to be seen or the next build call might only know about one of them (and so
+	// would have container info)
+	f.WaitUntilManifestState("pods not seen", manifest.Name, func(state store.ManifestState) bool {
+		return len(state.K8sRuntimeState().Pods) == 2
+	})
+
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -122,17 +142,18 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 
 	ref := container.MustParseNamed("image-foo:tagged")
 	manifest := f.newManifestWithRef("fe", ref)
+	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
 	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
-	pod := podbuilder.New(t, manifest).
-		WithPodID("pod-id").
+	pod := basePB.
+		WithPodName("pod-id").
 		WithImage("image-foo:othertag").
 		Build()
-	f.podEvent(pod, manifest.Name)
+	f.podEvent(pod)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -185,7 +206,7 @@ func TestBuildControllerLocalResource(t *testing.T) {
 
 	f.WaitUntilManifestState("local target manifest state not updated", "local", func(ms store.ManifestState) bool {
 		lrs := ms.RuntimeState.(store.LocalRuntimeState)
-		return !lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus() == model.RuntimeStatusNotApplicable
+		return !lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus() == v1alpha1.RuntimeStatusNotApplicable
 	})
 
 	err := f.Stop()
@@ -198,6 +219,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
+	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
@@ -205,10 +227,15 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	// Associate the pods with the manifest state
-	podA := podbuilder.New(f.T(), manifest).WithPodID("pod-a").Build()
-	podB := podbuilder.New(f.T(), manifest).WithPodID("pod-b").Build()
-	f.podEvent(podA, manifest.Name)
-	f.podEvent(podB, manifest.Name)
+	podA := basePB.WithPodName("pod1").Build()
+	podB := basePB.WithPodName("pod2").Build()
+	f.podEvent(podA)
+	f.podEvent(podB)
+
+	// must wait for both pods to be seen BEFORE the build is triggered
+	f.WaitUntilManifestState("pods were not seen", manifest.Name, func(state store.ManifestState) bool {
+		return len(state.K8sRuntimeState().Pods) == 2
+	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
@@ -228,6 +255,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
+	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
@@ -235,7 +263,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
-	pod := podbuilder.New(f.T(), manifest).Build()
+	pod := basePB.Build()
 	imgName := pod.Status.ContainerStatuses[0].Image
 	runningState := v1.ContainerState{
 		Running: &v1.ContainerStateRunning{
@@ -255,7 +283,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 		State:       runningState,
 		ContainerID: "docker://cID-different-image",
 	})
-	f.podEvent(pod, manifest.Name)
+	f.podEvent(pod)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -286,6 +314,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
+	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
@@ -293,7 +322,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
 
 	// container already on this pod matches the image built by this manifest
-	pod := podbuilder.New(f.T(), manifest).Build()
+	pod := basePB.Build()
 	imgName := pod.Status.ContainerStatuses[0].Image
 	pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, v1.ContainerStatus{
 		Name:        "same image",
@@ -301,7 +330,7 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 		Ready:       false,
 		ContainerID: "docker://cID-same-image",
 	})
-	f.podEvent(pod, manifest.Name)
+	f.podEvent(pod)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	// If even one of the containers matching this image is !ready, we have to do a
@@ -323,6 +352,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
+	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
@@ -331,9 +361,8 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextLiveUpdateContainerIDs = []container.ID{podbuilder.FakeContainerID()}
-	pb := podbuilder.New(f.T(), manifest)
-	pod := pb.Build()
-	f.podEvent(pod, manifest.Name)
+	pod := basePB.Build()
+	f.podEvent(pod)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -345,7 +374,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	})
 
 	// Restart the pod with a new container id, to simulate a container restart.
-	f.podEvent(pb.WithContainerID("funnyContainerID").Build(), manifest.Name)
+	f.podEvent(basePB.WithContainerID("funnyContainerID").Build())
 	call = f.nextCall()
 	assert.True(t, call.oneImageState().OneContainerInfo().Empty())
 	assert.False(t, call.oneImageState().FullBuildTriggered)
@@ -368,6 +397,9 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
 		Build()
+	// basePB is used for all pods so that they share the same deployment
+	basePB := f.registerForDeployer(manifest)
+
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
@@ -375,10 +407,10 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
-	f.podEvent(podbuilder.New(t, manifest).
+	f.podEvent(basePB.
 		WithContainerIDAtIndex("c1", 0).
 		WithContainerIDAtIndex("c2", 1).
-		Build(), manifest.Name)
+		Build())
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -388,10 +420,10 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 	})
 
 	// Simulate pod event where one of the containers has been restarted with a new ID.
-	f.podEvent(podbuilder.New(t, manifest).
+	f.podEvent(basePB.
 		WithContainerID("c1").
 		WithContainerIDAtIndex("c3", 1).
-		Build(), manifest.Name)
+		Build())
 
 	call = f.nextCall()
 	f.waitForCompletedBuildCount(3)
@@ -417,6 +449,9 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
 		WithImageTarget(NewSanchoSidecarLiveUpdateImageTarget(f)).
 		Build()
+	// basePB is used for all pods so that they share the same deployment
+	basePB := f.registerForDeployer(manifest)
+
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
@@ -427,10 +462,10 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	f.b.nextLiveUpdateContainerIDs = []container.ID{"c1", "c2"}
-	f.podEvent(podbuilder.New(t, manifest).
+	f.podEvent(basePB.
 		WithContainerIDAtIndex("c1", 0).
 		WithContainerIDAtIndex("c2", 1).
-		Build(), manifest.Name)
+		Build())
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -440,10 +475,10 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 	})
 
 	// Simulate pod event where one of the containers has been restarted with a new ID.
-	f.podEvent(podbuilder.New(t, manifest).
+	f.podEvent(basePB.
 		WithContainerID("c1").
 		WithContainerIDAtIndex("c3", 1).
-		Build(), manifest.Name)
+		Build())
 
 	call = f.nextCall()
 	f.waitForCompletedBuildCount(3)
@@ -465,6 +500,7 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
 		Build()
+	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCall()
@@ -474,10 +510,10 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	expectedErr := fmt.Errorf("i can't let you do that dave")
 	f.SetNextLiveUpdateCompileError(expectedErr, []container.ID{"c1", "c2"})
 
-	f.podEvent(podbuilder.New(t, manifest).
+	f.podEvent(basePB.
 		WithContainerIDAtIndex("c1", 0).
 		WithContainerIDAtIndex("c2", 1).
-		Build(), manifest.Name)
+		Build())
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
@@ -503,7 +539,6 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 			f := newTestFixture(t)
 			defer f.TearDown()
 			mName := model.ManifestName("foobar")
-
 			manifest := f.newManifest(mName.String()).WithTriggerMode(tc.triggerMode)
 			manifests := []model.Manifest{manifest}
 			f.Start(manifests)
@@ -638,12 +673,12 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 	mName := model.ManifestName("foobar")
 
 	manifest := f.newManifest(mName.String())
-	manifests := []model.Manifest{manifest}
-	f.Start(manifests)
+	basePB := f.registerForDeployer(manifest)
+	f.Start([]model.Manifest{manifest})
 
 	f.nextCallComplete()
 
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(basePB.Build())
 
 	f.b.nextBuildError = errors.New("build failure!")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -674,16 +709,16 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 	mName := model.ManifestName("foobar")
 
 	manifest := f.newManifest(mName.String())
-	manifests := []model.Manifest{manifest}
+	basePB := f.registerForDeployer(manifest)
 	opt := func(ia InitAction) InitAction {
 		ia.TerminalMode = store.TerminalModeStream
 		return ia
 	}
-	f.Start(manifests, opt)
+	f.Start([]model.Manifest{manifest}, opt)
 
 	f.nextCallComplete()
 
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(basePB.Build())
 	f.WaitUntilManifestState("foobar loaded", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.K8sRuntimeState().Pods) == 1
 	})
@@ -691,17 +726,13 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 		ms.LiveUpdatedContainerIDs["containerID"] = true
 	})
 
-	deleteEvent := k8swatch.NewPodChangeAction(
-		podbuilder.New(f.T(), manifest).WithDeletionTime(time.Now()).Build(),
-		manifest.Name, f.lastDeployedUID(manifest.Name))
-
 	f.b.completeBuildsManually = true
 	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
 	f.WaitUntilManifestState("foobar building", "foobar", func(ms store.ManifestState) bool {
 		return ms.IsBuilding()
 	})
 
-	f.store.Dispatch(deleteEvent)
+	f.podEvent(basePB.WithDeletionTime(time.Now()).Build())
 	f.WaitUntilManifestState("foobar deleting", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.K8sRuntimeState().Pods) == 0
 	})
@@ -988,14 +1019,14 @@ func TestBuildControllerResourceDeps(t *testing.T) {
 	}
 
 	var manifests []model.Manifest
-	manifestsByName := make(map[string]model.Manifest)
+	podBuilders := make(map[string]podbuilder.PodBuilder)
 	for name, deps := range depGraph {
 		m := f.newManifest(name)
 		for _, dep := range deps {
 			m.ResourceDependencies = append(m.ResourceDependencies, model.ManifestName(dep))
 		}
 		manifests = append(manifests, m)
-		manifestsByName[name] = m
+		podBuilders[name] = f.registerForDeployer(m)
 	}
 
 	f.Start(manifests)
@@ -1005,8 +1036,7 @@ func TestBuildControllerResourceDeps(t *testing.T) {
 		call := f.nextCall("%dth build. have built: %v", i, observedOrder)
 		name := call.k8s().Name.String()
 		observedOrder = append(observedOrder, name)
-		pb := podbuilder.New(t, manifestsByName[name]).WithContainerReady(true)
-		f.podEvent(pb.Build(), model.ManifestName(name))
+		f.podEvent(podBuilders[name].WithContainerReady(true).Build())
 	}
 
 	var expectedManifests []string
@@ -1037,6 +1067,7 @@ func TestBuildControllerResourceDepTrumpsLocalResourcePriority(t *testing.T) {
 	defer f.TearDown()
 
 	k8sManifest := f.newManifest("foo")
+	pb := f.registerForDeployer(k8sManifest)
 	localManifest := manifestbuilder.New(f, "bar").
 		WithLocalResource("echo bar", nil).
 		WithResourceDeps("foo").Build()
@@ -1048,8 +1079,8 @@ func TestBuildControllerResourceDepTrumpsLocalResourcePriority(t *testing.T) {
 		call := f.nextCall()
 		if !call.k8s().Empty() {
 			observedBuildOrder = append(observedBuildOrder, call.k8s().Name.String())
-			pb := podbuilder.New(t, k8sManifest).WithContainerReady(true)
-			f.podEvent(pb.Build(), k8sManifest.Name)
+			pb = pb.WithContainerReady(true)
+			f.podEvent(pb.Build())
 			continue
 		}
 		observedBuildOrder = append(observedBuildOrder, call.local().Name.String())
@@ -1166,9 +1197,11 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	f.setMaxParallelUpdates(3)
 
 	manifest := f.newManifest("fe")
+	basePB := f.registerForDeployer(manifest)
+
 	f.Start([]model.Manifest{manifest})
 	f.completeAndCheckBuildsForManifests(manifest)
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(basePB.Build())
 
 	f.waitUntilNumBuildSlots(3)
 
@@ -1186,7 +1219,7 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	call := f.nextCall("expect build from first pending file change (A.txt)")
 	f.assertCallIsForManifestAndFiles(call, manifest, "A.txt")
 	f.waitForCompletedBuildCount(2)
-	f.podEvent(podbuilder.New(f.T(), manifest).Build(), manifest.Name)
+	f.podEvent(basePB.Build())
 
 	// we freed up a build slot; expect the second build to start
 	f.waitUntilManifestBuilding("fe")

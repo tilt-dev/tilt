@@ -21,6 +21,7 @@ func PrepareEnv(l Logger, env []string) []string {
 	hasLines := false
 	hasColumns := false
 	hasForceColor := false
+	hasPythonUnbuffered := false
 
 	for _, e := range env {
 		// LINES and COLUMNS are posix standards.
@@ -30,6 +31,11 @@ func PrepareEnv(l Logger, env []string) []string {
 
 		// FORCE_COLOR is common in nodejs https://github.com/tilt-dev/tilt/issues/3038
 		hasForceColor = hasForceColor || strings.HasPrefix("FORCE_COLOR=", e)
+
+		// PYTHONUNBUFFERED tells old Python versions not to buffer their output (< Python 3.7)
+		// AIUI, older versions of Python buffer output aggressively when not connected to a TTY,
+		// because they assume they're connected to a file and don't need realtime streaming.
+		hasPythonUnbuffered = hasPythonUnbuffered || strings.HasPrefix("PYTHONUNBUFFERED=", e)
 	}
 
 	if !hasLines {
@@ -40,6 +46,9 @@ func PrepareEnv(l Logger, env []string) []string {
 	}
 	if !hasForceColor && supportsColor {
 		env = append(env, "FORCE_COLOR=1")
+	}
+	if !hasPythonUnbuffered {
+		env = append(env, "PYTHONUNBUFFERED=1")
 	}
 	return env
 }

@@ -6,12 +6,19 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
+	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
+	"github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
+	"github.com/tilt-dev/tilt/internal/controllers/core/uisession"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 var controllerSet = wire.NewSet(
 	filewatch.NewController,
+	kubernetesdiscovery.NewReconciler,
+	portforward.NewReconciler,
 
 	ProvideControllers,
 )
@@ -19,11 +26,21 @@ var controllerSet = wire.NewSet(
 func ProvideControllers(
 	fileWatch *filewatch.Controller,
 	cmds *cmd.Controller,
-	podlogstreams *podlogstream.Controller) []Controller {
+	podlogstreams *podlogstream.Controller,
+	kubernetesDiscovery *kubernetesdiscovery.Reconciler,
+	uis *uisession.Reconciler,
+	uir *uiresource.Reconciler,
+	uib *uibutton.Reconciler,
+	pfr *portforward.Reconciler) []Controller {
 	return []Controller{
 		fileWatch,
 		cmds,
 		podlogstreams,
+		kubernetesDiscovery,
+		uis,
+		uir,
+		uib,
+		pfr,
 	}
 }
 
@@ -32,10 +49,14 @@ var WireSet = wire.NewSet(
 
 	v1alpha1.NewScheme,
 	NewControllerBuilder,
-	NewClientBuilder,
+	ProvideUncachedObjects,
 
 	ProvideDeferredClient,
 	wire.Bind(new(ctrlclient.Client), new(*DeferredClient)),
 
+	cmd.WireSet,
 	controllerSet,
+	uiresource.WireSet,
+	uisession.WireSet,
+	uibutton.WireSet,
 )

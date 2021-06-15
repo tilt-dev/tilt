@@ -31,7 +31,6 @@ func TestServiceWatch(t *testing.T) {
 	uid := types.UID("fake-uid")
 	manifest := f.addManifest("server")
 
-	ls := k8s.ManagedByTiltSelector()
 	s := servicebuilder.New(f.t, manifest).
 		WithPort(9998).
 		WithNodePort(int32(nodePort)).
@@ -39,7 +38,7 @@ func TestServiceWatch(t *testing.T) {
 		WithUID(uid).
 		Build()
 	f.addDeployedService(manifest, s)
-	f.kClient.EmitService(ls, s)
+	f.kClient.UpsertService(s)
 
 	expectedSCA := ServiceChangeAction{
 		Service:      s,
@@ -65,13 +64,12 @@ func TestServiceWatchUIDDelayed(t *testing.T) {
 	uid := types.UID("fake-uid")
 	manifest := f.addManifest("server")
 
-	f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	_ = f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
-	ls := k8s.ManagedByTiltSelector()
 	s := servicebuilder.New(f.t, manifest).
 		WithUID(uid).
 		Build()
-	f.kClient.EmitService(ls, s)
+	f.kClient.UpsertService(s)
 	f.waitUntilServiceKnown(uid)
 
 	f.addDeployedService(manifest, s)
@@ -95,7 +93,9 @@ func (f *swFixture) addManifest(manifestName model.ManifestName) model.Manifest 
 }
 
 func (f *swFixture) addDeployedService(m model.Manifest, svc *v1.Service) {
-	defer f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	defer func() {
+		_ = f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	}()
 
 	state := f.store.LockMutableStateForTesting()
 	defer f.store.UnlockMutableState()
@@ -124,7 +124,7 @@ type swFixture struct {
 func newSWFixture(t *testing.T) *swFixture {
 	nip := k8s.NodeIP("fakeip")
 
-	kClient := k8s.NewFakeK8sClient()
+	kClient := k8s.NewFakeK8sClient(t)
 	kClient.FakeNodeIP = nip
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()

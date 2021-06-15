@@ -262,9 +262,9 @@ func (h *Hud) isEnabled(st store.RStore) bool {
 	return state.TerminalMode == store.TerminalModeHUD
 }
 
-func (h *Hud) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) {
+func (h *Hud) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	if !h.isEnabled(st) {
-		return
+		return nil
 	}
 
 	if !h.isStarted {
@@ -301,6 +301,7 @@ func (h *Hud) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSumma
 	}
 	h.currentView = view
 	h.refreshSelectedIndex()
+	return nil
 }
 
 func (h *Hud) Refresh(ctx context.Context) {

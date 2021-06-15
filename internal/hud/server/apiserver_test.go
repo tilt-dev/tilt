@@ -1,12 +1,23 @@
 package server
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,29 +38,8 @@ import (
 
 // Ensure creating objects works with the dynamic API clients.
 func TestAPIServerDynamicClient(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	dir := dirs.NewTiltDevDirAt(f.Path())
-	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	memconn := ProvideMemConn()
-
-	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(), 0)
-	require.NoError(t, err)
-
-	webListener, err := ProvideWebListener("localhost", 0)
-	require.NoError(t, err)
-
-	configAccess := ProvideConfigAccess(dir)
-	hudsc := ProvideHeadsUpServerController(configAccess, "tilt-default",
-		webListener, cfg, &HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
-	st := store.NewTestingStore()
-	require.NoError(t, hudsc.SetUp(ctx, st))
-	defer hudsc.TearDown(ctx)
-
-	// Dynamic type tests
-	dynamic, err := ProvideTiltDynamic(cfg)
-	require.NoError(t, err)
+	f := newAPIServerFixture(t)
+	f.start()
 
 	specs := map[string]interface{}{
 		"FileWatch": map[string]interface{}{
@@ -59,6 +49,18 @@ func TestAPIServerDynamicClient(t *testing.T) {
 		"Session": map[string]interface{}{
 			"tiltfilePath":  filepath.Join(mustCwd(t), "Tiltfile"),
 			"exitCondition": "manual",
+		},
+		"KubernetesDiscovery": map[string]interface{}{
+			"watches": []map[string]interface{}{
+				{"namespace": "my-namespace", "uid": "my-uid"},
+			},
+		},
+		"UIButton": map[string]interface{}{
+			"text": "I'm a button!",
+			"location": map[string]interface{}{
+				"componentType": "Resource",
+				"componentID":   "my-resource",
+			},
 		},
 	}
 
@@ -80,11 +82,11 @@ func TestAPIServerDynamicClient(t *testing.T) {
 				},
 			}
 
-			objClient := dynamic.Resource(obj.GetGroupVersionResource())
-			_, err = objClient.Create(ctx, unstructured, metav1.CreateOptions{})
+			objClient := f.dynamic.Resource(obj.GetGroupVersionResource())
+			_, err := objClient.Create(f.ctx, unstructured, metav1.CreateOptions{})
 			require.NoError(t, err)
 
-			newObj, err := objClient.Get(ctx, objName, metav1.GetOptions{})
+			newObj, err := objClient.Get(f.ctx, objName, metav1.GetOptions{})
 			require.NoError(t, err)
 
 			metadata, err := meta.Accessor(newObj)
@@ -96,9 +98,108 @@ func TestAPIServerDynamicClient(t *testing.T) {
 	}
 }
 
+func TestAPIServerProxy(t *testing.T) {
+	f := newAPIServerFixture(t)
+	f.start()
+
+	reqURL := fmt.Sprintf("http://%s/proxy/apis/tilt.dev/v1alpha1/uibuttons", f.webListener.Addr())
+	req, err := http.NewRequestWithContext(f.ctx, http.MethodGet, reqURL, nil)
+	require.NoError(t, err, "Failed to create request")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err, "Request failed")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err, "Failed to read response body")
+	// don't care about the full body of the response, but it should at least have
+	// "kind": "UIButtonList" so look for that as a magic word
+	require.Contains(t, string(body), "UIButtonList")
+}
+
 func mustCwd(t testing.TB) string {
 	t.Helper()
 	cwd, err := os.Getwd()
 	require.NoError(t, err, "Could not get current working directory")
 	return cwd
+}
+
+type apiserverFixture struct {
+	*tempdir.TempDirFixture
+	t               testing.TB
+	ctx             context.Context
+	conn            apiserver.ConnProvider
+	serverConfig    *APIServerConfig
+	configAccess    clientcmd.ConfigAccess
+	webListener     WebListener
+	webListenerHost string
+	webListenerPort int
+	webURL          model.WebURL
+	st              *store.TestingStore
+	dynamic         DynamicInterface
+}
+
+func newAPIServerFixture(t testing.TB) *apiserverFixture {
+	t.Helper()
+
+	tmpdir := tempdir.NewTempDirFixture(t)
+	t.Cleanup(tmpdir.TearDown)
+
+	dir := dirs.NewTiltDevDirAt(tmpdir.Path())
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	// since these tests issue network requests, ensure that they don't get stuck perpetually
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	t.Cleanup(cancel)
+
+	memconn := ProvideMemConn()
+
+	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(), 0)
+	require.NoError(t, err)
+
+	const host = "localhost"
+	webListener, err := ProvideWebListener(host, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = webListener.Close()
+	})
+
+	webListenerHost, port, err := net.SplitHostPort(webListener.Addr().String())
+	require.NoErrorf(t, err, "Invalid listener address: %s", webListener.Addr().String())
+	webListenerPort, err := strconv.Atoi(port)
+	require.NoErrorf(t, err, "Invalid listener port: %s", port)
+	webURL, err := url.Parse(fmt.Sprintf("http://%s:%s/", host, port))
+	require.NoError(t, err, "Unable to create WebURL")
+
+	configAccess := ProvideConfigAccess(dir)
+
+	// Dynamic type tests
+	dynamic, err := ProvideTiltDynamic(cfg)
+	require.NoError(t, err)
+
+	f := &apiserverFixture{
+		TempDirFixture:  tmpdir,
+		t:               t,
+		ctx:             ctx,
+		conn:            memconn,
+		serverConfig:    cfg,
+		configAccess:    configAccess,
+		webListener:     webListener,
+		webListenerHost: webListenerHost,
+		webListenerPort: webListenerPort,
+		webURL:          model.WebURL(*webURL),
+		st:              store.NewTestingStore(),
+		dynamic:         dynamic,
+	}
+	return f
+}
+
+func (f *apiserverFixture) start() *HeadsUpServerController {
+	f.t.Helper()
+	hudsc := ProvideHeadsUpServerController(f.configAccess, "tilt-default",
+		f.webListener, f.serverConfig, &HeadsUpServer{}, assets.NewFakeServer(), f.webURL)
+	require.NoError(f.t, hudsc.SetUp(f.ctx, f.st))
+	f.t.Cleanup(func() {
+		hudsc.TearDown(f.ctx)
+	})
+	return hudsc
 }

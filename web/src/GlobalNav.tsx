@@ -4,11 +4,9 @@ import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
 import { incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
-import { ReactComponent as MetricsIcon } from "./assets/svg/metrics.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import FloatDialog from "./FloatDialog"
-import MetricsDialog from "./MetricsDialog"
 import { isTargetEditable } from "./shortcut"
 import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotAction } from "./snapshot"
@@ -20,6 +18,8 @@ import {
   SizeUnit,
 } from "./style-helpers"
 import UpdateDialog from "./UpdateDialog"
+
+type TiltBuild = Proto.corev1alpha1TiltBuild
 
 export const GlobalNavRoot = styled.div`
   display: flex;
@@ -126,8 +126,6 @@ class GlobalNavShortcuts extends Component<GlobalNavShortcutsProps> {
   }
 }
 
-type MetricsServing = Proto.webviewMetricsServing
-
 type GlobalNavProps = {
   isSnapshot: boolean
   tiltCloudUsername: string
@@ -137,16 +135,13 @@ type GlobalNavProps = {
   snapshot: SnapshotAction
   showUpdate: boolean
   suggestedVersion: string | null | undefined
-  runningBuild: Proto.webviewTiltBuild | undefined
-  showMetricsButton: boolean
-  metricsServing: MetricsServing | null | undefined
+  runningBuild: TiltBuild | undefined
 }
 
 export function GlobalNav(props: GlobalNavProps) {
   const shortcutButton = useRef(null as any)
   const accountButton = useRef(null as any)
   const updateButton = useRef(null as any)
-  const metricsButton = useRef(null as any)
   const [shortcutsDialogAnchor, setShortcutsDialogAnchor] = useState(
     null as Element | null
   )
@@ -156,13 +151,9 @@ export function GlobalNav(props: GlobalNavProps) {
   const [updateDialogAnchor, setUpdateDialogAnchor] = useState(
     null as Element | null
   )
-  const [metricsDialogAnchor, setMetricsDialogAnchor] = useState(
-    null as Element | null
-  )
   const shortcutsDialogOpen = !!shortcutsDialogAnchor
   const accountMenuOpen = !!accountMenuAnchor
   const updateDialogOpen = !!updateDialogAnchor
-  const metricsDialogOpen = !!metricsDialogAnchor
   let isSnapshot = props.isSnapshot
   if (isSnapshot) {
     return null
@@ -195,32 +186,12 @@ export function GlobalNav(props: GlobalNavProps) {
     )
   }
 
-  let toggleMetricsDialog = (action: string) => {
-    if (!metricsDialogOpen) {
-      incr("ui.web.menu", { type: "metrics", action: action })
-    }
-    setMetricsDialogAnchor(
-      metricsDialogOpen ? null : (metricsButton.current as Element)
-    )
-  }
-
   let accountMenuHeader = <AccountMenuHeader {...props} />
   let accountMenuContent = <AccountMenuContent {...props} />
   let snapshotButton = props.snapshot.enabled ? (
     <MenuButton onClick={props.snapshot.openModal}>
       <SnapshotIcon width="24" height="24" />
       <MenuButtonLabel>Make Snapshot</MenuButtonLabel>
-    </MenuButton>
-  ) : null
-
-  let metricsButtonEl = props.showMetricsButton ? (
-    <MenuButton
-      ref={metricsButton}
-      onClick={() => toggleMetricsDialog("click")}
-      data-open={metricsDialogOpen}
-    >
-      <MetricsIcon width="24" height="24" />
-      <MenuButtonLabel>Metrics</MenuButtonLabel>
     </MenuButton>
   ) : null
 
@@ -242,7 +213,6 @@ export function GlobalNav(props: GlobalNavProps) {
       </MenuButton>
 
       {snapshotButton}
-      {metricsButtonEl}
 
       <MenuButton
         ref={shortcutButton}
@@ -275,12 +245,6 @@ export function GlobalNav(props: GlobalNavProps) {
         anchorEl={shortcutsDialogAnchor}
         onClose={() => toggleShortcutsDialog("close")}
         isOverview={true}
-      />
-      <MetricsDialog
-        open={metricsDialogOpen}
-        anchorEl={metricsDialogAnchor}
-        onClose={() => toggleMetricsDialog("close")}
-        serving={props.metricsServing}
       />
       <UpdateDialog
         open={updateDialogOpen}
