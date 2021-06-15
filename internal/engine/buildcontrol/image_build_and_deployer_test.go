@@ -28,6 +28,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/yaml"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -760,7 +761,7 @@ func TestDeployInjectOverrideCommandAndArgs(t *testing.T) {
 	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifestWithYaml(f, testyaml.SanchoYAMLWithCommand)
 	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
-	iTarg.OverrideArgs = model.OverrideArgs{ShouldOverride: true}
+	iTarg.OverrideArgs = &v1alpha1.ImageMapOverrideArgs{}
 	manifest = manifest.WithImageTarget(iTarg)
 
 	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})

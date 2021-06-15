@@ -44,6 +44,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -1220,17 +1221,22 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				"`default_registry()` call, if any) for errors", image.configurationRef)
 		}
 
-		iTarget := model.ImageTarget{
-			Refs:           refs,
-			MatchInEnvVars: image.matchInEnvVars,
-		}
-
+		var overrideCommand *v1alpha1.ImageMapOverrideCommand
 		if !image.entrypoint.Empty() {
-			iTarget = iTarget.WithOverrideCommand(image.entrypoint)
+			overrideCommand = &v1alpha1.ImageMapOverrideCommand{
+				Command: image.entrypoint.Argv,
+			}
 		}
 
-		if image.containerArgs.ShouldOverride {
-			iTarget.OverrideArgs = image.containerArgs
+		iTarget := model.ImageTarget{
+			Refs: refs,
+			ImageMapSpec: v1alpha1.ImageMapSpec{
+				Selector:        refs.ConfigurationRef.String(),
+				MatchInEnvVars:  image.matchInEnvVars,
+				MatchExact:      refs.ConfigurationRef.MatchExact(),
+				OverrideCommand: overrideCommand,
+				OverrideArgs:    image.overrideArgs,
+			},
 		}
 
 		lu := image.liveUpdate
@@ -1308,7 +1314,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 		}
 
 		for _, iTarg := range iTargets {
-			if !iTarg.OverrideCmd.Empty() {
+			if iTarg.OverrideCommand != nil {
 				return nil, fmt.Errorf("docker_build/custom_build.entrypoint not supported for Docker Compose resources")
 			}
 		}

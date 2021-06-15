@@ -8,9 +8,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/tilt-dev/tilt/pkg/model"
-
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 // Iterate through the fields of a k8s entity and
@@ -132,7 +131,8 @@ func injectImageDigestInEnvVars(entity K8sEntity, selector container.RefSelector
 	return entity, replaced, nil
 }
 
-func InjectCommandAndArgs(entity K8sEntity, ref reference.Named, cmd model.Cmd, args model.OverrideArgs) (K8sEntity, error) {
+func InjectCommandAndArgs(entity K8sEntity, ref reference.Named,
+	cmd *v1alpha1.ImageMapOverrideCommand, args *v1alpha1.ImageMapOverrideArgs) (K8sEntity, error) {
 	entity = entity.DeepCopy()
 
 	selector := container.NewRefSelector(ref)
@@ -145,13 +145,14 @@ func InjectCommandAndArgs(entity K8sEntity, ref reference.Named, cmd model.Cmd, 
 		// k8s yaml `container` block). This means we don't support injecting commands into CRDs.
 		return e, fmt.Errorf("could not inject command %v into entity: %s. No container found matching ref: %s. "+
 			"Note: command overrides only supported on containers with images, not on CRDs",
-			cmd.Argv, entity.Name(), container.FamiliarString(ref))
+			cmd.Command, entity.Name(), container.FamiliarString(ref))
 	}
 
 	return e, nil
 }
 
-func injectCommandInContainers(entity K8sEntity, selector container.RefSelector, cmd model.Cmd, args model.OverrideArgs) (K8sEntity, bool, error) {
+func injectCommandInContainers(entity K8sEntity, selector container.RefSelector,
+	cmd *v1alpha1.ImageMapOverrideCommand, args *v1alpha1.ImageMapOverrideArgs) (K8sEntity, bool, error) {
 	var injected bool
 	containers, err := extractContainers(&entity)
 	if err != nil {
@@ -168,11 +169,11 @@ func injectCommandInContainers(entity K8sEntity, selector container.RefSelector,
 			// The override rules of entrypoint and Command and Args are surprisingly complex!
 			// See this github thread:
 			// https://github.com/tilt-dev/tilt/issues/2918
-			if !cmd.Empty() {
-				c.Command = cmd.Argv
+			if cmd != nil {
+				c.Command = cmd.Command
 			}
 
-			if args.ShouldOverride {
+			if args != nil {
 				c.Args = args.Args
 			}
 
