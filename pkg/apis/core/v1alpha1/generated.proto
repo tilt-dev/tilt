@@ -563,6 +563,18 @@ message KubernetesApplySpec {
   //
   // +optional
   repeated KubernetesImageLocator imageLocators = 3;
+
+  // The timeout on the apply operation.
+  //
+  // We've had problems with both:
+  // 1) CRD apiservers that take an arbitrarily long time to apply, and
+  // 2) Infinite loops in the apimachinery
+  // So we offer the ability to set a timeout on Kubernetes apply operations.
+  //
+  // The default timeout is 30s.
+  //
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration timeout = 4;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply

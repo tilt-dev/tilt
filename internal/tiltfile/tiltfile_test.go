@@ -4704,12 +4704,12 @@ func TestK8sUpsertTimeout(t *testing.T) {
 		{
 			name:            "default value if func not called",
 			tiltfile:        "print('hello world')",
-			expectedTimeout: model.DefaultK8sUpsertTimeout,
+			expectedTimeout: v1alpha1.KubernetesApplyTimeoutDefault,
 		},
 		{
 			name:            "default value if arg not specified",
 			tiltfile:        "update_settings(max_parallel_updates=123)",
-			expectedTimeout: model.DefaultK8sUpsertTimeout,
+			expectedTimeout: v1alpha1.KubernetesApplyTimeoutDefault,
 		},
 		{
 			name:            "set max parallel updates",

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pkg/errors"
@@ -18,7 +19,7 @@ func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
-	target, err := NewTarget(name, entities, nil, nil, nil, nil, model.PodReadinessIgnore, nil, nil)
+	target, err := NewTarget(name, entities, nil, nil, nil, nil, model.PodReadinessIgnore, nil, nil, model.UpdateSettings{})
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
@@ -34,7 +35,8 @@ func NewTarget(
 	refInjectCounts map[string]int,
 	podReadinessMode model.PodReadinessMode,
 	allLocators []ImageLocator,
-	links []model.Link) (model.K8sTarget, error) {
+	links []model.Link,
+	updateSettings model.UpdateSettings) (model.K8sTarget, error) {
 	sorted := SortedEntities(entities)
 	yaml, err := SerializeSpecYAML(sorted)
 	if err != nil {
@@ -59,6 +61,7 @@ func NewTarget(
 	apply := v1alpha1.KubernetesApplySpec{
 		YAML:          yaml,
 		ImageLocators: myLocators,
+		Timeout:       metav1.Duration{Duration: updateSettings.K8sUpsertTimeout()},
 	}
 
 	return model.K8sTarget{
@@ -74,7 +77,7 @@ func NewTarget(
 }
 
 func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity, allLocators []ImageLocator) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, model.PodReadinessIgnore, allLocators, nil)
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, model.PodReadinessIgnore, allLocators, nil, model.UpdateSettings{})
 	if err != nil {
 		return model.Manifest{}, err
 	}
