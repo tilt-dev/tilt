@@ -115,15 +115,11 @@ func NewSanchoLiveUpdateImageTarget(f Fixture) model.ImageTarget {
 }
 
 func NewSanchoSidecarDockerBuildImageTarget(f Fixture) model.ImageTarget {
-	iTarget := NewSanchoDockerBuildImageTarget(f)
-	iTarget.Refs = container.MustSimpleRefSet(SanchoSidecarRef)
-	return iTarget
+	return NewSanchoDockerBuildImageTarget(f).MustWithRef(SanchoSidecarRef)
 }
 
 func NewSanchoSidecarLiveUpdateImageTarget(f Fixture) model.ImageTarget {
-	iTarget := NewSanchoLiveUpdateImageTarget(f)
-	iTarget.Refs = container.MustSimpleRefSet(SanchoSidecarRef)
-	return iTarget
+	return NewSanchoLiveUpdateImageTarget(f).MustWithRef(SanchoSidecarRef)
 }
 
 func NewSanchoDockerBuildManifest(f Fixture) model.Manifest {

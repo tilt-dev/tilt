@@ -25,7 +25,7 @@ type ImageTarget struct {
 }
 
 func MustNewImageTarget(ref container.RefSelector) ImageTarget {
-	return ImageTarget{Refs: container.MustSimpleRefSet(ref)}
+	return ImageTarget{}.MustWithRef(ref)
 }
 
 func ImageID(ref container.RefSelector) TargetID {
@@ -37,6 +37,13 @@ func ImageID(ref container.RefSelector) TargetID {
 		Type: TargetTypeImage,
 		Name: name,
 	}
+}
+
+func (i ImageTarget) MustWithRef(ref container.RefSelector) ImageTarget {
+	i.Refs = container.MustSimpleRefSet(ref)
+	i.ImageMapSpec.Selector = ref.String()
+	i.ImageMapSpec.MatchExact = ref.MatchExact()
+	return i
 }
 
 func (i ImageTarget) ID() TargetID {
