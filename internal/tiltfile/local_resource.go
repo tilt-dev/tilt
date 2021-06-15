@@ -84,8 +84,8 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"env?", &updateEnv,
 		"serve_env?", &serveEnv,
 		"readiness_probe?", &readinessProbe,
-		"cmd_dir?", &updateCmdDirVal,
-		"serve_cmd_dir?", &serveCmdDirVal,
+		"dir?", &updateCmdDirVal,
+		"serve_dir?", &serveCmdDirVal,
 	); err != nil {
 		return nil, err
 	}

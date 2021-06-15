@@ -34,7 +34,7 @@ func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 		"cmd", &cmdVal,
 		"cmd_bat?", &cmdBatVal,
 		"period?", &period,
-		"cmd_dir?", &cmdDirVal)
+		"dir?", &cmdDirVal)
 	if err != nil {
 		return starlark.None, err
 	}
