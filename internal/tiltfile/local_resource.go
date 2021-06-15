@@ -44,6 +44,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var updateEnv, serveEnv value.StringStringMap
 	var triggerMode triggerMode
 	var readinessProbe probe.Probe
+	var updateCmdDirVal, serveCmdDirVal starlark.Value
 
 	deps := value.NewLocalPathListUnpacker(thread)
 
@@ -83,6 +84,8 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"env?", &updateEnv,
 		"serve_env?", &serveEnv,
 		"readiness_probe?", &readinessProbe,
+		"dir?", &updateCmdDirVal,
+		"serve_dir?", &serveCmdDirVal,
 	); err != nil {
 		return nil, err
 	}
@@ -103,11 +106,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	updateCmd, err := value.ValueGroupToCmdHelper(thread, updateCmdVal, updateCmdBatVal, updateEnv)
+	updateCmd, err := value.ValueGroupToCmdHelper(thread, updateCmdVal, updateCmdBatVal, updateCmdDirVal, updateEnv)
 	if err != nil {
 		return nil, err
 	}
-	serveCmd, err := value.ValueGroupToCmdHelper(thread, serveCmdVal, serveCmdBatVal, serveEnv)
+	serveCmd, err := value.ValueGroupToCmdHelper(thread, serveCmdVal, serveCmdBatVal, serveCmdDirVal, serveEnv)
 	if err != nil {
 		return nil, err
 	}

@@ -27,7 +27,7 @@ import (
 const localLogPrefix = " → "
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var commandValue, commandBatValue starlark.Value
+	var commandValue, commandBatValue, commandDirValue starlark.Value
 	var commandEnv value.StringStringMap
 	quiet := false
 	echoOff := false
@@ -37,12 +37,13 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		"command_bat", &commandBatValue,
 		"echo_off", &echoOff,
 		"env", &commandEnv,
+		"dir?", &commandDirValue,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	cmd, err := value.ValueGroupToCmdHelper(thread, commandValue, commandBatValue, commandEnv)
+	cmd, err := value.ValueGroupToCmdHelper(thread, commandValue, commandBatValue, commandDirValue, commandEnv)
 	if err != nil {
 		return nil, err
 	}
