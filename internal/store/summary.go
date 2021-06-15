@@ -95,6 +95,9 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.PortForwards.AddAll(other.PortForwards)
 	s.UISessions.AddAll(other.UISessions)
 	s.UIResources.AddAll(other.UIResources)
+	if other.LastBackoff > s.LastBackoff {
+		s.LastBackoff = other.LastBackoff
+	}
 }
 
 func LegacyChangeSummary() ChangeSummary {
