@@ -330,7 +330,12 @@ message FileWatchStatus {
 
 // Forward defines a port forward to execute on a given pod.
 message Forward {
-  // The port to expose on the current machine. Required.
+  // The port to expose on the current machine.
+  //
+  // If not specified (or 0), a random free port will be chosen and can
+  // be discovered via the status once established.
+  //
+  // +optional
   optional int32 localPort = 4;
 
   // The port on the Kubernetes pod to connect to. Required.
@@ -340,6 +345,28 @@ message Forward {
   //
   // +optional
   optional string host = 5;
+}
+
+message ForwardStatus {
+  // LocalPort is the port bound to on the system running Tilt.
+  optional int32 localPort = 1;
+
+  // ContainerPort is the port in the container being forwarded.
+  optional int32 containerPort = 2;
+
+  // Addresses that the forwarder is bound to.
+  //
+  // For example, a `localhost` host will bind to 127.0.0.1 and [::1].
+  repeated string addresses = 3;
+
+  // StartedAt is the time at which the forward was initiated.
+  //
+  // If the forwarder is not running yet, this will be zero/empty.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 4;
+
+  // Error is a human-readable description if a problem was encountered
+  // while initializing the forward.
+  optional string error = 5;
 }
 
 // HTTPGetAction describes an action based on HTTP Get requests.
@@ -879,9 +906,7 @@ message PortForwardSpec {
 
 // PortForwardStatus defines the observed state of PortForward
 message PortForwardStatus {
-  // Time at which we started trying to run the Port Forward (potentially distinct
-  // from the time the Port Forward successfully connected)
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 1;
+  repeated ForwardStatus forwardStatuses = 2;
 }
 
 // Probe describes a health check to be performed o determine whether it is
