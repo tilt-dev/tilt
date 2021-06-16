@@ -16,19 +16,21 @@ import TriggerButton from "./TriggerButton"
 import { TriggerModeToggle } from "./TriggerModeToggle"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
-type webviewResource = Proto.webviewResource
+type UIResource = Proto.v1alpha1UIResource
+type UIResourceStatus = Proto.v1alpha1UIResourceStatus
+type UILink = Proto.v1alpha1UIResourceLink
+
 type Props = {
-  view: Proto.webviewView
+  uiResources?: Proto.v1alpha1UIResource[]
 }
 
 type RowValues = {
-  isStarred: boolean
-  lastUpdateTime?: string
+  lastDeployTime: string
   name: string
-  resourceType: string
+  resourceTypeLabel: string
   triggerMode?: number
-  podId?: string
-  endpoints: Proto.webviewLink[]
+  podId: string
+  endpoints: UILink[]
   lastBuildDur: moment.Duration | null
   buildStatus: ResourceStatus
   buildAlertCount: number
@@ -76,7 +78,6 @@ function columnDefs(): Column<RowValues>[] {
     () => [
       {
         Header: "Star",
-        accessor: "isStarred",
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <TableStarResourceButton
@@ -89,7 +90,7 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Last Updated",
-        accessor: "lastUpdateTime",
+        accessor: "lastDeployTime",
         maxWidth: 1,
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
@@ -127,7 +128,7 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Type",
-        accessor: "resourceType",
+        accessor: "resourceTypeLabel",
       },
       {
         Header: "Status",
@@ -207,19 +208,19 @@ export function triggerUpdate(name: string) {
   })
 }
 
-function resourceViewToCell(r: webviewResource): RowValues {
-  const starCtx = useStarredResources()
+function resourceViewToCell(r: UIResource): RowValues {
+  let res = (r.status || {}) as UIResourceStatus
+
   return {
-    isStarred: (r.name && starCtx.starredResources.includes(r.name)) || false,
-    lastUpdateTime: r.lastDeployTime,
-    name: r.name || "",
-    triggerMode: r.triggerMode,
-    resourceType: resourceTypeLabel(r),
-    podId: r.podID || "",
-    endpoints: r.endpointLinks ?? [],
+    lastDeployTime: res.lastDeployTime ?? "",
+    name: r.metadata?.name ?? "",
+    triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
+    resourceTypeLabel: resourceTypeLabel(r),
+    podId: res.k8sResourceInfo?.podName ?? "",
+    endpoints: res.endpointLinks ?? [],
     buildAlertCount: buildAlerts(r, null).length,
     buildStatus: buildStatus(r),
-    lastBuildDur: lastBuildDuration(r) || null,
+    lastBuildDur: lastBuildDuration(res),
   }
 }
 
@@ -239,8 +240,10 @@ export function toggleTriggerMode(name: string, mode: TriggerMode) {
   })
 }
 
-function resourceTypeLabel(res: webviewResource): string {
-  if (res.isTiltfile) {
+function resourceTypeLabel(r: UIResource): string {
+  let res = (r.status || {}) as UIResourceStatus
+  let name = r.metadata?.name
+  if (name == "(Tiltfile)") {
     return "Tiltfile"
   }
   let specs = res.specs ?? []
@@ -302,7 +305,7 @@ export default function OverviewTable(props: Props) {
   const columns = columnDefs()
 
   const data = React.useMemo(
-    () => props.view.resources?.map(resourceViewToCell) || [],
+    () => props.view.uiResources?.map(resourceViewToCell) || [],
     []
   )
 
@@ -319,7 +322,6 @@ export default function OverviewTable(props: Props) {
     },
     useSortBy
   )
-  // Here we need to grab all the contexts / hooks that we need and pass them do
 
   return (
     <ResourceTable {...getTableProps()}>
