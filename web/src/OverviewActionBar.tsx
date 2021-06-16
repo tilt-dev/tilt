@@ -1,25 +1,42 @@
+import {
+  debounce,
+  InputAdornment,
+  InputProps,
+  TextField,
+} from "@material-ui/core"
 import Menu from "@material-ui/core/Menu"
 import MenuItem from "@material-ui/core/MenuItem"
 import { PopoverOrigin } from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
+import { History } from "history"
 import moment from "moment"
-import React, { useRef, useState } from "react"
+import React, { ChangeEvent, useRef, useState } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
+import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
+import { ReactComponent as FilterSvg } from "./assets/svg/filter.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import LogActions from "./LogActions"
-import { FilterLevel, FilterSet, FilterSource } from "./logfilters"
+import { EMPTY_TERM, FilterLevel, FilterSet, FilterSource } from "./logfilters"
 import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { usePathBuilder } from "./PathBuilder"
-import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import SrOnly from "./SrOnly"
+import {
+  AnimDuration,
+  Color,
+  Font,
+  FontSize,
+  mixinResetButtonStyle,
+  SizeUnit,
+} from "./style-helpers"
 import { ResourceName } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -73,9 +90,7 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
   let l = useLocation()
   let onClick = (e: any) => {
     let source = e.currentTarget.getAttribute("data-filter")
-    let search = new URLSearchParams(l.search)
-    search.set("source", source)
-    search.set("level", level)
+    const search = createLogSearch(l.search, { source, level })
     history.push({
       pathname: l.pathname,
       search: search.toString(),
@@ -236,6 +251,44 @@ export let ButtonRightPill = styled(ButtonRoot)`
   border-radius: 0 4px 4px 0;
 `
 
+const FilterTermTextField = styled(TextField)`
+  & .MuiOutlinedInput-root {
+    border-radius: ${SizeUnit(0.125)};
+    border: 1px solid ${Color.grayLighter};
+    background-color: ${Color.grayDark};
+    transition: border-color ${AnimDuration.default} ease;
+    width: ${SizeUnit(8.125)};
+
+    &:hover {
+      border-color: ${Color.blue};
+    }
+    & fieldset {
+      border-color: 1px solid ${Color.grayLighter};
+    }
+    &:hover fieldset {
+      border: 1px solid ${Color.grayLighter};
+    }
+    & .Mui-focused fieldset {
+      border: 1px solid ${Color.grayLighter};
+    }
+    & .MuiOutlinedInput-input {
+      padding: ${SizeUnit(0.2)};
+    }
+  }
+
+  & .MuiInputBase-input {
+    font-family: ${Font.monospace};
+    color: ${Color.gray7};
+    font-size: ${FontSize.small};
+  }
+`
+
+const ClearFilterTermTextButton = styled(InstrumentedButton)`
+  ${mixinResetButtonStyle}
+  align-items: center;
+  display: flex;
+`
+
 type FilterRadioButtonProps = {
   // The level that this button toggles.
   level: FilterLevel
@@ -245,6 +298,32 @@ type FilterRadioButtonProps = {
 
   // All the alerts for the current resource.
   alerts?: Alert[]
+}
+
+export function createLogSearch(
+  currentSearch: string,
+  {
+    level,
+    source,
+    term,
+  }: { level?: FilterLevel; source?: FilterSource; term?: string }
+) {
+  // Start with the existing search params
+  const newSearch = new URLSearchParams(currentSearch)
+
+  if (level !== undefined) {
+    newSearch.set("level", level)
+  }
+
+  if (source !== undefined) {
+    newSearch.set("source", source)
+  }
+
+  if (term !== undefined) {
+    newSearch.set("term", term)
+  }
+
+  return newSearch
 }
 
 export function FilterRadioButton(props: FilterRadioButtonProps) {
@@ -291,9 +370,10 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
   let history = useHistory()
   let l = useLocation()
   let onClick = () => {
-    let search = new URLSearchParams(l.search)
-    search.set("level", level)
-    search.set("source", "")
+    const search = createLogSearch(l.search, {
+      level,
+      source: FilterSource.all,
+    })
     history.push({
       pathname: l.pathname,
       search: search.toString(),
@@ -335,6 +415,92 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
         onClose={() => setSourceMenuAnchor(null)}
       />
     </ButtonPill>
+  )
+}
+
+export const FILTER_INPUT_DEBOUNCE = 500 // in ms
+export const FILTER_FIELD_ID = "FilterTermTextInput"
+
+const debounceFilterLogs = debounce((history: History, search: string) => {
+  history.push({ search })
+}, FILTER_INPUT_DEBOUNCE)
+
+export function FilterTermField(props: { initialTerm: string }) {
+  const [filterTerm, setFilterTerm] = useState(props.initialTerm ?? EMPTY_TERM)
+
+  const history = useHistory()
+  const { location } = history
+
+  /**
+   * Note about term updates:
+   * Debouncing allows us to wait to execute log filtration until a set
+   * amount of time has passed without the filter term changing. To implement
+   * debouncing, it's necessary to separate the term field's value from the url
+   * search params, otherwise the field that a user types in doesn't update.
+   * The term field updates without any debouncing, while the url search params
+   * (which actually triggers log filtering) updates with the debounce delay.
+   */
+  const setTerm = (term: string) => {
+    setFilterTerm(term)
+
+    const search = createLogSearch(location.search, { term })
+
+    // Don't use the debounce delay if clearing the filter term
+    if (term === EMPTY_TERM) {
+      history.push({ search: search.toString() })
+    } else {
+      debounceFilterLogs(history, search.toString())
+    }
+  }
+
+  const onChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const term = event.target.value ?? EMPTY_TERM
+    setTerm(term)
+  }
+
+  const inputProps: InputProps = {
+    startAdornment: (
+      <InputAdornment position="start" disablePointerEvents={true}>
+        <FilterSvg fill={Color.grayDark} role="presentation" />
+      </InputAdornment>
+    ),
+  }
+
+  // If there's a search term, add a button to clear that term
+  if (filterTerm) {
+    const endAdornment = (
+      <InputAdornment position="end">
+        <ClearFilterTermTextButton
+          analyticsName="TODO"
+          onClick={() => setTerm(EMPTY_TERM)}
+        >
+          <SrOnly>Clear filter term</SrOnly>
+          <CloseSvg fill={Color.grayLightest} role="presentation" />
+        </ClearFilterTermTextButton>
+      </InputAdornment>
+    )
+
+    inputProps.endAdornment = endAdornment
+  }
+
+  // TODO (LT): Add `aria-invalid` markup that will show if
+  // there's an error parsing an input string to regexp
+  return (
+    <>
+      <FilterTermTextField
+        id={FILTER_FIELD_ID}
+        InputProps={inputProps}
+        onChange={onChange}
+        placeholder="Filter logs by text"
+        value={filterTerm}
+        variant="outlined"
+      />
+      <SrOnly component="label" htmlFor={FILTER_FIELD_ID}>
+        Filter resource logs by text
+      </SrOnly>
+    </>
   )
 }
 
@@ -561,19 +727,20 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
       <ActionBarBottomRow>
         <FilterRadioButton
           level={FilterLevel.all}
-          filterSet={props.filterSet}
+          filterSet={filterSet}
           alerts={alerts}
         />
         <FilterRadioButton
           level={FilterLevel.error}
-          filterSet={props.filterSet}
+          filterSet={filterSet}
           alerts={alerts}
         />
         <FilterRadioButton
           level={FilterLevel.warn}
-          filterSet={props.filterSet}
+          filterSet={filterSet}
           alerts={alerts}
         />
+        <FilterTermField initialTerm={filterSet.term.input} />
         <LogActions resourceName={resourceName} isSnapshot={isSnapshot} />
       </ActionBarBottomRow>
     </ActionBarRoot>

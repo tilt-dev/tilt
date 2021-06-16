@@ -1,4 +1,5 @@
 import Anser from "anser"
+import { History } from "history"
 import React, { Component } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled, { keyframes } from "styled-components"
@@ -8,6 +9,7 @@ import {
   FilterSet,
   filterSetsEqual,
   FilterSource,
+  TermState,
 } from "./logfilters"
 import "./LogPane.scss"
 import "./LogPaneLine.scss"
@@ -30,7 +32,7 @@ type OverviewLogComponentProps = {
   logStore: LogStore
   raf: RafContext
   filterSet: FilterSet
-  history: any
+  history: History
   scrollToStoredLineIndex: number | null
 }
 
@@ -181,7 +183,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   // The element containing all the log lines.
   rootRef: React.RefObject<any> = React.createRef()
 
-  // The blinking cursor at the end fo the component.
+  // The blinking cursor at the end of the component.
   private cursorRef: React.RefObject<HTMLParagraphElement> = React.createRef()
 
   // Track the scrollTop of the root element to see if the user is scrolling upwards.
@@ -399,6 +401,17 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
   }
 
+  matchesTermFilter(line: LogLine): boolean {
+    const { term } = this.props.filterSet
+
+    // Don't consider a filter term if the term hasn't been parsed for matching
+    if (!term || term.state !== TermState.Parsed) {
+      return true
+    }
+
+    return term.regexp.test(line.text)
+  }
+
   // If we have a level filter on, check if this line matches the level filter.
   matchesLevelFilter(line: LogLine): boolean {
     let level = this.props.filterSet.level
@@ -430,7 +443,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return false
     }
 
-    return this.matchesLevelFilter(line)
+    return this.matchesLevelFilter(line) && this.matchesTermFilter(line)
   }
 
   // Index this line so that we can display prologues to errors.

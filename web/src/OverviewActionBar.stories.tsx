@@ -1,7 +1,13 @@
 import { createMemoryHistory } from "history"
 import React from "react"
 import { Router } from "react-router"
-import { FilterLevel, FilterSource, useFilterSet } from "./logfilters"
+import {
+  EMPTY_FILTER_TERM,
+  FilterLevel,
+  FilterSet,
+  FilterSource,
+  useFilterSet,
+} from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { oneButton, oneResource } from "./testdata"
@@ -27,12 +33,14 @@ export default {
   ],
   argTypes: {
     source: {
+      name: "Source",
       control: {
         type: "select",
         options: [FilterSource.all, FilterSource.build, FilterSource.runtime],
       },
     },
     level: {
+      name: "Level",
       control: {
         type: "select",
         options: [FilterLevel.all, FilterLevel.warn, FilterLevel.error],
@@ -41,7 +49,11 @@ export default {
   },
 }
 
-let defaultFilter = { source: FilterSource.all, level: FilterLevel.all }
+let defaultFilter: FilterSet = {
+  source: FilterSource.all,
+  level: FilterLevel.all,
+  term: EMPTY_FILTER_TERM,
+}
 
 export const OverflowTextBar = () => {
   let filterSet = useFilterSet()
