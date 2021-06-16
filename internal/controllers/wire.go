@@ -19,6 +19,8 @@ var controllerSet = wire.NewSet(
 	filewatch.NewController,
 	kubernetesdiscovery.NewReconciler,
 	portforward.NewReconciler,
+	podlogstream.NewController,
+	podlogstream.NewPodSource,
 
 	ProvideControllers,
 )

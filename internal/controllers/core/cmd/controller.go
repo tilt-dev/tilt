@@ -15,14 +15,15 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -33,33 +34,31 @@ import (
 
 // A controller that reads CmdSpec and writes CmdStatus
 type Controller struct {
-	globalCtx      context.Context
-	execer         Execer
-	procs          map[types.NamespacedName]*currentProcess
-	proberManager  ProberManager
-	updateCmds     map[types.NamespacedName]*Cmd
-	mu             sync.Mutex
-	client         ctrlclient.Client
-	st             store.RStore
-	startManager   *StartManager
-	restartManager *RestartManager
-	clock          clockwork.Clock
+	globalCtx     context.Context
+	indexer       *indexer.Indexer
+	execer        Execer
+	procs         map[types.NamespacedName]*currentProcess
+	proberManager ProberManager
+	updateCmds    map[types.NamespacedName]*Cmd
+	mu            sync.Mutex
+	client        ctrlclient.Client
+	st            store.RStore
+	clock         clockwork.Clock
 }
 
 var _ store.TearDowner = &Controller{}
 
-func NewController(ctx context.Context, execer Execer, proberManager ProberManager, client ctrlclient.Client, st store.RStore, clock clockwork.Clock) *Controller {
+func NewController(ctx context.Context, execer Execer, proberManager ProberManager, client ctrlclient.Client, st store.RStore, clock clockwork.Clock, scheme *runtime.Scheme) *Controller {
 	return &Controller{
-		globalCtx:      ctx,
-		clock:          clock,
-		execer:         execer,
-		procs:          make(map[types.NamespacedName]*currentProcess),
-		proberManager:  proberManager,
-		client:         client,
-		updateCmds:     make(map[types.NamespacedName]*Cmd),
-		st:             st,
-		startManager:   NewStartManager(client),
-		restartManager: NewRestartManager(client),
+		globalCtx:     ctx,
+		indexer:       indexer.NewIndexer(scheme, indexCmd),
+		clock:         clock,
+		execer:        execer,
+		procs:         make(map[types.NamespacedName]*currentProcess),
+		proberManager: proberManager,
+		client:        client,
+		updateCmds:    make(map[types.NamespacedName]*Cmd),
+		st:            st,
 	}
 }
 
@@ -95,11 +94,52 @@ func (c *Controller) TearDown(ctx context.Context) {
 	}
 }
 
+// Fetch the last time a start was requested from this target's dependencies.
+func (c *Controller) lastStartEventTime(ctx context.Context, startOn *StartOnSpec) (time.Time, error) {
+	cur := time.Time{}
+	if startOn == nil {
+		return cur, nil
+	}
+
+	for _, bn := range startOn.UIButtons {
+		b := &UIButton{}
+		err := c.client.Get(ctx, types.NamespacedName{Name: bn}, b)
+		if err != nil {
+			return cur, err
+		}
+		lastEventTime := b.Status.LastClickedAt
+		if !lastEventTime.Time.Before(startOn.StartAfter.Time) && lastEventTime.Time.After(cur) {
+			cur = lastEventTime.Time
+		}
+	}
+	return cur, nil
+}
+
+// Fetch the last time a restart was requested from this target's dependencies.
+func (c *Controller) lastRestartEventTime(ctx context.Context, restartOn *RestartOnSpec) (time.Time, error) {
+	cur := time.Time{}
+	if restartOn == nil {
+		return cur, nil
+	}
+
+	for _, fwn := range restartOn.FileWatches {
+		fw := &FileWatch{}
+		err := c.client.Get(ctx, types.NamespacedName{Name: fwn}, fw)
+		if err != nil {
+			return cur, err
+		}
+		lastEventTime := fw.Status.LastEventTime
+		if lastEventTime.Time.After(cur) {
+			cur = lastEventTime.Time
+		}
+	}
+	return cur, nil
+}
+
 func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) error {
 	cmd := &Cmd{}
 	err := c.client.Get(ctx, name, cmd)
-	c.startManager.handleReconcileRequest(name, cmd)
-	c.restartManager.handleReconcileRequest(name, cmd)
+	c.indexer.OnReconcile(name, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("cmd reconcile: %v", err)
 	}
@@ -110,11 +150,11 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
-	lastRestartEventTime, err := c.restartManager.lastEventTime(ctx, cmd.Spec.RestartOn)
+	lastRestartEventTime, err := c.lastRestartEventTime(ctx, cmd.Spec.RestartOn)
 	if err != nil {
 		return err
 	}
-	lastStartEventTime, err := c.startManager.lastEventTime(ctx, cmd.Spec.StartOn)
+	lastStartEventTime, err := c.lastStartEventTime(ctx, cmd.Spec.StartOn)
 	if err != nil {
 		return err
 	}
@@ -382,23 +422,41 @@ func (c *Controller) processStatuses(
 	}
 }
 
-func (r *Controller) enqueueObject(obj client.Object) []reconcile.Request {
-	switch o := obj.(type) {
-	case *FileWatch:
-		return r.restartManager.enqueue(o)
-	case *UIButton:
-		return r.startManager.enqueue(o)
+// Find all the objects we need to watch based on the Cmd model.
+func indexCmd(obj client.Object) []indexer.Key {
+	cmd := obj.(*v1alpha1.Cmd)
+	result := []indexer.Key{}
+	if cmd.Spec.StartOn != nil {
+		bGVK := v1alpha1.SchemeGroupVersion.WithKind("UIButton")
+
+		for _, name := range cmd.Spec.StartOn.UIButtons {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: name},
+				GVK:  bGVK,
+			})
+		}
 	}
-	return nil
+
+	if cmd.Spec.RestartOn != nil {
+		fwGVK := v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
+
+		for _, name := range cmd.Spec.RestartOn.FileWatches {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: name},
+				GVK:  fwGVK,
+			})
+		}
+	}
+	return result
 }
 
 func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&Cmd{}).
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
-			handler.EnqueueRequestsFromMapFunc(r.enqueueObject)).
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.UIButton{}},
-			handler.EnqueueRequestsFromMapFunc(r.enqueueObject)).
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Complete(r)
 }
 
