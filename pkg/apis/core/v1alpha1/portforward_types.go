@@ -67,8 +67,13 @@ type PortForwardSpec struct {
 
 // Forward defines a port forward to execute on a given pod.
 type Forward struct {
-	// The port to expose on the current machine. Required.
-	LocalPort int32 `json:"localPort" protobuf:"varint,4,opt,name=localPort"`
+	// The port to expose on the current machine.
+	//
+	// If not specified (or 0), a random free port will be chosen and can
+	// be discovered via the status once established.
+	//
+	// +optional
+	LocalPort int32 `json:"localPort,omitempty" protobuf:"varint,4,opt,name=localPort"`
 
 	// The port on the Kubernetes pod to connect to. Required.
 	ContainerPort int32 `json:"containerPort" protobuf:"varint,3,opt,name=containerPort"`
@@ -125,14 +130,29 @@ func (in *PortForwardList) GetListMeta() *metav1.ListMeta {
 
 // PortForwardStatus defines the observed state of PortForward
 type PortForwardStatus struct {
-	// Time at which we started trying to run the Port Forward (potentially distinct
-	// from the time the Port Forward successfully connected)
-	StartedAt metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,1,opt,name=startedAt"`
+	ForwardStatuses []ForwardStatus `json:"forwardStatuses,omitempty" protobuf:"bytes,2,opt,name=forwardStatuses"`
+}
 
-	// TODO(maia): track status of the PortForward: is it active, is it failing/in
-	//   backoff, what was the last error? Exact fields/status TBD.
-	//   (Need to figure out the right place to write this data without lots of
-	//   churn/without re-writing every time we fail to connect and back off.)
+type ForwardStatus struct {
+	// LocalPort is the port bound to on the system running Tilt.
+	LocalPort int32 `json:"localPort" protobuf:"varint,1,opt,name=localPort"`
+
+	// ContainerPort is the port in the container being forwarded.
+	ContainerPort int32 `json:"containerPort" protobuf:"varint,2,opt,name=containerPort"`
+
+	// Addresses that the forwarder is bound to.
+	//
+	// For example, a `localhost` host will bind to 127.0.0.1 and [::1].
+	Addresses []string `json:"addresses" protobuf:"bytes,3,rep,name=addresses"`
+
+	// StartedAt is the time at which the forward was initiated.
+	//
+	// If the forwarder is not running yet, this will be zero/empty.
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,4,opt,name=startedAt"`
+
+	// Error is a human-readable description if a problem was encountered
+	// while initializing the forward.
+	Error string `json:"error,omitempty" protobuf:"bytes,5,opt,name=error"`
 }
 
 // PortForward implements ObjectWithStatusSubResource interface.
