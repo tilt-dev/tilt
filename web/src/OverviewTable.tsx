@@ -7,10 +7,10 @@ import { incr } from "./analytics"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
 import { useStarredResources } from "./StarredResourcesContext"
-import { buildStatus, lastBuildDuration } from "./status"
+import { buildStatus } from "./status"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import TableStarResourceButton from "./TableStarResourceButton"
-import { formatBuildDuration, isZeroTime } from "./time"
+import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import TriggerButton from "./TriggerButton"
 import { TriggerModeToggle } from "./TriggerModeToggle"
@@ -95,7 +95,7 @@ function columnDefs(): Column<RowValues>[] {
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <TimeAgo
-              date={row.values.lastUpdateTime}
+              date={row.values.lastDeployTime}
               formatter={timeAgoFormatter}
             />
           )
@@ -210,6 +210,8 @@ export function triggerUpdate(name: string) {
 
 function uiResourceToCell(r: UIResource): RowValues {
   let res = (r.status || {}) as UIResourceStatus
+  let buildHistory = res.buildHistory || []
+  let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
 
   return {
     lastDeployTime: res.lastDeployTime ?? "",
@@ -220,7 +222,10 @@ function uiResourceToCell(r: UIResource): RowValues {
     endpoints: res.endpointLinks ?? [],
     buildAlertCount: buildAlerts(r, null).length,
     buildStatus: buildStatus(r),
-    lastBuildDur: lastBuildDuration(res),
+    lastBuildDur:
+      lastBuild && lastBuild.startTime && lastBuild.finishTime
+        ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
+        : null,
   }
 }
 
