@@ -27,6 +27,15 @@ type PortForwarder interface {
 	// The local port we're listening on.
 	LocalPort() int
 
+	// Addresses that we're listening on.
+	Addresses() []string
+
+	// ReadyCh will be closed by ForwardPorts once the forwarding is successfully set up.
+	//
+	// ForwardPorts might return an error during initialization before forwarding is successfully set up, in which
+	// case this channel will NOT be closed.
+	ReadyCh() <-chan struct{}
+
 	// Listens on the configured port and forward all traffic to the container.
 	// Returns when the port-forwarder sees an unrecoverable error or
 	// when the context passed at creation is canceled.
@@ -46,8 +55,14 @@ type portForwarder struct {
 	localPort int
 }
 
+var _ PortForwarder = portForwarder{}
+
 func (pf portForwarder) LocalPort() int {
 	return pf.localPort
+}
+
+func (pf portForwarder) ReadyCh() <-chan struct{} {
+	return pf.Ready
 }
 
 func (k *K8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error) {
@@ -102,9 +117,6 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 		SubResource("portforward")
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating dialer")
-	}
 
 	readyChan := make(chan struct{}, 1)
 

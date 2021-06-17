@@ -2,10 +2,13 @@ package portforward
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strconv"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,8 +26,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 const (
@@ -34,14 +35,13 @@ const (
 
 func TestCreatePortForward(t *testing.T) {
 	f := newPFRFixture(t)
-	defer f.TearDown()
 
 	require.Equal(t, 0, len(f.r.activeForwards))
 
 	pf := f.makeSimplePF(pfFooName, 8000, 8080)
 	f.Create(pf)
-	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
 
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
@@ -49,13 +49,12 @@ func TestCreatePortForward(t *testing.T) {
 
 func TestDeletePortForward(t *testing.T) {
 	f := newPFRFixture(t)
-	defer f.TearDown()
 
 	require.Equal(t, 0, len(f.r.activeForwards))
 
 	pf := f.makeSimplePF(pfFooName, 8000, 8080)
 	f.Create(pf)
-	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
@@ -71,22 +70,21 @@ func TestDeletePortForward(t *testing.T) {
 
 func TestModifyPortForward(t *testing.T) {
 	f := newPFRFixture(t)
-	defer f.TearDown()
 
 	require.Equal(t, 0, len(f.r.activeForwards))
 
 	pf := f.makeSimplePF(pfFooName, 8000, 8080)
 	f.Create(pf)
-	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
 	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
 	origForwardCtx := f.kCli.LastForwardContext()
 
-	pf = f.makeSimplePF(pfFooName, 8000, 9090)
+	pf = f.makeSimplePF(pfFooName, 8001, 9090)
 	f.GetAndUpdate(pf)
-	f.requirePortForwardWithVersion(pfFooName, 2, "updated PortForward appears")
+	f.requirePortForwardStarted(pfFooName, 8001, 9090)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
@@ -99,7 +97,6 @@ func TestModifyPortForwardManifestName(t *testing.T) {
 	// A change to only the manifestName should be enough to tear down and recreate
 	// a PortForward (we need to do this so the logs will be routed correctly)
 	f := newPFRFixture(t)
-	defer f.TearDown()
 
 	require.Equal(t, 0, len(f.r.activeForwards))
 
@@ -107,7 +104,7 @@ func TestModifyPortForwardManifestName(t *testing.T) {
 
 	pf := f.makePF(pfFooName, "manifestA", "pod-pf_foo", "", fwds)
 	f.Create(pf)
-	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
@@ -116,7 +113,10 @@ func TestModifyPortForwardManifestName(t *testing.T) {
 
 	pf = f.makePF(pfFooName, "manifestB", "pod-pf_foo", "", fwds)
 	f.GetAndUpdate(pf)
-	f.requirePortForwardWithVersion(pfFooName, 2, "updated PortForward appears")
+	f.requireState(pfFooName, func(pf *PortForward) bool {
+		return pf != nil && pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest] == "manifestB"
+	}, "Manifest annotation was not updated")
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
 	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
@@ -127,7 +127,6 @@ func TestModifyPortForwardManifestName(t *testing.T) {
 
 func TestMultipleForwardsForOnePod(t *testing.T) {
 	f := newPFRFixture(t)
-	defer f.TearDown()
 
 	require.Equal(t, 0, len(f.r.activeForwards))
 
@@ -138,7 +137,8 @@ func TestMultipleForwardsForOnePod(t *testing.T) {
 
 	pf := f.makeSimplePFMultipleForwards(pfFooName, forwards)
 	f.Create(pf)
-	f.requirePortForwardWithVersion(pfFooName, 1, "initial PortForward appears")
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
+	f.requirePortForwardStarted(pfFooName, 8001, 8081)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
 	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
@@ -173,7 +173,6 @@ func TestMultipleForwardsForOnePod(t *testing.T) {
 
 func TestMultipleForwardsMultiplePods(t *testing.T) {
 	f := newPFRFixture(t)
-	defer f.TearDown()
 
 	require.Equal(t, 0, len(f.r.activeForwards))
 
@@ -183,8 +182,8 @@ func TestMultipleForwardsMultiplePods(t *testing.T) {
 	pfBar := f.makePF(pfBarName, "bar", "pod-pf_bar", "ns-bar", fwdsBar)
 	f.Create(pfFoo)
 	f.Create(pfBar)
-	f.requirePortForwardWithVersion(pfFooName, 1, "initial API object pfFoo appears")
-	f.requirePortForwardWithVersion(pfBarName, 1, "initial API object pfBar appears")
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
+	f.requirePortForwardStarted(pfBarName, 8001, 8081)
 
 	require.Equal(t, 2, len(f.r.activeForwards))
 	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
@@ -221,34 +220,86 @@ func TestMultipleForwardsMultiplePods(t *testing.T) {
 	f.assertContextNotCancelled(t, ctxBar)
 }
 
+func TestPortForwardStartFailure(t *testing.T) {
+	f := newPFRFixture(t)
+
+	require.Equal(t, 0, len(f.r.activeForwards))
+
+	pf := f.makeSimplePF(pfFooName, k8s.MagicTestExplodingPort, 8080)
+	f.Create(pf)
+
+	f.requirePortForwardError(pfFooName, k8s.MagicTestExplodingPort, 8080,
+		"fake error starting port forwarding")
+}
+
+func TestPortForwardRuntimeFailure(t *testing.T) {
+	f := newPFRFixture(t)
+
+	require.Equal(t, 0, len(f.r.activeForwards))
+
+	pf := f.makeSimplePF(pfFooName, 8000, 8080)
+	f.Create(pf)
+	// wait for port forward to be successful
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
+
+	const errMsg = "fake runtime port forwarding error"
+	f.kCli.LastForwarder().TriggerFailure(errors.New(errMsg))
+
+	f.requirePortForwardError(pfFooName, 8000, 8080, errMsg)
+}
+
+func TestPortForwardPartialSuccess(t *testing.T) {
+	f := newPFRFixture(t)
+
+	require.Equal(t, 0, len(f.r.activeForwards))
+
+	forwards := []Forward{
+		f.makeForward(8000, 8080, "localhost"),
+		f.makeForward(8001, 8081, "localhost"),
+		f.makeForward(k8s.MagicTestExplodingPort, 8082, "localhost"),
+	}
+
+	pf := f.makeSimplePFMultipleForwards(pfFooName, forwards)
+	f.Create(pf)
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
+	f.requirePortForwardStarted(pfFooName, 8001, 8081)
+	f.requirePortForwardError(pfFooName, k8s.MagicTestExplodingPort, 8082, "fake error starting port forwarding")
+
+	const errMsg = "fake runtime port forwarding error"
+	for _, pfCall := range f.kCli.PortForwardCalls() {
+		if pfCall.RemotePort == 8080 {
+			pfCall.Forwarder.TriggerFailure(errors.New(errMsg))
+		}
+	}
+
+	f.requirePortForwardError(pfFooName, 8000, 8080, errMsg)
+	f.requirePortForwardStarted(pfFooName, 8001, 8081)
+	f.requirePortForwardError(pfFooName, k8s.MagicTestExplodingPort, 8082, "fake error starting port forwarding")
+}
+
 type pfrFixture struct {
 	*fake.ControllerFixture
-	t      *testing.T
-	ctx    context.Context
-	cancel func()
-	kCli   *k8s.FakeK8sClient
-	st     *store.TestingStore
-	r      *Reconciler
-	out    *bufsync.ThreadSafeBuffer
+	t    *testing.T
+	kCli *k8s.FakeK8sClient
+	st   *store.TestingStore
+	r    *Reconciler
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
 	st := store.NewTestingStore()
+
 	kCli := k8s.NewFakeK8sClient(t)
+	t.Cleanup(kCli.TearDown)
+
 	r := NewReconciler(st, kCli)
 	cf := fake.NewControllerFixture(t, r)
-	out := bufsync.NewThreadSafeBuffer()
-	ctx, cancel := context.WithCancel(context.Background())
-	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
+
 	return &pfrFixture{
 		ControllerFixture: cf,
 		t:                 t,
-		ctx:               ctx,
-		cancel:            cancel,
 		st:                st,
 		kCli:              kCli,
 		r:                 r,
-		out:               out,
 	}
 }
 
@@ -261,16 +312,50 @@ func (f *pfrFixture) requireState(name string, cond func(pf *PortForward) bool, 
 			return cond(nil)
 		}
 		return cond(&pf)
-	}, time.Second, 20*time.Millisecond, msg, args...)
+	}, 2*time.Second, 20*time.Millisecond, msg, args...)
 }
 
-func (f *pfrFixture) requirePortForwardWithVersion(name string, version int, msg string, args ...interface{}) {
+func (f *pfrFixture) requirePortForwardStatus(name string, localPort, containerPort int32, cond func(ForwardStatus) (bool, string)) {
 	f.t.Helper()
-
-	newMsg := fmt.Sprintf("[want PortForward.ResourceVersion == %d] %s", version, msg)
+	var desc strings.Builder
 	f.requireState(name, func(pf *PortForward) bool {
-		return pf.ResourceVersion == strconv.Itoa(version)
-	}, newMsg, args...)
+		desc.Reset()
+		if pf == nil {
+			desc.WriteString("object does not exist in api")
+			return false
+		}
+		for _, f := range pf.Status.ForwardStatuses {
+			if f.LocalPort != localPort || f.ContainerPort != containerPort {
+				continue
+			}
+			ok, msg := cond(*f.DeepCopy())
+			desc.WriteString(msg)
+			return ok
+		}
+		desc.WriteString("did not find matching forward status for ports:\n")
+		desc.WriteString(spew.Sdump(pf.Status.ForwardStatuses))
+		return false
+	}, "PortForward %q status for localPort=%d / containerPort=%d did not match condition: %s", name, localPort, containerPort, &desc)
+}
+
+func (f *pfrFixture) requirePortForwardError(name string, localPort, containerPort int32, errMsg string) {
+	f.t.Helper()
+	f.requirePortForwardStatus(name, localPort, containerPort, func(status ForwardStatus) (bool, string) {
+		if !strings.Contains(status.Error, errMsg) {
+			return false, fmt.Sprintf("error %q does not contain %q", status.Error, errMsg)
+		}
+		return true, ""
+	})
+}
+
+func (f *pfrFixture) requirePortForwardStarted(name string, localPort int32, containerPort int32) {
+	f.t.Helper()
+	f.requirePortForwardStatus(name, localPort, containerPort, func(status ForwardStatus) (bool, string) {
+		if status.StartedAt.IsZero() || status.Error != "" {
+			return false, fmt.Sprintf("status has startedAt=%s / error=%q", status.StartedAt.String(), status.Error)
+		}
+		return true, ""
+	})
 }
 
 func (f *pfrFixture) requirePortForwardDeleted(name string) {
@@ -278,11 +363,6 @@ func (f *pfrFixture) requirePortForwardDeleted(name string) {
 	f.requireState(name, func(pf *PortForward) bool {
 		return pf == nil
 	}, "port forward deleted")
-}
-
-func (f *pfrFixture) TearDown() {
-	f.kCli.TearDown()
-	f.cancel()
 }
 
 // GetAndUpdate pulls the existing version of the PortForward and issues an
@@ -293,7 +373,7 @@ func (f *pfrFixture) GetAndUpdate(pf *PortForward) ctrl.Result {
 	var existing PortForward
 	f.MustGet(f.KeyForObject(pf), &existing)
 	pf.SetResourceVersion(existing.GetResourceVersion())
-	require.NoError(f.t, f.Client.Update(f.ctx, pf))
+	require.NoError(f.t, f.Client.Update(f.Context(), pf))
 	return f.MustReconcile(f.KeyForObject(pf))
 }
 
