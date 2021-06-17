@@ -352,7 +352,7 @@ function mergeObjectUpdates<T extends { metadata?: Proto.v1ObjectMeta }>(
 export function mergeAppUpdate<K extends keyof HudState>(
   prevState: Readonly<HudState>,
   stateUpdates: Pick<HudState, K>
-): Pick<HudState, K> {
+): null | Pick<HudState, K> {
   // All fields are optional on a HudState, so it's ok to pretent
   // a Pick<HudState> and a HudState are the same.
   let state = stateUpdates as HudState
@@ -413,5 +413,26 @@ export function mergeAppUpdate<K extends keyof HudState>(
     })
   }
 
+  // If no references have changed, don't re-render.
+  //
+  // LogStore handles its own update events, so a change
+  // to LogStore doesn't update its reference.
+  // This makes rendering much, much faster for apps
+  // with lots of logs.
+  if (!hasChange(result, prevState)) {
+    return null
+  }
+
   return result
+}
+
+function hasChange(result: any, prevState: any): boolean {
+  for (let k in result) {
+    let resultV = result[k] as any
+    let prevV = prevState[k] as any
+    if (resultV !== prevV) {
+      return true
+    }
+  }
+  return false
 }

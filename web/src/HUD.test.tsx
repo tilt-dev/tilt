@@ -160,34 +160,34 @@ describe("mergeAppUpdates", () => {
     let resourceView = oneResourceView()
     let prevState = { view: resourceView }
     let result = mergeAppUpdate(prevState as any, {}) as any
-    expect(result.view).toBe(resourceView)
+    expect(result).toBe(null)
   })
 
   it("handles empty view update", () => {
     let resourceView = oneResourceView()
     let prevState = { view: resourceView }
     let result = mergeAppUpdate(prevState as any, { view: {} })
-    expect(result.view).toBe(resourceView)
+    expect(result).toBe(null)
   })
 
   it("handles replace view update", () => {
     let prevState = { view: oneResourceView() }
     let update = { view: oneResourceView() }
     let result = mergeAppUpdate(prevState as any, update)
-    expect(result.view).not.toBe(update.view)
-    expect(result.view).not.toBe(prevState.view)
-    expect(result.view.uiSession).toBe(update.view.uiSession)
+    expect(result!.view).not.toBe(update.view)
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiSession).toBe(update.view.uiSession)
   })
 
   it("handles add resource", () => {
     let prevState = { view: oneResourceView() }
     let update = { view: { uiResources: [twoResourceView().uiResources[1]] } }
     let result = mergeAppUpdate(prevState as any, update)
-    expect(result.view).not.toBe(prevState.view)
-    expect(result.view.uiSession).toBe(prevState.view.uiSession)
-    expect(result.view.uiResources!.length).toEqual(2)
-    expect(result.view.uiResources![0].metadata!.name).toEqual("vigoda")
-    expect(result.view.uiResources![1].metadata!.name).toEqual("snack")
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiSession).toBe(prevState.view.uiSession)
+    expect(result!.view.uiResources!.length).toEqual(2)
+    expect(result!.view.uiResources![0].metadata!.name).toEqual("vigoda")
+    expect(result!.view.uiResources![1].metadata!.name).toEqual("snack")
   })
 
   it("handles delete resource", () => {
@@ -205,31 +205,31 @@ describe("mergeAppUpdates", () => {
       },
     }
     let result = mergeAppUpdate(prevState as any, update)
-    expect(result.view).not.toBe(prevState.view)
-    expect(result.view.uiResources!.length).toEqual(1)
-    expect(result.view.uiResources![0].metadata!.name).toEqual("snack")
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiResources!.length).toEqual(1)
+    expect(result!.view.uiResources![0].metadata!.name).toEqual("snack")
   })
 
   it("handles replace resource", () => {
     let prevState = { view: twoResourceView() }
     let update = { view: { uiResources: [{ metadata: { name: "vigoda" } }] } }
     let result = mergeAppUpdate(prevState as any, update)
-    expect(result.view).not.toBe(prevState.view)
-    expect(result.view.uiResources!.length).toEqual(2)
-    expect(result.view.uiResources![0]).toBe(update.view.uiResources[0])
-    expect(result.view.uiResources![1]).toBe(prevState.view.uiResources[1])
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiResources!.length).toEqual(2)
+    expect(result!.view.uiResources![0]).toBe(update.view.uiResources[0])
+    expect(result!.view.uiResources![1]).toBe(prevState.view.uiResources[1])
   })
 
   it("handles add button", () => {
     let prevState = { view: nButtonView(1) }
     let update = { view: { uiButtons: [nButtonView(2).uiButtons[1]] } }
     let result = mergeAppUpdate(prevState as any, update)
-    expect(result.view).not.toBe(prevState.view)
-    expect(result.view.uiSession).toBe(prevState.view.uiSession)
-    expect(result.view.uiResources).toBe(prevState.view.uiResources)
-    expect(result.view.uiButtons!.length).toEqual(2)
-    expect(result.view.uiButtons![0].metadata!.name).toEqual("button1")
-    expect(result.view.uiButtons![1].metadata!.name).toEqual("button2")
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiSession).toBe(prevState.view.uiSession)
+    expect(result!.view.uiResources).toBe(prevState.view.uiResources)
+    expect(result!.view.uiButtons!.length).toEqual(2)
+    expect(result!.view.uiButtons![0].metadata!.name).toEqual("button1")
+    expect(result!.view.uiButtons![1].metadata!.name).toEqual("button2")
   })
 
   it("handles delete button", () => {
@@ -247,29 +247,29 @@ describe("mergeAppUpdates", () => {
       },
     }
     let result = mergeAppUpdate(prevState as any, update)
-    expect(result.view).not.toBe(prevState.view)
-    expect(result.view.uiResources).toBe(prevState.view.uiResources)
-    expect(result.view.uiButtons!.length).toEqual(1)
-    expect(result.view.uiButtons![0].metadata!.name).toEqual("button2")
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiResources).toBe(prevState.view.uiResources)
+    expect(result!.view.uiButtons!.length).toEqual(1)
+    expect(result!.view.uiButtons![0].metadata!.name).toEqual("button2")
   })
 
   it("handles replace button", () => {
     let prevState = { view: nButtonView(2) }
     let update = { view: { uiButtons: [{ metadata: { name: "button1" } }] } }
     let result = mergeAppUpdate(prevState as any, update)
-    expect(result.view).not.toBe(prevState.view)
-    expect(result.view.uiResources).toBe(prevState.view.uiResources)
-    expect(result.view.uiButtons!.length).toEqual(2)
-    expect(result.view.uiButtons![0]).toBe(update.view.uiButtons[0])
-    expect(result.view.uiButtons![1]).toBe(prevState.view.uiButtons[1])
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiResources).toBe(prevState.view.uiResources)
+    expect(result!.view.uiButtons!.length).toEqual(2)
+    expect(result!.view.uiButtons![0]).toBe(update.view.uiButtons[0])
+    expect(result!.view.uiButtons![1]).toBe(prevState.view.uiButtons[1])
   })
 
   it("handles socket state", () => {
     let prevState = { view: twoResourceView(), socketState: SocketState.Active }
     let update = { socketState: SocketState.Reconnecting }
     let result = mergeAppUpdate(prevState as any, update) as any
-    expect(result.view).toBe(prevState.view)
-    expect(result.socketState).toBe(SocketState.Reconnecting)
+    expect(result!.view).toBe(prevState.view)
+    expect(result!.socketState).toBe(SocketState.Reconnecting)
   })
 
   it("handles complete view", () => {
@@ -284,11 +284,24 @@ describe("mergeAppUpdates", () => {
       },
     }
     let result = mergeAppUpdate<"view" | "logStore">(prevState as any, update)
-    expect(result.view).toBe(update.view)
-    expect(result.logStore).not.toBe(prevState.logStore)
-    expect(result.logStore?.allLog().map((ll) => ll.text)).toEqual([
+    expect(result!.view).toBe(update.view)
+    expect(result!.logStore).not.toBe(prevState.logStore)
+    expect(result!.logStore?.allLog().map((ll) => ll.text)).toEqual([
       "line1",
       "line2",
     ])
+  })
+
+  it("handles log only update", () => {
+    let prevLogStore = new LogStore()
+    let prevState = { view: twoResourceView(), logStore: prevLogStore }
+
+    let update = {
+      view: {
+        logList: logList(["line1", "line2"]),
+      },
+    }
+    let result = mergeAppUpdate<"view" | "logStore">(prevState as any, update)
+    expect(result).toBe(null)
   })
 })
