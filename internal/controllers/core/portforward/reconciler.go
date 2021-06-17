@@ -189,7 +189,11 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry *portForwardEntry
 			return
 		}
 		select {
+		case <-ctx.Done():
+			// context canceled before forward was every ready
+			return
 		case <-doneCh:
+			// forward initialization errored at start before ready
 			return
 		case <-readyCh:
 			entry.setStatus(forward, ForwardStatus{
