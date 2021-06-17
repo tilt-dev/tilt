@@ -153,6 +153,12 @@ func (r *Reconciler) updateForwardStatus(ctx context.Context, entry *portForward
 }
 
 func (r *Reconciler) onePortForward(ctx context.Context, entry *portForwardEntry, forward Forward) {
+	logError := func(err error) {
+		logger.Get(ctx).Infof("Reconnecting... Error port-forwarding %s (%d -> %d): %v",
+			entry.ObjectMeta.Annotations[v1alpha1.AnnotationManifest],
+			forward.LocalPort, forward.ContainerPort, err)
+	}
+
 	pf, err := r.kClient.CreatePortForwarder(
 		ctx,
 		k8s.Namespace(entry.Spec.Namespace),
@@ -161,6 +167,7 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry *portForwardEntry
 		int(forward.ContainerPort),
 		forward.Host)
 	if err != nil {
+		logError(err)
 		shouldUpdate := entry.setStatus(forward, ForwardStatus{
 			LocalPort:     forward.LocalPort,
 			ContainerPort: forward.ContainerPort,
@@ -198,6 +205,7 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry *portForwardEntry
 	err = pf.ForwardPorts()
 	close(doneCh)
 	if err != nil {
+		logError(err)
 		shouldUpdate := entry.setStatus(forward, ForwardStatus{
 			LocalPort:     int32(pf.LocalPort()),
 			ContainerPort: forward.ContainerPort,
