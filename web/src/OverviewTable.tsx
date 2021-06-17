@@ -20,8 +20,8 @@ type UIResource = Proto.v1alpha1UIResource
 type UIResourceStatus = Proto.v1alpha1UIResourceStatus
 type UILink = Proto.v1alpha1UIResourceLink
 
-type Props = {
-  uiResources?: Proto.v1alpha1UIResource[]
+type OverviewTableProps = {
+  view: Proto.webviewView
 }
 
 type RowValues = {
@@ -208,7 +208,7 @@ export function triggerUpdate(name: string) {
   })
 }
 
-function resourceViewToCell(r: UIResource): RowValues {
+function uiResourceToCell(r: UIResource): RowValues {
   let res = (r.status || {}) as UIResourceStatus
 
   return {
@@ -301,11 +301,11 @@ function runtimeStatusText(status: ResourceStatus): string {
   }
 }
 
-export default function OverviewTable(props: Props) {
+export default function OverviewTable(props: OverviewTableProps) {
   const columns = columnDefs()
 
   const data = React.useMemo(
-    () => props.view.uiResources?.map(resourceViewToCell) || [],
+    () => props.view.uiResources?.map(uiResourceToCell) || [],
     []
   )
 
@@ -317,7 +317,7 @@ export default function OverviewTable(props: Props) {
     prepareRow,
   } = useTable(
     {
-      columns: columns,
+      columns,
       data,
     },
     useSortBy

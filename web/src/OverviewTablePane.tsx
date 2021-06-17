@@ -7,6 +7,10 @@ import StarredResourceBar, {
 } from "./StarredResourceBar"
 import { Color } from "./style-helpers"
 
+type OverviewTablePaneProps = {
+  view: Proto.webviewView
+}
+
 let OverviewTablePaneStyle = styled.div`
   display: flex;
   flex-direction: column;
@@ -15,7 +19,7 @@ let OverviewTablePaneStyle = styled.div`
   background-color: ${Color.grayDark};
 `
 
-export default function OverviewTablePane(props: { view: Proto.webviewView }) {
+export default function OverviewTablePane(props: OverviewTablePaneProps) {
   return (
     <OverviewTablePaneStyle>
       <HeaderBar view={props.view} />
