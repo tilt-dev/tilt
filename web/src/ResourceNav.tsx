@@ -1,4 +1,4 @@
-import React, { useContext } from "react"
+import React, { useCallback, useContext, useMemo } from "react"
 import { matchPath, useHistory, useLocation } from "react-router-dom"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceName } from "./types"
@@ -36,10 +36,13 @@ export function ResourceNavProvider(
     validateResource: (name: string) => boolean
   }>
 ) {
-  let validateResource = (name: string): boolean => {
-    // The ALL resource should always validate
-    return props.validateResource(name) || name === ResourceName.all
-  }
+  let validateResource = useCallback(
+    (name: string): boolean => {
+      // The ALL resource should always validate
+      return props.validateResource(name) || name === ResourceName.all
+    },
+    [props.validateResource]
+  )
 
   let history = useHistory()
   let location = useLocation()
@@ -59,18 +62,24 @@ export function ResourceNavProvider(
     invalidResource = candidateResource
   }
 
-  let openResource = (name: string) => {
-    name = name || ResourceName.all
-    let url = pb.encpath`/r/${name}/overview`
+  let openResource = useCallback(
+    (name: string) => {
+      name = name || ResourceName.all
+      let url = pb.encpath`/r/${name}/overview`
 
-    history.push(url)
-  }
+      history.push(url)
+    },
+    [history]
+  )
 
-  let resourceNav = {
-    invalidResource: invalidResource,
-    selectedResource: selectedResource,
-    openResource,
-  }
+  let resourceNav = useMemo(() => {
+    return {
+      invalidResource: invalidResource,
+      selectedResource: selectedResource,
+      openResource,
+    }
+  }, [invalidResource, selectedResource, openResource])
+
   return (
     <resourceNavContext.Provider value={resourceNav}>
       {props.children}
