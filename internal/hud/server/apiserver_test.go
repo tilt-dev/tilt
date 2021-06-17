@@ -62,6 +62,15 @@ func TestAPIServerDynamicClient(t *testing.T) {
 				"componentID":   "my-resource",
 			},
 		},
+		"PortForward": map[string]interface{}{
+			"podName": "my-pod",
+			"forwards": []interface{}{
+				map[string]interface{}{
+					"localPort":     8080,
+					"containerPort": 8000,
+				},
+			},
+		},
 	}
 
 	for _, obj := range v1alpha1.AllResourceObjects() {

@@ -115,11 +115,42 @@ func (in *PortForward) IsStorageVersion() bool {
 	return true
 }
 
-func (in *PortForward) Validate(ctx context.Context) field.ErrorList {
-	// TODO(user): Modify it, adding your API validation here.
-	// TODO(maia): verify that Pod is populated, ContainerPort and LocalPort are
-	//   non-zero, (maybe) that host (if populated) is URL-parse-able.
-	return nil
+func (in *PortForward) Validate(_ context.Context) field.ErrorList {
+	var fieldErrors field.ErrorList
+	if in.Spec.PodName == "" {
+		fieldErrors = append(fieldErrors, field.Required(field.NewPath("spec.podName"), "PodName cannot be empty"))
+	}
+	forwardsPath := field.NewPath("spec.forwards")
+	if len(in.Spec.Forwards) == 0 {
+		fieldErrors = append(fieldErrors, field.Required(forwardsPath, "At least one Forward is required"))
+	}
+
+	localPorts := make(map[int32]bool)
+	for i, f := range in.Spec.Forwards {
+		p := forwardsPath.Index(i)
+		localPortPath := p.Child("localPort")
+		if f.LocalPort != 0 {
+			// multiple forwards can have 0 as LocalPort since they will each get a unique, randomized port
+			// there is no restriction for duplicate ContainerPorts (i.e. it's acceptable to forward the same
+			// port multiple times as long as the LocalPort is different in each forward)
+			if localPorts[f.LocalPort] {
+				fieldErrors = append(fieldErrors, field.Duplicate(localPortPath,
+					"Cannot bind more than one forward to same LocalPort"))
+			}
+			localPorts[f.LocalPort] = true
+		}
+		if f.LocalPort < 0 || f.LocalPort > 65535 {
+			fieldErrors = append(fieldErrors, field.Invalid(localPortPath, f.LocalPort,
+				"LocalPort must be in the range [0, 65535]"))
+		}
+
+		if f.ContainerPort <= 0 || f.ContainerPort > 65535 {
+			fieldErrors = append(fieldErrors, field.Invalid(p.Child("containerPort"), f.ContainerPort,
+				"ContainerPort must be in the range (0, 65535]"))
+		}
+	}
+
+	return fieldErrors
 }
 
 var _ resource.ObjectList = &PortForwardList{}
