@@ -4,30 +4,32 @@ import (
 	"context"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
+
+var podGVK = schema.GroupVersionKind{Version: "v1", Kind: "Pod"}
 
 // Helper struct that captures Pod changes and queues up a Reconcile()
 // call for any PodLogStream watching that pod.
 type PodSource struct {
 	ctx     context.Context
+	indexer *indexer.Indexer
 	kClient k8s.Client
 	handler handler.EventHandler
 	q       workqueue.RateLimitingInterface
 	mu      sync.Mutex
-
-	// A map to help determine which PodLogStreams to reconcile when a Pod changes.
-	//
-	// The first key is the Pod name. The second key is the PodLogStream Name.
-	podsToTargets map[types.NamespacedName]map[types.NamespacedName]bool
 
 	watchesByNamespace map[string]podWatch
 }
@@ -40,11 +42,11 @@ type podWatch struct {
 
 var _ source.Source = &PodSource{}
 
-func NewPodSource(ctx context.Context, kClient k8s.Client) *PodSource {
+func NewPodSource(ctx context.Context, kClient k8s.Client, scheme *runtime.Scheme) *PodSource {
 	return &PodSource{
 		ctx:                ctx,
+		indexer:            indexer.NewIndexer(scheme, indexPodLogStream),
 		kClient:            kClient,
-		podsToTargets:      make(map[types.NamespacedName]map[types.NamespacedName]bool),
 		watchesByNamespace: make(map[string]podWatch),
 	}
 }
@@ -74,23 +76,10 @@ func (s *PodSource) handleReconcileRequest(ctx context.Context, name types.Names
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if pls == nil || pls.Spec.Pod == "" {
-		for _, streamSet := range s.podsToTargets {
-			delete(streamSet, name)
-		}
-		return
-	}
-
-	podNN := types.NamespacedName{Name: pls.Spec.Pod, Namespace: pls.Spec.Namespace}
-	streamMap, ok := s.podsToTargets[podNN]
-	if !ok {
-		streamMap = make(map[types.NamespacedName]bool)
-		s.podsToTargets[podNN] = streamMap
-	}
-	streamMap[name] = true
+	s.indexer.OnReconcile(name, pls)
 
 	ns := pls.Spec.Namespace
-	_, ok = s.watchesByNamespace[ns]
+	_, ok := s.watchesByNamespace[ns]
 	if !ok {
 		ctx, cancel := context.WithCancel(ctx)
 		pw := podWatch{ctx: ctx, cancel: cancel, namespace: ns}
@@ -124,17 +113,6 @@ func (s *PodSource) doWatch(pw podWatch) {
 	}
 }
 
-func (s *PodSource) mapPodNameToEnqueue(podNN types.NamespacedName) []reconcile.Request {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	result := []reconcile.Request{}
-	for streamName := range s.podsToTargets[podNN] {
-		result = append(result, reconcile.Request{NamespacedName: streamName})
-	}
-	return result
-}
-
 // Turn all pod events into Reconcile() calls.
 func (s *PodSource) handlePod(obj k8s.ObjectUpdate) {
 	podNN, ok := obj.AsNamespacedName()
@@ -142,9 +120,11 @@ func (s *PodSource) handlePod(obj k8s.ObjectUpdate) {
 		return
 	}
 
-	requests := s.mapPodNameToEnqueue(podNN)
-
 	s.mu.Lock()
+	requests := s.indexer.EnqueueKey(indexer.Key{
+		Name: podNN,
+		GVK:  podGVK,
+	})
 	q := s.q
 	s.mu.Unlock()
 
@@ -154,5 +134,20 @@ func (s *PodSource) handlePod(obj k8s.ObjectUpdate) {
 
 	for _, req := range requests {
 		q.Add(req)
+	}
+}
+
+// Find all the objects we need to watch based on the PodLogStream
+func indexPodLogStream(obj client.Object) []indexer.Key {
+	pls := obj.(*v1alpha1.PodLogStream)
+	if pls.Spec.Pod == "" {
+		return nil
+	}
+	podNN := types.NamespacedName{Name: pls.Spec.Pod, Namespace: pls.Spec.Namespace}
+	return []indexer.Key{
+		indexer.Key{
+			Name: podNN,
+			GVK:  podGVK,
+		},
 	}
 }

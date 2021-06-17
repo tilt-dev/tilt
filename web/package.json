@@ -30,6 +30,7 @@
     "react-storage-hooks": "^4.0.1",
     "react-table": "^7.7.0",
     "react-timeago": "^4.4.0",
+    "regex-escape": "^3.4.10",
     "styled-components": "^5.1.1"
   },
   "scripts": {

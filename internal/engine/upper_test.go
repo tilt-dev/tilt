@@ -3893,7 +3893,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	plm := runtimelog.NewPodLogManager(cdc)
-	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient)
+	podSource := podlogstream.NewPodSource(ctx, b.kClient, v1alpha1.NewScheme())
+	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient, podSource)
 	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfs := portforward.NewSubscriber(b.kClient, cdc)
 	pfs.DisableForTesting()
@@ -3926,7 +3927,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
 	fwc := filewatch.NewController(st, watcher.NewSub, timerMaker.Maker())
-	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock)
+	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
 	sessionController := session.NewController(cdc)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)

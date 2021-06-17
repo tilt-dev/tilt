@@ -11,7 +11,6 @@ import (
 
 	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
-	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
@@ -94,7 +93,6 @@ var BaseWireSet = wire.NewSet(
 	clockwork.NewRealClock,
 	engine.DeployerWireSet,
 	runtimelog.NewPodLogManager,
-	podlogstream.NewController,
 	portforward.NewSubscriber,
 	engine.NewBuildController,
 	local.NewServerController,
