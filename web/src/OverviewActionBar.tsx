@@ -11,11 +11,12 @@ import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import { History } from "history"
 import moment from "moment"
-import React, { ChangeEvent, useRef, useState } from "react"
+import React, { ChangeEvent, useEffect, useRef, useState } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { incr } from "./analytics"
+import { ReactComponent as AlertSvg } from "./assets/svg/alert.svg"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
@@ -24,7 +25,15 @@ import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import LogActions from "./LogActions"
-import { EMPTY_TERM, FilterLevel, FilterSet, FilterSource } from "./logfilters"
+import {
+  EMPTY_TERM,
+  FilterLevel,
+  FilterSet,
+  FilterSource,
+  FilterTerm,
+  isErrorTerm,
+  TermState,
+} from "./logfilters"
 import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { usePathBuilder } from "./PathBuilder"
@@ -253,23 +262,24 @@ export let ButtonRightPill = styled(ButtonRoot)`
 
 const FilterTermTextField = styled(TextField)`
   & .MuiOutlinedInput-root {
-    border-radius: ${SizeUnit(0.125)};
-    border: 1px solid ${Color.grayLighter};
     background-color: ${Color.grayDark};
-    transition: border-color ${AnimDuration.default} ease;
-    width: ${SizeUnit(8.125)};
+    position: relative;
+    width: ${SizeUnit(9)};
 
-    &:hover {
-      border-color: ${Color.blue};
-    }
     & fieldset {
-      border-color: 1px solid ${Color.grayLighter};
-    }
-    &:hover fieldset {
       border: 1px solid ${Color.grayLighter};
+      border-radius: ${SizeUnit(0.125)};
+      transition: border-color ${AnimDuration.default} ease;
+    }
+    &:hover:not(.Mui-focused, .Mui-error) fieldset {
+      border: 1px solid ${Color.blue};
     }
     & .Mui-focused fieldset {
       border: 1px solid ${Color.grayLighter};
+      outline: none;
+    }
+    & .Mui-error fieldset {
+      border: 1px solid ${Color.red};
     }
     & .MuiOutlinedInput-input {
       padding: ${SizeUnit(0.2)};
@@ -277,10 +287,47 @@ const FilterTermTextField = styled(TextField)`
   }
 
   & .MuiInputBase-input {
-    font-family: ${Font.monospace};
     color: ${Color.gray7};
+    font-family: ${Font.monospace};
     font-size: ${FontSize.small};
   }
+`
+
+const FieldErrorTooltip = styled.span`
+  align-items: center;
+  background-color: ${Color.grayDark};
+  box-sizing: border-box;
+  display: flex;
+  font-family: ${Font.monospace};
+  font-size: ${FontSize.smallest};
+  left: 0;
+  line-height: 1.4;
+  margin: ${SizeUnit(0.25)} 0 0 0;
+  padding: ${SizeUnit(0.25)};
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 1;
+
+  ::before {
+    border-bottom: 8px solid ${Color.grayDark};
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    content: "";
+    height: 0;
+    left: 20px;
+    position: absolute;
+    top: -8px;
+    width: 0;
+  }
+
+  .Mui-error {
+    color: ${Color.red};
+  }
+`
+
+const AlertIcon = styled(AlertSvg)`
+  padding-right: ${SizeUnit(0.25)};
 `
 
 const ClearFilterTermTextButton = styled(InstrumentedButton)`
@@ -421,15 +468,30 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
 export const FILTER_INPUT_DEBOUNCE = 500 // in ms
 export const FILTER_FIELD_ID = "FilterTermTextInput"
 
+function FilterTermFieldError({ error }: { error: string }) {
+  return (
+    <FieldErrorTooltip>
+      <AlertIcon width="20" height="20" role="presentation" />
+      {error}
+    </FieldErrorTooltip>
+  )
+}
+
 const debounceFilterLogs = debounce((history: History, search: string) => {
   history.push({ search })
 }, FILTER_INPUT_DEBOUNCE)
 
-export function FilterTermField(props: { initialTerm: string }) {
-  const [filterTerm, setFilterTerm] = useState(props.initialTerm ?? EMPTY_TERM)
-
+export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
+  const { input: initialTerm, state } = termFromUrl
+  const location = useLocation()
   const history = useHistory()
-  const { location } = history
+
+  const [filterTerm, setFilterTerm] = useState(initialTerm ?? EMPTY_TERM)
+
+  // If the location changes, reset the value of the input field based on url
+  useEffect(() => {
+    setFilterTerm(initialTerm)
+  }, [location.pathname])
 
   /**
    * Note about term updates:
@@ -485,20 +547,26 @@ export function FilterTermField(props: { initialTerm: string }) {
     inputProps.endAdornment = endAdornment
   }
 
-  // TODO (LT): Add `aria-invalid` markup that will show if
-  // there's an error parsing an input string to regexp
   return (
     <>
       <FilterTermTextField
+        error={state === TermState.Error}
         id={FILTER_FIELD_ID}
+        helperText={
+          isErrorTerm(termFromUrl) ? (
+            <FilterTermFieldError error={termFromUrl.error} />
+          ) : (
+            ""
+          )
+        }
         InputProps={inputProps}
         onChange={onChange}
-        placeholder="Filter logs by text"
+        placeholder="Filter by text or /regexp/"
         value={filterTerm}
         variant="outlined"
       />
       <SrOnly component="label" htmlFor={FILTER_FIELD_ID}>
-        Filter resource logs by text
+        Filter resource logs by text or /regexp/
       </SrOnly>
     </>
   )
@@ -566,7 +634,10 @@ let ActionBarBottomRow = styled.div`
   flex-wrap: wrap;
   align-items: center;
   border-bottom: 1px solid ${Color.grayLighter};
-  padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
+  padding-left: ${SizeUnit(0.5)};
+  padding-right: ${SizeUnit(0.5)};
+  padding-top: ${SizeUnit(0.35)};
+  padding-bottom: ${SizeUnit(0.35)};
 `
 
 type ActionBarProps = {
@@ -740,7 +811,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
           filterSet={filterSet}
           alerts={alerts}
         />
-        <FilterTermField initialTerm={filterSet.term.input} />
+        <FilterTermField termFromUrl={filterSet.term} />
         <LogActions resourceName={resourceName} isSnapshot={isSnapshot} />
       </ActionBarBottomRow>
     </ActionBarRoot>

@@ -36,7 +36,13 @@ type ParsedTerm = { state: TermState.Parsed; regexp: RegExp }
 
 type ErrorTerm = { state: TermState.Error; error: string }
 
-type FilterTerm = {
+export function isErrorTerm(
+  term: FilterTerm
+): term is { input: string } & ErrorTerm {
+  return term.state === TermState.Error
+}
+
+export type FilterTerm = {
   input: string // Unmodified string input
 } & (EmptyTerm | ParsedTerm | ErrorTerm)
 
@@ -51,14 +57,21 @@ export const EMPTY_FILTER_TERM: FilterTerm = {
   input: EMPTY_TERM,
   state: TermState.Empty,
 }
+const TERM_REGEXP_FLAGS = "gi" // Terms are case-insensitive and can match multiple instances
 
 export function parseTermInput(input: string): RegExp {
-  // Escape all characters that have special meaning in RegExp,
-  // so term can be treated as a string literal
-  const escapedInput = RegexEscape(input)
+  // Input strings that are surrounded by `/` can be parsed as regular expressions
+  if (input.length > 2 && input[0] === "/" && input[input.length - 1] === "/") {
+    const regexpInput = input.slice(1, input.length - 1)
 
-  // Filter terms are case-insensitive and can match multiple instances
-  return new RegExp(escapedInput, "gi")
+    return new RegExp(regexpInput, TERM_REGEXP_FLAGS)
+  } else {
+    // Input strings that aren't regular expressions should have all
+    // special characters escaped so they can be treated literally
+    const escapedInput = RegexEscape(input)
+
+    return new RegExp(escapedInput, TERM_REGEXP_FLAGS)
+  }
 }
 
 export function createFilterTermState(input: string): FilterTerm {
@@ -73,10 +86,15 @@ export function createFilterTermState(input: string): FilterTerm {
       state: TermState.Parsed,
     }
   } catch (error) {
+    let message = "Invalid regexp"
+    if (error.message) {
+      message += `: ${error.message}`
+    }
+
     return {
       input,
       state: TermState.Error,
-      error: error?.message,
+      error: message,
     }
   }
 }
