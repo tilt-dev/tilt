@@ -19,6 +19,7 @@ import (
 
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 
 	"github.com/davecgh/go-spew/spew"
@@ -3948,6 +3949,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		cmds,
 		plsc,
 		kdc,
+		kubernetesapply.NewReconciler(b.kClient),
 		ctrluisession.NewReconciler(wsl),
 		ctrluiresource.NewReconciler(wsl),
 		ctrluibutton.NewReconciler(wsl),
