@@ -1,4 +1,5 @@
 import React from "react"
+import { Link } from "react-router-dom"
 import { CellProps, Column, useSortBy, useTable } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
@@ -6,6 +7,7 @@ import { buildAlerts } from "./alerts"
 import { incr } from "./analytics"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
+import { usePathBuilder } from "./PathBuilder"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus } from "./status"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
@@ -18,6 +20,7 @@ import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
 type UIResourceStatus = Proto.v1alpha1UIResourceStatus
+type Build = Proto.v1alpha1UIBuildTerminated
 type UILink = Proto.v1alpha1UIResourceLink
 
 type OverviewTableProps = {
@@ -25,15 +28,23 @@ type OverviewTableProps = {
 }
 
 type RowValues = {
+  // lastBuild: Build | null
+  buildStatusText: BuildStatusTextType
+  currentBuildStartTime: string
+  endpoints: UILink[]
+  hasPendingChanges: boolean
   lastDeployTime: string
   name: string
-  resourceTypeLabel: string
-  triggerMode?: number
   podId: string
-  endpoints: UILink[]
-  lastBuildDur: moment.Duration | null
+  queued: boolean
+  resourceTypeLabel: string
+  triggerMode: TriggerMode
+}
+
+type BuildStatusTextType = {
   buildStatus: ResourceStatus
   buildAlertCount: number
+  lastBuildDur: moment.Duration | null
 }
 
 let ResourceTable = styled.table`
@@ -60,6 +71,8 @@ let ResourceTableHeader = styled(ResourceTableData)`
   padding-bottom: ${SizeUnit(0.5)};
 `
 
+const ResourceNameLink = styled(Link)``
+
 let Endpoint = styled.a``
 
 let DetailText = styled.div`
@@ -70,20 +83,18 @@ let DetailText = styled.div`
 `
 
 function columnDefs(): Column<RowValues>[] {
-  // Use the hooks here
-  const cxt = useStarredResources()
+  let ctx = useStarredResources()
 
-  // const callback = (info) => cxt.someMethodWeNeed(info)
   return React.useMemo(
     () => [
       {
-        Header: "Star",
+        Header: "Starred",
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <TableStarResourceButton
               resourceName={row.values.name}
               analyticsName="ui.web.overviewStarButton"
-              cxt={cxt}
+              ctx={ctx}
             />
           )
         },
@@ -107,17 +118,14 @@ function columnDefs(): Column<RowValues>[] {
         Cell: ({ row }: CellProps<RowValues>) => {
           let building = !isZeroTime(row.values.currentBuildStartTime)
           let hasBuilt = row.values.lastBuild !== null
-          let onTrigger = triggerUpdate.bind(null, row.values.name)
           return (
             <TriggerButton
-              isTiltfile={row.values.isTiltfile}
-              isSelected={false}
               hasPendingChanges={row.values.hasPendingChanges}
               hasBuilt={hasBuilt}
               isBuilding={building}
               triggerMode={row.values.triggerMode}
               isQueued={row.values.queued}
-              onTrigger={onTrigger}
+              resourceName={row.values.name}
             />
           )
         },
@@ -125,6 +133,14 @@ function columnDefs(): Column<RowValues>[] {
       {
         Header: "Resource Name",
         accessor: "name",
+        Cell: ({ row }: CellProps<RowValues>) => {
+          let pathBuilder = usePathBuilder()
+          let link = pathBuilder.encpath`/r/${row.values.name}/overview`
+
+          return (
+            <ResourceNameLink to={link}>{row.values.name}</ResourceNameLink>
+          )
+        },
       },
       {
         Header: "Type",
@@ -132,18 +148,12 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Status",
-        accessor: "buildStatus",
+        accessor: "buildStatusText",
         Cell: ({ row }: CellProps<RowValues>) => {
-          return (
-            <>
-              <span>
-                {buildStatusText(
-                  row.values.buildStatus,
-                  row.values.lastBuildDur
-                )}
-              </span>
-              <span>{runtimeStatusText(row.values.runtimeStatus)}</span>
-            </>
+          return buildStatusText(
+            row.values.buildStatusText.buildStatus,
+            row.values.buildStatusText.lastBuildDur,
+            row.values.buildStatusText.buildAlertCount
           )
         },
       },
@@ -188,44 +198,33 @@ function columnDefs(): Column<RowValues>[] {
         },
       },
     ],
-    []
+    [ctx.starredResources]
   )
-}
-
-export function triggerUpdate(name: string) {
-  let url = `//${window.location.host}/api/trigger`
-
-  fetch(url, {
-    method: "post",
-    body: JSON.stringify({
-      manifest_names: [name],
-      build_reason: 16 /* BuildReasonFlagTriggerWeb */,
-    }),
-  }).then((response) => {
-    if (!response.ok) {
-      console.log(response)
-    }
-  })
 }
 
 function uiResourceToCell(r: UIResource): RowValues {
   let res = (r.status || {}) as UIResourceStatus
   let buildHistory = res.buildHistory || []
-  let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
+  let lastBuild: Build | null = buildHistory.length > 0 ? buildHistory[0] : null
 
   return {
+    buildStatusText: {
+      buildStatus: buildStatus(r),
+      lastBuildDur:
+        lastBuild && lastBuild.startTime && lastBuild.finishTime
+          ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
+          : null,
+      buildAlertCount: buildAlerts(r, null).length,
+    },
+    currentBuildStartTime: res.currentBuild?.startTime ?? "",
+    endpoints: res.endpointLinks ?? [],
+    hasPendingChanges: !!res.hasPendingChanges,
     lastDeployTime: res.lastDeployTime ?? "",
     name: r.metadata?.name ?? "",
-    triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
-    resourceTypeLabel: resourceTypeLabel(r),
     podId: res.k8sResourceInfo?.podName ?? "",
-    endpoints: res.endpointLinks ?? [],
-    buildAlertCount: buildAlerts(r, null).length,
-    buildStatus: buildStatus(r),
-    lastBuildDur:
-      lastBuild && lastBuild.startTime && lastBuild.finishTime
-        ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
-        : null,
+    queued: !!res.queued,
+    resourceTypeLabel: resourceTypeLabel(r),
+    triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
   }
 }
 
@@ -270,23 +269,44 @@ function resourceTypeLabel(r: UIResource): string {
 
 function buildStatusText(
   buildStatus: ResourceStatus,
-  buildDur: moment.Duration | null
-): string {
-  let buildDurString = buildDur ? ` in ${formatBuildDuration(buildDur)}` : ""
+  lastBuildDur: moment.Duration | null,
+  buildAlertCount: number
+) {
+  console.log("lastbuilddur", lastBuildDur)
+  let msg
+  let icon
+  let buildDurString = lastBuildDur
+    ? ` in ${formatBuildDuration(lastBuildDur)}`
+    : ""
 
   if (buildStatus === ResourceStatus.Pending) {
-    return "Pending"
+    icon = <LinkSvg />
+    msg = "Pending"
   } else if (buildStatus === ResourceStatus.Building) {
-    return "Updating…"
+    icon = <LinkSvg />
+    msg = "Updating…"
   } else if (buildStatus === ResourceStatus.None) {
-    return "No update status"
+    icon = <LinkSvg />
+    msg = "No update status"
   } else if (buildStatus === ResourceStatus.Unhealthy) {
-    return "Update error"
+    icon = <LinkSvg />
+    msg = "Update error"
   } else if (buildStatus === ResourceStatus.Healthy) {
-    let msg = `Completed${buildDurString}`
-    return msg
+    icon = <LinkSvg />
+    msg = `Completed${buildDurString}`
+    if (buildAlertCount > 0) {
+      msg += ", with issues"
+    }
+  } else {
+    msg = "Unknown"
   }
-  return "Unknown"
+
+  return (
+    <>
+      <span>{icon}</span>
+      <span>{msg}</span>
+    </>
+  )
 }
 
 function runtimeStatusText(status: ResourceStatus): string {
@@ -308,10 +328,9 @@ function runtimeStatusText(status: ResourceStatus): string {
 
 export default function OverviewTable(props: OverviewTableProps) {
   const columns = columnDefs()
-
   const data = React.useMemo(
     () => props.view.uiResources?.map(uiResourceToCell) || [],
-    []
+    [props.view.uiResources]
   )
 
   const {
