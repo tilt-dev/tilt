@@ -440,16 +440,15 @@ export function FilterTermField(props: { initialTerm: string }) {
    * The term field updates without any debouncing, while the url search params
    * (which actually triggers log filtering) updates with the debounce delay.
    */
-  const setTerm = (term: string) => {
+  const setTerm = (term: string, withDebounceDelay = true) => {
     setFilterTerm(term)
 
     const search = createLogSearch(location.search, { term })
 
-    // Don't use the debounce delay if clearing the filter term
-    if (term === EMPTY_TERM) {
-      history.push({ search: search.toString() })
-    } else {
+    if (withDebounceDelay) {
       debounceFilterLogs(history, search.toString())
+    } else {
+      history.push({ search: search.toString() })
     }
   }
 
@@ -474,7 +473,7 @@ export function FilterTermField(props: { initialTerm: string }) {
       <InputAdornment position="end">
         <ClearFilterTermTextButton
           analyticsName="TODO"
-          onClick={() => setTerm(EMPTY_TERM)}
+          onClick={() => setTerm(EMPTY_TERM, false)}
         >
           <SrOnly>Clear filter term</SrOnly>
           <CloseSvg fill={Color.grayLightest} role="presentation" />
