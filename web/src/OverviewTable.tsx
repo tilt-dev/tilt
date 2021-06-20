@@ -97,6 +97,13 @@ const ResourceTableHeaderSortTriangle = styled.span`
 const ResourceName = styled.div`
   color: ${Color.offWhite};
   font-size: ${FontSize.small};
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-position: under;
+  }
+
   &.has-error {
     color: ${Color.red};
   }
