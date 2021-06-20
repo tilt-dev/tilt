@@ -3,62 +3,27 @@ import styled from "styled-components"
 import { ReactComponent as TriggerButtonManualSvg } from "./assets/svg/trigger-button-manual.svg"
 import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
-import {
-  AnimDuration,
-  Color,
-  mixinResetButtonStyle,
-  overviewItemBorderRadius,
-  SizeUnit,
-} from "./style-helpers"
+import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 import { TriggerMode } from "./types"
 
 export let TriggerButtonRoot = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
-  width: ${SizeUnit(1)};
-  height: ${SizeUnit(1)};
-  background-color: ${Color.grayLighter};
-  border-bottom-left-radius: ${overviewItemBorderRadius};
-  border-top-right-radius: ${overviewItemBorderRadius};
   display: flex;
   align-items: center;
-  flex-shrink: 0;
   justify-content: center;
-  opacity: 0;
-  pointer-events: none;
 
-  &.clickable {
-    pointer-events: auto;
-    cursor: pointer;
+  &.is-disabled {
+    pointer-events: none;
   }
-  &.clickable,
-  &.isQueued {
-    opacity: 1;
+  &.is-disabled:active svg {
+    transform: scale(1);
   }
-  &.isSelected {
-    background-color: ${Color.gray7};
-  }
-  &:hover {
-    background-color: ${Color.grayDark};
-  }
-  &.isSelected:hover {
-    background-color: ${Color.grayLightest};
-  }
-
   & .fillStd {
     transition: fill ${AnimDuration.default} ease;
     fill: ${Color.grayLight};
   }
-  &.is-manual .fillStd {
-    fill: ${Color.blue};
-  }
-  &.isSelected .fillStd {
-    fill: ${Color.black};
-  }
   &:hover .fillStd {
     fill: ${Color.white};
-  }
-  &.isSelected:hover .fillStd {
-    fill: ${Color.blueDark};
   }
   & > svg {
     transition: transform ${AnimDuration.short} linear;
@@ -66,41 +31,40 @@ export let TriggerButtonRoot = styled(InstrumentedButton)`
   &:active > svg {
     transform: scale(1.2);
   }
-  &.isQueued > svg {
+  &.is-building > svg {
+    animation: spin 1s linear infinite;
+  }
+  &.is-queued > svg {
     animation: spin 1s linear infinite;
   }
 `
 
 export const TriggerButtonTooltip = {
-  AlreadyQueued:
-    "Cannot trigger an update if resource is already queued for update.",
-  NeedsManualTrigger: "Click to trigger an update.",
-  UpdateInProgOrPending:
-    "Cannot trigger an update while resource is updating or update is pending.",
-  ClickToForce: "Force an update for this resource.",
+  AlreadyQueued: "Cannot trigger update. Resource is already queued!",
+  NeedsManualTrigger: "Trigger an update",
+  UpdateInProgOrPending: "Cannot trigger update. Resource is already updating!",
+  ClickToForce: "Force an update",
 }
 
 type TriggerButtonProps = {
-  isTiltfile: boolean
   isBuilding: boolean
   hasBuilt: boolean
   triggerMode: TriggerMode
-  isSelected: boolean
   hasPendingChanges: boolean
   isQueued: boolean
-  onTrigger: () => void
+  resourceName: string
 }
 
 const titleText = (
-  clickable: boolean,
-  clickMe: boolean,
+  disabled: boolean,
+  shouldbeClicked: boolean,
   isQueued: boolean
 ): string => {
   if (isQueued) {
     return TriggerButtonTooltip.AlreadyQueued
-  } else if (!clickable) {
+  } else if (disabled) {
     return TriggerButtonTooltip.UpdateInProgOrPending
-  } else if (clickMe) {
+  } else if (shouldbeClicked) {
     return TriggerButtonTooltip.NeedsManualTrigger
   } else {
     return TriggerButtonTooltip.ClickToForce
@@ -112,58 +76,57 @@ function TriggerButton(props: TriggerButtonProps) {
   let isManualTriggerIncludingInitial =
     props.triggerMode === TriggerMode.TriggerModeManual
 
-  // clickable (i.e. trigger button will appear) if it doesn't already have some kind of pending / active build
-  let clickable =
-    !props.isQueued && // already queued for manual run
-    !props.isBuilding && // currently building
-    !(!isManualTriggerIncludingInitial && !props.hasBuilt) && // waiting to perform its initial build
-    !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
+  // trigger button will only look actionable if there isn't any pending / active build
+  let disabled =
+    props.isQueued || // already queued for manual run
+    props.isBuilding // currently building
+  // !(!isManualTriggerIncludingInitial && !props.hasBuilt) || // waiting to perform its initial build
+  // !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
 
-  let clickMe = false
-  if (clickable) {
+  let shouldBeClicked = false
+  if (!disabled) {
     if (props.hasPendingChanges && isManualTriggerMode) {
-      clickMe = true
+      shouldBeClicked = true
     } else if (!props.hasBuilt && isManualTriggerIncludingInitial) {
-      clickMe = true
+      shouldBeClicked = true
     }
   }
 
-  let onClick = (e: any) => {
-    // TriggerButton is nested in a link,
-    // and preventDefault is the standard way to cancel the navigation.
-    e.preventDefault()
+  function triggerUpdate(name: string) {
+    let url = `//${window.location.host}/api/trigger`
 
-    // stopPropagation prevents the overview card from opening.
-    e.stopPropagation()
-
-    props.onTrigger()
+    fetch(url, {
+      method: "post",
+      body: JSON.stringify({
+        manifest_names: [name],
+        build_reason: 16 /* BuildReasonFlagTriggerWeb */,
+      }),
+    }).then((response) => {
+      if (!response.ok) {
+        console.log(response)
+      }
+    })
   }
 
   // Add padding to center the icon better.
-  let padding = clickMe ? "0" : "0 0 0 2px"
   let classes = []
-  if (props.isSelected) {
-    classes.push("isSelected")
-  }
-  if (clickable) {
-    classes.push("clickable")
+  if (disabled) {
+    classes.push("is-disabled")
   }
   if (props.isQueued) {
-    classes.push("isQueued")
+    classes.push("is-queued")
   }
-  if (isManualTriggerMode) {
-    classes.push("is-manual")
+  if (props.isBuilding) {
+    classes.push("is-building")
   }
   return (
     <TriggerButtonRoot
-      onClick={onClick}
+      onClick={() => triggerUpdate(props.resourceName)}
       className={classes.join(" ")}
-      disabled={!clickable}
-      title={titleText(clickable, clickMe, props.isQueued)}
-      style={{ padding }}
+      title={titleText(disabled, shouldBeClicked, props.isQueued)}
       analyticsName={"ui.web.triggerResource"}
     >
-      {clickMe ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
+      {shouldBeClicked ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
     </TriggerButtonRoot>
   )
 }
