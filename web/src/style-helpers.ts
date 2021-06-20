@@ -128,22 +128,31 @@ export const mixinTruncateText = `
 
 export namespace Glow {
   export const white = keyframes`
-  0% {
-    background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
-  }
-  50% {
-    background-color: ${ColorRGBA(Color.white, ColorAlpha.almostTransparent)};
-  }
-`
+    0% {
+      background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
+    }
+    50% {
+      background-color: ${ColorRGBA(Color.white, ColorAlpha.almostTransparent)};
+    }
+  `
 
   export const dark = keyframes`
-  0% {
-    background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
-  }
-  50% {
-    background-color: ${ColorRGBA(Color.gray, ColorAlpha.almostTransparent)};
-  }
-`
+    0% {
+      background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+    }
+    50% {
+      background-color: ${ColorRGBA(Color.gray, ColorAlpha.almostTransparent)};
+    }
+  `
+
+  export const opacity = keyframes`
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  `
 }
 
 export const spin = keyframes`
