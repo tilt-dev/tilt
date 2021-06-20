@@ -2,7 +2,7 @@ import React from "react"
 import { CellProps, Column, useSortBy, useTable } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
-import { buildAlerts } from "./alerts"
+import { buildAlerts, runtimeAlerts } from "./alerts"
 import { incr } from "./analytics"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
@@ -29,7 +29,7 @@ type OverviewTableProps = {
 
 type RowValues = {
   // lastBuild: Build | null
-  statusText: StatusTextType
+  statusLine: StatusLineType
   currentBuildStartTime: string
   endpoints: UILink[]
   hasPendingChanges: boolean
@@ -41,11 +41,12 @@ type RowValues = {
   triggerMode: TriggerMode
 }
 
-type StatusTextType = {
+type StatusLineType = {
   buildStatus: ResourceStatus
   buildAlertCount: number
   lastBuildDur: moment.Duration | null
   runtimeStatus: ResourceStatus
+  runtimeAlertCount: number
 }
 
 const ResourceTable = styled.table`
@@ -86,9 +87,9 @@ const ResourceTableHeaderSort = styled.span`
 const ResourceTableHeaderSortTriangle = styled.span`
   width: 0;
   height: 0;
-  border-left: 20px solid transparent;
-  border-right: 20px solid transparent;
-  border-top: 20px solid ${Color.gray};
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid ${Color.gray};
 `
 const ResourceName = styled.div`
   color: ${Color.offWhite};
@@ -173,8 +174,8 @@ function columnDefs(): Column<RowValues>[] {
         Cell: ({ row }: CellProps<RowValues>) => {
           let nav = useResourceNav()
           let hasError =
-            row.values.statusText.buildStatus === ResourceStatus.Unhealthy ||
-            row.values.statusText.runtimeStatus === ResourceStatus.Unhealthy
+            row.values.statusLine.buildStatus === ResourceStatus.Unhealthy ||
+            row.values.statusLine.runtimeStatus === ResourceStatus.Unhealthy
 
           return (
             <ResourceName
@@ -194,19 +195,19 @@ function columnDefs(): Column<RowValues>[] {
       {
         Header: "Status",
         width: "150px",
-        accessor: "statusText",
+        accessor: "statusLine",
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <>
               <OverviewTableStatus
-                status={row.values.statusText.buildStatus}
-                lastBuildDur={row.values.statusText.lastBuildDur}
-                alertCount={row.values.statusText.buildAlertCount}
+                status={row.values.statusLine.buildStatus}
+                lastBuildDur={row.values.statusLine.lastBuildDur}
+                alertCount={row.values.statusLine.buildAlertCount}
                 isBuild={true}
               />
               <OverviewTableStatus
-                status={row.values.statusText.runtimeStatus}
-                alertCount={row.values.statusText.buildAlertCount}
+                status={row.values.statusLine.runtimeStatus}
+                alertCount={row.values.statusLine.runtimeAlertCount}
               />
             </>
           )
@@ -264,13 +265,14 @@ function uiResourceToCell(r: UIResource): RowValues {
   let lastBuild: Build | null = buildHistory.length > 0 ? buildHistory[0] : null
 
   return {
-    statusText: {
+    statusLine: {
       buildStatus: buildStatus(r),
       lastBuildDur:
         lastBuild && lastBuild.startTime && lastBuild.finishTime
           ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
           : null,
       buildAlertCount: buildAlerts(r, null).length,
+      runtimeAlertCount: runtimeAlerts(r, null).length,
       runtimeStatus: runtimeStatus(r),
     },
     currentBuildStartTime: res.currentBuild?.startTime ?? "",
