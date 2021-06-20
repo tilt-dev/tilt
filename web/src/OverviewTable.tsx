@@ -66,8 +66,6 @@ const ResourceTableData = styled.td`
   font-family: ${Font.monospace};
   font-size: ${FontSize.smallest};
   color: ${Color.gray6};
-  padding-top: ${SizeUnit(0.25)};
-  padding-bottom: ${SizeUnit(0.25)};
   box-sizing: border-box;
 `
 const ResourceTableHeader = styled(ResourceTableData)`
@@ -97,6 +95,8 @@ const ResourceTableHeaderSortTriangle = styled.span`
 const ResourceName = styled.div`
   color: ${Color.offWhite};
   font-size: ${FontSize.small};
+  padding-top: ${SizeUnit(1 / 3)};
+  padding-bottom: ${SizeUnit(1 / 3)};
   cursor: pointer;
 
   &:hover {
