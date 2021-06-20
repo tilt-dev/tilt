@@ -17,8 +17,9 @@ import TableStarResourceButton from "./TableStarResourceButton"
 import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import TriggerButton from "./TriggerButton"
-import { TriggerModeToggle } from "./TriggerModeToggle"
+import TableTriggerModeToggle from "./TableTriggerModeToggle"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
+import OverviewTableStatus from "./OverviewTableStatus"
 
 type UIResource = Proto.v1alpha1UIResource
 type UIResourceStatus = Proto.v1alpha1UIResourceStatus
@@ -119,62 +120,6 @@ const DetailText = styled.span`
   margin-left: 10px;
 `
 
-const StyledStatus = styled.div``
-
-const StatusMsg = styled.span``
-const StatusIcon = styled.span`
-  display: flex;
-  align-items: center;
-  margin-right: ${SizeUnit(0.2)};
-  width: ${SizeUnit(0.5)};
-
-  svg {
-    width: 100%;
-  }
-`
-const BuildStatusIcon = styled(StatusIcon)``
-const RuntimeStatusIcon = styled(StatusIcon)``
-const BuildStatusMsg = styled.span``
-const RuntimeStatusMsg = styled.span`
-  ${BuildStatusMsg} + & {
-    padding-left: ${SizeUnit(0.25)};
-    border-left: 1px solid ${Color.gray};
-    margin-left: ${SizeUnit(0.25)};
-  }
-`
-const StatusLine = styled.div`
-  display: flex;
-  align-items: center;
-
-  &.is-healthy {
-    svg {
-      fill: ${Color.green};
-    }
-  }
-  &.is-building,
-  &.is-pending {
-    svg {
-      fill: ${Color.grayLightest};
-      animation: ${spin} 4s linear infinite;
-      width: 80%;
-    }
-  }
-  &.is-pending {
-    ${StatusMsg} {
-      animation: ${Glow.opacity} 2s linear infinite;
-    }
-  }
-  &.is-error {
-    color: ${Color.red};
-    svg {
-      fill: ${Color.red};
-    }
-  }
-  &.is-none {
-    color: ${Color.grayLight};
-  }
-`
-
 function columnDefs(): Column<RowValues>[] {
   let ctx = useStarredResources()
 
@@ -195,6 +140,7 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Last Updated",
+        width: "20px",
         accessor: "lastDeployTime",
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
@@ -225,7 +171,7 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Resource Name",
-        width: "200px",
+        width: "280px",
         accessor: "name",
         Cell: ({ row }: CellProps<RowValues>) => {
           let nav = useResourceNav()
@@ -245,17 +191,27 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Type",
+        width: "150px",
         accessor: "resourceTypeLabel",
       },
       {
         Header: "Status",
+        width: "150px",
         accessor: "statusText",
         Cell: ({ row }: CellProps<RowValues>) => {
-          return statusText(
-            row.values.statusText.buildStatus,
-            row.values.statusText.lastBuildDur,
-            row.values.statusText.buildAlertCount,
-            row.values.statusText.runtimeStatus
+          return (
+            <>
+              <OverviewTableStatus 
+                status={row.values.statusText.buildStatus} 
+                lastBuildDur={row.values.statusText.lastBuildDur} 
+                alertCount={row.values.statusText.buildAlertCount}
+                isBuild={true}
+              />
+              <OverviewTableStatus 
+                status={row.values.statusText.runtimeStatus}
+                alertCount={row.values.statusText.buildAlertCount}
+              />
+            </>
           )
         },
       },
@@ -289,13 +245,12 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Trigger Mode",
-        width: 1,
+        width: "50px",
         Cell: ({ row }: CellProps<RowValues>) => {
-          let onModeToggle = toggleTriggerMode.bind(null, row.values.name)
           return (
-            <TriggerModeToggle
+            <TableTriggerModeToggle
+              resourceName={row.values.name}
               triggerMode={row.values.triggerMode}
-              onModeToggle={onModeToggle}
             />
           )
         },
@@ -332,21 +287,6 @@ function uiResourceToCell(r: UIResource): RowValues {
   }
 }
 
-export function toggleTriggerMode(name: string, mode: TriggerMode) {
-  let url = "/api/override/trigger_mode"
-
-  fetch(url, {
-    method: "post",
-    body: JSON.stringify({
-      manifest_names: [name],
-      trigger_mode: mode,
-    }),
-  }).then((response) => {
-    if (!response.ok) {
-      console.log(response)
-    }
-  })
-}
 
 function resourceTypeLabel(r: UIResource): string {
   let res = (r.status || {}) as UIResourceStatus
@@ -369,101 +309,6 @@ function resourceTypeLabel(r: UIResource): string {
     }
   }
   return "Unknown"
-}
-
-function statusText(
-  buildStatus: ResourceStatus,
-  lastBuildDur: moment.Duration | null,
-  buildAlertCount: number,
-  runtimeStatus: ResourceStatus
-) {
-  let buildIcon = null
-  let buildMsg = ""
-  let runtimeIcon = null
-  let runtimeMsg = ""
-  let buildClass = ""
-  let runtimeClass = ""
-
-  switch (buildStatus) {
-    case ResourceStatus.Building:
-      buildIcon = <PendingSvg />
-      buildMsg = "Updating…"
-      buildClass = "is-building"
-      break
-    case ResourceStatus.None:
-      break
-    case ResourceStatus.Pending:
-      buildIcon = <PendingSvg />
-      buildMsg = "Update Pending"
-      buildClass = "is-pending"
-      break
-    case ResourceStatus.Warning:
-      break
-    case ResourceStatus.Healthy:
-      let buildDurText = lastBuildDur
-        ? ` in ${formatBuildDuration(lastBuildDur)}`
-        : ""
-      buildIcon = <CheckmarkSmallSvg />
-      buildMsg = `Updated${buildDurText}`
-      buildClass = "is-healthy"
-
-      if (buildAlertCount > 0) {
-        buildMsg += ", with issues"
-      }
-      break
-    case ResourceStatus.Unhealthy:
-      buildIcon = <CloseSvg />
-      buildMsg = "Update error"
-      buildClass = "is-error"
-      break
-    default:
-      buildMsg = ""
-  }
-
-  switch (runtimeStatus) {
-    case ResourceStatus.Building:
-      runtimeIcon = <PendingSvg />
-      runtimeMsg = "Runtime deploying"
-      runtimeClass = "is-building"
-      break
-    case ResourceStatus.Pending:
-      runtimeIcon = <PendingSvg />
-      runtimeMsg = "Runtime pending"
-      runtimeClass = "is-pending"
-      break
-    case ResourceStatus.Warning:
-      runtimeMsg = "Runtime issues"
-      break
-    case ResourceStatus.Healthy:
-      runtimeIcon = <CheckmarkSmallSvg />
-      runtimeMsg = "Runtime ready"
-      runtimeClass = "is-healthy"
-      break
-    case ResourceStatus.Unhealthy:
-      runtimeIcon = <CloseSvg />
-      runtimeMsg = "Runtime error"
-      runtimeClass = "is-error"
-      break
-    default:
-      runtimeMsg = ""
-  }
-
-  return (
-    <StyledStatus>
-      {buildMsg && (
-        <StatusLine className={buildClass}>
-          <BuildStatusIcon>{buildIcon}</BuildStatusIcon>
-          <BuildStatusMsg>{buildMsg}</BuildStatusMsg>
-        </StatusLine>
-      )}
-      {runtimeMsg && (
-        <StatusLine className={runtimeClass}>
-          <RuntimeStatusIcon>{runtimeIcon}</RuntimeStatusIcon>
-          <RuntimeStatusMsg>{runtimeMsg}</RuntimeStatusMsg>
-        </StatusLine>
-      )}
-    </StyledStatus>
-  )
 }
 
 export default function OverviewTable(props: OverviewTableProps) {
