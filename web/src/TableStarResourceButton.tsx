@@ -10,21 +10,19 @@ import {
   SizeUnit,
 } from "./style-helpers"
 
-export const StarResourceButtonRoot = styled(InstrumentedButton)`
+export const StyledTableStarResourceButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
-  padding: 0;
-  background-color: transparent;
-  align-items: center;
+  padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
 `
 let StarIcon = styled(StarSvg)`
-  width: ${SizeUnit(1.0 / 3)};
-  height: ${SizeUnit(1.0 / 3)};
+  width: ${SizeUnit(1 / 2.5)};
+  height: ${SizeUnit(1 / 2.5)};
 `
 let ActiveStarIcon = styled(StarIcon)`
   transition: transform ${AnimDuration.short} ease;
   fill: ${Color.grayLight};
 
-  ${StarResourceButtonRoot}:hover & {
+  ${StyledTableStarResourceButton}:hover & {
     fill: ${Color.blue};
   }
 `
@@ -35,13 +33,12 @@ let InactiveStarIcon = styled(StarIcon)`
   opacity: 0;
 
   .u-showStarOnHover:hover &,
-  ${StarResourceButtonRoot}:focus &,
-  ${StarResourceButtonRoot}.u-persistShow & {
+  ${StyledTableStarResourceButton}:focus & {
     fill: ${Color.grayLight};
     opacity: 1;
   }
 
-  ${StarResourceButtonRoot}:hover & {
+  ${StyledTableStarResourceButton}:hover & {
     fill: ${Color.blue};
     opacity: 1;
   }
@@ -49,16 +46,14 @@ let InactiveStarIcon = styled(StarIcon)`
 
 type StarResourceButtonProps = {
   resourceName: string
-  persistShow?: boolean
   analyticsName: string
-  cxt: StarredResourcesContext
+  ctx: StarredResourcesContext
 }
 
 export default function TableStarResourceButton(
   props: StarResourceButtonProps
 ): JSX.Element {
-  let ctx = props.cxt
-  let { resourceName, persistShow } = props
+  let { ctx, resourceName } = props
   let isStarred =
     ctx.starredResources && ctx.starredResources.includes(resourceName)
 
@@ -74,8 +69,6 @@ export default function TableStarResourceButton(
   }
 
   function onClick(e: any) {
-    e.preventDefault()
-    e.stopPropagation()
     if (isStarred) {
       ctx.unstarResource(resourceName)
     } else {
@@ -83,19 +76,14 @@ export default function TableStarResourceButton(
     }
   }
 
-  let className = ""
-  if (persistShow) {
-    className = "u-persistShow"
-  }
   return (
-    <StarResourceButtonRoot
+    <StyledTableStarResourceButton
       title={title}
       onClick={onClick}
-      className={className}
       analyticsName={props.analyticsName}
       analyticsTags={{ newStarState: (!isStarred).toString() }}
     >
       {icon}
-    </StarResourceButtonRoot>
+    </StyledTableStarResourceButton>
   )
 }
