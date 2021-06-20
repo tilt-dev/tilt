@@ -476,6 +476,7 @@ export default function OverviewTable(props: OverviewTableProps) {
     {
       columns,
       data,
+      autoResetSortBy: false,
     },
     useSortBy
   )
