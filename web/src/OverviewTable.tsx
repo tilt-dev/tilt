@@ -4,22 +4,19 @@ import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts } from "./alerts"
 import { incr } from "./analytics"
-import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
-import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
-import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { displayURL } from "./links"
+import OverviewTableStatus from "./OverviewTableStatus"
 import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
-import { Color, Font, FontSize, Glow, SizeUnit, spin } from "./style-helpers"
+import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import TableStarResourceButton from "./TableStarResourceButton"
-import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
+import TableTriggerModeToggle from "./TableTriggerModeToggle"
+import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import TriggerButton from "./TriggerButton"
-import TableTriggerModeToggle from "./TableTriggerModeToggle"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
-import OverviewTableStatus from "./OverviewTableStatus"
 
 type UIResource = Proto.v1alpha1UIResource
 type UIResourceStatus = Proto.v1alpha1UIResourceStatus
@@ -201,13 +198,13 @@ function columnDefs(): Column<RowValues>[] {
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <>
-              <OverviewTableStatus 
-                status={row.values.statusText.buildStatus} 
-                lastBuildDur={row.values.statusText.lastBuildDur} 
+              <OverviewTableStatus
+                status={row.values.statusText.buildStatus}
+                lastBuildDur={row.values.statusText.lastBuildDur}
                 alertCount={row.values.statusText.buildAlertCount}
                 isBuild={true}
               />
-              <OverviewTableStatus 
+              <OverviewTableStatus
                 status={row.values.statusText.runtimeStatus}
                 alertCount={row.values.statusText.buildAlertCount}
               />
@@ -245,6 +242,7 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Trigger Mode",
+        accessor: "triggerMode",
         width: "50px",
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
@@ -286,7 +284,6 @@ function uiResourceToCell(r: UIResource): RowValues {
     triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
   }
 }
-
 
 function resourceTypeLabel(r: UIResource): string {
   let res = (r.status || {}) as UIResourceStatus
@@ -340,7 +337,10 @@ export default function OverviewTable(props: OverviewTableProps) {
           <ResourceTableRow {...headerGroup.getHeaderGroupProps()}>
             {headerGroup.headers.map((column) => (
               <ResourceTableHeader
-                {...column.getHeaderProps([{style: {width: column.width }}, column.getSortByToggleProps()])}
+                {...column.getHeaderProps([
+                  { style: { width: column.width } },
+                  column.getSortByToggleProps(),
+                ])}
               >
                 {column.render("Header")}
                 <ResourceTableHeaderSort
