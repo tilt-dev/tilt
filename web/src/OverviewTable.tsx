@@ -1,16 +1,18 @@
 import React from "react"
-import { Link } from "react-router-dom"
 import { CellProps, Column, useSortBy, useTable } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts } from "./alerts"
 import { incr } from "./analytics"
+import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
+import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { displayURL } from "./links"
-import { usePathBuilder } from "./PathBuilder"
+import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
-import { buildStatus } from "./status"
-import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { buildStatus, runtimeStatus } from "./status"
+import { Color, Font, FontSize, Glow, SizeUnit, spin } from "./style-helpers"
 import TableStarResourceButton from "./TableStarResourceButton"
 import { formatBuildDuration, isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
@@ -29,7 +31,7 @@ type OverviewTableProps = {
 
 type RowValues = {
   // lastBuild: Build | null
-  buildStatusText: BuildStatusTextType
+  statusText: StatusTextType
   currentBuildStartTime: string
   endpoints: UILink[]
   hasPendingChanges: boolean
@@ -41,45 +43,129 @@ type RowValues = {
   triggerMode: TriggerMode
 }
 
-type BuildStatusTextType = {
+type StatusTextType = {
   buildStatus: ResourceStatus
   buildAlertCount: number
   lastBuildDur: moment.Duration | null
+  runtimeStatus: ResourceStatus
 }
 
-let ResourceTable = styled.table`
+const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   margin-left: ${SizeUnit(1)};
   margin-right: ${SizeUnit(1)};
   border-collapse: collapse;
 `
-let ResourceTableHead = styled.thead`
+const ResourceTableHead = styled.thead`
   background-color: ${Color.grayDarker};
 `
-let ResourceTableRow = styled.tr`
+const ResourceTableRow = styled.tr`
   border-bottom: 1px solid ${Color.grayLighter};
 `
-let ResourceTableData = styled.td`
+const ResourceTableData = styled.td`
   font-family: ${Font.monospace};
-  font-size: ${FontSize.small};
-  color: ${Color.gray6};
-`
-let ResourceTableHeader = styled(ResourceTableData)`
-  color: ${Color.gray7};
   font-size: ${FontSize.smallest};
+  color: ${Color.gray6};
+  padding-top: ${SizeUnit(0.25)};
+  padding-bottom: ${SizeUnit(0.25)};
+  box-sizing: border-box;
+`
+const ResourceTableHeader = styled(ResourceTableData)`
+  color: ${Color.gray7};
+  font-size: ${FontSize.smallester};
   padding-top: ${SizeUnit(0.5)};
   padding-bottom: ${SizeUnit(0.5)};
+  box-sizing: border-box;
 `
 
-const ResourceNameLink = styled(Link)``
+const ResourceTableHeaderSort = styled.span`
+  opacity: 0;
+  &.is-sorted-asc {
+    opacity: 1;
+  }
+  &.is-sorted-desc {
+    opacity: 1;
+  }
+`
+const ResourceTableHeaderSortTriangle = styled.span`
+  width: 0;
+  height: 0;
+  border-left: 20px solid transparent;
+  border-right: 20px solid transparent;
+  border-top: 20px solid ${Color.gray};
+`
+const ResourceName = styled.div`
+  color: ${Color.offWhite};
+  font-size: ${FontSize.small};
+  &.has-error {
+    color: ${Color.red};
+  }
+`
 
-let Endpoint = styled.a``
+const Endpoint = styled.a``
+const StyledLinkSvg = styled(LinkSvg)``
 
-let DetailText = styled.div`
+const DetailText = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-left: 10px;
+`
+
+const StyledStatus = styled.div``
+
+const StatusMsg = styled.span``
+const StatusIcon = styled.span`
+  display: flex;
+  align-items: center;
+  margin-right: ${SizeUnit(0.2)};
+  width: ${SizeUnit(0.5)};
+
+  svg {
+    width: 100%;
+  }
+`
+const BuildStatusIcon = styled(StatusIcon)``
+const RuntimeStatusIcon = styled(StatusIcon)``
+const BuildStatusMsg = styled.span``
+const RuntimeStatusMsg = styled.span`
+  ${BuildStatusMsg} + & {
+    padding-left: ${SizeUnit(0.25)};
+    border-left: 1px solid ${Color.gray};
+    margin-left: ${SizeUnit(0.25)};
+  }
+`
+const StatusLine = styled.div`
+  display: flex;
+  align-items: center;
+
+  &.is-healthy {
+    svg {
+      fill: ${Color.green};
+    }
+  }
+  &.is-building,
+  &.is-pending {
+    svg {
+      fill: ${Color.grayLightest};
+      animation: ${spin} 4s linear infinite;
+      width: 80%;
+    }
+  }
+  &.is-pending {
+    ${StatusMsg} {
+      animation: ${Glow.opacity} 2s linear infinite;
+    }
+  }
+  &.is-error {
+    color: ${Color.red};
+    svg {
+      fill: ${Color.red};
+    }
+  }
+  &.is-none {
+    color: ${Color.grayLight};
+  }
 `
 
 function columnDefs(): Column<RowValues>[] {
@@ -89,6 +175,7 @@ function columnDefs(): Column<RowValues>[] {
     () => [
       {
         Header: "Starred",
+        width: "20px",
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <TableStarResourceButton
@@ -102,7 +189,6 @@ function columnDefs(): Column<RowValues>[] {
       {
         Header: "Last Updated",
         accessor: "lastDeployTime",
-        maxWidth: 1,
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <TimeAgo
@@ -114,7 +200,7 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Trigger",
-        maxWidth: 1,
+        width: "20px",
         Cell: ({ row }: CellProps<RowValues>) => {
           let building = !isZeroTime(row.values.currentBuildStartTime)
           let hasBuilt = row.values.lastBuild !== null
@@ -132,13 +218,21 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Resource Name",
+        width: "200px",
         accessor: "name",
         Cell: ({ row }: CellProps<RowValues>) => {
-          let pathBuilder = usePathBuilder()
-          let link = pathBuilder.encpath`/r/${row.values.name}/overview`
+          let nav = useResourceNav()
+          let hasError =
+            row.values.statusText.buildStatus === ResourceStatus.Unhealthy ||
+            row.values.statusText.runtimeStatus === ResourceStatus.Unhealthy
 
           return (
-            <ResourceNameLink to={link}>{row.values.name}</ResourceNameLink>
+            <ResourceName
+              className={hasError ? "has-error" : ""}
+              onClick={(e) => nav.openResource(row.values.name)}
+            >
+              {row.values.name}
+            </ResourceName>
           )
         },
       },
@@ -148,12 +242,13 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Status",
-        accessor: "buildStatusText",
+        accessor: "statusText",
         Cell: ({ row }: CellProps<RowValues>) => {
-          return buildStatusText(
-            row.values.buildStatusText.buildStatus,
-            row.values.buildStatusText.lastBuildDur,
-            row.values.buildStatusText.buildAlertCount
+          return statusText(
+            row.values.statusText.buildStatus,
+            row.values.statusText.lastBuildDur,
+            row.values.statusText.buildAlertCount,
+            row.values.statusText.runtimeStatus
           )
         },
       },
@@ -177,7 +272,7 @@ function columnDefs(): Column<RowValues>[] {
                 target={ep.url}
                 key={ep.url}
               >
-                <LinkSvg />
+                <StyledLinkSvg />
                 <DetailText>{ep.name || displayURL(ep)}</DetailText>
               </Endpoint>
             )
@@ -187,6 +282,7 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Trigger Mode",
+        width: 1,
         Cell: ({ row }: CellProps<RowValues>) => {
           let onModeToggle = toggleTriggerMode.bind(null, row.values.name)
           return (
@@ -208,13 +304,14 @@ function uiResourceToCell(r: UIResource): RowValues {
   let lastBuild: Build | null = buildHistory.length > 0 ? buildHistory[0] : null
 
   return {
-    buildStatusText: {
+    statusText: {
       buildStatus: buildStatus(r),
       lastBuildDur:
         lastBuild && lastBuild.startTime && lastBuild.finishTime
           ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
           : null,
       buildAlertCount: buildAlerts(r, null).length,
+      runtimeStatus: runtimeStatus(r),
     },
     currentBuildStartTime: res.currentBuild?.startTime ?? "",
     endpoints: res.endpointLinks ?? [],
@@ -267,63 +364,99 @@ function resourceTypeLabel(r: UIResource): string {
   return "Unknown"
 }
 
-function buildStatusText(
+function statusText(
   buildStatus: ResourceStatus,
   lastBuildDur: moment.Duration | null,
-  buildAlertCount: number
+  buildAlertCount: number,
+  runtimeStatus: ResourceStatus
 ) {
-  console.log("lastbuilddur", lastBuildDur)
-  let msg
-  let icon
-  let buildDurString = lastBuildDur
-    ? ` in ${formatBuildDuration(lastBuildDur)}`
-    : ""
+  let buildIcon = null
+  let buildMsg = ""
+  let runtimeIcon = null
+  let runtimeMsg = ""
+  let buildClass = ""
+  let runtimeClass = ""
 
-  if (buildStatus === ResourceStatus.Pending) {
-    icon = <LinkSvg />
-    msg = "Pending"
-  } else if (buildStatus === ResourceStatus.Building) {
-    icon = <LinkSvg />
-    msg = "Updating…"
-  } else if (buildStatus === ResourceStatus.None) {
-    icon = <LinkSvg />
-    msg = "No update status"
-  } else if (buildStatus === ResourceStatus.Unhealthy) {
-    icon = <LinkSvg />
-    msg = "Update error"
-  } else if (buildStatus === ResourceStatus.Healthy) {
-    icon = <LinkSvg />
-    msg = `Completed${buildDurString}`
-    if (buildAlertCount > 0) {
-      msg += ", with issues"
-    }
-  } else {
-    msg = "Unknown"
+  switch (buildStatus) {
+    case ResourceStatus.Building:
+      buildIcon = <PendingSvg />
+      buildMsg = "Updating…"
+      buildClass = "is-building"
+      break
+    case ResourceStatus.None:
+      break
+    case ResourceStatus.Pending:
+      buildIcon = <PendingSvg />
+      buildMsg = "Update Pending"
+      buildClass = "is-pending"
+      break
+    case ResourceStatus.Warning:
+      break
+    case ResourceStatus.Healthy:
+      let buildDurText = lastBuildDur
+        ? ` in ${formatBuildDuration(lastBuildDur)}`
+        : ""
+      buildIcon = <CheckmarkSmallSvg />
+      buildMsg = `Updated${buildDurText}`
+      buildClass = "is-healthy"
+
+      if (buildAlertCount > 0) {
+        buildMsg += ", with issues"
+      }
+      break
+    case ResourceStatus.Unhealthy:
+      buildIcon = <CloseSvg />
+      buildMsg = "Update error"
+      buildClass = "is-error"
+      break
+    default:
+      buildMsg = ""
+  }
+
+  switch (runtimeStatus) {
+    case ResourceStatus.Building:
+      runtimeIcon = <PendingSvg />
+      runtimeMsg = "Runtime deploying"
+      runtimeClass = "is-building"
+      break
+    case ResourceStatus.Pending:
+      runtimeIcon = <PendingSvg />
+      runtimeMsg = "Runtime pending"
+      runtimeClass = "is-pending"
+      break
+    case ResourceStatus.Warning:
+      runtimeMsg = "Runtime issues"
+      break
+    case ResourceStatus.Healthy:
+      runtimeIcon = <CheckmarkSmallSvg />
+      runtimeMsg = "Runtime ready"
+      runtimeClass = "is-healthy"
+      break
+    case ResourceStatus.Unhealthy:
+      runtimeIcon = <CloseSvg />
+      runtimeMsg = "Runtime error"
+      runtimeClass = "is-error"
+      break
+    default:
+      runtimeMsg = ""
   }
 
   return (
-    <>
-      <span>{icon}</span>
-      <span>{msg}</span>
-    </>
+    <StyledStatus>
+      {buildMsg && (
+        <StatusLine className={buildClass}>
+          <BuildStatusIcon>{buildIcon}</BuildStatusIcon>
+          <BuildStatusMsg>{buildMsg}</BuildStatusMsg>
+        </StatusLine>
+      )}
+      {runtimeMsg && (
+        <StatusLine className={runtimeClass}>
+          <RuntimeStatusIcon>{runtimeIcon}</RuntimeStatusIcon>
+          <RuntimeStatusMsg>{runtimeMsg}</RuntimeStatusMsg>
+        </StatusLine>
+      )}
+    </StyledStatus>
   )
-}
-
-function runtimeStatusText(status: ResourceStatus): string {
-  switch (status) {
-    case ResourceStatus.Building:
-      return "Server: deploying"
-    case ResourceStatus.Pending:
-      return "Server: pending"
-    case ResourceStatus.Warning:
-      return "Server: issues"
-    case ResourceStatus.Healthy:
-      return "Server: ready"
-    case ResourceStatus.Unhealthy:
-      return "Server: unhealthy"
-    default:
-      return ""
-  }
 }
 
 export default function OverviewTable(props: OverviewTableProps) {
@@ -354,12 +487,20 @@ export default function OverviewTable(props: OverviewTableProps) {
           <ResourceTableRow {...headerGroup.getHeaderGroupProps()}>
             {headerGroup.headers.map((column) => (
               <ResourceTableHeader
-                {...column.getHeaderProps(column.getSortByToggleProps())}
+                {...column.getHeaderProps([{style: {width: column.width }}, column.getSortByToggleProps()])}
               >
                 {column.render("Header")}
-                <span>
-                  {column.isSorted ? (column.isSortedDesc ? " 🔽" : " 🔼") : ""}
-                </span>
+                <ResourceTableHeaderSort
+                  className={
+                    column.isSorted
+                      ? column.isSortedDesc
+                        ? "is-sorted-desc"
+                        : "is-sorted-asc"
+                      : ""
+                  }
+                >
+                  <ResourceTableHeaderSortTriangle />
+                </ResourceTableHeaderSort>
               </ResourceTableHeader>
             ))}
           </ResourceTableRow>
