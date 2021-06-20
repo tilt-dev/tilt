@@ -75,21 +75,22 @@ const ResourceTableHeader = styled(ResourceTableData)`
   box-sizing: border-box;
 `
 
-const ResourceTableHeaderSort = styled.span`
-  opacity: 0;
-  &.is-sorted-asc {
-    opacity: 1;
-  }
-  &.is-sorted-desc {
-    opacity: 1;
-  }
-`
-const ResourceTableHeaderSortTriangle = styled.span`
+const ResourceTableHeaderSortTriangle = styled.div`
+  display: inline-block;
+  margin-left: ${SizeUnit(0.25)};
   width: 0;
   height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid ${Color.gray};
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 6px solid ${Color.gray};
+
+  &.is-sorted-asc {
+    border-bottom: 6px solid ${Color.grayLightest};
+  }
+  &.is-sorted-desc {
+    border-bottom: 6px solid ${Color.grayLightest};
+    transform: rotate(180deg);
+  }
 `
 const ResourceName = styled.div`
   color: ${Color.offWhite};
@@ -345,7 +346,7 @@ export default function OverviewTable(props: OverviewTableProps) {
                 ])}
               >
                 {column.render("Header")}
-                <ResourceTableHeaderSort
+                <ResourceTableHeaderSortTriangle
                   className={
                     column.isSorted
                       ? column.isSortedDesc
@@ -353,9 +354,7 @@ export default function OverviewTable(props: OverviewTableProps) {
                         : "is-sorted-asc"
                       : ""
                   }
-                >
-                  <ResourceTableHeaderSortTriangle />
-                </ResourceTableHeaderSort>
+                ></ResourceTableHeaderSortTriangle>
               </ResourceTableHeader>
             ))}
           </ResourceTableRow>
