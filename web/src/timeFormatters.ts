@@ -34,7 +34,7 @@ const timeAgoFormatter = (
       now
     )
   }
-  return `${str} ago`
+  return `${str}`
 }
 
 export { timeAgoFormatter }
