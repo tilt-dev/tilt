@@ -31,7 +31,7 @@ func newFakeSubscriber() *fakeSubscriber {
 }
 
 type onChangeCall struct {
-	done    chan bool
+	done    chan error
 	summary ChangeSummary
 }
 
@@ -64,10 +64,9 @@ func (f *fakeSubscriber) assertOnChange(t *testing.T) {
 }
 
 func (f *fakeSubscriber) OnChange(ctx context.Context, st RStore, summary ChangeSummary) error {
-	call := onChangeCall{done: make(chan bool), summary: summary}
+	call := onChangeCall{done: make(chan error), summary: summary}
 	f.onChange <- call
-	<-call.done
-	return nil
+	return <-call.done
 }
 
 func (f *fakeSubscriber) SetUp(ctx context.Context, st RStore) error {

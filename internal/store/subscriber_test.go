@@ -2,17 +2,25 @@ package store
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
+
+func newCtx() context.Context {
+	return logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stderr))
+}
 
 func TestSubscriber(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
@@ -24,7 +32,7 @@ func TestSubscriber(t *testing.T) {
 
 func TestSubscriberInterleavedCalls(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
@@ -47,7 +55,7 @@ func TestSubscriberInterleavedCalls(t *testing.T) {
 
 func TestSubscriberInterleavedCallsSummary(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
@@ -78,7 +86,7 @@ func TestSubscriberInterleavedCallsSummary(t *testing.T) {
 
 func TestAddSubscriberToAlreadySetUpListCallsSetUp(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 	_ = st.subscribers.SetUp(ctx, st)
 
 	s := newFakeSubscriber()
@@ -89,7 +97,7 @@ func TestAddSubscriberToAlreadySetUpListCallsSetUp(t *testing.T) {
 
 func TestAddSubscriberBeforeSetupNoop(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
@@ -100,7 +108,7 @@ func TestAddSubscriberBeforeSetupNoop(t *testing.T) {
 
 func TestRemoveSubscriber(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 	s := newFakeSubscriber()
 
 	require.NoError(t, st.AddSubscriber(ctx, s))
@@ -116,7 +124,7 @@ func TestRemoveSubscriber(t *testing.T) {
 func TestRemoveSubscriberNotFound(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
 	s := newFakeSubscriber()
-	ctx := context.Background()
+	ctx := newCtx()
 	err := st.RemoveSubscriber(ctx, s)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Subscriber not found")
@@ -125,7 +133,7 @@ func TestRemoveSubscriberNotFound(t *testing.T) {
 
 func TestSubscriberSetup(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
@@ -136,7 +144,7 @@ func TestSubscriberSetup(t *testing.T) {
 
 func TestSubscriberTeardown(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
@@ -151,7 +159,7 @@ func TestSubscriberTeardown(t *testing.T) {
 
 func TestSubscriberTeardownOnRemove(t *testing.T) {
 	st, _ := NewStoreWithFakeReducer()
-	ctx := context.Background()
+	ctx := newCtx()
 	s := newFakeSubscriber()
 	require.NoError(t, st.AddSubscriber(ctx, s))
 
@@ -179,4 +187,61 @@ func TestSubscriberTeardownOnRemove(t *testing.T) {
 		assert.Contains(t, err.Error(), "context canceled")
 	}
 	assert.Equal(t, 1, s.teardownCount)
+}
+
+type blockingSleeper struct {
+	SleepDur chan time.Duration
+}
+
+func newBlockingSleeper() blockingSleeper {
+	return blockingSleeper{SleepDur: make(chan time.Duration)}
+}
+
+func (s blockingSleeper) Sleep(ctx context.Context, d time.Duration) {
+	if d == actionBatchWindow {
+		return
+	}
+	s.SleepDur <- d
+}
+
+func TestSubscriberBackoff(t *testing.T) {
+	bs := newBlockingSleeper()
+	st, _ := NewStoreWithFakeReducer()
+	st.sleeper = bs
+
+	ctx := newCtx()
+	s := newFakeSubscriber()
+	require.NoError(t, st.AddSubscriber(ctx, s))
+
+	// Fire a change that fails
+	nn1 := types.NamespacedName{Name: "spec-1"}
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: NewChangeSet(nn1)})
+
+	call := <-s.onChange
+	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: NewChangeSet(nn1)})
+	call.done <- fmt.Errorf("failed")
+
+	// Fire a second change while the first change is sleeping
+	nn2 := types.NamespacedName{Name: "spec-2"}
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: NewChangeSet(nn2)})
+	time.Sleep(10 * time.Millisecond)
+
+	// Clear the sleeper, and process the retry.
+	assert.Equal(t, time.Second, <-bs.SleepDur)
+
+	call = <-s.onChange
+	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: NewChangeSet(nn1, nn2), LastBackoff: time.Second})
+	call.done <- fmt.Errorf("failed")
+
+	// Fire a third change while the retry is sleeping
+	nn3 := types.NamespacedName{Name: "spec-3"}
+	st.NotifySubscribers(ctx, ChangeSummary{CmdSpecs: NewChangeSet(nn3)})
+	time.Sleep(10 * time.Millisecond)
+
+	// Clear the sleeper, and process the second retry.
+	assert.Equal(t, 2*time.Second, <-bs.SleepDur)
+
+	call = <-s.onChange
+	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: NewChangeSet(nn1, nn2, nn3), LastBackoff: 2 * time.Second})
+	close(call.done)
 }

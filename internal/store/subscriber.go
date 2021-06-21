@@ -4,7 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
+
+const MaxBackoff = time.Second * 15
 
 // A subscriber is notified whenever the state changes.
 //
@@ -14,11 +19,12 @@ import (
 // Subscribers are only allowed to read state. If they want to
 // modify state, they should call store.Dispatch().
 //
-// If OnChange returns an error, the store will dispatch an ErrorAction.
+// If OnChange returns an error, the store will requeue the change summary and
+// retry after a backoff period.
 //
 // Over time, we want to port all subscribers to use controller-runtime's
 // Reconciler interface. In the intermediate period, we expect this interface
-// will evolve to support all the features of Reconciler, like requeuing.
+// will evolve to support all the features of Reconciler.
 //
 // https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/reconcile
 type Subscriber interface {
@@ -135,7 +141,6 @@ type subscriberEntry struct {
 	// At any given time, there are at most two goroutines
 	// notifying the subscriber: a pending goroutine and an active goroutine.
 	pendingChange *ChangeSummary
-	activeChange  *ChangeSummary
 
 	// The active mutex is held by the goroutine currently notifying the
 	// subscriber. It may be held for a long time if the subscriber
@@ -167,16 +172,9 @@ func (e *subscriberEntry) movePendingToActive() *ChangeSummary {
 	e.stateMu.Lock()
 	defer e.stateMu.Unlock()
 
-	e.activeChange = e.pendingChange
+	activeChange := e.pendingChange
 	e.pendingChange = nil
-	return e.activeChange
-}
-
-func (e *subscriberEntry) clearActive() {
-	e.stateMu.Lock()
-	defer e.stateMu.Unlock()
-
-	e.activeChange = nil
+	return activeChange
 }
 
 func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
@@ -185,10 +183,32 @@ func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 
 	activeChange := e.movePendingToActive()
 	err := e.subscriber.OnChange(ctx, store, *activeChange)
-	if err != nil {
-		store.Dispatch(NewErrorAction(err))
+	if err == nil {
+		// Success! Finish immediately.
+		return
 	}
-	e.clearActive()
+
+	// Backoff on error
+	// TODO(nick): Include the subscriber name in the error message.
+	backoff := activeChange.LastBackoff * 2
+	if backoff == 0 {
+		backoff = time.Second
+		logger.Get(ctx).Debugf("Problem processing change. Backing off %v. Error: %v", backoff, err)
+	} else if backoff > MaxBackoff {
+		backoff = MaxBackoff
+		logger.Get(ctx).Errorf("Problem processing change. Backing off %v. Error: %v", backoff, err)
+	}
+	store.sleeper.Sleep(ctx, backoff)
+
+	activeChange.LastBackoff = backoff
+
+	// Requeue the active change.
+	isPending := e.claimPending(*activeChange)
+	if isPending {
+		SafeGo(store, func() {
+			e.notify(ctx, store)
+		})
+	}
 }
 
 func (e *subscriberEntry) maybeSetUp(ctx context.Context, st RStore) error {
