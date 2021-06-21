@@ -76,7 +76,8 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideServerVersion,
 	k8s.ProvideK8sClient,
 	k8s.ProvideOwnerFetcher,
-	ProvideKubeContextOverride)
+	ProvideKubeContextOverride,
+	ProvideNamespaceFlag)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,

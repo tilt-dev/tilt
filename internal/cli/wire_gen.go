@@ -88,7 +88,8 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return cmdTiltfileResultDeps{}, err
@@ -129,7 +130,8 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
@@ -230,7 +232,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -427,7 +430,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return CmdCIDeps{}, err
@@ -621,7 +625,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return CmdUpdogDeps{}, err
@@ -701,7 +706,8 @@ func wireEnv(ctx context.Context) (k8s.Env, error) {
 func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	return namespace, nil
 }
 
@@ -727,7 +733,8 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return "", err
@@ -749,7 +756,8 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return nil, err
@@ -786,7 +794,8 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
@@ -815,7 +824,8 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
@@ -836,7 +846,8 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return DownDeps{}, err
@@ -886,7 +897,8 @@ func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, er
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	k8sNamespaceFlag := ProvideNamespaceFlag()
+	namespace := k8s.ProvideConfigNamespace(clientConfig, k8sNamespaceFlag)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
@@ -936,7 +948,8 @@ func wireClientGetter(ctx context.Context) (*client2.Getter, error) {
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher, ProvideKubeContextOverride)
+var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideOwnerFetcher, ProvideKubeContextOverride,
+	ProvideNamespaceFlag)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, docker.SwitchWireSet, ProvideDeferredExporter, metrics.WireSet, user.WireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, runtimelog.NewPodLogManager, portforward2.NewSubscriber, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewManifestSubscriber, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fswatch.NewManifestSubscriber, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideWebVersion,

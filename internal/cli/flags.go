@@ -14,8 +14,10 @@ import (
 
 var defaultWebHost = "localhost"
 var defaultWebPort = model.DefaultWebPort
+var defaultNamespace = ""
 var webHostFlag = ""
 var webPortFlag = 0
+var namespaceFlag = ""
 
 func readEnvDefaults() error {
 	envPort := os.Getenv("TILT_PORT")
@@ -62,8 +64,16 @@ func addDevServerFlags(cmd *cobra.Command) {
 	cmd.Flags().Var(&webModeFlag, "web-mode", "Values: local, prod. Controls whether to use prod assets or a local dev server. (If flag not specified: if Tilt was built from source, it will use a local asset server; otherwise, prod assets.)")
 }
 
+func addNamespaceFlag(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&namespaceFlag, "namespace", defaultNamespace, "Namespace for the resources Tilt brings up.")
+}
+
 var kubeContextOverride string
 
 func ProvideKubeContextOverride() k8s.KubeContextOverride {
 	return k8s.KubeContextOverride(kubeContextOverride)
+}
+
+func ProvideNamespaceFlag() k8s.NamespaceFlag {
+	return k8s.NamespaceFlag(namespaceFlag)
 }

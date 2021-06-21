@@ -41,6 +41,7 @@ import (
 )
 
 type Namespace string
+type NamespaceFlag string
 type PodID string
 type NodeID string
 type ServiceName string
@@ -649,12 +650,12 @@ func ProvideClientConfig(contextOverride KubeContextOverride) clientcmd.ClientCo
 // The namespace in the kubeconfig.
 // Used as a default namespace in some (but not all) client commands.
 // https://godoc.org/k8s.io/client-go/tools/clientcmd/api/v1#Context
-func ProvideConfigNamespace(clientLoader clientcmd.ClientConfig) Namespace {
+func ProvideConfigNamespace(clientLoader clientcmd.ClientConfig, nsFlag NamespaceFlag) Namespace {
 	namespace, explicit, err := clientLoader.Namespace()
 	if err != nil {
 		// If we can't get a namespace from the config, just fail gracefully to the default.
 		// If this error indicates a more serious problem, it will get handled downstream.
-		return ""
+		return Namespace(nsFlag)
 	}
 
 	// TODO(nick): Right now, tilt doesn't provide a namespace flag. If we ever did,
