@@ -59,9 +59,13 @@ export const EMPTY_FILTER_TERM: FilterTerm = {
 }
 const TERM_REGEXP_FLAGS = "gi" // Terms are case-insensitive and can match multiple instances
 
+export function isRegexp(input: string): boolean {
+  return input.length > 2 && input[0] === "/" && input[input.length - 1] === "/"
+}
+
 export function parseTermInput(input: string): RegExp {
   // Input strings that are surrounded by `/` can be parsed as regular expressions
-  if (input.length > 2 && input[0] === "/" && input[input.length - 1] === "/") {
+  if (isRegexp(input)) {
     const regexpInput = input.slice(1, input.length - 1)
 
     return new RegExp(regexpInput, TERM_REGEXP_FLAGS)
