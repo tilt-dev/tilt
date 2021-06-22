@@ -9,8 +9,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -67,7 +71,16 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	kclient := k8s.NewFakeK8sClient(t)
 	cfb := fake.NewControllerFixtureBuilder(t)
-	r := NewReconciler(cfb.Client, kclient, v1alpha1.NewScheme())
+	st := store.NewTestingStore()
+	dockerClient := docker.NewFakeClient()
+	kubeContext := k8s.KubeContext("kind-kind")
+
+	// Make the fake ImageExists always return true, which is the behavior we want
+	// when testing the reconciler
+	dockerClient.ImageAlwaysExists = true
+
+	db := build.NewDockerImageBuilder(dockerClient, dockerfile.Labels{})
+	r := NewReconciler(cfb.Client, kclient, v1alpha1.NewScheme(), db, kubeContext, st)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
