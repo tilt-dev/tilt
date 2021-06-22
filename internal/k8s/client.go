@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/cmd/wait"
 
 	// Client auth plugins! They will auto-init if we import them.
@@ -635,12 +636,15 @@ func ProvideClientset(cfg RESTConfigOrError) ClientsetOrError {
 	return ClientsetOrError{Clientset: clientset, Error: err}
 }
 
-func ProvideClientConfig(contextOverride KubeContextOverride) clientcmd.ClientConfig {
+func ProvideClientConfig(contextOverride KubeContextOverride, nsFlag NamespaceFlag) clientcmd.ClientConfig {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 
 	overrides := &clientcmd.ConfigOverrides{
 		CurrentContext: string(contextOverride),
+		Context: clientcmdapi.Context{
+			Namespace: string(nsFlag),
+		},
 	}
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		rules,
@@ -650,12 +654,12 @@ func ProvideClientConfig(contextOverride KubeContextOverride) clientcmd.ClientCo
 // The namespace in the kubeconfig.
 // Used as a default namespace in some (but not all) client commands.
 // https://godoc.org/k8s.io/client-go/tools/clientcmd/api/v1#Context
-func ProvideConfigNamespace(clientLoader clientcmd.ClientConfig, nsFlag NamespaceFlag) Namespace {
+func ProvideConfigNamespace(clientLoader clientcmd.ClientConfig) Namespace {
 	namespace, explicit, err := clientLoader.Namespace()
 	if err != nil {
 		// If we can't get a namespace from the config, just fail gracefully to the default.
 		// If this error indicates a more serious problem, it will get handled downstream.
-		return Namespace(nsFlag)
+		return ""
 	}
 
 	// TODO(nick): Right now, tilt doesn't provide a namespace flag. If we ever did,
