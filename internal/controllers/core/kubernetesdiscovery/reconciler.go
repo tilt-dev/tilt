@@ -6,7 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
+
+	errorutil "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/tilt-dev/tilt/pkg/model"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -36,6 +42,11 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 )
 
+var (
+	ownerKey = ".metadata.controller"
+	apiGVStr = v1alpha1.SchemeGroupVersion.String()
+)
+
 type watcherSet map[watcherID]bool
 
 // watcherID is to disambiguate between K8s object keys and tilt-apiserver KubernetesDiscovery object keys.
@@ -50,6 +61,10 @@ type Reconciler struct {
 	ownerFetcher k8s.OwnerFetcher
 	dispatcher   Dispatcher
 	ctrlClient   ctrlclient.Client
+	// startTime of the reconciler used for filtering logs when creating PodLogStream objects.
+	//
+	// TODO(milas): we should have a better way of sharing this across a Tilt session
+	startTime time.Time
 
 	// restartDetector compares a previous version of status with the latest and emits log events
 	// for any containers on the pod that restarted.
@@ -86,9 +101,25 @@ type Reconciler struct {
 }
 
 func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
-	b := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.KubernetesDiscovery{})
+	// modeled after KubeBuilder example: https://book.kubebuilder.io/cronjob-tutorial/controller-implementation.html#setup
+	// to ensure that KubernetesDiscovery is reconciled whenever one of the objects it creates is modified
+	err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.PodLogStream{}, ownerKey, func(obj ctrlclient.Object) []string {
+		owner := metav1.GetControllerOf(obj)
+		if owner == nil {
+			return nil
+		}
+		if owner.APIVersion != apiGVStr || owner.Kind != "KubernetesDiscovery" {
+			return nil
+		}
+		return []string{owner.Name}
+	})
+	if err != nil {
+		return nil, err
+	}
 
+	b := ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.KubernetesDiscovery{}).
+		Owns(&v1alpha1.PodLogStream{})
 	return b, nil
 }
 
@@ -100,6 +131,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, kCli k8s.Client, ownerFetcher k
 		ownerFetcher:           ownerFetcher,
 		restartDetector:        restartDetector,
 		dispatcher:             st,
+		startTime:              time.Now(),
 		watchedNamespaces:      make(map[k8s.Namespace]nsWatch),
 		uidWatchers:            make(map[types.UID]watcherSet),
 		watchers:               make(map[watcherID]watcher),
@@ -155,6 +187,10 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			return ctrl.Result{}, fmt.Errorf("failed to reconcile %s:%s: %v",
 				key.Namespace, key.Name, err)
 		}
+	}
+
+	if err := w.ensurePodLogStreamsExist(ctx, *kd); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
@@ -539,6 +575,95 @@ func (w *Reconciler) handlePodDelete(ctx context.Context, namespace k8s.Namespac
 	}
 }
 
+func (w *Reconciler) ensurePodLogStreamsExist(ctx context.Context, kd v1alpha1.KubernetesDiscovery) error {
+	var managedPodLogStreams v1alpha1.PodLogStreamList
+	err := w.ctrlClient.List(ctx, &managedPodLogStreams, ctrlclient.InNamespace(kd.Namespace),
+		ctrlclient.MatchingFields{ownerKey: kd.Name})
+	if err != nil {
+		return fmt.Errorf("failed to fetch managed PodLogStream objects for KubernetesDiscovery %s: %v",
+			kd.Name, err)
+	}
+	plsByPod := make(map[types.NamespacedName]v1alpha1.PodLogStream)
+	for _, pls := range managedPodLogStreams.Items {
+		plsByPod[types.NamespacedName{
+			Namespace: pls.Spec.Namespace,
+			Name:      pls.Spec.Pod,
+		}] = pls
+	}
+
+	var errs []error
+	seenPods := make(map[types.NamespacedName]bool)
+	for _, pod := range kd.Status.Pods {
+		podNN := types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}
+		seenPods[podNN] = true
+		if _, ok := plsByPod[podNN]; ok {
+			// if the PLS gets modified after being created, just leave it as-is
+			continue
+		}
+
+		if err := w.createPodLogStream(ctx, kd, pod); err != nil {
+			errs = append(errs, fmt.Errorf("failed to create PodLogStream for Pod %s:%s for KubernetesDiscovery %s: %v",
+				pod.Namespace, pod.Name, kd.Name, err))
+		}
+	}
+
+	for podKey, pls := range plsByPod {
+		if !seenPods[podKey] {
+			if err := w.ctrlClient.Delete(ctx, &pls); err != nil {
+				errs = append(errs, fmt.Errorf("failed to delete PodLogStream %s for KubernetesDiscovery %s: %v",
+					pls.Name, kd.Name, err))
+			}
+		}
+	}
+
+	return errorutil.NewAggregate(errs)
+}
+
+func (w *Reconciler) createPodLogStream(ctx context.Context, kd v1alpha1.KubernetesDiscovery, pod v1alpha1.Pod) error {
+	plsKey := types.NamespacedName{
+		Namespace: kd.Namespace,
+		Name:      fmt.Sprintf("%s-%s-%s", kd.Name, pod.Namespace, pod.Name),
+	}
+
+	manifest := kd.Annotations[v1alpha1.AnnotationManifest]
+	spanID := string(k8sconv.SpanIDForPod(model.ManifestName(manifest), k8s.PodID(pod.Name)))
+
+	// create PLS
+	sinceTime := apis.NewTime(w.startTime)
+	pls := v1alpha1.PodLogStream{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      plsKey.Name,
+			Namespace: kd.Namespace,
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManifest: manifest,
+				v1alpha1.AnnotationSpanID:   spanID,
+			},
+		},
+		Spec: v1alpha1.PodLogStreamSpec{
+			Pod:       pod.Name,
+			Namespace: pod.Namespace,
+			SinceTime: &sinceTime,
+			IgnoreContainers: []string{
+				string(runtimelog.IstioInitContainerName),
+				string(runtimelog.IstioSidecarContainerName),
+			},
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(&kd, &pls, w.ctrlClient.Scheme()); err != nil {
+		return err
+	}
+
+	if err := w.ctrlClient.Create(ctx, &pls); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.ObjectUpdate) {
 	for {
 		select {
@@ -550,7 +675,6 @@ func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.O
 			pod, ok := obj.AsPod()
 			if ok {
 				w.upsertPod(pod)
-
 				go w.handlePodChange(ctx, pod)
 				continue
 			}

@@ -359,7 +359,6 @@ type plmFixture struct {
 	t       testing.TB
 	ctx     context.Context
 	kClient *k8s.FakeK8sClient
-	plm     *runtimelog.PodLogManager
 	plsc    *Controller
 	out     *bufsync.ThreadSafeBuffer
 	store   *plmStore
@@ -377,7 +376,6 @@ func newPLMFixture(t testing.TB) *plmFixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 
 	st := newPLMStore(t, out)
-	plm := runtimelog.NewPodLogManager(cfb.Client)
 	podSource := NewPodSource(ctx, kClient, cfb.Client.Scheme())
 	plsc := NewController(ctx, cfb.Client, st, kClient, podSource)
 
@@ -385,7 +383,6 @@ func newPLMFixture(t testing.TB) *plmFixture {
 		t:                 t,
 		ControllerFixture: cfb.Build(plsc),
 		kClient:           kClient,
-		plm:               plm,
 		plsc:              plsc,
 		ctx:               ctx,
 		out:               out,
