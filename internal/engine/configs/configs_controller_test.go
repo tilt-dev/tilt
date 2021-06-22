@@ -225,7 +225,11 @@ ENTRYPOINT /go/bin/sancho
 
 var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 
-func NewSanchoDockerBuildImageTarget(f *ccFixture) model.ImageTarget {
+type pathFixture interface {
+	Path() string
+}
+
+func NewSanchoDockerBuildImageTarget(f pathFixture) model.ImageTarget {
 	return model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  f.Path(),
