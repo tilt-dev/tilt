@@ -3935,9 +3935,10 @@ func newTestFixture(t *testing.T) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
+	sch := v1alpha1.NewScheme()
 	tscm, err := controllers.NewTiltServerControllerManager(
 		serverOptions,
-		v1alpha1.NewScheme(),
+		sch,
 		cdc,
 		controllers.UncachedObjects{&v1alpha1.FileWatch{}})
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
@@ -3949,7 +3950,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		cmds,
 		plsc,
 		kdc,
-		kubernetesapply.NewReconciler(b.kClient),
+		kubernetesapply.NewReconciler(b.kClient, sch),
 		ctrluisession.NewReconciler(wsl),
 		ctrluiresource.NewReconciler(wsl),
 		ctrluibutton.NewReconciler(wsl),
