@@ -50,7 +50,8 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
 	updateModeFlag := _wireBuildcontrolUpdateModeFlagValue
 	kubeContextOverride := _wireKubeContextOverrideValue
-	clientConfig := k8s.ProvideClientConfig(kubeContextOverride)
+	namespaceFlag := _wireNamespaceFlagValue
+	clientConfig := k8s.ProvideClientConfig(kubeContextOverride, namespaceFlag)
 	config, err := k8s.ProvideKubeConfig(clientConfig, kubeContextOverride)
 	if err != nil {
 		return nil, err
@@ -72,6 +73,7 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 var (
 	_wireBuildcontrolUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
 	_wireKubeContextOverrideValue        = k8s.KubeContextOverride("")
+	_wireNamespaceFlagValue              = k8s.NamespaceFlag("")
 	_wireClusterEnvValue                 = docker.ClusterEnv(docker.Env{})
 )
 
