@@ -1864,10 +1864,10 @@ k8s_yaml('foo.yaml')
 
 	m := f.assertNextManifest("foo", deployment("foo"))
 	assert.Equal(t, []string{
-		"gcr.io/image-a",
-		"gcr.io/image-b",
-		"gcr.io/image-c",
-		"gcr.io/image-d",
+		"gcr.io_image-a",
+		"gcr.io_image-b",
+		"gcr.io_image-c",
+		"gcr.io_image-d",
 	}, f.imageTargetNames(m))
 }
 
@@ -1916,17 +1916,17 @@ k8s_yaml('snack.yaml')
 
 	m := f.assertNextManifest("snack")
 	assert.Equal(t, []string{
-		"gcr.io/image-a",
-		"gcr.io/image-b",
+		"gcr.io_image-a",
+		"gcr.io_image-b",
 	}, f.imageTargetNames(m))
 	assert.Equal(t, []string{
-		"gcr.io/image-a",
-		"gcr.io/image-b",
+		"gcr.io_image-a",
+		"gcr.io_image-b",
 		"snack", // the deploy name
 	}, f.idNames(m.DependencyIDs()))
 	assert.Equal(t, []string{}, f.idNames(m.ImageTargets[0].DependencyIDs()))
-	assert.Equal(t, []string{"gcr.io/image-a"}, f.idNames(m.ImageTargets[1].DependencyIDs()))
-	assert.Equal(t, []string{"gcr.io/image-b"}, f.idNames(m.DeployTarget.DependencyIDs()))
+	assert.Equal(t, []string{"gcr.io_image-a"}, f.idNames(m.ImageTargets[1].DependencyIDs()))
+	assert.Equal(t, []string{"gcr.io_image-b"}, f.idNames(m.DeployTarget.DependencyIDs()))
 }
 
 func TestImageDependencyNormalization(t *testing.T) {
@@ -1947,8 +1947,8 @@ k8s_yaml('auth.yaml')
 
 	m := f.assertNextManifest("auth", deployment("auth"))
 	assert.Equal(t, []string{
-		"vandelay/common",
-		"vandelay/auth",
+		"vandelay_common",
+		"vandelay_auth",
 	}, f.imageTargetNames(m))
 }
 
@@ -1995,12 +1995,12 @@ k8s_yaml('app.yaml')
 
 	m := f.assertNextManifest("app", deployment("app"))
 	assert.Equal(t, []string{
-		"vandelay/app",
+		"vandelay_app",
 	}, f.imageTargetNames(m))
 
 	m = f.assertNextManifest("app-jessie", deployment("app-jessie"))
 	assert.Equal(t, []string{
-		"vandelay/app:jessie",
+		"vandelay_app:jessie",
 	}, f.imageTargetNames(m))
 }
 

@@ -95,7 +95,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 
 	targets := buildcontrol.BuildTargets(manifest)
 
-	result, err := f.bd.BuildAndDeploy(f.ctx, f.st, targets, bs)
+	result, err := f.BuildAndDeploy(targets, bs)
 	if tCase.expectErrorContains != "" {
 		require.NotNil(t, err, "expected error containing '%s' but got no error", tCase.expectErrorContains)
 		require.Contains(t, err.Error(), tCase.expectErrorContains,

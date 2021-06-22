@@ -18,8 +18,11 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ktypes "k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -42,7 +45,7 @@ func TestDeployTwinImages(t *testing.T) {
 	newK8sTarget := k8s.MustTarget("sancho", yaml.ConcatYAML(SanchoYAML, SanchoTwinYAML)).
 		WithDependencyIDs(sancho.K8sTarget().DependencyIDs())
 	manifest := sancho.WithDeployTarget(newK8sTarget)
-	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	result, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +68,7 @@ func TestForceUpdate(t *testing.T) {
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.BuildState{FullBuildTriggered: true},
 	}
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m), stateSet)
+	_, err := f.BuildAndDeploy(BuildTargets(m), stateSet)
 	require.NoError(t, err)
 
 	// A force rebuild should delete the old resources.
@@ -97,7 +100,7 @@ metadata:
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.BuildState{FullBuildTriggered: true},
 	}
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m), stateSet)
+	_, err := f.BuildAndDeploy(BuildTargets(m), stateSet)
 	require.NoError(t, err)
 
 	// A force rebuild should delete the ConfigMap but not the Namespace.
@@ -127,7 +130,7 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
-	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	result, err := f.BuildAndDeploy(targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +161,7 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
-	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	result, err := f.BuildAndDeploy(targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +190,7 @@ func TestNoImageTargets(t *testing.T) {
 		k8s.MustTarget(model.TargetName(targName), testyaml.LonelyPodYAML),
 	}
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, specs, store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(specs, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +221,7 @@ func TestStatefulSetPodManagementPolicy(t *testing.T) {
 		fmt.Sprintf(`image: %q`, iTarget.Refs.LocalRef().String()), 1)
 	kTarget := k8s.MustTarget(model.TargetName(targName), yaml)
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st,
+	_, err := f.BuildAndDeploy(
 		[]model.TargetSpec{kTarget}, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
@@ -226,7 +229,7 @@ func TestStatefulSetPodManagementPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotContains(t, f.k8s.Yaml, "podManagementPolicy: Parallel")
 
-	_, err = f.ibd.BuildAndDeploy(f.ctx, f.st,
+	_, err = f.BuildAndDeploy(
 		[]model.TargetSpec{
 			iTarget,
 			kTarget.WithDependencyIDs([]model.TargetID{iTarget.ID()}),
@@ -250,7 +253,7 @@ func TestImageIsClean(t *testing.T) {
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.NewBuildState(result1, []string{}, nil),
 	}
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +277,7 @@ func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 	stateSet := store.BuildStateSet{
 		iTargetID1: store.NewBuildState(result1, []string{}, nil),
 	}
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +293,7 @@ func TestMultiStageDockerBuild(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildMultiStageManifest(f)
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,7 +339,7 @@ ENTRYPOINT /go/bin/sancho
 		WithImageTargets(baseImage, srcImage).
 		Build()
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(m), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,7 +377,7 @@ func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 		iTargetID1: store.NewBuildState(result1, []string{newFile}, nil),
 		iTargetID2: store.NewBuildState(result2, nil, nil),
 	}
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +413,7 @@ func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 		iTargetID1: store.NewBuildState(result1, nil, nil),
 		iTargetID2: store.NewBuildState(result2, []string{newFile}, nil),
 	}
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +443,7 @@ func TestK8sUpsertTimeout(t *testing.T) {
 	k8sTarget.Timeout = metav1.Duration{Duration: timeout}
 	manifest.DeployTarget = k8sTarget
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), nil)
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +456,7 @@ func TestKINDLoad(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -472,7 +475,7 @@ func TestDockerPushIfKINDAndClusterRef(t *testing.T) {
 	iTarg.Refs = iTarg.Refs.MustWithRegistry(container.MustNewRegistryWithHostFromCluster("localhost:1234", "registry:1234"))
 	manifest = manifest.WithImageTarget(iTarg)
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,7 +497,7 @@ func TestCustomBuildDisablePush(t *testing.T) {
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
 
 	manifest := NewSanchoCustomBuildManifestWithPushDisabled(f)
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	assert.NoError(t, err)
 
 	// We didn't try to build or push an image, but we did try to tag it
@@ -522,7 +525,7 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 		WithImageTarget(model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)).
 		Build()
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	assert.NoError(t, err)
 
 	// We didn't try to build, tag, or push an image
@@ -569,7 +572,7 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.MustWithRegistry(reg)
 			}
 
-			result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+			result, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -595,7 +598,7 @@ func TestDeployInjectImageEnvVar(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoManifestWithImageInEnvVar(f)
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -635,7 +638,7 @@ func TestDeployInjectsOverrideCommand(t *testing.T) {
 	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
 	manifest = manifest.WithImageTarget(iTarg)
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -685,7 +688,7 @@ func TestDeployInjectsPodTemplateSpecHash(t *testing.T) {
 
 	manifest := NewSanchoDockerBuildManifest(f)
 
-	resultSet, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	resultSet, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -701,7 +704,7 @@ func TestDeployPodTemplateSpecHashChangesWhenImageChanges(t *testing.T) {
 
 	manifest := NewSanchoDockerBuildManifest(f)
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -711,7 +714,7 @@ func TestDeployPodTemplateSpecHashChangesWhenImageChanges(t *testing.T) {
 	// now change the image digest and build again
 	f.docker.BuildOutput = docker.ExampleBuildOutput2
 
-	_, err = f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err = f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -730,7 +733,7 @@ func TestDeployInjectOverrideCommandClearsOldCommandButNotArgs(t *testing.T) {
 	iTarg := manifest.ImageTargetAt(0).WithOverrideCommand(cmd)
 	manifest = manifest.WithImageTarget(iTarg)
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -764,7 +767,7 @@ func TestDeployInjectOverrideCommandAndArgs(t *testing.T) {
 	iTarg.OverrideArgs = &v1alpha1.ImageMapOverrideArgs{}
 	manifest = manifest.WithImageTarget(iTarg)
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -805,7 +808,7 @@ func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd)).
 		Build()
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "could not inject command")
 	}
@@ -824,7 +827,7 @@ func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
 		WithDependencyIDs([]model.TargetID{iTarget1.ID(), iTarget2.ID()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, targets, store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(targets, store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -860,7 +863,7 @@ func TestIBDDeployUIDs(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
-	result, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	result, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -883,7 +886,7 @@ func TestDockerBuildTargetStage(t *testing.T) {
 		WithK8sYAML(testyaml.SanchoYAML).
 		WithImageTargets(iTarget).
 		Build()
-	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -895,19 +898,19 @@ func TestTwoManifestsWithCommonImage(t *testing.T) {
 	defer f.TearDown()
 
 	m1, m2 := NewManifestsWithCommonAncestor(f)
-	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m1), store.BuildStateSet{})
+	results1, err := f.BuildAndDeploy(BuildTargets(m1), store.BuildStateSet{})
 	require.NoError(t, err)
 	assert.Equal(t,
-		[]string{"image:gcr.io/common", "image:gcr.io/image-1", "k8s:image-1"},
+		[]string{"image:gcr.io_common", "image:gcr.io_image-1", "k8s:image-1"},
 		resultKeys(results1))
 
 	stateSet := f.resultsToNextState(results1)
 
-	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m2), stateSet)
+	results2, err := f.BuildAndDeploy(BuildTargets(m2), stateSet)
 	require.NoError(t, err)
 	assert.Equal(t,
 		// We did not return image-common because it didn't need a rebuild.
-		[]string{"image:gcr.io/image-2", "k8s:image-2"},
+		[]string{"image:gcr.io_image-2", "k8s:image-2"},
 		resultKeys(results2))
 }
 
@@ -923,10 +926,10 @@ func TestTwoManifestsWithCommonImagePrebuilt(t *testing.T) {
 	stateSet := store.BuildStateSet{}
 	stateSet[iTarget1.ID()] = store.NewBuildState(prebuilt1, nil, nil)
 
-	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m1), stateSet)
+	results1, err := f.BuildAndDeploy(BuildTargets(m1), stateSet)
 	require.NoError(t, err)
 	assert.Equal(t,
-		[]string{"image:gcr.io/image-1", "k8s:image-1"},
+		[]string{"image:gcr.io_image-1", "k8s:image-1"},
 		resultKeys(results1))
 	assert.Contains(t, f.out.String(),
 		"STEP 1/4 — Loading cached images\n     - gcr.io/common:tilt-prebuilt")
@@ -937,19 +940,19 @@ func TestTwoManifestsWithTwoCommonAncestors(t *testing.T) {
 	defer f.TearDown()
 
 	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
-	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m1), store.BuildStateSet{})
+	results1, err := f.BuildAndDeploy(BuildTargets(m1), store.BuildStateSet{})
 	require.NoError(t, err)
 	assert.Equal(t,
-		[]string{"image:gcr.io/base", "image:gcr.io/common", "image:gcr.io/image-1", "k8s:image-1"},
+		[]string{"image:gcr.io_base", "image:gcr.io_common", "image:gcr.io_image-1", "k8s:image-1"},
 		resultKeys(results1))
 
 	stateSet := f.resultsToNextState(results1)
 
-	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m2), stateSet)
+	results2, err := f.BuildAndDeploy(BuildTargets(m2), stateSet)
 	require.NoError(t, err)
 	assert.Equal(t,
 		// We did not return image-common because it didn't need a rebuild.
-		[]string{"image:gcr.io/image-2", "k8s:image-2"},
+		[]string{"image:gcr.io_image-2", "k8s:image-2"},
 		resultKeys(results2))
 }
 
@@ -958,15 +961,15 @@ func TestTwoManifestsWithSameTwoImages(t *testing.T) {
 	defer f.TearDown()
 
 	m1, m2 := NewManifestsWithSameTwoImages(f)
-	results1, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m1), store.BuildStateSet{})
+	results1, err := f.BuildAndDeploy(BuildTargets(m1), store.BuildStateSet{})
 	require.NoError(t, err)
 	assert.Equal(t,
-		[]string{"image:gcr.io/common", "image:gcr.io/image-1", "k8s:dep-1"},
+		[]string{"image:gcr.io_common", "image:gcr.io_image-1", "k8s:dep-1"},
 		resultKeys(results1))
 
 	stateSet := f.resultsToNextState(results1)
 
-	results2, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(m2), stateSet)
+	results2, err := f.BuildAndDeploy(BuildTargets(m2), stateSet)
 	require.NoError(t, err)
 	assert.Equal(t,
 		[]string{"k8s:dep-2"},
@@ -984,13 +987,14 @@ func resultKeys(result store.BuildResultSet) []string {
 
 type ibdFixture struct {
 	*tempdir.TempDirFixture
-	out    *bufsync.ThreadSafeBuffer
-	ctx    context.Context
-	docker *docker.FakeClient
-	k8s    *k8s.FakeK8sClient
-	ibd    *ImageBuildAndDeployer
-	st     *store.TestingStore
-	kl     *fakeKINDLoader
+	out        *bufsync.ThreadSafeBuffer
+	ctx        context.Context
+	docker     *docker.FakeClient
+	k8s        *k8s.FakeK8sClient
+	ibd        *ImageBuildAndDeployer
+	st         *store.TestingStore
+	kl         *fakeKINDLoader
+	ctrlClient ctrlclient.Client
 }
 
 func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
@@ -1011,7 +1015,9 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
 	kubeContext := k8s.KubeContext(fmt.Sprintf("%s-me", env))
 	clusterEnv := docker.ClusterEnv(docker.Env{})
-	ibd, err := ProvideImageBuildAndDeployer(ctx, dockerClient, kClient, env, kubeContext, clusterEnv, dir, clock, kl, ta)
+	ctrlClient := fake.NewTiltClient()
+	ibd, err := ProvideImageBuildAndDeployer(ctx, dockerClient, kClient, env, kubeContext,
+		clusterEnv, dir, clock, kl, ta, ctrlClient)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1024,7 +1030,48 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 		ibd:            ibd,
 		st:             store.NewTestingStore(),
 		kl:             kl,
+		ctrlClient:     ctrlClient,
 	}
+}
+
+func (f *ibdFixture) upsert(obj ctrlclient.Object) {
+	err := f.ctrlClient.Create(f.ctx, obj)
+	if err == nil {
+		return
+	}
+
+	copy := obj.DeepCopyObject().(ctrlclient.Object)
+	err = f.ctrlClient.Get(f.ctx, ktypes.NamespacedName{Name: obj.GetName()}, copy)
+	assert.NoError(f.T(), err)
+
+	obj.SetResourceVersion(copy.GetResourceVersion())
+
+	err = f.ctrlClient.Update(f.ctx, obj)
+	assert.NoError(f.T(), err)
+}
+
+func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+	iTargets, kTargets := extractImageAndK8sTargets(specs)
+	for _, iTarget := range iTargets {
+		im := v1alpha1.ImageMap{
+			ObjectMeta: metav1.ObjectMeta{Name: iTarget.ID().Name.String()},
+			Spec:       iTarget.ImageMapSpec,
+		}
+		state := stateSet[iTarget.ID()]
+		imageBuildResult, ok := state.LastResult.(store.ImageBuildResult)
+		if ok {
+			im.Status = imageBuildResult.ImageMapStatus
+		}
+		f.upsert(&im)
+	}
+	for _, kTarget := range kTargets {
+		ka := v1alpha1.KubernetesApply{
+			ObjectMeta: metav1.ObjectMeta{Name: kTarget.ID().Name.String()},
+			Spec:       kTarget.KubernetesApplySpec,
+		}
+		f.upsert(&ka)
+	}
+	return f.ibd.BuildAndDeploy(f.ctx, f.st, specs, stateSet)
 }
 
 func (f *ibdFixture) TearDown() {
