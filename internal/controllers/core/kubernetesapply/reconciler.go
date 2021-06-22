@@ -3,10 +3,10 @@ package kubernetesapply
 import (
 	"context"
 	"fmt"
-
-	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sync"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -29,6 +29,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -41,6 +42,11 @@ type Reconciler struct {
 	k8sClient   k8s.Client
 	ctrlClient  ctrlclient.Client
 	indexer     *indexer.Indexer
+
+	mu sync.Mutex
+
+	// Protected by the mutex.
+	results map[types.NamespacedName]*Result
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -60,6 +66,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *r
 		dkc:         dkc,
 		kubeContext: kubeContext,
 		st:          st,
+		results:     make(map[types.NamespacedName]*Result),
 	}
 }
 
@@ -76,23 +83,161 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
 		// delete
+		// TODO(nick): Implementing this correctly
+		// will fix https://github.com/tilt-dev/tilt/issues/3137
+		r.mu.Lock()
+		delete(r.results, nn)
+		r.mu.Unlock()
+
 		return ctrl.Result{}, nil
 	}
 
-	// TODO: apply
 	ctx = store.MustObjectLogHandler(ctx, r.st, &ka)
-	_ = ctx
 
-	return ctrl.Result{}, err
+	// Fetch all the images needed to apply this YAML.
+	imageMaps := make(map[types.NamespacedName]*v1alpha1.ImageMap)
+	for _, name := range ka.Spec.ImageMaps {
+		var im v1alpha1.ImageMap
+		nn := types.NamespacedName{Name: name}
+		err := r.ctrlClient.Get(ctx, nn, &im)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// If the map isn't found, keep going and let shouldDeployOnReconcile
+				// handle it.
+				continue
+			}
+			return ctrl.Result{}, err
+		}
+
+		imageMaps[nn] = &im
+	}
+
+	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps) {
+		// TODO(nick): Like with other reconcilers, there should always
+		// be a reason why we're not deploying, and we should update the
+		// Status field of KubernetesApply with that reson.
+		return ctrl.Result{}, nil
+	}
+
+	// Update the apiserver with the result of this deploy.
+	_, err = r.ForceApply(ctx, nn, ka.Spec, imageMaps)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// Determine if we should deploy the current YAML.
+//
+// Ensures:
+// 1) We have enough info to deploy, and
+// 2) Either we haven't deployed before,
+//    or one of the inputs has changed since the last deploy.
+func (r *Reconciler) shouldDeployOnReconcile(
+	nn types.NamespacedName,
+	ka *v1alpha1.KubernetesApply,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) bool {
+	if ka.ObjectMeta.Labels[v1alpha1.LabelOwnerKind] == v1alpha1.LabelOwnerKindTiltfile {
+		// Until resource dependencies are expressed in the API,
+		// we can't use reconciliation to deploy KubernetesApply objects.
+		return false
+	}
+
+	for _, imageMapName := range ka.Spec.ImageMaps {
+		_, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
+		if !ok {
+			// We haven't built the images yet to deploy.
+			return false
+		}
+	}
+
+	r.mu.Lock()
+	result, ok := r.results[nn]
+	r.mu.Unlock()
+
+	if !ok {
+		// We've never successfully deployed before, so deploy now.
+		return true
+	}
+
+	if !apicmp.DeepEqual(ka.Spec, result.Spec) {
+		// The YAML to deploy changed.
+		return true
+	}
+
+	imageMapNames := ka.Spec.ImageMaps
+	if len(imageMapNames) != len(result.ImageMapSpecs) ||
+		len(imageMapNames) != len(result.ImageMapStatuses) {
+		return true
+	}
+
+	for i, name := range ka.Spec.ImageMaps {
+		im := imageMaps[types.NamespacedName{Name: name}]
+		if !apicmp.DeepEqual(im.Spec, result.ImageMapSpecs[i]) {
+
+			return true
+		}
+		if !apicmp.DeepEqual(im.Status, result.ImageMapStatuses[i]) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Inject the images into the YAML and apply it to the cluster, unconditionally.
+//
+// Update the apiserver when finished.
 //
 // We expose this as a public method as a hack! Currently, in Tilt, BuildController
 // handles dependencies between resources. The API server doesn't know about build
 // dependencies yet. So Tiltfile-owned resources are applied manually, rather than
 // going through the normal reconcile system.
 func (r *Reconciler) ForceApply(
+	ctx context.Context,
+	nn types.NamespacedName,
+	spec v1alpha1.KubernetesApplySpec,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, error) {
+	status := r.forceApplyHelper(ctx, spec, imageMaps)
+
+	statusCopy := status.DeepCopy()
+	result := Result{
+		Spec:   spec,
+		Status: *statusCopy,
+	}
+	for _, imageMapName := range spec.ImageMaps {
+		im, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
+		if !ok {
+			// this should never happen, but if it does, just continue quietly.
+			continue
+		}
+
+		result.ImageMapSpecs = append(result.ImageMapSpecs, im.Spec)
+		result.ImageMapStatuses = append(result.ImageMapStatuses, im.Status)
+	}
+
+	var ka v1alpha1.KubernetesApply
+	err := r.ctrlClient.Get(ctx, nn, &ka)
+	if err != nil {
+		return status, err
+	}
+
+	ka.Status = status
+	err = r.ctrlClient.Status().Update(ctx, &ka)
+	if err != nil {
+		return status, err
+	}
+
+	r.mu.Lock()
+	r.results[nn] = &result
+	r.mu.Unlock()
+
+	return status, nil
+}
+
+// A helper that applies the given specs to the cluster, but doesn't update the APIServer.
+func (r *Reconciler) forceApplyHelper(
 	ctx context.Context,
 	spec v1alpha1.KubernetesApplySpec,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) v1alpha1.KubernetesApplyStatus {
@@ -138,6 +283,7 @@ func (r *Reconciler) ForceApply(
 		return errorStatus(err)
 	}
 
+	status.LastApplyTime = apis.NowMicro()
 	status.AppliedInputHash = inputHash
 	for _, d := range deployed {
 		d.Clean()
@@ -278,4 +424,12 @@ func indexImageMap(obj client.Object) []indexer.Key {
 		})
 	}
 	return result
+}
+
+// Keeps track of the state we currently know about.
+type Result struct {
+	Spec             v1alpha1.KubernetesApplySpec
+	ImageMapSpecs    []v1alpha1.ImageMapSpec
+	ImageMapStatuses []v1alpha1.ImageMapStatus
+	Status           v1alpha1.KubernetesApplyStatus
 }

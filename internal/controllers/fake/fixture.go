@@ -73,6 +73,10 @@ func newControllerFixture(t testing.TB, cli ctrlclient.Client, c controller) *Co
 	}
 }
 
+func (f ControllerFixture) T() testing.TB {
+	return f.t
+}
+
 // Cancel cancels the internal context used for the controller and client requests.
 //
 // Normally, it's not necessary to call this - the fixture will automatically cancel the context as part of test
