@@ -108,6 +108,10 @@ type KubernetesApplySpec struct {
 var _ resource.Object = &KubernetesApply{}
 var _ resourcestrategy.Validater = &KubernetesApply{}
 
+func (in *KubernetesApply) GetSpec() interface{} {
+	return &in.Spec
+}
+
 func (in *KubernetesApply) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
