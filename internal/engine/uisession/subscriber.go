@@ -5,6 +5,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
@@ -42,6 +43,12 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		}
 		return nil
 	} else if err != nil {
+		// If the cache hasn't started yet, that's OK.
+		// We'll get it on the next OnChange()
+		if _, ok := err.(*cache.ErrCacheNotStarted); ok {
+			return nil
+		}
+
 		logger.Get(ctx).Infof("fetching uisession: %v", err)
 		return nil
 	}
