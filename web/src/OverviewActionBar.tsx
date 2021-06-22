@@ -474,6 +474,9 @@ function FilterTermFieldError({ error }: { error: string }) {
 }
 
 const debounceFilterLogs = debounce((history: History, search: string) => {
+  // Record the action for analytics
+  incr("ui.web.filterTerm", { action: "edit" })
+  // Navigate to filtered logs with search query
   history.push({ search })
 }, FILTER_INPUT_DEBOUNCE)
 
@@ -530,7 +533,7 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
     const endAdornment = (
       <InputAdornment position="end">
         <ClearFilterTermTextButton
-          analyticsName="TODO"
+          analyticsName="ui.web.clearFilterTerm"
           onClick={() => setTerm(EMPTY_TERM, false)}
         >
           <SrOnly>Clear filter term</SrOnly>
