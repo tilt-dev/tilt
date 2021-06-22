@@ -274,11 +274,10 @@ const FilterTermTextField = styled(TextField)`
     &:hover:not(.Mui-focused, .Mui-error) fieldset {
       border: 1px solid ${Color.blue};
     }
-    & .Mui-focused fieldset {
-      border: 1px solid ${Color.grayLighter};
-      outline: none;
+    &.Mui-focused fieldset {
+      border: 1px solid ${Color.grayLightest};
     }
-    & .Mui-error fieldset {
+    &.Mui-error fieldset {
       border: 1px solid ${Color.red};
     }
     & .MuiOutlinedInput-input {
@@ -297,6 +296,7 @@ const FieldErrorTooltip = styled.span`
   align-items: center;
   background-color: ${Color.grayDark};
   box-sizing: border-box;
+  color: ${Color.red};
   display: flex;
   font-family: ${Font.monospace};
   font-size: ${FontSize.smallest};
@@ -319,10 +319,6 @@ const FieldErrorTooltip = styled.span`
     position: absolute;
     top: -8px;
     width: 0;
-  }
-
-  .Mui-error {
-    color: ${Color.red};
   }
 `
 
