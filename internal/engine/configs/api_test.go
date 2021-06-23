@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -77,4 +78,24 @@ func TestAPIUpdate(t *testing.T) {
 	err = c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka)
 	assert.NoError(t, err)
 	assert.Contains(t, ka.Spec.YAML, "sidecar")
+}
+
+func TestImageMapCreate(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	ctx := context.Background()
+	c := fake.NewTiltClient()
+	fe := manifestbuilder.New(f, "fe").
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
+	assert.NoError(t, err)
+
+	name := apis.SanitizeName(SanchoRef.String())
+
+	var im v1alpha1.ImageMap
+	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: name}, &im))
+	assert.Contains(t, im.Spec.Selector, SanchoRef.String())
 }
