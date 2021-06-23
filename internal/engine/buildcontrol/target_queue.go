@@ -16,7 +16,7 @@ import (
 // Allows the caller to inject its own build strategy for dirty targets.
 type BuildHandler func(
 	target model.TargetSpec,
-	depResults []store.BuildResult) (store.BuildResult, error)
+	depResults []store.ImageBuildResult) (store.ImageBuildResult, error)
 
 type ReuseRefChecker func(ctx context.Context, iTarget model.ImageTarget, namedTagged reference.NamedTagged) (bool, error)
 
@@ -29,7 +29,7 @@ type TargetQueue struct {
 	state store.BuildStateSet
 
 	// The results of this build.
-	results store.BuildResultSet
+	results map[model.TargetID]store.ImageBuildResult
 
 	// Whether the target itself needs a rebuilt, either because it has dirty files
 	// or has never been built before.
@@ -83,7 +83,7 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 		}
 	}
 
-	results := make(store.BuildResultSet, len(targets))
+	results := make(store.ImageBuildResultSet, len(targets))
 	queue := &TargetQueue{
 		sortedTargets: sortedTargets,
 		state:         state,
@@ -102,8 +102,8 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 // that were re-used previous builds.
 //
 // Returns results that the BuildAndDeploy contract expects.
-func (q *TargetQueue) NewResults() store.BuildResultSet {
-	newResults := store.BuildResultSet{}
+func (q *TargetQueue) NewResults() store.ImageBuildResultSet {
+	newResults := store.ImageBuildResultSet{}
 	for id, result := range q.results {
 		if q.isBuilding(id) {
 			newResults[id] = result
@@ -115,8 +115,8 @@ func (q *TargetQueue) NewResults() store.BuildResultSet {
 // Reused results that were not built with the current queue.
 //
 // Used for printing out which builds are cached from previous builds.
-func (q *TargetQueue) ReusedResults() store.BuildResultSet {
-	reusedResults := store.BuildResultSet{}
+func (q *TargetQueue) ReusedResults() store.ImageBuildResultSet {
+	reusedResults := store.ImageBuildResultSet{}
 	for id, result := range q.results {
 		if !q.isBuilding(id) {
 			reusedResults[id] = result
@@ -126,8 +126,8 @@ func (q *TargetQueue) ReusedResults() store.BuildResultSet {
 }
 
 // All results for targets in the current queue.
-func (q *TargetQueue) AllResults() store.BuildResultSet {
-	allResults := store.BuildResultSet{}
+func (q *TargetQueue) AllResults() store.ImageBuildResultSet {
+	allResults := store.ImageBuildResultSet{}
 	for id, result := range q.results {
 		allResults[id] = result
 	}
@@ -154,11 +154,11 @@ func (q *TargetQueue) backfillExistingResults() error {
 		if !q.isBuilding(id) {
 			// We can re-use results from the previous build.
 			lastResult := q.state[id].LastResult
-			image := store.LocalImageRefFromBuildResult(lastResult)
-			if image == nil {
+			imageResult, ok := lastResult.(store.ImageBuildResult)
+			if !ok {
 				return fmt.Errorf("Internal error: build marked clean but last result not found: %+v", q.state[id])
 			}
-			q.results[id] = lastResult
+			q.results[id] = imageResult
 		}
 	}
 	return nil
@@ -178,9 +178,9 @@ func (q *TargetQueue) RunBuilds(handler BuildHandler) error {
 	return nil
 }
 
-func (q *TargetQueue) dependencyResults(target model.TargetSpec) []store.BuildResult {
+func (q *TargetQueue) dependencyResults(target model.TargetSpec) []store.ImageBuildResult {
 	depIDs := target.DependencyIDs()
-	results := make([]store.BuildResult, 0, len(depIDs))
+	results := make([]store.ImageBuildResult, 0, len(depIDs))
 	for _, depID := range depIDs {
 		results = append(results, q.results[depID])
 	}

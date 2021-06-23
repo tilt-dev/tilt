@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -58,6 +59,8 @@ type ImageBuildResult struct {
 	// Often ImageLocalRef and ImageClusterRef will be the same, but may diverge: e.g.
 	// when using KIND + local registry, localRef is localhost:1234/my-img:tilt-abc,
 	// ClusterRef is http://registry/my-img:tilt-abc
+
+	ImageMapStatus v1alpha1.ImageMapStatus
 }
 
 func (r ImageBuildResult) TargetID() model.TargetID   { return r.id }
@@ -69,6 +72,9 @@ func NewImageBuildResult(id model.TargetID, localRef, clusterRef reference.Named
 		id:              id,
 		ImageLocalRef:   localRef,
 		ImageClusterRef: clusterRef,
+		ImageMapStatus: v1alpha1.ImageMapStatus{
+			Image: clusterRef.String(),
+		},
 	}
 }
 
@@ -274,6 +280,17 @@ func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
 		id = curID
 	}
 	return id
+}
+
+// A BuildResultSet that can only hold image build results.
+type ImageBuildResultSet map[model.TargetID]ImageBuildResult
+
+func (s ImageBuildResultSet) ToBuildResultSet() BuildResultSet {
+	result := BuildResultSet{}
+	for k, v := range s {
+		result[k] = v
+	}
+	return result
 }
 
 // The state of the system since the last successful build.

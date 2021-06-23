@@ -9,6 +9,7 @@ import (
 	"github.com/google/wire"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -50,7 +51,8 @@ func provideFakeBuildAndDeployer(
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
 	kp buildcontrol.KINDLoader,
-	analytics *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
+	analytics *analytics.TiltAnalytics,
+	ctrlClient ctrlclient.Client) (buildcontrol.BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		k8s.ProvideContainerRuntime,

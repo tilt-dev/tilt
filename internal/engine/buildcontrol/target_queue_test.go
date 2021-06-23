@@ -29,7 +29,7 @@ func TestTargetQueue_Simple(t *testing.T) {
 	f.run(targets, buildStateSet)
 
 	expectedCalls := map[model.TargetID]fakeBuildHandlerCall{
-		t1.ID(): newFakeBuildHandlerCall(t1, 1, []store.BuildResult{}),
+		t1.ID(): newFakeBuildHandlerCall(t1, 1, []store.ImageBuildResult{}),
 	}
 	assert.Equal(t, expectedCalls, f.handler.calls)
 }
@@ -50,7 +50,7 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
-	barCall := newFakeBuildHandlerCall(barTarget, 1, []store.BuildResult{
+	barCall := newFakeBuildHandlerCall(barTarget, 1, []store.ImageBuildResult{
 		store.NewImageBuildResultSingleRef(fooTarget.ID(), store.LocalImageRefFromBuildResult(s1.LastResult)),
 	})
 
@@ -79,9 +79,9 @@ func TestTargetQueue_DepsUnbuilt(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
-	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.BuildResult{})
+	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.ImageBuildResult{})
 	// bar's dep is dirty, so bar should not get its old state
-	barCall := newFakeBuildHandlerCall(barTarget, 2, []store.BuildResult{fooCall.result})
+	barCall := newFakeBuildHandlerCall(barTarget, 2, []store.ImageBuildResult{fooCall.result})
 
 	expectedCalls := map[model.TargetID]fakeBuildHandlerCall{
 		fooTarget.ID(): fooCall,
@@ -107,7 +107,7 @@ func TestTargetQueue_IncrementalBuild(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
-	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.BuildResult{})
+	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.ImageBuildResult{})
 
 	expectedCalls := map[model.TargetID]fakeBuildHandlerCall{
 		fooTarget.ID(): fooCall,
@@ -154,8 +154,8 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
-	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.BuildResult{})
-	barCall := newFakeBuildHandlerCall(barTarget, 2, []store.BuildResult{
+	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.ImageBuildResult{})
+	barCall := newFakeBuildHandlerCall(barTarget, 2, []store.ImageBuildResult{
 		store.NewImageBuildResultSingleRef(fooTarget.ID(), store.LocalImageRefFromBuildResult(fooCall.result)),
 	})
 
@@ -167,7 +167,7 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 	assert.Equal(t, expectedCalls, f.handler.calls)
 }
 
-func newFakeBuildHandlerCall(target model.ImageTarget, num int, depResults []store.BuildResult) fakeBuildHandlerCall {
+func newFakeBuildHandlerCall(target model.ImageTarget, num int, depResults []store.ImageBuildResult) fakeBuildHandlerCall {
 	return fakeBuildHandlerCall{
 		target: target,
 		result: store.NewImageBuildResultSingleRef(
@@ -180,8 +180,8 @@ func newFakeBuildHandlerCall(target model.ImageTarget, num int, depResults []sto
 
 type fakeBuildHandlerCall struct {
 	target     model.TargetSpec
-	depResults []store.BuildResult
-	result     store.BuildResult
+	depResults []store.ImageBuildResult
+	result     store.ImageBuildResult
 }
 
 type fakeBuildHandler struct {
@@ -195,7 +195,7 @@ func newFakeBuildHandler() *fakeBuildHandler {
 	}
 }
 
-func (fbh *fakeBuildHandler) handle(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
+func (fbh *fakeBuildHandler) handle(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 	iTarget := target.(model.ImageTarget)
 	fbh.buildNum++
 	namedTagged := container.MustParseNamedTagged(fmt.Sprintf("%s:%d", iTarget.Refs.ConfigurationRef, fbh.buildNum))

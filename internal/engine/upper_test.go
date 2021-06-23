@@ -250,19 +250,11 @@ type fakeBuildAndDeployer struct {
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
+func (b *fakeBuildAndDeployer) nextImageBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.ImageBuildResult {
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
 	localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
 	clusterRefTagged := container.MustWithTag(iTarget.Refs.ClusterRef(), tag)
-
-	var result store.BuildResult
-	containerIDs := b.nextLiveUpdateContainerIDs
-	if len(containerIDs) > 0 {
-		result = store.NewLiveUpdateBuildResult(iTarget.ID(), containerIDs)
-	} else {
-		result = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
-	}
-	return result
+	return store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
@@ -323,7 +315,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		return nil, err
 	}
 
-	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
+	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 		iTarget := target.(model.ImageTarget)
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
@@ -336,11 +328,18 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			}
 		}
 
-		return b.nextBuildResult(iTarget, deployTarget), nil
+		return b.nextImageBuildResult(iTarget, deployTarget), nil
 	})
-	result := queue.NewResults()
+	result := queue.NewResults().ToBuildResultSet()
 	if err != nil {
 		return result, err
+	}
+
+	containerIDs := b.nextLiveUpdateContainerIDs
+	if len(containerIDs) > 0 {
+		for k := range result {
+			result[k] = store.NewLiveUpdateBuildResult(k, containerIDs)
+		}
 	}
 
 	if !call.dc().Empty() && len(b.nextLiveUpdateContainerIDs) == 0 {
