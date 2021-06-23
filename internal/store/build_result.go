@@ -132,42 +132,27 @@ func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID, s
 }
 
 type K8sBuildResult struct {
+	v1alpha1.KubernetesApplyStatus
+
 	id model.TargetID
 
-	// DeployedEntities are references to the objects that we deployed to a Kubernetes cluster.
-	DeployedEntities []v1.ObjectReference
+	// DeployedRefs are references to the objects that we deployed to a Kubernetes cluster.
+	DeployedRefs []v1.ObjectReference
 
 	// Hashes of the pod template specs that we deployed to a Kubernetes cluster.
 	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
-
-	AppliedEntitiesText string
 }
 
 func (r K8sBuildResult) TargetID() model.TargetID   { return r.id }
 func (r K8sBuildResult) BuildType() model.BuildType { return model.BuildTypeK8s }
 
 // NewK8sDeployResult creates a deploy result for Kubernetes deploy targets.
-func NewK8sDeployResult(id model.TargetID, hashes []k8s.PodTemplateSpecHash, appliedEntities []k8s.K8sEntity) BuildResult {
-	// Remove verbose fields from the YAML.
-	for _, e := range appliedEntities {
-		e.Clean()
-	}
-
-	appliedEntitiesText, err := k8s.SerializeSpecYAML(appliedEntities)
-	if err != nil {
-		appliedEntitiesText = fmt.Sprintf("unable to serialize entities to yaml: %s", err.Error())
-	}
-
-	deployedRefs := make(k8s.ObjRefList, len(appliedEntities))
-	for i, entity := range appliedEntities {
-		deployedRefs[i] = entity.ToObjectReference()
-	}
-
+func NewK8sDeployResult(id model.TargetID, status v1alpha1.KubernetesApplyStatus, deployedRefs []v1.ObjectReference, hashes []k8s.PodTemplateSpecHash) K8sBuildResult {
 	return K8sBuildResult{
 		id:                    id,
-		DeployedEntities:      deployedRefs,
+		KubernetesApplyStatus: status,
+		DeployedRefs:          deployedRefs,
 		PodTemplateSpecHashes: hashes,
-		AppliedEntitiesText:   appliedEntitiesText,
 	}
 }
 
@@ -205,7 +190,7 @@ func (set BuildResultSet) DeployedEntities() k8s.ObjRefList {
 	for _, r := range set {
 		r, ok := r.(K8sBuildResult)
 		if ok {
-			for _, ref := range r.DeployedEntities {
+			for _, ref := range r.DeployedRefs {
 				// shallow copy is fine; there's no reference types on v1.ObjectReference
 				result = append(result, ref)
 			}
