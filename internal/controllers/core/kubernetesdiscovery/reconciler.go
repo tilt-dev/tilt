@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -83,19 +85,17 @@ type Reconciler struct {
 	knownPods map[types.UID]*v1.Pod
 }
 
-func (w *Reconciler) SetClient(client ctrlclient.Client) {
-	w.ctrlClient = client
+func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.KubernetesDiscovery{})
+
+	return b, nil
 }
 
-func (w *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.KubernetesDiscovery{}).
-		Complete(w)
-}
-
-func NewReconciler(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, restartDetector *ContainerRestartDetector,
+func NewReconciler(ctrlClient ctrlclient.Client, kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, restartDetector *ContainerRestartDetector,
 	st store.RStore) *Reconciler {
 	return &Reconciler{
+		ctrlClient:             ctrlClient,
 		kCli:                   kCli,
 		ownerFetcher:           ownerFetcher,
 		restartDetector:        restartDetector,

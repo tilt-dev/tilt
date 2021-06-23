@@ -178,7 +178,7 @@ func newMSFixture(t testing.TB) *msFixture {
 	ctx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 
-	cli := fake.NewTiltClient()
+	cli := fake.NewFakeTiltClient()
 	ms := NewManifestSubscriber(k8s.DefaultNamespace, cli)
 	cs := newChangeSubscriber(t)
 

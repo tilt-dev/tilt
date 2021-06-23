@@ -3920,13 +3920,13 @@ func newTestFixture(t *testing.T) *testFixture {
 	kdms := k8swatch.NewManifestSubscriber(ns, cdc)
 	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(b.kClient, of, rd, st)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, b.kClient, of, rd, st)
 	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
 	ewm := k8swatch.NewEventWatchManager(b.kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
-	fwc := filewatch.NewController(st, watcher.NewSub, timerMaker.Maker())
+	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker())
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
 	sessionController := session.NewController(cdc)
@@ -3947,7 +3947,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		cdc,
 		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	pfr := apiportforward.NewReconciler(st, b.kClient)
+	pfr := apiportforward.NewReconciler(cdc, st, b.kClient)
 
 	wsl := server.NewWebsocketList()
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
@@ -3955,10 +3955,10 @@ func newTestFixture(t *testing.T) *testFixture {
 		cmds,
 		plsc,
 		kdc,
-		kubernetesapply.NewReconciler(b.kClient, sch),
-		ctrluisession.NewReconciler(wsl),
-		ctrluiresource.NewReconciler(wsl),
-		ctrluibutton.NewReconciler(wsl),
+		kubernetesapply.NewReconciler(cdc, b.kClient, sch),
+		ctrluisession.NewReconciler(cdc, wsl),
+		ctrluiresource.NewReconciler(cdc, wsl),
+		ctrluibutton.NewReconciler(cdc, wsl),
 		pfr,
 	))
 

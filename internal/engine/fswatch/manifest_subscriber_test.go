@@ -75,7 +75,7 @@ func TestWatchManager_disabledOnCIMode(t *testing.T) {
 
 	testingStore.UnlockMutableState()
 
-	cli := fake.NewTiltClient()
+	cli := fake.NewFakeTiltClient()
 	ms := NewManifestSubscriber(cli)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
@@ -279,7 +279,7 @@ type wmFixture struct {
 }
 
 func newWMFixture(t *testing.T) *wmFixture {
-	cli := fake.NewTiltClient()
+	cli := fake.NewFakeTiltClient()
 	manifestSub := NewManifestSubscriber(cli)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()

@@ -66,11 +66,11 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	kclient := k8s.NewFakeK8sClient(t)
-	r := NewReconciler(kclient, v1alpha1.NewScheme())
-	cf := fake.NewControllerFixture(t, r)
+	cfb := fake.NewControllerFixtureBuilder(t)
+	r := NewReconciler(cfb.Client, kclient, v1alpha1.NewScheme())
 
 	return &fixture{
-		ControllerFixture: cf,
+		ControllerFixture: cfb.Build(r),
 		r:                 r,
 	}
 }

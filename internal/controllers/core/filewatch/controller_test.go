@@ -44,12 +44,12 @@ func newFixture(t *testing.T) *fixture {
 	fakeMultiWatcher := fsevent.NewFakeMultiWatcher()
 
 	testingStore := store.NewTestingStore()
-	controller := NewController(testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker())
 
-	ctrlFixture := fake.NewControllerFixture(t, controller)
+	cfb := fake.NewControllerFixtureBuilder(t)
+	controller := NewController(cfb.Client, testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker())
 
 	return &fixture{
-		ControllerFixture: ctrlFixture,
+		ControllerFixture: cfb.Build(controller),
 		t:                 t,
 		tmpdir:            tmpdir,
 		controller:        controller,

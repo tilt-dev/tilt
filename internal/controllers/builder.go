@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	ctrl "sigs.k8s.io/controller-runtime"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/store"
@@ -14,8 +15,7 @@ import (
 
 type Controller interface {
 	reconcile.Reconciler
-	SetClient(client ctrlclient.Client)
-	SetupWithManager(mgr ctrl.Manager) error
+	CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error)
 }
 
 type ControllerBuilder struct {
@@ -46,10 +46,21 @@ func (c *ControllerBuilder) SetUp(_ context.Context, _ store.RStore) error {
 		return errors.New("controller manager not initialized")
 	}
 
+	// create all the builders and THEN start them all - if each builder is created + started,
+	// initialization will fail because indexes cannot be added to an Informer after start, and
+	// the builders register informers
+	builders := make(map[Controller]*builder.Builder)
 	for _, controller := range c.controllers {
-		controller.SetClient(client)
-		if err := controller.SetupWithManager(mgr); err != nil {
-			return fmt.Errorf("error initializing %T controller: %v", controller, err)
+		b, err := controller.CreateBuilder(mgr)
+		if err != nil {
+			return fmt.Errorf("error creating builder: %v", err)
+		}
+		builders[controller] = b
+	}
+
+	for c, b := range builders {
+		if err := b.Complete(c); err != nil {
+			return fmt.Errorf("error starting controller: %v", err)
 		}
 	}
 	return nil

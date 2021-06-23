@@ -3,6 +3,8 @@ package kubernetesapply
 import (
 	"context"
 
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -27,22 +29,20 @@ type Reconciler struct {
 	indexer    *indexer.Indexer
 }
 
-func (r *Reconciler) SetClient(client ctrlclient.Client) {
-	r.ctrlClient = client
-}
-
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesApply{}).
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Complete(r)
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+
+	return b, nil
 }
 
-func NewReconciler(kCli k8s.Client, scheme *runtime.Scheme) *Reconciler {
+func NewReconciler(ctrlClient ctrlclient.Client, kCli k8s.Client, scheme *runtime.Scheme) *Reconciler {
 	return &Reconciler{
-		kCli:    kCli,
-		indexer: indexer.NewIndexer(scheme, indexImageMap),
+		kCli:       kCli,
+		ctrlClient: ctrlClient,
+		indexer:    indexer.NewIndexer(scheme, indexImageMap),
 	}
 }
 

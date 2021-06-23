@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	"github.com/jonboulle/clockwork"
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
@@ -60,10 +62,6 @@ func NewController(ctx context.Context, execer Execer, proberManager ProberManag
 		updateCmds:    make(map[types.NamespacedName]*Cmd),
 		st:            st,
 	}
-}
-
-func (c *Controller) SetClient(client ctrlclient.Client) {
-	c.client = client
 }
 
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -450,14 +448,15 @@ func indexCmd(obj client.Object) []indexer.Key {
 	return result
 }
 
-func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
 		For(&Cmd{}).
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.UIButton{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Complete(r)
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+
+	return b, nil
 }
 
 // currentProcess represents the current process for a Manifest, so that Controller can

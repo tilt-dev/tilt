@@ -795,7 +795,7 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	mode := buildcontrol.UpdateModeFlag(um)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kl := &fakeKINDLoader{}
-	ctrlClient := fake.NewTiltClient()
+	ctrlClient := fake.NewFakeTiltClient()
 	bd, err := provideFakeBuildAndDeployer(ctx, dockerClient, k8s, dir, env, mode, dcc,
 		fakeClock{now: time.Unix(1551202573, 0)}, kl, ta, ctrlClient)
 	if err != nil {
