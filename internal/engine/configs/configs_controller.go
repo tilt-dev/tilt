@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -22,13 +23,15 @@ type ConfigsController struct {
 	tfl                tiltfile.TiltfileLoader
 	dockerClient       docker.Client
 	clock              func() time.Time
+	ctrlClient         ctrlclient.Client
 	loadStartedCount   int // used to synchronize with state
 }
 
-func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Client) *ConfigsController {
+func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Client, ctrlClient ctrlclient.Client) *ConfigsController {
 	return &ConfigsController{
 		tfl:          tfl,
 		dockerClient: dockerClient,
+		ctrlClient:   ctrlClient,
 		clock:        time.Now,
 	}
 }
@@ -156,6 +159,15 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 		dockerErr := cc.dockerClient.CheckConnected()
 		if tlr.Error == nil && dockerErr != nil {
 			tlr.Error = errors.Wrap(dockerErr, "Failed to connect to Docker")
+		}
+	}
+
+	err := updateOwnedObjects(ctx, cc.ctrlClient, tlr)
+	if err != nil {
+		if tlr.Error == nil {
+			tlr.Error = errors.Wrap(err, "Failed to update API server")
+		} else {
+			logger.Get(ctx).Errorf("Failed to update API server: %v", err)
 		}
 	}
 

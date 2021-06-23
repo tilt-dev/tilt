@@ -305,7 +305,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	configExtension := config.NewExtension(subcommand)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
-	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
+	configsController := configs.NewConfigsController(tiltfileLoader, switchCli, deferredClient)
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
@@ -502,7 +502,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	configExtension := config.NewExtension(subcommand)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
-	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
+	configsController := configs.NewConfigsController(tiltfileLoader, switchCli, deferredClient)
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)

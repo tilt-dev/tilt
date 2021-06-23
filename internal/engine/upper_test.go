@@ -3906,7 +3906,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
 	tfl := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", feature.MainDefaults, env)
-	cc := configs.NewConfigsController(tfl, dockerClient)
+	cc := configs.NewConfigsController(tfl, dockerClient, cdc)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
@@ -3936,11 +3936,17 @@ func newTestFixture(t *testing.T) *testFixture {
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
 	sch := v1alpha1.NewScheme()
+
+	uncached := controllers.UncachedObjects{}
+	for _, obj := range v1alpha1.AllResourceObjects() {
+		uncached = append(uncached, obj.(ctrlclient.Object))
+	}
+
 	tscm, err := controllers.NewTiltServerControllerManager(
 		serverOptions,
 		sch,
 		cdc,
-		controllers.UncachedObjects{&v1alpha1.FileWatch{}})
+		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
 	pfr := apiportforward.NewReconciler(st, b.kClient)
 
