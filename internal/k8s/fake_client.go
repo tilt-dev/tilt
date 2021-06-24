@@ -444,6 +444,7 @@ func (c *FakeK8sClient) ListMeta(_ context.Context, gvk schema.GroupVersionKind,
 }
 
 func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, logs string) {
+
 	c.SetLogReaderForPodContainer(pID, cName, strings.NewReader(logs))
 }
 
