@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -42,7 +43,7 @@ func (m PathMapping) PrettyStr() string {
 
 func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
 	result := make([]PathMapping, 0)
-	err := filepath.Walk(m.LocalPath, func(currentLocal string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(m.LocalPath, func(currentLocal string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
