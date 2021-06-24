@@ -10,8 +10,9 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -67,6 +68,7 @@ type ImageBuildAndDeployer struct {
 	analytics   *analytics.TiltAnalytics
 	clock       build.Clock
 	kl          KINDLoader
+	ctrlClient  ctrlclient.Client
 }
 
 func NewImageBuildAndDeployer(
@@ -79,6 +81,7 @@ func NewImageBuildAndDeployer(
 	updMode UpdateMode,
 	c build.Clock,
 	kl KINDLoader,
+	ctrlClient ctrlclient.Client,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
 		db:          db,
@@ -89,6 +92,7 @@ func NewImageBuildAndDeployer(
 		analytics:   analytics,
 		clock:       c,
 		kl:          kl,
+		ctrlClient:  ctrlClient,
 	}
 }
 
@@ -148,31 +152,54 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	}
 
 	iTargetMap := model.ImageTargetsByID(iTargets)
-	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
+	imageMapSet := make(map[types.NamespacedName]*v1alpha1.ImageMap, len(kTarget.ImageMaps))
+	for _, iTarget := range iTargets {
+		var im v1alpha1.ImageMap
+		nn := types.NamespacedName{Name: iTarget.ID().Name.String()}
+		err := ibd.ctrlClient.Get(ctx, nn, &im)
+		if err != nil {
+			return nil, err
+		}
+		imageMapSet[nn] = im.DeepCopy()
+	}
+
+	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
-			return nil, fmt.Errorf("Not an image target: %T", target)
+			return store.ImageBuildResult{}, fmt.Errorf("Not an image target: %T", target)
 		}
 
 		iTarget, err := InjectImageDependencies(iTarget, iTargetMap, depResults)
 		if err != nil {
-			return nil, err
+			return store.ImageBuildResult{}, err
 		}
 
 		refs, err := ibd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
-			return nil, err
+			return store.ImageBuildResult{}, err
 		}
 
 		err = ibd.push(ctx, refs.LocalRef, ps, iTarget, kTarget)
 		if err != nil {
-			return nil, err
+			return store.ImageBuildResult{}, err
 		}
 
-		return store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef), nil
+		result := store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef)
+		nn := types.NamespacedName{Name: iTarget.ID().Name.String()}
+		im, ok := imageMapSet[nn]
+		if !ok {
+			return store.ImageBuildResult{}, fmt.Errorf("apiserver missing ImageMap: %s", iTarget.ID().Name)
+		}
+		im.Status = result.ImageMapStatus
+		err = ibd.ctrlClient.Status().Update(ctx, im)
+		if err != nil {
+			return store.ImageBuildResult{}, fmt.Errorf("updating ImageMap: %v", err)
+		}
+
+		return result, nil
 	})
 
-	newResults := q.NewResults()
+	newResults := q.NewResults().ToBuildResultSet()
 	if err != nil {
 		return newResults, WrapDontFallBackError(err)
 	}
@@ -181,7 +208,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	k8sResult, err := ibd.deploy(ctx, st, ps, iTargetMap, kTarget, q.AllResults())
+	k8sResult, err := ibd.deploy(ctx, st, ps, imageMapSet, kTarget, q.AllResults())
 	reportK8sDeployMetrics(ctx, kTarget, time.Since(startDeployTime), err != nil)
 	if err != nil {
 		return newResults, WrapDontFallBackError(err)
@@ -254,7 +281,8 @@ func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg m
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
 func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState,
-	iTargetMap map[model.TargetID]model.ImageTarget, kTarget model.K8sTarget, results store.BuildResultSet) (store.BuildResult, error) {
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+	kTarget model.K8sTarget, results store.ImageBuildResultSet) (store.BuildResult, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
@@ -262,33 +290,6 @@ func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, p
 
 	// Create API objects.
 	spec := kTarget.KubernetesApplySpec
-	imageMaps := make(map[string]*v1alpha1.ImageMap)
-	for _, imageMapName := range spec.ImageMaps {
-		depID := model.TargetID{
-			Type: model.TargetTypeImage,
-			Name: model.TargetName(imageMapName),
-		}
-
-		iTarget, ok := iTargetMap[depID]
-		if !ok {
-			return nil, fmt.Errorf("Internal error: missing image target for dependency ID: %s", depID)
-		}
-
-		ref := store.ClusterImageRefFromBuildResult(results[depID])
-		if ref == nil {
-			return nil, fmt.Errorf("Internal error: missing image build result for dependency ID: %s", depID)
-		}
-
-		name := string(depID.Name)
-		imageMaps[name] = &v1alpha1.ImageMap{
-			ObjectMeta: metav1.ObjectMeta{Name: name},
-			Spec:       iTarget.ImageMapSpec,
-			Status: v1alpha1.ImageMapStatus{
-				Image: ref.String(),
-			},
-		}
-	}
-
 	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, imageMaps, spec)
 	if err != nil {
 		return nil, err
@@ -357,7 +358,7 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 }
 
 func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
-	imageMaps map[string]*v1alpha1.ImageMap,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
 	newK8sEntities := []k8s.K8sEntity{}
 
@@ -409,13 +410,17 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 		}
 
 		for _, imageMapName := range imageMapNames {
-			imageMap := imageMaps[imageMapName]
+			imageMap := imageMaps[types.NamespacedName{Name: imageMapName}]
 			imageMapSpec := imageMap.Spec
 			selector, err := container.SelectorFromImageMap(imageMapSpec)
 			if err != nil {
 				return nil, err
 			}
 			matchInEnvVars := imageMapSpec.MatchInEnvVars
+
+			if imageMap.Status.Image == "" {
+				return nil, fmt.Errorf("internal error: missing image status")
+			}
 
 			ref, err := reference.ParseNamed(imageMap.Status.Image)
 			if err != nil {
@@ -459,7 +464,7 @@ func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
 }
 
 // Create a new ImageTarget with the Dockerfiles rewritten with the injected images.
-func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.TargetID]model.ImageTarget, deps []store.BuildResult) (model.ImageTarget, error) {
+func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.TargetID]model.ImageTarget, deps []store.ImageBuildResult) (model.ImageTarget, error) {
 	if len(deps) == 0 {
 		return iTarget, nil
 	}
@@ -478,10 +483,7 @@ func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	for _, dep := range deps {
-		image := store.LocalImageRefFromBuildResult(dep)
-		if image == nil {
-			return model.ImageTarget{}, fmt.Errorf("Internal error: image is nil")
-		}
+		image := dep.ImageLocalRef
 		id := dep.TargetID()
 		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image)
 		if err != nil {

@@ -1,4 +1,10 @@
-import { FilterLevel, filterSetFromLocation, FilterSource } from "./logfilters"
+import {
+  FilterLevel,
+  filterSetFromLocation,
+  FilterSource,
+  isRegexp,
+  TermState,
+} from "./logfilters"
 
 export type Tags = { [key: string]: string }
 
@@ -45,6 +51,10 @@ export let navigationToTags = (location: any, action: string): Tags => {
   }
   if (filterSet.source != FilterSource.all) {
     tags.source = filterSet.source
+  }
+  if (filterSet.term.state !== TermState.Empty) {
+    const termType = isRegexp(filterSet.term.input) ? "regexp" : "text"
+    tags.term = termType
   }
   return tags
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -74,14 +73,8 @@ func (f ControllerFixture) Cancel() {
 	f.cancel()
 }
 
-func (f *ControllerFixture) RootContext() context.Context {
+func (f *ControllerFixture) Context() context.Context {
 	return f.ctx
-}
-
-func (f *ControllerFixture) TimeoutContext() context.Context {
-	ctx, cancel := context.WithTimeout(f.ctx, 5*time.Second)
-	f.t.Cleanup(cancel)
-	return ctx
 }
 
 func (f *ControllerFixture) KeyForObject(o object) types.NamespacedName {
@@ -90,7 +83,7 @@ func (f *ControllerFixture) KeyForObject(o object) types.NamespacedName {
 
 func (f *ControllerFixture) MustReconcile(key types.NamespacedName) ctrl.Result {
 	f.t.Helper()
-	res, err := f.controller.Reconcile(f.TimeoutContext(), ctrl.Request{NamespacedName: key})
+	res, err := f.controller.Reconcile(f.ctx, ctrl.Request{NamespacedName: key})
 	require.NoError(f.t, err)
 	return res
 }

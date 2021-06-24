@@ -5,6 +5,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -31,7 +32,7 @@ func MustNewImageTarget(ref container.RefSelector) ImageTarget {
 func ImageID(ref container.RefSelector) TargetID {
 	name := TargetName("")
 	if !ref.Empty() {
-		name = TargetName(container.FamiliarString(ref))
+		name = TargetName(apis.SanitizeName(container.FamiliarString(ref)))
 	}
 	return TargetID{
 		Type: TargetTypeImage,

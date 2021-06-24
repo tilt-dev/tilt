@@ -28,6 +28,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
@@ -241,11 +242,12 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(client, ownerFetcher, containerRestartDetector, storeStore)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(client, scheme)
 	uisessionReconciler := uisession.NewReconciler(websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(websocketList)
 	portforwardReconciler := portforward.NewReconciler(storeStore, client)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -285,7 +287,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
 	kindLoader := buildcontrol.NewKINDLoader(env, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, kubeContext, analytics3, updateMode, buildClock, kindLoader)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, kubeContext, analytics3, updateMode, buildClock, kindLoader, deferredClient)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, buildClock)
@@ -303,7 +305,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	configExtension := config.NewExtension(subcommand)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
-	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
+	configsController := configs.NewConfigsController(tiltfileLoader, switchCli, deferredClient)
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
@@ -437,11 +439,12 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(client, ownerFetcher, containerRestartDetector, storeStore)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(client, scheme)
 	uisessionReconciler := uisession.NewReconciler(websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(websocketList)
 	portforwardReconciler := portforward.NewReconciler(storeStore, client)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -481,7 +484,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
 	kindLoader := buildcontrol.NewKINDLoader(env, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, kubeContext, analytics3, updateMode, buildClock, kindLoader)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, kubeContext, analytics3, updateMode, buildClock, kindLoader, deferredClient)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, buildClock)
@@ -499,7 +502,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	configExtension := config.NewExtension(subcommand)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, defaults, env)
-	configsController := configs.NewConfigsController(tiltfileLoader, switchCli)
+	configsController := configs.NewConfigsController(tiltfileLoader, switchCli, deferredClient)
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, env)
@@ -630,11 +633,12 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, k8sClient)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(k8sClient, ownerFetcher, containerRestartDetector, storeStore)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(k8sClient, scheme)
 	uisessionReconciler := uisession.NewReconciler(websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(websocketList)
 	portforwardReconciler := portforward.NewReconciler(storeStore, k8sClient)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)

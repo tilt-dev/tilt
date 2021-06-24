@@ -28,6 +28,7 @@ type RStore interface {
 // https://redux.js.org/introduction/threeprinciples
 // https://redux.js.org/basics
 type Store struct {
+	sleeper     Sleeper
 	state       *EngineState
 	subscribers *subscriberList
 	actionQueue *actionQueue
@@ -43,6 +44,7 @@ type Store struct {
 
 func NewStore(reducer Reducer, logActions LogActionsFlag) *Store {
 	return &Store{
+		sleeper:     DefaultSleeper(),
 		state:       NewState(),
 		reduce:      reducer,
 		actionQueue: &actionQueue{},
@@ -214,7 +216,7 @@ func (s *Store) maybeFinished() (bool, error) {
 }
 
 func (s *Store) drainActions() {
-	time.Sleep(actionBatchWindow)
+	s.sleeper.Sleep(context.Background(), actionBatchWindow)
 
 	// The mutex here ensures that the actions appear on the channel in-order.
 	// Otherwise, two drains can interleave badly.

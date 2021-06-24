@@ -281,7 +281,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	ret.client = K8sClient{
 		env:               EnvUnknown,
 		core:              core,
-		portForwardClient: NewFakePortfowardClient(),
+		portForwardClient: NewFakePortForwardClient(),
 		dynamic:           dc,
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,

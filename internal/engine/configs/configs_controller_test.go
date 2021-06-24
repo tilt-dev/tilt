@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -163,7 +164,8 @@ func newCCFixture(t *testing.T) *ccFixture {
 	st := NewTestingStore()
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
-	cc := NewConfigsController(tfl, d)
+	tc := fake.NewTiltClient()
+	cc := NewConfigsController(tfl, d, tc)
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
@@ -223,7 +225,11 @@ ENTRYPOINT /go/bin/sancho
 
 var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 
-func NewSanchoDockerBuildImageTarget(f *ccFixture) model.ImageTarget {
+type pathFixture interface {
+	Path() string
+}
+
+func NewSanchoDockerBuildImageTarget(f pathFixture) model.ImageTarget {
 	return model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  f.Path(),

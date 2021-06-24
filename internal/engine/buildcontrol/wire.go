@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -53,7 +54,8 @@ func ProvideImageBuildAndDeployer(
 	dir *dirs.TiltDevDir,
 	clock build.Clock,
 	kp KINDLoader,
-	analytics *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
+	analytics *analytics.TiltAnalytics,
+	ctrlclient ctrlclient.Client) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),

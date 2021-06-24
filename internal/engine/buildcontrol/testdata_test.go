@@ -6,6 +6,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -14,7 +15,7 @@ type Fixture = manifestbuilder.Fixture
 var testImageRef = container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
 var imageTargetID = model.TargetID{
 	Type: model.TargetTypeImage,
-	Name: "gcr.io/some-project-162817/sancho",
+	Name: model.TargetName(apis.SanitizeName("gcr.io/some-project-162817/sancho")),
 }
 
 var alreadyBuilt = store.NewImageBuildResultSingleRef(imageTargetID, testImageRef)

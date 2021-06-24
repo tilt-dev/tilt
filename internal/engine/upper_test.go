@@ -19,6 +19,7 @@ import (
 
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 
 	"github.com/davecgh/go-spew/spew"
@@ -249,19 +250,11 @@ type fakeBuildAndDeployer struct {
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.BuildResult {
+func (b *fakeBuildAndDeployer) nextImageBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.ImageBuildResult {
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
 	localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
 	clusterRefTagged := container.MustWithTag(iTarget.Refs.ClusterRef(), tag)
-
-	var result store.BuildResult
-	containerIDs := b.nextLiveUpdateContainerIDs
-	if len(containerIDs) > 0 {
-		result = store.NewLiveUpdateBuildResult(iTarget.ID(), containerIDs)
-	} else {
-		result = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
-	}
-	return result
+	return store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
@@ -322,7 +315,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		return nil, err
 	}
 
-	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.BuildResult) (store.BuildResult, error) {
+	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 		iTarget := target.(model.ImageTarget)
 		var deployTarget model.TargetSpec
 		if !call.dc().Empty() {
@@ -335,11 +328,18 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 			}
 		}
 
-		return b.nextBuildResult(iTarget, deployTarget), nil
+		return b.nextImageBuildResult(iTarget, deployTarget), nil
 	})
-	result := queue.NewResults()
+	result := queue.NewResults().ToBuildResultSet()
 	if err != nil {
 		return result, err
+	}
+
+	containerIDs := b.nextLiveUpdateContainerIDs
+	if len(containerIDs) > 0 {
+		for k := range result {
+			result[k] = store.NewLiveUpdateBuildResult(k, containerIDs)
+		}
 	}
 
 	if !call.dc().Empty() && len(b.nextLiveUpdateContainerIDs) == 0 {
@@ -3905,7 +3905,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
 	tfl := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", feature.MainDefaults, env)
-	cc := configs.NewConfigsController(tfl, dockerClient)
+	cc := configs.NewConfigsController(tfl, dockerClient, cdc)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
@@ -3934,11 +3934,18 @@ func newTestFixture(t *testing.T) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
+	sch := v1alpha1.NewScheme()
+
+	uncached := controllers.UncachedObjects{}
+	for _, obj := range v1alpha1.AllResourceObjects() {
+		uncached = append(uncached, obj.(ctrlclient.Object))
+	}
+
 	tscm, err := controllers.NewTiltServerControllerManager(
 		serverOptions,
-		v1alpha1.NewScheme(),
+		sch,
 		cdc,
-		controllers.UncachedObjects{&v1alpha1.FileWatch{}})
+		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
 	pfr := apiportforward.NewReconciler(st, b.kClient)
 
@@ -3948,6 +3955,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		cmds,
 		plsc,
 		kdc,
+		kubernetesapply.NewReconciler(b.kClient, sch),
 		ctrluisession.NewReconciler(wsl),
 		ctrluiresource.NewReconciler(wsl),
 		ctrluibutton.NewReconciler(wsl),

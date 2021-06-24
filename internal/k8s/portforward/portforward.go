@@ -181,6 +181,14 @@ func NewOnAddresses(ctx context.Context, dialer httpstream.Dialer, addresses []s
 	}, nil
 }
 
+func (pf *PortForwarder) Addresses() []string {
+	var addresses []string
+	for _, la := range pf.addresses {
+		addresses = append(addresses, la.address)
+	}
+	return addresses
+}
+
 // ForwardPorts formats and executes a port forwarding request. The connection will remain
 // open until stopChan is closed.
 func (pf *PortForwarder) ForwardPorts() error {

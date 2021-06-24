@@ -3,11 +3,11 @@ package uiresource
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
@@ -52,7 +52,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 	if err != nil {
 		// If the cache hasn't started yet, that's OK.
 		// We'll get it on the next OnChange()
-		if strings.Contains(err.Error(), "cache not started") {
+		if _, ok := err.(*cache.ErrCacheNotStarted); ok {
 			return nil
 		}
 

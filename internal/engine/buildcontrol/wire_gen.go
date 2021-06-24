@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -23,7 +24,7 @@ import (
 
 // Injectors from wire.go:
 
-func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics) (*ImageBuildAndDeployer, error) {
+func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client) (*ImageBuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
@@ -33,7 +34,7 @@ func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	if err != nil {
 		return nil, err
 	}
-	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, updateMode, clock, kp)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, updateMode, clock, kp, ctrlclient)
 	return imageBuildAndDeployer, nil
 }
 

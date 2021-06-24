@@ -6,6 +6,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
@@ -21,6 +22,7 @@ var controllerSet = wire.NewSet(
 	portforward.NewReconciler,
 	podlogstream.NewController,
 	podlogstream.NewPodSource,
+	kubernetesapply.NewReconciler,
 
 	ProvideControllers,
 )
@@ -30,6 +32,7 @@ func ProvideControllers(
 	cmds *cmd.Controller,
 	podlogstreams *podlogstream.Controller,
 	kubernetesDiscovery *kubernetesdiscovery.Reconciler,
+	kubernetesApply *kubernetesapply.Reconciler,
 	uis *uisession.Reconciler,
 	uir *uiresource.Reconciler,
 	uib *uibutton.Reconciler,
@@ -39,6 +42,7 @@ func ProvideControllers(
 		cmds,
 		podlogstreams,
 		kubernetesDiscovery,
+		kubernetesApply,
 		uis,
 		uir,
 		uib,

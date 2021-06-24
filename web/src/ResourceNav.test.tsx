@@ -7,6 +7,7 @@ import {
   ResourceNav,
   ResourceNavContextConsumer,
   ResourceNavProvider,
+  useResourceNav,
 } from "./ResourceNav"
 import { ResourceName } from "./types"
 
@@ -74,5 +75,35 @@ describe("resourceNav", () => {
     f.openResource("foo/bar")
     expect(f.nav?.selectedResource).toEqual("foo/bar")
     expect(f.history.location.pathname).toEqual("/r/foo%2Fbar/overview")
+  })
+
+  // Make sure that useResourceNav() doesn't break memoization.
+  it("memoizes renders", () => {
+    let renderCount = 0
+    let FakeEl = () => {
+      useResourceNav()
+      renderCount++
+      return <div></div>
+    }
+
+    let history = createMemoryHistory()
+    let validateResource = () => true
+    let root = mount(
+      <Router history={history}>
+        <ResourceNavProvider validateResource={validateResource}>
+          <FakeEl />
+        </ResourceNavProvider>
+      </Router>
+    )
+
+    expect(renderCount).toEqual(1)
+
+    // Make sure we don't re-render on a no-op history update.
+    root.setProps({ history })
+    expect(renderCount).toEqual(1)
+
+    // Make sure we do re-render on a real location update.
+    history.push("/r/foo")
+    expect(renderCount).toEqual(2)
   })
 })

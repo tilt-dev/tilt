@@ -28,6 +28,7 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -55,11 +56,26 @@ func TestAPIServerDynamicClient(t *testing.T) {
 				{"namespace": "my-namespace", "uid": "my-uid"},
 			},
 		},
+		"KubernetesApply": map[string]interface{}{
+			"yaml": testyaml.SanchoYAML,
+		},
+		"ImageMap": map[string]interface{}{
+			"selector": "busybox",
+		},
 		"UIButton": map[string]interface{}{
 			"text": "I'm a button!",
 			"location": map[string]interface{}{
 				"componentType": "Resource",
 				"componentID":   "my-resource",
+			},
+		},
+		"PortForward": map[string]interface{}{
+			"podName": "my-pod",
+			"forwards": []interface{}{
+				map[string]interface{}{
+					"localPort":     8080,
+					"containerPort": 8000,
+				},
 			},
 		},
 	}

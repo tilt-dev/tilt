@@ -11,6 +11,7 @@ import (
 	"github.com/google/wire"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	"go.opentelemetry.io/otel/sdk/trace"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -26,7 +27,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics) (buildcontrol.BuildAndDeployer, error) {
+func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode buildcontrol.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlClient client.Client) (buildcontrol.BuildAndDeployer, error) {
 	dockerUpdater := containerupdate.NewDockerUpdater(docker2)
 	execUpdater := containerupdate.NewExecUpdater(kClient)
 	kubeContext := provideFakeKubeContext(env)
@@ -41,7 +42,7 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, buildcontrolUpdateMode, clock, kp)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, buildcontrolUpdateMode, clock, kp, ctrlClient)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock)
