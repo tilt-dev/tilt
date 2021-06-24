@@ -159,6 +159,37 @@ func (in *KubernetesApplyList) GetListMeta() *metav1.ListMeta {
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply
 type KubernetesApplyStatus struct {
+	// The result of applying the YAML to the cluster. This should contain
+	// UIDs for the applied resources.
+	//
+	// +optional
+	ResultYAML string `json:"resultYAML,omitempty" protobuf:"bytes,1,opt,name=resultYAML"`
+
+	// An error applying the YAML.
+	//
+	// If there was an error, than ResultYAML should be empty (and vice versa).
+	//
+	// +optional
+	Error string `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
+
+	// The last time the controller tried to apply YAML.
+	//
+	// +optional
+	LastApplyTime metav1.MicroTime `json:"lastApplyTime,omitempty" protobuf:"bytes,3,opt,name=lastApplyTime"`
+
+	// A base64-encoded hash of all the inputs to the apply.
+	//
+	// We added this so that more procedural code can determine whether
+	// their updates have been applied yet or not by the reconciler. But any code
+	// using it this way should note that the reconciler may "skip" an update
+	// (e.g., if two images get updated in quick succession before the reconciler
+	// injects them into the YAML), so a particular ApplieInputHash might never appear.
+	//
+	// +optional
+	AppliedInputHash string `json:"appliedInputHash,omitempty" protobuf:"bytes,4,opt,name=appliedInputHash"`
+
+	// TODO(nick): We should also add some sort of status field to this
+	// status (like waiting, active, done).
 }
 
 // KubernetesApply implements ObjectWithStatusSubResource interface.

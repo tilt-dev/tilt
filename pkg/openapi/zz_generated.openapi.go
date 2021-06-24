@@ -1626,8 +1626,40 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCal
 			SchemaProps: spec.SchemaProps{
 				Description: "KubernetesApplyStatus defines the observed state of KubernetesApply",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"resultYAML": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The result of applying the YAML to the cluster. This should contain UIDs for the applied resources.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An error applying the YAML.\n\nIf there was an error, than ResultYAML should be empty (and vice versa).",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastApplyTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last time the controller tried to apply YAML.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"appliedInputHash": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A base64-encoded hash of all the inputs to the apply.\n\nWe added this so that more procedural code can determine whether their updates have been applied yet or not by the reconciler. But any code using it this way should note that the reconciler may \"skip\" an update (e.g., if two images get updated in quick succession before the reconciler injects them into the YAML), so a particular ApplieInputHash might never appear.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
