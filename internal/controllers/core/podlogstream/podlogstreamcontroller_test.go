@@ -16,7 +16,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -44,8 +43,8 @@ func TestLogs(t *testing.T) {
 
 	start := time.Now()
 
-	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).AddRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.ToPod())
 
 	pls := plsFromPod("server", pb, start)
 	f.Create(pls)
@@ -67,8 +66,8 @@ func TestLogActions(t *testing.T) {
 
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\ngoodbye world!\n")
 
-	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).AddRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.ToPod())
 
 	f.Create(plsFromPod("server", pb, time.Time{}))
 
@@ -81,8 +80,8 @@ func TestLogsFailed(t *testing.T) {
 
 	f.kClient.ContainerLogsError = fmt.Errorf("my-error")
 
-	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).AddRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.ToPod())
 
 	pls := plsFromPod("server", pb, time.Time{})
 	f.Create(pls)
@@ -107,8 +106,8 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!\n")
 
-	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).AddRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.ToPod())
 	pls := plsFromPod("server", pb, time.Time{})
 	f.Create(pls)
 
@@ -136,10 +135,10 @@ func TestMultiContainerLogs(t *testing.T) {
 	f.kClient.SetLogsForPodContainer(podID, "cont1", "hello world!")
 	f.kClient.SetLogsForPodContainer(podID, "cont2", "goodbye world!")
 
-	pb := newPodBuilder(podID).
-		addRunningContainer("cont1", "cid1").
-		addRunningContainer("cont2", "cid2")
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).
+		AddRunningContainer("cont1", "cid1").
+		AddRunningContainer("cont2", "cid2")
+	f.kClient.UpsertPod(pb.ToPod())
 	f.Create(plsFromPod("server", pb, time.Time{}))
 
 	f.AssertOutputContains("hello world!")
@@ -159,18 +158,18 @@ func TestContainerPrefixes(t *testing.T) {
 	cNameNoPrefix := container.Name("no-prefix")
 	f.kClient.SetLogsForPodContainer(pID2, cNameNoPrefix, "hello jupiter!")
 
-	pbMultiC := newPodBuilder(pID1).
+	pbMultiC := fake.NewPodBuilder(pID1).
 		// Pod with multiple containers -- logs should be prefixed with container name
-		addRunningContainer(cNamePrefix1, "cid1").
-		addRunningContainer(cNamePrefix2, "cid2")
-	f.kClient.UpsertPod(pbMultiC.toPod())
+		AddRunningContainer(cNamePrefix1, "cid1").
+		AddRunningContainer(cNamePrefix2, "cid2")
+	f.kClient.UpsertPod(pbMultiC.ToPod())
 
 	f.Create(plsFromPod("multiContainer", pbMultiC, time.Time{}))
 
-	pbSingleC := newPodBuilder(pID2).
+	pbSingleC := fake.NewPodBuilder(pID2).
 		// Pod with just one container -- logs should NOT be prefixed with container name
-		addRunningContainer(cNameNoPrefix, "cid3")
-	f.kClient.UpsertPod(pbSingleC.toPod())
+		AddRunningContainer(cNameNoPrefix, "cid3")
+	f.kClient.UpsertPod(pbSingleC.ToPod())
 
 	f.Create(plsFromPod("singleContainer", pbSingleC, time.Time{}))
 
@@ -189,8 +188,8 @@ func TestTerminatedContainerLogs(t *testing.T) {
 	f := newPLMFixture(t)
 
 	cName := container.Name("cName")
-	pb := newPodBuilder(podID).addTerminatedContainer(cName, "cID")
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).AddTerminatedContainer(cName, "cID")
+	f.kClient.UpsertPod(pb.ToPod())
 
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
@@ -216,8 +215,8 @@ func TestTerminatedContainerLogs(t *testing.T) {
 func TestLogReconnection(t *testing.T) {
 	f := newPLMFixture(t)
 	cName := container.Name("cName")
-	pb := newPodBuilder(podID).addRunningContainer(cName, "cID")
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).AddRunningContainer(cName, "cID")
+	f.kClient.UpsertPod(pb.ToPod())
 
 	reader, writer := io.Pipe()
 	defer func() {
@@ -286,10 +285,10 @@ func TestInitContainerLogs(t *testing.T) {
 
 	cNameInit := container.Name("cNameInit")
 	cNameNormal := container.Name("cNameNormal")
-	pb := newPodBuilder(podID).
-		addTerminatedInitContainer(cNameInit, "cID-init").
-		addRunningContainer(cNameNormal, "cID-normal")
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).
+		AddTerminatedInitContainer(cNameInit, "cID-init").
+		AddRunningContainer(cNameNormal, "cID-normal")
+	f.kClient.UpsertPod(pb.ToPod())
 
 	f.kClient.SetLogsForPodContainer(podID, cNameInit, "init world!")
 	f.kClient.SetLogsForPodContainer(podID, cNameNormal, "hello world!")
@@ -310,11 +309,11 @@ func TestIgnoredContainerLogs(t *testing.T) {
 	istioInit := runtimelog.IstioInitContainerName
 	istioSidecar := runtimelog.IstioSidecarContainerName
 	cNormal := container.Name("cNameNormal")
-	pb := newPodBuilder(podID).
-		addTerminatedInitContainer(istioInit, "cID-init").
-		addRunningContainer(istioSidecar, "cID-sidecar").
-		addRunningContainer(cNormal, "cID-normal")
-	f.kClient.UpsertPod(pb.toPod())
+	pb := fake.NewPodBuilder(podID).
+		AddTerminatedInitContainer(istioInit, "cID-init").
+		AddRunningContainer(istioSidecar, "cID-sidecar").
+		AddRunningContainer(cNormal, "cID-normal")
+	f.kClient.UpsertPod(pb.ToPod())
 
 	f.kClient.SetLogsForPodContainer(podID, istioInit, "init istio!")
 	f.kClient.SetLogsForPodContainer(podID, istioSidecar, "hello istio!")
@@ -439,80 +438,7 @@ func (f *plmFixture) AssertLogStartTime(t time.Time) {
 	timecmp.AssertTimeEqual(f.t, t.Truncate(time.Second), f.kClient.LastPodLogStartTime)
 }
 
-type podBuilder v1.Pod
-
-func newPodBuilder(id k8s.PodID) *podBuilder {
-	return (*podBuilder)(&v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      string(id),
-			Namespace: "default",
-		},
-	})
-}
-
-func (pb *podBuilder) addRunningContainer(name container.Name, id container.ID) *podBuilder {
-	pb.Spec.Containers = append(pb.Spec.Containers, v1.Container{
-		Name: string(name),
-	})
-	pb.Status.ContainerStatuses = append(pb.Status.ContainerStatuses, v1.ContainerStatus{
-		Name:        string(name),
-		ContainerID: fmt.Sprintf("containerd://%s", id),
-		Image:       fmt.Sprintf("image-%s", strings.ToLower(string(name))),
-		ImageID:     fmt.Sprintf("image-%s", strings.ToLower(string(name))),
-		Ready:       true,
-		State: v1.ContainerState{
-			Running: &v1.ContainerStateRunning{
-				StartedAt: metav1.Now(),
-			},
-		},
-	})
-	return pb
-}
-
-func (pb *podBuilder) addRunningInitContainer(name container.Name, id container.ID) *podBuilder {
-	pb.Spec.InitContainers = append(pb.Spec.InitContainers, v1.Container{
-		Name: string(name),
-	})
-	pb.Status.InitContainerStatuses = append(pb.Status.InitContainerStatuses, v1.ContainerStatus{
-		Name:        string(name),
-		ContainerID: fmt.Sprintf("containerd://%s", id),
-		Image:       fmt.Sprintf("image-%s", strings.ToLower(string(name))),
-		ImageID:     fmt.Sprintf("image-%s", strings.ToLower(string(name))),
-		Ready:       true,
-		State: v1.ContainerState{
-			Running: &v1.ContainerStateRunning{
-				StartedAt: metav1.Now(),
-			},
-		},
-	})
-	return pb
-}
-
-func (pb *podBuilder) addTerminatedContainer(name container.Name, id container.ID) *podBuilder {
-	pb.addRunningContainer(name, id)
-	statuses := pb.Status.ContainerStatuses
-	statuses[len(statuses)-1].State.Running = nil
-	statuses[len(statuses)-1].State.Terminated = &v1.ContainerStateTerminated{
-		StartedAt: metav1.Now(),
-	}
-	return pb
-}
-
-func (pb *podBuilder) addTerminatedInitContainer(name container.Name, id container.ID) *podBuilder {
-	pb.addRunningInitContainer(name, id)
-	statuses := pb.Status.InitContainerStatuses
-	statuses[len(statuses)-1].State.Running = nil
-	statuses[len(statuses)-1].State.Terminated = &v1.ContainerStateTerminated{
-		StartedAt: metav1.Now(),
-	}
-	return pb
-}
-
-func (pb *podBuilder) toPod() *v1.Pod {
-	return (*v1.Pod)(pb)
-}
-
-func plsFromPod(mn model.ManifestName, pb *podBuilder, start time.Time) *v1alpha1.PodLogStream {
+func plsFromPod(mn model.ManifestName, pb *fake.PodBuilder, start time.Time) *v1alpha1.PodLogStream {
 	var sinceTime *metav1.Time
 	if !start.IsZero() {
 		t := apis.NewTime(start)
