@@ -354,53 +354,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
-		var deployed []k8s.K8sEntity
-		var templateSpecHashes []k8s.PodTemplateSpecHash
-
-		explicitDeploymentEntities := b.targetObjectTree[kTarg.ID()]
-		if len(explicitDeploymentEntities) != 0 {
-			if b.nextDeployedUID != "" {
-				b.t.Fatalf("Cannot set both explicit deployed entities + next deployed UID")
-			}
-			if len(b.nextPodTemplateSpecHashes) != 0 {
-				b.t.Fatalf("Cannot set both explicit deployed entities + next pod template spec hashes")
-			}
-
-			// register Deployment + ReplicaSet so that other parts of the system can properly retrieve them
-			b.kClient.Inject(
-				explicitDeploymentEntities.Deployment(),
-				explicitDeploymentEntities.ReplicaSet())
-
-			// only return the Deployment entity as deployed since the ReplicaSet + Pod are created implicitly,
-			// i.e. they are not returned in a normal apply call for a Deployment
-			deployed = []k8s.K8sEntity{explicitDeploymentEntities.Deployment()}
-			hash := explicitDeploymentEntities.Pod().Labels()[k8s.TiltPodTemplateHashLabel]
-			if hash != "" {
-				templateSpecHashes = append(templateSpecHashes, k8s.PodTemplateSpecHash(hash))
-			}
-		} else {
-			deployed, err = k8s.ParseYAMLFromString(kTarg.YAML)
-			if err != nil {
-				return result, err
-			}
-
-			for i := 0; i < len(deployed); i++ {
-				uid := types.UID(uuid.New().String())
-				if b.nextDeployedUID != "" {
-					uid = b.nextDeployedUID
-					b.nextDeployedUID = ""
-				}
-				k8s.SetUIDForTest(b.t, &deployed[i], string(uid))
-			}
-
-			templateSpecHashes = podTemplateSpecHashesForTarg(b.t, kTarg)
-			if len(b.nextPodTemplateSpecHashes) != 0 {
-				templateSpecHashes = b.nextPodTemplateSpecHashes
-				b.nextPodTemplateSpecHashes = nil
-			}
-		}
-
-		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), templateSpecHashes, deployed)
+		result[call.k8s().ID()] = b.nextK8sDeployResult(kTarg)
 	}
 
 	err = b.nextLiveUpdateCompileError
@@ -413,6 +367,63 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	return result, err
+}
+
+func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.K8sBuildResult {
+	var err error
+	var deployed []k8s.K8sEntity
+	var templateSpecHashes []k8s.PodTemplateSpecHash
+	var status = v1alpha1.KubernetesApplyStatus{
+		LastApplyTime:    apis.NowMicro(),
+		AppliedInputHash: "x",
+	}
+
+	explicitDeploymentEntities := b.targetObjectTree[kTarg.ID()]
+	if len(explicitDeploymentEntities) != 0 {
+		if b.nextDeployedUID != "" {
+			b.t.Fatalf("Cannot set both explicit deployed entities + next deployed UID")
+		}
+		if len(b.nextPodTemplateSpecHashes) != 0 {
+			b.t.Fatalf("Cannot set both explicit deployed entities + next pod template spec hashes")
+		}
+
+		// register Deployment + ReplicaSet so that other parts of the system can properly retrieve them
+		b.kClient.Inject(
+			explicitDeploymentEntities.Deployment(),
+			explicitDeploymentEntities.ReplicaSet())
+
+		// only return the Deployment entity as deployed since the ReplicaSet + Pod are created implicitly,
+		// i.e. they are not returned in a normal apply call for a Deployment
+		deployed = []k8s.K8sEntity{explicitDeploymentEntities.Deployment()}
+		hash := explicitDeploymentEntities.Pod().Labels()[k8s.TiltPodTemplateHashLabel]
+		if hash != "" {
+			templateSpecHashes = append(templateSpecHashes, k8s.PodTemplateSpecHash(hash))
+		}
+	} else {
+		deployed, err = k8s.ParseYAMLFromString(kTarg.YAML)
+		require.NoError(b.t, err)
+
+		for i := 0; i < len(deployed); i++ {
+			uid := types.UID(uuid.New().String())
+			if b.nextDeployedUID != "" {
+				uid = b.nextDeployedUID
+				b.nextDeployedUID = ""
+			}
+			k8s.SetUIDForTest(b.t, &deployed[i], string(uid))
+		}
+
+		templateSpecHashes = podTemplateSpecHashesForTarg(b.t, kTarg)
+		if len(b.nextPodTemplateSpecHashes) != 0 {
+			templateSpecHashes = b.nextPodTemplateSpecHashes
+			b.nextPodTemplateSpecHashes = nil
+		}
+	}
+
+	resultYAML, err := k8s.SerializeSpecYAML(deployed)
+	require.NoError(b.t, err)
+	status.ResultYAML = resultYAML
+
+	return store.NewK8sDeployResult(kTarg.ID(), status, k8s.ToRefList(deployed), templateSpecHashes)
 }
 
 func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(key string) buildCompletionChannel {
@@ -1685,7 +1696,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 
 	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
 		spanID0,
-		deployResultSet(manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
+		deployResultSet(f.T(), manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
 
 	f.podEvent(pb.Build())
 
@@ -2406,7 +2417,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	result := f.b.resultsByID[manifest.K8sTarget().ID()]
-	uid := result.(store.K8sBuildResult).DeployedEntities[0].UID
+	uid := result.(store.K8sBuildResult).DeployedRefs[0].UID
 	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
 	err := k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 	require.NoError(t, err)
@@ -2439,7 +2450,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	result := f.b.resultsByID[manifest.K8sTarget().ID()]
-	uid := result.(store.K8sBuildResult).DeployedEntities[0].UID
+	uid := result.(store.K8sBuildResult).DeployedRefs[0].UID
 	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
 	svc := sb.Build()
 	err := k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
@@ -4358,8 +4369,8 @@ func (f *testFixture) lastDeployedUID(manifestName model.ManifestName) types.UID
 	if !ok {
 		return ""
 	}
-	if len(k8sResult.DeployedEntities) > 0 {
-		return k8sResult.DeployedEntities[0].UID
+	if len(k8sResult.DeployedRefs) > 0 {
+		return k8sResult.DeployedRefs[0].UID
 	}
 	return ""
 }
@@ -4631,7 +4642,7 @@ func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Act
 	})
 }
 
-func deployResultSet(manifest model.Manifest, pb podbuilder.PodBuilder, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
+func deployResultSet(t testing.TB, manifest model.Manifest, pb podbuilder.PodBuilder, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	tag := "deadbeef"
 	for _, iTarget := range manifest.ImageTargets {
@@ -4640,7 +4651,14 @@ func deployResultSet(manifest model.Manifest, pb podbuilder.PodBuilder, hashes [
 		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 	}
 	ktID := manifest.K8sTarget().ID()
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, hashes, []k8s.K8sEntity{pb.ObjectTreeEntities().Deployment()})
+	entities := []k8s.K8sEntity{pb.ObjectTreeEntities().Deployment()}
+	yaml, err := k8s.SerializeSpecYAML(entities)
+	require.NoError(t, err)
+	status := v1alpha1.KubernetesApplyStatus{
+		ResultYAML:    yaml,
+		LastApplyTime: apis.NowMicro(),
+	}
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, status, k8s.ToRefList(entities), hashes)
 	return resultSet
 }
 

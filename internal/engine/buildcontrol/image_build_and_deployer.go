@@ -17,9 +17,11 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -208,7 +210,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	k8sResult, err := ibd.deploy(ctx, st, ps, imageMapSet, kTarget, q.AllResults())
+	k8sResult, err := ibd.deploy(ctx, st, ps, kTarget.ID(), kTarget.KubernetesApplySpec, imageMapSet)
 	reportK8sDeployMetrics(ctx, kTarget, time.Since(startDeployTime), err != nil)
 	if err != nil {
 		return newResults, WrapDontFallBackError(err)
@@ -280,52 +282,81 @@ func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg m
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-	kTarget model.K8sTarget, results store.ImageBuildResultSet) (store.BuildResult, error) {
+func (ibd *ImageBuildAndDeployer) deploy(
+	ctx context.Context,
+	st store.RStore,
+	ps *build.PipelineState,
+	kTargetID model.TargetID,
+	spec v1alpha1.KubernetesApplySpec,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (store.K8sBuildResult, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
+	inputHash, err := kubernetesapply.ComputeInputHash(spec, imageMaps)
+	if err != nil {
+		return store.K8sBuildResult{}, err
+	}
+
 	// Create API objects.
-	spec := kTarget.KubernetesApplySpec
 	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, imageMaps, spec)
 	if err != nil {
-		return nil, err
+		return store.K8sBuildResult{}, err
 	}
 
 	ctx = ibd.indentLogger(ctx)
 	l := logger.Get(ctx)
 
 	l.Infof("Applying via kubectl:")
-	for _, displayName := range kTarget.DisplayNames {
+
+	// Use a min component count of 2 for computing names,
+	// so that the resource type appears
+	displayNames := k8s.UniqueNames(newK8sEntities, 2)
+	for _, displayName := range displayNames {
 		l.Infof("→ %s", displayName)
 	}
 
-	timeout := kTarget.Timeout.Duration
+	timeout := spec.Timeout.Duration
 	if timeout == 0 {
 		timeout = v1alpha1.KubernetesApplyTimeoutDefault
 	}
 
 	deployed, err := ibd.k8sClient.Upsert(ctx, newK8sEntities, timeout)
 	if err != nil {
-		return nil, err
+		return store.K8sBuildResult{}, err
 	}
+
+	status := v1alpha1.KubernetesApplyStatus{
+		LastApplyTime:    apis.NowMicro(),
+		AppliedInputHash: inputHash,
+	}
+
+	for _, d := range deployed {
+		d.Clean()
+	}
+
+	var resultYAML string
+	resultYAML, err = k8s.SerializeSpecYAML(deployed)
+	if err != nil {
+		return store.K8sBuildResult{}, err
+	}
+
+	status.ResultYAML = resultYAML
 
 	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
 	for _, entity := range deployed {
 		if entity.UID() == "" {
-			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
+			return store.K8sBuildResult{}, fmt.Errorf("Entity not deployed correctly: %v", entity)
 		}
 		hs, err := k8s.ReadPodTemplateSpecHashes(entity)
 		if err != nil {
-			return nil, errors.Wrap(err, "reading pod template spec hashes")
+			return store.K8sBuildResult{}, errors.Wrap(err, "reading pod template spec hashes")
 		}
 		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
 	}
 
-	return store.NewK8sDeployResult(kTarget.ID(), podTemplateSpecHashes, deployed), nil
+	return store.NewK8sDeployResult(kTargetID, status, k8s.ToRefList(deployed), podTemplateSpecHashes), nil
 }
 
 func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) context.Context {
