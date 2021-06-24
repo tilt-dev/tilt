@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -101,10 +103,6 @@ func (m *Controller) filterContainers(stream *PodLogStream, containers []v1alpha
 		return result
 	}
 	return containers
-}
-
-func (c *Controller) SetClient(client ctrlclient.Client) {
-	c.client = client
 }
 
 func (c *Controller) TearDown(ctx context.Context) {
@@ -454,11 +452,12 @@ func (r *Controller) updateStatus(streamName types.NamespacedName) {
 	r.lastUpdate[streamName] = status.DeepCopy()
 }
 
-func (c *Controller) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
 		For(&PodLogStream{}).
-		Watches(c.podSource, handler.Funcs{}).
-		Complete(c)
+		Watches(c.podSource, handler.Funcs{})
+
+	return b, nil
 }
 
 type PodLogWatch struct {

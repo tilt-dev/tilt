@@ -405,7 +405,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 	uploader := cloud.NewSnapshotUploader(snapshotHTTP, addr)
 	up := user.NewFakePrefs()
 	wsl := server.NewWebsocketList()
-	ctrlClient := fake.NewTiltClient()
+	ctrlClient := fake.NewFakeTiltClient()
 	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, uploader, wsl, ctrlClient)
 	if err != nil {
 		t.Fatal(err)

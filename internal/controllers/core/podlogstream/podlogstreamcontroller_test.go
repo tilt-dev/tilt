@@ -467,7 +467,7 @@ func newPLMFixture(t *testing.T) *plmFixture {
 	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
 
 	st := newPLMStore(t, out)
-	fc := fake.NewTiltClient()
+	fc := fake.NewFakeTiltClient()
 	plm := runtimelog.NewPodLogManager(fc)
 	podSource := NewPodSource(ctx, kClient, v1alpha1.NewScheme())
 	plsc := NewController(ctx, fc, st, kClient, podSource)

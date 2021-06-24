@@ -291,11 +291,11 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 	kCli := k8s.NewFakeK8sClient(t)
 	t.Cleanup(kCli.TearDown)
 
-	r := NewReconciler(st, kCli)
-	cf := fake.NewControllerFixture(t, r)
+	cfb := fake.NewControllerFixtureBuilder(t)
+	r := NewReconciler(cfb.Client, st, kCli)
 
 	return &pfrFixture{
-		ControllerFixture: cf,
+		ControllerFixture: cfb.Build(r),
 		t:                 t,
 		st:                st,
 		kCli:              kCli,

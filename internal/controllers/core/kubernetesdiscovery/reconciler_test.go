@@ -283,11 +283,11 @@ func newFixture(t *testing.T) *fixture {
 
 	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := NewContainerRestartDetector()
-	pw := NewReconciler(kClient, of, rd, st)
-	cf := fake.NewControllerFixture(t, pw)
+	cfb := fake.NewControllerFixtureBuilder(t)
+	pw := NewReconciler(cfb.Client, kClient, of, rd, st)
 
 	ret := &fixture{
-		ControllerFixture: cf,
+		ControllerFixture: cfb.Build(pw),
 		kClient:           kClient,
 		pw:                pw,
 		ctx:               ctx,

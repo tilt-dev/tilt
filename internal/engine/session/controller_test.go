@@ -514,7 +514,7 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 		})
 	})
 
-	cli := fake.NewTiltClient()
+	cli := fake.NewFakeTiltClient()
 	c := NewController(cli)
 	ctx := context.Background()
 	l := logger.NewLogger(logger.VerboseLvl, os.Stdout)
