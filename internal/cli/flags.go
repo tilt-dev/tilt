@@ -17,7 +17,7 @@ var defaultWebPort = model.DefaultWebPort
 var defaultNamespace = ""
 var webHostFlag = ""
 var webPortFlag = 0
-var namespaceFlag = ""
+var namespaceOverride = ""
 
 func readEnvDefaults() error {
 	envPort := os.Getenv("TILT_PORT")
@@ -65,7 +65,7 @@ func addDevServerFlags(cmd *cobra.Command) {
 }
 
 func addNamespaceFlag(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&namespaceFlag, "namespace", defaultNamespace, "Namespace for the resources Tilt brings up.")
+	cmd.Flags().StringVar(&namespaceOverride, "namespace", defaultNamespace, "Default namespace for Kubernetes resources (overrides default namespace from active context in kubeconfig)")
 }
 
 var kubeContextOverride string
@@ -74,6 +74,6 @@ func ProvideKubeContextOverride() k8s.KubeContextOverride {
 	return k8s.KubeContextOverride(kubeContextOverride)
 }
 
-func ProvideNamespaceFlag() k8s.NamespaceFlag {
-	return k8s.NamespaceFlag(namespaceFlag)
+func ProvideNamespaceOverride() k8s.NamespaceOverride {
+	return k8s.NamespaceOverride(namespaceOverride)
 }

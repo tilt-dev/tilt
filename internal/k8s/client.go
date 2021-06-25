@@ -42,7 +42,7 @@ import (
 )
 
 type Namespace string
-type NamespaceFlag string
+type NamespaceOverride string
 type PodID string
 type NodeID string
 type ServiceName string
@@ -636,7 +636,7 @@ func ProvideClientset(cfg RESTConfigOrError) ClientsetOrError {
 	return ClientsetOrError{Clientset: clientset, Error: err}
 }
 
-func ProvideClientConfig(contextOverride KubeContextOverride, nsFlag NamespaceFlag) clientcmd.ClientConfig {
+func ProvideClientConfig(contextOverride KubeContextOverride, nsFlag NamespaceOverride) clientcmd.ClientConfig {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 
