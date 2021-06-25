@@ -1,14 +1,13 @@
 import React from "react"
 import styled from "styled-components"
-import {SizeUnit, Color, Glow, spin} from "./style-helpers"
-import { ResourceStatus } from "./types"
 import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
+import { Color, Glow, SizeUnit, spin } from "./style-helpers"
 import { formatBuildDuration } from "./time"
+import { ResourceStatus } from "./types"
 
-const StyledOverviewTableStatus = styled.div`
-`
+const StyledOverviewTableStatus = styled.div``
 
 const StatusIcon = styled.span`
   display: flex;
@@ -55,14 +54,14 @@ const StatusLine = styled.div`
 `
 
 type OverviewTableStatusProps = {
-  status: ResourceStatus,
-  lastBuildDur?: moment.Duration | null,
-  alertCount: number,
+  status: ResourceStatus
+  lastBuildDur?: moment.Duration | null
+  alertCount: number
   isBuild?: boolean
 }
 
 export default function OverviewTableStatus(props: OverviewTableStatusProps) {
-  let {status, lastBuildDur, alertCount, isBuild} = props
+  let { status, lastBuildDur, alertCount, isBuild } = props
   let icon = null
   let msg = ""
   let classes = ""
@@ -102,7 +101,6 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
     default:
       msg = ""
   }
-
 
   return (
     <StyledOverviewTableStatus>
