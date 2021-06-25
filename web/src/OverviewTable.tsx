@@ -1,10 +1,13 @@
-import React from "react"
+import React, { useState } from "react"
 import { CellProps, Column, useSortBy, useTable } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { incr } from "./analytics"
+import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
+import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import TableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
@@ -13,7 +16,13 @@ import TableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
-import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import {
+  Color,
+  Font,
+  FontSize,
+  mixinResetButtonStyle,
+  SizeUnit,
+} from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
@@ -123,6 +132,34 @@ const DetailText = styled.span`
   margin-left: 10px;
 `
 
+const PodId = styled.div`
+  display: flex;
+  align-items: center;
+`
+const PodIdInput = styled.input`
+  background-color: transparent;
+  color: ${Color.gray6};
+  font-family: inherit;
+  font-size: inherit;
+  border: 1px solid ${Color.grayDarkest};
+  border-radius: 2px;
+  padding: ${SizeUnit(0.1)} ${SizeUnit(0.2)};
+  width: 100px;
+
+  &::selection {
+    background-color: ${Color.gray};
+  }
+`
+const PodIdCopy = styled(InstrumentedButton)`
+  ${mixinResetButtonStyle};
+  padding-top: ${SizeUnit(0.5)};
+  padding: ${SizeUnit(0.25)};
+
+  svg {
+    fill: ${Color.gray6};
+  }
+`
+
 function columnDefs(): Column<RowValues>[] {
   let ctx = useStarredResources()
 
@@ -223,6 +260,51 @@ function columnDefs(): Column<RowValues>[] {
       {
         Header: "Pod ID",
         accessor: "podId",
+        width: "50px",
+        Cell: ({ row }: CellProps<RowValues>) => {
+          let [showCopySuccess, setShowCopySuccess] = useState(false)
+
+          let copyClick = () => {
+            copyTextToClipboard(row.values.podId, () => {
+              setShowCopySuccess(true)
+
+              setTimeout(() => {
+                setShowCopySuccess(false)
+              }, 3000)
+            })
+          }
+
+          let icon = showCopySuccess ? (
+            <CheckmarkSvg width="15" height="15" />
+          ) : (
+            <CopySvg width="15" height="15" />
+          )
+
+          function selectPodIdInput(podId: string | null) {
+            const input = document.getElementById(
+              `pod-${row.values.podId}`
+            ) as HTMLInputElement
+            input && input.select()
+          }
+
+          if (!row.values.podId) return null
+          return (
+            <PodId>
+              <PodIdInput
+                id={`pod-${row.values.podId}`}
+                value={row.values.podId}
+                readOnly={true}
+                onClick={() => selectPodIdInput(row.values.podId)}
+              />
+              <PodIdCopy
+                onClick={copyClick}
+                analyticsName="ui.web.overview.copyPodID"
+              >
+                {icon}
+              </PodIdCopy>
+            </PodId>
+          )
+        },
       },
       {
         Header: "Endpoints",
@@ -265,6 +347,11 @@ function columnDefs(): Column<RowValues>[] {
     ],
     [ctx.starredResources]
   )
+}
+
+async function copyTextToClipboard(text: string, cb: () => void) {
+  await navigator.clipboard.writeText(text)
+  cb()
 }
 
 function uiResourceToCell(r: UIResource): RowValues {
