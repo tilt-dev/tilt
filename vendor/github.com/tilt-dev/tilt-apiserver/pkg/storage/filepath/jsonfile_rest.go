@@ -15,11 +15,14 @@ import (
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
+	"k8s.io/apiserver/pkg/storage"
 )
 
 // ErrFileNotExists means the file doesn't actually exist.
@@ -115,6 +118,7 @@ func (f *filepathREST) List(
 	ctx context.Context,
 	options *metainternalversion.ListOptions,
 ) (runtime.Object, error) {
+	p := newSelectionPredicate(options)
 	newListObj := f.NewList()
 	v, err := getListPrt(newListObj)
 	if err != nil {
@@ -122,8 +126,15 @@ func (f *filepathREST) List(
 	}
 
 	dirname := f.objectDirName(ctx)
-	if err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) {
-		appendItem(v, obj)
+	if err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) error {
+		ok, err := p.Matches(obj)
+		if err != nil {
+			return err
+		}
+		if ok {
+			appendItem(v, obj)
+		}
+		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("failed walking filepath %v: %v", dirname, err)
 	}
@@ -336,15 +347,23 @@ func (f *filepathREST) DeleteCollection(
 	options *metav1.DeleteOptions,
 	listOptions *metainternalversion.ListOptions,
 ) (runtime.Object, error) {
+	p := newSelectionPredicate(listOptions)
 	newListObj := f.NewList()
 	v, err := getListPrt(newListObj)
 	if err != nil {
 		return nil, err
 	}
 	dirname := f.objectDirName(ctx)
-	if err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) {
-		_ = f.fs.Remove(path)
-		appendItem(v, obj)
+	if err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) error {
+		ok, err := p.Matches(obj)
+		if err != nil {
+			return err
+		}
+		if ok {
+			_ = f.fs.Remove(path)
+			appendItem(v, obj)
+		}
+		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("failed walking filepath %v: %v", dirname, err)
 	}
@@ -386,6 +405,7 @@ func getListPrt(listObj runtime.Object) (reflect.Value, error) {
 }
 
 func (f *filepathREST) Watch(ctx context.Context, options *metainternalversion.ListOptions) (watch.Interface, error) {
+	p := newSelectionPredicate(options)
 	jw := f.watchSet.newWatch()
 
 	// On initial watch, send all the existing objects
@@ -400,12 +420,36 @@ func (f *filepathREST) Watch(ctx context.Context, options *metainternalversion.L
 	initEvents := []watch.Event{}
 	for i := 0; i < items.Len(); i++ {
 		obj := items.Index(i).Addr().Interface().(runtime.Object)
+		ok, err := p.Matches(obj)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
 		initEvents = append(initEvents, watch.Event{
 			Type:   watch.Added,
 			Object: obj,
 		})
 	}
-	jw.Start(initEvents)
+	jw.Start(p, initEvents)
 
 	return jw, nil
+}
+
+func newSelectionPredicate(options *metainternalversion.ListOptions) storage.SelectionPredicate {
+	p := storage.SelectionPredicate{
+		Label:    labels.Everything(),
+		Field:    fields.Everything(),
+		GetAttrs: storage.DefaultClusterScopedAttr,
+	}
+	if options != nil {
+		if options.LabelSelector != nil {
+			p.Label = options.LabelSelector
+		}
+		if options.FieldSelector != nil {
+			p.Field = options.FieldSelector
+		}
+	}
+	return p
 }
