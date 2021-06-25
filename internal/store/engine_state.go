@@ -124,7 +124,6 @@ type EngineState struct {
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
 	Cmds                  map[string]*Cmd                               `json:"-"`
-	FileWatches           map[types.NamespacedName]*v1alpha1.FileWatch  `json:"-"`
 	KubernetesDiscoveries map[types.NamespacedName]*KubernetesDiscovery `json:"-"`
 	PodLogStreams         map[string]*PodLogStream                      `json:"-"`
 	PortForwards          map[string]*PortForward                       `json:"-"`
@@ -492,7 +491,6 @@ func NewState() *EngineState {
 	}
 
 	ret.Cmds = make(map[string]*Cmd)
-	ret.FileWatches = make(map[types.NamespacedName]*v1alpha1.FileWatch)
 	ret.PodLogStreams = make(map[string]*PodLogStream)
 	ret.PortForwards = make(map[string]*PortForward)
 	ret.KubernetesDiscoveries = make(map[types.NamespacedName]*KubernetesDiscovery)

@@ -64,7 +64,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
-	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
@@ -3905,7 +3904,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	env := k8s.EnvDockerDesktop
 	podSource := podlogstream.NewPodSource(ctx, b.kClient, v1alpha1.NewScheme())
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient, podSource)
-	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfs := portforward.NewSubscriber(b.kClient, cdc)
 	pfs.DisableForTesting()
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
@@ -4015,7 +4013,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, pfs, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -4110,7 +4108,13 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
-	expectedWatchCount := len(fswatch.FileWatchesFromManifests(*state))
+	expectedFileWatches := configs.ToFileWatchObjects(configs.WatchInputs{
+		Manifests:     state.Manifests(),
+		ConfigFiles:   state.ConfigFiles,
+		WatchSettings: state.WatchSettings,
+		Tiltignore:    state.Tiltignore,
+	})
+	expectedWatchCount := len(expectedFileWatches)
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}

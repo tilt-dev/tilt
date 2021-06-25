@@ -12,12 +12,12 @@ import (
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
-	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/engine/portforward"
@@ -126,14 +126,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		state.FatalError = action.Error
 	case hud.ExitAction:
 		handleHudExitAction(state, action)
-	case fswatch.FileWatchCreateAction:
-		fswatch.HandleFileWatchCreateEvent(ctx, state, action)
-	case fswatch.FileWatchUpdateAction:
-		fswatch.HandleFileWatchUpdateEvent(ctx, state, action)
-	case fswatch.FileWatchUpdateStatusAction:
-		fswatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
-	case fswatch.FileWatchDeleteAction:
-		fswatch.HandleFileWatchDeleteEvent(ctx, state, action)
+	case filewatch.FileWatchUpdateStatusAction:
+		filewatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
 	case k8swatch.KubernetesDiscoveryCreateAction:
 		k8swatch.HandleKubernetesDiscoveryCreateAction(ctx, state, action)
 	case k8swatch.KubernetesDiscoveryUpdateAction:

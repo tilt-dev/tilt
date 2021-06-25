@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/watch"
 	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -73,7 +72,7 @@ func (w *watcher) recordEvent(ctx context.Context, client ctrlclient.Client, st 
 		w.status.DeepCopyInto(&fw.Status)
 		err = client.Status().Update(ctx, &fw)
 		if err == nil {
-			st.Dispatch(fswatch.NewFileWatchUpdateStatusAction(&fw))
+			st.Dispatch(NewFileWatchUpdateStatusAction(&fw))
 		} else if !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
 			// can safely ignore not found/conflict errors - because this work loop is the only updater of
 			// status, any conflict errors means the spec was changed since fetching it, and as a result,

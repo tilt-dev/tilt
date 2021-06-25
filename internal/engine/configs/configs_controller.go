@@ -50,6 +50,7 @@ type buildEntry struct {
 	userConfigState       model.UserConfigState
 	tiltfilePath          string
 	checkpointAtExecStart logstore.Checkpoint
+	engineMode            store.EngineMode
 }
 
 func (e buildEntry) Name() model.ManifestName       { return model.TiltfileManifestName }
@@ -124,6 +125,7 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 		userConfigState:       state.UserConfigState,
 		tiltfilePath:          tiltfilePath,
 		checkpointAtExecStart: state.LogStore.Checkpoint(),
+		engineMode:            state.EngineMode,
 	}, true
 }
 
@@ -162,7 +164,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 		}
 	}
 
-	err := updateOwnedObjects(ctx, cc.ctrlClient, tlr)
+	err := updateOwnedObjects(ctx, cc.ctrlClient, tlr, entry.engineMode)
 	if err != nil {
 		if tlr.Error == nil {
 			tlr.Error = errors.Wrap(err, "Failed to update API server")
