@@ -295,7 +295,11 @@ func (ibd *ImageBuildAndDeployer) deploy(
 
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
-	status := ibd.r.ForceApply(ctx, spec, imageMaps)
+	kTargetNN := types.NamespacedName{Name: kTargetID.Name.String()}
+	status, err := ibd.r.ForceApply(ctx, kTargetNN, spec, imageMaps)
+	if err != nil {
+		return store.K8sBuildResult{}, fmt.Errorf("applying %s: %v", kTargetID, err)
+	}
 	if status.Error != "" {
 		return store.K8sBuildResult{}, fmt.Errorf("%s", status.Error)
 	}
