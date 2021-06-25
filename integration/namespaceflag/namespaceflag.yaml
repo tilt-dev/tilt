@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: namespaceflag
+  labels:
+    app: namespaceflag
+spec:
+  selector:
+    matchLabels:
+      app: namespaceflag
+  template:
+    metadata:
+      labels:
+        app: namespaceflag
+    spec:
+      containers:
+      - name: namespaceflag
+        image: namespaceflag
+        ports:
+        - containerPort: 8000
