@@ -609,7 +609,7 @@ func (w *Reconciler) ensurePodLogStreamsExist(ctx context.Context, kd v1alpha1.K
 
 	for podKey, pls := range plsByPod {
 		if !seenPods[podKey] {
-			if err := w.ctrlClient.Delete(ctx, &pls); err != nil {
+			if err := w.ctrlClient.Delete(ctx, &pls); ctrlclient.IgnoreNotFound(err) != nil {
 				errs = append(errs, fmt.Errorf("failed to delete PodLogStream %s for KubernetesDiscovery %s: %v",
 					pls.Name, kd.Name, err))
 			}
