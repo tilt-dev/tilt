@@ -1,6 +1,5 @@
 import React from "react"
 import styled from "styled-components"
-import { ReactComponent as TriggerButtonManualSvg } from "./assets/svg/trigger-button-manual.svg"
 import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
@@ -12,12 +11,6 @@ export let TriggerButtonRoot = styled(InstrumentedButton)`
   align-items: center;
   justify-content: center;
 
-  &.is-disabled {
-    pointer-events: none;
-  }
-  &.is-disabled:active svg {
-    transform: scale(1);
-  }
   & .fillStd {
     transition: fill ${AnimDuration.default} ease;
     fill: ${Color.grayLight};
@@ -37,12 +30,28 @@ export let TriggerButtonRoot = styled(InstrumentedButton)`
   &.is-queued > svg {
     animation: spin 1s linear infinite;
   }
+
+  // DISABLED BUTTON
+  &.is-disabled {
+    cursor: not-allowed;
+  }
+  &.is-disabled:hover .fillStd {
+    fill: ${Color.grayLight};
+  }
+  &.is-disabled:active svg {
+    transform: scale(1);
+  }
+
+  // SHOULD BE CLICKED
+  &.shouldBeClicked .fillStd {
+    fill: ${Color.blue};
+  }
 `
 
 export const TriggerButtonTooltip = {
-  AlreadyQueued: "Cannot trigger update. Resource is already queued!",
+  AlreadyQueued: "Resource is already queued!",
   NeedsManualTrigger: "Trigger an update",
-  UpdateInProgOrPending: "Cannot trigger update. Resource is already updating!",
+  UpdateInProgOrPending: "Resource is already updating!",
   ClickToForce: "Force an update",
 }
 
@@ -56,13 +65,13 @@ type TriggerButtonProps = {
 }
 
 const titleText = (
-  disabled: boolean,
+  isDisabled: boolean,
   shouldbeClicked: boolean,
   isQueued: boolean
 ): string => {
   if (isQueued) {
     return TriggerButtonTooltip.AlreadyQueued
-  } else if (disabled) {
+  } else if (isDisabled) {
     return TriggerButtonTooltip.UpdateInProgOrPending
   } else if (shouldbeClicked) {
     return TriggerButtonTooltip.NeedsManualTrigger
@@ -71,20 +80,20 @@ const titleText = (
   }
 }
 
-function TriggerButton(props: TriggerButtonProps) {
+function OverviewTableTriggerButton(props: TriggerButtonProps) {
   let isManualTriggerMode = props.triggerMode !== TriggerMode.TriggerModeAuto
   let isManualTriggerIncludingInitial =
     props.triggerMode === TriggerMode.TriggerModeManual
 
   // trigger button will only look actionable if there isn't any pending / active build
-  let disabled =
+  let isDisabled =
     props.isQueued || // already queued for manual run
     props.isBuilding || // currently building
-    !(!isManualTriggerIncludingInitial && !props.hasBuilt) || // waiting to perform its initial build
-    !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
+    (!isManualTriggerIncludingInitial && !props.hasBuilt) || // waiting to perform its initial build
+    (props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
 
   let shouldBeClicked = false
-  if (!disabled) {
+  if (!isDisabled) {
     if (props.hasPendingChanges && isManualTriggerMode) {
       shouldBeClicked = true
     } else if (!props.hasBuilt && isManualTriggerIncludingInitial) {
@@ -95,22 +104,22 @@ function TriggerButton(props: TriggerButtonProps) {
   function triggerUpdate(name: string) {
     let url = `//${window.location.host}/api/trigger`
 
-    fetch(url, {
-      method: "post",
-      body: JSON.stringify({
-        manifest_names: [name],
-        build_reason: 16 /* BuildReasonFlagTriggerWeb */,
-      }),
-    }).then((response) => {
-      if (!response.ok) {
-        console.log(response)
-      }
-    })
+    !isDisabled &&
+      fetch(url, {
+        method: "post",
+        body: JSON.stringify({
+          manifest_names: [name],
+          build_reason: 16 /* BuildReasonFlagTriggerWeb */,
+        }),
+      }).then((response) => {
+        if (!response.ok) {
+          console.log(response)
+        }
+      })
   }
 
-  // Add padding to center the icon better.
   let classes = []
-  if (disabled) {
+  if (isDisabled) {
     classes.push("is-disabled")
   }
   if (props.isQueued) {
@@ -119,16 +128,20 @@ function TriggerButton(props: TriggerButtonProps) {
   if (props.isBuilding) {
     classes.push("is-building")
   }
+  if (shouldBeClicked) {
+    classes.push("shouldBeClicked")
+  }
   return (
     <TriggerButtonRoot
+      aria-disabled={isDisabled}
       onClick={() => triggerUpdate(props.resourceName)}
       className={classes.join(" ")}
-      title={titleText(disabled, shouldBeClicked, props.isQueued)}
+      title={titleText(isDisabled, shouldBeClicked, props.isQueued)}
       analyticsName={"ui.web.triggerResource"}
     >
-      {shouldBeClicked ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
+      <TriggerButtonSvg />
     </TriggerButtonRoot>
   )
 }
 
-export default React.memo(TriggerButton)
+export default React.memo(OverviewTableTriggerButton)

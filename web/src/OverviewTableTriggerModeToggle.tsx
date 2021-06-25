@@ -74,8 +74,9 @@ export function toggleTriggerMode(name: string, mode: TriggerMode) {
   })
 }
 
-
-export default function TableTriggerModeToggle(props: TriggerModeToggleProps) {
+export default function OverviewTableTriggerModeToggle(
+  props: TriggerModeToggleProps
+) {
   let isManualTriggerMode =
     props.triggerMode == TriggerMode.TriggerModeManualWithAutoInit ||
     props.triggerMode == TriggerMode.TriggerModeManual

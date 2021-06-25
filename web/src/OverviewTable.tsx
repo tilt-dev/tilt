@@ -6,16 +6,16 @@ import { buildAlerts, runtimeAlerts } from "./alerts"
 import { incr } from "./analytics"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { displayURL } from "./links"
+import TableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
+import TriggerButton from "./OverviewTableTriggerButton"
+import TableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
-import TableStarResourceButton from "./TableStarResourceButton"
-import TableTriggerModeToggle from "./TableTriggerModeToggle"
 import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import TriggerButton from "./TriggerButton"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -28,20 +28,24 @@ type OverviewTableProps = {
 }
 
 type RowValues = {
-  // lastBuild: Build | null
-  statusLine: StatusLineType
-  currentBuildStartTime: string
-  endpoints: UILink[]
-  hasPendingChanges: boolean
   lastDeployTime: string
+  trigger: OverviewTableTrigger
   name: string
-  podId: string
-  queued: boolean
   resourceTypeLabel: string
+  statusLine: OverviewTableStatus
+  podId: string
+  endpoints: UILink[]
   triggerMode: TriggerMode
 }
 
-type StatusLineType = {
+type OverviewTableTrigger = {
+  isBuilding: boolean
+  hasBuilt: boolean
+  hasPendingChanges: boolean
+  isQueued: boolean
+}
+
+type OverviewTableStatus = {
   buildStatus: ResourceStatus
   buildAlertCount: number
   lastBuildDur: moment.Duration | null
@@ -152,19 +156,17 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Trigger",
-        accessor: "hasPendingChanges",
+        accessor: "trigger",
         disableSortBy: true,
         width: "20px",
         Cell: ({ row }: CellProps<RowValues>) => {
-          let building = !isZeroTime(row.values.currentBuildStartTime)
-          let hasBuilt = row.values.lastBuild !== null
           return (
             <TriggerButton
-              hasPendingChanges={row.values.hasPendingChanges}
-              hasBuilt={hasBuilt}
-              isBuilding={building}
+              hasPendingChanges={row.values.trigger.hasPendingChanges}
+              hasBuilt={row.values.trigger.hasBuilt}
+              isBuilding={row.values.trigger.isBuilding}
               triggerMode={row.values.triggerMode}
-              isQueued={row.values.queued}
+              isQueued={row.values.trigger.isQueued}
               resourceName={row.values.name}
             />
           )
@@ -268,27 +270,34 @@ function columnDefs(): Column<RowValues>[] {
 function uiResourceToCell(r: UIResource): RowValues {
   let res = (r.status || {}) as UIResourceStatus
   let buildHistory = res.buildHistory || []
-  let lastBuild: Build | null = buildHistory.length > 0 ? buildHistory[0] : null
+  let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
+  let lastBuildDur =
+    lastBuild?.startTime && lastBuild?.finishTime
+      ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
+      : null
+  let currentBuildStartTime = res.currentBuild?.startTime ?? ""
+  let isBuilding = !isZeroTime(currentBuildStartTime)
+  let hasBuilt = lastBuild !== null
 
   return {
+    lastDeployTime: res.lastDeployTime ?? "",
+    trigger: {
+      isBuilding: isBuilding,
+      hasBuilt: hasBuilt,
+      hasPendingChanges: !!res.hasPendingChanges,
+      isQueued: !!res.queued,
+    },
+    name: r.metadata?.name ?? "",
+    resourceTypeLabel: resourceTypeLabel(r),
     statusLine: {
       buildStatus: buildStatus(r),
-      lastBuildDur:
-        lastBuild && lastBuild.startTime && lastBuild.finishTime
-          ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
-          : null,
+      lastBuildDur: lastBuildDur,
       buildAlertCount: buildAlerts(r, null).length,
       runtimeAlertCount: runtimeAlerts(r, null).length,
       runtimeStatus: runtimeStatus(r),
     },
-    currentBuildStartTime: res.currentBuild?.startTime ?? "",
-    endpoints: res.endpointLinks ?? [],
-    hasPendingChanges: !!res.hasPendingChanges,
-    lastDeployTime: res.lastDeployTime ?? "",
-    name: r.metadata?.name ?? "",
     podId: res.k8sResourceInfo?.podName ?? "",
-    queued: !!res.queued,
-    resourceTypeLabel: resourceTypeLabel(r),
+    endpoints: res.endpointLinks ?? [],
     triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
   }
 }

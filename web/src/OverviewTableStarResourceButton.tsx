@@ -50,7 +50,7 @@ type StarResourceButtonProps = {
   ctx: StarredResourcesContext
 }
 
-export default function TableStarResourceButton(
+export default function OverviewTableStarResourceButton(
   props: StarResourceButtonProps
 ): JSX.Element {
   let { ctx, resourceName } = props
