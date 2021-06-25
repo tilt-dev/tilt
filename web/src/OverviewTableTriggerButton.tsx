@@ -138,6 +138,7 @@ function OverviewTableTriggerButton(props: TriggerButtonProps) {
       className={classes.join(" ")}
       title={titleText(isDisabled, shouldBeClicked, props.isQueued)}
       analyticsName={"ui.web.triggerResource"}
+      isDisabled={isDisabled}
     >
       <TriggerButtonSvg />
     </TriggerButtonRoot>

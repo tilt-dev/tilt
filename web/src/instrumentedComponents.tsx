@@ -5,6 +5,7 @@ export type InstrumentedButtonProps = React.ButtonHTMLAttributes<HTMLButtonEleme
   analyticsName: string
   analyticsTags?: Tags
   ref?: LegacyRef<HTMLButtonElement>
+  isDisabled?: boolean
 }
 
 export function InstrumentedButton(props: InstrumentedButtonProps) {
@@ -13,7 +14,7 @@ export function InstrumentedButton(props: InstrumentedButtonProps) {
   const instrumentedOnClick = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
-    incr(analyticsName, tags)
+    !props.isDisabled && incr(analyticsName, tags)
     if (onClick) {
       onClick(e)
     }
