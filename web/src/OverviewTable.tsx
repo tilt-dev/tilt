@@ -138,7 +138,7 @@ function columnDefs(): Column<RowValues>[] {
         },
       },
       {
-        Header: "Last Updated",
+        Header: "Updated",
         width: "20px",
         accessor: "lastDeployTime",
         Cell: ({ row }: CellProps<RowValues>) => {
@@ -223,6 +223,7 @@ function columnDefs(): Column<RowValues>[] {
       {
         Header: "Endpoints",
         accessor: "endpoints",
+        sortType: "basic",
         Cell: ({ row }: CellProps<RowValues>) => {
           // @ts-ignore
           let endpoints = row.values.endpoints.map((ep) => {
