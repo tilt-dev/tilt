@@ -152,6 +152,8 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Trigger",
+        accessor: "hasPendingChanges",
+        disableSortBy: true,
         width: "20px",
         Cell: ({ row }: CellProps<RowValues>) => {
           let building = !isZeroTime(row.values.currentBuildStartTime)
@@ -346,15 +348,17 @@ export default function OverviewTable(props: OverviewTableProps) {
                 ])}
               >
                 {column.render("Header")}
-                <ResourceTableHeaderSortTriangle
-                  className={
-                    column.isSorted
-                      ? column.isSortedDesc
-                        ? "is-sorted-desc"
-                        : "is-sorted-asc"
-                      : ""
-                  }
-                ></ResourceTableHeaderSortTriangle>
+                {column.canSort && (
+                  <ResourceTableHeaderSortTriangle
+                    className={
+                      column.isSorted
+                        ? column.isSortedDesc
+                          ? "is-sorted-desc"
+                          : "is-sorted-asc"
+                        : ""
+                    }
+                  />
+                )}
               </ResourceTableHeader>
             ))}
           </ResourceTableRow>

@@ -79,9 +79,9 @@ function TriggerButton(props: TriggerButtonProps) {
   // trigger button will only look actionable if there isn't any pending / active build
   let disabled =
     props.isQueued || // already queued for manual run
-    props.isBuilding // currently building
-  // !(!isManualTriggerIncludingInitial && !props.hasBuilt) || // waiting to perform its initial build
-  // !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
+    props.isBuilding || // currently building
+    !(!isManualTriggerIncludingInitial && !props.hasBuilt) || // waiting to perform its initial build
+    !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
 
   let shouldBeClicked = false
   if (!disabled) {
