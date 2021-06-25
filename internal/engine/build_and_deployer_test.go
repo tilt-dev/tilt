@@ -796,13 +796,10 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kl := &fakeKINDLoader{}
 	ctrlClient := fake.NewFakeTiltClient()
-	bd, err := provideFakeBuildAndDeployer(ctx, dockerClient, k8s, dir, env, mode, dcc,
-		fakeClock{now: time.Unix(1551202573, 0)}, kl, ta, ctrlClient)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	st := store.NewTestingStore()
+	bd, err := provideFakeBuildAndDeployer(ctx, dockerClient, k8s, dir, env, mode, dcc,
+		fakeClock{now: time.Unix(1551202573, 0)}, kl, ta, ctrlClient, st)
+	require.NoError(t, err)
 
 	return &bdFixture{
 		TempDirFixture: f,

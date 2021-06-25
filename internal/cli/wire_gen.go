@@ -242,7 +242,19 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, client, ownerFetcher, containerRestartDetector, storeStore)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
+	labels := _wireLabelsValue
+	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
+	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)
@@ -263,15 +275,6 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	podLogManager := runtimelog.NewPodLogManager(deferredClient)
 	subscriber := portforward2.NewSubscriber(client, deferredClient)
 	fswatchManifestSubscriber := fswatch.NewManifestSubscriber(deferredClient)
-	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
-	localClient := docker.ProvideLocalCli(ctx, localEnv)
-	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
 	execUpdater := containerupdate.NewExecUpdater(client)
 	buildcontrolUpdateModeFlag := provideUpdateModeFlag()
@@ -281,13 +284,10 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	buildClock := build.ProvideClock()
 	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, updateMode, kubeContext, buildClock)
-	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
 	kindLoader := buildcontrol.NewKINDLoader(env, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, kubeContext, analytics3, updateMode, buildClock, kindLoader, deferredClient)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, kubeContext, analytics3, updateMode, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, buildClock)
@@ -345,9 +345,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 
 var (
 	_wireReducerValue   = engine.UpperReducer
+	_wireLabelsValue    = dockerfile.Labels{}
 	_wireOpenURLValue   = openurl.OpenURL(openurl.BrowserOpen)
 	_wireOpenInputValue = prompt.OpenInput(prompt.TTYOpen)
-	_wireLabelsValue    = dockerfile.Labels{}
 )
 
 func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, error) {
@@ -439,7 +439,19 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, client)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, client, ownerFetcher, containerRestartDetector, storeStore)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme)
+	runtime := k8s.ProvideContainerRuntime(ctx, client)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
+	labels := _wireLabelsValue
+	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
+	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)
@@ -460,15 +472,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	podLogManager := runtimelog.NewPodLogManager(deferredClient)
 	subscriber := portforward2.NewSubscriber(client, deferredClient)
 	fswatchManifestSubscriber := fswatch.NewManifestSubscriber(deferredClient)
-	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
-	localClient := docker.ProvideLocalCli(ctx, localEnv)
-	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
-	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
 	execUpdater := containerupdate.NewExecUpdater(client)
 	buildcontrolUpdateModeFlag := provideUpdateModeFlag()
@@ -478,13 +481,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	buildClock := build.ProvideClock()
 	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, updateMode, kubeContext, buildClock)
-	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
 	kindLoader := buildcontrol.NewKINDLoader(env, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, kubeContext, analytics3, updateMode, buildClock, kindLoader, deferredClient)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, env, kubeContext, analytics3, updateMode, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, buildClock)
@@ -633,7 +633,19 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	ownerFetcher := k8s.ProvideOwnerFetcher(ctx, k8sClient)
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, k8sClient, ownerFetcher, containerRestartDetector, storeStore)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme)
+	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
+	labels := _wireLabelsValue
+	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
+	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, dockerBuilder, kubeContext, storeStore)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)

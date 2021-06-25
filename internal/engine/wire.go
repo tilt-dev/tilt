@@ -12,7 +12,9 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/store"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -52,12 +54,14 @@ func provideFakeBuildAndDeployer(
 	clock build.Clock,
 	kp buildcontrol.KINDLoader,
 	analytics *analytics.TiltAnalytics,
-	ctrlClient ctrlclient.Client) (buildcontrol.BuildAndDeployer, error) {
+	ctrlClient ctrlclient.Client,
+	st store.RStore) (buildcontrol.BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		k8s.ProvideContainerRuntime,
 		provideFakeKubeContext,
 		provideFakeDockerClusterEnv,
+		kubernetesapply.NewReconciler,
 	)
 
 	return nil, nil

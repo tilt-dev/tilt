@@ -35,9 +35,14 @@ type dockerImageBuilder struct {
 	extraLabels dockerfile.Labels
 }
 
-type DockerBuilder interface {
+// Describes how a docker instance connects to kubernetes instances.
+type DockerKubeConnection interface {
 	// Returns whether this docker builder is going to build to the given kubernetes context.
 	WillBuildToKubeContext(kctx k8s.KubeContext) bool
+}
+
+type DockerBuilder interface {
+	DockerKubeConnection
 
 	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error)
 	DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error)

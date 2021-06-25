@@ -13,7 +13,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uisession"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 var controllerSet = wire.NewSet(
@@ -53,7 +52,6 @@ func ProvideControllers(
 var WireSet = wire.NewSet(
 	NewTiltServerControllerManager,
 
-	v1alpha1.NewScheme,
 	NewControllerBuilder,
 	ProvideUncachedObjects,
 
