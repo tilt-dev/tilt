@@ -192,13 +192,15 @@ function columnDefs(): Column<RowValues>[] {
       },
       {
         Header: "Type",
-        width: "150px",
         accessor: "resourceTypeLabel",
+        width: "150px",
       },
       {
         Header: "Status",
-        width: "150px",
         accessor: "statusLine",
+        disableSortBy: true,
+        width: "150px",
+
         Cell: ({ row }: CellProps<RowValues>) => {
           return (
             <>
