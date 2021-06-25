@@ -3960,12 +3960,15 @@ func newTestFixture(t *testing.T) *testFixture {
 	pfr := apiportforward.NewReconciler(cdc, st, b.kClient)
 
 	wsl := server.NewWebsocketList()
+
+	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st)
+
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
 		plsc,
 		kdc,
-		kubernetesapply.NewReconciler(cdc, b.kClient, sch),
+		kar,
 		ctrluisession.NewReconciler(cdc, wsl),
 		ctrluiresource.NewReconciler(cdc, wsl),
 		ctrluibutton.NewReconciler(cdc, wsl),

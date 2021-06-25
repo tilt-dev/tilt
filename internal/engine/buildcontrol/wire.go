@@ -13,22 +13,27 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tracer"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 var BaseWireSet = wire.NewSet(
 	// dockerImageBuilder ( = ImageBuilder)
 	wire.Value(dockerfile.Labels{}),
 
+	v1alpha1.NewScheme,
 	k8s.ProvideMinikubeClient,
 	build.DefaultDockerBuilder,
 	build.NewDockerImageBuilder,
 	build.NewExecCustomBuilder,
 	wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)),
+	wire.Bind(new(build.DockerKubeConnection), new(build.DockerBuilder)),
 
 	// BuildOrder
 	NewDockerComposeBuildAndDeployer,
@@ -55,10 +60,12 @@ func ProvideImageBuildAndDeployer(
 	clock build.Clock,
 	kp KINDLoader,
 	analytics *analytics.TiltAnalytics,
-	ctrlclient ctrlclient.Client) (*ImageBuildAndDeployer, error) {
+	ctrlclient ctrlclient.Client,
+	st store.RStore) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,
 		wire.Value(UpdateModeFlag(UpdateModeAuto)),
+		kubernetesapply.NewReconciler,
 	)
 
 	return nil, nil
@@ -77,6 +84,7 @@ func ProvideDockerComposeBuildAndDeployer(
 
 		// EnvNone ensures that we get an exploding k8s client.
 		wire.Value(k8s.KubeContextOverride("")),
+		wire.Value(k8s.NamespaceOverride("")),
 		k8s.ProvideClientConfig,
 		k8s.ProvideKubeContext,
 		k8s.ProvideKubeConfig,

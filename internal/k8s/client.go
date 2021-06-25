@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/cmd/wait"
 
 	// Client auth plugins! They will auto-init if we import them.
@@ -41,6 +42,7 @@ import (
 )
 
 type Namespace string
+type NamespaceOverride string
 type PodID string
 type NodeID string
 type ServiceName string
@@ -634,12 +636,15 @@ func ProvideClientset(cfg RESTConfigOrError) ClientsetOrError {
 	return ClientsetOrError{Clientset: clientset, Error: err}
 }
 
-func ProvideClientConfig(contextOverride KubeContextOverride) clientcmd.ClientConfig {
+func ProvideClientConfig(contextOverride KubeContextOverride, nsFlag NamespaceOverride) clientcmd.ClientConfig {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 
 	overrides := &clientcmd.ConfigOverrides{
 		CurrentContext: string(contextOverride),
+		Context: clientcmdapi.Context{
+			Namespace: string(nsFlag),
+		},
 	}
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		rules,

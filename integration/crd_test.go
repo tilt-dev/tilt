@@ -6,6 +6,7 @@ import (
 	"context"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
@@ -36,7 +37,7 @@ func TestCRD(t *testing.T) {
 	assert.Contains(t, contents, "name: bobo\n")
 	assert.Contains(t, contents, "nonImage: bobo\n")
 	assert.NotContains(t, contents, "image: bobo\n")
-	assert.Contains(t, contents, "imagePullPolicy: IfNotPresent\n")
+	assert.Regexp(t, regexp.MustCompile("imagePullPolicy: (IfNotPresent|Never)\n"), contents)
 }
 
 // Make sure that running 'tilt down' with no resources installed
