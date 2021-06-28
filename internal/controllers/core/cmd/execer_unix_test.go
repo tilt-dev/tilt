@@ -33,8 +33,9 @@ echo BACKGROUND $!
 	// logger's Writer after Wait has returned, but it's the kind of thing that could lead to surprises in the future.
 	// (e.g., tests like this, or if we use Cmd to power `local` in the Tiltfile)
 	var grandkidPid int
+	timeoutInterval := time.Second
 	timeout := time.After(time.Second)
-	interval := 5 * time.Millisecond
+	checkInterval := 5 * time.Millisecond
 	for {
 		lines := strings.Split(f.testWriter.String(), "\n")
 		if strings.Contains(lines[1], "BACKGROUND") {
@@ -44,16 +45,11 @@ echo BACKGROUND $!
 			break
 		}
 		select {
-		case <-time.After(interval):
+		case <-time.After(checkInterval):
 		case <-timeout:
-			t.Fatalf("timed out after %s waiting for grandkid pid. current output: %q", timeout, f.testWriter.String())
+			t.Fatalf("timed out after %s waiting for grandkid pid. current output: %q", timeoutInterval, f.testWriter.String())
 		}
 	}
-
-	lines := strings.Split(f.testWriter.String(), "\n")
-	assert.Contains(t, lines[1], "BACKGROUND")
-	grandkidPid, err := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(lines[1], "BACKGROUND")))
-	require.NoError(t, err)
 
 	grandkid, err := os.FindProcess(grandkidPid)
 	require.NoError(t, err)
