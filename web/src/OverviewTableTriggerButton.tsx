@@ -102,7 +102,7 @@ function OverviewTableTriggerButton(props: TriggerButtonProps) {
   }
 
   function triggerUpdate(name: string) {
-    let url = `//${window.location.host}/api/trigger`
+    let url = `/api/trigger`
 
     !isDisabled &&
       fetch(url, {
