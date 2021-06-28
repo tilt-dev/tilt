@@ -12,34 +12,26 @@ import {
 
 export const StyledTableStarResourceButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
-  padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
 `
-let StarIcon = styled(StarSvg)`
-  width: ${SizeUnit(1 / 2.5)};
-  height: ${SizeUnit(1 / 2.5)};
-`
-let ActiveStarIcon = styled(StarIcon)`
-  transition: transform ${AnimDuration.short} ease;
-  fill: ${Color.grayLight};
 
-  ${StyledTableStarResourceButton}:hover & {
+let StyledStarSvg = styled(StarSvg)`
+  width: ${SizeUnit(0.4)};
+  height: ${SizeUnit(0.4)};
+  padding: ${SizeUnit(0.5)};
+  transition: transform ${AnimDuration.short} ease,
+    opacity ${AnimDuration.short} ease;
+
+  &:active {
+    transform: scale(1.2);
+  }
+  &.is-starred {
     fill: ${Color.blue};
   }
-`
-
-let InactiveStarIcon = styled(StarIcon)`
-  transition: fill ${AnimDuration.default} linear,
-    opacity ${AnimDuration.short} linear;
-  opacity: 0;
-
-  .u-showStarOnHover:hover &,
-  ${StyledTableStarResourceButton}:focus & {
+  &.is-unstarred {
+    opacity: 0;
     fill: ${Color.grayLight};
-    opacity: 1;
   }
-
-  ${StyledTableStarResourceButton}:hover & {
-    fill: ${Color.blue};
+  &.is-unstarred:hover {
     opacity: 1;
   }
 `
@@ -58,14 +50,15 @@ export default function OverviewTableStarResourceButton(
     ctx.starredResources && ctx.starredResources.includes(resourceName)
 
   let icon: JSX.Element
+  let classes = ""
   let title: string
 
   if (isStarred) {
-    icon = <ActiveStarIcon />
-    title = "Unstar"
+    title = "Remove Star"
+    classes = "is-starred"
   } else {
-    icon = <InactiveStarIcon />
-    title = "Star"
+    title = "Star this Resource"
+    classes = "is-unstarred"
   }
 
   return (
@@ -75,7 +68,7 @@ export default function OverviewTableStarResourceButton(
       analyticsName={props.analyticsName}
       analyticsTags={{ newStarState: (!isStarred).toString() }}
     >
-      {icon}
+      <StyledStarSvg className={classes} />
     </StyledTableStarResourceButton>
   )
 }
