@@ -2,67 +2,412 @@ package kubernetesapply
 
 import (
 	"context"
+	"fmt"
+	"sync"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+
+	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
 )
 
 type Reconciler struct {
-	kCli       k8s.Client
-	ctrlClient ctrlclient.Client
-	indexer    *indexer.Indexer
+	st          store.RStore
+	dkc         build.DockerKubeConnection
+	kubeContext k8s.KubeContext
+	k8sClient   k8s.Client
+	ctrlClient  ctrlclient.Client
+	indexer     *indexer.Indexer
+
+	mu sync.Mutex
+
+	// Protected by the mutex.
+	results map[types.NamespacedName]*Result
 }
 
-func (r *Reconciler) SetClient(client ctrlclient.Client) {
-	r.ctrlClient = client
-}
-
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesApply{}).
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Complete(r)
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+
+	return b, nil
 }
 
-func NewReconciler(kCli k8s.Client, scheme *runtime.Scheme) *Reconciler {
+func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, dkc build.DockerKubeConnection, kubeContext k8s.KubeContext, st store.RStore) *Reconciler {
 	return &Reconciler{
-		kCli:    kCli,
-		indexer: indexer.NewIndexer(scheme, indexImageMap),
+		ctrlClient:  ctrlClient,
+		k8sClient:   k8sClient,
+		indexer:     indexer.NewIndexer(scheme, indexImageMap),
+		dkc:         dkc,
+		kubeContext: kubeContext,
+		st:          st,
+		results:     make(map[types.NamespacedName]*Result),
 	}
 }
 
 // Reconcile manages namespace watches for the modified KubernetesApply object.
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	nn := request.NamespacedName
+
 	var ka v1alpha1.KubernetesApply
-	err := r.ctrlClient.Get(ctx, request.NamespacedName, &ka)
-	r.indexer.OnReconcile(request.NamespacedName, &ka)
+	err := r.ctrlClient.Get(ctx, nn, &ka)
+	r.indexer.OnReconcile(nn, &ka)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
 		// delete
+		// TODO(nick): Implementing this correctly
+		// will fix https://github.com/tilt-dev/tilt/issues/3137
+		r.mu.Lock()
+		delete(r.results, nn)
+		r.mu.Unlock()
+
 		return ctrl.Result{}, nil
 	}
 
-	// add or replace
+	ctx = store.MustObjectLogHandler(ctx, r.st, &ka)
+
+	// Fetch all the images needed to apply this YAML.
+	imageMaps := make(map[types.NamespacedName]*v1alpha1.ImageMap)
+	for _, name := range ka.Spec.ImageMaps {
+		var im v1alpha1.ImageMap
+		nn := types.NamespacedName{Name: name}
+		err := r.ctrlClient.Get(ctx, nn, &im)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// If the map isn't found, keep going and let shouldDeployOnReconcile
+				// handle it.
+				continue
+			}
+			return ctrl.Result{}, err
+		}
+
+		imageMaps[nn] = &im
+	}
+
+	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps) {
+		// TODO(nick): Like with other reconcilers, there should always
+		// be a reason why we're not deploying, and we should update the
+		// Status field of KubernetesApply with that reson.
+		return ctrl.Result{}, nil
+	}
+
+	// Update the apiserver with the result of this deploy.
+	_, err = r.ForceApply(ctx, nn, ka.Spec, imageMaps)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
+}
+
+// Determine if we should deploy the current YAML.
+//
+// Ensures:
+// 1) We have enough info to deploy, and
+// 2) Either we haven't deployed before,
+//    or one of the inputs has changed since the last deploy.
+func (r *Reconciler) shouldDeployOnReconcile(
+	nn types.NamespacedName,
+	ka *v1alpha1.KubernetesApply,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) bool {
+	if ka.ObjectMeta.Labels[v1alpha1.LabelOwnerKind] == v1alpha1.LabelOwnerKindTiltfile {
+		// Until resource dependencies are expressed in the API,
+		// we can't use reconciliation to deploy KubernetesApply objects.
+		return false
+	}
+
+	for _, imageMapName := range ka.Spec.ImageMaps {
+		_, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
+		if !ok {
+			// We haven't built the images yet to deploy.
+			return false
+		}
+	}
+
+	r.mu.Lock()
+	result, ok := r.results[nn]
+	r.mu.Unlock()
+
+	if !ok {
+		// We've never successfully deployed before, so deploy now.
+		return true
+	}
+
+	if !apicmp.DeepEqual(ka.Spec, result.Spec) {
+		// The YAML to deploy changed.
+		return true
+	}
+
+	imageMapNames := ka.Spec.ImageMaps
+	if len(imageMapNames) != len(result.ImageMapSpecs) ||
+		len(imageMapNames) != len(result.ImageMapStatuses) {
+		return true
+	}
+
+	for i, name := range ka.Spec.ImageMaps {
+		im := imageMaps[types.NamespacedName{Name: name}]
+		if !apicmp.DeepEqual(im.Spec, result.ImageMapSpecs[i]) {
+
+			return true
+		}
+		if !apicmp.DeepEqual(im.Status, result.ImageMapStatuses[i]) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Inject the images into the YAML and apply it to the cluster, unconditionally.
+//
+// Update the apiserver when finished.
+//
+// We expose this as a public method as a hack! Currently, in Tilt, BuildController
+// handles dependencies between resources. The API server doesn't know about build
+// dependencies yet. So Tiltfile-owned resources are applied manually, rather than
+// going through the normal reconcile system.
+func (r *Reconciler) ForceApply(
+	ctx context.Context,
+	nn types.NamespacedName,
+	spec v1alpha1.KubernetesApplySpec,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, error) {
+	status := r.forceApplyHelper(ctx, spec, imageMaps)
+
+	statusCopy := status.DeepCopy()
+	result := Result{
+		Spec:   spec,
+		Status: *statusCopy,
+	}
+	for _, imageMapName := range spec.ImageMaps {
+		im, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
+		if !ok {
+			// this should never happen, but if it does, just continue quietly.
+			continue
+		}
+
+		result.ImageMapSpecs = append(result.ImageMapSpecs, im.Spec)
+		result.ImageMapStatuses = append(result.ImageMapStatuses, im.Status)
+	}
+
+	var ka v1alpha1.KubernetesApply
+	err := r.ctrlClient.Get(ctx, nn, &ka)
+	if err != nil {
+		return status, err
+	}
+
+	ka.Status = status
+	err = r.ctrlClient.Status().Update(ctx, &ka)
+	if err != nil {
+		return status, err
+	}
+
+	r.mu.Lock()
+	r.results[nn] = &result
+	r.mu.Unlock()
+
+	return status, nil
+}
+
+// A helper that applies the given specs to the cluster, but doesn't update the APIServer.
+func (r *Reconciler) forceApplyHelper(
+	ctx context.Context,
+	spec v1alpha1.KubernetesApplySpec,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) v1alpha1.KubernetesApplyStatus {
+
+	status := v1alpha1.KubernetesApplyStatus{}
+
+	errorStatus := func(err error) v1alpha1.KubernetesApplyStatus {
+		status.LastApplyTime = apis.NowMicro()
+		status.Error = err.Error()
+		return status
+	}
+
+	inputHash, err := ComputeInputHash(spec, imageMaps)
+	if err != nil {
+		return errorStatus(err)
+	}
+
+	// Create API objects.
+	newK8sEntities, err := r.createEntitiesToDeploy(ctx, imageMaps, spec)
+	if err != nil {
+		return errorStatus(err)
+	}
+
+	ctx = r.indentLogger(ctx)
+	l := logger.Get(ctx)
+
+	l.Infof("Applying via kubectl:")
+
+	// Use a min component count of 2 for computing names,
+	// so that the resource type appears
+	displayNames := k8s.UniqueNames(newK8sEntities, 2)
+	for _, displayName := range displayNames {
+		l.Infof("→ %s", displayName)
+	}
+
+	timeout := spec.Timeout.Duration
+	if timeout == 0 {
+		timeout = v1alpha1.KubernetesApplyTimeoutDefault
+	}
+
+	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout)
+	if err != nil {
+		return errorStatus(err)
+	}
+
+	status.LastApplyTime = apis.NowMicro()
+	status.AppliedInputHash = inputHash
+	for _, d := range deployed {
+		d.Clean()
+	}
+
+	resultYAML, err := k8s.SerializeSpecYAML(deployed)
+	if err != nil {
+		return errorStatus(err)
+	}
+
+	status.ResultYAML = resultYAML
+	return status
+}
+
+func (r *Reconciler) indentLogger(ctx context.Context) context.Context {
+	l := logger.Get(ctx)
+	newL := logger.NewPrefixedLogger(logger.Blue(l).Sprint("     "), l)
+	return logger.WithLogger(ctx, newL)
+}
+
+func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+	spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
+	newK8sEntities := []k8s.K8sEntity{}
+
+	entities, err := k8s.ParseYAMLFromString(spec.YAML)
+	if err != nil {
+		return nil, err
+	}
+
+	locators, err := k8s.ParseImageLocators(spec.ImageLocators)
+	if err != nil {
+		return nil, err
+	}
+
+	imageMapNames := spec.ImageMaps
+	injectedImageMaps := map[string]bool{}
+	for _, e := range entities {
+		e, err = k8s.InjectLabels(e, []model.LabelPair{
+			k8s.TiltManagedByLabel(),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "deploy")
+		}
+
+		// If we're redeploying these workloads in response to image
+		// changes, we make sure image pull policy isn't set to "Always".
+		// Frequent applies don't work well with this setting, and makes things
+		// slower. See discussion:
+		// https://github.com/tilt-dev/tilt/issues/3209
+		if len(imageMaps) > 0 {
+			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if len(imageMaps) > 0 {
+			// StatefulSet pods should be managed in parallel when we're doing iterative
+			// development. See discussion:
+			// https://github.com/tilt-dev/tilt/issues/1962
+			// https://github.com/tilt-dev/tilt/issues/3906
+			e = k8s.InjectParallelPodManagementPolicy(e)
+		}
+
+		// When working with a local k8s cluster, we set the pull policy to Never,
+		// to ensure that k8s fails hard if the image is missing from docker.
+		policy := v1.PullIfNotPresent
+		if r.dkc.WillBuildToKubeContext(r.kubeContext) {
+			policy = v1.PullNever
+		}
+
+		for _, imageMapName := range imageMapNames {
+			imageMap := imageMaps[types.NamespacedName{Name: imageMapName}]
+			imageMapSpec := imageMap.Spec
+			selector, err := container.SelectorFromImageMap(imageMapSpec)
+			if err != nil {
+				return nil, err
+			}
+			matchInEnvVars := imageMapSpec.MatchInEnvVars
+
+			if imageMap.Status.Image == "" {
+				return nil, fmt.Errorf("internal error: missing image status")
+			}
+
+			ref, err := reference.ParseNamed(imageMap.Status.Image)
+			if err != nil {
+				return nil, fmt.Errorf("parsing image map status: %v", err)
+			}
+
+			var replaced bool
+			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, locators, matchInEnvVars, policy)
+			if err != nil {
+				return nil, err
+			}
+			if replaced {
+				injectedImageMaps[imageMapName] = true
+
+				if imageMapSpec.OverrideCommand != nil || imageMapSpec.OverrideArgs != nil {
+					e, err = k8s.InjectCommandAndArgs(e, ref, imageMapSpec.OverrideCommand, imageMapSpec.OverrideArgs)
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+
+		// This needs to be after all the other injections, to ensure the hash includes the Tilt-generated
+		// image tag, etc
+		e, err := k8s.InjectPodTemplateSpecHashes(e)
+		if err != nil {
+			return nil, errors.Wrap(err, "injecting pod template hash")
+		}
+
+		newK8sEntities = append(newK8sEntities, e)
+	}
+
+	for _, name := range imageMapNames {
+		if !injectedImageMaps[name] {
+			return nil, fmt.Errorf("Docker image missing from yaml: %s", name)
+		}
+	}
+
+	return newK8sEntities, nil
 }
 
 var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
@@ -79,4 +424,12 @@ func indexImageMap(obj client.Object) []indexer.Key {
 		})
 	}
 	return result
+}
+
+// Keeps track of the state we currently know about.
+type Result struct {
+	Spec             v1alpha1.KubernetesApplySpec
+	ImageMapSpecs    []v1alpha1.ImageMapSpec
+	ImageMapStatuses []v1alpha1.ImageMapStatus
+	Status           v1alpha1.KubernetesApplyStatus
 }

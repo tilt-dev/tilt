@@ -22,7 +22,6 @@ import (
 // It's not exported and should match the minimal set of methods needed from controllers.Controller.
 type controller interface {
 	reconcile.Reconciler
-	SetClient(client ctrlclient.Client)
 }
 
 // object just bridges together a couple of different representations of runtime.Object.
@@ -41,18 +40,28 @@ type ControllerFixture struct {
 	Client     ctrlclient.Client
 }
 
-func NewControllerFixture(t testing.TB, c controller) *ControllerFixture {
+type ControllerFixtureBuilder struct {
+	t      testing.TB
+	Client ctrlclient.Client
+}
+
+func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
+	return &ControllerFixtureBuilder{
+		t:      t,
+		Client: NewFakeTiltClient(),
+	}
+}
+
+func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
+	return newControllerFixture(b.t, b.Client, c)
+}
+
+func newControllerFixture(t testing.TB, cli ctrlclient.Client, c controller) *ControllerFixture {
 	t.Helper()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-
 	ctx = logger.WithLogger(ctx, logger.NewTestLogger(os.Stdout))
-
-	cli := NewTiltClient()
-	if c != nil {
-		c.SetClient(cli)
-	}
 
 	return &ControllerFixture{
 		t:          t,
@@ -62,6 +71,10 @@ func NewControllerFixture(t testing.TB, c controller) *ControllerFixture {
 		Client:     cli,
 		controller: c,
 	}
+}
+
+func (f ControllerFixture) T() testing.TB {
+	return f.t
 }
 
 // Cancel cancels the internal context used for the controller and client requests.

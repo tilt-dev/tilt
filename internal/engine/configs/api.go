@@ -18,8 +18,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-const LabelOwnerKind = "tilt.dev/owner-kind"
-const LabelOwnerKindTiltfile = "Tiltfile"
+const LabelOwnerKind = v1alpha1.LabelOwnerKind
+const LabelOwnerKindTiltfile = v1alpha1.LabelOwnerKindTiltfile
 
 var ownerSelector = labels.SelectorFromSet(labels.Set{LabelOwnerKind: LabelOwnerKindTiltfile})
 

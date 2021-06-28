@@ -102,7 +102,7 @@ jobs:
 
   test-extensions:
     docker:
-      - image: tiltdev/tilt-extensions-ci:latest
+      - image: tiltdev/tilt-extensions-ci@sha256:e1990914dbfdd357ef880110faeb1eaa68bd85b7668a54f9b7aed8e098f83c0c
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV

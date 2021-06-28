@@ -164,7 +164,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 	st := NewTestingStore()
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
-	tc := fake.NewTiltClient()
+	tc := fake.NewFakeTiltClient()
 	cc := NewConfigsController(tfl, d, tc)
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()

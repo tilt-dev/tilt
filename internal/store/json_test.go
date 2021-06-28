@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -23,7 +24,8 @@ func TestToJSON(t *testing.T) {
 	state := newState([]model.Manifest{m})
 
 	mState, _ := state.ManifestState("fe")
-	mState.MutableBuildStatus(m.K8sTarget().ID()).LastResult = NewK8sDeployResult(m.K8sTarget().ID(), nil, nil)
+	mState.MutableBuildStatus(m.K8sTarget().ID()).LastResult = NewK8sDeployResult(
+		m.K8sTarget().ID(), v1alpha1.KubernetesApplyStatus{}, nil, nil)
 
 	buf := bytes.NewBuffer(nil)
 	encoder := CreateEngineStateEncoder(buf)

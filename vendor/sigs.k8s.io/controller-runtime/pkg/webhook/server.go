@@ -70,6 +70,10 @@ type Server struct {
 	// Defaults to "", which means server does not verify client's certificate.
 	ClientCAName string
 
+	// TLSVersion is the minimum version of TLS supported. Accepts
+	// "", "1.0", "1.1", "1.2" and "1.3" only ("" is equivalent to "1.0" for backwards compatibility)
+	TLSMinVersion string
+
 	// WebhookMux is the multiplexer that handles different webhooks.
 	WebhookMux *http.ServeMux
 
@@ -124,8 +128,7 @@ func (s *Server) Register(path string, hook http.Handler) {
 	defer s.mu.Unlock()
 
 	s.defaultingOnce.Do(s.setDefaults)
-	_, found := s.webhooks[path]
-	if found {
+	if _, found := s.webhooks[path]; found {
 		panic(fmt.Errorf("can't register duplicate path: %v", path))
 	}
 	// TODO(directxman12): call setfields if we've already started the server
@@ -175,6 +178,26 @@ func (s *Server) StartStandalone(ctx context.Context, scheme *runtime.Scheme) er
 	return s.Start(ctx)
 }
 
+// tlsVersion converts from human-readable TLS version (for example "1.1")
+// to the values accepted by tls.Config (for example 0x301).
+func tlsVersion(version string) (uint16, error) {
+	switch version {
+	// default is previous behaviour
+	case "":
+		return tls.VersionTLS10, nil
+	case "1.0":
+		return tls.VersionTLS10, nil
+	case "1.1":
+		return tls.VersionTLS11, nil
+	case "1.2":
+		return tls.VersionTLS12, nil
+	case "1.3":
+		return tls.VersionTLS13, nil
+	default:
+		return 0, fmt.Errorf("invalid TLSMinVersion %v: expects 1.0, 1.1, 1.2, 1.3 or empty", version)
+	}
+}
+
 // Start runs the server.
 // It will install the webhook related resources depend on the server configuration.
 func (s *Server) Start(ctx context.Context) error {
@@ -197,9 +220,15 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}()
 
-	cfg := &tls.Config{
+	tlsMinVersion, err := tlsVersion(s.TLSMinVersion)
+	if err != nil {
+		return err
+	}
+
+	cfg := &tls.Config{ //nolint:gosec
 		NextProtos:     []string{"h2"},
 		GetCertificate: certWatcher.GetCertificate,
+		MinVersion:     tlsMinVersion,
 	}
 
 	// load CA to verify client certificate
@@ -219,7 +248,7 @@ func (s *Server) Start(ctx context.Context) error {
 		cfg.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
-	listener, err := tls.Listen("tcp", net.JoinHostPort(s.Host, strconv.Itoa(int(s.Port))), cfg)
+	listener, err := tls.Listen("tcp", net.JoinHostPort(s.Host, strconv.Itoa(s.Port)), cfg)
 	if err != nil {
 		return err
 	}

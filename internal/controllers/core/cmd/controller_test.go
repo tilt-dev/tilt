@@ -568,7 +568,7 @@ func newFixture(t *testing.T) *fixture {
 
 	fe := NewFakeExecer()
 	fpm := NewFakeProberManager()
-	fc := fake.NewTiltClient()
+	fc := fake.NewFakeTiltClient()
 	sc := local.NewServerController(fc)
 	clock := clockwork.NewFakeClock()
 	c := NewController(ctx, fe, fpm, fc, st, clock, v1alpha1.NewScheme())

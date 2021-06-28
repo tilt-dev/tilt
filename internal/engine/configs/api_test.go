@@ -23,7 +23,7 @@ func TestAPICreate(t *testing.T) {
 	defer f.TearDown()
 
 	ctx := context.Background()
-	c := fake.NewTiltClient()
+	c := fake.NewFakeTiltClient()
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
@@ -38,7 +38,7 @@ func TestAPIDelete(t *testing.T) {
 	defer f.TearDown()
 
 	ctx := context.Background()
-	c := fake.NewTiltClient()
+	c := fake.NewFakeTiltClient()
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
@@ -61,7 +61,7 @@ func TestAPIUpdate(t *testing.T) {
 	defer f.TearDown()
 
 	ctx := context.Background()
-	c := fake.NewTiltClient()
+	c := fake.NewFakeTiltClient()
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
@@ -85,7 +85,7 @@ func TestImageMapCreate(t *testing.T) {
 	defer f.TearDown()
 
 	ctx := context.Background()
-	c := fake.NewTiltClient()
+	c := fake.NewFakeTiltClient()
 	fe := manifestbuilder.New(f, "fe").
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		WithK8sYAML(testyaml.SanchoYAML).

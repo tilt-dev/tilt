@@ -28,3 +28,11 @@ func (o ObjRefList) UIDSet() UIDSet {
 	}
 	return out
 }
+
+func ToRefList(entities []K8sEntity) ObjRefList {
+	refs := make(ObjRefList, len(entities))
+	for i, entity := range entities {
+		refs[i] = entity.ToObjectReference()
+	}
+	return refs
+}

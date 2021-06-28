@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,12 +28,11 @@ type Reconciler struct {
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(wsList *server.WebsocketList) *Reconciler {
-	return &Reconciler{wsList: wsList}
-}
-
-func (r *Reconciler) SetClient(client ctrlclient.Client) {
-	r.client = client
+func NewReconciler(client ctrlclient.Client, wsList *server.WebsocketList) *Reconciler {
+	return &Reconciler{
+		client: client,
+		wsList: wsList,
+	}
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -55,8 +56,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.UISession{}).
-		Complete(r)
+func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.UISession{})
+
+	return b, nil
 }

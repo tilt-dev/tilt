@@ -9,8 +9,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -59,18 +64,54 @@ func TestImageIndexing(t *testing.T) {
 	}, reqs)
 }
 
+func TestBasicApply(t *testing.T) {
+	f := newFixture(t)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: testyaml.SanchoYAML,
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Contains(f.T(), ka.Status.ResultYAML, "name: sancho")
+	assert.Contains(f.T(), ka.Status.ResultYAML, "uid:")
+
+	// Make sure that re-reconciling doesn't re-apply the YAML"
+	f.kClient.Yaml = ""
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Equal(f.T(), f.kClient.Yaml, "")
+}
+
 type fixture struct {
 	*fake.ControllerFixture
-	r *Reconciler
+	r       *Reconciler
+	kClient *k8s.FakeK8sClient
 }
 
 func newFixture(t *testing.T) *fixture {
-	kclient := k8s.NewFakeK8sClient(t)
-	r := NewReconciler(kclient, v1alpha1.NewScheme())
-	cf := fake.NewControllerFixture(t, r)
+	kClient := k8s.NewFakeK8sClient(t)
+	cfb := fake.NewControllerFixtureBuilder(t)
+	st := store.NewTestingStore()
+	dockerClient := docker.NewFakeClient()
+	kubeContext := k8s.KubeContext("kind-kind")
+
+	// Make the fake ImageExists always return true, which is the behavior we want
+	// when testing the reconciler
+	dockerClient.ImageAlwaysExists = true
+
+	db := build.NewDockerImageBuilder(dockerClient, dockerfile.Labels{})
+	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, st)
 
 	return &fixture{
-		ControllerFixture: cf,
+		ControllerFixture: cfb.Build(r),
 		r:                 r,
+		kClient:           kClient,
 	}
 }
