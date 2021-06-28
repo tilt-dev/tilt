@@ -1,6 +1,7 @@
 package kubernetesapply
 
 import (
+	"fmt"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,6 +88,52 @@ func TestBasicApply(t *testing.T) {
 	f.kClient.Yaml = ""
 	f.MustReconcile(types.NamespacedName{Name: "a"})
 	assert.Equal(f.T(), f.kClient.Yaml, "")
+}
+
+func TestGarbageCollectAll(t *testing.T) {
+	f := newFixture(t)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: testyaml.SanchoYAML,
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
+
+	f.Delete(&ka)
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Contains(f.T(), f.kClient.DeletedYaml, "name: sancho")
+}
+
+func TestGarbageCollectPartial(t *testing.T) {
+	f := newFixture(t)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: fmt.Sprintf("%s\n---\n%s\n", testyaml.SanchoYAML, testyaml.PodDisruptionBudgetYAML),
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
+	assert.Contains(f.T(), f.kClient.Yaml, "name: infra-kafka-zookeeper")
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	ka.Spec.YAML = testyaml.SanchoYAML
+	f.Update(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
+	assert.NotContains(f.T(), f.kClient.Yaml, "name: infra-kafka-zookeeper")
+	assert.Contains(f.T(), f.kClient.DeletedYaml, "name: infra-kafka-zookeeper")
 }
 
 type fixture struct {

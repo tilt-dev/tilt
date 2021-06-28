@@ -82,13 +82,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
-		// delete
-		// TODO(nick): Implementing this correctly
-		// will fix https://github.com/tilt-dev/tilt/issues/3137
-		r.mu.Lock()
-		delete(r.results, nn)
-		r.mu.Unlock()
-
+		toDelete := r.updateResult(nn, nil)
+		r.bestEffortDelete(ctx, toDelete)
 		return ctrl.Result{}, nil
 	}
 
@@ -156,7 +151,7 @@ func (r *Reconciler) shouldDeployOnReconcile(
 	result, ok := r.results[nn]
 	r.mu.Unlock()
 
-	if !ok {
+	if !ok || result.Status.LastApplyTime.IsZero() {
 		// We've never successfully deployed before, so deploy now.
 		return true
 	}
@@ -199,13 +194,15 @@ func (r *Reconciler) ForceApply(
 	nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, error) {
-	status := r.forceApplyHelper(ctx, spec, imageMaps)
 
+	status, appliedObjects := r.forceApplyHelper(ctx, spec, imageMaps)
 	statusCopy := status.DeepCopy()
 	result := Result{
-		Spec:   spec,
-		Status: *statusCopy,
+		Spec:           spec,
+		Status:         *statusCopy,
+		AppliedObjects: newObjectRefSet(appliedObjects),
 	}
+
 	for _, imageMapName := range spec.ImageMaps {
 		im, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
 		if !ok {
@@ -229,18 +226,21 @@ func (r *Reconciler) ForceApply(
 		return status, err
 	}
 
-	r.mu.Lock()
-	r.results[nn] = &result
-	r.mu.Unlock()
+	toDelete := r.updateResult(nn, &result)
+	r.bestEffortDelete(ctx, toDelete)
 
 	return status, nil
 }
 
 // A helper that applies the given specs to the cluster, but doesn't update the APIServer.
+//
+// Returns:
+// - the new status to store in the apiserver
+// - the parsed entities that we tried to apply
 func (r *Reconciler) forceApplyHelper(
 	ctx context.Context,
 	spec v1alpha1.KubernetesApplySpec,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) v1alpha1.KubernetesApplyStatus {
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, []k8s.K8sEntity) {
 
 	status := v1alpha1.KubernetesApplyStatus{}
 
@@ -252,13 +252,13 @@ func (r *Reconciler) forceApplyHelper(
 
 	inputHash, err := ComputeInputHash(spec, imageMaps)
 	if err != nil {
-		return errorStatus(err)
+		return errorStatus(err), nil
 	}
 
 	// Create API objects.
 	newK8sEntities, err := r.createEntitiesToDeploy(ctx, imageMaps, spec)
 	if err != nil {
-		return errorStatus(err)
+		return errorStatus(err), newK8sEntities
 	}
 
 	ctx = r.indentLogger(ctx)
@@ -280,7 +280,7 @@ func (r *Reconciler) forceApplyHelper(
 
 	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout)
 	if err != nil {
-		return errorStatus(err)
+		return errorStatus(err), newK8sEntities
 	}
 
 	status.LastApplyTime = apis.NowMicro()
@@ -291,11 +291,11 @@ func (r *Reconciler) forceApplyHelper(
 
 	resultYAML, err := k8s.SerializeSpecYAML(deployed)
 	if err != nil {
-		return errorStatus(err)
+		return errorStatus(err), newK8sEntities
 	}
 
 	status.ResultYAML = resultYAML
-	return status
+	return status, newK8sEntities
 }
 
 func (r *Reconciler) indentLogger(ctx context.Context) context.Context {
@@ -410,6 +410,66 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 	return newK8sEntities, nil
 }
 
+// We keep track of all the objects it's managing in the cluster, and
+// garbage-collect them when it no longer needs to manage them.
+//
+// A best-practices reconciler would store this info with the objects themselves
+// (in the cluster), similar to how Helm does it.
+//
+// But for now, we store this as in-memory state, because it's cheaper to implement
+// that way.
+//
+// Returns: objects to garbage-collect.
+func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) []k8s.K8sEntity {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	existing := r.results[nn]
+	if result == nil {
+		delete(r.results, nn)
+	} else {
+		r.results[nn] = result
+	}
+
+	// Go through all the results, and check to see which objects
+	// we're not managing anymore.
+	var toDeleteMap objectRefSet
+	if existing != nil {
+		toDeleteMap = existing.AppliedObjects.clone()
+		for _, result := range r.results {
+			for objRef := range result.AppliedObjects {
+				delete(toDeleteMap, objRef)
+			}
+		}
+	}
+
+	toDelete := make([]k8s.K8sEntity, 0, len(toDeleteMap))
+	for _, e := range toDeleteMap {
+		toDelete = append(toDelete, e)
+	}
+	return toDelete
+}
+
+func (r *Reconciler) bestEffortDelete(ctx context.Context, entities []k8s.K8sEntity) {
+	if len(entities) == 0 {
+		return
+	}
+
+	l := logger.Get(ctx)
+	l.Infof("Garbage collecting Kubernetes resources:")
+
+	// Use a min component count of 2 for computing names,
+	// so that the resource type appears
+	displayNames := k8s.UniqueNames(entities, 2)
+	for _, displayName := range displayNames {
+		l.Infof("→ %s", displayName)
+	}
+
+	err := r.k8sClient.Delete(ctx, entities)
+	if err != nil {
+		l.Errorf("Error garbage collecting Kubernetes resources: %v", err)
+	}
+}
+
 var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 
 // Find all the objects we need to watch based on the Cmd model.
@@ -431,5 +491,39 @@ type Result struct {
 	Spec             v1alpha1.KubernetesApplySpec
 	ImageMapSpecs    []v1alpha1.ImageMapSpec
 	ImageMapStatuses []v1alpha1.ImageMapStatus
-	Status           v1alpha1.KubernetesApplyStatus
+
+	AppliedObjects objectRefSet
+	Status         v1alpha1.KubernetesApplyStatus
+}
+
+type objectRef struct {
+	Name       string
+	Namespace  string
+	APIVersion string
+	Kind       string
+}
+
+type objectRefSet map[objectRef]k8s.K8sEntity
+
+func newObjectRefSet(entities []k8s.K8sEntity) objectRefSet {
+	r := make(objectRefSet, len(entities))
+	for _, e := range entities {
+		ref := e.ToObjectReference()
+		oRef := objectRef{
+			Name:       ref.Name,
+			Namespace:  ref.Namespace,
+			APIVersion: ref.APIVersion,
+			Kind:       ref.Kind,
+		}
+		r[oRef] = e
+	}
+	return r
+}
+
+func (s objectRefSet) clone() objectRefSet {
+	result := make(objectRefSet, len(s))
+	for k, v := range s {
+		result[k] = v
+	}
+	return result
 }
