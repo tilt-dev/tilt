@@ -92,6 +92,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 			printField("Host", host, nil)
 
 			version := localDocker.ServerVersion()
+			printField("Server Version", version.Version, nil)
 			printField("Version", version.APIVersion, nil)
 
 			builderVersion := localDocker.BuilderVersion()
