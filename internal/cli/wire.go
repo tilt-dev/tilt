@@ -93,7 +93,6 @@ var BaseWireSet = wire.NewSet(
 
 	clockwork.NewRealClock,
 	engine.DeployerWireSet,
-	runtimelog.NewPodLogManager,
 	portforward.NewSubscriber,
 	engine.NewBuildController,
 	local.NewServerController,
