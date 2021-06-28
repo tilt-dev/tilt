@@ -2,6 +2,7 @@ package io
 
 import (
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -139,7 +140,7 @@ func listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 	}
 
 	var files []string
-	err = filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
+	err = filepath.WalkDir(localPath, func(path string, info fs.DirEntry, err error) error {
 		if path == localPath {
 			return nil
 		}
