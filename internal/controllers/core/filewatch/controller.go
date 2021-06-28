@@ -19,8 +19,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	"github.com/tilt-dev/tilt/internal/engine/fswatch"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
@@ -130,7 +128,7 @@ func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name typ
 		_ = notify.Close()
 		return fmt.Errorf("failed to update monitor start time: %v", err)
 	}
-	c.Store.Dispatch(fswatch.NewFileWatchUpdateStatusAction(fw))
+	c.Store.Dispatch(NewFileWatchUpdateStatusAction(fw))
 
 	ctx, cancel := context.WithCancel(ctx)
 	w := &watcher{

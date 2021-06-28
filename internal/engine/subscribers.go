@@ -7,7 +7,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
-	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
@@ -55,7 +54,6 @@ func ProvideSubscribers(
 	kdms *k8swatch.ManifestSubscriber,
 	sw *k8swatch.ServiceWatcher,
 	pfs *portforward.Subscriber,
-	fsms *fswatch.ManifestSubscriber,
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	dcw *dcwatch.EventWatcher,
@@ -81,7 +79,6 @@ func ProvideSubscribers(
 		kdms,
 		sw,
 		pfs,
-		fsms,
 		bc,
 		cc,
 		dcw,

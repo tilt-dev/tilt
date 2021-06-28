@@ -130,7 +130,7 @@ var _ resource.Object = &ImageMap{}
 var _ resourcestrategy.Validater = &ImageMap{}
 
 func (in *ImageMap) GetSpec() interface{} {
-	return &in.Spec
+	return in.Spec
 }
 
 func (in *ImageMap) GetObjectMeta() *metav1.ObjectMeta {
