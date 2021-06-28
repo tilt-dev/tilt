@@ -70,7 +70,8 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 		printField("Host", host, nil)
 
 		version := clusterDocker.ServerVersion()
-		printField("Version", version.APIVersion, nil)
+		printField("Server Version", version.Version, nil)
+		printField("API Version", version.APIVersion, nil)
 
 		builderVersion := clusterDocker.BuilderVersion()
 		printField("Builder", builderVersion, nil)
