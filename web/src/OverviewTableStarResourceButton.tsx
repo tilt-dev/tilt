@@ -68,18 +68,10 @@ export default function OverviewTableStarResourceButton(
     title = "Star"
   }
 
-  function onClick(e: any) {
-    if (isStarred) {
-      ctx.unstarResource(resourceName)
-    } else {
-      ctx.starResource(resourceName)
-    }
-  }
-
   return (
     <StyledTableStarResourceButton
       title={title}
-      onClick={onClick}
+      onClick={() => ctx.toggleStarResource(resourceName)}
       analyticsName={props.analyticsName}
       analyticsTags={{ newStarState: (!isStarred).toString() }}
     >
