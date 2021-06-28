@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -29,11 +30,11 @@ func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) err
 	return errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+func (ec *explodingClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
+func (ec *explodingClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
@@ -69,7 +70,7 @@ func (ec *explodingClient) WatchEvents(ctx context.Context, ns Namespace) (<-cha
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 
-func (ec *explodingClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error) {
+func (ec *explodingClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan metav1.Object, error) {
 	return nil, errors.Wrap(ec.err, "could not set up k8s client")
 }
 

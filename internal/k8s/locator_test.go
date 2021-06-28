@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -51,7 +52,7 @@ func TestCRDPullPolicyInjection(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, modified)
 
-	spec := e.maybeUnstructuredMeta().Object["spec"].(map[string]interface{})
+	spec := e.Obj.(*unstructured.Unstructured).Object["spec"].(map[string]interface{})
 	c := spec["containers"].([]interface{})[0].(map[string]interface{})
 	require.Equal(t, "frontend:tilt-123", c["image"])
 	require.Equal(t, "Never", c["imagePullPolicy"].(string))
