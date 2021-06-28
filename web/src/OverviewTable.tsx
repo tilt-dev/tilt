@@ -160,194 +160,195 @@ const PodIdCopy = styled(InstrumentedButton)`
   }
 `
 
-function columnDefs(): Column<RowValues>[] {
+function TableStarColumn({ row }: CellProps<RowValues>) {
   let ctx = useStarredResources()
-
-  return React.useMemo(
-    () => [
-      {
-        Header: "Starred",
-        width: "20px",
-        Cell: ({ row }: CellProps<RowValues>) => {
-          return (
-            <TableStarResourceButton
-              resourceName={row.values.name}
-              analyticsName="ui.web.overviewStarButton"
-              ctx={ctx}
-            />
-          )
-        },
-      },
-      {
-        Header: "Updated",
-        width: "20px",
-        accessor: "lastDeployTime",
-        Cell: ({ row }: CellProps<RowValues>) => {
-          return (
-            <TimeAgo
-              date={row.values.lastDeployTime}
-              formatter={timeAgoFormatter}
-            />
-          )
-        },
-      },
-      {
-        Header: "Trigger",
-        accessor: "trigger",
-        disableSortBy: true,
-        width: "20px",
-        Cell: ({ row }: CellProps<RowValues>) => {
-          return (
-            <TriggerButton
-              hasPendingChanges={row.values.trigger.hasPendingChanges}
-              hasBuilt={row.values.trigger.hasBuilt}
-              isBuilding={row.values.trigger.isBuilding}
-              triggerMode={row.values.triggerMode}
-              isQueued={row.values.trigger.isQueued}
-              resourceName={row.values.name}
-            />
-          )
-        },
-      },
-      {
-        Header: "Resource Name",
-        width: "280px",
-        accessor: "name",
-        Cell: ({ row }: CellProps<RowValues>) => {
-          let nav = useResourceNav()
-          let hasError =
-            row.values.statusLine.buildStatus === ResourceStatus.Unhealthy ||
-            row.values.statusLine.runtimeStatus === ResourceStatus.Unhealthy
-
-          return (
-            <ResourceName
-              className={hasError ? "has-error" : ""}
-              onClick={(e) => nav.openResource(row.values.name)}
-            >
-              {row.values.name}
-            </ResourceName>
-          )
-        },
-      },
-      {
-        Header: "Type",
-        accessor: "resourceTypeLabel",
-        width: "150px",
-      },
-      {
-        Header: "Status",
-        accessor: "statusLine",
-        disableSortBy: true,
-        width: "150px",
-
-        Cell: ({ row }: CellProps<RowValues>) => {
-          return (
-            <>
-              <OverviewTableStatus
-                status={row.values.statusLine.buildStatus}
-                lastBuildDur={row.values.statusLine.lastBuildDur}
-                alertCount={row.values.statusLine.buildAlertCount}
-                isBuild={true}
-              />
-              <OverviewTableStatus
-                status={row.values.statusLine.runtimeStatus}
-                alertCount={row.values.statusLine.runtimeAlertCount}
-              />
-            </>
-          )
-        },
-      },
-      {
-        Header: "Pod ID",
-        accessor: "podId",
-        width: "50px",
-        Cell: ({ row }: CellProps<RowValues>) => {
-          let [showCopySuccess, setShowCopySuccess] = useState(false)
-
-          let copyClick = () => {
-            copyTextToClipboard(row.values.podId, () => {
-              setShowCopySuccess(true)
-
-              setTimeout(() => {
-                setShowCopySuccess(false)
-              }, 3000)
-            })
-          }
-
-          let icon = showCopySuccess ? (
-            <CheckmarkSvg width="15" height="15" />
-          ) : (
-            <CopySvg width="15" height="15" />
-          )
-
-          function selectPodIdInput(podId: string | null) {
-            const input = document.getElementById(
-              `pod-${row.values.podId}`
-            ) as HTMLInputElement
-            input && input.select()
-          }
-
-          if (!row.values.podId) return null
-          return (
-            <PodId>
-              <PodIdInput
-                id={`pod-${row.values.podId}`}
-                value={row.values.podId}
-                readOnly={true}
-                onClick={() => selectPodIdInput(row.values.podId)}
-              />
-              <PodIdCopy
-                onClick={copyClick}
-                analyticsName="ui.web.overview.copyPodID"
-              >
-                {icon}
-              </PodIdCopy>
-            </PodId>
-          )
-        },
-      },
-      {
-        Header: "Endpoints",
-        accessor: "endpoints",
-        sortType: "basic",
-        Cell: ({ row }: CellProps<RowValues>) => {
-          // @ts-ignore
-          let endpoints = row.values.endpoints.map((ep) => {
-            return (
-              <Endpoint
-                onClick={() =>
-                  void incr("ui.web.endpoint", { action: "click" })
-                }
-                href={ep.url}
-                // We use ep.url as the target, so that clicking the link re-uses the tab.
-                target={ep.url}
-                key={ep.url}
-              >
-                <StyledLinkSvg />
-                <DetailText>{ep.name || displayURL(ep)}</DetailText>
-              </Endpoint>
-            )
-          })
-          return <div>{endpoints}</div>
-        },
-      },
-      {
-        Header: "Trigger Mode",
-        accessor: "triggerMode",
-        width: "50px",
-        Cell: ({ row }: CellProps<RowValues>) => {
-          return (
-            <TableTriggerModeToggle
-              resourceName={row.values.name}
-              triggerMode={row.values.triggerMode}
-            />
-          )
-        },
-      },
-    ],
-    [ctx.starredResources]
+  return (
+    <TableStarResourceButton
+      resourceName={row.values.name}
+      analyticsName="ui.web.overviewStarButton"
+      ctx={ctx}
+    />
   )
 }
+
+function TableUpdateColumn({ row }: CellProps<RowValues>) {
+  return (
+    <TimeAgo date={row.values.lastDeployTime} formatter={timeAgoFormatter} />
+  )
+}
+
+function TableTriggerColumn({ row }: CellProps<RowValues>) {
+  return (
+    <TriggerButton
+      hasPendingChanges={row.values.trigger.hasPendingChanges}
+      hasBuilt={row.values.trigger.hasBuilt}
+      isBuilding={row.values.trigger.isBuilding}
+      triggerMode={row.values.triggerMode}
+      isQueued={row.values.trigger.isQueued}
+      resourceName={row.values.name}
+    />
+  )
+}
+
+function TableNameColumn({ row }: CellProps<RowValues>) {
+  let nav = useResourceNav()
+  let hasError =
+    row.values.statusLine.buildStatus === ResourceStatus.Unhealthy ||
+    row.values.statusLine.runtimeStatus === ResourceStatus.Unhealthy
+
+  return (
+    <ResourceName
+      className={hasError ? "has-error" : ""}
+      onClick={(e) => nav.openResource(row.values.name)}
+    >
+      {row.values.name}
+    </ResourceName>
+  )
+}
+
+function TableStatusColumn({ row }: CellProps<RowValues>) {
+  return (
+    <>
+      <OverviewTableStatus
+        status={row.values.statusLine.buildStatus}
+        lastBuildDur={row.values.statusLine.lastBuildDur}
+        alertCount={row.values.statusLine.buildAlertCount}
+        isBuild={true}
+      />
+      <OverviewTableStatus
+        status={row.values.statusLine.runtimeStatus}
+        alertCount={row.values.statusLine.runtimeAlertCount}
+      />
+    </>
+  )
+}
+
+function TablePodIDColumn({ row }: CellProps<RowValues>) {
+  let [showCopySuccess, setShowCopySuccess] = useState(false)
+
+  let copyClick = () => {
+    copyTextToClipboard(row.values.podId, () => {
+      setShowCopySuccess(true)
+
+      setTimeout(() => {
+        setShowCopySuccess(false)
+      }, 3000)
+    })
+  }
+
+  let icon = showCopySuccess ? (
+    <CheckmarkSvg width="15" height="15" />
+  ) : (
+    <CopySvg width="15" height="15" />
+  )
+
+  function selectPodIdInput(podId: string | null) {
+    const input = document.getElementById(
+      `pod-${row.values.podId}`
+    ) as HTMLInputElement
+    input && input.select()
+  }
+
+  if (!row.values.podId) return null
+  return (
+    <PodId>
+      <PodIdInput
+        id={`pod-${row.values.podId}`}
+        value={row.values.podId}
+        readOnly={true}
+        onClick={() => selectPodIdInput(row.values.podId)}
+      />
+      <PodIdCopy onClick={copyClick} analyticsName="ui.web.overview.copyPodID">
+        {icon}
+      </PodIdCopy>
+    </PodId>
+  )
+}
+
+function TableEndpointColumn({ row }: CellProps<RowValues>) {
+  // @ts-ignore
+  let endpoints = row.values.endpoints.map((ep) => {
+    return (
+      <Endpoint
+        onClick={() => void incr("ui.web.endpoint", { action: "click" })}
+        href={ep.url}
+        // We use ep.url as the target, so that clicking the link re-uses the tab.
+        target={ep.url}
+        key={ep.url}
+      >
+        <StyledLinkSvg />
+        <DetailText>{ep.name || displayURL(ep)}</DetailText>
+      </Endpoint>
+    )
+  })
+  return <div>{endpoints}</div>
+}
+
+function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
+  return (
+    <TableTriggerModeToggle
+      resourceName={row.values.name}
+      triggerMode={row.values.triggerMode}
+    />
+  )
+}
+
+const columns: Column<RowValues>[] = [
+  {
+    Header: "Starred",
+    width: "20px",
+    Cell: TableStarColumn,
+  },
+  {
+    Header: "Updated",
+    width: "20px",
+    accessor: "lastDeployTime",
+    Cell: TableUpdateColumn,
+  },
+  {
+    Header: "Trigger",
+    accessor: "trigger",
+    disableSortBy: true,
+    width: "20px",
+    Cell: TableTriggerColumn,
+  },
+  {
+    Header: "Resource Name",
+    width: "280px",
+    accessor: "name",
+    Cell: TableNameColumn,
+  },
+  {
+    Header: "Type",
+    accessor: "resourceTypeLabel",
+    width: "150px",
+  },
+  {
+    Header: "Status",
+    accessor: "statusLine",
+    disableSortBy: true,
+    width: "150px",
+    Cell: TableStatusColumn,
+  },
+  {
+    Header: "Pod ID",
+    accessor: "podId",
+    width: "50px",
+    Cell: TablePodIDColumn,
+  },
+  {
+    Header: "Endpoints",
+    accessor: "endpoints",
+    sortType: "basic",
+    Cell: TableEndpointColumn,
+  },
+  {
+    Header: "Trigger Mode",
+    accessor: "triggerMode",
+    width: "50px",
+    Cell: TableTriggerModeColumn,
+  },
+]
 
 async function copyTextToClipboard(text: string, cb: () => void) {
   await navigator.clipboard.writeText(text)
@@ -413,7 +414,6 @@ function resourceTypeLabel(r: UIResource): string {
 }
 
 export default function OverviewTable(props: OverviewTableProps) {
-  const columns = columnDefs()
   const data = React.useMemo(
     () => props.view.uiResources?.map(uiResourceToCell) || [],
     [props.view.uiResources]
