@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -57,7 +56,7 @@ func (m *TiltServerControllerManager) GetClient() ctrlclient.Client {
 	return m.manager.GetClient()
 }
 
-func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore) error {
+func (m *TiltServerControllerManager) SetUp(ctx context.Context, _ store.RStore) error {
 	ctx, m.cancel = context.WithCancel(ctx)
 
 	// controller-runtime internals don't really make use of verbosity levels, so in lieu of a better
@@ -103,14 +102,6 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, st store.RStore
 
 	// provide the deferred client with the real client now that it has been initialized
 	m.deferredClient.initialize(mgr.GetClient())
-
-	go func() {
-		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			err = fmt.Errorf("controller manager stopped unexpectedly: %v", err)
-			st.Dispatch(store.NewErrorAction(err))
-		}
-	}()
-
 	m.manager = mgr
 
 	return nil

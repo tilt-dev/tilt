@@ -38,7 +38,7 @@ func (c *ControllerBuilder) OnChange(_ context.Context, _ store.RStore, _ store.
 	return nil
 }
 
-func (c *ControllerBuilder) SetUp(_ context.Context, _ store.RStore) error {
+func (c *ControllerBuilder) SetUp(ctx context.Context, st store.RStore) error {
 	mgr := c.tscm.GetManager()
 	client := c.tscm.GetClient()
 
@@ -63,6 +63,15 @@ func (c *ControllerBuilder) SetUp(_ context.Context, _ store.RStore) error {
 			return fmt.Errorf("error starting controller: %v", err)
 		}
 	}
+
+	// start the controller manager now that all the controllers are initialized
+	go func() {
+		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			err = fmt.Errorf("controller manager stopped unexpectedly: %v", err)
+			st.Dispatch(store.NewErrorAction(err))
+		}
+	}()
+
 	return nil
 }
 
@@ -73,5 +82,4 @@ func (c *ControllerBuilder) TearDown(ctx context.Context) {
 			td.TearDown(ctx)
 		}
 	}
-
 }
