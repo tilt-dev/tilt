@@ -27,6 +27,7 @@ var ownerSelector = labels.SelectorFromSet(labels.Set{LabelOwnerKind: LabelOwner
 type object interface {
 	ctrlclient.Object
 	GetSpec() interface{}
+	GetGroupVersionResource() schema.GroupVersionResource
 }
 
 type objectSet map[schema.GroupVersionResource]typedObjectSet
@@ -196,7 +197,7 @@ func updateObjects(ctx context.Context, client ctrlclient.Client, newObjects, ol
 			if old == nil {
 				err := client.Create(ctx, obj)
 				if err != nil {
-					errs = append(errs, err)
+					errs = append(errs, fmt.Errorf("create %s/%s: %v", obj.GetGroupVersionResource().Resource, obj.GetName(), err))
 				}
 				continue
 			}
@@ -208,7 +209,7 @@ func updateObjects(ctx context.Context, client ctrlclient.Client, newObjects, ol
 				obj.SetResourceVersion(old.GetResourceVersion())
 				err := client.Update(ctx, obj)
 				if err != nil {
-					errs = append(errs, err)
+					errs = append(errs, fmt.Errorf("update %s/%s: %v", obj.GetGroupVersionResource().Resource, obj.GetName(), err))
 				}
 				continue
 			}
@@ -228,7 +229,7 @@ func updateObjects(ctx context.Context, client ctrlclient.Client, newObjects, ol
 
 			err := client.Delete(ctx, obj)
 			if err != nil {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("delete %s/%s: %v", obj.GetGroupVersionResource().Resource, obj.GetName(), err))
 			}
 		}
 	}

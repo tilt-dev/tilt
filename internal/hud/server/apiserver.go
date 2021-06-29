@@ -26,6 +26,27 @@ import (
 	"github.com/tilt-dev/tilt/pkg/openapi"
 )
 
+// https://twitter.com/ow/status/1356978380198072321
+//
+// By default, the API server request limit is 3MB.  Certain Helm Charts with
+// CRDs have bigger payloads than this, so we bumped it to 20MB.
+//
+// (Some custom API servers set it to 100MB, see
+// https://github.com/kubernetes/kubernetes/pull/73805)
+//
+// This doesn't mean large 20MB payloads are fine. Iteratively applying a 20MB
+// payload over and over will slow down the overall system, simply on copying
+// and encoding/decoding costs alone.
+//
+// The underlying apiserver libraries have the ability to set this limit on a
+// per-resource level (rather than a per-server level). If that's ever exposed,
+// we should adjust this limit to be higher for KubernetesApply and lower for
+// other resource types.
+//
+// It also might make sense to help the user break up large payloads.  For
+// example, we could automatically split large CRDs into their own resources.
+const maxRequestBodyBytes = int64(20 * 1024 * 1024)
+
 type WebListener net.Listener
 type APIServerPort int
 
@@ -136,7 +157,12 @@ func ProvideTiltServerOptions(ctx context.Context,
 		return nil, err
 	}
 
-	return o.Config()
+	config, err := o.Config()
+	if err != nil {
+		return nil, err
+	}
+	config.GenericConfig.MaxRequestBodyBytes = maxRequestBodyBytes
+	return config, nil
 }
 
 // Generate the server config, removing options that are not needed for testing.
