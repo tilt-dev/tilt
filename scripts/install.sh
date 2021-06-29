@@ -108,7 +108,9 @@ function version_check() {
     echo "Perhaps you have a different program named tilt in your \$PATH?"
     exit 1
   else
-    echo "Tilt installed! Run \`tilt up\` to start."
+    echo "Tilt installed!"
+    echo "For the latest Tilt news, subscribe: https://tilt.dev/subscribe"
+    echo "Run \`tilt up\` to start."
   fi
 }
 
