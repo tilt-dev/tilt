@@ -7,7 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func NewTiltClient() ctrlclient.Client {
+func NewFakeTiltClient() ctrlclient.Client {
 	scheme := v1alpha1.NewScheme()
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).

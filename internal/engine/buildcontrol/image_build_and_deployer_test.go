@@ -1015,9 +1015,10 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
 	kubeContext := k8s.KubeContext(fmt.Sprintf("%s-me", env))
 	clusterEnv := docker.ClusterEnv(docker.Env{})
-	ctrlClient := fake.NewTiltClient()
+	ctrlClient := fake.NewFakeTiltClient()
+	st := store.NewTestingStore()
 	ibd, err := ProvideImageBuildAndDeployer(ctx, dockerClient, kClient, env, kubeContext,
-		clusterEnv, dir, clock, kl, ta, ctrlClient)
+		clusterEnv, dir, clock, kl, ta, ctrlClient, st)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1028,7 +1029,7 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 		docker:         dockerClient,
 		k8s:            kClient,
 		ibd:            ibd,
-		st:             store.NewTestingStore(),
+		st:             st,
 		kl:             kl,
 		ctrlClient:     ctrlClient,
 	}

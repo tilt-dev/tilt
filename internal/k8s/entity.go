@@ -3,11 +3,10 @@ package k8s
 import (
 	"fmt"
 	"net/url"
-	"reflect"
 	"sort"
 	"strings"
-	"testing"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -17,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -30,31 +28,6 @@ type K8sEntity struct {
 func NewK8sEntity(obj runtime.Object) K8sEntity {
 	return K8sEntity{Obj: obj}
 }
-
-type ObjectMeta interface {
-	GetName() string
-	GetNamespace() string
-	GetUID() types.UID
-	GetLabels() map[string]string
-	GetOwnerReferences() []metav1.OwnerReference
-	GetAnnotations() map[string]string
-	SetNamespace(ns string)
-	SetManagedFields(managedFields []metav1.ManagedFieldsEntry)
-}
-
-type emptyMeta struct{}
-
-func (emptyMeta) GetName() string                                 { return "" }
-func (emptyMeta) GetNamespace() string                            { return "" }
-func (emptyMeta) GetUID() types.UID                               { return "" }
-func (emptyMeta) GetAnnotations() map[string]string               { return make(map[string]string) }
-func (emptyMeta) GetLabels() map[string]string                    { return make(map[string]string) }
-func (emptyMeta) GetOwnerReferences() []metav1.OwnerReference     { return nil }
-func (emptyMeta) SetNamespace(ns string)                          {}
-func (emptyMeta) SetManagedFields(mf []metav1.ManagedFieldsEntry) {}
-
-var _ ObjectMeta = emptyMeta{}
-var _ ObjectMeta = &metav1.ObjectMeta{}
 
 type entityList []K8sEntity
 
@@ -82,8 +55,16 @@ func ReverseSortedEntities(entities []K8sEntity) []K8sEntity {
 	return entList
 }
 
+func (e K8sEntity) Meta() metav1.Object {
+	m, err := meta.Accessor(e.Obj)
+	if err != nil {
+		return &metav1.ObjectMeta{}
+	}
+	return m
+}
+
 func (e K8sEntity) ToObjectReference() v1.ObjectReference {
-	meta := e.meta()
+	meta := e.Meta()
 	apiVersion, kind := e.GVK().ToAPIVersionAndKind()
 	return v1.ObjectReference{
 		Kind:       kind,
@@ -96,8 +77,7 @@ func (e K8sEntity) ToObjectReference() v1.ObjectReference {
 
 func (e K8sEntity) WithNamespace(ns string) K8sEntity {
 	newE := e.DeepCopy()
-	meta := newE.meta()
-	meta.SetNamespace(ns)
+	newE.Meta().SetNamespace(ns)
 	return newE
 }
 
@@ -118,109 +98,24 @@ func (e K8sEntity) GVK() schema.GroupVersionKind {
 // Clean up internal bookkeeping fields. See
 // https://github.com/kubernetes/kubernetes/issues/90066
 func (e K8sEntity) Clean() {
-	m := e.meta()
-	m.SetManagedFields(nil)
+	e.Meta().SetManagedFields(nil)
 
-	annotations := m.GetAnnotations()
+	annotations := e.Meta().GetAnnotations()
 	if len(annotations) != 0 {
 		delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
 	}
 }
 
-func (e K8sEntity) meta() ObjectMeta {
-	if unstruct := e.maybeUnstructuredMeta(); unstruct != nil {
-		return unstruct
-	}
-
-	if structured, _ := e.maybeStructuredMeta(); structured != nil {
-		return structured
-	}
-
-	return emptyMeta{}
-}
-
-func (e K8sEntity) maybeUnstructuredMeta() *unstructured.Unstructured {
-	unstruct, isUnstructured := e.Obj.(*unstructured.Unstructured)
-	if isUnstructured {
-		return unstruct
-	}
-	return nil
-}
-
-func (e K8sEntity) maybeStructuredMeta() (meta *metav1.ObjectMeta, fieldIndex int) {
-	objVal := reflect.ValueOf(e.Obj)
-	if objVal.Kind() == reflect.Ptr {
-		if objVal.IsNil() {
-			return nil, -1
-		}
-		objVal = objVal.Elem()
-	}
-
-	if objVal.Kind() != reflect.Struct {
-		return nil, -1
-	}
-
-	// Find a field with type ObjectMeta
-	omType := reflect.TypeOf(metav1.ObjectMeta{})
-	for i := 0; i < objVal.NumField(); i++ {
-		fieldVal := objVal.Field(i)
-		if omType != fieldVal.Type() {
-			continue
-		}
-
-		if !fieldVal.CanAddr() {
-			continue
-		}
-
-		metadata, ok := fieldVal.Addr().Interface().(*metav1.ObjectMeta)
-		if !ok {
-			continue
-		}
-
-		return metadata, i
-	}
-	return nil, -1
-}
-
-func SetUID(e *K8sEntity, UID string) error {
-	unstruct := e.maybeUnstructuredMeta()
-	if unstruct != nil {
-		return fmt.Errorf("SetUIDForTesting not yet implemented for unstructured metadata")
-	}
-
-	structured, i := e.maybeStructuredMeta()
-	if structured == nil {
-		return fmt.Errorf("Cannot set UID -- entity has neither unstructured nor structured metadata. k8s entity: %+v", e)
-	}
-
-	structured.SetUID(types.UID(UID))
-	objVal := reflect.ValueOf(e.Obj)
-	if objVal.Kind() == reflect.Ptr {
-		if objVal.IsNil() {
-			return fmt.Errorf("Cannot set UID -- e.Obj is a pointer. k8s entity: %+v", e)
-		}
-		objVal = objVal.Elem()
-	}
-
-	fieldVal := objVal.Field(i)
-	metaVal := reflect.ValueOf(*structured)
-	fieldVal.Set(metaVal)
-	return nil
-}
-
-func SetUIDForTest(t *testing.T, e *K8sEntity, UID string) {
-	err := SetUID(e, UID)
-	if err != nil {
-		t.Fatal(err)
-	}
+func (e K8sEntity) SetUID(UID string) {
+	e.Meta().SetUID(types.UID(UID))
 }
 
 func (e K8sEntity) Name() string {
-	return e.meta().GetName()
+	return e.Meta().GetName()
 }
 
 func (e K8sEntity) Namespace() Namespace {
-	n := e.meta().GetNamespace()
+	n := e.Meta().GetNamespace()
 	if n == "" {
 		return DefaultNamespace
 	}
@@ -228,7 +123,7 @@ func (e K8sEntity) Namespace() Namespace {
 }
 
 func (e K8sEntity) NamespaceOrDefault(defaultVal string) string {
-	n := e.meta().GetNamespace()
+	n := e.Meta().GetNamespace()
 	if n == "" {
 		return defaultVal
 	}
@@ -236,15 +131,15 @@ func (e K8sEntity) NamespaceOrDefault(defaultVal string) string {
 }
 
 func (e K8sEntity) UID() types.UID {
-	return e.meta().GetUID()
+	return e.Meta().GetUID()
 }
 
 func (e K8sEntity) Annotations() map[string]string {
-	return e.meta().GetAnnotations()
+	return e.Meta().GetAnnotations()
 }
 
 func (e K8sEntity) Labels() map[string]string {
-	return e.meta().GetLabels()
+	return e.Meta().GetLabels()
 }
 
 // Most entities can be updated once running, but a few cannot.

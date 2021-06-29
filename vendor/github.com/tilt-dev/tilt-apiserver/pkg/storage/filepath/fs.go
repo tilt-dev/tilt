@@ -20,7 +20,7 @@ type FS interface {
 	EnsureDir(dirname string) error
 	Write(encoder runtime.Encoder, filepath string, obj runtime.Object) error
 	Read(decoder runtime.Decoder, path string, newFunc func() runtime.Object) (runtime.Object, error)
-	VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object)) error
+	VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) error
 }
 
 type RealFS struct {
@@ -65,7 +65,7 @@ func (fs RealFS) Read(decoder runtime.Decoder, path string, newFunc func() runti
 	return decodedObj, nil
 }
 
-func (fs RealFS) VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object)) error {
+func (fs RealFS) VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) error {
 	return filepath.Walk(dirname, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -80,8 +80,7 @@ func (fs RealFS) VisitDir(dirname string, newFunc func() runtime.Object, codec r
 		if err != nil {
 			return err
 		}
-		visitFunc(path, newObj)
-		return nil
+		return visitFunc(path, newObj)
 	})
 }
 
@@ -217,7 +216,7 @@ func (fs *MemoryFS) readInternal(decoder runtime.Decoder, p string, newFunc func
 }
 
 // Walk the directory, reading all objects in it.
-func (fs *MemoryFS) VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object)) error {
+func (fs *MemoryFS) VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
@@ -247,7 +246,10 @@ func (fs *MemoryFS) VisitDir(dirname string, newFunc func() runtime.Object, code
 			if err != nil {
 				return err
 			}
-			visitFunc(keyPath, newObj)
+			err = visitFunc(keyPath, newObj)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}

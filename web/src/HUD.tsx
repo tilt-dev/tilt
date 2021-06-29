@@ -9,7 +9,7 @@ import AnalyticsNudge from "./AnalyticsNudge"
 import AppController from "./AppController"
 import ErrorModal from "./ErrorModal"
 import FatalErrorModal from "./FatalErrorModal"
-import Features from "./feature"
+import Features, { FeaturesProvider } from "./feature"
 import HeroScreen from "./HeroScreen"
 import "./HUD.scss"
 import HudState from "./HudState"
@@ -234,9 +234,9 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderOverviewSwitch() {
+    const features = this.getFeatures()
     let showSnapshot =
-      this.getFeatures().isEnabled("snapshots") &&
-      !this.pathBuilder.isSnapshot()
+      features.isEnabled("snapshots") && !this.pathBuilder.isSnapshot()
     let snapshotAction = {
       enabled: showSnapshot,
       openModal: this.handleOpenModal,
@@ -245,24 +245,28 @@ export default class HUD extends Component<HudProps, HudState> {
     return (
       /* allow Styled Components to override MUI - https://material-ui.com/guides/interoperability/#controlling-priority-3*/
       <StylesProvider injectFirst>
-        <SnapshotActionProvider value={snapshotAction}>
-          <PathBuilderProvider value={this.pathBuilder}>
-            <LogStoreProvider value={this.state.logStore || new LogStore()}>
-              <Switch>
-                <Route
-                  path={this.path("/r/:name/overview")}
-                  render={(props: RouteComponentProps<any>) => (
-                    <OverviewResourcePane view={this.state.view} />
-                  )}
-                />
-                <Route path={this.path("/table")}>
-                  <OverviewTablePane view={this.state.view} />
-                </Route>
-                <Route render={() => <OverviewPane view={this.state.view} />} />
-              </Switch>
-            </LogStoreProvider>
-          </PathBuilderProvider>
-        </SnapshotActionProvider>
+        <FeaturesProvider value={features}>
+          <SnapshotActionProvider value={snapshotAction}>
+            <PathBuilderProvider value={this.pathBuilder}>
+              <LogStoreProvider value={this.state.logStore || new LogStore()}>
+                <Switch>
+                  <Route
+                    path={this.path("/r/:name/overview")}
+                    render={(props: RouteComponentProps<any>) => (
+                      <OverviewResourcePane view={this.state.view} />
+                    )}
+                  />
+                  <Route path={this.path("/table")}>
+                    <OverviewTablePane view={this.state.view} />
+                  </Route>
+                  <Route
+                    render={() => <OverviewPane view={this.state.view} />}
+                  />
+                </Switch>
+              </LogStoreProvider>
+            </PathBuilderProvider>
+          </SnapshotActionProvider>
+        </FeaturesProvider>
       </StylesProvider>
     )
   }

@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tilt-dev/tilt/internal/engine/fswatch"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -50,8 +50,9 @@ type Controller struct {
 	mu             sync.Mutex
 }
 
-func NewController(store store.RStore, fsWatcherMaker fsevent.WatcherMaker, timerMaker fsevent.TimerMaker) *Controller {
+func NewController(client ctrlclient.Client, store store.RStore, fsWatcherMaker fsevent.WatcherMaker, timerMaker fsevent.TimerMaker) *Controller {
 	return &Controller{
+		Client:         client,
 		Store:          store,
 		targetWatches:  make(map[types.NamespacedName]*watcher),
 		fsWatcherMaker: fsWatcherMaker,
@@ -87,14 +88,11 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	return ctrl.Result{}, nil
 }
 
-func (c *Controller) SetClient(client ctrlclient.Client) {
-	c.Client = client
-}
+func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
+		For(&filewatches.FileWatch{})
 
-func (c *Controller) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&filewatches.FileWatch{}).
-		Complete(c)
+	return b, nil
 }
 
 // removeWatch removes a watch from the map. It does NOT stop the watcher or free up resources.
@@ -130,7 +128,7 @@ func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name typ
 		_ = notify.Close()
 		return fmt.Errorf("failed to update monitor start time: %v", err)
 	}
-	c.Store.Dispatch(fswatch.NewFileWatchUpdateStatusAction(fw))
+	c.Store.Dispatch(NewFileWatchUpdateStatusAction(fw))
 
 	ctx, cancel := context.WithCancel(ctx)
 	w := &watcher{

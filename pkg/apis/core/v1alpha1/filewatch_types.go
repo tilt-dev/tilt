@@ -79,6 +79,10 @@ func (in *FileWatch) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
 
+func (in *FileWatch) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *FileWatch) NamespaceScoped() bool {
 	return false
 }

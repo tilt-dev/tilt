@@ -40,6 +40,13 @@ const AnnotationManifest = "tilt.dev/resource"
 // its logs should appear under.
 const AnnotationSpanID = "tilt.dev/log-span-id"
 
+// The label key to denote the owner of an object.  We use labels for now
+// because the Tiltfile is not a real object in the system.
+const LabelOwnerKind = "tilt.dev/owner-kind"
+
+// The label value to denote that the Tiltfile is the owner.
+const LabelOwnerKindTiltfile = "Tiltfile"
+
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
 

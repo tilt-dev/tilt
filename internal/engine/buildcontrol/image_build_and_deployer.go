@@ -9,7 +9,6 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -69,6 +69,7 @@ type ImageBuildAndDeployer struct {
 	clock       build.Clock
 	kl          KINDLoader
 	ctrlClient  ctrlclient.Client
+	r           *kubernetesapply.Reconciler
 }
 
 func NewImageBuildAndDeployer(
@@ -82,6 +83,7 @@ func NewImageBuildAndDeployer(
 	c build.Clock,
 	kl KINDLoader,
 	ctrlClient ctrlclient.Client,
+	r *kubernetesapply.Reconciler,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
 		db:          db,
@@ -93,6 +95,7 @@ func NewImageBuildAndDeployer(
 		clock:       c,
 		kl:          kl,
 		ctrlClient:  ctrlClient,
+		r:           r,
 	}
 }
 
@@ -208,7 +211,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	k8sResult, err := ibd.deploy(ctx, st, ps, imageMapSet, kTarget, q.AllResults())
+	k8sResult, err := ibd.deploy(ctx, st, ps, kTarget.ID(), kTarget.KubernetesApplySpec, imageMapSet)
 	reportK8sDeployMetrics(ctx, kTarget, time.Since(startDeployTime), err != nil)
 	if err != nil {
 		return newResults, WrapDontFallBackError(err)
@@ -280,58 +283,45 @@ func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg m
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
-func (ibd *ImageBuildAndDeployer) deploy(ctx context.Context, st store.RStore, ps *build.PipelineState,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-	kTarget model.K8sTarget, results store.ImageBuildResultSet) (store.BuildResult, error) {
+func (ibd *ImageBuildAndDeployer) deploy(
+	ctx context.Context,
+	st store.RStore,
+	ps *build.PipelineState,
+	kTargetID model.TargetID,
+	spec v1alpha1.KubernetesApplySpec,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (store.K8sBuildResult, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
-	// Create API objects.
-	spec := kTarget.KubernetesApplySpec
-	newK8sEntities, err := ibd.createEntitiesToDeploy(ctx, imageMaps, spec)
+	kTargetNN := types.NamespacedName{Name: kTargetID.Name.String()}
+	status, err := ibd.r.ForceApply(ctx, kTargetNN, spec, imageMaps)
 	if err != nil {
-		return nil, err
+		return store.K8sBuildResult{}, fmt.Errorf("applying %s: %v", kTargetID, err)
+	}
+	if status.Error != "" {
+		return store.K8sBuildResult{}, fmt.Errorf("%s", status.Error)
 	}
 
-	ctx = ibd.indentLogger(ctx)
-	l := logger.Get(ctx)
-
-	l.Infof("Applying via kubectl:")
-	for _, displayName := range kTarget.DisplayNames {
-		l.Infof("→ %s", displayName)
-	}
-
-	timeout := kTarget.Timeout.Duration
-	if timeout == 0 {
-		timeout = v1alpha1.KubernetesApplyTimeoutDefault
-	}
-
-	deployed, err := ibd.k8sClient.Upsert(ctx, newK8sEntities, timeout)
+	deployed, err := k8s.ParseYAMLFromString(status.ResultYAML)
 	if err != nil {
-		return nil, err
+		return store.K8sBuildResult{}, err
 	}
 
 	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
 	for _, entity := range deployed {
 		if entity.UID() == "" {
-			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
+			return store.K8sBuildResult{}, fmt.Errorf("Entity not deployed correctly: %v", entity)
 		}
 		hs, err := k8s.ReadPodTemplateSpecHashes(entity)
 		if err != nil {
-			return nil, errors.Wrap(err, "reading pod template spec hashes")
+			return store.K8sBuildResult{}, errors.Wrap(err, "reading pod template spec hashes")
 		}
 		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
 	}
 
-	return store.NewK8sDeployResult(kTarget.ID(), podTemplateSpecHashes, deployed), nil
-}
-
-func (ibd *ImageBuildAndDeployer) indentLogger(ctx context.Context) context.Context {
-	l := logger.Get(ctx)
-	newL := logger.NewPrefixedLogger(logger.Blue(l).Sprint("     "), l)
-	return logger.WithLogger(ctx, newL)
+	return store.NewK8sDeployResult(kTargetID, status, k8s.ToRefList(deployed), podTemplateSpecHashes), nil
 }
 
 // Delete all the resources in the Kubernetes target, to ensure that they restart when
@@ -355,112 +345,6 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 	entities = k8s.ReverseSortedEntities(entities)
 
 	return ibd.k8sClient.Delete(ctx, entities)
-}
-
-func (ibd *ImageBuildAndDeployer) createEntitiesToDeploy(ctx context.Context,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-	spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
-	newK8sEntities := []k8s.K8sEntity{}
-
-	entities, err := k8s.ParseYAMLFromString(spec.YAML)
-	if err != nil {
-		return nil, err
-	}
-
-	locators, err := k8s.ParseImageLocators(spec.ImageLocators)
-	if err != nil {
-		return nil, err
-	}
-
-	imageMapNames := spec.ImageMaps
-	injectedImageMaps := map[string]bool{}
-	for _, e := range entities {
-		e, err = k8s.InjectLabels(e, []model.LabelPair{
-			k8s.TiltManagedByLabel(),
-		})
-		if err != nil {
-			return nil, errors.Wrap(err, "deploy")
-		}
-
-		// If we're redeploying these workloads in response to image
-		// changes, we make sure image pull policy isn't set to "Always".
-		// Frequent applies don't work well with this setting, and makes things
-		// slower. See discussion:
-		// https://github.com/tilt-dev/tilt/issues/3209
-		if len(imageMaps) > 0 {
-			e, err = k8s.InjectImagePullPolicy(e, v1.PullIfNotPresent)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		if len(imageMaps) > 0 {
-			// StatefulSet pods should be managed in parallel when we're doing iterative
-			// development. See discussion:
-			// https://github.com/tilt-dev/tilt/issues/1962
-			// https://github.com/tilt-dev/tilt/issues/3906
-			e = k8s.InjectParallelPodManagementPolicy(e)
-		}
-
-		// When working with a local k8s cluster, we set the pull policy to Never,
-		// to ensure that k8s fails hard if the image is missing from docker.
-		policy := v1.PullIfNotPresent
-		if ibd.db.WillBuildToKubeContext(ibd.kubeContext) {
-			policy = v1.PullNever
-		}
-
-		for _, imageMapName := range imageMapNames {
-			imageMap := imageMaps[types.NamespacedName{Name: imageMapName}]
-			imageMapSpec := imageMap.Spec
-			selector, err := container.SelectorFromImageMap(imageMapSpec)
-			if err != nil {
-				return nil, err
-			}
-			matchInEnvVars := imageMapSpec.MatchInEnvVars
-
-			if imageMap.Status.Image == "" {
-				return nil, fmt.Errorf("internal error: missing image status")
-			}
-
-			ref, err := reference.ParseNamed(imageMap.Status.Image)
-			if err != nil {
-				return nil, fmt.Errorf("parsing image map status: %v", err)
-			}
-
-			var replaced bool
-			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, locators, matchInEnvVars, policy)
-			if err != nil {
-				return nil, err
-			}
-			if replaced {
-				injectedImageMaps[imageMapName] = true
-
-				if imageMapSpec.OverrideCommand != nil || imageMapSpec.OverrideArgs != nil {
-					e, err = k8s.InjectCommandAndArgs(e, ref, imageMapSpec.OverrideCommand, imageMapSpec.OverrideArgs)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-		}
-
-		// This needs to be after all the other injections, to ensure the hash includes the Tilt-generated
-		// image tag, etc
-		e, err := k8s.InjectPodTemplateSpecHashes(e)
-		if err != nil {
-			return nil, errors.Wrap(err, "injecting pod template hash")
-		}
-
-		newK8sEntities = append(newK8sEntities, e)
-	}
-
-	for _, name := range imageMapNames {
-		if !injectedImageMaps[name] {
-			return nil, fmt.Errorf("Docker image missing from yaml: %s", name)
-		}
-	}
-
-	return newK8sEntities, nil
 }
 
 // Create a new ImageTarget with the Dockerfiles rewritten with the injected images.

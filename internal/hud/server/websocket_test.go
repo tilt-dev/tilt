@@ -26,7 +26,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 	_ = st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
-	ctrlClient := fake.NewTiltClient()
+	ctrlClient := fake.NewFakeTiltClient()
 	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
 
@@ -56,7 +56,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 	_ = st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
-	ctrlClient := fake.NewTiltClient()
+	ctrlClient := fake.NewFakeTiltClient()
 	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
 
@@ -92,7 +92,7 @@ func TestWebsocketNextWriterError(t *testing.T) {
 
 	conn := newFakeConn()
 	conn.nextWriterError = fmt.Errorf("fake NextWriter error")
-	ctrlClient := fake.NewTiltClient()
+	ctrlClient := fake.NewFakeTiltClient()
 	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
 
@@ -126,7 +126,7 @@ func TestWebsocketIgnoreEmptyLogList(t *testing.T) {
 	_ = st.SetUpSubscribersForTesting(ctx)
 
 	conn := newFakeConn()
-	ctrlClient := fake.NewTiltClient()
+	ctrlClient := fake.NewFakeTiltClient()
 	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
 

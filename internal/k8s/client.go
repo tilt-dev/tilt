@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/cmd/wait"
 
 	// Client auth plugins! They will auto-init if we import them.
@@ -41,6 +42,7 @@ import (
 )
 
 type Namespace string
+type NamespaceOverride string
 type PodID string
 type NodeID string
 type ServiceName string
@@ -84,8 +86,8 @@ type Client interface {
 	// behavior for our use cases.
 	Delete(ctx context.Context, entities []K8sEntity) error
 
-	GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error)
-	ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error)
+	GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error)
+	ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error)
 
 	// Streams the container logs
 	ContainerLogs(ctx context.Context, podID PodID, cName container.Name, n Namespace, startTime time.Time) (io.ReadCloser, error)
@@ -93,7 +95,7 @@ type Client interface {
 	// Opens a tunnel to the specified pod+port. Returns the tunnel's local port and a function that closes the tunnel
 	CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, optionalLocalPort, remotePort int, host string) (PortForwarder, error)
 
-	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error)
+	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan metav1.Object, error)
 
 	ContainerRuntime(ctx context.Context) container.Runtime
 
@@ -544,7 +546,7 @@ func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionK
 	return rm.Resource, nil
 }
 
-func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
+func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error) {
 	gvr, err := k.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, err
@@ -556,7 +558,7 @@ func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, n
 	}
 
 	// type conversion
-	result := make([]ObjectMeta, len(metaList.Items))
+	result := make([]metav1.Object, len(metaList.Items))
 	for i, meta := range metaList.Items {
 		m := meta.ObjectMeta
 		result[i] = &m
@@ -564,7 +566,7 @@ func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, n
 	return result, nil
 }
 
-func (k *K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+func (k *K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error) {
 	gvk := ReferenceGVK(ref)
 	gvr, err := k.forceDiscovery(ctx, gvk)
 	if err != nil {
@@ -634,12 +636,15 @@ func ProvideClientset(cfg RESTConfigOrError) ClientsetOrError {
 	return ClientsetOrError{Clientset: clientset, Error: err}
 }
 
-func ProvideClientConfig(contextOverride KubeContextOverride) clientcmd.ClientConfig {
+func ProvideClientConfig(contextOverride KubeContextOverride, nsFlag NamespaceOverride) clientcmd.ClientConfig {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 
 	overrides := &clientcmd.ConfigOverrides{
 		CurrentContext: string(contextOverride),
+		Context: clientcmdapi.Context{
+			Namespace: string(nsFlag),
+		},
 	}
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		rules,

@@ -64,7 +64,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
-	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
@@ -354,53 +353,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
-		var deployed []k8s.K8sEntity
-		var templateSpecHashes []k8s.PodTemplateSpecHash
-
-		explicitDeploymentEntities := b.targetObjectTree[kTarg.ID()]
-		if len(explicitDeploymentEntities) != 0 {
-			if b.nextDeployedUID != "" {
-				b.t.Fatalf("Cannot set both explicit deployed entities + next deployed UID")
-			}
-			if len(b.nextPodTemplateSpecHashes) != 0 {
-				b.t.Fatalf("Cannot set both explicit deployed entities + next pod template spec hashes")
-			}
-
-			// register Deployment + ReplicaSet so that other parts of the system can properly retrieve them
-			b.kClient.Inject(
-				explicitDeploymentEntities.Deployment(),
-				explicitDeploymentEntities.ReplicaSet())
-
-			// only return the Deployment entity as deployed since the ReplicaSet + Pod are created implicitly,
-			// i.e. they are not returned in a normal apply call for a Deployment
-			deployed = []k8s.K8sEntity{explicitDeploymentEntities.Deployment()}
-			hash := explicitDeploymentEntities.Pod().Labels()[k8s.TiltPodTemplateHashLabel]
-			if hash != "" {
-				templateSpecHashes = append(templateSpecHashes, k8s.PodTemplateSpecHash(hash))
-			}
-		} else {
-			deployed, err = k8s.ParseYAMLFromString(kTarg.YAML)
-			if err != nil {
-				return result, err
-			}
-
-			for i := 0; i < len(deployed); i++ {
-				uid := types.UID(uuid.New().String())
-				if b.nextDeployedUID != "" {
-					uid = b.nextDeployedUID
-					b.nextDeployedUID = ""
-				}
-				k8s.SetUIDForTest(b.t, &deployed[i], string(uid))
-			}
-
-			templateSpecHashes = podTemplateSpecHashesForTarg(b.t, kTarg)
-			if len(b.nextPodTemplateSpecHashes) != 0 {
-				templateSpecHashes = b.nextPodTemplateSpecHashes
-				b.nextPodTemplateSpecHashes = nil
-			}
-		}
-
-		result[call.k8s().ID()] = store.NewK8sDeployResult(call.k8s().ID(), templateSpecHashes, deployed)
+		result[call.k8s().ID()] = b.nextK8sDeployResult(kTarg)
 	}
 
 	err = b.nextLiveUpdateCompileError
@@ -413,6 +366,63 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	return result, err
+}
+
+func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.K8sBuildResult {
+	var err error
+	var deployed []k8s.K8sEntity
+	var templateSpecHashes []k8s.PodTemplateSpecHash
+	var status = v1alpha1.KubernetesApplyStatus{
+		LastApplyTime:    apis.NowMicro(),
+		AppliedInputHash: "x",
+	}
+
+	explicitDeploymentEntities := b.targetObjectTree[kTarg.ID()]
+	if len(explicitDeploymentEntities) != 0 {
+		if b.nextDeployedUID != "" {
+			b.t.Fatalf("Cannot set both explicit deployed entities + next deployed UID")
+		}
+		if len(b.nextPodTemplateSpecHashes) != 0 {
+			b.t.Fatalf("Cannot set both explicit deployed entities + next pod template spec hashes")
+		}
+
+		// register Deployment + ReplicaSet so that other parts of the system can properly retrieve them
+		b.kClient.Inject(
+			explicitDeploymentEntities.Deployment(),
+			explicitDeploymentEntities.ReplicaSet())
+
+		// only return the Deployment entity as deployed since the ReplicaSet + Pod are created implicitly,
+		// i.e. they are not returned in a normal apply call for a Deployment
+		deployed = []k8s.K8sEntity{explicitDeploymentEntities.Deployment()}
+		hash := explicitDeploymentEntities.Pod().Labels()[k8s.TiltPodTemplateHashLabel]
+		if hash != "" {
+			templateSpecHashes = append(templateSpecHashes, k8s.PodTemplateSpecHash(hash))
+		}
+	} else {
+		deployed, err = k8s.ParseYAMLFromString(kTarg.YAML)
+		require.NoError(b.t, err)
+
+		for i := 0; i < len(deployed); i++ {
+			uid := types.UID(uuid.New().String())
+			if b.nextDeployedUID != "" {
+				uid = b.nextDeployedUID
+				b.nextDeployedUID = ""
+			}
+			deployed[i].SetUID(string(uid))
+		}
+
+		templateSpecHashes = podTemplateSpecHashesForTarg(b.t, kTarg)
+		if len(b.nextPodTemplateSpecHashes) != 0 {
+			templateSpecHashes = b.nextPodTemplateSpecHashes
+			b.nextPodTemplateSpecHashes = nil
+		}
+	}
+
+	resultYAML, err := k8s.SerializeSpecYAML(deployed)
+	require.NoError(b.t, err)
+	status.ResultYAML = resultYAML
+
+	return store.NewK8sDeployResult(kTarg.ID(), status, k8s.ToRefList(deployed), templateSpecHashes)
 }
 
 func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(key string) buildCompletionChannel {
@@ -1685,7 +1695,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 
 	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
 		spanID0,
-		deployResultSet(manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
+		deployResultSet(f.T(), manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
 
 	f.podEvent(pb.Build())
 
@@ -2406,7 +2416,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	result := f.b.resultsByID[manifest.K8sTarget().ID()]
-	uid := result.(store.K8sBuildResult).DeployedEntities[0].UID
+	uid := result.(store.K8sBuildResult).DeployedRefs[0].UID
 	svc := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4").Build()
 	err := k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
 	require.NoError(t, err)
@@ -2439,7 +2449,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	result := f.b.resultsByID[manifest.K8sTarget().ID()]
-	uid := result.(store.K8sBuildResult).DeployedEntities[0].UID
+	uid := result.(store.K8sBuildResult).DeployedRefs[0].UID
 	sb := servicebuilder.New(t, manifest).WithUID(uid).WithPort(8080).WithIP("1.2.3.4")
 	svc := sb.Build()
 	err := k8swatch.DispatchServiceChange(f.store, svc, manifest.Name, "")
@@ -3892,10 +3902,8 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
-	plm := runtimelog.NewPodLogManager(cdc)
 	podSource := podlogstream.NewPodSource(ctx, b.kClient, v1alpha1.NewScheme())
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient, podSource)
-	fwms := fswatch.NewManifestSubscriber(cdc)
 	pfs := portforward.NewSubscriber(b.kClient, cdc)
 	pfs.DisableForTesting()
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
@@ -3920,13 +3928,13 @@ func newTestFixture(t *testing.T) *testFixture {
 	kdms := k8swatch.NewManifestSubscriber(ns, cdc)
 	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(b.kClient, of, rd, st)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, b.kClient, of, rd, st)
 	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
 	ewm := k8swatch.NewEventWatchManager(b.kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
-	fwc := filewatch.NewController(st, watcher.NewSub, timerMaker.Maker())
+	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker())
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
 	sessionController := session.NewController(cdc)
@@ -3947,18 +3955,21 @@ func newTestFixture(t *testing.T) *testFixture {
 		cdc,
 		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	pfr := apiportforward.NewReconciler(st, b.kClient)
+	pfr := apiportforward.NewReconciler(cdc, st, b.kClient)
 
 	wsl := server.NewWebsocketList()
+
+	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st)
+
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
 		plsc,
 		kdc,
-		kubernetesapply.NewReconciler(b.kClient, sch),
-		ctrluisession.NewReconciler(wsl),
-		ctrluiresource.NewReconciler(wsl),
-		ctrluibutton.NewReconciler(wsl),
+		kar,
+		ctrluisession.NewReconciler(cdc, wsl),
+		ctrluiresource.NewReconciler(cdc, wsl),
+		ctrluibutton.NewReconciler(cdc, wsl),
 		pfr,
 	))
 
@@ -4002,7 +4013,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, plm, pfs, fwms, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, pfs, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -4097,7 +4108,13 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
-	expectedWatchCount := len(fswatch.FileWatchesFromManifests(*state))
+	expectedFileWatches := configs.ToFileWatchObjects(configs.WatchInputs{
+		Manifests:     state.Manifests(),
+		ConfigFiles:   state.ConfigFiles,
+		WatchSettings: state.WatchSettings,
+		Tiltignore:    state.Tiltignore,
+	})
+	expectedWatchCount := len(expectedFileWatches)
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}
@@ -4358,8 +4375,8 @@ func (f *testFixture) lastDeployedUID(manifestName model.ManifestName) types.UID
 	if !ok {
 		return ""
 	}
-	if len(k8sResult.DeployedEntities) > 0 {
-		return k8sResult.DeployedEntities[0].UID
+	if len(k8sResult.DeployedRefs) > 0 {
+		return k8sResult.DeployedRefs[0].UID
 	}
 	return ""
 }
@@ -4631,7 +4648,7 @@ func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Act
 	})
 }
 
-func deployResultSet(manifest model.Manifest, pb podbuilder.PodBuilder, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
+func deployResultSet(t testing.TB, manifest model.Manifest, pb podbuilder.PodBuilder, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
 	resultSet := store.BuildResultSet{}
 	tag := "deadbeef"
 	for _, iTarget := range manifest.ImageTargets {
@@ -4640,7 +4657,14 @@ func deployResultSet(manifest model.Manifest, pb podbuilder.PodBuilder, hashes [
 		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 	}
 	ktID := manifest.K8sTarget().ID()
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, hashes, []k8s.K8sEntity{pb.ObjectTreeEntities().Deployment()})
+	entities := []k8s.K8sEntity{pb.ObjectTreeEntities().Deployment()}
+	yaml, err := k8s.SerializeSpecYAML(entities)
+	require.NoError(t, err)
+	status := v1alpha1.KubernetesApplyStatus{
+		ResultYAML:    yaml,
+		LastApplyTime: apis.NowMicro(),
+	}
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, status, k8s.ToRefList(entities), hashes)
 	return resultSet
 }
 

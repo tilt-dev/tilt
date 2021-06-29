@@ -35,7 +35,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
-	"github.com/tilt-dev/tilt/internal/engine/fswatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
@@ -76,7 +75,8 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideServerVersion,
 	k8s.ProvideK8sClient,
 	k8s.ProvideOwnerFetcher,
-	ProvideKubeContextOverride)
+	ProvideKubeContextOverride,
+	ProvideNamespaceOverride)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet,
@@ -92,7 +92,6 @@ var BaseWireSet = wire.NewSet(
 
 	clockwork.NewRealClock,
 	engine.DeployerWireSet,
-	runtimelog.NewPodLogManager,
 	portforward.NewSubscriber,
 	engine.NewBuildController,
 	local.NewServerController,
@@ -129,7 +128,6 @@ var BaseWireSet = wire.NewSet(
 	engineanalytics.NewAnalyticsUpdater,
 	engineanalytics.ProvideAnalyticsReporter,
 	provideUpdateModeFlag,
-	fswatch.NewManifestSubscriber,
 	fsevent.ProvideWatcherMaker,
 	fsevent.ProvideTimerMaker,
 

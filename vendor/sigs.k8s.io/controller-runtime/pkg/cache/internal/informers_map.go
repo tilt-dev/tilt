@@ -37,7 +37,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
-// clientListWatcherFunc knows how to create a ListWatcher
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// clientListWatcherFunc knows how to create a ListWatcher.
 type createListWatcherFunc func(gvk schema.GroupVersionKind, ip *specificInformersMap) (*cache.ListWatch, error)
 
 // newSpecificInformersMap returns a new specificInformersMap (like
@@ -65,7 +69,7 @@ func newSpecificInformersMap(config *rest.Config,
 	return ip
 }
 
-// MapEntry contains the cached data for an Informer
+// MapEntry contains the cached data for an Informer.
 type MapEntry struct {
 	// Informer is the cached informer
 	Informer cache.SharedIndexInformer
@@ -378,7 +382,7 @@ func createMetadataListWatch(gvk schema.GroupVersionKind, ip *specificInformersM
 func resyncPeriod(resync time.Duration) func() time.Duration {
 	return func() time.Duration {
 		// the factor will fall into [0.9, 1.1)
-		factor := rand.Float64()/5.0 + 0.9
+		factor := rand.Float64()/5.0 + 0.9 //nolint:gosec
 		return time.Duration(float64(resync.Nanoseconds()) * factor)
 	}
 }

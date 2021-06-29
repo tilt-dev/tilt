@@ -80,6 +80,7 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	addDevServerFlags(cmd)
 	addTiltfileFlag(cmd, &c.fileName)
 	addKubeContextFlag(cmd)
+	addNamespaceFlag(cmd)
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 

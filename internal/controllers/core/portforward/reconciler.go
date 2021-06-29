@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -37,21 +39,20 @@ type Reconciler struct {
 var _ store.TearDowner = &Reconciler{}
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(store store.RStore, kClient k8s.Client) *Reconciler {
+func NewReconciler(ctrlClient ctrlclient.Client, store store.RStore, kClient k8s.Client) *Reconciler {
 	return &Reconciler{
 		store:          store,
 		kClient:        kClient,
+		ctrlClient:     ctrlClient,
 		activeForwards: make(map[types.NamespacedName]*portForwardEntry),
 	}
 }
 
-func (r *Reconciler) SetClient(client ctrlclient.Client) {
-	r.ctrlClient = client
-}
+func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
+		For(&PortForward{})
 
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&PortForward{}).Complete(r)
+	return b, nil
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

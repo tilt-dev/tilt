@@ -2,9 +2,16 @@ package kubernetesdiscovery
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tilt-dev/tilt/internal/timecmp"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -262,6 +269,86 @@ func TestPodDiscoveryDuplicates(t *testing.T) {
 	})
 }
 
+func TestReconcileCreatesPodLogStream(t *testing.T) {
+	f := newFixture(t)
+
+	ns := k8s.Namespace("ns")
+	pod1 := f.buildPod(ns, "pod1", nil, nil)
+	f.kClient.UpsertPod(pod1)
+	pod2 := f.buildPod(ns, "pod2", nil, nil)
+	f.kClient.UpsertPod(pod2)
+
+	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
+	kd := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			Watches: []v1alpha1.KubernetesWatchRef{
+				{
+					UID:       string(pod1.UID),
+					Namespace: pod1.Namespace,
+					Name:      pod1.Name,
+				},
+				{
+					UID:       string(pod2.UID),
+					Namespace: pod2.Namespace,
+					Name:      pod2.Name,
+				},
+			},
+		},
+	}
+
+	f.Create(kd)
+	// make sure the pods have been seen so that it knows what to create resources for
+	f.requireObservedPods(key, ancestorMap{pod1.UID: pod1.UID, pod2.UID: pod2.UID})
+
+	// in reality, once the pods are observed, a status update is triggered, which would
+	// result in a reconcile; but the test is not running under the manager, so an update
+	// doesn't implicitly trigger a reconcile and we have to manually do it
+	f.MustReconcile(key)
+
+	var podLogStreams v1alpha1.PodLogStreamList
+	f.List(&podLogStreams)
+	require.Equal(t, 2, len(podLogStreams.Items), "Incorrect number of PodLogStream objects")
+
+	sort.Slice(podLogStreams.Items, func(i, j int) bool {
+		return podLogStreams.Items[i].Spec.Pod < podLogStreams.Items[j].Spec.Pod
+	})
+
+	assert.Equal(t, "pod1", podLogStreams.Items[0].Spec.Pod)
+	assert.Equal(t, "pod2", podLogStreams.Items[1].Spec.Pod)
+
+	for _, pls := range podLogStreams.Items {
+		assert.Equal(t, ns.String(), pls.Spec.Namespace)
+
+		timecmp.AssertTimeEqual(t, f.pw.startTime, pls.Spec.SinceTime)
+
+		assert.ElementsMatch(t,
+			[]string{runtimelog.IstioInitContainerName.String(), runtimelog.IstioSidecarContainerName.String()},
+			pls.Spec.IgnoreContainers)
+
+		assert.Empty(t, pls.Spec.OnlyContainers)
+	}
+
+	// simulate a pod delete and ensure that after it's observed + reconciled, the PLS is also deleted
+	f.kClient.EmitPodDelete(pod1)
+	f.requireObservedPods(key, ancestorMap{pod2.UID: pod2.UID})
+	f.MustReconcile(key)
+	f.List(&podLogStreams)
+	require.Equal(t, 1, len(podLogStreams.Items), "Incorrect number of PodLogStream objects")
+	assert.Equal(t, "pod2", podLogStreams.Items[0].Spec.Pod)
+
+	// simulate the PodLogStream being deleted by an external force - chaos!
+	f.Delete(&podLogStreams.Items[0])
+	f.List(&podLogStreams)
+	assert.Empty(t, podLogStreams.Items)
+	// similar to before, in reality, the reconciler watches the objects it owns, so the manager would
+	// normally call reconcile automatically, but for the test we have to manually simulate it
+	f.MustReconcile(key)
+	f.List(&podLogStreams)
+	require.Equal(t, 1, len(podLogStreams.Items), "Incorrect number of PodLogStream objects")
+	assert.Equal(t, "pod2", podLogStreams.Items[0].Spec.Pod)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	t       *testing.T
@@ -283,11 +370,11 @@ func newFixture(t *testing.T) *fixture {
 
 	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := NewContainerRestartDetector()
-	pw := NewReconciler(kClient, of, rd, st)
-	cf := fake.NewControllerFixture(t, pw)
+	cfb := fake.NewControllerFixtureBuilder(t)
+	pw := NewReconciler(cfb.Client, kClient, of, rd, st)
 
 	ret := &fixture{
-		ControllerFixture: cf,
+		ControllerFixture: cfb.Build(pw),
 		kClient:           kClient,
 		pw:                pw,
 		ctx:               ctx,

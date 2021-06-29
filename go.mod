@@ -69,7 +69,7 @@ require (
 	github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.2.0
-	github.com/tilt-dev/tilt-apiserver v0.4.0
+	github.com/tilt-dev/tilt-apiserver v0.4.1
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
@@ -87,16 +87,16 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	helm.sh/helm/v3 v3.4.1
-	k8s.io/api v0.21.1
-	k8s.io/apimachinery v0.21.1
-	k8s.io/apiserver v0.21.1
-	k8s.io/cli-runtime v0.21.1
-	k8s.io/client-go v0.21.1
-	k8s.io/code-generator v0.21.1
+	k8s.io/api v0.21.2
+	k8s.io/apimachinery v0.21.2
+	k8s.io/apiserver v0.21.2
+	k8s.io/cli-runtime v0.21.2
+	k8s.io/client-go v0.21.2
+	k8s.io/code-generator v0.21.2
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
-	k8s.io/kubectl v0.21.1
-	sigs.k8s.io/controller-runtime v0.9.0
+	k8s.io/kubectl v0.21.2
+	sigs.k8s.io/controller-runtime v0.9.2
 	sigs.k8s.io/kustomize/api v0.8.8
 	sigs.k8s.io/yaml v1.2.0
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
@@ -127,5 +127,5 @@ replace (
 	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
-	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.21.1-tilt-20210608
+	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.21.2-tilt-20210625
 )

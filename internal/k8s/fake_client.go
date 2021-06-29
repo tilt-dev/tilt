@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -251,8 +252,8 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *
 	return ch, nil
 }
 
-func (c *FakeK8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error) {
-	return make(chan ObjectMeta), nil
+func (c *FakeK8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan metav1.Object, error) {
+	return make(chan metav1.Object), nil
 }
 
 func (c *FakeK8sClient) EmitPodDelete(p *v1.Pod) {
@@ -360,10 +361,7 @@ func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeou
 
 	for _, e := range entities {
 		clone := e.DeepCopy()
-		err = SetUID(&clone, uuid.New().String())
-		if err != nil {
-			return nil, errors.Wrap(err, "Upsert: generating UUID")
-		}
+		clone.SetUID(uuid.New().String())
 		result = append(result, clone)
 	}
 
@@ -407,7 +405,7 @@ func (c *FakeK8sClient) Inject(entities ...K8sEntity) {
 	}
 }
 
-func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -417,10 +415,10 @@ func (c *FakeK8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectRef
 		logger.Get(ctx).Infof("FakeK8sClient.GetMetaByReference: resource not found: %s", ref.Name)
 		return nil, apierrors.NewNotFound(v1.Resource(ref.Kind), ref.Name)
 	}
-	return resp.meta(), nil
+	return resp.Meta(), nil
 }
 
-func (c *FakeK8sClient) ListMeta(_ context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]ObjectMeta, error) {
+func (c *FakeK8sClient) ListMeta(_ context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -429,7 +427,7 @@ func (c *FakeK8sClient) ListMeta(_ context.Context, gvk schema.GroupVersionKind,
 		return nil, nil
 	}
 
-	result := make([]ObjectMeta, 0)
+	result := make([]metav1.Object, 0)
 	for _, uid := range c.currentVersions {
 		entity := c.entities[uid]
 		if entity.Namespace() != ns {
@@ -438,12 +436,13 @@ func (c *FakeK8sClient) ListMeta(_ context.Context, gvk schema.GroupVersionKind,
 		if entity.GVK() != gvk {
 			continue
 		}
-		result = append(result, entity.meta())
+		result = append(result, entity.Meta())
 	}
 	return result, nil
 }
 
 func (c *FakeK8sClient) SetLogsForPodContainer(pID PodID, cName container.Name, logs string) {
+
 	c.SetLogReaderForPodContainer(pID, cName, strings.NewReader(logs))
 }
 

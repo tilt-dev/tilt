@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -348,13 +351,13 @@ func TestPopulatePortForward(t *testing.T) {
 
 type pfsFixture struct {
 	*tempdir.TempDirFixture
-	ctx    context.Context
-	cancel func()
-	kCli   *k8s.FakeK8sClient
-	ctrl   *fake.ControllerFixture
-	st     *store.Store
-	s      *Subscriber
-	done   chan error
+	ctx        context.Context
+	cancel     func()
+	kCli       *k8s.FakeK8sClient
+	ctrlClient ctrlclient.Client
+	st         *store.Store
+	s          *Subscriber
+	done       chan error
 }
 
 func newPFSFixture(t *testing.T) *pfsFixture {
@@ -375,11 +378,10 @@ func newPFSFixture(t *testing.T) *pfsFixture {
 	}
 
 	f := tempdir.NewTempDirFixture(t)
-	st := store.NewStore(reducer, store.LogActionsFlag(false))
+	st := store.NewStore(reducer, false)
 	kCli := k8s.NewFakeK8sClient(t)
 
-	// only testing object create/delete, not reconciliation, so pass a nil reconciler
-	ctrl := fake.NewControllerFixture(t, nil)
+	ctrlClient := fake.NewFakeTiltClient()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -388,9 +390,9 @@ func newPFSFixture(t *testing.T) *pfsFixture {
 		ctx:            ctx,
 		cancel:         cancel,
 		st:             st,
-		ctrl:           ctrl,
 		kCli:           kCli,
-		s:              NewSubscriber(kCli, ctrl.Client),
+		ctrlClient:     ctrlClient,
+		s:              NewSubscriber(kCli, ctrlClient),
 		done:           make(chan error),
 	}
 }
@@ -488,7 +490,9 @@ func (f *pfsFixture) waitUntilNoStateOrAPIPortForwards(msg string) {
 	var foundPFs v1alpha1.PortForwardList
 	require.Eventuallyf(f.T(), func() bool {
 		var pfs v1alpha1.PortForwardList
-		f.ctrl.List(&pfs)
+		if err := f.ctrlClient.List(f.ctx, &pfs); err != nil {
+			return false
+		}
 		foundPFs = pfs
 		return len(pfs.Items) == 0
 	}, time.Second, 20*time.Millisecond, "Expected no port forward API objects to exist, but found %d: %+v", len(foundPFs.Items), foundPFs.Items)
@@ -515,8 +519,11 @@ func (f *pfsFixture) requireState(key types.NamespacedName, cond func(pf *PortFo
 	f.T().Helper()
 	require.Eventuallyf(f.T(), func() bool {
 		var pf PortForward
-		if !f.ctrl.Get(key, &pf) {
+		err := f.ctrlClient.Get(f.ctx, key, &pf)
+		if apierrors.IsNotFound(err) {
 			return cond(nil)
+		} else if err != nil {
+			return false
 		}
 		return cond(&pf)
 	}, time.Second, 20*time.Millisecond, msg, args...)

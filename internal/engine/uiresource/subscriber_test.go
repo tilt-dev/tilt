@@ -88,7 +88,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	tc := fake.NewTiltClient()
+	tc := fake.NewFakeTiltClient()
 	return &fixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		ctx:            context.Background(),

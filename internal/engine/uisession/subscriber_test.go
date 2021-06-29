@@ -60,7 +60,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	tc := fake.NewTiltClient()
+	tc := fake.NewFakeTiltClient()
 	return &fixture{
 		t:     t,
 		ctx:   context.Background(),
