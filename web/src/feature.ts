@@ -3,6 +3,8 @@
 // This is important because when the React app starts,
 // it starts with an empty state and there won't be _any_ feature flags
 // until the first engine state comes in over the Websocket.
+import { createContext, useContext } from "react"
+
 type featureFlags = { [featureFlag: string]: boolean }
 export default class Features {
   private flags: featureFlags
@@ -22,3 +24,12 @@ export default class Features {
     return false
   }
 }
+
+export const FeaturesContext = createContext<Features>(new Features({}))
+FeaturesContext.displayName = "Features"
+
+export function useFeatures(): Features {
+  return useContext(FeaturesContext)
+}
+
+export const FeaturesProvider = FeaturesContext.Provider
