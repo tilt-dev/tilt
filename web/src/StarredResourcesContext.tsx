@@ -7,16 +7,18 @@ import React, {
 import { incr } from "./analytics"
 import { usePersistentState } from "./LocalStorage"
 
-type StarredResourcesContext = {
+export type StarredResourcesContext = {
   starredResources: string[]
   starResource: (name: string) => void
   unstarResource: (name: string) => void
+  toggleStarResource: (name: string) => void
 }
 
 const starredResourceContext = React.createContext<StarredResourcesContext>({
   starredResources: [],
   starResource: (s) => {},
   unstarResource: (s) => {},
+  toggleStarResource: (s) => {},
 })
 
 export function useStarredResources(): StarredResourcesContext {
@@ -35,11 +37,19 @@ export function StarredResourceMemoryProvider(
       return prevState.includes(name) ? prevState : [...prevState, name]
     })
   }
-
+  1
   function unstarResource(name: string) {
     setStarredResources((prevState) => {
       return prevState.filter((s) => s !== name)
     })
+  }
+
+  function toggleStarResource(name: string) {
+    if (starredResources.includes(name)) {
+      unstarResource(name)
+    } else {
+      starResource(name)
+    }
   }
 
   return (
@@ -48,6 +58,7 @@ export function StarredResourceMemoryProvider(
         starredResources: starredResources,
         starResource: starResource,
         unstarResource: unstarResource,
+        toggleStarResource: toggleStarResource,
       }}
     >
       {props.children}
@@ -96,12 +107,21 @@ export function StarredResourcesContextProvider(
     })
   }
 
+  function toggleStarResource(name: string) {
+    if (starredResources.includes(name)) {
+      unstarResource(name)
+    } else {
+      starResource(name)
+    }
+  }
+
   return (
     <starredResourceContext.Provider
       value={{
         starredResources: starredResources,
         starResource: starResource,
         unstarResource: unstarResource,
+        toggleStarResource: toggleStarResource,
       }}
     >
       {props.children}

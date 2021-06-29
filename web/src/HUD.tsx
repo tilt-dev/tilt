@@ -18,6 +18,7 @@ import { tiltfileKeyContext } from "./LocalStorage"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewPane from "./OverviewPane"
 import OverviewResourcePane from "./OverviewResourcePane"
+import OverviewTablePane from "./OverviewTablePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import { ResourceNavProvider } from "./ResourceNav"
 import ShareSnapshotModal from "./ShareSnapshotModal"
@@ -255,6 +256,9 @@ export default class HUD extends Component<HudProps, HudState> {
                       <OverviewResourcePane view={this.state.view} />
                     )}
                   />
+                  <Route path={this.path("/table")}>
+                    <OverviewTablePane view={this.state.view} />
+                  </Route>
                   <Route
                     render={() => <OverviewPane view={this.state.view} />}
                   />

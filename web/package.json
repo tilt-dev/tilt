@@ -14,6 +14,7 @@
     "@types/react-dom": "^16.9.0",
     "@types/react-modal": "^3.8.2",
     "@types/react-router-dom": "^5.1.0",
+    "@types/react-table": "^7.0.29",
     "@types/react-timeago": "^4.1.0",
     "@types/styled-components": "^5.1.0",
     "ansi-to-react": "^5.0.0",
@@ -27,6 +28,7 @@
     "react-router-dom": "^5.1.0",
     "react-scripts": "^4.0.1",
     "react-storage-hooks": "^4.0.1",
+    "react-table": "^7.7.0",
     "react-timeago": "^4.4.0",
     "regex-escape": "^3.4.10",
     "styled-components": "^5.1.1"
