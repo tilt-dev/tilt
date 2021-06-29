@@ -329,7 +329,7 @@ func TestK8sClient_WatchMeta(t *testing.T) {
 		&metav1.PartialObjectMetadata{TypeMeta: pod2.TypeMeta, ObjectMeta: pod2.ObjectMeta},
 		metav1.CreateOptions{})
 
-	expected := []*metav1.ObjectMeta{&pod1.ObjectMeta, &pod2.ObjectMeta}
+	expected := []metav1.Object{&pod1.ObjectMeta, &pod2.ObjectMeta}
 	tf.assertMeta(expected, ch)
 }
 
@@ -345,7 +345,7 @@ func TestK8sClient_WatchMetaBackfillK8s14(t *testing.T) {
 
 	tf.addObjects(pod1, pod2)
 
-	expected := []*metav1.ObjectMeta{&pod1.ObjectMeta, &pod2.ObjectMeta}
+	expected := []metav1.Object{pod1, pod2}
 	tf.assertMeta(expected, ch)
 }
 
@@ -509,7 +509,7 @@ func (tf *watchTestFixture) watchEvents() <-chan *v1.Event {
 	return ch
 }
 
-func (tf *watchTestFixture) watchMeta(gvr schema.GroupVersionKind) <-chan ObjectMeta {
+func (tf *watchTestFixture) watchMeta(gvr schema.GroupVersionKind) <-chan metav1.Object {
 	ch, err := tf.kCli.WatchMeta(tf.ctx, gvr, tf.kCli.configNamespace)
 	if err != nil {
 		tf.t.Fatalf("watchMeta: %v", err)
@@ -615,8 +615,8 @@ func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-c
 	assert.ElementsMatch(tf.t, expectedOutput, observedEvents)
 }
 
-func (tf *watchTestFixture) assertMeta(expected []*metav1.ObjectMeta, ch <-chan ObjectMeta) {
-	var observed []*metav1.ObjectMeta
+func (tf *watchTestFixture) assertMeta(expected []metav1.Object, ch <-chan metav1.Object) {
+	var observed []metav1.Object
 
 	done := false
 	for !done {
@@ -625,7 +625,7 @@ func (tf *watchTestFixture) assertMeta(expected []*metav1.ObjectMeta, ch <-chan 
 			if !ok {
 				done = true
 			} else {
-				observed = append(observed, m.(*metav1.ObjectMeta))
+				observed = append(observed, m)
 			}
 		case <-time.After(200 * time.Millisecond):
 			// if we haven't seen any events for 10ms, assume we're done

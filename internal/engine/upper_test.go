@@ -408,7 +408,7 @@ func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.
 				uid = b.nextDeployedUID
 				b.nextDeployedUID = ""
 			}
-			k8s.SetUIDForTest(b.t, &deployed[i], string(uid))
+			deployed[i].SetUID(string(uid))
 		}
 
 		templateSpecHashes = podTemplateSpecHashesForTarg(b.t, kTarg)

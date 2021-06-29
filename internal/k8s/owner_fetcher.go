@@ -58,7 +58,7 @@ type OwnerFetcher struct {
 	cache     map[types.UID]*objectTreePromise
 	mu        *sync.Mutex
 
-	metaCache       map[types.UID]ObjectMeta
+	metaCache       map[types.UID]metav1.Object
 	resourceFetches map[resourceNamespace]*sync.Once
 }
 
@@ -69,7 +69,7 @@ func ProvideOwnerFetcher(ctx context.Context, kCli Client) OwnerFetcher {
 		cache:     make(map[types.UID]*objectTreePromise),
 		mu:        &sync.Mutex{},
 
-		metaCache:       make(map[types.UID]ObjectMeta),
+		metaCache:       make(map[types.UID]metav1.Object),
 		resourceFetches: make(map[resourceNamespace]*sync.Once),
 	}
 }
@@ -168,7 +168,7 @@ func (v OwnerFetcher) OwnerTreeOfRef(ctx context.Context, ref v1.ObjectReference
 	return v.ownerTreeOfHelper(ctx, ref, meta)
 }
 
-func (v OwnerFetcher) getMetaByReference(ctx context.Context, ref v1.ObjectReference) (ObjectMeta, error) {
+func (v OwnerFetcher) getMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error) {
 	gvk := ReferenceGVK(ref)
 	v.ensureResourceFetched(gvk, Namespace(ref.Namespace))
 
@@ -184,7 +184,7 @@ func (v OwnerFetcher) getMetaByReference(ctx context.Context, ref v1.ObjectRefer
 }
 
 func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result ObjectRefTree, err error) {
-	meta := entity.meta()
+	meta := entity.Meta()
 	uid := meta.GetUID()
 	if uid == "" {
 		return ObjectRefTree{}, fmt.Errorf("Can only get owners of deployed entities")
@@ -207,7 +207,7 @@ func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result
 	return v.ownerTreeOfHelper(ctx, ref, meta)
 }
 
-func (v OwnerFetcher) ownerTreeOfHelper(ctx context.Context, ref v1.ObjectReference, meta ObjectMeta) (ObjectRefTree, error) {
+func (v OwnerFetcher) ownerTreeOfHelper(ctx context.Context, ref v1.ObjectReference, meta metav1.Object) (ObjectRefTree, error) {
 	tree := ObjectRefTree{Ref: ref}
 	owners := meta.GetOwnerReferences()
 	for _, owner := range owners {

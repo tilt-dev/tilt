@@ -339,7 +339,7 @@ func supportsPartialMetadata(v *version.Info) bool {
 	return version.GTE(k1dot15)
 }
 
-func (kCli *K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan ObjectMeta, error) {
+func (kCli *K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan metav1.Object, error) {
 	gvr, err := kCli.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchMeta")
@@ -358,14 +358,14 @@ func (kCli *K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKin
 
 // workaround a bug in client-go
 // https://github.com/kubernetes/client-go/issues/882
-func (kCli *K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan ObjectMeta, error) {
+func (kCli *K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan metav1.Object, error) {
 	factory := informers.NewSharedInformerFactoryWithOptions(kCli.clientset, resyncPeriod, informers.WithNamespace(ns.String()))
 	resFactory, err := factory.ForResource(gvr)
 	if err != nil {
 		return nil, errors.Wrap(err, "watchMeta")
 	}
 	informer := resFactory.Informer()
-	ch := make(chan ObjectMeta)
+	ch := make(chan metav1.Object)
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(runtime.Object)
@@ -374,7 +374,7 @@ func (kCli *K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVer
 			}
 
 			entity := NewK8sEntity(mObj)
-			ch <- entity.meta()
+			ch <- entity.Meta()
 		},
 		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
 			mNewObj, ok := newObj.(runtime.Object)
@@ -383,7 +383,7 @@ func (kCli *K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVer
 			}
 
 			entity := NewK8sEntity(mNewObj)
-			ch <- entity.meta()
+			ch <- entity.Meta()
 		},
 	})
 
@@ -392,11 +392,11 @@ func (kCli *K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVer
 	return ch, nil
 }
 
-func (kCli *K8sClient) watchMeta15Plus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan ObjectMeta, error) {
+func (kCli *K8sClient) watchMeta15Plus(ctx context.Context, gvr schema.GroupVersionResource, ns Namespace) (<-chan metav1.Object, error) {
 	factory := metadatainformer.NewFilteredSharedInformerFactory(kCli.metadata, resyncPeriod, ns.String(), func(*metav1.ListOptions) {})
 	informer := factory.ForResource(gvr).Informer()
 
-	ch := make(chan ObjectMeta)
+	ch := make(chan metav1.Object)
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(*metav1.PartialObjectMetadata)

@@ -18,7 +18,7 @@ func TestVisitOneParent(t *testing.T) {
 	pod, rs := fakeOneParentChain()
 	kCli.Inject(NewK8sEntity(rs))
 
-	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
+	tree, err := ov.OwnerTreeOf(context.Background(), NewK8sEntity(pod))
 	assert.NoError(t, err)
 	assert.Equal(t, `Pod:pod-a
   ReplicaSet:rs-a`, tree.String())
@@ -31,7 +31,7 @@ func TestVisitTwoParentsEnsureListCaching(t *testing.T) {
 	pod, rs, dep := fakeTwoParentChain()
 	kCli.Inject(NewK8sEntity(rs), NewK8sEntity(dep))
 
-	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
+	tree, err := ov.OwnerTreeOf(context.Background(), NewK8sEntity(pod))
 	assert.NoError(t, err)
 	assert.Equal(t, `Pod:pod-a
   ReplicaSet:rs-a
@@ -48,7 +48,7 @@ func TestVisitTwoParentsNoList(t *testing.T) {
 	pod, rs, dep := fakeTwoParentChain()
 	kCli.Inject(NewK8sEntity(rs), NewK8sEntity(dep))
 
-	tree, err := ov.OwnerTreeOf(context.Background(), K8sEntity{Obj: pod})
+	tree, err := ov.OwnerTreeOf(context.Background(), NewK8sEntity(pod))
 	assert.NoError(t, err)
 	assert.Equal(t, `Pod:pod-a
   ReplicaSet:rs-a
