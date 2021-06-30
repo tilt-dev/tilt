@@ -216,7 +216,6 @@ func newProcessExecFixture(t *testing.T) *processExecFixture {
 	testWriter := bufsync.NewThreadSafeBuffer()
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(testWriter)
 	ctx, cancel := context.WithCancel(ctx)
-	statusCh := make(chan statusAndMetadata)
 
 	return &processExecFixture{
 		t:          t,
@@ -224,7 +223,6 @@ func newProcessExecFixture(t *testing.T) *processExecFixture {
 		cancel:     cancel,
 		execer:     execer,
 		testWriter: testWriter,
-		statusCh:   statusCh,
 	}
 }
 
@@ -234,13 +232,13 @@ func (f *processExecFixture) tearDown() {
 
 func (f *processExecFixture) startMalformedCommand() {
 	c := model.Cmd{Argv: []string{"\""}, Dir: "."}
-	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+	f.statusCh = f.execer.Start(f.ctx, c, f.testWriter)
 }
 
 func (f *processExecFixture) startWithWorkdir(cmd string, workdir string) {
 	c := model.ToHostCmd(cmd)
 	c.Dir = workdir
-	f.execer.Start(f.ctx, c, f.testWriter, f.statusCh, model.LogSpanID("rt1"))
+	f.statusCh = f.execer.Start(f.ctx, c, f.testWriter)
 }
 
 func (f *processExecFixture) start(cmd string) {
