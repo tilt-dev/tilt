@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -696,7 +697,7 @@ func TestLocalTargetDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lt := model.LocalTarget{UpdateCmd: model.ToHostCmd("echo hello world")}
+	lt := model.NewLocalTarget("hello-world", model.ToHostCmd("echo hello world"), model.Cmd{}, nil)
 	res, err := f.BuildAndDeploy([]model.TargetSpec{lt}, store.BuildStateSet{})
 	require.Nil(t, err)
 
@@ -711,7 +712,7 @@ func TestLocalTargetFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lt := model.LocalTarget{UpdateCmd: model.ToHostCmd("echo 'oh no' && exit 1")}
+	lt := model.NewLocalTarget("hello-world", model.ToHostCmd("echo 'oh no' && exit 1"), model.Cmd{}, nil)
 	res, err := f.BuildAndDeploy([]model.TargetSpec{lt}, store.BuildStateSet{})
 	assert.Empty(t, res, "expect empty result for failed command")
 
@@ -756,6 +757,27 @@ func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, st
 	return manifest, bs
 }
 
+type testStore struct {
+	*store.TestingStore
+	out io.Writer
+}
+
+func NewTestingStore(out io.Writer) *testStore {
+	return &testStore{
+		TestingStore: store.NewTestingStore(),
+		out:          out,
+	}
+}
+
+func (s *testStore) Dispatch(action store.Action) {
+	s.TestingStore.Dispatch(action)
+
+	switch action := action.(type) {
+	case store.LogAction:
+		_, _ = s.out.Write(action.Message())
+	}
+}
+
 // The API boundaries between BuildAndDeployer and the ImageBuilder aren't obvious and
 // are likely to change in the future. So we test them together, using
 // a fake Client and K8sClient
@@ -766,7 +788,7 @@ type bdFixture struct {
 	docker     *docker.FakeClient
 	k8s        *k8s.FakeK8sClient
 	bd         buildcontrol.BuildAndDeployer
-	st         *store.TestingStore
+	st         *testStore
 	dcCli      *dockercompose.FakeDCClient
 	logs       *bytes.Buffer
 	ctrlClient ctrlclient.Client
@@ -796,7 +818,7 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kl := &fakeKINDLoader{}
 	ctrlClient := fake.NewFakeTiltClient()
-	st := store.NewTestingStore()
+	st := NewTestingStore(logs)
 	bd, err := provideFakeBuildAndDeployer(ctx, dockerClient, k8s, dir, env, mode, dcc,
 		fakeClock{now: time.Unix(1551202573, 0)}, kl, ta, ctrlClient, st)
 	require.NoError(t, err)
@@ -865,6 +887,15 @@ func (f *bdFixture) upsert(obj ctrlclient.Object) {
 
 func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	for _, spec := range specs {
+		localTarget, ok := spec.(model.LocalTarget)
+		if ok && localTarget.UpdateCmdSpec != nil {
+			cmd := v1alpha1.Cmd{
+				ObjectMeta: metav1.ObjectMeta{Name: localTarget.UpdateCmdName()},
+				Spec:       *(localTarget.UpdateCmdSpec),
+			}
+			f.upsert(&cmd)
+		}
+
 		iTarget, ok := spec.(model.ImageTarget)
 		if ok {
 			im := v1alpha1.ImageMap{

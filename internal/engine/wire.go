@@ -7,11 +7,13 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/jonboulle/clockwork"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -62,6 +64,8 @@ func provideFakeBuildAndDeployer(
 		provideFakeKubeContext,
 		provideFakeDockerClusterEnv,
 		kubernetesapply.NewReconciler,
+		cmd.WireSet,
+		clockwork.NewRealClock,
 	)
 
 	return nil, nil

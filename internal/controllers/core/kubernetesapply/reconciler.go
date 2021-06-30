@@ -135,7 +135,8 @@ func (r *Reconciler) shouldDeployOnReconcile(
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) bool {
 	if ka.ObjectMeta.Labels[v1alpha1.LabelOwnerKind] == v1alpha1.LabelOwnerKindTiltfile {
 		// Until resource dependencies are expressed in the API,
-		// we can't use reconciliation to deploy KubernetesApply objects.
+		// we can't use reconciliation to deploy KubernetesApply objects
+		// owned by the Tiltfile.
 		return false
 	}
 

@@ -4,18 +4,24 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
-
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -120,13 +126,35 @@ func TestFailedCommand(t *testing.T) {
 	assert.Contains(t, f.out.String(), "oh no", "expect cmd stdout in logs")
 }
 
+type testStore struct {
+	*store.TestingStore
+	out io.Writer
+}
+
+func NewTestingStore(out io.Writer) *testStore {
+	return &testStore{
+		TestingStore: store.NewTestingStore(),
+		out:          out,
+	}
+}
+
+func (s *testStore) Dispatch(action store.Action) {
+	s.TestingStore.Dispatch(action)
+
+	switch action := action.(type) {
+	case store.LogAction:
+		_, _ = s.out.Write(action.Message())
+	}
+}
+
 type ltFixture struct {
 	*tempdir.TempDirFixture
 
-	ctx   context.Context
-	out   *bytes.Buffer
-	ltbad *LocalTargetBuildAndDeployer
-	st    *store.TestingStore
+	ctx        context.Context
+	out        *bytes.Buffer
+	ltbad      *LocalTargetBuildAndDeployer
+	st         *testStore
+	ctrlClient ctrlclient.Client
 }
 
 func newLTFixture(t *testing.T) *ltFixture {
@@ -136,14 +164,22 @@ func newLTFixture(t *testing.T) *ltFixture {
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(out)
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
 
-	ltbad := NewLocalTargetBuildAndDeployer(clock)
-	st := store.NewTestingStore()
+	ctrlClient := fake.NewFakeTiltClient()
+
+	fe := cmd.NewProcessExecer()
+	fpm := cmd.NewFakeProberManager()
+	cclock := clockwork.NewFakeClock()
+	st := NewTestingStore(out)
+	cmds := cmd.NewController(ctx, fe, fpm, ctrlClient, st, cclock, v1alpha1.NewScheme())
+	ltbad := NewLocalTargetBuildAndDeployer(clock, ctrlClient, cmds)
+
 	return &ltFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		out:            out,
 		ltbad:          ltbad,
 		st:             st,
+		ctrlClient:     ctrlClient,
 	}
 }
 
@@ -154,7 +190,12 @@ func (f *ltFixture) localTarget(cmd string) model.LocalTarget {
 func (f *ltFixture) localTargetWithWorkdir(cmd string, workdir string) model.LocalTarget {
 	c := model.ToHostCmd(cmd)
 	c.Dir = workdir
-	return model.LocalTarget{
-		UpdateCmd: c,
+	lt := model.NewLocalTarget("local", c, model.Cmd{}, nil)
+
+	cmdObj := &v1alpha1.Cmd{
+		ObjectMeta: metav1.ObjectMeta{Name: lt.UpdateCmdName()},
+		Spec:       *(lt.UpdateCmdSpec),
 	}
+	require.NoError(f.T(), f.ctrlClient.Create(f.ctx, cmdObj))
+	return lt
 }

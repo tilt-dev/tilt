@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/jonboulle/clockwork"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -50,7 +52,11 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, buildcontrolUpdateMode, clock, kp, ctrlClient, reconciler)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
-	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock)
+	execer := cmd.ProvideExecer()
+	proberManager := cmd.ProvideProberManager()
+	clockworkClock := clockwork.NewRealClock()
+	controller := cmd.NewController(ctx, execer, proberManager, ctrlClient, st, clockworkClock, scheme)
+	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock, ctrlClient, controller)
 	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, buildcontrolUpdateMode, env, runtime)
 	spanProcessor := _wireSpanProcessorValue
 	traceTracer, err := tracer.InitOpenTelemetry(ctx, spanProcessor)

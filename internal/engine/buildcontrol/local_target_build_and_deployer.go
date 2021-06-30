@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
-	"github.com/tilt-dev/tilt/internal/localexec"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -17,11 +20,20 @@ var _ BuildAndDeployer = &LocalTargetBuildAndDeployer{}
 
 // TODO(maia): CommandRunner interface for testability
 type LocalTargetBuildAndDeployer struct {
-	clock build.Clock
+	clock      build.Clock
+	ctrlClient ctrlclient.Client
+	cmds       *cmd.Controller
 }
 
-func NewLocalTargetBuildAndDeployer(c build.Clock) *LocalTargetBuildAndDeployer {
-	return &LocalTargetBuildAndDeployer{clock: c}
+func NewLocalTargetBuildAndDeployer(
+	c build.Clock,
+	ctrlClient ctrlclient.Client,
+	cmds *cmd.Controller) *LocalTargetBuildAndDeployer {
+	return &LocalTargetBuildAndDeployer{
+		clock:      c,
+		ctrlClient: ctrlClient,
+		cmds:       cmds,
+	}
 }
 
 func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (resultSet store.BuildResultSet, err error) {
@@ -32,7 +44,7 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 	}
 
 	targ := targets[0]
-	if targ.UpdateCmd.Empty() {
+	if targ.UpdateCmdSpec == nil {
 		// Even if a LocalResource has no update command, we push it through the build-and-deploy
 		// pipeline so that it gets all the appropriate logs.
 		return bd.successfulBuildResult(targ), nil
@@ -45,10 +57,22 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 		})
 	}()
 
-	err = bd.run(ctx, targ.UpdateCmd)
+	var cmd v1alpha1.Cmd
+	err = bd.ctrlClient.Get(ctx, types.NamespacedName{Name: targ.UpdateCmdName()}, &cmd)
+	if err != nil {
+		return store.BuildResultSet{}, DontFallBackErrorf("Loading command: %v", err)
+	}
+
+	status, err := bd.cmds.ForceRun(ctx, &cmd)
 	if err != nil {
 		// (Never fall back from the LocalTargetBaD, none of our other BaDs can handle this target)
-		return store.BuildResultSet{}, DontFallBackErrorf("Command %q failed: %v", targ.UpdateCmd.String(), err)
+		return store.BuildResultSet{}, DontFallBackErrorf("Command %q failed: %v",
+			model.ArgListToString(cmd.Spec.Args), err)
+	} else if status.Terminated == nil {
+		return store.BuildResultSet{}, DontFallBackErrorf("Command didn't terminate")
+	} else if status.Terminated.ExitCode != 0 {
+		return store.BuildResultSet{}, DontFallBackErrorf("Command %q failed: %v",
+			model.ArgListToString(cmd.Spec.Args), status.Terminated.Reason)
 	}
 
 	// HACK(maia) Suppose target A modifies file X and target B depends on file X.
@@ -97,28 +121,6 @@ func (bd *LocalTargetBuildAndDeployer) extract(specs []model.TargetSpec) []model
 		}
 	}
 	return targs
-}
-
-func (bd *LocalTargetBuildAndDeployer) run(ctx context.Context, c model.Cmd) error {
-	l := logger.Get(ctx)
-	writer := l.Writer(logger.InfoLvl)
-	cmd := localexec.ExecCmdContext(ctx, c)
-	cmd.Stdout = writer
-	cmd.Stderr = writer
-	cmd.Dir = c.Dir
-
-	ps := build.NewPipelineState(ctx, 1, bd.clock)
-	ps.StartPipelineStep(ctx, "Running command: %v (in %q)", c.Argv, c.Dir)
-	defer ps.EndPipelineStep(ctx)
-	err := cmd.Run()
-	defer func() { ps.End(ctx, err) }()
-	if err != nil {
-		// TODO(maia): any point in checking if it's an ExitError,
-		//   pulling out the error code, etc.?
-		return err
-	}
-
-	return nil
 }
 
 func (bd *LocalTargetBuildAndDeployer) successfulBuildResult(t model.LocalTarget) store.BuildResultSet {

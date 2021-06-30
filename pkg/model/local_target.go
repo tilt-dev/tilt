@@ -4,16 +4,18 @@ import (
 	"fmt"
 
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type LocalTarget struct {
-	Name      TargetName
-	UpdateCmd Cmd      // e.g. `make proto`
-	ServeCmd  Cmd      // e.g. `python main.py`
-	Links     []Link   // zero+ links assoc'd with this resource (to be displayed in UIs)
-	Deps      []string // a list of ABSOLUTE file paths that are dependencies of this target
-	ignores   []Dockerignore
+	UpdateCmdSpec *v1alpha1.CmdSpec
+
+	Name     TargetName
+	ServeCmd Cmd      // e.g. `python main.py`
+	Links    []Link   // zero+ links assoc'd with this resource (to be displayed in UIs)
+	Deps     []string // a list of ABSOLUTE file paths that are dependencies of this target
+	ignores  []Dockerignore
 
 	repos []LocalGitRepo
 
@@ -31,16 +33,32 @@ type LocalTarget struct {
 var _ TargetSpec = LocalTarget{}
 
 func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string) LocalTarget {
+	var updateCmdSpec *v1alpha1.CmdSpec
+	if !updateCmd.Empty() {
+		updateCmdSpec = &v1alpha1.CmdSpec{
+			Args: updateCmd.Argv,
+			Dir:  updateCmd.Dir,
+			Env:  updateCmd.Env,
+		}
+	}
+
 	return LocalTarget{
-		Name:      name,
-		UpdateCmd: updateCmd,
-		Deps:      deps,
-		ServeCmd:  serveCmd,
+		Name:          name,
+		UpdateCmdSpec: updateCmdSpec,
+		Deps:          deps,
+		ServeCmd:      serveCmd,
 	}
 }
 
+func (lt LocalTarget) UpdateCmdName() string {
+	if lt.UpdateCmdSpec == nil {
+		return ""
+	}
+	return apis.SanitizeName(fmt.Sprintf("%s:update", lt.ID().Name))
+}
+
 func (lt LocalTarget) Empty() bool {
-	return lt.UpdateCmd.Empty() && lt.ServeCmd.Empty()
+	return lt.UpdateCmdSpec == nil && lt.ServeCmd.Empty()
 }
 
 func (lt LocalTarget) WithAllowParallel(val bool) LocalTarget {
@@ -90,7 +108,7 @@ func (lt LocalTarget) DependencyIDs() []TargetID {
 }
 
 func (lt LocalTarget) Validate() error {
-	if !lt.UpdateCmd.Empty() && lt.UpdateCmd.Dir == "" {
+	if lt.UpdateCmdSpec != nil && lt.UpdateCmdSpec.Dir == "" {
 		return fmt.Errorf("[Validate] LocalTarget cmd missing workdir")
 	}
 	if !lt.ServeCmd.Empty() && lt.ServeCmd.Dir == "" {

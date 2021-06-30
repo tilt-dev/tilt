@@ -106,6 +106,10 @@ type CmdSpec struct {
 var _ resource.Object = &Cmd{}
 var _ resourcestrategy.Validater = &Cmd{}
 
+func (in *Cmd) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *Cmd) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }

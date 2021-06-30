@@ -29,7 +29,7 @@ func (mt *ManifestTarget) UpdateStatus() v1alpha1.UpdateStatus {
 	m := mt.Manifest
 	us := mt.State.UpdateStatus(m.TriggerMode)
 
-	if m.IsLocal() && m.LocalTarget().UpdateCmd.Empty() {
+	if m.IsLocal() && m.LocalTarget().UpdateCmdSpec == nil {
 		// NOTE(nick): We currently model a local_resource(serve_cmd) as a Manifest
 		// with a no-op Update. BuildController treats it like any other
 		// resource. When the build completes, the server controller starts the

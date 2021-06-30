@@ -160,20 +160,6 @@ func TestExecCmd(t *testing.T) {
 	}
 }
 
-func TestExecCmdContext(t *testing.T) {
-	testCases := execTestCases()
-
-	l := logger.NewLogger(logger.NoneLvl, ioutil.Discard)
-	ctx := logger.WithLogger(context.Background(), l)
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			c := localexec.ExecCmdContext(ctx, tc.cmd)
-			assertCommandEqual(t, tc.cmd, c)
-		})
-	}
-}
-
 type execTestCase struct {
 	name string
 	cmd  model.Cmd

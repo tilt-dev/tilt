@@ -3,7 +3,6 @@
 package localexec
 
 import (
-	"context"
 	"os"
 	"os/exec"
 
@@ -23,14 +22,6 @@ import (
 func ExecCmd(cmd model.Cmd, l logger.Logger) *exec.Cmd {
 	c := exec.Command(cmd.Argv[0], cmd.Argv[1:]...)
 	populateExecCmd(c, cmd, l)
-	return c
-}
-
-// ExecCmdContext is like ExecCmd but uses exec.CommandContext to associate a context with
-// the returned exec.Cmd.
-func ExecCmdContext(ctx context.Context, cmd model.Cmd) *exec.Cmd {
-	c := exec.CommandContext(ctx, cmd.Argv[0], cmd.Argv[1:]...)
-	populateExecCmd(c, cmd, logger.Get(ctx))
 	return c
 }
 
