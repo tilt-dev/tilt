@@ -79,10 +79,12 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamList":                schema_pkg_apis_core_v1alpha1_PodLogStreamList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec":                schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamStatus":              schema_pkg_apis_core_v1alpha1_PodLogStreamStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec":        schema_pkg_apis_core_v1alpha1_PodLogStreamTemplateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForward":                     schema_pkg_apis_core_v1alpha1_PortForward(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardList":                 schema_pkg_apis_core_v1alpha1_PortForwardList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardSpec":                 schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardStatus":               schema_pkg_apis_core_v1alpha1_PortForwardStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec":         schema_pkg_apis_core_v1alpha1_PortForwardTemplateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe":                           schema_pkg_apis_core_v1alpha1_Probe(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":                   schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Session":                         schema_pkg_apis_core_v1alpha1_Session(ref),
@@ -1794,12 +1796,24 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceC
 							},
 						},
 					},
+					"portForwardTemplateSpec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PortForwardTemplateSpec describes the data model for port forwards that KubernetesDiscovery should set up.\n\nThe KubernetesDiscovery controller will choose a \"best\" candidate for attaching the port-forwarding. Only one PortForward will be active at a time.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec"),
+						},
+					},
+					"podLogStreamTemplateSpec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodLogStreamTemplateSpec describes the data model for PodLogStreams that KubernetesDiscovery should set up.\n\nThe KubernetesDiscovery controller will attach PodLogStream objects to all active pods it discovers.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec"),
+						},
+					},
 				},
 				Required: []string{"watches"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef", "k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"},
 	}
 }
 
@@ -2369,6 +2383,57 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamStatus(ref common.ReferenceCallba
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_PodLogStreamTemplateSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodLogStreamTemplateSpec describes common attributes for PodLogStreams that can be shared across pods.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"sinceTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An RFC3339 timestamp from which to show logs. If this value precedes the time a pod was started, only logs since the pod start will be returned. If this value is in the future, no logs will be returned.\n\nTranslates directly to the underlying PodLogOptions.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"onlyContainers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The names of containers to include in the stream.\n\nIf `onlyContainers` and `ignoreContainers` are not set, will watch all containers in the pod.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"ignoreContainers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The names of containers to exclude from the stream.\n\nIf `onlyContainers` and `ignoreContainers` are not set, will watch all containers in the pod.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_PortForward(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2535,6 +2600,36 @@ func schema_pkg_apis_core_v1alpha1_PortForwardStatus(ref common.ReferenceCallbac
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ForwardStatus"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_PortForwardTemplateSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PortForwardTemplateSpec describes common attributes for PortForwards that can be shared across pods.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"forwards": {
+						SchemaProps: spec.SchemaProps{
+							Description: "One or more port forwards to execute on the given pod. Required.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"forwards"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward"},
 	}
 }
 

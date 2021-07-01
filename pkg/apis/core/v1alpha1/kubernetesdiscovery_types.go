@@ -66,6 +66,24 @@ type KubernetesDiscoverySpec struct {
 	// This should only be necessary in the event that a CRD creates Pods but does not set an owner reference
 	// to itself.
 	ExtraSelectors []metav1.LabelSelector `json:"extraSelectors,omitempty" protobuf:"bytes,2,rep,name=extraSelectors"`
+
+	// PortForwardTemplateSpec describes the data model for port forwards
+	// that KubernetesDiscovery should set up.
+	//
+	// The KubernetesDiscovery controller will choose a "best" candidate
+	// for attaching the port-forwarding. Only one PortForward will be
+	// active at a time.
+	//
+	// +optional
+	PortForwardTemplateSpec *PortForwardTemplateSpec `json:"portForwardTemplateSpec,omitempty" protobuf:"bytes,3,opt,name=portForwardTemplateSpec"`
+	// PodLogStreamTemplateSpec describes the data model for PodLogStreams
+	// that KubernetesDiscovery should set up.
+	//
+	// The KubernetesDiscovery controller will attach PodLogStream objects
+	// to all active pods it discovers.
+	//
+	// +optional
+	PodLogStreamTemplateSpec *PodLogStreamTemplateSpec `json:"podLogStreamTemplateSpec,omitempty" protobuf:"bytes,4,opt,name=podLogStreamTemplateSpec"`
 }
 
 // KubernetesWatchRef is similar to v1.ObjectReference from the Kubernetes API and is used to determine
@@ -81,6 +99,42 @@ type KubernetesWatchRef struct {
 	//
 	// This is not directly used in discovery; it is extra metadata.
 	Name string `json:"name,omitempty" protobuf:"bytes,3,opt,name=name"`
+}
+
+// PortForwardTemplateSpec describes common attributes for PortForwards
+// that can be shared across pods.
+type PortForwardTemplateSpec struct {
+	// One or more port forwards to execute on the given pod. Required.
+	Forwards []Forward `json:"forwards" protobuf:"bytes,1,rep,name=forwards"`
+}
+
+// PodLogStreamTemplateSpec describes common attributes for PodLogStreams
+// that can be shared across pods.
+type PodLogStreamTemplateSpec struct {
+	// An RFC3339 timestamp from which to show logs. If this value
+	// precedes the time a pod was started, only logs since the pod start will be returned.
+	// If this value is in the future, no logs will be returned.
+	//
+	// Translates directly to the underlying PodLogOptions.
+	//
+	// +optional
+	SinceTime *metav1.Time `json:"sinceTime,omitempty" protobuf:"bytes,1,opt,name=sinceTime"`
+
+	// The names of containers to include in the stream.
+	//
+	// If `onlyContainers` and `ignoreContainers` are not set,
+	// will watch all containers in the pod.
+	//
+	// +optional
+	OnlyContainers []string `json:"onlyContainers,omitempty" protobuf:"bytes,2,rep,name=onlyContainers"`
+
+	// The names of containers to exclude from the stream.
+	//
+	// If `onlyContainers` and `ignoreContainers` are not set,
+	// will watch all containers in the pod.
+	//
+	// +optional
+	IgnoreContainers []string `json:"ignoreContainers,omitempty" protobuf:"bytes,3,rep,name=ignoreContainers"`
 }
 
 var _ resource.Object = &KubernetesDiscovery{}
