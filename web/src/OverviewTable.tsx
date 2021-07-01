@@ -105,7 +105,8 @@ const ResourceTableHeaderSortTriangle = styled.div`
     transform: rotate(180deg);
   }
 `
-const ResourceName = styled.div`
+const ResourceName = styled.button`
+  ${mixinResetButtonStyle};
   color: ${Color.offWhite};
   font-size: ${FontSize.small};
   padding-top: ${SizeUnit(1 / 3)};
