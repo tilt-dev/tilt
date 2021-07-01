@@ -1,4 +1,4 @@
-import { LegacyRef } from "react"
+import React, { LegacyRef } from "react"
 import { incr, Tags } from "./analytics"
 
 export type InstrumentedButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {

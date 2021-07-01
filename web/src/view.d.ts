@@ -484,8 +484,10 @@ declare namespace Proto {
      */
     iconName?: string;
     /**
-     * IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (dependong on button
+     * IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (depending on button
      * location).
+     *
+     * This should be an <svg> element scaled for a 24x24 viewport.
      *
      * If both IconSVG and IconName are specified, IconSVG will take precedence.
      *
