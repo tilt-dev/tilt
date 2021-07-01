@@ -31,7 +31,8 @@ let StyledStarSvg = styled(StarSvg)`
     opacity: 0;
     fill: ${Color.grayLight};
   }
-  &.is-unstarred:hover {
+  &.is-unstarred:hover,
+  ${StyledTableStarResourceButton}:focus &.is-unstarred {
     opacity: 1;
   }
 `
