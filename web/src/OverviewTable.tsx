@@ -9,10 +9,10 @@ import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
-import TableStarResourceButton from "./OverviewTableStarResourceButton"
+import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
-import TriggerButton from "./OverviewTableTriggerButton"
-import TableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
+import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
+import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
@@ -163,7 +163,7 @@ const PodIdCopy = styled(InstrumentedButton)`
 function TableStarColumn({ row }: CellProps<RowValues>) {
   let ctx = useStarredResources()
   return (
-    <TableStarResourceButton
+    <OverviewTableStarResourceButton
       resourceName={row.values.name}
       analyticsName="ui.web.overviewStarButton"
       ctx={ctx}
@@ -179,7 +179,7 @@ function TableUpdateColumn({ row }: CellProps<RowValues>) {
 
 function TableTriggerColumn({ row }: CellProps<RowValues>) {
   return (
-    <TriggerButton
+    <OverviewTableTriggerButton
       hasPendingChanges={row.values.trigger.hasPendingChanges}
       hasBuilt={row.values.trigger.hasBuilt}
       isBuilding={row.values.trigger.isBuilding}
@@ -286,7 +286,7 @@ function TableEndpointColumn({ row }: CellProps<RowValues>) {
 
 function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
   return (
-    <TableTriggerModeToggle
+    <OverviewTableTriggerModeToggle
       resourceName={row.values.name}
       triggerMode={row.values.triggerMode}
     />
