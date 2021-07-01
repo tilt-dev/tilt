@@ -290,6 +290,9 @@ function TableEndpointColumn({ row }: CellProps<RowValues>) {
 }
 
 function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
+  let isTiltfile = row.values.name == "(Tiltfile)"
+
+  if (isTiltfile) return null
   return (
     <OverviewTableTriggerModeToggle
       resourceName={row.values.name}
