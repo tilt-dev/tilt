@@ -6,6 +6,16 @@ Fork of https://github.com/fsnotify/fsnotify
 
 Contains patches for Tilt Dev.
 
+### Notable Changes
+* [macOS] Fix for panic when debugging ([fsnotify/fsnotify#212](https://github.com/fsnotify/fsnotify/issues/212))
+* [Windows] Recursive watch support
+* [Windows] Customizable buffer size
+* [Windows] File attribute changes are ignored
+  * No `Chmod` operations will be detected or returned on Windows because the underlying Windows API does not support
+    distinguishing these from `Write` operations
+  * Some software (likely AV/security) can cause excessive attribute changes resulting in many spurious write events
+    for otherwise unchanged files
+
 ## Original Readme
 
 [![GoDoc](https://godoc.org/github.com/fsnotify/fsnotify?status.svg)](https://godoc.org/github.com/fsnotify/fsnotify) [![Go Report Card](https://goreportcard.com/badge/github.com/fsnotify/fsnotify)](https://goreportcard.com/report/github.com/fsnotify/fsnotify)
@@ -135,4 +145,3 @@ fsnotify requires support from underlying OS to work. The current NFS protocol d
 
 * [notify](https://github.com/rjeczalik/notify)
 * [fsevents](https://github.com/fsnotify/fsevents)
-
