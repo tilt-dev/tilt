@@ -214,10 +214,12 @@ function TableStatusColumn({ row }: CellProps<RowValues>) {
         lastBuildDur={row.values.statusLine.lastBuildDur}
         alertCount={row.values.statusLine.buildAlertCount}
         isBuild={true}
+        resourceName={row.values.name}
       />
       <OverviewTableStatus
         status={row.values.statusLine.runtimeStatus}
         alertCount={row.values.statusLine.runtimeAlertCount}
+        resourceName={row.values.name}
       />
     </>
   )
