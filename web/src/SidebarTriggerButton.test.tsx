@@ -177,7 +177,7 @@ describe("SidebarTriggerButton", () => {
     expectClickable(b1, true)
     expectManualTriggerIcon(b1, false)
     expectIsQueued(b1, false)
-    expectWithTooltip(b1, TriggerButtonTooltip.ClickToForce)
+    expectWithTooltip(b1, TriggerButtonTooltip.Default)
   })
 
   it("shows selected trigger button for selected resource", () => {
@@ -255,7 +255,7 @@ describe("SidebarTriggerButton", () => {
     expectClickable(b1, true)
     expectManualTriggerIcon(b1, false)
     expectIsQueued(b1, false)
-    expectWithTooltip(b1, TriggerButtonTooltip.ClickToForce)
+    expectWithTooltip(b1, TriggerButtonTooltip.Default)
   })
 
   it("trigger button not clickable if resource is building", () => {
@@ -363,7 +363,7 @@ describe("SidebarTriggerButton", () => {
     expectClickable(button, true)
     expectManualTriggerIcon(button, false)
     expectIsQueued(button, false)
-    expectWithTooltip(button, TriggerButtonTooltip.ClickToForce)
+    expectWithTooltip(button, TriggerButtonTooltip.Default)
   })
 
   it("shows trigger button for Tiltfile", () => {
