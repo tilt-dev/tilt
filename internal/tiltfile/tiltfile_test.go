@@ -5993,7 +5993,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			for _, matcher := range opt.matchers {
 				switch matcher := matcher.(type) {
 				case updateCmdHelper:
-					assert.Equal(f.t, matcher.cmd, lt.UpdateCmd)
+					assert.Equal(f.t, matcher.cmd.Argv, lt.UpdateCmdSpec.Args)
+					assert.Equal(f.t, matcher.cmd.Dir, lt.UpdateCmdSpec.Dir)
+					assert.Equal(f.t, matcher.cmd.Env, lt.UpdateCmdSpec.Env)
 				case serveCmdHelper:
 					assert.Equal(f.t, matcher.cmd, lt.ServeCmd)
 				case depsHelper:

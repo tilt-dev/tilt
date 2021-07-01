@@ -215,7 +215,7 @@ func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *sessio
 // kubectl apply) step - currently, both of these will be aggregated together, which can make it harder to diagnose
 // where something is stuck or slow.
 func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
-	if mt.Manifest.IsLocal() && mt.Manifest.LocalTarget().UpdateCmd.Empty() {
+	if mt.Manifest.IsLocal() && mt.Manifest.LocalTarget().UpdateCmdSpec == nil {
 		return nil
 	}
 

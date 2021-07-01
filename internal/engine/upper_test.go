@@ -1231,13 +1231,13 @@ local_resource('local', 'echo one fish two fish', deps='foo.bar')`)
 	// First call: with the old manifests
 	call := f.nextCall("initial call")
 	assert.Equal(t, "local", string(call.local().Name))
-	assert.Equal(t, "echo one fish two fish", call.local().UpdateCmd.String())
+	assert.Equal(t, "echo one fish two fish", model.ArgListToString(call.local().UpdateCmdSpec.Args))
 
 	// Change the definition of the resource -- this changes the manifest which should trigger an updated
 	f.WriteConfigFiles("Tiltfile", `print('tiltfile 2')
 local_resource('local', 'echo red fish blue fish', deps='foo.bar')`)
 	call = f.nextCall("rebuild from config change")
-	assert.Equal(t, "echo red fish blue fish", call.local().UpdateCmd.String())
+	assert.Equal(t, "echo red fish blue fish", model.ArgListToString(call.local().UpdateCmdSpec.Args))
 
 	err := f.Stop()
 	assert.Nil(t, err)

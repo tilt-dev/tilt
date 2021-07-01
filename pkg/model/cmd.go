@@ -52,6 +52,11 @@ func (c Cmd) RunStr() string {
 	}
 	return fmt.Sprintf("RUN [%s]", strings.Join(quoted, ", "))
 }
+
+func ArgListToString(args []string) string {
+	return Cmd{Argv: args}.String()
+}
+
 func (c Cmd) String() string {
 	if c.IsShellStandardForm() {
 		return c.Argv[2]
