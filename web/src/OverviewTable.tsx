@@ -123,14 +123,13 @@ const ResourceName = styled.button`
   }
 `
 
-const Endpoint = styled.a``
-const StyledLinkSvg = styled(LinkSvg)``
-
-const DetailText = styled.span`
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-left: 10px;
+const Endpoint = styled.a`
+  display: flex;
+  align-items: center;
+`
+const StyledLinkSvg = styled(LinkSvg)`
+  fill: ${Color.grayLight};
+  margin-right: ${SizeUnit(0.2)};
 `
 
 const PodId = styled.div`
@@ -267,8 +266,7 @@ function TablePodIDColumn({ row }: CellProps<RowValues>) {
 }
 
 function TableEndpointColumn({ row }: CellProps<RowValues>) {
-  // @ts-ignore
-  let endpoints = row.values.endpoints.map((ep) => {
+  let endpoints = row.values.endpoints.map((ep: any) => {
     return (
       <Endpoint
         onClick={() => void incr("ui.web.endpoint", { action: "click" })}
@@ -278,11 +276,11 @@ function TableEndpointColumn({ row }: CellProps<RowValues>) {
         key={ep.url}
       >
         <StyledLinkSvg />
-        <DetailText>{ep.name || displayURL(ep)}</DetailText>
+        {ep.name || displayURL(ep)}
       </Endpoint>
     )
   })
-  return <div>{endpoints}</div>
+  return endpoints
 }
 
 function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
