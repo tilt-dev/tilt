@@ -510,7 +510,7 @@ github.com/tilt-dev/dockerignore
 # github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 ## explicit
 github.com/tilt-dev/fsevents
-# github.com/tilt-dev/fsnotify v1.4.8-0.20210420175148-fb09a0d02ca7
+# github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe
 ## explicit
 github.com/tilt-dev/fsnotify
 # github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527

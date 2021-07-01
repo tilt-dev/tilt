@@ -92,10 +92,33 @@ func (w *Watcher) Add(name string) error {
 	if w.isClosed {
 		return errors.New("watcher already closed")
 	}
+
+	// When reporting file notifications, FILE_ACTION_MODIFIED includes changes to file attributes;
+	// so attribute handling is broken for Windows (op.Chmod will NEVER get used in practice).
+	//
+	// To prevent events for attribute changes erroneously showing up as file modifications,
+	// FILE_NOTIFY_CHANGE_ATTRIBUTES (sysFSATTRIB) is excluded from the notify filter.
+	//
+	// This means attribute changes will NOT be detected on Windows, as this has been deemed
+	// better than misreporting them as file modifications.
+	//
+	// For most purposes, especially since there is no execute bit in Windows/NTFS, these events
+	// are uninteresting, but it appears some security/AV/backup software can trigger excessive
+	// attribute changes resulting in lots of events for otherwise unchanged files.
+	//
+	// To accurately get Chmod events, a substantial refactor would be needed to set up two
+	// underlying watchers - one with a FILE_NOTIFY_CHANGE_ATTRIBUTES filter and another with
+	// the remaining filters, so that attribute changes can be reliably detected.
+	//
+	// See also:
+	// 	* ReadDirectoryChangesW flags: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw
+	// 	* FILE_NOTIFY_INFORMATION: https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-file_notify_information
+	flags := sysFSCREATE | sysFSDELETE | sysFSDELETESELF | sysFSMODIFY | sysFSMOVEDFROM | sysFSMOVEDTO | sysFSMOVESELF
+
 	in := &input{
 		op:    opAddWatch,
 		path:  filepath.Clean(name),
-		flags: sysFSALLEVENTS,
+		flags: uint32(flags),
 		reply: make(chan error),
 	}
 	w.input <- in
