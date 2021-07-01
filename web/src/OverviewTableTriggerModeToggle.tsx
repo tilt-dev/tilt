@@ -46,8 +46,8 @@ type TriggerModeToggleProps = {
 }
 
 export const ToggleTriggerModeTooltip = {
-  isManual: "File changes do not trigger updates",
-  isAuto: "File changes trigger update",
+  isManual: "Manual: File changes don’t trigger updates",
+  isAuto: "Auto: File changes trigger update",
 }
 
 const titleText = (isManual: boolean): string => {

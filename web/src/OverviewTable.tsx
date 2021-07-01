@@ -9,10 +9,10 @@ import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
-import TableStarResourceButton from "./OverviewTableStarResourceButton"
+import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
-import TriggerButton from "./OverviewTableTriggerButton"
-import TableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
+import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
+import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
@@ -82,7 +82,7 @@ const ResourceTableData = styled.td`
 `
 const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray7};
-  font-size: ${FontSize.smallester};
+  font-size: ${FontSize.smallest};
   padding-top: ${SizeUnit(0.5)};
   padding-bottom: ${SizeUnit(0.5)};
   box-sizing: border-box;
@@ -105,7 +105,8 @@ const ResourceTableHeaderSortTriangle = styled.div`
     transform: rotate(180deg);
   }
 `
-const ResourceName = styled.div`
+const ResourceName = styled.button`
+  ${mixinResetButtonStyle};
   color: ${Color.offWhite};
   font-size: ${FontSize.small};
   padding-top: ${SizeUnit(1 / 3)};
@@ -122,14 +123,20 @@ const ResourceName = styled.div`
   }
 `
 
-const Endpoint = styled.a``
-const StyledLinkSvg = styled(LinkSvg)``
-
-const DetailText = styled.span`
+const Endpoint = styled.a`
+  display: flex;
+  align-items: center;
+  max-width: 150px;
+`
+const DetailText = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-left: 10px;
+`
+
+const StyledLinkSvg = styled(LinkSvg)`
+  fill: ${Color.grayLight};
+  margin-right: ${SizeUnit(0.2)};
 `
 
 const PodId = styled.div`
@@ -163,7 +170,7 @@ const PodIdCopy = styled(InstrumentedButton)`
 function TableStarColumn({ row }: CellProps<RowValues>) {
   let ctx = useStarredResources()
   return (
-    <TableStarResourceButton
+    <OverviewTableStarResourceButton
       resourceName={row.values.name}
       analyticsName="ui.web.overviewStarButton"
       ctx={ctx}
@@ -179,7 +186,7 @@ function TableUpdateColumn({ row }: CellProps<RowValues>) {
 
 function TableTriggerColumn({ row }: CellProps<RowValues>) {
   return (
-    <TriggerButton
+    <OverviewTableTriggerButton
       hasPendingChanges={row.values.trigger.hasPendingChanges}
       hasBuilt={row.values.trigger.hasBuilt}
       isBuilding={row.values.trigger.isBuilding}
@@ -214,10 +221,12 @@ function TableStatusColumn({ row }: CellProps<RowValues>) {
         lastBuildDur={row.values.statusLine.lastBuildDur}
         alertCount={row.values.statusLine.buildAlertCount}
         isBuild={true}
+        resourceName={row.values.name}
       />
       <OverviewTableStatus
         status={row.values.statusLine.runtimeStatus}
         alertCount={row.values.statusLine.runtimeAlertCount}
+        resourceName={row.values.name}
       />
     </>
   )
@@ -258,7 +267,11 @@ function TablePodIDColumn({ row }: CellProps<RowValues>) {
         readOnly={true}
         onClick={() => selectPodIdInput(row.values.podId)}
       />
-      <PodIdCopy onClick={copyClick} analyticsName="ui.web.overview.copyPodID">
+      <PodIdCopy
+        onClick={copyClick}
+        analyticsName="ui.web.overview.copyPodID"
+        title="Copy Pod ID"
+      >
         {icon}
       </PodIdCopy>
     </PodId>
@@ -266,8 +279,7 @@ function TablePodIDColumn({ row }: CellProps<RowValues>) {
 }
 
 function TableEndpointColumn({ row }: CellProps<RowValues>) {
-  // @ts-ignore
-  let endpoints = row.values.endpoints.map((ep) => {
+  let endpoints = row.values.endpoints.map((ep: any) => {
     return (
       <Endpoint
         onClick={() => void incr("ui.web.endpoint", { action: "click" })}
@@ -277,16 +289,21 @@ function TableEndpointColumn({ row }: CellProps<RowValues>) {
         key={ep.url}
       >
         <StyledLinkSvg />
-        <DetailText>{ep.name || displayURL(ep)}</DetailText>
+        <DetailText title={ep.name || displayURL(ep)}>
+          {ep.name || displayURL(ep)}
+        </DetailText>
       </Endpoint>
     )
   })
-  return <div>{endpoints}</div>
+  return <>{endpoints}</>
 }
 
 function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
+  let isTiltfile = row.values.name == "(Tiltfile)"
+
+  if (isTiltfile) return null
   return (
-    <TableTriggerModeToggle
+    <OverviewTableTriggerModeToggle
       resourceName={row.values.name}
       triggerMode={row.values.triggerMode}
     />
@@ -345,7 +362,7 @@ const columns: Column<RowValues>[] = [
   {
     Header: "Trigger Mode",
     accessor: "triggerMode",
-    width: "50px",
+    width: "70px",
     Cell: TableTriggerModeColumn,
   },
 ]

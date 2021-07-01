@@ -49,10 +49,10 @@ export let TriggerButtonRoot = styled(InstrumentedButton)`
 `
 
 export const TriggerButtonTooltip = {
-  AlreadyQueued: "Resource is already queued!",
-  NeedsManualTrigger: "Trigger an update",
-  UpdateInProgOrPending: "Resource is already updating!",
-  ClickToForce: "Force an update",
+  AlreadyQueued: "Resource already queued!",
+  NeedsManualTrigger: "Trigger update to sync changes",
+  UpdateInProgOrPending: "Resource already updating!",
+  Default: "Trigger update",
 }
 
 type TriggerButtonProps = {
@@ -76,7 +76,7 @@ const titleText = (
   } else if (shouldbeClicked) {
     return TriggerButtonTooltip.NeedsManualTrigger
   } else {
-    return TriggerButtonTooltip.ClickToForce
+    return TriggerButtonTooltip.Default
   }
 }
 
