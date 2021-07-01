@@ -258,7 +258,11 @@ function TablePodIDColumn({ row }: CellProps<RowValues>) {
         readOnly={true}
         onClick={() => selectPodIdInput(row.values.podId)}
       />
-      <PodIdCopy onClick={copyClick} analyticsName="ui.web.overview.copyPodID">
+      <PodIdCopy
+        onClick={copyClick}
+        analyticsName="ui.web.overview.copyPodID"
+        title="Copy Pod ID"
+      >
         {icon}
       </PodIdCopy>
     </PodId>
