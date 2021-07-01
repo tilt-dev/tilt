@@ -79,8 +79,9 @@ with Tilt and ask for reactions on visuals or prototypes we're working on.
 
 **Contribute:** Check out our [guidelines](CONTRIBUTING.md) to contribute to Tilt's source code. To extend the capabilities of Tilt via new Tiltfile functionality, read more about [Extensions](https://docs.tilt.dev/extensions.html).
 
-**Follow along:** [@tilt_dev](https://twitter.com/tilt_dev) on Twitter. Updates
-and announcements on the [Tilt blog](https://blog.tilt.dev).
+**Follow along:** [@tilt_dev](https://twitter.com/tilt_dev) on Twitter. For updates
+and announcements, follow [the blog](https://blog.tilt.dev) or subscribe to 
+[the newsletter](https://tilt.dev/subscribe).
 
 **Help us make Tilt even better:** Tilt sends anonymized usage data, so we can
 improve Tilt on every platform. Details in ["What does Tilt
