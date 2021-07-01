@@ -295,7 +295,7 @@ function TableEndpointColumn({ row }: CellProps<RowValues>) {
       </Endpoint>
     )
   })
-  return endpoints
+  return <>{endpoints}</>
 }
 
 function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
