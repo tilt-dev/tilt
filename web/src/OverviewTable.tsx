@@ -126,7 +126,14 @@ const ResourceName = styled.button`
 const Endpoint = styled.a`
   display: flex;
   align-items: center;
+  max-width: 150px;
 `
+const DetailText = styled.div`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
 const StyledLinkSvg = styled(LinkSvg)`
   fill: ${Color.grayLight};
   margin-right: ${SizeUnit(0.2)};
@@ -282,7 +289,9 @@ function TableEndpointColumn({ row }: CellProps<RowValues>) {
         key={ep.url}
       >
         <StyledLinkSvg />
-        {ep.name || displayURL(ep)}
+        <DetailText title={ep.name || displayURL(ep)}>
+          {ep.name || displayURL(ep)}
+        </DetailText>
       </Endpoint>
     )
   })
