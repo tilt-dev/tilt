@@ -197,11 +197,9 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	c.resetStatus(name, cmd)
 
 	stillHasSameProcNum := proc.stillHasSameProcNum()
-	statusCh := make(chan statusAndMetadata)
 
 	ctx = store.MustObjectLogHandler(ctx, c.st, cmd)
 	spec := cmd.Spec
-	spanID := model.LogSpanID(cmd.ObjectMeta.Annotations[v1alpha1.AnnotationSpanID])
 
 	if spec.ReadinessProbe != nil {
 		statusChangeFunc := c.processReadinessProbeStatusChange(ctx, name, stillHasSameProcNum)
@@ -227,14 +225,17 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	}
 
 	startedAt := apis.NewMicroTime(c.clock.Now())
-	go c.processStatuses(ctx, statusCh, proc, name, startedAt, stillHasSameProcNum)
 
-	serveCmd := model.Cmd{
+	cmdModel := model.Cmd{
 		Argv: spec.Args,
 		Dir:  spec.Dir,
 		Env:  spec.Env,
 	}
-	proc.doneCh = c.execer.Start(ctx, serveCmd, logger.Get(ctx).Writer(logger.InfoLvl), statusCh, spanID)
+	statusCh := c.execer.Start(ctx, cmdModel, logger.Get(ctx).Writer(logger.InfoLvl))
+	proc.doneCh = make(chan struct{})
+
+	go c.processStatuses(ctx, statusCh, proc, name, startedAt, stillHasSameProcNum)
+
 	return nil
 }
 
@@ -373,6 +374,7 @@ func (c *Controller) processStatuses(
 	name types.NamespacedName,
 	startedAt metav1.MicroTime,
 	stillHasSameProcNum func() bool) {
+	defer close(proc.doneCh)
 
 	var initProbeWorker sync.Once
 
@@ -501,7 +503,6 @@ func (p *currentProcess) currentProcNum() int {
 type statusAndMetadata struct {
 	pid      int
 	status   status
-	spanID   model.LogSpanID
 	exitCode int
 	reason   string
 }

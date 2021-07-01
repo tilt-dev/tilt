@@ -21,7 +21,9 @@ import (
 var DefaultGracePeriod = 30 * time.Second
 
 type Execer interface {
-	Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{}
+	// Returns a channel to pull status updates from. After the process exists
+	// (and transmits its final status), the channel is closed.
+	Start(ctx context.Context, cmd model.Cmd, w io.Writer) chan statusAndMetadata
 }
 
 type fakeExecProcess struct {
@@ -42,7 +44,7 @@ func NewFakeExecer() *FakeExecer {
 	}
 }
 
-func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
+func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer) chan statusAndMetadata {
 	e.mu.Lock()
 	_, ok := e.processes[cmd.String()]
 	e.mu.Unlock()
@@ -61,16 +63,16 @@ func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, stat
 	}
 	e.mu.Unlock()
 
-	doneCh := make(chan struct{})
+	statusCh := make(chan statusAndMetadata)
 	go func() {
-		fakeRun(ctx, cmd, w, statusCh, doneCh, exitCh)
+		fakeRun(ctx, cmd, w, statusCh, exitCh)
 
 		e.mu.Lock()
 		delete(e.processes, cmd.String())
 		e.mu.Unlock()
 	}()
 
-	return doneCh
+	return statusCh
 }
 
 // stops the command with the given command, faking the specified exit code
@@ -89,8 +91,7 @@ func (e *FakeExecer) stop(cmd string, exitCode int) error {
 	return nil
 }
 
-func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, doneCh chan struct{}, exitCh chan int) {
-	defer close(doneCh)
+func fakeRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, exitCh chan int) {
 	defer close(statusCh)
 
 	_, _ = fmt.Fprintf(w, "Starting cmd %v\n", cmd)
@@ -133,18 +134,17 @@ func NewProcessExecer() *processExecer {
 	}
 }
 
-func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) chan struct{} {
-	doneCh := make(chan struct{})
+func (e *processExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer) chan statusAndMetadata {
+	statusCh := make(chan statusAndMetadata)
 
 	go func() {
-		e.processRun(ctx, cmd, w, statusCh, spanID)
-		close(doneCh)
+		e.processRun(ctx, cmd, w, statusCh)
 	}()
 
-	return doneCh
+	return statusCh
 }
 
-func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata, spanID model.LogSpanID) {
+func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writer, statusCh chan statusAndMetadata) {
 	defer close(statusCh)
 
 	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
@@ -160,7 +160,6 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 		logger.Get(ctx).Errorf("%s failed to start: %v", cmd.String(), err)
 		statusCh <- statusAndMetadata{
 			status:   Error,
-			spanID:   spanID,
 			exitCode: 1,
 			reason:   fmt.Sprintf("failed to start: %v", err),
 		}
@@ -168,7 +167,7 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	}
 
 	pid := c.Process.Pid
-	statusCh <- statusAndMetadata{status: Running, pid: pid, spanID: spanID}
+	statusCh <- statusAndMetadata{status: Running, pid: pid}
 
 	// This is to prevent this goroutine from blocking, since we know there's only going to be one result
 	processExitCh := make(chan error, 1)
@@ -212,10 +211,10 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 			reason = err.Error()
 			logger.Get(ctx).Errorf("error execing %s: %v", cmd.String(), err)
 		}
-		statusCh <- statusAndMetadata{status: status, pid: pid, spanID: spanID, exitCode: exitCode, reason: reason}
+		statusCh <- statusAndMetadata{status: status, pid: pid, exitCode: exitCode, reason: reason}
 	case <-ctx.Done():
 		e.killProcess(ctx, c, processExitCh)
-		statusCh <- statusAndMetadata{status: Done, pid: pid, spanID: spanID, reason: "killed", exitCode: 137}
+		statusCh <- statusAndMetadata{status: Done, pid: pid, reason: "killed", exitCode: 137}
 	}
 }
 
