@@ -668,6 +668,25 @@ message KubernetesDiscoverySpec {
   // This should only be necessary in the event that a CRD creates Pods but does not set an owner reference
   // to itself.
   repeated k8s.io.apimachinery.pkg.apis.meta.v1.LabelSelector extraSelectors = 2;
+
+  // PortForwardTemplateSpec describes the data model for port forwards
+  // that KubernetesDiscovery should set up.
+  //
+  // The KubernetesDiscovery controller will choose a "best" candidate
+  // for attaching the port-forwarding. Only one PortForward will be
+  // active at a time.
+  //
+  // +optional
+  optional PortForwardTemplateSpec portForwardTemplateSpec = 3;
+
+  // PodLogStreamTemplateSpec describes the data model for PodLogStreams
+  // that KubernetesDiscovery should set up.
+  //
+  // The KubernetesDiscovery controller will attach PodLogStream objects
+  // to all active pods it discovers.
+  //
+  // +optional
+  optional PodLogStreamTemplateSpec podLogStreamTemplateSpec = 4;
 }
 
 // KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery
@@ -900,6 +919,35 @@ message PodLogStreamStatus {
   repeated ContainerLogStreamStatus containerStatuses = 1;
 }
 
+// PodLogStreamTemplateSpec describes common attributes for PodLogStreams
+// that can be shared across pods.
+message PodLogStreamTemplateSpec {
+  // An RFC3339 timestamp from which to show logs. If this value
+  // precedes the time a pod was started, only logs since the pod start will be returned.
+  // If this value is in the future, no logs will be returned.
+  //
+  // Translates directly to the underlying PodLogOptions.
+  //
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time sinceTime = 1;
+
+  // The names of containers to include in the stream.
+  //
+  // If `onlyContainers` and `ignoreContainers` are not set,
+  // will watch all containers in the pod.
+  //
+  // +optional
+  repeated string onlyContainers = 2;
+
+  // The names of containers to exclude from the stream.
+  //
+  // If `onlyContainers` and `ignoreContainers` are not set,
+  // will watch all containers in the pod.
+  //
+  // +optional
+  repeated string ignoreContainers = 3;
+}
+
 // PortForward
 // +k8s:openapi-gen=true
 message PortForward {
@@ -935,6 +983,13 @@ message PortForwardSpec {
 // PortForwardStatus defines the observed state of PortForward
 message PortForwardStatus {
   repeated ForwardStatus forwardStatuses = 2;
+}
+
+// PortForwardTemplateSpec describes common attributes for PortForwards
+// that can be shared across pods.
+message PortForwardTemplateSpec {
+  // One or more port forwards to execute on the given pod. Required.
+  repeated Forward forwards = 1;
 }
 
 // Probe describes a health check to be performed o determine whether it is
