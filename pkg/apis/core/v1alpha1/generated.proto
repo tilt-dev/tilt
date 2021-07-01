@@ -1264,8 +1264,26 @@ message UIButtonSpec {
   // Location associates the button with another component for layout.
   optional UIComponentLocation location = 1;
 
-  // Text to appear on the button itself.
+  // Text to appear on the button itself or as hover text (depending on button location).
   optional string text = 2;
+
+  // IconName is a Material Icon to appear next to button text or on the button itself (depending on button location).
+  //
+  // Valid values are icon font ligature names from the Material Icons set.
+  // See https://fonts.google.com/icons for the full list of available icons.
+  //
+  // If both IconSVG and IconName are specified, IconSVG will take precedence.
+  //
+  // +optional
+  optional string iconName = 3;
+
+  // IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (dependong on button
+  // location).
+  //
+  // If both IconSVG and IconName are specified, IconSVG will take precedence.
+  //
+  // +optional
+  optional string iconSVG = 4;
 }
 
 // UIButtonStatus defines the observed state of UIButton

@@ -3407,8 +3407,22 @@ func schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref common.ReferenceCallback) co
 					},
 					"text": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Text to appear on the button itself.",
+							Description: "Text to appear on the button itself or as hover text (depending on button location).",
 							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"iconName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IconName is a Material Icon to appear next to button text or on the button itself (depending on button location).\n\nValid values are icon font ligature names from the Material Icons set. See https://fonts.google.com/icons for the full list of available icons.\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"iconSVG": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (dependong on button location).\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

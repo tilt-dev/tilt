@@ -469,9 +469,29 @@ declare namespace Proto {
      */
     location?: v1alpha1UIComponentLocation;
     /**
-     * Text to appear on the button itself.
+     * Text to appear on the button itself or as hover text (depending on button location).
      */
     text?: string;
+    /**
+     * IconName is a Material Icon to appear next to button text or on the button itself (depending on button location).
+     *
+     * Valid values are icon font ligature names from the Material Icons set.
+     * See https://fonts.google.com/icons for the full list of available icons.
+     *
+     * If both IconSVG and IconName are specified, IconSVG will take precedence.
+     *
+     * +optional
+     */
+    iconName?: string;
+    /**
+     * IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (dependong on button
+     * location).
+     *
+     * If both IconSVG and IconName are specified, IconSVG will take precedence.
+     *
+     * +optional
+     */
+    iconSVG?: string;
   }
   export interface v1alpha1UIButton {
     metadata?: v1ObjectMeta;
