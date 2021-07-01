@@ -83,11 +83,18 @@ export default function UpdateDialog(props: props) {
     )
   } else {
     updateEl = (
-      <div key="no-update">Already on the recommended version! Nice work.</div>
+      <div key="no-update">
+        <div>Already on the recommended version!</div>
+        <div>
+          If you're impatient for more,
+          <br />
+          subscribe to <a href="https://tilt.dev/subscribe">Tilt News</a>.
+        </div>
+      </div>
     )
   }
 
-  let title = props.showUpdate ? "Updates Available" : "Tilt Version"
+  let title = props.showUpdate ? "Updates Available" : "Update Status"
   return (
     <FloatDialog id="update" title={title} {...props}>
       {updateEl}
