@@ -82,7 +82,7 @@ const ResourceTableData = styled.td`
 `
 const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray7};
-  font-size: ${FontSize.smallester};
+  font-size: ${FontSize.smallest};
   padding-top: ${SizeUnit(0.5)};
   padding-bottom: ${SizeUnit(0.5)};
   box-sizing: border-box;
@@ -353,7 +353,7 @@ const columns: Column<RowValues>[] = [
   {
     Header: "Trigger Mode",
     accessor: "triggerMode",
-    width: "50px",
+    width: "70px",
     Cell: TableTriggerModeColumn,
   },
 ]
