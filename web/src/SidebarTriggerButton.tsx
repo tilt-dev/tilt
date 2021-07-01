@@ -71,13 +71,12 @@ export let SidebarTriggerButtonRoot = styled(InstrumentedButton)`
   }
 `
 
+// TODO: Some of these aren't currently visible, since Trigger button is hidden when building
 export const TriggerButtonTooltip = {
-  AlreadyQueued:
-    "Cannot trigger an update if resource is already queued for update.",
-  NeedsManualTrigger: "Click to trigger an update.",
-  UpdateInProgOrPending:
-    "Cannot trigger an update while resource is updating or update is pending.",
-  ClickToForce: "Force an update for this resource.",
+  AlreadyQueued: "Resource already queued!",
+  NeedsManualTrigger: "Trigger update to sync changes",
+  UpdateInProgOrPending: "Resource already updating!",
+  Default: "Trigger update",
 }
 
 type SidebarTriggerButtonProps = {
@@ -103,7 +102,7 @@ const titleText = (
   } else if (clickMe) {
     return TriggerButtonTooltip.NeedsManualTrigger
   } else {
-    return TriggerButtonTooltip.ClickToForce
+    return TriggerButtonTooltip.Default
   }
 }
 
