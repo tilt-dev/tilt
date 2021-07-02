@@ -685,6 +685,9 @@ message KubernetesDiscoverySpec {
   // The KubernetesDiscovery controller will attach PodLogStream objects
   // to all active pods it discovers.
   //
+  // If no template is specified, the controller will stream all
+  // pod logs available from the apiserver.
+  //
   // +optional
   optional PodLogStreamTemplateSpec podLogStreamTemplateSpec = 4;
 }

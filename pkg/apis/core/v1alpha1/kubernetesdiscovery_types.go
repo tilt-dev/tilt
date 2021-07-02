@@ -76,11 +76,15 @@ type KubernetesDiscoverySpec struct {
 	//
 	// +optional
 	PortForwardTemplateSpec *PortForwardTemplateSpec `json:"portForwardTemplateSpec,omitempty" protobuf:"bytes,3,opt,name=portForwardTemplateSpec"`
+
 	// PodLogStreamTemplateSpec describes the data model for PodLogStreams
 	// that KubernetesDiscovery should set up.
 	//
 	// The KubernetesDiscovery controller will attach PodLogStream objects
 	// to all active pods it discovers.
+	//
+	// If no template is specified, the controller will stream all
+	// pod logs available from the apiserver.
 	//
 	// +optional
 	PodLogStreamTemplateSpec *PodLogStreamTemplateSpec `json:"podLogStreamTemplateSpec,omitempty" protobuf:"bytes,4,opt,name=podLogStreamTemplateSpec"`

@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
-
 	errorutil "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -61,10 +59,6 @@ type Reconciler struct {
 	ownerFetcher k8s.OwnerFetcher
 	dispatcher   Dispatcher
 	ctrlClient   ctrlclient.Client
-	// startTime of the reconciler used for filtering logs when creating PodLogStream objects.
-	//
-	// TODO(milas): we should have a better way of sharing this across a Tilt session
-	startTime time.Time
 
 	// restartDetector compares a previous version of status with the latest and emits log events
 	// for any containers on the pod that restarted.
@@ -131,7 +125,6 @@ func NewReconciler(ctrlClient ctrlclient.Client, kCli k8s.Client, ownerFetcher k
 		ownerFetcher:           ownerFetcher,
 		restartDetector:        restartDetector,
 		dispatcher:             st,
-		startTime:              time.Now(),
 		watchedNamespaces:      make(map[k8s.Namespace]nsWatch),
 		uidWatchers:            make(map[types.UID]watcherSet),
 		watchers:               make(map[watcherID]watcher),
@@ -628,8 +621,14 @@ func (w *Reconciler) createPodLogStream(ctx context.Context, kd v1alpha1.Kuberne
 	manifest := kd.Annotations[v1alpha1.AnnotationManifest]
 	spanID := string(k8sconv.SpanIDForPod(model.ManifestName(manifest), k8s.PodID(pod.Name)))
 
+	plsTemplate := kd.Spec.PodLogStreamTemplateSpec
+
+	// If there's no podlogtream template, create a default one.
+	if plsTemplate == nil {
+		plsTemplate = &v1alpha1.PodLogStreamTemplateSpec{}
+	}
+
 	// create PLS
-	sinceTime := apis.NewTime(w.startTime)
 	pls := v1alpha1.PodLogStream{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      plsKey.Name,
@@ -640,13 +639,11 @@ func (w *Reconciler) createPodLogStream(ctx context.Context, kd v1alpha1.Kuberne
 			},
 		},
 		Spec: v1alpha1.PodLogStreamSpec{
-			Pod:       pod.Name,
-			Namespace: pod.Namespace,
-			SinceTime: &sinceTime,
-			IgnoreContainers: []string{
-				string(runtimelog.IstioInitContainerName),
-				string(runtimelog.IstioSidecarContainerName),
-			},
+			Pod:              pod.Name,
+			Namespace:        pod.Namespace,
+			SinceTime:        plsTemplate.SinceTime,
+			IgnoreContainers: plsTemplate.IgnoreContainers,
+			OnlyContainers:   plsTemplate.OnlyContainers,
 		},
 	}
 
