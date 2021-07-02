@@ -5,7 +5,7 @@ import { InstrumentedButton } from "./instrumentedComponents"
 import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 import { TriggerMode } from "./types"
 
-let TriggerModeToggleRoot = styled(InstrumentedButton)`
+let StyledSidebarTriggerModeToggle = styled(InstrumentedButton)`
   ${mixinResetButtonStyle}
   display: flex;
   align-items: center;
@@ -66,7 +66,7 @@ const titleText = (isManual: boolean): string => {
   }
 }
 
-function TriggerModeToggle(props: TriggerModeToggleProps) {
+function SidebarTriggerModeToggle(props: TriggerModeToggleProps) {
   let isManualTriggerMode =
     props.triggerMode == TriggerMode.TriggerModeManualWithAutoInit ||
     props.triggerMode == TriggerMode.TriggerModeManual
@@ -87,7 +87,7 @@ function TriggerModeToggle(props: TriggerModeToggleProps) {
   }
 
   return (
-    <TriggerModeToggleRoot
+    <StyledSidebarTriggerModeToggle
       className={isManualTriggerMode ? "is-manual" : ""}
       onClick={onClick}
       title={titleText(isManualTriggerMode)}
@@ -95,8 +95,8 @@ function TriggerModeToggle(props: TriggerModeToggleProps) {
       analyticsTags={{ toMode: desiredMode.toString() }}
     >
       <TriggerModeButtonSvg />
-    </TriggerModeToggleRoot>
+    </StyledSidebarTriggerModeToggle>
   )
 }
 
-export { TriggerModeToggle, TriggerModeToggleRoot }
+export { SidebarTriggerModeToggle, StyledSidebarTriggerModeToggle }
