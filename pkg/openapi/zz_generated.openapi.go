@@ -3422,7 +3422,7 @@ func schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref common.ReferenceCallback) co
 					},
 					"iconSVG": {
 						SchemaProps: spec.SchemaProps{
-							Description: "IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (dependong on button location).\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.",
+							Description: "IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (depending on button location).\n\nThis should be an <svg> element scaled for a 24x24 viewport.\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
