@@ -1,11 +1,43 @@
-import { Icon } from "@material-ui/core"
+import { Icon, SvgIcon } from "@material-ui/core"
 import moment from "moment"
 import React, { useState } from "react"
+import { convertFromNode, convertFromString } from "react-from-dom"
 import { InstrumentedButton } from "./instrumentedComponents"
 
 type UIButton = Proto.v1alpha1UIButton
 
 type ApiButtonProps = { className?: string; button: UIButton }
+
+type ApiIconProps = { iconName?: string; iconSVG?: string }
+
+const svgElement = (src: string): React.ReactElement => {
+  const node = convertFromString(src, {
+    selector: "svg",
+    type: "image/svg+xml",
+    nodeOnly: true,
+  }) as SVGSVGElement
+  return convertFromNode(node) as React.ReactElement
+}
+
+export const ApiIcon: React.FC<ApiIconProps> = (props) => {
+  if (props.iconSVG) {
+    // the material SvgIcon handles accessibility/sizing/colors well but can't accept a raw SVG string
+    // create a ReactElement by parsing the source and then use that as the component, passing through
+    // the props so that it's correctly styled
+    const svgEl = svgElement(props.iconSVG)
+    const svg = (props: React.PropsWithChildren<any>) => {
+      // merge the props from material-ui while keeping the children of the actual SVG
+      return React.cloneElement(svgEl, { ...props }, ...svgEl.props.children)
+    }
+    return <SvgIcon component={svg} />
+  }
+
+  if (props.iconName) {
+    return <Icon>{props.iconName}</Icon>
+  }
+
+  return null
+}
 
 export const ApiButton: React.FC<ApiButtonProps> = (props) => {
   const [loading, setLoading] = useState(false)
@@ -52,9 +84,10 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
     >
       {props.children || (
         <>
-          {props.button.spec?.iconName && (
-            <Icon>{props.button.spec?.iconName}</Icon>
-          )}
+          <ApiIcon
+            iconName={props.button.spec?.iconName}
+            iconSVG={props.button.spec?.iconSVG}
+          />
           {props.button.spec?.text ?? "Button"}
         </>
       )}

@@ -1,7 +1,6 @@
-import { Icon } from "@material-ui/core"
 import React from "react"
 import styled from "styled-components"
-import { ApiButton } from "./ApiButton"
+import { ApiButton, ApiIcon } from "./ApiButton"
 import { MenuButtonLabel, MenuButtonMixin } from "./GlobalNav"
 
 type CustomNavProps = {
@@ -28,7 +27,10 @@ export function CustomNav(props: CustomNavProps) {
     <React.Fragment>
       {buttons.map((b) => (
         <CustomNavButton key={b.metadata?.name} button={b}>
-          <Icon>{b.spec?.iconName}</Icon>
+          <ApiIcon
+            iconName={b.spec?.iconName || "smart_button"}
+            iconSVG={b.spec?.iconSVG}
+          />
           <MenuButtonLabel>{b.spec?.text}</MenuButtonLabel>
         </CustomNavButton>
       ))}
