@@ -25,7 +25,16 @@ export const GlobalNavRoot = styled.div`
   display: flex;
   align-items: stretch;
 `
-export const MenuButton = styled.button`
+export const MenuButtonLabel = styled.div`
+  position: absolute;
+  bottom: 0;
+  font-size: ${FontSize.smallest};
+  color: ${Color.blueDark};
+  width: 200%;
+  transition: opacity ${AnimDuration.default} ease;
+  opacity: 0;
+`
+export const MenuButtonMixin = `
   ${mixinResetButtonStyle};
   display: flex;
   flex-direction: column;
@@ -55,20 +64,13 @@ export const MenuButton = styled.button`
     pointer-events: none;
     cursor: default;
   }
-`
-const MenuButtonLabel = styled.div`
-  position: absolute;
-  bottom: 0;
-  font-size: ${FontSize.smallest};
-  color: ${Color.blueDark};
-  width: 200%;
-  transition: opacity ${AnimDuration.default} ease;
-  opacity: 0;
-
-  ${MenuButton}:hover &,
-  ${MenuButton}[data-open="true"] & {
+  
+  &:hover ${MenuButtonLabel}, &[data-open="true"] ${MenuButtonLabel} {
     opacity: 1;
   }
+`
+export const MenuButton = styled.button`
+  ${MenuButtonMixin}
 `
 const UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
   display: none;

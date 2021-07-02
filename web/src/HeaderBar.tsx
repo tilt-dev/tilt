@@ -2,6 +2,7 @@ import React from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
+import { CustomNav } from "./CustomNav"
 import { GlobalNav } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
 import {
@@ -93,6 +94,7 @@ export default function HeaderBar(props: HeaderBarProps) {
         All Resources
       </AllResourcesLink>
       <ResourceStatusSummary view={props.view} />
+      <CustomNav view={props.view} />
       <GlobalNav {...globalNavProps} />
     </HeaderBarRoot>
   )

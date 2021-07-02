@@ -10,12 +10,12 @@ import { PopoverOrigin } from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import { History } from "history"
-import moment from "moment"
 import React, { ChangeEvent, useEffect, useRef, useState } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { incr } from "./analytics"
+import { ApiButton } from "./ApiButton"
 import { ReactComponent as AlertSvg } from "./assets/svg/alert.svg"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
@@ -176,7 +176,7 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
   )
 }
 
-let ButtonRoot = styled(InstrumentedButton)`
+const OverviewButtonMixin = `
   font-family: ${Font.sansSerif};
   display: flex;
   align-items: center;
@@ -235,6 +235,14 @@ let ButtonRoot = styled(InstrumentedButton)`
   &.isEnabled:hover .fillStd {
     fill: ${Color.blue};
   }
+`
+
+const ButtonRoot = styled(InstrumentedButton)`
+  ${OverviewButtonMixin}
+`
+
+const CustomActionButton = styled(ApiButton)`
+  ${OverviewButtonMixin}
 `
 
 const WidgetRoot = styled.div`
@@ -673,53 +681,6 @@ function openEndpointUrl(url: string) {
   window.open(url, url)
 }
 
-function ApiButton(props: { button: UIButton }) {
-  const [loading, setLoading] = useState(false)
-  const onClick = async () => {
-    const toUpdate = {
-      metadata: { ...props.button.metadata },
-      status: { ...props.button.status },
-    } as UIButton
-    // apiserver's date format time is _extremely_ strict to the point that it requires the full
-    // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
-    // so use an explicit RFC3339 moment format to ensure it passes
-    toUpdate.status!.lastClickedAt = moment().format(
-      "YYYY-MM-DDTHH:mm:ss.SSSSSSZ"
-    )
-
-    // TODO(milas): currently the loading state just disables the button for the duration of
-    //  the AJAX request to avoid duplicate clicks - there is no progress tracking at the
-    //  moment, so there's no fancy spinner animation or propagation of result of action(s)
-    //  that occur as a result of click right now
-    setLoading(true)
-    const url = `/proxy/apis/tilt.dev/v1alpha1/uibuttons/${
-      toUpdate.metadata!.name
-    }/status`
-    try {
-      await fetch(url, {
-        method: "PUT",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(toUpdate),
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-  // button text is not included in analytics name since that can be user data
-  return (
-    <ButtonRoot
-      analyticsName={"ui.web.uibutton"}
-      onClick={onClick}
-      disabled={loading}
-    >
-      {props.button.spec?.text ?? "Button"}
-    </ButtonRoot>
-  )
-}
-
 export function OverviewWidgets(props: { buttons?: UIButton[] }) {
   if (!props.buttons?.length) {
     return null
@@ -728,7 +689,7 @@ export function OverviewWidgets(props: { buttons?: UIButton[] }) {
   return (
     <WidgetRoot key="widgets">
       {props.buttons?.map((b) => (
-        <ApiButton button={b} key={b.metadata?.name} />
+        <CustomActionButton button={b} key={b.metadata?.name} />
       ))}
     </WidgetRoot>
   )
