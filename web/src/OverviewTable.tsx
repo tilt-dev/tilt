@@ -111,6 +111,7 @@ const ResourceName = styled.button`
   font-size: ${FontSize.small};
   padding-top: ${SizeUnit(1 / 3)};
   padding-bottom: ${SizeUnit(1 / 3)};
+  text-align: left;
   cursor: pointer;
 
   &:hover {
