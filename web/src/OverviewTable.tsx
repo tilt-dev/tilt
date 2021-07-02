@@ -95,13 +95,13 @@ const ResourceTableHeaderSortTriangle = styled.div`
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-bottom: 6px solid ${Color.gray};
+  border-bottom: 6px solid ${Color.grayLight};
 
   &.is-sorted-asc {
-    border-bottom: 6px solid ${Color.grayLightest};
+    border-bottom: 6px solid ${Color.blue};
   }
   &.is-sorted-desc {
-    border-bottom: 6px solid ${Color.grayLightest};
+    border-bottom: 6px solid ${Color.blue};
     transform: rotate(180deg);
   }
 `
