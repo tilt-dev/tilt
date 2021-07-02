@@ -460,7 +460,9 @@ export default function OverviewTable(props: OverviewTableProps) {
               <ResourceTableHeader
                 {...column.getHeaderProps([
                   { style: { width: column.width } },
-                  column.getSortByToggleProps(),
+                  column.getSortByToggleProps({
+                    title: `Sort by ${column.render("Header")}`,
+                  }),
                 ])}
               >
                 {column.render("Header")}
