@@ -1804,7 +1804,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceC
 					},
 					"podLogStreamTemplateSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PodLogStreamTemplateSpec describes the data model for PodLogStreams that KubernetesDiscovery should set up.\n\nThe KubernetesDiscovery controller will attach PodLogStream objects to all active pods it discovers.",
+							Description: "PodLogStreamTemplateSpec describes the data model for PodLogStreams that KubernetesDiscovery should set up.\n\nThe KubernetesDiscovery controller will attach PodLogStream objects to all active pods it discovers.\n\nIf no template is specified, the controller will stream all pod logs available from the apiserver.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec"),
 						},
 					},

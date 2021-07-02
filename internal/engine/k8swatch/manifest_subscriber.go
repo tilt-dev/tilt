@@ -3,6 +3,7 @@ package k8swatch
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -15,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -24,6 +26,7 @@ type ManifestSubscriber struct {
 	cfgNS      k8s.Namespace
 	client     ctrlclient.Client
 	lastUpdate map[types.NamespacedName]*v1alpha1.KubernetesDiscoverySpec
+	startTime  time.Time
 }
 
 func NewManifestSubscriber(cfgNS k8s.Namespace, client ctrlclient.Client) *ManifestSubscriber {
@@ -31,6 +34,7 @@ func NewManifestSubscriber(cfgNS k8s.Namespace, client ctrlclient.Client) *Manif
 		cfgNS:      cfgNS,
 		client:     client,
 		lastUpdate: make(map[types.NamespacedName]*v1alpha1.KubernetesDiscoverySpec),
+		startTime:  time.Now(),
 	}
 }
 
@@ -226,6 +230,7 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(_ context.Context, 
 		}
 	}
 
+	sinceTime := apis.NewTime(m.startTime)
 	kd := &v1alpha1.KubernetesDiscovery{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      key.Name,
@@ -238,6 +243,13 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(_ context.Context, 
 		Spec: v1alpha1.KubernetesDiscoverySpec{
 			Watches:        watchRefs,
 			ExtraSelectors: extraSelectors,
+			PodLogStreamTemplateSpec: &v1alpha1.PodLogStreamTemplateSpec{
+				SinceTime: &sinceTime,
+				IgnoreContainers: []string{
+					string(runtimelog.IstioInitContainerName),
+					string(runtimelog.IstioSidecarContainerName),
+				},
+			},
 		},
 	}
 

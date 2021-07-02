@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/require"
@@ -279,6 +280,15 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 	f.kClient.UpsertPod(pod2)
 
 	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
+	sinceTime := apis.NewTime(time.Now())
+	podLogStreamTemplateSpec := &v1alpha1.PodLogStreamTemplateSpec{
+		SinceTime: &sinceTime,
+		IgnoreContainers: []string{
+			string(runtimelog.IstioInitContainerName),
+			string(runtimelog.IstioSidecarContainerName),
+		},
+	}
+
 	kd := &v1alpha1.KubernetesDiscovery{
 		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
 		Spec: v1alpha1.KubernetesDiscoverySpec{
@@ -294,6 +304,7 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 					Name:      pod2.Name,
 				},
 			},
+			PodLogStreamTemplateSpec: podLogStreamTemplateSpec,
 		},
 	}
 
@@ -320,7 +331,7 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 	for _, pls := range podLogStreams.Items {
 		assert.Equal(t, ns.String(), pls.Spec.Namespace)
 
-		timecmp.AssertTimeEqual(t, f.pw.startTime, pls.Spec.SinceTime)
+		timecmp.AssertTimeEqual(t, sinceTime, pls.Spec.SinceTime)
 
 		assert.ElementsMatch(t,
 			[]string{runtimelog.IstioInitContainerName.String(), runtimelog.IstioSidecarContainerName.String()},
