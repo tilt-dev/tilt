@@ -95,13 +95,13 @@ const ResourceTableHeaderSortTriangle = styled.div`
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-bottom: 6px solid ${Color.gray};
+  border-bottom: 6px solid ${Color.grayLight};
 
   &.is-sorted-asc {
-    border-bottom: 6px solid ${Color.grayLightest};
+    border-bottom: 6px solid ${Color.blue};
   }
   &.is-sorted-desc {
-    border-bottom: 6px solid ${Color.grayLightest};
+    border-bottom: 6px solid ${Color.blue};
     transform: rotate(180deg);
   }
 `
@@ -111,6 +111,7 @@ const ResourceName = styled.button`
   font-size: ${FontSize.small};
   padding-top: ${SizeUnit(1 / 3)};
   padding-bottom: ${SizeUnit(1 / 3)};
+  text-align: left;
   cursor: pointer;
 
   &:hover {
@@ -460,7 +461,9 @@ export default function OverviewTable(props: OverviewTableProps) {
               <ResourceTableHeader
                 {...column.getHeaderProps([
                   { style: { width: column.width } },
-                  column.getSortByToggleProps(),
+                  column.getSortByToggleProps({
+                    title: `Sort by ${column.render("Header")}`,
+                  }),
                 ])}
               >
                 {column.render("Header")}

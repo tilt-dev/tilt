@@ -6,6 +6,7 @@ import { useResourceNav } from "./ResourceNav"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
 import SidebarTriggerButton from "./SidebarTriggerButton"
+import { SidebarTriggerModeToggle } from "./SidebarTriggerModeToggle"
 import StarResourceButton, {
   StarResourceButtonRoot,
 } from "./StarResourceButton"
@@ -23,7 +24,6 @@ import {
 } from "./style-helpers"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { TriggerModeToggle } from "./TriggerModeToggle"
 import { ResourceStatus, ResourceView, TriggerMode } from "./types"
 
 export const SidebarItemRoot = styled.li`
@@ -313,7 +313,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
             />
             <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
             {item.isTest && (
-              <TriggerModeToggle
+              <SidebarTriggerModeToggle
                 triggerMode={item.triggerMode}
                 onModeToggle={onModeToggle}
               />

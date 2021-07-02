@@ -16,7 +16,6 @@ import HudState from "./HudState"
 import { InterfaceVersion, useInterfaceVersion } from "./InterfaceVersion"
 import { tiltfileKeyContext } from "./LocalStorage"
 import LogStore, { LogStoreProvider } from "./LogStore"
-import OverviewPane from "./OverviewPane"
 import OverviewResourcePane from "./OverviewResourcePane"
 import OverviewTablePane from "./OverviewTablePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
@@ -256,11 +255,8 @@ export default class HUD extends Component<HudProps, HudState> {
                       <OverviewResourcePane view={this.state.view} />
                     )}
                   />
-                  <Route path={this.path("/table")}>
-                    <OverviewTablePane view={this.state.view} />
-                  </Route>
                   <Route
-                    render={() => <OverviewPane view={this.state.view} />}
+                    render={() => <OverviewTablePane view={this.state.view} />}
                   />
                 </Switch>
               </LogStoreProvider>
