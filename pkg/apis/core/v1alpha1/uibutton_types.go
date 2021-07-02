@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,8 +57,28 @@ type UIButtonSpec struct {
 	// Location associates the button with another component for layout.
 	Location UIComponentLocation `json:"location" protobuf:"bytes,1,opt,name=location"`
 
-	// Text to appear on the button itself.
+	// Text to appear on the button itself or as hover text (depending on button location).
 	Text string `json:"text" protobuf:"bytes,2,opt,name=text"`
+
+	// IconName is a Material Icon to appear next to button text or on the button itself (depending on button location).
+	//
+	// Valid values are icon font ligature names from the Material Icons set.
+	// See https://fonts.google.com/icons for the full list of available icons.
+	//
+	// If both IconSVG and IconName are specified, IconSVG will take precedence.
+	//
+	// +optional
+	IconName string `json:"iconName,omitempty" protobuf:"bytes,3,opt,name=iconName"`
+
+	// IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (depending on button
+	// location).
+	//
+	// This should be an <svg> element scaled for a 24x24 viewport.
+	//
+	// If both IconSVG and IconName are specified, IconSVG will take precedence.
+	//
+	// +optional
+	IconSVG string `json:"iconSVG,omitempty" protobuf:"bytes,4,opt,name=iconSVG"`
 }
 
 // UIComponentLocation specifies where to put a UI component.
@@ -74,6 +95,7 @@ type ComponentType string
 
 const (
 	ComponentTypeResource ComponentType = "Resource"
+	ComponentTypeGlobal   ComponentType = "Global"
 )
 
 type UIComponentLocationResource struct {
@@ -127,6 +149,14 @@ func (in *UIButton) Validate(_ context.Context) field.ErrorList {
 	if in.Spec.Location.ComponentType == "" {
 		fieldErrors = append(fieldErrors, field.Required(
 			locField.Child("componentType"), "Parent component type is required"))
+	}
+
+	if in.Spec.IconSVG != "" {
+		// do a basic sanity check to catch things like users passing a filename or a <path> directly
+		if !strings.Contains(in.Spec.IconSVG, "<svg") {
+			fieldErrors = append(fieldErrors, field.Invalid(field.NewPath("spec.iconSVG"), in.Spec.IconSVG,
+				"Invalid <svg> element"))
+		}
 	}
 
 	return fieldErrors

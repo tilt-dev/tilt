@@ -383,7 +383,15 @@
         },
         "text": {
           "type": "string",
-          "description": "Text to appear on the button itself."
+          "description": "Text to appear on the button itself or as hover text (depending on button location)."
+        },
+        "iconName": {
+          "type": "string",
+          "description": "IconName is a Material Icon to appear next to button text or on the button itself (depending on button location).\n\nValid values are icon font ligature names from the Material Icons set.\nSee https://fonts.google.com/icons for the full list of available icons.\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.\n\n+optional"
+        },
+        "iconSVG": {
+          "type": "string",
+          "description": "IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (depending on button\nlocation).\n\nThis should be an \u003csvg\u003e element scaled for a 24x24 viewport.\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.\n\n+optional"
         }
       },
       "title": "UIButtonSpec defines the desired state of UIButton"
