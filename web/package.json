@@ -23,6 +23,7 @@
     "moment": "^2.24.0",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
+    "react-inlinesvg": "^2.3.0",
     "react-modal": "^3.10.1",
     "react-outline-manager": "^1.2.2",
     "react-router-dom": "^5.1.0",

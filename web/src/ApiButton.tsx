@@ -1,11 +1,33 @@
-import { Icon } from "@material-ui/core"
+import { Icon, SvgIcon } from "@material-ui/core"
 import moment from "moment"
 import React, { useState } from "react"
+import InlineSVG from "react-inlinesvg"
 import { InstrumentedButton } from "./instrumentedComponents"
 
 type UIButton = Proto.v1alpha1UIButton
 
 type ApiButtonProps = { className?: string; button: UIButton }
+
+type ApiIconProps = { iconName?: string; iconSVG?: string }
+
+export const ApiIcon: React.FC<ApiIconProps> = (props) => {
+  if (props.iconSVG) {
+    const svgSrc = props.iconSVG
+    // the material SvgIcon handles accessibility/sizing/colors well but can't accept a raw SVG string
+    // use InlineSVG to safely create an svg element and then use that as the component, passing through
+    // the props so that it's correctly styled
+    const svg = (props: React.PropsWithChildren<any>) => (
+      <InlineSVG src={svgSrc} {...props} />
+    )
+    return <SvgIcon component={svg} />
+  }
+
+  if (props.iconName) {
+    return <Icon>{props.iconName}</Icon>
+  }
+
+  return null
+}
 
 export const ApiButton: React.FC<ApiButtonProps> = (props) => {
   const [loading, setLoading] = useState(false)
@@ -52,9 +74,10 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
     >
       {props.children || (
         <>
-          {props.button.spec?.iconName && (
-            <Icon>{props.button.spec?.iconName}</Icon>
-          )}
+          <ApiIcon
+            iconName={props.button.spec?.iconName}
+            iconSVG={props.button.spec?.iconSVG}
+          />
           {props.button.spec?.text ?? "Button"}
         </>
       )}
