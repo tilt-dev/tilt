@@ -1,7 +1,7 @@
 import { Icon, SvgIcon } from "@material-ui/core"
 import moment from "moment"
 import React, { useState } from "react"
-import InlineSVG from "react-inlinesvg"
+import { convertFromNode, convertFromString } from "react-from-dom"
 import { InstrumentedButton } from "./instrumentedComponents"
 
 type UIButton = Proto.v1alpha1UIButton
@@ -10,15 +10,25 @@ type ApiButtonProps = { className?: string; button: UIButton }
 
 type ApiIconProps = { iconName?: string; iconSVG?: string }
 
+const svgElement = (src: string): React.ReactElement => {
+  const node = convertFromString(src, {
+    selector: "svg",
+    type: "image/svg+xml",
+    nodeOnly: true,
+  }) as SVGSVGElement
+  return convertFromNode(node) as React.ReactElement
+}
+
 export const ApiIcon: React.FC<ApiIconProps> = (props) => {
   if (props.iconSVG) {
-    const svgSrc = props.iconSVG
     // the material SvgIcon handles accessibility/sizing/colors well but can't accept a raw SVG string
-    // use InlineSVG to safely create an svg element and then use that as the component, passing through
+    // create a ReactElement by parsing the source and then use that as the component, passing through
     // the props so that it's correctly styled
-    const svg = (props: React.PropsWithChildren<any>) => (
-      <InlineSVG src={svgSrc} {...props} />
-    )
+    const svgEl = svgElement(props.iconSVG)
+    const svg = (props: React.PropsWithChildren<any>) => {
+      // merge the props from material-ui while keeping the children of the actual SVG
+      return React.cloneElement(svgEl, { ...props }, ...svgEl.props.children)
+    }
     return <SvgIcon component={svg} />
   }
 
