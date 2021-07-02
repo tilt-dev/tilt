@@ -7,17 +7,20 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { tiltfileKeyContext } from "./LocalStorage"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { toggleTriggerMode } from "./SidebarItemView"
 import SidebarResources from "./SidebarResources"
 import {
   SidebarTriggerModeToggle,
+  StyledSidebarTriggerModeToggle,
   ToggleTriggerModeTooltip,
 } from "./SidebarTriggerModeToggle"
-import { StarredResourcesContextProvider } from "./StarredResourcesContext"
-import { oneResourceTestWithName, twoResourceView } from "./testdata"
+import {
+  oneResourceTest,
+  oneResourceTestWithName,
+  twoResourceView,
+} from "./testdata"
 import { ResourceView, TriggerMode } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -40,7 +43,10 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("shows toggle button only for test cards", () => {
-    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r))
+    let view = twoResourceView()
+    view.uiResources.push(oneResourceTest())
+    let items = view.uiResources.map((r) => new SidebarItem(r))
+
     const root = mount(
       <MemoryRouter>
         <SidebarResources
@@ -51,8 +57,6 @@ describe("SidebarTriggerButton", () => {
         />
       </MemoryRouter>
     )
-
-    console.log(root.debug())
 
     // three resources but only one is a test, so we expect only one TriggerModeToggle button
     expect(root.find(SidebarTriggerModeToggle)).toHaveLength(1)
@@ -70,23 +74,21 @@ describe("SidebarTriggerButton", () => {
     resources[2].status!.triggerMode = TriggerMode.TriggerModeManualWithAutoInit
     resources[3].status!.triggerMode = TriggerMode.TriggerModeManual
 
-    let items = resources.map((r) => new SidebarItem(r))
+    let view = { uiResources: resources }
+
+    let items = view.uiResources.map((r) => new SidebarItem(r))
     const root = mount(
       <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <StarredResourcesContextProvider>
-            <SidebarResources
-              items={items}
-              selected={""}
-              resourceView={ResourceView.Log}
-              pathBuilder={pathBuilder}
-            />
-          </StarredResourcesContextProvider>
-        </tiltfileKeyContext.Provider>
+        <SidebarResources
+          items={items}
+          selected={""}
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
       </MemoryRouter>
     )
 
-    let toggles = root.find(SidebarTriggerModeToggle)
+    let toggles = root.find(StyledSidebarTriggerModeToggle)
     expect(toggles).toHaveLength(4)
 
     for (let i = 0; i < toggles.length; i++) {
