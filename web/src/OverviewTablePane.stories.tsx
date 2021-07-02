@@ -1,13 +1,13 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
-import OverviewPane from "./OverviewPane"
+import OverviewTablePane from "./OverviewTablePane"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 type UIResource = Proto.v1alpha1UIResource
 
 export default {
-  title: "New UI/OverviewPane",
+  title: "New UI/OverviewTablePane",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
@@ -21,17 +21,17 @@ export default {
   ],
 }
 
-export const TwoResources = () => <OverviewPane view={twoResourceView()} />
+export const TwoResources = () => <OverviewTablePane view={twoResourceView()} />
 
-export const TenResources = () => <OverviewPane view={tenResourceView()} />
+export const TenResources = () => <OverviewTablePane view={tenResourceView()} />
 
 export const OneHundredResources = () => (
-  <OverviewPane view={nResourceView(100)} />
+  <OverviewTablePane view={nResourceView(100)} />
 )
 
 export const OneHundredResourcesOneStar = () => (
   <StarredResourceMemoryProvider initialValueForTesting={["vigoda_2"]}>
-    <OverviewPane view={nResourceView(100)} />
+    <OverviewTablePane view={nResourceView(100)} />
   </StarredResourceMemoryProvider>
 )
 
@@ -50,7 +50,7 @@ export const OneHundredResourcesTenStars = () => {
   ]
   return (
     <StarredResourceMemoryProvider initialValueForTesting={items}>
-      <OverviewPane view={nResourceView(100)} />
+      <OverviewTablePane view={nResourceView(100)} />
     </StarredResourceMemoryProvider>
   )
 }

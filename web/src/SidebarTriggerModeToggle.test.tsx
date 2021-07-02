@@ -7,19 +7,23 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { toggleTriggerMode } from "./OverviewItemView"
-import OverviewPane from "./OverviewPane"
+import PathBuilder from "./PathBuilder"
+import SidebarItem from "./SidebarItem"
+import { toggleTriggerMode } from "./SidebarItemView"
+import SidebarResources from "./SidebarResources"
+import {
+  SidebarTriggerModeToggle,
+  StyledSidebarTriggerModeToggle,
+  ToggleTriggerModeTooltip,
+} from "./SidebarTriggerModeToggle"
 import {
   oneResourceTest,
   oneResourceTestWithName,
   twoResourceView,
 } from "./testdata"
-import {
-  ToggleTriggerModeTooltip,
-  TriggerModeToggle,
-  TriggerModeToggleRoot,
-} from "./TriggerModeToggle"
-import { TriggerMode } from "./types"
+import { ResourceView, TriggerMode } from "./types"
+
+let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 let expectToggleToAuto = function (mode: TriggerMode) {
   expect(mode).toEqual(TriggerMode.TriggerModeAuto)
@@ -41,15 +45,21 @@ describe("SidebarTriggerButton", () => {
   it("shows toggle button only for test cards", () => {
     let view = twoResourceView()
     view.uiResources.push(oneResourceTest())
+    let items = view.uiResources.map((r) => new SidebarItem(r))
 
     const root = mount(
-      <MemoryRouter initialEntries={["/"]}>
-        {<OverviewPane view={view} />}
+      <MemoryRouter>
+        <SidebarResources
+          items={items}
+          selected={""}
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
       </MemoryRouter>
     )
 
     // three resources but only one is a test, so we expect only one TriggerModeToggle button
-    expect(root.find(TriggerModeToggle)).toHaveLength(1)
+    expect(root.find(SidebarTriggerModeToggle)).toHaveLength(1)
   })
 
   it("shows different icon depending on current trigger mode", () => {
@@ -66,13 +76,19 @@ describe("SidebarTriggerButton", () => {
 
     let view = { uiResources: resources }
 
+    let items = view.uiResources.map((r) => new SidebarItem(r))
     const root = mount(
-      <MemoryRouter initialEntries={["/"]}>
-        {<OverviewPane view={view} />}
+      <MemoryRouter>
+        <SidebarResources
+          items={items}
+          selected={""}
+          resourceView={ResourceView.Log}
+          pathBuilder={pathBuilder}
+        />
       </MemoryRouter>
     )
 
-    let toggles = root.find(TriggerModeToggleRoot)
+    let toggles = root.find(StyledSidebarTriggerModeToggle)
     expect(toggles).toHaveLength(4)
 
     for (let i = 0; i < toggles.length; i++) {
@@ -95,13 +111,13 @@ describe("SidebarTriggerButton", () => {
 
     let toggleFoobar = toggleTriggerMode.bind(null, "foobar")
     const root = mount(
-      <TriggerModeToggle
+      <SidebarTriggerModeToggle
         triggerMode={TriggerMode.TriggerModeAuto}
         onModeToggle={toggleFoobar}
       />
     )
 
-    let element = root.find(TriggerModeToggle)
+    let element = root.find(SidebarTriggerModeToggle)
     expect(element).toHaveLength(1)
 
     let preventDefaulted = false
@@ -133,13 +149,13 @@ describe("SidebarTriggerButton", () => {
 
   it("toggles auto to manual", () => {
     const root = mount(
-      <TriggerModeToggle
+      <SidebarTriggerModeToggle
         triggerMode={TriggerMode.TriggerModeAuto}
         onModeToggle={expectToggleToManual}
       />
     )
 
-    let element = root.find(TriggerModeToggle)
+    let element = root.find(SidebarTriggerModeToggle)
     expect(element).toHaveLength(1)
 
     element.simulate("click")
@@ -147,13 +163,13 @@ describe("SidebarTriggerButton", () => {
 
   it("toggles manualAfterInitial to auto", () => {
     const root = mount(
-      <TriggerModeToggle
+      <SidebarTriggerModeToggle
         triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         onModeToggle={expectToggleToAuto}
       />
     )
 
-    let element = root.find(TriggerModeToggle)
+    let element = root.find(SidebarTriggerModeToggle)
     expect(element).toHaveLength(1)
 
     element.simulate("click")
@@ -161,13 +177,13 @@ describe("SidebarTriggerButton", () => {
 
   it("toggles manualIncludingInitial to auto", () => {
     const root = mount(
-      <TriggerModeToggle
+      <SidebarTriggerModeToggle
         triggerMode={TriggerMode.TriggerModeManual}
         onModeToggle={expectToggleToAuto}
       />
     )
 
-    let element = root.find(TriggerModeToggle)
+    let element = root.find(SidebarTriggerModeToggle)
     expect(element).toHaveLength(1)
 
     element.simulate("click")
