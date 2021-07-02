@@ -55,18 +55,6 @@ and [C#](https://docs.tilt.dev/example_csharp.html).
 **Optimizing a Tiltfile?** Search for the function you need in our 
 [complete API reference](https://docs.tilt.dev/api.html).
 
-## Don’t Tilt Alone, Take This
-
-[![Tilt Cloud](assets/TiltCloud-illustration.svg)](https://docs.tilt.dev/snapshots.html)
-
-Are you seeing an error from a server that you don't even work on?
-
-With Tilt Cloud, create web-based interactive reproductions of your local cluster’s state.
-
-Save and share [a snapshot](https://docs.tilt.dev/snapshots.html) with your team
-so that they can dig into the problem later. A snapshot lets you explore the
-status of running services, errors, logs, and more.
-
 ## Community & Contributions
 
 **Questions:** Join [the Kubernetes slack](http://slack.k8s.io) and
