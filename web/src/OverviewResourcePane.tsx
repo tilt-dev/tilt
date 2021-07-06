@@ -81,12 +81,6 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
       b.spec.location.componentID === name
   )
 
-  // Hide the HTML element scrollbars, since this pane does all scrolling internally.
-  // TODO(nick): Remove this when the old UI is deleted.
-  useEffect(() => {
-    document.documentElement.style.overflow = "hidden"
-  })
-
   return (
     <OverviewResourcePaneRoot>
       <HeaderBar view={props.view} />
