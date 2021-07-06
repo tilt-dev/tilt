@@ -30,7 +30,6 @@ export const MenuButtonLabel = styled.div`
   bottom: 0;
   font-size: ${FontSize.smallest};
   color: ${Color.blueDark};
-  width: 200%;
   transition: opacity ${AnimDuration.default} ease;
   opacity: 0;
 `
@@ -193,7 +192,7 @@ export function GlobalNav(props: GlobalNavProps) {
   let snapshotButton = props.snapshot.enabled ? (
     <MenuButton onClick={props.snapshot.openModal}>
       <SnapshotIcon width="24" height="24" />
-      <MenuButtonLabel>Make Snapshot</MenuButtonLabel>
+      <MenuButtonLabel>Snapshot</MenuButtonLabel>
     </MenuButton>
   ) : null
 
@@ -210,7 +209,7 @@ export function GlobalNav(props: GlobalNavProps) {
           className={props.showUpdate ? "is-visible" : ""}
         />
         <MenuButtonLabel>
-          {props.showUpdate ? "Update Available" : "Tilt Version"}
+          {props.showUpdate ? "Update!" : "Version"}
         </MenuButtonLabel>
       </MenuButton>
 
