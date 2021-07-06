@@ -11,7 +11,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/engine/metrics"
-	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
@@ -53,7 +52,6 @@ func ProvideSubscribers(
 	tp *prompt.TerminalPrompt,
 	kdms *k8swatch.ManifestSubscriber,
 	sw *k8swatch.ServiceWatcher,
-	pfs *portforward.Subscriber,
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	dcw *dcwatch.EventWatcher,
@@ -78,7 +76,6 @@ func ProvideSubscribers(
 		tp,
 		kdms,
 		sw,
-		pfs,
 		bc,
 		cc,
 		dcw,

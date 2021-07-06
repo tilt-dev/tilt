@@ -125,8 +125,6 @@ type EngineState struct {
 	// to assist in migration.
 	Cmds                  map[string]*Cmd                               `json:"-"`
 	KubernetesDiscoveries map[types.NamespacedName]*KubernetesDiscovery `json:"-"`
-	PodLogStreams         map[string]*PodLogStream                      `json:"-"`
-	PortForwards          map[string]*PortForward                       `json:"-"`
 }
 
 type CloudStatus struct {
@@ -491,8 +489,6 @@ func NewState() *EngineState {
 	}
 
 	ret.Cmds = make(map[string]*Cmd)
-	ret.PodLogStreams = make(map[string]*PodLogStream)
-	ret.PortForwards = make(map[string]*PortForward)
 	ret.KubernetesDiscoveries = make(map[types.NamespacedName]*KubernetesDiscovery)
 
 	return ret

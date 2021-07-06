@@ -20,7 +20,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -184,10 +183,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		local.HandleCmdUpdateStatusAction(state, action)
 	case local.CmdDeleteAction:
 		local.HandleCmdDeleteAction(state, action)
-	case portforward.PortForwardUpsertAction:
-		portforward.HandlePortForwardUpsertAction(state, action)
-	case portforward.PortForwardDeleteAction:
-		portforward.HandlePortForwardDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
