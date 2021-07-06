@@ -39,7 +39,7 @@ spec:
           {{- end }}
     {{- end }}
 ---
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: storybook-tilt-dev-crt
