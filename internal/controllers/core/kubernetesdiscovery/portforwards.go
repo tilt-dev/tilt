@@ -7,6 +7,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	errorutil "k8s.io/apimachinery/pkg/util/errors"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -16,10 +17,11 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, kd *v1alpha1.KubernetesDiscovery) error {
+// Reconcile all the port forwards owned by this KD. The KD may be nil if it's being deleted.
+func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, nn types.NamespacedName, kd *v1alpha1.KubernetesDiscovery) error {
 	var pfList v1alpha1.PortForwardList
-	err := r.ctrlClient.List(ctx, &pfList, ctrlclient.InNamespace(kd.Namespace),
-		ctrlclient.MatchingFields{ownerKey: kd.Name})
+	err := r.ctrlClient.List(ctx, &pfList, ctrlclient.InNamespace(nn.Namespace),
+		ctrlclient.MatchingFields{ownerKey: nn.Name})
 	if err != nil {
 		return fmt.Errorf("failed to fetch managed PortForward objects for KubernetesDiscovery %s: %v",
 			kd.Name, err)
@@ -72,6 +74,10 @@ func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, kd *v1alpha1.K
 
 // Construct the desired port-forward. May be nil.
 func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1alpha1.PortForward, error) {
+	if kd == nil {
+		return nil, nil
+	}
+
 	pfTemplate := kd.Spec.PortForwardTemplateSpec
 	if pfTemplate == nil {
 		return nil, nil
