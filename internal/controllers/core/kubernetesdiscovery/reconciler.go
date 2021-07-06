@@ -45,6 +45,17 @@ var (
 	apiGVStr = v1alpha1.SchemeGroupVersion.String()
 )
 
+func ownedByKubernetesDiscoveryIndexFunc(obj ctrlclient.Object) []string {
+	owner := metav1.GetControllerOf(obj)
+	if owner == nil {
+		return nil
+	}
+	if owner.APIVersion != apiGVStr || owner.Kind != "KubernetesDiscovery" {
+		return nil
+	}
+	return []string{owner.Name}
+}
+
 type watcherSet map[watcherID]bool
 
 // watcherID is to disambiguate between K8s object keys and tilt-apiserver KubernetesDiscovery object keys.
@@ -97,23 +108,22 @@ type Reconciler struct {
 func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	// modeled after KubeBuilder example: https://book.kubebuilder.io/cronjob-tutorial/controller-implementation.html#setup
 	// to ensure that KubernetesDiscovery is reconciled whenever one of the objects it creates is modified
-	err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.PodLogStream{}, ownerKey, func(obj ctrlclient.Object) []string {
-		owner := metav1.GetControllerOf(obj)
-		if owner == nil {
-			return nil
-		}
-		if owner.APIVersion != apiGVStr || owner.Kind != "KubernetesDiscovery" {
-			return nil
-		}
-		return []string{owner.Name}
-	})
+	err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.PodLogStream{}, ownerKey,
+		ownedByKubernetesDiscoveryIndexFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.PortForward{}, ownerKey,
+		ownedByKubernetesDiscoveryIndexFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesDiscovery{}).
-		Owns(&v1alpha1.PodLogStream{})
+		Owns(&v1alpha1.PodLogStream{}).
+		Owns(&v1alpha1.PortForward{})
 	return b, nil
 }
 
@@ -172,6 +182,9 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			w.teardown(key)
 			w.cleanupAbandonedNamespaces()
 		}
+
+		// TODO(nick): Delete any orphaned PortForwards or PodLogStreams.
+
 		return ctrl.Result{}, nil
 	}
 
@@ -182,7 +195,11 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	if err := w.ensurePodLogStreamsExist(ctx, *kd); err != nil {
+	if err := w.manageOwnedPodLogStreams(ctx, *kd); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := w.manageOwnedPortForwards(ctx, kd); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -568,7 +585,7 @@ func (w *Reconciler) handlePodDelete(ctx context.Context, namespace k8s.Namespac
 	}
 }
 
-func (w *Reconciler) ensurePodLogStreamsExist(ctx context.Context, kd v1alpha1.KubernetesDiscovery) error {
+func (w *Reconciler) manageOwnedPodLogStreams(ctx context.Context, kd v1alpha1.KubernetesDiscovery) error {
 	var managedPodLogStreams v1alpha1.PodLogStreamList
 	err := w.ctrlClient.List(ctx, &managedPodLogStreams, ctrlclient.InNamespace(kd.Namespace),
 		ctrlclient.MatchingFields{ownerKey: kd.Name})
