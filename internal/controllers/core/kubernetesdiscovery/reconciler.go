@@ -183,7 +183,9 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			w.cleanupAbandonedNamespaces()
 		}
 
-		// TODO(nick): Delete any orphaned PortForwards or PodLogStreams.
+		if err := w.manageOwnedObjects(ctx, request.NamespacedName, nil); err != nil {
+			return ctrl.Result{}, err
+		}
 
 		return ctrl.Result{}, nil
 	}
@@ -195,11 +197,7 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	if err := w.manageOwnedPodLogStreams(ctx, *kd); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if err := w.manageOwnedPortForwards(ctx, kd); err != nil {
+	if err := w.manageOwnedObjects(ctx, request.NamespacedName, kd); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -585,13 +583,25 @@ func (w *Reconciler) handlePodDelete(ctx context.Context, namespace k8s.Namespac
 	}
 }
 
-func (w *Reconciler) manageOwnedPodLogStreams(ctx context.Context, kd v1alpha1.KubernetesDiscovery) error {
+func (w *Reconciler) manageOwnedObjects(ctx context.Context, nn types.NamespacedName, kd *v1alpha1.KubernetesDiscovery) error {
+	if err := w.manageOwnedPodLogStreams(ctx, nn, kd); err != nil {
+		return err
+	}
+
+	if err := w.manageOwnedPortForwards(ctx, nn, kd); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Reconcile all the pod log streams owned by this KD. The KD may be nil if it's being deleted.
+func (w *Reconciler) manageOwnedPodLogStreams(ctx context.Context, nn types.NamespacedName, kd *v1alpha1.KubernetesDiscovery) error {
 	var managedPodLogStreams v1alpha1.PodLogStreamList
-	err := w.ctrlClient.List(ctx, &managedPodLogStreams, ctrlclient.InNamespace(kd.Namespace),
-		ctrlclient.MatchingFields{ownerKey: kd.Name})
+	err := w.ctrlClient.List(ctx, &managedPodLogStreams, ctrlclient.InNamespace(nn.Namespace),
+		ctrlclient.MatchingFields{ownerKey: nn.Name})
 	if err != nil {
 		return fmt.Errorf("failed to fetch managed PodLogStream objects for KubernetesDiscovery %s: %v",
-			kd.Name, err)
+			nn.Name, err)
 	}
 	plsByPod := make(map[types.NamespacedName]v1alpha1.PodLogStream)
 	for _, pls := range managedPodLogStreams.Items {
@@ -603,17 +613,19 @@ func (w *Reconciler) manageOwnedPodLogStreams(ctx context.Context, kd v1alpha1.K
 
 	var errs []error
 	seenPods := make(map[types.NamespacedName]bool)
-	for _, pod := range kd.Status.Pods {
-		podNN := types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}
-		seenPods[podNN] = true
-		if _, ok := plsByPod[podNN]; ok {
-			// if the PLS gets modified after being created, just leave it as-is
-			continue
-		}
+	if kd != nil {
+		for _, pod := range kd.Status.Pods {
+			podNN := types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}
+			seenPods[podNN] = true
+			if _, ok := plsByPod[podNN]; ok {
+				// if the PLS gets modified after being created, just leave it as-is
+				continue
+			}
 
-		if err := w.createPodLogStream(ctx, kd, pod); err != nil {
-			errs = append(errs, fmt.Errorf("failed to create PodLogStream for Pod %s:%s for KubernetesDiscovery %s: %v",
-				pod.Namespace, pod.Name, kd.Name, err))
+			if err := w.createPodLogStream(ctx, kd, pod); err != nil {
+				errs = append(errs, fmt.Errorf("failed to create PodLogStream for Pod %s:%s for KubernetesDiscovery %s: %v",
+					pod.Namespace, pod.Name, kd.Name, err))
+			}
 		}
 	}
 
@@ -629,7 +641,7 @@ func (w *Reconciler) manageOwnedPodLogStreams(ctx context.Context, kd v1alpha1.K
 	return errorutil.NewAggregate(errs)
 }
 
-func (w *Reconciler) createPodLogStream(ctx context.Context, kd v1alpha1.KubernetesDiscovery, pod v1alpha1.Pod) error {
+func (w *Reconciler) createPodLogStream(ctx context.Context, kd *v1alpha1.KubernetesDiscovery, pod v1alpha1.Pod) error {
 	plsKey := types.NamespacedName{
 		Namespace: kd.Namespace,
 		Name:      fmt.Sprintf("%s-%s-%s", kd.Name, pod.Namespace, pod.Name),
@@ -664,7 +676,7 @@ func (w *Reconciler) createPodLogStream(ctx context.Context, kd v1alpha1.Kuberne
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(&kd, &pls, w.ctrlClient.Scheme()); err != nil {
+	if err := controllerutil.SetControllerReference(kd, &pls, w.ctrlClient.Scheme()); err != nil {
 		return err
 	}
 
