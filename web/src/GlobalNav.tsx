@@ -32,6 +32,7 @@ export const MenuButtonLabel = styled.div`
   color: ${Color.blueDark};
   transition: opacity ${AnimDuration.default} ease;
   opacity: 0;
+  white-space: nowrap;
 `
 export const MenuButtonMixin = `
   ${mixinResetButtonStyle};
@@ -209,7 +210,7 @@ export function GlobalNav(props: GlobalNavProps) {
           className={props.showUpdate ? "is-visible" : ""}
         />
         <MenuButtonLabel>
-          {props.showUpdate ? "Update!" : "Version"}
+          {props.showUpdate ? "Get Update" : "Version"}
         </MenuButtonLabel>
       </MenuButton>
 
