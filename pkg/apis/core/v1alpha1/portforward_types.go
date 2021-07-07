@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -86,6 +87,7 @@ type Forward struct {
 
 var _ resource.Object = &PortForward{}
 var _ resourcestrategy.Validater = &PortForward{}
+var _ resourcerest.ShortNamesProvider = &PortForward{}
 
 func (in *PortForward) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
@@ -93,6 +95,10 @@ func (in *PortForward) GetObjectMeta() *metav1.ObjectMeta {
 
 func (in *PortForward) NamespaceScoped() bool {
 	return false
+}
+
+func (in *PortForward) ShortNames() []string {
+	return []string{"pf"}
 }
 
 func (in *PortForward) New() runtime.Object {

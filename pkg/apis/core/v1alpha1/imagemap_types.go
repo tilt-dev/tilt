@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -128,6 +129,7 @@ type ImageMapOverrideArgs struct {
 
 var _ resource.Object = &ImageMap{}
 var _ resourcestrategy.Validater = &ImageMap{}
+var _ resourcerest.ShortNamesProvider = &PortForward{}
 
 func (in *ImageMap) GetSpec() interface{} {
 	return in.Spec
@@ -139,6 +141,10 @@ func (in *ImageMap) GetObjectMeta() *metav1.ObjectMeta {
 
 func (in *ImageMap) NamespaceScoped() bool {
 	return false
+}
+
+func (in *ImageMap) ShortNames() []string {
+	return []string{"im"}
 }
 
 func (in *ImageMap) New() runtime.Object {

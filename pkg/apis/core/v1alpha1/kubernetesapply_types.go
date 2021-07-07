@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -107,6 +108,7 @@ type KubernetesApplySpec struct {
 
 var _ resource.Object = &KubernetesApply{}
 var _ resourcestrategy.Validater = &KubernetesApply{}
+var _ resourcerest.ShortNamesProvider = &KubernetesApply{}
 
 func (in *KubernetesApply) GetSpec() interface{} {
 	return in.Spec
@@ -118,6 +120,10 @@ func (in *KubernetesApply) GetObjectMeta() *metav1.ObjectMeta {
 
 func (in *KubernetesApply) NamespaceScoped() bool {
 	return false
+}
+
+func (in *KubernetesApply) ShortNames() []string {
+	return []string{"ka", "kapp"}
 }
 
 func (in *KubernetesApply) New() runtime.Object {

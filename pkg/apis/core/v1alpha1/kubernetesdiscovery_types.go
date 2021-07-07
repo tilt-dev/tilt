@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -143,6 +144,7 @@ type PodLogStreamTemplateSpec struct {
 
 var _ resource.Object = &KubernetesDiscovery{}
 var _ resourcestrategy.Validater = &KubernetesDiscovery{}
+var _ resourcerest.ShortNamesProvider = &KubernetesDiscovery{}
 
 func (in *KubernetesDiscovery) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
@@ -150,6 +152,10 @@ func (in *KubernetesDiscovery) GetObjectMeta() *metav1.ObjectMeta {
 
 func (in *KubernetesDiscovery) NamespaceScoped() bool {
 	return false
+}
+
+func (in *KubernetesDiscovery) ShortNames() []string {
+	return []string{"kd", "kdisco"}
 }
 
 func (in *KubernetesDiscovery) New() runtime.Object {
