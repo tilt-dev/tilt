@@ -602,6 +602,37 @@ message KubernetesApplySpec {
   //
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration timeout = 4;
+
+  // KubernetesDiscoveryTemplateSpec describes how we discover pods
+  // for resources created by this Apply.
+  //
+  // If not specified, the KubernetesDiscovery controller will listen to all pods,
+  // and follow owner references to find the pods owned by these resources.
+  //
+  // +optional
+  optional KubernetesDiscoveryTemplateSpec kubernetesDiscoveryTemplateSpec = 5;
+
+  // PortForwardTemplateSpec describes the data model for port forwards
+  // that KubernetesApply should set up.
+  //
+  // Underneath the hood, we'll create a KubernetesDiscovery object that finds
+  // the pods and sets up the port-forwarding. Only one PortForward will be
+  // active at a time.
+  //
+  // +optional
+  optional PortForwardTemplateSpec portForwardTemplateSpec = 6;
+
+  // PodLogStreamTemplateSpec describes the data model for PodLogStreams
+  // that KubernetesApply should set up.
+  //
+  // Underneath the hood, we'll create a KubernetesDiscovery object that finds
+  // the pods and sets up the pod log streams.
+  //
+  // If no template is specified, the controller will stream all
+  // pod logs available from the apiserver.
+  //
+  // +optional
+  optional PodLogStreamTemplateSpec podLogStreamTemplateSpec = 7;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply
@@ -701,6 +732,15 @@ message KubernetesDiscoveryStatus {
 
   // Pods that have been discovered based on the criteria in the spec.
   repeated Pod pods = 1;
+}
+
+message KubernetesDiscoveryTemplateSpec {
+  // ExtraSelectors are label selectors that will force discovery of a Pod even
+  // if it does not match the AncestorUID.
+  //
+  // This should only be necessary in the event that a CRD creates Pods but does
+  // not set an owner reference to itself.
+  repeated k8s.io.apimachinery.pkg.apis.meta.v1.LabelSelector extraSelectors = 1;
 }
 
 // Finds image references in Kubernetes YAML.

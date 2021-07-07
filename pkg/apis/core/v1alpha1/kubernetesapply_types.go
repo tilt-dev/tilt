@@ -103,6 +103,37 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	Timeout metav1.Duration `json:"timeout,omitempty" protobuf:"bytes,4,opt,name=timeout"`
+
+	// KubernetesDiscoveryTemplateSpec describes how we discover pods
+	// for resources created by this Apply.
+	//
+	// If not specified, the KubernetesDiscovery controller will listen to all pods,
+	// and follow owner references to find the pods owned by these resources.
+	//
+	// +optional
+	KubernetesDiscoveryTemplateSpec *KubernetesDiscoveryTemplateSpec `json:"kubernetesDiscoveryTemplateSpec,omitempty" protobuf:"bytes,5,opt,name=kubernetesDiscoveryTemplateSpec"`
+
+	// PortForwardTemplateSpec describes the data model for port forwards
+	// that KubernetesApply should set up.
+	//
+	// Underneath the hood, we'll create a KubernetesDiscovery object that finds
+	// the pods and sets up the port-forwarding. Only one PortForward will be
+	// active at a time.
+	//
+	// +optional
+	PortForwardTemplateSpec *PortForwardTemplateSpec `json:"portForwardTemplateSpec,omitempty" protobuf:"bytes,6,opt,name=portForwardTemplateSpec"`
+
+	// PodLogStreamTemplateSpec describes the data model for PodLogStreams
+	// that KubernetesApply should set up.
+	//
+	// Underneath the hood, we'll create a KubernetesDiscovery object that finds
+	// the pods and sets up the pod log streams.
+	//
+	// If no template is specified, the controller will stream all
+	// pod logs available from the apiserver.
+	//
+	// +optional
+	PodLogStreamTemplateSpec *PodLogStreamTemplateSpec `json:"podLogStreamTemplateSpec,omitempty" protobuf:"bytes,7,opt,name=podLogStreamTemplateSpec"`
 }
 
 var _ resource.Object = &KubernetesApply{}
@@ -232,4 +263,13 @@ type KubernetesImageObjectDescriptor struct {
 
 	// The name of the field that contains the image tag.
 	TagField string `json:"tagField" protobuf:"bytes,2,opt,name=tagField"`
+}
+
+type KubernetesDiscoveryTemplateSpec struct {
+	// ExtraSelectors are label selectors that will force discovery of a Pod even
+	// if it does not match the AncestorUID.
+	//
+	// This should only be necessary in the event that a CRD creates Pods but does
+	// not set an owner reference to itself.
+	ExtraSelectors []metav1.LabelSelector `json:"extraSelectors,omitempty" protobuf:"bytes,1,rep,name=extraSelectors"`
 }
