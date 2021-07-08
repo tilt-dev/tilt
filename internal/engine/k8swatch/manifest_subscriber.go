@@ -3,7 +3,6 @@ package k8swatch
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -26,7 +24,6 @@ type ManifestSubscriber struct {
 	cfgNS      k8s.Namespace
 	client     ctrlclient.Client
 	lastUpdate map[types.NamespacedName]*v1alpha1.KubernetesDiscoverySpec
-	startTime  time.Time
 }
 
 func NewManifestSubscriber(cfgNS k8s.Namespace, client ctrlclient.Client) *ManifestSubscriber {
@@ -34,7 +31,6 @@ func NewManifestSubscriber(cfgNS k8s.Namespace, client ctrlclient.Client) *Manif
 		cfgNS:      cfgNS,
 		client:     client,
 		lastUpdate: make(map[types.NamespacedName]*v1alpha1.KubernetesDiscoverySpec),
-		startTime:  time.Now(),
 	}
 }
 
@@ -223,14 +219,11 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(_ context.Context, 
 		}
 	}
 
+	kapp := kt.KubernetesApplySpec
 	var extraSelectors []metav1.LabelSelector
-	if len(seenNamespaces) > 0 {
-		for i := range kt.ExtraPodSelectors {
-			extraSelectors = append(extraSelectors, *metav1.SetAsLabelSelector(kt.ExtraPodSelectors[i]))
-		}
+	if kapp.KubernetesDiscoveryTemplateSpec != nil {
+		extraSelectors = kapp.KubernetesDiscoveryTemplateSpec.ExtraSelectors
 	}
-
-	sinceTime := apis.NewTime(m.startTime)
 
 	kd := &v1alpha1.KubernetesDiscovery{
 		ObjectMeta: metav1.ObjectMeta{
@@ -239,35 +232,16 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(_ context.Context, 
 			Annotations: map[string]string{
 				v1alpha1.AnnotationManifest: mt.Manifest.Name.String(),
 				v1alpha1.AnnotationTargetID: mt.State.TargetID().String(),
+				v1alpha1.AnnotationSpanID:   fmt.Sprintf("kubernetes:%s", mt.Manifest.Name),
 			},
 		},
 		Spec: v1alpha1.KubernetesDiscoverySpec{
-			Watches:        watchRefs,
-			ExtraSelectors: extraSelectors,
-			PodLogStreamTemplateSpec: &v1alpha1.PodLogStreamTemplateSpec{
-				SinceTime: &sinceTime,
-				IgnoreContainers: []string{
-					string(runtimelog.IstioInitContainerName),
-					string(runtimelog.IstioSidecarContainerName),
-				},
-			},
-			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
-				Forwards: modelForwardsToApiForwards(kt.PortForwards),
-			},
+			Watches:                  watchRefs,
+			ExtraSelectors:           extraSelectors,
+			PodLogStreamTemplateSpec: kapp.PodLogStreamTemplateSpec,
+			PortForwardTemplateSpec:  kapp.PortForwardTemplateSpec,
 		},
 	}
 
 	return kd
-}
-
-func modelForwardsToApiForwards(forwards []model.PortForward) []v1alpha1.Forward {
-	res := make([]v1alpha1.Forward, len(forwards))
-	for i, fwd := range forwards {
-		res[i] = v1alpha1.Forward{
-			LocalPort:     int32(fwd.LocalPort),
-			ContainerPort: int32(fwd.ContainerPort),
-			Host:          fwd.Host,
-		}
-	}
-	return res
 }

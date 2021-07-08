@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -36,8 +35,6 @@ type K8sTarget struct {
 
 	Name         TargetName
 	PortForwards []PortForward
-	// labels for pods that we should watch and associate with this resource
-	ExtraPodSelectors []labels.Set
 
 	// Each K8s entity should have a display name for user interfaces
 	// that balances brevity and uniqueness

@@ -5921,7 +5921,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				f.t.Fatalf("entity of kind %s with name %s not found in yaml %q", opt.kind, opt.name, yaml)
 			}
 		case extraPodSelectorsHelper:
-			assert.ElementsMatch(f.t, opt.labels, m.K8sTarget().ExtraPodSelectors)
+			actual := m.K8sTarget().KubernetesApplySpec.KubernetesDiscoveryTemplateSpec.ExtraSelectors
+			assert.ElementsMatch(f.t, k8s.SetsAsLabelSelectors(opt.labels), actual)
 		case numEntitiesHelper:
 			yaml := m.K8sTarget().YAML
 			entities := f.entities(yaml)

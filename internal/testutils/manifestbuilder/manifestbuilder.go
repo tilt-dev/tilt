@@ -152,7 +152,9 @@ func (b ManifestBuilder) Build() model.Manifest {
 
 	if b.k8sYAML != "" {
 		k8sTarget := k8s.MustTarget(model.TargetName(b.name), b.k8sYAML)
-		k8sTarget.ExtraPodSelectors = b.k8sPodSelectors
+		k8sTarget.KubernetesApplySpec.KubernetesDiscoveryTemplateSpec = &v1alpha1.KubernetesDiscoveryTemplateSpec{
+			ExtraSelectors: k8s.SetsAsLabelSelectors(b.k8sPodSelectors),
+		}
 		k8sTarget.ImageLocators = append(k8sTarget.ImageLocators, b.k8sImageLocators...)
 		k8sTarget.PodReadinessMode = b.k8sPodReadiness
 
