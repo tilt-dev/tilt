@@ -69,6 +69,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryList":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus":       schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec": schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryTemplateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator":          schema_pkg_apis_core_v1alpha1_KubernetesImageLocator(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor": schema_pkg_apis_core_v1alpha1_KubernetesImageObjectDescriptor(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef":              schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref),
@@ -1613,12 +1614,30 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"kubernetesDiscoveryTemplateSpec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KubernetesDiscoveryTemplateSpec describes how we discover pods for resources created by this Apply.\n\nIf not specified, the KubernetesDiscovery controller will listen to all pods, and follow owner references to find the pods owned by these resources.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec"),
+						},
+					},
+					"portForwardTemplateSpec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PortForwardTemplateSpec describes the data model for port forwards that KubernetesApply should set up.\n\nUnderneath the hood, we'll create a KubernetesDiscovery object that finds the pods and sets up the port-forwarding. Only one PortForward will be active at a time.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec"),
+						},
+					},
+					"podLogStreamTemplateSpec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodLogStreamTemplateSpec describes the data model for PodLogStreams that KubernetesApply should set up.\n\nUnderneath the hood, we'll create a KubernetesDiscovery object that finds the pods and sets up the pod log streams.\n\nIf no template is specified, the controller will stream all pod logs available from the apiserver.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec"),
+						},
+					},
 				},
 				Required: []string{"yaml"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -1851,6 +1870,34 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryTemplateSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"extraSelectors": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExtraSelectors are label selectors that will force discovery of a Pod even if it does not match the AncestorUID.\n\nThis should only be necessary in the event that a CRD creates Pods but does not set an owner reference to itself.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"},
 	}
 }
 
