@@ -1,5 +1,6 @@
 import moment from "moment"
 import { buildAlerts, runtimeAlerts } from "./alerts"
+import { getUiLabels } from "./labels"
 import { buildStatus, runtimeStatus } from "./status"
 import { timeDiff } from "./time"
 import { ResourceName, ResourceStatus, TriggerMode } from "./types"
@@ -17,6 +18,7 @@ class SidebarItem {
   runtimeStatus: ResourceStatus
   runtimeAlertCount: number
   hasEndpoints: boolean
+  labels: string[]
   lastBuildDur: moment.Duration | null
   lastDeployTime: string
   pendingBuildSince: string
@@ -33,7 +35,6 @@ class SidebarItem {
     let status = (res.status || {}) as UIResourceStatus
     let buildHistory = status.buildHistory || []
     let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
-
     this.name = res.metadata?.name ?? ""
     this.isTiltfile = this.name === ResourceName.tiltfile
     this.isTest = !!status.localResourceInfo?.isTest
@@ -42,6 +43,7 @@ class SidebarItem {
     this.runtimeStatus = runtimeStatus(res)
     this.runtimeAlertCount = runtimeAlerts(res, null).length
     this.hasEndpoints = (status.endpointLinks || []).length > 0
+    this.labels = getUiLabels({ labels: res.metadata?.labels })
     this.lastBuildDur =
       lastBuild && lastBuild.startTime && lastBuild.finishTime
         ? timeDiff(lastBuild.startTime, lastBuild.finishTime)

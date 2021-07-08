@@ -1,5 +1,7 @@
-import React, { Dispatch, SetStateAction } from "react"
+import React, { Dispatch, PropsWithChildren, SetStateAction } from "react"
 import styled from "styled-components"
+import Features, { FeaturesContext, Flag } from "./feature"
+import { orderLabels } from "./labels"
 import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
@@ -38,13 +40,79 @@ const NoMatchesFound = styled.li`
 `
 
 export function SidebarListSection(
-  props: React.PropsWithChildren<{ name: string }>
+  props: PropsWithChildren<{ name: string }>
 ): JSX.Element {
   return (
     <div>
       <SidebarListSectionName>{props.name}</SidebarListSectionName>
       <SidebarListSectionItems>{props.children}</SidebarListSectionItems>
     </div>
+  )
+}
+
+function SidebarItemsView(props: SidebarProps) {
+  return (
+    <>
+      {props.items.map((item) => (
+        <SidebarItemView
+          key={"sidebarItem-" + item.name}
+          item={item}
+          selected={props.selected === item.name}
+          pathBuilder={props.pathBuilder}
+          resourceView={props.resourceView}
+        />
+      ))}
+    </>
+  )
+}
+
+function SidebarLabelListSection(props: { label: string } & SidebarProps) {
+  if (props.items.length === 0) {
+    return null
+  }
+
+  return (
+    <>
+      <SidebarListSectionName>{props.label}</SidebarListSectionName>
+      <SidebarListSectionItems>
+        <SidebarItemsView {...props} />
+      </SidebarListSectionItems>
+    </>
+  )
+}
+
+function SidebarGroupedByLabels(props: SidebarProps) {
+  const labelsToResources: { [key: string]: SidebarItem[] } = {}
+  const unlabeled: SidebarItem[] = []
+
+  props.items.forEach((item) => {
+    if (item.labels.length) {
+      item.labels.forEach((label) => {
+        if (!labelsToResources.hasOwnProperty(label)) {
+          labelsToResources[label] = []
+        }
+
+        labelsToResources[label].push(item)
+      })
+    } else {
+      unlabeled.push(item)
+    }
+  })
+
+  const labels = orderLabels(Object.keys(labelsToResources))
+
+  return (
+    <>
+      {labels.map((label) => (
+        <SidebarLabelListSection
+          {...props}
+          key={`sidebarItem-${label}`}
+          label={label}
+          items={labelsToResources[label]}
+        />
+      ))}
+      <SidebarLabelListSection {...props} label="unlabeled" items={unlabeled} />
+    </>
   )
 }
 
@@ -91,11 +159,21 @@ function matchesResourceName(item: SidebarItem, filter: string): boolean {
     .every((token) => item.name.toLowerCase().includes(token.toLowerCase()))
 }
 
+function resourcesHaveLabels(features: Features, items: SidebarItem[]) {
+  if (!features.isEnabled(Flag.Labels)) {
+    return false
+  }
+
+  return items.some((item) => item.labels.length > 0)
+}
+
 export class SidebarResources extends React.Component<SidebarProps> {
   constructor(props: SidebarProps) {
     super(props)
     this.triggerSelected = this.triggerSelected.bind(this)
   }
+
+  static contextType = FeaturesContext
 
   triggerSelected() {
     if (this.props.selected) {
@@ -107,11 +185,6 @@ export class SidebarResources extends React.Component<SidebarProps> {
     options: SidebarOptions,
     setOptions: Dispatch<SetStateAction<SidebarOptions>>
   ) {
-    let pb = this.props.pathBuilder
-    let totalAlerts = this.props.items // Open Q: do we include alert totals for hidden elems?
-      .map((i) => i.buildAlertCount + i.runtimeAlertCount)
-      .reduce((sum, current) => sum + current, 0)
-
     // generally, only show filters if there are tests (otherwise the filters are just noise)
     //   however, also show filters if the filter options are non-default
     //   (e.g., in case there were previously tests and the user deselected resources)
@@ -135,32 +208,25 @@ export class SidebarResources extends React.Component<SidebarProps> {
       filteredItems.sort(sortByHasAlerts)
     }
 
-    let listItems = filteredItems.map((item) => (
-      <SidebarItemView
-        key={"sidebarItem-" + item.name}
-        item={item}
-        selected={this.props.selected == item.name}
-        pathBuilder={this.props.pathBuilder}
-        resourceView={this.props.resourceView}
-      />
-    ))
+    // only say no matches if there were actually items that got filtered out
+    // otherwise, there might just be 0 resources because there are 0 resources
+    // (though technically there's probably always at least a Tiltfile resource)
+    const noResourcesMatchFilter =
+      filteredItems.length === 0 && this.props.items.length !== 0
+    const listItems = noResourcesMatchFilter ? (
+      <NoMatchesFound key={"no-matches"}>No matching resources</NoMatchesFound>
+    ) : (
+      <SidebarItemsView {...this.props} items={filteredItems} />
+    )
 
-    let nothingSelected = !this.props.selected
     let isOverviewClass =
       this.props.resourceView === ResourceView.OverviewDetail
         ? "isOverview"
         : ""
 
-    // only say no matches if there were actually items that got filtered out
-    // otherwise, there might just be 0 resources because there are 0 resources
-    // (though technically there's probably always at least a Tiltfile resource)
-    if (listItems.length === 0 && this.props.items.length !== 0) {
-      listItems = [
-        <NoMatchesFound key={"no-matches"}>
-          No matching resources
-        </NoMatchesFound>,
-      ]
-    }
+    // TODO: The above filtering and sorting logic will get refactored during more resource
+    // grouping work. It won't be necessary to map and sort here, but within each group
+    const labelsEnabled = resourcesHaveLabels(this.context, this.props.items)
 
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
@@ -170,7 +236,13 @@ export class SidebarResources extends React.Component<SidebarProps> {
             options={options}
             setOptions={setOptions}
           />
-          <SidebarListSection name="resources">{listItems}</SidebarListSection>
+          {labelsEnabled ? (
+            <SidebarGroupedByLabels {...this.props} items={filteredItems} />
+          ) : (
+            <SidebarListSection name="resources">
+              {listItems}
+            </SidebarListSection>
+          )}
         </SidebarList>
         <SidebarKeyboardShortcuts
           selected={this.props.selected}

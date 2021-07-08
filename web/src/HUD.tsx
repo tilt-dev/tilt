@@ -9,7 +9,7 @@ import AnalyticsNudge from "./AnalyticsNudge"
 import AppController from "./AppController"
 import ErrorModal from "./ErrorModal"
 import FatalErrorModal from "./FatalErrorModal"
-import Features, { FeaturesProvider } from "./feature"
+import Features, { FeaturesProvider, Flag } from "./feature"
 import HeroScreen from "./HeroScreen"
 import "./HUD.scss"
 import HudState from "./HudState"
@@ -235,7 +235,7 @@ export default class HUD extends Component<HudProps, HudState> {
   renderOverviewSwitch() {
     const features = this.getFeatures()
     let showSnapshot =
-      features.isEnabled("snapshots") && !this.pathBuilder.isSnapshot()
+      features.isEnabled(Flag.Snapshots) && !this.pathBuilder.isSnapshot()
     let snapshotAction = {
       enabled: showSnapshot,
       openModal: this.handleOpenModal,

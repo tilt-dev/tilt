@@ -23,6 +23,7 @@ const Events = "events"
 const Snapshots = "snapshots"
 const UpdateHistory = "update_history"
 const Facets = "facets"
+const Labels = "labels"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {
@@ -55,6 +56,10 @@ var MainDefaults = Defaults{
 	Facets: Value{
 		Enabled: true,
 		Status:  Obsolete,
+	},
+	Labels: Value{
+		Enabled: false,
+		Status:  Active,
 	},
 }
 
