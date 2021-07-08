@@ -14,5 +14,15 @@ func NewExtension() Extension {
 }
 
 func (e Extension) OnStart(env *starkit.Environment) error {
-	return env.AddBuiltin("struct", starlarkstruct.Make)
+	err := env.AddBuiltin("struct", starlarkstruct.Make)
+	if err != nil {
+		return err
+	}
+
+	err = env.AddBuiltin("module", starlarkstruct.MakeModule)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
