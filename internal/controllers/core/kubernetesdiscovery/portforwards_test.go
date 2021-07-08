@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -138,4 +139,50 @@ func TestPortForwardCreateAndDeleteOwner(t *testing.T) {
 
 	f.MustReconcile(key)
 	assert.False(t, f.Get(types.NamespacedName{Name: "kd-pod"}, &pf))
+}
+
+func TestPortForwardNotForPending(t *testing.T) {
+	f := newFixture(t)
+
+	pod := f.buildPod("pod-ns", "pod", nil, nil)
+	pod.Status.Phase = v1.PodPending
+
+	key := types.NamespacedName{Name: "kd"}
+	kd := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Name: "kd"},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			Watches: []v1alpha1.KubernetesWatchRef{
+				{
+					UID:       string(pod.UID),
+					Namespace: pod.Namespace,
+					Name:      pod.Name,
+				},
+			},
+			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+				Forwards: []v1alpha1.Forward{
+					v1alpha1.Forward{LocalPort: 4000, ContainerPort: 4000},
+				},
+			},
+		},
+	}
+
+	f.Create(kd)
+	f.kClient.UpsertPod(pod)
+
+	f.MustReconcile(key)
+
+	var pf v1alpha1.PortForward
+	assert.False(t, f.Get(types.NamespacedName{Name: "kd-pod"}, &pf))
+
+	// Assert that setting the pod to running will lead to the port forward
+	// being created.
+	pod.Status.Phase = v1.PodRunning
+	f.kClient.UpsertPod(pod)
+
+	f.requireState(key, func(kd *v1alpha1.KubernetesDiscovery) bool {
+		return kd.Status.Pods[0].Phase == string(v1.PodRunning)
+	}, "pod phase did not change to Running")
+	f.MustReconcile(key)
+
+	assert.True(t, f.Get(types.NamespacedName{Name: "kd-pod"}, &pf))
 }

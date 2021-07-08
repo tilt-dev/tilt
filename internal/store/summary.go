@@ -63,9 +63,6 @@ type ChangeSummary struct {
 	// Sessions that have changed.
 	Sessions ChangeSet
 
-	// PortForwards that have changed.
-	PortForwards ChangeSet
-
 	UISessions  ChangeSet
 	UIResources ChangeSet
 
@@ -84,7 +81,6 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.CmdSpecs.AddAll(other.CmdSpecs)
 	s.KubernetesDiscoveries.AddAll(other.KubernetesDiscoveries)
 	s.Sessions.AddAll(other.Sessions)
-	s.PortForwards.AddAll(other.PortForwards)
 	s.UISessions.AddAll(other.UISessions)
 	s.UIResources.AddAll(other.UIResources)
 	if other.LastBackoff > s.LastBackoff {

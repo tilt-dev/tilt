@@ -24,8 +24,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"k8s.io/apimachinery/pkg/api/equality"
-
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 
@@ -68,7 +66,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/engine/metrics"
-	"github.com/tilt-dev/tilt/internal/engine/portforward"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
@@ -3807,39 +3804,6 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestPortForwardActions(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	pfAName := "port-forward-A"
-
-	pfA := &portforward.PortForward{
-		ObjectMeta: metav1.ObjectMeta{Name: pfAName},
-		Spec:       portforward.PortForwardSpec{PodName: "pod-A"},
-	}
-
-	f.Start([]model.Manifest{})
-
-	f.upper.store.Dispatch(portforward.NewPortForwardUpsertAction(pfA))
-	f.WaitUntil("port forward A stored on state", func(st store.EngineState) bool {
-		return len(st.PortForwards) == 1 && equality.Semantic.DeepEqual(pfA, st.PortForwards[pfAName])
-	})
-
-	f.upper.store.Dispatch(portforward.PortForwardDeleteAction{Name: "something-random"})
-	time.Sleep(time.Millisecond * 5)
-	f.WaitUntil("port forward A still on state", func(st store.EngineState) bool {
-		return len(st.PortForwards) == 1 && equality.Semantic.DeepEqual(pfA, st.PortForwards[pfAName])
-	})
-
-	f.upper.store.Dispatch(portforward.PortForwardDeleteAction{Name: pfAName})
-	f.WaitUntil("port forward A removed from state", func(st store.EngineState) bool {
-		return len(st.PortForwards) == 0
-	})
-
-	err := f.Stop()
-	require.NoError(t, err)
-}
-
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
@@ -3904,8 +3868,6 @@ func newTestFixture(t *testing.T) *testFixture {
 	env := k8s.EnvDockerDesktop
 	podSource := podlogstream.NewPodSource(ctx, b.kClient, v1alpha1.NewScheme())
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient, podSource)
-	pfs := portforward.NewSubscriber(b.kClient, cdc)
-	pfs.DisableForTesting()
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
@@ -4013,7 +3975,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, pfs, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

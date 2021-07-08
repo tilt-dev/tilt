@@ -231,6 +231,7 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(_ context.Context, 
 	}
 
 	sinceTime := apis.NewTime(m.startTime)
+
 	kd := &v1alpha1.KubernetesDiscovery{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      key.Name,
@@ -250,8 +251,23 @@ func (m *ManifestSubscriber) kubernetesDiscoveryFromManifest(_ context.Context, 
 					string(runtimelog.IstioSidecarContainerName),
 				},
 			},
+			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+				Forwards: modelForwardsToApiForwards(kt.PortForwards),
+			},
 		},
 	}
 
 	return kd
+}
+
+func modelForwardsToApiForwards(forwards []model.PortForward) []v1alpha1.Forward {
+	res := make([]v1alpha1.Forward, len(forwards))
+	for i, fwd := range forwards {
+		res[i] = v1alpha1.Forward{
+			LocalPort:     int32(fwd.LocalPort),
+			ContainerPort: int32(fwd.ContainerPort),
+			Host:          fwd.Host,
+		}
+	}
+	return res
 }

@@ -495,6 +495,9 @@ func (f *fixture) buildPod(namespace k8s.Namespace, name string, podLabels label
 			Name:      name,
 			Labels:    podLabels,
 		},
+		Status: v1.PodStatus{
+			Phase: v1.PodRunning,
+		},
 	}
 
 	if rs != nil {

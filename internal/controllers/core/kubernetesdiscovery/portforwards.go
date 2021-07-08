@@ -147,7 +147,7 @@ func pickBestPortForwardPod(kd *v1alpha1.KubernetesDiscovery) *v1alpha1.Pod {
 		}
 
 		// Only do port-forwarding if the pod is running or deleting.
-		isRunning := pod.Phase != string(v1.PodRunning)
+		isRunning := pod.Phase == string(v1.PodRunning)
 		isDeleting := pod.Deleting
 		if !isRunning && !isDeleting {
 			continue
