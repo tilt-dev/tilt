@@ -20,7 +20,7 @@ func ValidateWeightDevice(val string) (*blkiodev.WeightDevice, error) {
 	if !strings.HasPrefix(split[0], "/dev/") {
 		return nil, fmt.Errorf("bad format for device path: %s", val)
 	}
-	weight, err := strconv.ParseUint(split[1], 10, 0)
+	weight, err := strconv.ParseUint(split[1], 10, 16)
 	if err != nil {
 		return nil, fmt.Errorf("invalid weight for device: %s", val)
 	}

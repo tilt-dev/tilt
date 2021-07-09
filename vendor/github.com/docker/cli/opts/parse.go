@@ -23,7 +23,7 @@ func ReadKVEnvStrings(files []string, override []string) ([]string, error) {
 }
 
 func readKVStrings(files []string, override []string, emptyFn func(string) (string, bool)) ([]string, error) {
-	variables := []string{}
+	var variables []string
 	for _, ef := range files {
 		parsedVars, err := parseKeyValueFile(ef, emptyFn)
 		if err != nil {

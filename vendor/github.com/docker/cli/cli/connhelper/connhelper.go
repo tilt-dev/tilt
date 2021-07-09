@@ -22,6 +22,19 @@ type ConnectionHelper struct {
 //
 // ssh://<user>@<host> URL requires Docker 18.09 or later on the remote host.
 func GetConnectionHelper(daemonURL string) (*ConnectionHelper, error) {
+	return getConnectionHelper(daemonURL, nil)
+}
+
+// GetConnectionHelperWithSSHOpts returns Docker-specific connection helper for
+// the given URL, and accepts additional options for ssh connections. It returns
+// nil without error when no helper is registered for the scheme.
+//
+// Requires Docker 18.09 or later on the remote host.
+func GetConnectionHelperWithSSHOpts(daemonURL string, sshFlags []string) (*ConnectionHelper, error) {
+	return getConnectionHelper(daemonURL, sshFlags)
+}
+
+func getConnectionHelper(daemonURL string, sshFlags []string) (*ConnectionHelper, error) {
 	u, err := url.Parse(daemonURL)
 	if err != nil {
 		return nil, err
@@ -34,7 +47,7 @@ func GetConnectionHelper(daemonURL string) (*ConnectionHelper, error) {
 		}
 		return &ConnectionHelper{
 			Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return commandconn.New(ctx, "ssh", append(sp.Args(), []string{"--", "docker", "system", "dial-stdio"}...)...)
+				return commandconn.New(ctx, "ssh", append(sshFlags, sp.Args("docker", "system", "dial-stdio")...)...)
 			},
 			Host: "http://docker",
 		}, nil

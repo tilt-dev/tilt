@@ -1,3 +1,5 @@
+// +build darwin openbsd solaris
+
 /*
    Copyright The containerd Authors.
 
@@ -14,21 +16,25 @@
    limitations under the License.
 */
 
-package version
+package fs
 
-import "runtime"
+import (
+	"os"
+	"syscall"
 
-var (
-	// Package is filled at linking time
-	Package = "github.com/containerd/containerd"
-
-	// Version holds the complete version number. Filled in at linking time.
-	Version = "1.4.4+unknown"
-
-	// Revision is filled with the VCS (e.g. git) revision being used to build
-	// the program at linking time.
-	Revision = ""
-
-	// GoVersion is Go tree's version.
-	GoVersion = runtime.Version()
+	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
+
+func copyDevice(dst string, fi os.FileInfo) error {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return errors.New("unsupported stat type")
+	}
+	return unix.Mknod(dst, uint32(fi.Mode()), int(st.Rdev))
+}
+
+func utimesNano(name string, atime, mtime syscall.Timespec) error {
+	timespec := []syscall.Timespec{atime, mtime}
+	return syscall.UtimesNano(name, timespec)
+}

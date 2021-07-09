@@ -9,7 +9,7 @@ import (
 	"github.com/docker/cli/cli/context/docker"
 	"github.com/docker/cli/cli/context/store"
 	"github.com/docker/cli/cli/streams"
-	"github.com/docker/docker/pkg/term"
+	"github.com/moby/term"
 )
 
 // DockerCliOption applies a modification on a DockerCli.
