@@ -2,6 +2,7 @@ package configs
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,6 +56,30 @@ func TestAPIDelete(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.True(t, apierrors.IsNotFound(err))
 	}
+}
+
+func TestAPINoGarbageCollectOnError(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	ctx := context.Background()
+	c := fake.NewFakeTiltClient()
+	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	assert.NoError(t, err)
+
+	var ka1 v1alpha1.KubernetesApply
+	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka1))
+
+	err = updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{
+		Error:     fmt.Errorf("random failure"),
+		Manifests: []model.Manifest{},
+	}, store.EngineModeUp)
+	assert.NoError(t, err)
+
+	var ka2 v1alpha1.KubernetesApply
+	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka2))
+	assert.Equal(t, ka1, ka2)
 }
 
 func TestAPIUpdate(t *testing.T) {
