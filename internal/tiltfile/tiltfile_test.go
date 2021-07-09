@@ -698,6 +698,10 @@ func TestPortForward(t *testing.T) {
 			expected: []model.PortForward{{LocalPort: 8000, Host: "0.0.0.0"}}},
 		portForwardCase{name: "override_web_host", expr: "'tilt.dev:10000:8000'", webHost: "0.0.0.0",
 			expected: []model.PortForward{{LocalPort: 10000, ContainerPort: 8000, Host: "tilt.dev"}}},
+
+		// None
+		newPortForwardSuccessCase("none", "None", []model.PortForward{}),
+		newPortForwardSuccessCase("empty_array", "[]", []model.PortForward{}),
 	}
 
 	for _, c := range portForwardCases {
@@ -5977,6 +5981,11 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 
 		case []model.PortForward:
 			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
+			if len(opt) == 0 {
+				assert.Nil(f.t, m.K8sTarget().KubernetesApplySpec.PortForwardTemplateSpec)
+			} else {
+				assert.Equal(f.t, len(opt), len(m.K8sTarget().KubernetesApplySpec.PortForwardTemplateSpec.Forwards))
+			}
 		case dcResourceLinks:
 			f.assertLinks(opt, m.DockerComposeTarget().Links)
 		case localResourceLinks:
