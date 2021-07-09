@@ -659,6 +659,9 @@ func convertPortForwards(val starlark.Value) ([]model.PortForward, error) {
 		return nil, nil
 	}
 	switch val := val.(type) {
+	case starlark.NoneType:
+		return nil, nil
+
 	case starlark.Int:
 		pf, err := intToPortForward(val)
 		if err != nil {

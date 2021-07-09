@@ -79,9 +79,7 @@ func NewTarget(
 				string(container.IstioSidecarContainerName),
 			},
 		},
-		PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
-			Forwards: modelForwardsToApiForwards(portForwards),
-		},
+		PortForwardTemplateSpec: toPortForwardTemplateSpec(portForwards),
 	}
 
 	return model.K8sTarget{
@@ -141,7 +139,12 @@ func ParseImageLocators(locators []v1alpha1.KubernetesImageLocator) ([]ImageLoca
 	return result, nil
 }
 
-func modelForwardsToApiForwards(forwards []model.PortForward) []v1alpha1.Forward {
+// Creates a port-forward template if necessary. Returns nil if no port-forwards.
+func toPortForwardTemplateSpec(forwards []model.PortForward) *v1alpha1.PortForwardTemplateSpec {
+	if len(forwards) == 0 {
+		return nil
+	}
+
 	res := make([]v1alpha1.Forward, len(forwards))
 	for i, fwd := range forwards {
 		res[i] = v1alpha1.Forward{
@@ -150,7 +153,9 @@ func modelForwardsToApiForwards(forwards []model.PortForward) []v1alpha1.Forward
 			Host:          fwd.Host,
 		}
 	}
-	return res
+	return &v1alpha1.PortForwardTemplateSpec{
+		Forwards: res,
+	}
 }
 
 func SetsAsLabelSelectors(sets []labels.Set) []metav1.LabelSelector {
