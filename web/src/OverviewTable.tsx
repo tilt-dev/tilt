@@ -64,9 +64,14 @@ type OverviewTableStatus = {
 
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
-  margin-left: ${SizeUnit(1)};
-  margin-right: ${SizeUnit(1)};
   border-collapse: collapse;
+
+  td:first-child {
+    padding-left: ${SizeUnit(1)};
+  }
+  td:last-child {
+    padding-right: ${SizeUnit(1)};
+  }
 `
 const ResourceTableHead = styled.thead`
   background-color: ${Color.grayDarker};
@@ -86,6 +91,7 @@ const ResourceTableHeader = styled(ResourceTableData)`
   padding-top: ${SizeUnit(0.5)};
   padding-bottom: ${SizeUnit(0.5)};
   box-sizing: border-box;
+  white-space: nowrap;
 `
 
 const ResourceTableHeaderSortTriangle = styled.div`
