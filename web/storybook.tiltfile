@@ -33,3 +33,5 @@ local_resource(
   'CI=true yarn test -u',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL)
+
+enable_feature("labels")
