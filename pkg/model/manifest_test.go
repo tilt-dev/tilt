@@ -3,8 +3,6 @@ package model
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -155,26 +153,6 @@ var equalitytests = []struct {
 		"k8s.YAML unequal",
 		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
 		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("goodbye world")),
-		true,
-	},
-	{
-		"k8s.ExtraPodSelectors equal",
-		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
-		}),
-		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
-		}),
-		false,
-	},
-	{
-		"k8s.ExtraPodSelectors unequal",
-		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Set{{"foo": "bar"}},
-		}),
-		Manifest{}.WithDeployTarget(K8sTarget{
-			ExtraPodSelectors: []labels.Set{{"foo": "baz"}},
-		}),
 		true,
 	},
 	{

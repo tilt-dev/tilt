@@ -24,7 +24,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -307,8 +306,8 @@ func TestIgnoredContainerLogs(t *testing.T) {
 
 	f.kClient.SetLogsForPodContainer(podID, "cont1", "hello world!")
 
-	istioInit := runtimelog.IstioInitContainerName
-	istioSidecar := runtimelog.IstioSidecarContainerName
+	istioInit := container.IstioInitContainerName
+	istioSidecar := container.IstioSidecarContainerName
 	cNormal := container.Name("cNameNormal")
 	pb := newPodBuilder(podID).
 		addTerminatedInitContainer(istioInit, "cID-init").

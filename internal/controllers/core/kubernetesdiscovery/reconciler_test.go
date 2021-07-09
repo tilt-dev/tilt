@@ -7,31 +7,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/timecmp"
-
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
-
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tilt-dev/tilt/internal/controllers/fake"
-
-	"github.com/google/go-cmp/cmp"
-
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/pkg/apis"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/labels"
-
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/timecmp"
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 const stdTimeout = time.Second
@@ -284,8 +276,8 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 	podLogStreamTemplateSpec := &v1alpha1.PodLogStreamTemplateSpec{
 		SinceTime: &sinceTime,
 		IgnoreContainers: []string{
-			string(runtimelog.IstioInitContainerName),
-			string(runtimelog.IstioSidecarContainerName),
+			string(container.IstioInitContainerName),
+			string(container.IstioSidecarContainerName),
 		},
 	}
 
@@ -334,7 +326,7 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 		timecmp.AssertTimeEqual(t, sinceTime, pls.Spec.SinceTime)
 
 		assert.ElementsMatch(t,
-			[]string{runtimelog.IstioInitContainerName.String(), runtimelog.IstioSidecarContainerName.String()},
+			[]string{container.IstioInitContainerName.String(), container.IstioSidecarContainerName.String()},
 			pls.Spec.IgnoreContainers)
 
 		assert.Empty(t, pls.Spec.OnlyContainers)

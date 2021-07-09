@@ -3,6 +3,7 @@ package k8s
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,9 +11,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+var pkgInitTime = time.Now()
 
 func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 	entities, err := ParseYAML(strings.NewReader(yaml))
@@ -58,17 +63,31 @@ func NewTarget(
 		}
 	}
 
+	extraSelectors := SetsAsLabelSelectors(extraPodSelectors)
+	sinceTime := apis.NewTime(pkgInitTime)
 	apply := v1alpha1.KubernetesApplySpec{
 		YAML:          yaml,
 		ImageLocators: myLocators,
 		Timeout:       metav1.Duration{Duration: updateSettings.K8sUpsertTimeout()},
+		KubernetesDiscoveryTemplateSpec: &v1alpha1.KubernetesDiscoveryTemplateSpec{
+			ExtraSelectors: extraSelectors,
+		},
+		PodLogStreamTemplateSpec: &v1alpha1.PodLogStreamTemplateSpec{
+			SinceTime: &sinceTime,
+			IgnoreContainers: []string{
+				string(container.IstioInitContainerName),
+				string(container.IstioSidecarContainerName),
+			},
+		},
+		PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+			Forwards: modelForwardsToApiForwards(portForwards),
+		},
 	}
 
 	return model.K8sTarget{
 		KubernetesApplySpec: apply,
 		Name:                name,
 		PortForwards:        portForwards,
-		ExtraPodSelectors:   extraPodSelectors,
 		DisplayNames:        displayNames,
 		ObjectRefs:          objectRefs,
 		PodReadinessMode:    podReadinessMode,
@@ -120,4 +139,24 @@ func ParseImageLocators(locators []v1alpha1.KubernetesImageLocator) ([]ImageLoca
 		}
 	}
 	return result, nil
+}
+
+func modelForwardsToApiForwards(forwards []model.PortForward) []v1alpha1.Forward {
+	res := make([]v1alpha1.Forward, len(forwards))
+	for i, fwd := range forwards {
+		res[i] = v1alpha1.Forward{
+			LocalPort:     int32(fwd.LocalPort),
+			ContainerPort: int32(fwd.ContainerPort),
+			Host:          fwd.Host,
+		}
+	}
+	return res
+}
+
+func SetsAsLabelSelectors(sets []labels.Set) []metav1.LabelSelector {
+	var extraSelectors []metav1.LabelSelector
+	for _, s := range sets {
+		extraSelectors = append(extraSelectors, *metav1.SetAsLabelSelector(s))
+	}
+	return extraSelectors
 }
