@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"sort"
 
-	"vbom.ml/util/sortorder"
+	"github.com/fvbommel/sortorder"
 )
 
 const (

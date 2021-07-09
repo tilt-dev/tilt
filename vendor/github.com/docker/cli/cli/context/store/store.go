@@ -7,18 +7,23 @@ import (
 	"bytes"
 	_ "crypto/sha256" // ensure ids can be computed
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/docker/docker/errdefs"
 	digest "github.com/opencontainers/go-digest"
+	"github.com/pkg/errors"
 )
+
+const restrictedNamePattern = "^[a-zA-Z0-9][a-zA-Z0-9_.+-]+$"
+
+var restrictedNameRegEx = regexp.MustCompile(restrictedNamePattern)
 
 // Store provides a context store for easily remembering endpoints configuration
 type Store interface {
@@ -184,6 +189,20 @@ func (s *store) GetStorageInfo(contextName string) StorageInfo {
 	}
 }
 
+// ValidateContextName checks a context name is valid.
+func ValidateContextName(name string) error {
+	if name == "" {
+		return errors.New("context name cannot be empty")
+	}
+	if name == "default" {
+		return errors.New(`"default" is a reserved context name`)
+	}
+	if !restrictedNameRegEx.MatchString(name) {
+		return fmt.Errorf("context name %q is invalid, names are validated against regexp %q", name, restrictedNamePattern)
+	}
+	return nil
+}
+
 // Export exports an existing namespace into an opaque data stream
 // This stream is actually a tarball containing context metadata and TLS materials, but it does
 // not map 1:1 the layout of the context store (don't try to restore it manually without calling store.Import)
@@ -295,6 +314,19 @@ func Import(name string, s Writer, reader io.Reader) error {
 	}
 }
 
+func isValidFilePath(p string) error {
+	if p != metaFile && !strings.HasPrefix(p, "tls/") {
+		return errors.New("unexpected context file")
+	}
+	if path.Clean(p) != p {
+		return errors.New("unexpected path format")
+	}
+	if strings.Contains(p, `\`) {
+		return errors.New(`unexpected '\' in path`)
+	}
+	return nil
+}
+
 func importTar(name string, s Writer, reader io.Reader) error {
 	tr := tar.NewReader(&LimitedReader{R: reader, N: maxAllowedFileSizeToImport})
 	tlsData := ContextTLSData{
@@ -309,9 +341,12 @@ func importTar(name string, s Writer, reader io.Reader) error {
 		if err != nil {
 			return err
 		}
-		if hdr.Typeflag == tar.TypeDir {
+		if hdr.Typeflag != tar.TypeReg {
 			// skip this entry, only taking files into account
 			continue
+		}
+		if err := isValidFilePath(hdr.Name); err != nil {
+			return errors.Wrap(err, hdr.Name)
 		}
 		if hdr.Name == metaFile {
 			data, err := ioutil.ReadAll(tr)
@@ -358,9 +393,12 @@ func importZip(name string, s Writer, reader io.Reader) error {
 	var importedMetaFile bool
 	for _, zf := range zr.File {
 		fi := zf.FileInfo()
-		if fi.IsDir() {
-			// skip this entry, only taking files into account
+		if !fi.Mode().IsRegular() {
+			// skip this entry, only taking regular files into account
 			continue
+		}
+		if err := isValidFilePath(zf.Name); err != nil {
+			return errors.Wrap(err, zf.Name)
 		}
 		if zf.Name == metaFile {
 			f, err := zf.Open()
@@ -407,6 +445,9 @@ func parseMetadata(data []byte, name string) (Metadata, error) {
 	var meta Metadata
 	if err := json.Unmarshal(data, &meta); err != nil {
 		return meta, err
+	}
+	if err := ValidateContextName(name); err != nil {
+		return Metadata{}, err
 	}
 	meta.Name = name
 	return meta, nil

@@ -125,7 +125,6 @@ func PruneFilters(dockerCli Cli, pruneFilters filters.Args) filters.Args {
 func AddPlatformFlag(flags *pflag.FlagSet, target *string) {
 	flags.StringVar(target, "platform", os.Getenv("DOCKER_DEFAULT_PLATFORM"), "Set platform if server is multi-platform capable")
 	flags.SetAnnotation("platform", "version", []string{"1.32"})
-	flags.SetAnnotation("platform", "experimental", nil)
 }
 
 // ValidateOutputPath validates the output paths of the `export` and `save` commands.

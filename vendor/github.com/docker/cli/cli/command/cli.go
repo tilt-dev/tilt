@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/docker/cli/cli/config"
 	cliconfig "github.com/docker/cli/cli/config"
@@ -27,8 +29,8 @@ import (
 	"github.com/docker/docker/api/types"
 	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/term"
 	"github.com/docker/go-connections/tlsconfig"
+	"github.com/moby/term"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/theupdateframework/notary"
@@ -115,7 +117,7 @@ func (cli *DockerCli) In() *streams.In {
 // ShowHelp shows the command help.
 func ShowHelp(err io.Writer) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		cmd.SetOutput(err)
+		cmd.SetOut(err)
 		cmd.HelpFunc()(cmd, args)
 		return nil
 	}
@@ -142,22 +144,14 @@ func (cli *DockerCli) ServerInfo() ServerInfo {
 // ClientInfo returns the client details for the cli
 func (cli *DockerCli) ClientInfo() ClientInfo {
 	if cli.clientInfo == nil {
-		_ = cli.loadClientInfo()
+		if err := cli.loadClientInfo(); err != nil {
+			panic(err)
+		}
 	}
 	return *cli.clientInfo
 }
 
 func (cli *DockerCli) loadClientInfo() error {
-	var experimentalValue string
-	// Environment variable always overrides configuration
-	if experimentalValue = os.Getenv("DOCKER_CLI_EXPERIMENTAL"); experimentalValue == "" {
-		experimentalValue = cli.ConfigFile().Experimental
-	}
-	hasExperimental, err := isEnabled(experimentalValue)
-	if err != nil {
-		return errors.Wrap(err, "Experimental field")
-	}
-
 	var v string
 	if cli.client != nil {
 		v = cli.client.ClientVersion()
@@ -166,7 +160,7 @@ func (cli *DockerCli) loadClientInfo() error {
 	}
 	cli.clientInfo = &ClientInfo{
 		DefaultVersion:  v,
-		HasExperimental: hasExperimental,
+		HasExperimental: true,
 	}
 	return nil
 }
@@ -270,11 +264,12 @@ func (cli *DockerCli) Initialize(opts *cliflags.ClientOptions, ops ...Initialize
 			return err
 		}
 	}
-	err = cli.loadClientInfo()
-	if err != nil {
+	cli.initializeFromClient()
+
+	if err := cli.loadClientInfo(); err != nil {
 		return err
 	}
-	cli.initializeFromClient()
+
 	return nil
 }
 
@@ -303,9 +298,9 @@ func newAPIClientFromEndpoint(ep docker.Endpoint, configFile *configfile.ConfigF
 	if err != nil {
 		return nil, err
 	}
-	customHeaders := configFile.HTTPHeaders
-	if customHeaders == nil {
-		customHeaders = map[string]string{}
+	customHeaders := make(map[string]string, len(configFile.HTTPHeaders))
+	for k, v := range configFile.HTTPHeaders {
+		customHeaders[k] = v
 	}
 	customHeaders["User-Agent"] = UserAgent()
 	clientOpts = append(clientOpts, client.WithHTTPHeaders(customHeaders))
@@ -353,19 +348,17 @@ func resolveDefaultDockerEndpoint(opts *cliflags.CommonOptions) (docker.Endpoint
 	}, nil
 }
 
-func isEnabled(value string) (bool, error) {
-	switch value {
-	case "enabled":
-		return true, nil
-	case "", "disabled":
-		return false, nil
-	default:
-		return false, errors.Errorf("%q is not valid, should be either enabled or disabled", value)
-	}
-}
-
 func (cli *DockerCli) initializeFromClient() {
-	ping, err := cli.client.Ping(context.Background())
+	ctx := context.Background()
+	if strings.HasPrefix(cli.DockerEndpoint().Host, "tcp://") {
+		// @FIXME context.WithTimeout doesn't work with connhelper / ssh connections
+		// time="2020-04-10T10:16:26Z" level=warning msg="commandConn.CloseWrite: commandconn: failed to wait: signal: killed"
+		var cancel func()
+		ctx, cancel = context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+	}
+
+	ping, err := cli.client.Ping(ctx)
 	if err != nil {
 		// Default to true if we fail to connect to daemon
 		cli.serverInfo = ServerInfo{HasExperimental: true}
@@ -457,6 +450,8 @@ type ServerInfo struct {
 
 // ClientInfo stores details about the supported features of the client
 type ClientInfo struct {
+	// Deprecated: experimental CLI features always enabled. This field is kept
+	// for backward-compatibility, and is always "true".
 	HasExperimental bool
 	DefaultVersion  string
 }

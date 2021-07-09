@@ -17,8 +17,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	registrytypes "github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/pkg/term"
 	"github.com/docker/docker/registry"
+	"github.com/moby/term"
 	"github.com/pkg/errors"
 )
 
@@ -63,6 +63,9 @@ func RegistryAuthenticationPrivilegedFunc(cli Cli, index *registrytypes.IndexInf
 		indexServer := registry.GetAuthConfigKey(index)
 		isDefaultRegistry := indexServer == ElectAuthServer(context.Background(), cli)
 		authConfig, err := GetDefaultAuthConfig(cli, true, indexServer, isDefaultRegistry)
+		if authConfig == nil {
+			authConfig = &types.AuthConfig{}
+		}
 		if err != nil {
 			fmt.Fprintf(cli.Err(), "Unable to retrieve stored credentials for %s, error: %s.\n", indexServer, err)
 		}
@@ -93,17 +96,18 @@ func GetDefaultAuthConfig(cli Cli, checkCredStore bool, serverAddress string, is
 	if !isDefaultRegistry {
 		serverAddress = registry.ConvertToHostname(serverAddress)
 	}
-	var authconfig configtypes.AuthConfig
+	var authconfig = configtypes.AuthConfig{}
 	var err error
 	if checkCredStore {
 		authconfig, err = cli.ConfigFile().GetAuthConfig(serverAddress)
-	} else {
-		authconfig = configtypes.AuthConfig{}
+		if err != nil {
+			return nil, err
+		}
 	}
 	authconfig.ServerAddress = serverAddress
 	authconfig.IdentityToken = ""
 	res := types.AuthConfig(authconfig)
-	return &res, err
+	return &res, nil
 }
 
 // ConfigureAuth handles prompting of user's username and password if needed

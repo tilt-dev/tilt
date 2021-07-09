@@ -138,15 +138,26 @@ func (c *client) GetTags(ctx context.Context, ref reference.Named) ([]string, er
 }
 
 func (c *client) getRepositoryForReference(ctx context.Context, ref reference.Named, repoEndpoint repositoryEndpoint) (distribution.Repository, error) {
-	httpTransport, err := c.getHTTPTransportForRepoEndpoint(ctx, repoEndpoint)
-	if err != nil {
-		if strings.Contains(err.Error(), "server gave HTTP response to HTTPS client") {
-			return nil, ErrHTTPProto{OrigErr: err.Error()}
-		}
-	}
 	repoName, err := reference.WithName(repoEndpoint.Name())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse repo name from %s", ref)
+	}
+	httpTransport, err := c.getHTTPTransportForRepoEndpoint(ctx, repoEndpoint)
+	if err != nil {
+		if !strings.Contains(err.Error(), "server gave HTTP response to HTTPS client") {
+			return nil, err
+		}
+		if !repoEndpoint.endpoint.TLSConfig.InsecureSkipVerify {
+			return nil, ErrHTTPProto{OrigErr: err.Error()}
+		}
+		// --insecure was set; fall back to plain HTTP
+		if url := repoEndpoint.endpoint.URL; url != nil && url.Scheme == "https" {
+			url.Scheme = "http"
+			httpTransport, err = c.getHTTPTransportForRepoEndpoint(ctx, repoEndpoint)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	return distributionclient.NewRepository(repoName, repoEndpoint.BaseURL(), httpTransport)
 }

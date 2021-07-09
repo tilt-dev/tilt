@@ -12,10 +12,10 @@ require (
 	github.com/bugsnag/panicwrap v1.2.0 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/cloudflare/cfssl v1.4.1 // indirect
-	github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe
+	github.com/containerd/continuity v0.0.0-20201208142359-180525291bb7
 	github.com/d4l3k/messagediff v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1
-	github.com/docker/cli v0.0.0-20200227165822-2298e6a3fe24
+	github.com/docker/cli v20.10.5+incompatible
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200730172259-9f28837c1d93+incompatible
 	github.com/docker/go v1.5.1-1 // indirect
@@ -29,7 +29,6 @@ require (
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-openapi/spec v0.20.1
 	github.com/go-openapi/swag v0.19.13 // indirect
-	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
@@ -59,7 +58,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/schollz/closestmatch v2.1.0+incompatible
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/theupdateframework/notary v0.6.1 // indirect
@@ -86,7 +85,7 @@ require (
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-	helm.sh/helm/v3 v3.4.1
+	helm.sh/helm/v3 v3.6.2
 	k8s.io/api v0.21.2
 	k8s.io/apimachinery v0.21.2
 	k8s.io/apiserver v0.21.2
@@ -99,7 +98,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.9.2
 	sigs.k8s.io/kustomize/api v0.8.8
 	sigs.k8s.io/yaml v1.2.0
-	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
 )
 
 replace (
