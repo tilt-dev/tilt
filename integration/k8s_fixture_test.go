@@ -289,18 +289,20 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 	f.runCommandSilently("kubectl", "apply", "-f", "access.yaml")
 	f.getSecrets()
 
+	// The new kubeconfig will have the same context and cluster name, so
+	// grab those first before we create it.
+	currentContext := f.runCommandGetOutput("kubectl config current-context")
+	cmdStr := fmt.Sprintf(`kubectl config view --raw -o json | jq -r '.contexts[] | select(.name == "%s") | .context.cluster'`, currentContext)
+	currentCluster := f.runCommandGetOutput(cmdStr)
+
 	f.setupNewKubeConfig()
 
+	// Fill in all the auth info so we can connect to the same context/cluster
+	// with restricted credentials.
 	f.runCommandSilently("kubectl", "config", "set-credentials", "tilt-integration-user", fmt.Sprintf("--token=%s", f.token))
 	f.runCommandSilently("kubectl", "config", "set", "users.tilt-integration-user.client-key-data", f.cert)
 
-	currentContext := f.runCommandGetOutput("kubectl config current-context")
-
 	f.runCommandSilently("kubectl", "config", "set-context", currentContext, "--user=tilt-integration-user", "--namespace=tilt-integration")
-
-	cmdStr := fmt.Sprintf(`kubectl config view -o json | jq -r '.contexts[] | select(.name == "%s") | .context.cluster'`, currentContext)
-	currentCluster := f.runCommandGetOutput(cmdStr)
-
 	f.runCommandSilently("kubectl", "config", "set", fmt.Sprintf("clusters.%s.certificate-authority-data", currentCluster), f.cert)
 	f.runCommandSilently("kubectl", "config", "unset", fmt.Sprintf("clusters.%s.certificate-authority", currentCluster))
 }
