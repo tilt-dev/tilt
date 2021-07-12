@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -229,18 +228,18 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 
 	restartOnTriggered := lastRestartEventTime.After(lastRestartOnEventTime)
 	startOnTriggered := lastStartEventTime.After(lastStartOnEventTime)
-	specChanged := !apicmp.DeepEqual(lastSpec, cmd.Spec)
+	execSpecChanged := !cmdExecEqual(lastSpec, cmd.Spec)
 
 	// any change to the spec means we should stop the command immediately
-	if specChanged {
+	if execSpecChanged {
 		c.stop(name)
 	}
 
-	if specChanged && waitsOnStartOn && !startOnTriggered {
+	if execSpecChanged && waitsOnStartOn && !startOnTriggered {
 		// If the cmd spec has changed since the last run,
 		// and StartOn hasn't triggered yet, set the status to waiting.
 		c.setStatusWaitingOnStartOn(name, cmd)
-	} else if specChanged || restartOnTriggered || startOnTriggered {
+	} else if execSpecChanged || restartOnTriggered || startOnTriggered {
 		// Otherwise, any change, new start event, or new restart event
 		// should restart the process to pick up changes.
 		_ = c.runInternal(ctx, cmd, buttons, fileWatches)
