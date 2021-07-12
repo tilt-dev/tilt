@@ -485,6 +485,49 @@ func TestDisposeTerminatedWhenCmdChanges(t *testing.T) {
 	f.assertCmdDeleted("foo-serve-1")
 }
 
+// Self-modifying Cmds are typically paired with a StartOn trigger,
+// to simulate a "toggle" switch on the Cmd.
+//
+// See:
+// https://github.com/tilt-dev/tilt-extensions/issues/202
+func TestSelfModifyingCmd(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	setupStartOnTest(t, f)
+
+	f.reconcileCmd("testcmd")
+
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason
+	})
+
+	f.clock.Advance(time.Second)
+	f.triggerButton("b-1", f.clock.Now())
+	f.clock.Advance(time.Second)
+	f.reconcileCmd("testcmd")
+
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+
+	f.setArgs("testcmd", []string{"yourserver"})
+	f.reconcileCmd("testcmd")
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason
+	})
+
+	f.fe.RequireNoKnownProcess(t, "myserver")
+	f.fe.RequireNoKnownProcess(t, "yourserver")
+	f.clock.Advance(time.Second)
+	f.triggerButton("b-1", f.clock.Now())
+	f.reconcileCmd("testcmd")
+
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+}
+
 type testStore struct {
 	*store.TestingStore
 	out     io.Writer
@@ -625,6 +668,16 @@ func (f *fixture) setRestartOn(name string, restartOn *RestartOnSpec) {
 	require.NoError(f.T(), err)
 
 	cmd.Spec.RestartOn = restartOn
+	err = f.client.Update(f.ctx, cmd)
+	require.NoError(f.T(), err)
+}
+
+func (f *fixture) setArgs(name string, args []string) {
+	cmd := &Cmd{}
+	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, cmd)
+	require.NoError(f.T(), err)
+
+	cmd.Spec.Args = args
 	err = f.client.Update(f.ctx, cmd)
 	require.NoError(f.T(), err)
 }
