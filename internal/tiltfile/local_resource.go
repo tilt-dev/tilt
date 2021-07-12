@@ -30,6 +30,7 @@ type localResource struct {
 	ignores       []string
 	allowParallel bool
 	links         []model.Link
+	labels        []string
 
 	// for use in testing mvp
 	tags   []string
@@ -52,6 +53,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var ignoresVal starlark.Value
 	var allowParallel bool
 	var links links.LinkList
+	var labels value.LabelOrLabelList
 	autoInit := true
 
 	var isTest bool
@@ -80,6 +82,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"serve_cmd_bat?", &serveCmdBatVal,
 		"allow_parallel?", &allowParallel,
 		"links?", &links,
+		"labels?", &labels,
 		"tags?", &tagsVal,
 		"env?", &updateEnv,
 		"serve_env?", &serveEnv,
@@ -132,6 +135,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		ignores:        ignores,
 		allowParallel:  allowParallel,
 		links:          links.Links,
+		labels          labels.Values,
 		tags:           tags,
 		isTest:         isTest,
 		readinessProbe: readinessProbe.Spec(),

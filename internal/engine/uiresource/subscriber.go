@@ -100,7 +100,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 				Spec:       *stored.Spec.DeepCopy(),
 				Status:     *resource.Status.DeepCopy(),
 			}
-			update.ObjectMeta.SetLabels(resource.GetObjectMeta().Labels)
+			update.ObjectMeta.SetLabels(resource.GetObjectMeta().Labels) // (lizz) it sounds like we want to do this upstream, within an `ObjectMeta` field we add to the manifest
 			err = s.client.Status().Update(ctx, update)
 			if err != nil {
 				logger.Get(ctx).Infof("updating uiresource %s: %v", name.Name, err)
