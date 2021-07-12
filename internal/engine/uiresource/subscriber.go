@@ -100,6 +100,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 				Spec:       *stored.Spec.DeepCopy(),
 				Status:     *resource.Status.DeepCopy(),
 			}
+			update.ObjectMeta.SetLabels(resource.GetObjectMeta().Labels)
 			err = s.client.Status().Update(ctx, update)
 			if err != nil {
 				logger.Get(ctx).Infof("updating uiresource %s: %v", name.Name, err)

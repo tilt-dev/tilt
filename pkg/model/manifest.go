@@ -56,6 +56,8 @@ type Manifest struct {
 	ResourceDependencies []ManifestName
 
 	Source ManifestSource
+
+	Labels []string
 }
 
 func (m Manifest) ID() TargetID {

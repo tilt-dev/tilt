@@ -228,10 +228,16 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIRe
 	// at once).
 	hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
 
+	labels := make(map[string]string)
+	for _, label := range mt.Manifest.Labels {
+		labels[label] = label
+	}
+
 	name := mt.Manifest.Name
 	r := &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name.String(),
+			Name:   name.String(),
+			Labels: labels,
 		},
 		Status: v1alpha1.UIResourceStatus{
 			LastDeployTime:    lastDeploy,
