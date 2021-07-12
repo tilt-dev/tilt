@@ -66,7 +66,23 @@ func updateOwnedObjects(ctx context.Context, client ctrlclient.Client, tlr tiltf
 		}
 		break
 	}
-	return updateObjects(ctx, client, apiObjects, existingObjects)
+
+	err = updateNewObjects(ctx, client, apiObjects, existingObjects)
+	if err != nil {
+		return err
+	}
+
+	// If the tiltfile loader succeeded, garbage collect any old objects.
+	//
+	// If the tiltfile loader failed, we want to keep those objects around, in case
+	// the tiltfile was only partially evaluated and is missing objects.
+	if tlr.Error == nil {
+		err := removeOrphanedObjects(ctx, client, apiObjects, existingObjects)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Fetch all the existing API objects that were generated from the Tiltfile.
@@ -206,7 +222,7 @@ func toCmdObjects(tlr tiltfile.TiltfileLoadResult) typedObjectSet {
 }
 
 // Reconcile the new API objects against the existing API objects.
-func updateObjects(ctx context.Context, client ctrlclient.Client, newObjects, oldObjects objectSet) error {
+func updateNewObjects(ctx context.Context, client ctrlclient.Client, newObjects, oldObjects objectSet) error {
 	// TODO(nick): Does it make sense to parallelize the API calls?
 	errs := []error{}
 
@@ -240,8 +256,13 @@ func updateObjects(ctx context.Context, client ctrlclient.Client, newObjects, ol
 			}
 		}
 	}
+	return errors.NewAggregate(errs)
+}
 
+// Garbage collect API objects that are no longer loaded.
+func removeOrphanedObjects(ctx context.Context, client ctrlclient.Client, newObjects, oldObjects objectSet) error {
 	// Delete any objects that aren't in the new tiltfile.
+	errs := []error{}
 	for t, s := range oldObjects {
 		for name, obj := range s {
 			newSet, ok := newObjects[t]
