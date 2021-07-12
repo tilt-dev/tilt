@@ -1,12 +1,22 @@
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+} from "@material-ui/core"
 import React, { Dispatch, PropsWithChildren, SetStateAction } from "react"
 import styled from "styled-components"
+import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
 import Features, { FeaturesContext, Flag } from "./feature"
 import { orderLabels } from "./labels"
 import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
+import { ResourceSidebarStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, { triggerUpdate } from "./SidebarItemView"
+import SidebarItemView, {
+  SidebarItemRoot,
+  triggerUpdate,
+} from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceView, SidebarOptions } from "./types"
@@ -37,6 +47,69 @@ const SidebarListSectionItems = styled.ul`
 const NoMatchesFound = styled.li`
   margin-left: ${SizeUnit(0.5)};
   color: ${Color.grayLightest};
+`
+
+const SidebarLabelSection = styled(Accordion)`
+  &.MuiPaper-root {
+    background-color: unset;
+  }
+
+  &.MuiAccordion-root,
+  &.MuiAccordion-root.Mui-expanded {
+    margin: ${SizeUnit(1 / 3)} 0;
+  }
+`
+
+const SummaryIcon = styled(CaretSvg)`
+  padding: ${SizeUnit(1 / 4)};
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; /* Copied from MUI accordion */
+`
+
+const SidebarGroupSummary = styled(AccordionSummary)`
+  &.MuiAccordionSummary-root,
+  &.MuiAccordionSummary-root.Mui-expanded {
+    min-height: unset;
+    padding: unset;
+  }
+
+  .MuiAccordionSummary-content {
+    align-items: center;
+    background-color: ${Color.grayLighter};
+    border: 1px solid ${Color.grayLight};
+    border-radius: ${SizeUnit(1 / 8)};
+    box-sizing: border-box;
+    color: ${Color.white};
+    display: flex;
+    font-size: ${FontSize.small};
+    margin: 0;
+    max-width: 336px;
+    padding: ${SizeUnit(1 / 8)};
+
+    &.Mui-expanded {
+      margin: 0;
+
+      ${SummaryIcon} {
+        transform: rotate(90deg);
+      }
+    }
+  }
+`
+
+const SidebarGroupName = styled.span`
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`
+
+const SidebarGroupDetails = styled(AccordionDetails)`
+  &.MuiAccordionDetails-root {
+    display: unset;
+    padding: unset;
+
+    ${SidebarItemRoot} {
+      margin-right: unset;
+    }
+  }
 `
 
 export function SidebarListSection(
@@ -71,13 +144,28 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
     return null
   }
 
+  // TODO: Investigate accessibility implications and add focus styles
+  // There's probably a layer of a11y markup we need to add
   return (
-    <>
-      <SidebarListSectionName>{props.label}</SidebarListSectionName>
-      <SidebarListSectionItems>
-        <SidebarItemsView {...props} />
-      </SidebarListSectionItems>
-    </>
+    <SidebarLabelSection
+      defaultExpanded={true}
+      key={`sidebarItem-${props.label}`}
+    >
+      <SidebarGroupSummary>
+        <SummaryIcon width={10} height={10} role="presentation" />
+        <SidebarGroupName>
+          {/* TODO: Make 'unlabeled' label italics */}
+          {props.label}
+        </SidebarGroupName>
+        <ResourceSidebarStatusSummary items={props.items} />
+      </SidebarGroupSummary>
+      <SidebarGroupDetails>
+        <SidebarListSectionItems>
+          <SidebarItemsView {...props} />
+        </SidebarListSectionItems>
+      </SidebarGroupDetails>
+      {/* TODO: Handle Tiltfile display separately */}
+    </SidebarLabelSection>
   )
 }
 

@@ -71,6 +71,11 @@ export const ResourcesWithLabels = () => {
       labels["test"] = "test"
     }
 
+    if (i === 3) {
+      labels["some_really_really_really_long_label_name"] =
+        "some_really_really_really_long_label_name"
+    }
+
     const resourceMetadata: Proto.v1ObjectMeta = {
       name: `resource_${i}`,
       labels,
