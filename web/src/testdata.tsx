@@ -107,6 +107,7 @@ export function tiltfileResource(): UIResource {
       hasPendingChanges: false,
       endpointLinks: [],
       queued: false,
+      order: -1,
     },
   }
   return resource
@@ -147,6 +148,7 @@ function oneResource(): UIResource {
       endpointLinks: [],
       queued: false,
       specs: vigodaSpecs(),
+      order: 1,
     },
   }
   return resource
@@ -357,6 +359,7 @@ function twoResourceView(): view {
       hasPendingChanges: false,
       queued: false,
       specs: vigodaSpecs(),
+      order: 2,
     },
   }
   return {
@@ -379,6 +382,7 @@ export function nResourceView(n: number): view {
     } else {
       let res = oneResourceNoAlerts()
       res.metadata = { name: "_" + i }
+      res.status!.order = i
       resources.push(res)
     }
   }
@@ -506,6 +510,7 @@ function oneResourceBuilding(): UIResource[] {
         pendingBuildSince: "0001-01-01T00:00:00Z",
         updateStatus: "ok",
         runtimeStatus: "ok",
+        order: -1,
       },
     },
     {
@@ -534,6 +539,7 @@ function oneResourceBuilding(): UIResource[] {
         },
         updateStatus: "ok",
         runtimeStatus: "ok",
+        order: 1,
       },
     },
     {
@@ -562,6 +568,7 @@ function oneResourceBuilding(): UIResource[] {
         },
         updateStatus: "ok",
         runtimeStatus: "ok",
+        order: 2,
       },
     },
     {
@@ -595,6 +602,7 @@ function oneResourceBuilding(): UIResource[] {
         },
         updateStatus: "error",
         runtimeStatus: "error",
+        order: 3,
       },
     },
   ]

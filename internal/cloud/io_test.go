@@ -58,7 +58,8 @@ func TestWriteSnapshotTo(t *testing.T) {
         },
         "status": {
           "runtimeStatus": "not_applicable",
-          "updateStatus": "pending"
+          "updateStatus": "pending",
+          "order": -1
         }
       }
     ]
