@@ -62,16 +62,29 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, _ store.RStore)
 	// controller-runtime internals don't really make use of verbosity levels, so in lieu of a better
 	// mechanism, all its logs are redirected to a custom logger that filters out logs
 	// we don't care about.
-	//
-	// V(3) was picked because while controller-runtime is a bit chatty at startup, once steady state
-	// is reached, most of the logging is generally useful (e.g. reconciler errors)
 	ctxLog := logger.Get(ctx)
 	logr := genericr.New(func(e genericr.Entry) {
+		if e.Error != nil {
+			// Print errors to the global log on all builds.
+			//
+			// TODO(nick): Once we have resource grouping, we should consider having some
+			// some sort of system resource that we can hide by default and print
+			// these kinds of apiserver problems to.
+			ctxLog.Errorf("%s", e.String())
+			return
+		}
+
 		// We don't care about the startup or teardown sequence.
 		if e.Message == "Starting EventSource" ||
+			e.Message == "Starting Controller" ||
+			e.Message == "Starting workers" ||
 			e.Message == "error received after stop sequence was engaged" {
 			return
 		}
+
+		// V(3) was picked because while controller-runtime is a bit chatty at
+		// startup, once steady state is reached, most of the logging is generally
+		// useful.
 		if e.Level <= 3 {
 			ctxLog.Debugf("%s", e.String())
 		}
