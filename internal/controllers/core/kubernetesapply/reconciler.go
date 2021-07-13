@@ -44,9 +44,6 @@ type Reconciler struct {
 
 	// Protected by the mutex.
 	results map[types.NamespacedName]*Result
-
-	// A temporary flag to help test the disco management code.
-	enableDiscoForTesting bool
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -96,6 +93,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	ctx = store.MustObjectLogHandler(ctx, r.st, &ka)
+	err = r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// Fetch all the images needed to apply this YAML.
 	imageMaps := make(map[types.NamespacedName]*v1alpha1.ImageMap)
@@ -119,11 +120,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		// TODO(nick): Like with other reconcilers, there should always
 		// be a reason why we're not deploying, and we should update the
 		// Status field of KubernetesApply with that reason.
-		err := r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
 		return ctrl.Result{}, nil
 	}
 
@@ -242,11 +238,6 @@ func (r *Reconciler) ForceApply(
 
 	toDelete := r.updateResult(nn, &result)
 	r.bestEffortDelete(ctx, toDelete)
-
-	err = r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)
-	if err != nil {
-		return status, err
-	}
 
 	return status, nil
 }

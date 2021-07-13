@@ -20,11 +20,6 @@ import (
 //
 // If the Apply has been deleted, any corresponding Disco objects should be deleted.
 func (r *Reconciler) manageOwnedKubernetesDiscovery(ctx context.Context, nn types.NamespacedName, ka *v1alpha1.KubernetesApply) error {
-	if !r.enableDiscoForTesting {
-		// TODO(nick): remove this.
-		return nil
-	}
-
 	if ka != nil && (ka.Status.Error != "" || ka.Status.ResultYAML == "") {
 		// If the KubernetesApply is in an error state or hasn't deployed anything, don't
 		// reconcile the discovery object. This prevents the reconcilers

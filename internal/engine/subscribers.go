@@ -50,7 +50,6 @@ func ProvideSubscribers(
 	hud hud.HeadsUpDisplay,
 	ts *hud.TerminalStream,
 	tp *prompt.TerminalPrompt,
-	kdms *k8swatch.ManifestSubscriber,
 	sw *k8swatch.ServiceWatcher,
 	bc *BuildController,
 	cc *configs.ConfigsController,
@@ -74,7 +73,6 @@ func ProvideSubscribers(
 	legacySubscribers := []store.Subscriber{
 		hud,
 		tp,
-		kdms,
 		sw,
 		bc,
 		cc,

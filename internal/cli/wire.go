@@ -94,7 +94,6 @@ var BaseWireSet = wire.NewSet(
 	engine.NewBuildController,
 	local.NewServerController,
 	kubernetesdiscovery.NewContainerRestartDetector,
-	k8swatch.NewManifestSubscriber,
 	k8swatch.NewServiceWatcher,
 	k8swatch.NewEventWatchManager,
 	uisession.NewSubscriber,
