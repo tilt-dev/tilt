@@ -6,55 +6,35 @@ import (
 	"sync"
 	"time"
 
-	errorutil "k8s.io/apimachinery/pkg/util/errors"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	"github.com/tilt-dev/tilt/pkg/model"
-
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/tilt-dev/tilt/pkg/apis"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/apimachinery/pkg/api/equality"
-
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	errorutil "k8s.io/apimachinery/pkg/util/errors"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/pkg/errors"
-
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var (
-	ownerKey = ".metadata.controller"
 	apiGVStr = v1alpha1.SchemeGroupVersion.String()
+	apiKind  = "KubernetesDiscovery"
+	apiType  = metav1.TypeMeta{Kind: apiKind, APIVersion: apiGVStr}
 )
-
-func ownedByKubernetesDiscoveryIndexFunc(obj ctrlclient.Object) []string {
-	owner := metav1.GetControllerOf(obj)
-	if owner == nil {
-		return nil
-	}
-	if owner.APIVersion != apiGVStr || owner.Kind != "KubernetesDiscovery" {
-		return nil
-	}
-	return []string{owner.Name}
-}
 
 type watcherSet map[watcherID]bool
 
@@ -106,20 +86,6 @@ type Reconciler struct {
 }
 
 func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
-	// modeled after KubeBuilder example: https://book.kubebuilder.io/cronjob-tutorial/controller-implementation.html#setup
-	// to ensure that KubernetesDiscovery is reconciled whenever one of the objects it creates is modified
-	err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.PodLogStream{}, ownerKey,
-		ownedByKubernetesDiscoveryIndexFunc)
-	if err != nil {
-		return nil, err
-	}
-
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.PortForward{}, ownerKey,
-		ownedByKubernetesDiscoveryIndexFunc)
-	if err != nil {
-		return nil, err
-	}
-
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesDiscovery{}).
 		Owns(&v1alpha1.PodLogStream{}).
@@ -597,8 +563,7 @@ func (w *Reconciler) manageOwnedObjects(ctx context.Context, nn types.Namespaced
 // Reconcile all the pod log streams owned by this KD. The KD may be nil if it's being deleted.
 func (w *Reconciler) manageOwnedPodLogStreams(ctx context.Context, nn types.NamespacedName, kd *v1alpha1.KubernetesDiscovery) error {
 	var managedPodLogStreams v1alpha1.PodLogStreamList
-	err := w.ctrlClient.List(ctx, &managedPodLogStreams, ctrlclient.InNamespace(nn.Namespace),
-		ctrlclient.MatchingFields{ownerKey: nn.Name})
+	err := indexer.ListOwnedBy(ctx, w.ctrlClient, &managedPodLogStreams, nn, apiType)
 	if err != nil {
 		return fmt.Errorf("failed to fetch managed PodLogStream objects for KubernetesDiscovery %s: %v",
 			nn.Name, err)
