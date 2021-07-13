@@ -293,7 +293,7 @@ declare namespace Proto {
      */
     deletionTimestamp?: string;
     deletionGracePeriodSeconds?: string;
-    labels?: {[key: string]: string};
+    labels?: object;
     annotations?: object;
     ownerReferences?: v1OwnerReference[];
     finalizers?: string[];
