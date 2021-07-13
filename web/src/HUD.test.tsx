@@ -190,6 +190,19 @@ describe("mergeAppUpdates", () => {
     expect(result!.view.uiResources![1].metadata!.name).toEqual("snack")
   })
 
+  it("handles add resource out of order", () => {
+    let prevState = { view: twoResourceView() }
+    prevState.view.uiResources = [twoResourceView().uiResources[1]]
+
+    let update = { view: { uiResources: [twoResourceView().uiResources[0]] } }
+    let result = mergeAppUpdate(prevState as any, update)
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiSession).toBe(prevState.view.uiSession)
+    expect(result!.view.uiResources!.length).toEqual(2)
+    expect(result!.view.uiResources![0].metadata!.name).toEqual("vigoda")
+    expect(result!.view.uiResources![1].metadata!.name).toEqual("snack")
+  })
+
   it("handles delete resource", () => {
     let prevState = { view: twoResourceView() }
     let update = {

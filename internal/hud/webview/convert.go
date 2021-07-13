@@ -188,16 +188,19 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
 	ret := make([]*v1alpha1.UIResource, 0, len(state.ManifestTargets)+1)
 	ret = append(ret, TiltfileResourceProtoView(state))
-	for _, mt := range state.ManifestTargets {
+	for i, mt := range state.Targets() {
 		// Skip manifests that don't come from the tiltfile.
 		if mt.Manifest.Source != model.ManifestSourceTiltfile {
 			continue
 		}
 
-		r, err := ToUIResource(mt, state)
+		r, err := toUIResource(mt, state)
 		if err != nil {
 			return nil, err
 		}
+
+		// The Tiltfile has Order -1, all "normal" resources have Order >= 1
+		r.Status.Order = int32(i + 1)
 
 		ret = append(ret, r)
 	}
@@ -206,7 +209,7 @@ func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
 
 // Converts a ManifestTarget into the public data model representation,
 // a UIResource.
-func ToUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIResource, error) {
+func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIResource, error) {
 	ms := mt.State
 	endpoints := store.ManifestTargetEndpoints(mt)
 
@@ -268,6 +271,7 @@ func TiltfileResourceProtoView(s store.EngineState) *v1alpha1.UIResource {
 			BuildHistory:  history,
 			RuntimeStatus: v1alpha1.RuntimeStatusNotApplicable,
 			UpdateStatus:  s.TiltfileState.UpdateStatus(model.TriggerModeAuto),
+			Order:         -1,
 		},
 	}
 	start := metav1.NewMicroTime(ctfb.StartTime)

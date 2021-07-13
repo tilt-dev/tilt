@@ -1528,6 +1528,16 @@ message UIResourceStatus {
   // Queued is a simple indicator of whether the resource is queued for an update.
   // +optional
   optional bool queued = 13;
+
+  // Order expresses the relative order of resources in the UI when they're not
+  // otherwise sorted. Lower integers go first. When two resources have the same
+  // order, they should be sorted by name.
+  //
+  // When UIResources are generated from the Tiltfile, we use the order they
+  // were added to the Tiltfile for the Order field.
+  //
+  // +optional
+  optional int32 order = 15;
 }
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.

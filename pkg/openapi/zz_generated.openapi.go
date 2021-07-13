@@ -3945,6 +3945,13 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"order": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Order expresses the relative order of resources in the UI when they're not otherwise sorted. Lower integers go first. When two resources have the same order, they should be sorted by name.\n\nWhen UIResources are generated from the Tiltfile, we use the order they were added to the Tiltfile for the Order field.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 			},
 		},
